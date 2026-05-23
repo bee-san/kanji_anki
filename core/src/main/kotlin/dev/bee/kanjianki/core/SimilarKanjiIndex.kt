@@ -43,7 +43,7 @@ class SimilarKanjiIndex private constructor(
     }
 
     fun pairsWithin(kanji: Collection<String?>?): List<Pair> {
-        if (kanji == null || kanji.isEmpty()) {
+        if (kanji.isNullOrEmpty()) {
             return emptyList()
         }
         val local = HashSet<String>()

@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -57,8 +58,11 @@ public final class SettingsInputRulesTest {
 
     @Test
     public void importSourceSelectionPreservesEnabledSourceRules() {
+        List<String> emptyList = Collections.emptyList();
+        List<String> leeches = Collections.singletonList("leeches");
+
         assertFalse(SettingsInputRules.hasSelectedImportSource(
-                false, false, false, false, false, Collections.emptyList(), ""
+                false, false, false, false, false, emptyList, ""
         ));
         assertTrue(SettingsInputRules.hasSelectedImportSource(
                 true, false, false, false, false, null, null
@@ -73,19 +77,19 @@ public final class SettingsInputRulesTest {
                 false, false, true, false, false, Collections.emptyList(), null
         ));
         assertTrue(SettingsInputRules.hasSelectedImportSource(
-                false, false, true, false, false, Collections.singletonList("leeches"), null
+                false, false, true, false, false, leeches, null
         ));
         assertFalse(SettingsInputRules.hasSelectedImportSource(
-                false, false, false, false, true, Collections.emptyList(), ""
+                false, false, false, false, true, emptyList, ""
         ));
         assertTrue(SettingsInputRules.hasSelectedImportSource(
-                false, false, false, false, true, Collections.emptyList(), "deck:Kiku"
+                false, false, false, false, true, emptyList, "deck:Kiku"
         ));
         assertThrows(NullPointerException.class, () -> SettingsInputRules.hasSelectedImportSource(
                 false, false, true, false, false, null, ""
         ));
         assertThrows(NullPointerException.class, () -> SettingsInputRules.hasSelectedImportSource(
-                false, false, false, false, true, Collections.emptyList(), null
+                false, false, false, false, true, emptyList, null
         ));
     }
 

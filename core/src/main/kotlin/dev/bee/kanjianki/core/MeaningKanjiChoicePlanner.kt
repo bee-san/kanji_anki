@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import java.util.Locale
+import java.security.SecureRandom
 import java.util.Random
 
 class MeaningKanjiChoicePlanner {
@@ -14,7 +15,7 @@ class MeaningKanjiChoicePlanner {
             return null
         }
         val targetKanji = target.kanji.javaTrim()
-        val meaning = target.primaryMeaning?.javaTrim() ?: ""
+        val meaning = target.primaryMeaning.javaTrim()
         if (meaning.isEmpty()) {
             return null
         }
@@ -25,7 +26,7 @@ class MeaningKanjiChoicePlanner {
         if (eligible.size < CHOICE_COUNT) {
             return null
         }
-        val rng = random ?: Random()
+        val rng = random ?: SecureRandom()
         val decoys = ArrayList(eligible.keys)
         decoys.remove(targetKanji)
         decoys.removeIf { decoy ->

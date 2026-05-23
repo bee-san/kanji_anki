@@ -210,7 +210,8 @@ object LadderHealthPolicy {
             if (item == null || StudyLadderRules.STATE_RETIRED == item.state()) {
                 return
             }
-            distribution[item.rung()] = distribution[item.rung()]!! + 1
+            val rung = item.rung()
+            distribution[rung] = distribution.getOrDefault(rung, 0) + 1
             total++
             if (item.phase() == RecordsBase.SchedulerPhase.REVIEW) {
                 recordReviewEvidence(item, promotionDays, failStreak)

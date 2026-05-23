@@ -177,45 +177,90 @@ public final class HomeTextCopyTest {
         RecordsImportModels.DashboardRow row = row("裂", "row:裂");
         RecordsImportModels.DashboardRow rowWithReason = row("裂", "row:裂", "manual reason");
 
-        assertEquals("裂", HomeTextCopy.detailDisplayKanji("fallback", row, inventory));
-        assertEquals("語", HomeTextCopy.detailDisplayKanji("fallback", null, inventory));
-        assertEquals("fallback", HomeTextCopy.detailDisplayKanji("fallback", null, null));
-        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(null));
-        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(inventory("語", "", "")));
-        assertEquals("language", HomeTextCopy.inventoryTitle(inventory));
-        assertEquals("Why it is here", HomeTextCopy.detailReasonTitle());
         assertEquals(
-                "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
-                HomeTextCopy.historicalReasonText()
+                Arrays.asList(
+                        "裂",
+                        "語",
+                        "fallback",
+                        "Historical recovery",
+                        "Historical recovery",
+                        "language",
+                        "Why it is here",
+                        "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
+                        "Current local practice evidence from AnkiDroid.",
+                        "manual reason"
+                ),
+                Arrays.asList(
+                        HomeTextCopy.detailDisplayKanji("fallback", row, inventory),
+                        HomeTextCopy.detailDisplayKanji("fallback", null, inventory),
+                        HomeTextCopy.detailDisplayKanji("fallback", null, null),
+                        HomeTextCopy.inventoryTitle(null),
+                        HomeTextCopy.inventoryTitle(inventory("語", "", "")),
+                        HomeTextCopy.inventoryTitle(inventory),
+                        HomeTextCopy.detailReasonTitle(),
+                        HomeTextCopy.historicalReasonText(),
+                        HomeTextCopy.activeReasonText(row),
+                        HomeTextCopy.activeReasonText(rowWithReason)
+                )
         );
-        assertEquals("Current local practice evidence from AnkiDroid.", HomeTextCopy.activeReasonText(row));
-        assertEquals("manual reason", HomeTextCopy.activeReasonText(rowWithReason));
-        assertEquals("Anki browser: row:裂", HomeTextCopy.ankiBrowserLine("row:裂"));
-        assertEquals("Review this now", HomeTextCopy.reviewNowLabel());
-        assertEquals("Copy Anki search", HomeTextCopy.copyAnkiSearchLabel());
-        assertEquals("Anki search", HomeTextCopy.ankiSearchClipLabel());
-        assertEquals("Search copied", HomeTextCopy.ankiSearchCopiedToast());
-        assertEquals("Suspend locally", HomeTextCopy.localSuspendButtonLabel(false));
-        assertEquals("Unsuspend locally", HomeTextCopy.localSuspendButtonLabel(true));
-        assertEquals("Kanji suspended locally.", HomeTextCopy.localSuspendToast(false));
-        assertEquals("Kanji unsuspended.", HomeTextCopy.localSuspendToast(true));
-        assertEquals("Examples", HomeTextCopy.examplesTitle());
-        assertEquals("Local inventory", HomeTextCopy.localInventoryTitle());
-        assertEquals("1 source note/card · 2 stored examples", HomeTextCopy.localInventorySummary(1, 2));
-        assertEquals("3 source notes/cards · 1 stored example", HomeTextCopy.localInventorySummary(3, 1));
-        assertEquals("Search: row:裂", HomeTextCopy.localInventorySearchLine("row:裂"));
         assertEquals(
-                "Last seen locally " + DateTextPolicy.shortDateTime(123456789L),
-                HomeTextCopy.localInventoryLastSeenLine(123456789L)
+                Arrays.asList(
+                        "Anki browser: row:裂",
+                        "Review this now",
+                        "Copy Anki search",
+                        "Anki search",
+                        "Search copied",
+                        "Suspend locally",
+                        "Unsuspend locally",
+                        "Kanji suspended locally.",
+                        "Kanji unsuspended.",
+                        "Examples",
+                        "Local inventory",
+                        "1 source note/card · 2 stored examples",
+                        "3 source notes/cards · 1 stored example",
+                        "Search: row:裂",
+                        "Last seen locally " + DateTextPolicy.shortDateTime(123456789L)
+                ),
+                Arrays.asList(
+                        HomeTextCopy.ankiBrowserLine("row:裂"),
+                        HomeTextCopy.reviewNowLabel(),
+                        HomeTextCopy.copyAnkiSearchLabel(),
+                        HomeTextCopy.ankiSearchClipLabel(),
+                        HomeTextCopy.ankiSearchCopiedToast(),
+                        HomeTextCopy.localSuspendButtonLabel(false),
+                        HomeTextCopy.localSuspendButtonLabel(true),
+                        HomeTextCopy.localSuspendToast(false),
+                        HomeTextCopy.localSuspendToast(true),
+                        HomeTextCopy.examplesTitle(),
+                        HomeTextCopy.localInventoryTitle(),
+                        HomeTextCopy.localInventorySummary(1, 2),
+                        HomeTextCopy.localInventorySummary(3, 1),
+                        HomeTextCopy.localInventorySearchLine("row:裂"),
+                        HomeTextCopy.localInventoryLastSeenLine(123456789L)
+                )
         );
-        assertEquals("inventory:語", HomeTextCopy.detailBrowserSearch(row, inventory));
-        assertEquals("row:裂", HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")));
-        assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null));
-        assertEquals("Mature support 0 / target 2", HomeTextCopy.matureSupportTargetText(0, 2));
-        assertEquals("Mature support 3 / target 4", HomeTextCopy.matureSupportTargetText(3, 4));
-        assertEquals("Timeline will fill in after the next sync or review.", HomeTextCopy.timelineEmptyText());
-        assertEquals("Recovery timeline", HomeTextCopy.recoveryTimelineTitle());
-        assertEquals("No active Anki evidence in the latest local sync.", HomeTextCopy.noActiveEvidenceText());
+        assertEquals(
+                Arrays.asList(
+                        "inventory:語",
+                        "row:裂",
+                        "",
+                        "Mature support 0 / target 2",
+                        "Mature support 3 / target 4",
+                        "Timeline will fill in after the next sync or review.",
+                        "Recovery timeline",
+                        "No active Anki evidence in the latest local sync."
+                ),
+                Arrays.asList(
+                        HomeTextCopy.detailBrowserSearch(row, inventory),
+                        HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")),
+                        HomeTextCopy.detailBrowserSearch(row("裂", ""), null),
+                        HomeTextCopy.matureSupportTargetText(0, 2),
+                        HomeTextCopy.matureSupportTargetText(3, 4),
+                        HomeTextCopy.timelineEmptyText(),
+                        HomeTextCopy.recoveryTimelineTitle(),
+                        HomeTextCopy.noActiveEvidenceText()
+                )
+        );
     }
 
     @Test

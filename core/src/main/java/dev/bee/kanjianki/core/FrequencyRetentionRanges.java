@@ -127,12 +127,6 @@ public final class FrequencyRetentionRanges {
         return "Line " + lineNumber + ": ";
     }
 
-    /*
-     * Intentional Java compatibility exception for the Kotlin rewrite.
-     * Rule's only constructor must remain genuinely private to Java reflection;
-     * the Kotlin equivalent emits an additional synthetic DefaultConstructorMarker
-     * constructor. FrequencyRetentionRangesTest locks this down.
-     */
     public static final class Rule {
         public final int minRank;
         public final int maxRank;

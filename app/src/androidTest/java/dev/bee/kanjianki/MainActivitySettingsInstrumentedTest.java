@@ -492,29 +492,25 @@ public final class MainActivitySettingsInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            CharSequence value = node.getText();
-            if (value != null && expected.contentEquals(value)) {
-                return true;
-            }
-            CharSequence description = node.getContentDescription();
-            if (description != null && expected.contentEquals(description)) {
-                return true;
-            }
-            int childCount = node.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (child == null) {
-                    continue;
-                }
-                if (containsAccessibilityText(child, expected)) {
-                    return true;
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        CharSequence value = node.getText();
+        if (value != null && expected.contentEquals(value)) {
+            return true;
         }
+        CharSequence description = node.getContentDescription();
+        if (description != null && expected.contentEquals(description)) {
+            return true;
+        }
+        int childCount = node.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityText(child, expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

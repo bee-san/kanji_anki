@@ -133,10 +133,8 @@ public final class MainActivityGamesInstrumentedTest {
                 return true;
             }
         }
-        if (view instanceof androidx.compose.ui.platform.ComposeView) {
-            if (containsAccessibilityText(view.createAccessibilityNodeInfo(), expected)) {
-                return true;
-            }
+        if (view instanceof androidx.compose.ui.platform.ComposeView && containsAccessibilityText(view.createAccessibilityNodeInfo(), expected)) {
+            return true;
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
@@ -185,25 +183,21 @@ public final class MainActivityGamesInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            CharSequence value = node.getText();
-            if (value != null && value.toString().contains(expected)) {
-                return true;
-            }
-            CharSequence description = node.getContentDescription();
-            if (description != null && description.toString().contains(expected)) {
-                return true;
-            }
-            for (int i = 0; i < node.getChildCount(); i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (child != null && containsAccessibilityText(child, expected)) {
-                    return true;
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(expected)) {
+            return true;
         }
+        CharSequence description = node.getContentDescription();
+        if (description != null && description.toString().contains(expected)) {
+            return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null && containsAccessibilityText(child, expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean performFirstAnswerClick(View root) {
@@ -214,26 +208,22 @@ public final class MainActivityGamesInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            String text = nodeText(node);
-            if (node.isClickable()
-                    && !text.isEmpty()
-                    && !LABEL_NEXT.equals(text)
-                    && !LABEL_GAMES.equals(text)
-                    && !text.startsWith(LABEL_GAMES + " ")
-                    && !LABEL_NEW_ROUND.equals(text)) {
-                return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            }
-            for (int i = 0; i < node.getChildCount(); i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (performFirstAnswerClick(child)) {
-                    return true;
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        String text = nodeText(node);
+        if (node.isClickable()
+                && !text.isEmpty()
+                && !LABEL_NEXT.equals(text)
+                && !LABEL_GAMES.equals(text)
+                && !text.startsWith(LABEL_GAMES + " ")
+                && !LABEL_NEW_ROUND.equals(text)) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
         }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (performFirstAnswerClick(child)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean performClickWithText(View root, String label) {
@@ -244,20 +234,16 @@ public final class MainActivityGamesInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            if (node.isClickable() && label.equals(nodeText(node))) {
-                return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            }
-            for (int i = 0; i < node.getChildCount(); i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (performClickWithText(child, label)) {
-                    return true;
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        if (node.isClickable() && label.equals(nodeText(node))) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
         }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (performClickWithText(child, label)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String nodeText(AccessibilityNodeInfo node) {

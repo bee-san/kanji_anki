@@ -24,8 +24,8 @@ class WritingActionPresentation private constructor(input: Input?) {
         val safeInput = input ?: Input(null)
         val analysis = safeInput.analysis
         hasResult = analysis != null
-        passed = hasResult && analysis!!.writingPassed
-        messyPass = hasResult && analysis!!.status == WritingAnalysis.Status.CLOSE
+        passed = analysis?.writingPassed == true
+        messyPass = analysis?.status == WritingAnalysis.Status.CLOSE
         checkVisible = !passed || messyPass
         checkEnabled = !safeInput.checkingWriting
         checkText = WritingFeedbackCopy.checkWritingButtonText(safeInput.checkingWriting, messyPass)

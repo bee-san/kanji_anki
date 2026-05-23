@@ -22,7 +22,7 @@ public class DictionaryCoreTextParityTest {
     @Test
     public void dictionaryRankKanjiRangeMatchesTextUtilKanjiRange() {
         assertTrue(TextUtil.isKanji("日".codePointAt(0)));
-        assertTrue(JitenKanjiRanks.empty().size() == 0);
+        assertEquals(0, JitenKanjiRanks.empty().size());
         assertFalse(TextUtil.isKanji("A".codePointAt(0)));
     }
 }

@@ -250,65 +250,71 @@ internal class LocalStoreTimeline(private val activity: LocalStoreHistory) {
                 syncId,
                 LocalStoreBase.TIMELINE_FIRST_SEEN_KEY_PREFIX + row.kanji
             )
-            if (previous == null) {
-                insertTimelineEvent(
-                    db,
-                    row.kanji,
-                    occurredAt,
-                    "weak_support_seen",
-                    "Weak support seen",
-                    TimelineCopy.supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
-                    source.expression,
-                    source.reading,
-                    "",
-                    false,
-                    false,
-                    false,
-                    row.weaknessScore,
-                    row.matureSupportCount,
-                    syncId,
-                    "weak_support_seen:" + row.kanji + ":" + syncId
-                )
-            } else if (row.matureSupportCount > previous.matureSupportCount) {
-                insertTimelineEvent(
-                    db,
-                    row.kanji,
-                    occurredAt,
-                    "support_improved",
-                    "Anki support improved",
-                    "Mature support rose from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
-                    source.expression,
-                    source.reading,
-                    "",
-                    false,
-                    false,
-                    false,
-                    row.weaknessScore,
-                    row.matureSupportCount,
-                    syncId,
-                    "support_improved:" + row.kanji + ":" + syncId + ":" +
-                        previous.matureSupportCount + "-" + row.matureSupportCount
-                )
-            } else if (row.matureSupportCount < previous.matureSupportCount) {
-                insertTimelineEvent(
-                    db,
-                    row.kanji,
-                    occurredAt,
-                    "support_dropped",
-                    "Anki support dropped",
-                    "Mature support fell from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
-                    source.expression,
-                    source.reading,
-                    "",
-                    false,
-                    false,
-                    false,
-                    row.weaknessScore,
-                    row.matureSupportCount,
-                    syncId,
-                    "support_dropped:" + row.kanji + ":" + syncId + ":" +
-                        previous.matureSupportCount + "-" + row.matureSupportCount
-                )
+            when (previous) {
+                null -> {
+                    insertTimelineEvent(
+                        db,
+                        row.kanji,
+                        occurredAt,
+                        "weak_support_seen",
+                        "Weak support seen",
+                        TimelineCopy.supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row.weaknessScore,
+                        row.matureSupportCount,
+                        syncId,
+                        "weak_support_seen:" + row.kanji + ":" + syncId
+                    )
+                }
+                else -> when {
+                    row.matureSupportCount > previous.matureSupportCount -> {
+                        insertTimelineEvent(
+                            db,
+                            row.kanji,
+                            occurredAt,
+                            "support_improved",
+                            "Anki support improved",
+                            "Mature support rose from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
+                            source.expression,
+                            source.reading,
+                            "",
+                            false,
+                            false,
+                            false,
+                            row.weaknessScore,
+                            row.matureSupportCount,
+                            syncId,
+                            "support_improved:" + row.kanji + ":" + syncId + ":" +
+                                previous.matureSupportCount + "-" + row.matureSupportCount
+                        )
+                    }
+                    row.matureSupportCount < previous.matureSupportCount -> {
+                        insertTimelineEvent(
+                            db,
+                            row.kanji,
+                            occurredAt,
+                            "support_dropped",
+                            "Anki support dropped",
+                            "Mature support fell from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
+                            source.expression,
+                            source.reading,
+                            "",
+                            false,
+                            false,
+                            false,
+                            row.weaknessScore,
+                            row.matureSupportCount,
+                            syncId,
+                            "support_dropped:" + row.kanji + ":" + syncId + ":" +
+                                previous.matureSupportCount + "-" + row.matureSupportCount
+                        )
+                    }
+                }
             }
         }
     }
@@ -450,7 +456,7 @@ internal class LocalStoreTimeline(private val activity: LocalStoreHistory) {
         values.put(LocalStoreBase.COLUMN_WEAKNESS_SCORE, weaknessScore)
         values.put(LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT, matureSupportCount)
         values.put(LocalStoreBase.COLUMN_SYNC_ID, syncId)
-        values.put(LocalStoreBase.COLUMN_DEDUPE_KEY, dedupeKey ?: "")
+        values.put(LocalStoreBase.COLUMN_DEDUPE_KEY, dedupeKey)
         db.insertWithOnConflict(
             LocalStoreBase.TABLE_KANJI_TIMELINE_EVENTS,
             null,

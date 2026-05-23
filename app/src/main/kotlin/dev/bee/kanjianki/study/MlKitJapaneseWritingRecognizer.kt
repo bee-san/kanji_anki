@@ -34,9 +34,7 @@ class MlKitJapaneseWritingRecognizer : WritingRecognizer {
         maxResultCount: Int,
         downloadConditions: DownloadConditions?,
     ) {
-        if (maxResultCount <= 0) {
-            throw IllegalArgumentException("maxResultCount must be positive.")
-        }
+        require(maxResultCount > 0) { "maxResultCount must be positive." }
         val conditions = Objects.requireNonNull<DownloadConditions>(downloadConditions, "downloadConditions")
         backend = GoogleRecognitionBackend.create(
             recognitionExecutor,

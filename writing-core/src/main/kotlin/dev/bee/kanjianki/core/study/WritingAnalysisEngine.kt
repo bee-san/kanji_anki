@@ -88,34 +88,7 @@ class WritingAnalysisEngine private constructor() {
             }
             var order = StrokeOrderEvaluator.evaluate(guide, sample)
             if (order.missingGuide) {
-                val match = match(target, candidates)
-                if (match.recognized) {
-                    val message = if (match.topCandidate) {
-                        "Recognized as the target kanji. Stroke order could not be checked because no guide is bundled yet."
-                    } else {
-                        "Recognized as the target kanji, but stroke order could not be checked because no guide is bundled yet."
-                    }
-                    return WritingAnalysis(
-                        WritingAnalysis.Status.CLOSE,
-                        if (match.topCandidate) RATING_GOOD else RATING_HARD,
-                        true,
-                        message,
-                        candidates,
-                        order,
-                        hintLevel,
-                        hintsUsed
-                    )
-                }
-                return WritingAnalysis(
-                    WritingAnalysis.Status.NO_STROKE_DATA,
-                    RATING_AGAIN,
-                    false,
-                    "${order.message} $TARGET_NOT_RECOGNIZED",
-                    candidates,
-                    order,
-                    hintLevel,
-                    hintsUsed
-                )
+                return analyzeWithoutGuide(target, candidates, order, hintLevel, hintsUsed)
             }
             val match = match(target, candidates)
             if (!match.recognized) {
@@ -179,8 +152,45 @@ class WritingAnalysisEngine private constructor() {
             )
         }
 
+        private fun analyzeWithoutGuide(
+            target: String?,
+            candidates: List<RecognitionCandidate>?,
+            order: StrokeOrderEvaluator.StrokeOrderResult,
+            hintLevel: HintLevel?,
+            hintsUsed: Int,
+        ): WritingAnalysis {
+            val match = match(target, candidates)
+            if (match.recognized) {
+                val message = if (match.topCandidate) {
+                    "Recognized as the target kanji. Stroke order could not be checked because no guide is bundled yet."
+                } else {
+                    "Recognized as the target kanji, but stroke order could not be checked because no guide is bundled yet."
+                }
+                return WritingAnalysis(
+                    WritingAnalysis.Status.CLOSE,
+                    if (match.topCandidate) RATING_GOOD else RATING_HARD,
+                    true,
+                    message,
+                    candidates,
+                    order,
+                    hintLevel,
+                    hintsUsed
+                )
+            }
+            return WritingAnalysis(
+                WritingAnalysis.Status.NO_STROKE_DATA,
+                RATING_AGAIN,
+                false,
+                "${order.message} $TARGET_NOT_RECOGNIZED",
+                candidates,
+                order,
+                hintLevel,
+                hintsUsed
+            )
+        }
+
         private fun match(target: String?, candidates: List<RecognitionCandidate>?): RecognitionMatch {
-            if (target == null || candidates == null || candidates.isEmpty()) {
+            if (target == null || candidates.isNullOrEmpty()) {
                 return RecognitionMatch(false, false)
             }
             for (i in candidates.indices) {

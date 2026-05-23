@@ -1,6 +1,26 @@
 name: SonarQube
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'fsrs-java/**'
+      - 'domain/**'
+      - 'sync-domain/**'
+      - 'writing-core/**'
+      - 'dictionary-core/**'
+      - 'update-core/**'
+      - 'tools/**'
+      - '.github/workflows/sonarqube.yml'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradlew*'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
   workflow_dispatch:
     inputs:
       full_coverage:
@@ -39,6 +59,7 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
+      pull-requests: read
 
     steps:
       - name: Check out repository
@@ -164,8 +185,27 @@ jobs:
         if: steps.coverage-mode.outputs.full != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          SONAR_ARGS=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SONAR_ARGS+=(
+              "-Dsonar.pullrequest.key=${{ github.event.pull_request.number }}"
+              "-Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}"
+              "-Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}"
+            )
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
+            if [ -n "${PR_INFO}" ]; then
+              IFS=$'\t' read -r PR_NUMBER PR_BASE PR_HEAD <<< "${PR_INFO}"
+              SONAR_ARGS+=(
+                "-Dsonar.pullrequest.key=${PR_NUMBER}"
+                "-Dsonar.pullrequest.branch=${PR_HEAD}"
+                "-Dsonar.pullrequest.base=${PR_BASE}"
+              )
+            fi
+          fi
           TASKS=()
           if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
@@ -201,13 +241,14 @@ jobs:
             -Dorg.gradle.parallel=true \
             -PsonarFullCoverage=false \
             -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
-          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }} "${SONAR_ARGS[@]}"
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'
         uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         with:
           api-level: 30
           target: aosp_atd
@@ -217,6 +258,24 @@ jobs:
           disable-animations: true
           script: |
             set -eu
+            SONAR_ARGS=()
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              SONAR_ARGS+=(
+                "-Dsonar.pullrequest.key=${{ github.event.pull_request.number }}"
+                "-Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}"
+                "-Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}"
+              )
+            elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
+              if [ -n "${PR_INFO}" ]; then
+                IFS=$'\t' read -r PR_NUMBER PR_BASE PR_HEAD <<< "${PR_INFO}"
+                SONAR_ARGS+=(
+                  "-Dsonar.pullrequest.key=${PR_NUMBER}"
+                  "-Dsonar.pullrequest.branch=${PR_HEAD}"
+                  "-Dsonar.pullrequest.base=${PR_BASE}"
+                )
+              fi
+            fi
             ./gradlew \
               :core:test \
               :core:jacocoTestReport \
@@ -246,4 +305,5 @@ jobs:
               --parallel \
               -Dorg.gradle.parallel=true \
               -PsonarFullCoverage=true \
-              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }} \
+              "${SONAR_ARGS[@]}"

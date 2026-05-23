@@ -151,7 +151,7 @@ class StudySessionProgressTracker {
         }
 
         private fun isEmpty(key: String?): Boolean {
-            return key == null || key.isEmpty()
+            return key.isNullOrEmpty()
         }
 
         private fun safeKanji(kanji: String?): String {

@@ -31,21 +31,16 @@ class SuspendedKanjiImporter {
             }
         }
 
-        val results = ArrayList<RecordsImportModels.SuspendedImport>()
-        for ((kanji, sources) in sourcesByKanji) {
+        return sourcesByKanji.map { (kanji, sources) ->
             val rank = ranks.rankOf(kanji)
-            results.add(
-                RecordsImportModels.SuspendedImport(
-                    kanji,
-                    rank,
-                    true,
-                    maxRank,
-                    sources,
-                ),
+            RecordsImportModels.SuspendedImport(
+                kanji,
+                rank,
+                true,
+                maxRank,
+                sources,
             )
-        }
-        results.sortWith(compareBy<RecordsImportModels.SuspendedImport> { it.jitenRank!! }.thenBy { it.kanji })
-        return results
+        }.sortedWith(compareBy<RecordsImportModels.SuspendedImport> { it.jitenRank ?: Int.MAX_VALUE }.thenBy { it.kanji })
     }
 
     private fun addSuspendedSources(

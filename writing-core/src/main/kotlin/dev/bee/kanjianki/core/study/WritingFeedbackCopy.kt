@@ -86,7 +86,7 @@ class WritingFeedbackCopy private constructor() {
 
         @JvmStatic
         fun candidateText(candidates: List<RecognitionCandidate>?): String {
-            if (candidates == null || candidates.isEmpty()) {
+            if (candidates.isNullOrEmpty()) {
                 return ""
             }
             return candidates.take(3).joinToString(", ") { it.text }

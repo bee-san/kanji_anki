@@ -166,7 +166,7 @@ class KanjiInventoryBuilder(nowMillis: Long, settings: RecordsSyncModels.Setting
             if (primaryMeaning.isEmpty() && meaning != null && meaning.isNotEmpty()) {
                 primaryMeaning = meaning
             }
-            if (reading != null && reading.isNotEmpty()) {
+            if (!reading.isNullOrEmpty()) {
                 readings.add(reading)
             }
             addSearch(meaning)
@@ -213,7 +213,7 @@ class KanjiInventoryBuilder(nowMillis: Long, settings: RecordsSyncModels.Setting
         private const val MAX_DISPLAYED_READINGS = 3
 
         private fun firstNonEmpty(first: String?, second: String?): String {
-            if (first != null && first.isNotEmpty()) {
+            if (!first.isNullOrEmpty()) {
                 return first
             }
             return second ?: ""

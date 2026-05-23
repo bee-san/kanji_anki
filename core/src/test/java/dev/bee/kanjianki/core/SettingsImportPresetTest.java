@@ -13,6 +13,7 @@ public final class SettingsImportPresetTest {
     @Test
     public void defaultsPreserveImportPresetOrderAndLabels() {
         List<SettingsImportPreset> presets = SettingsImportPreset.defaults();
+        SettingsImportPreset firstPreset = presets.get(0);
 
         assertEquals(5, presets.size());
         assertEquals("Suspended only", presets.get(0).label());
@@ -20,7 +21,7 @@ public final class SettingsImportPresetTest {
         assertEquals("Leech tag", presets.get(2).label());
         assertEquals("Mining deck", presets.get(3).label());
         assertEquals("Recent fails", presets.get(4).label());
-        assertThrows(UnsupportedOperationException.class, () -> presets.add(presets.get(0)));
+        assertThrows(UnsupportedOperationException.class, () -> presets.add(firstPreset));
     }
 
     @Test

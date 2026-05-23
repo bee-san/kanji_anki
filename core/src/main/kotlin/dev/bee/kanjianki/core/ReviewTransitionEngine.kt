@@ -33,7 +33,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     private fun duplicateReviewResult(
         item: RecordsStudyModels.StudyItem,
         request: RecordsSchedulerModels.ReviewRequest,
-        consumedTokens: MutableSet<String>
+        consumedTokens: Set<String>
     ): RecordsSchedulerModels.ReviewResult? {
         if (consumedTokens.contains(request.token)) {
             return RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "Review token already consumed.")

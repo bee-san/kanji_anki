@@ -308,14 +308,6 @@ public final class AnkiDroidGatewayTest {
         assertEquals(0, result.projectionIndex());
     }
 
-    private static String repeat(String value, int count) {
-        StringBuilder builder = new StringBuilder(value.length() * count);
-        for (int i = 0; i < count; i++) {
-            builder.append(value);
-        }
-        return builder.toString();
-    }
-
     private static RecordsSyncModels.Card card(long cardId, long noteId) {
         return new RecordsSyncModels.Card(cardId, noteId, 0, "deck", 0, 0, 0, 0, 0, 0, false);
     }

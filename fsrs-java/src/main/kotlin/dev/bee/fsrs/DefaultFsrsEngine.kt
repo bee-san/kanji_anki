@@ -3,15 +3,15 @@ package dev.bee.fsrs
 internal class DefaultFsrsEngine(
     parameters: FsrsParameters?,
 ) : FsrsEngine {
-    private val parameters: FsrsParameters = Fsrs.requireNonNull(parameters, "parameters")!!
+    private val parameters: FsrsParameters = Fsrs.requireNonNull(parameters, "parameters")
 
     override fun initialState(firstRating: FsrsRating?): FsrsMemoryState {
-        val rating = Fsrs.requireNonNull(firstRating, "firstRating")!!
+        val rating = Fsrs.requireNonNull(firstRating, "firstRating")
         return FsrsMemoryState(initialStability(rating), initialDifficulty(rating, clamp = true))
     }
 
     override fun retrievability(state: FsrsMemoryState?, elapsedDays: Int): Double {
-        val resolvedState = Fsrs.requireNonNull(state, "state")!!
+        val resolvedState = Fsrs.requireNonNull(state, "state")
         Fsrs.validateElapsedDays(elapsedDays)
         val stability = resolvedState.stability.coerceAtLeast(Fsrs.STABILITY_MIN)
         return Math.pow(1.0 + parameters.factor() * elapsedDays / stability, parameters.decay())
@@ -22,8 +22,8 @@ internal class DefaultFsrsEngine(
         rating: FsrsRating?,
         elapsedDays: Int,
     ): FsrsMemoryState {
-        val resolvedState = Fsrs.requireNonNull(previousState, "previousState")!!
-        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)!!
+        val resolvedState = Fsrs.requireNonNull(previousState, "previousState")
+        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)
         Fsrs.validateElapsedDays(elapsedDays)
         validateDifficulty(resolvedState.difficulty)
 
@@ -44,7 +44,7 @@ internal class DefaultFsrsEngine(
 
     override fun nextDifficulty(currentDifficulty: Double, rating: FsrsRating?): Double {
         validateDifficulty(currentDifficulty)
-        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)!!
+        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)
         val deltaDifficulty = -(parameters.difficultyDeltaScale() * (resolvedRating.value() - 3.0))
         val linearDamping = (10.0 - currentDifficulty) * deltaDifficulty / 9.0
         val easyInitialDifficulty = initialDifficulty(FsrsRating.EASY, clamp = false)
@@ -55,10 +55,8 @@ internal class DefaultFsrsEngine(
     }
 
     override fun shortTermStability(stability: Double, rating: FsrsRating?): Double {
-        if (!stability.isFinite() || stability <= 0.0) {
-            throw IllegalArgumentException("stability must be finite and positive")
-        }
-        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)!!
+        require(stability.isFinite() && stability > 0.0) { "stability must be finite and positive" }
+        val resolvedRating = Fsrs.requireNonNull(rating, PARAM_RATING)
         var increase = Math.exp(parameters.shortTermBase() * (resolvedRating.value() - 3.0 + parameters.shortTermRatingOffset())) *
             Math.pow(stability, -parameters.shortTermStabilityDecay())
         if (resolvedRating == FsrsRating.GOOD || resolvedRating == FsrsRating.EASY) {
@@ -68,9 +66,7 @@ internal class DefaultFsrsEngine(
     }
 
     override fun nextIntervalDays(stability: Double, desiredRetention: Double, maximumInterval: Int): Int {
-        if (!stability.isFinite() || stability <= 0.0) {
-            throw IllegalArgumentException("stability must be finite and positive")
-        }
+        require(stability.isFinite() && stability > 0.0) { "stability must be finite and positive" }
         Fsrs.validateDesiredRetention(desiredRetention)
         Fsrs.validateMaximumInterval(maximumInterval)
         val interval = (stability / parameters.factor()) *
@@ -80,9 +76,9 @@ internal class DefaultFsrsEngine(
     }
 
     override fun review(input: FsrsReviewInput?): FsrsReviewOutput {
-        val resolvedInput = Fsrs.requireNonNull(input, "input")!!
-        val previousState = resolvedInput.previousState!!
-        val rating = resolvedInput.rating!!
+        val resolvedInput = Fsrs.requireNonNull(input, "input")
+        val previousState = Fsrs.requireNonNull(resolvedInput.previousState, "previousState")
+        val rating = Fsrs.requireNonNull(resolvedInput.rating, "rating")
         val retrievability = retrievability(previousState, resolvedInput.elapsedDays)
         val nextState = nextState(previousState, rating, resolvedInput.elapsedDays)
         val interval = nextIntervalDays(nextState.stability, resolvedInput.desiredRetention, resolvedInput.maximumInterval)
@@ -140,8 +136,12 @@ internal class DefaultFsrsEngine(
         private const val PARAM_RATING = "rating"
 
         private fun validateDifficulty(difficulty: Double) {
-            if (!difficulty.isFinite() || difficulty < Fsrs.MIN_DIFFICULTY || difficulty > Fsrs.MAX_DIFFICULTY) {
-                throw IllegalArgumentException("difficulty must be finite and in [1, 10]")
+            require(
+                difficulty.isFinite() &&
+                    difficulty >= Fsrs.MIN_DIFFICULTY &&
+                    difficulty <= Fsrs.MAX_DIFFICULTY
+            ) {
+                "difficulty must be finite and in [1, 10]"
             }
         }
     }

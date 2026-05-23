@@ -8,6 +8,32 @@ plugins {
 }
 
 fun rootPath(path: String): String = layout.projectDirectory.dir(path).asFile.absolutePath
+fun existingRootPath(path: String): String? = rootPath(path).takeIf { file(it).exists() }
+
+val sonarModules = listOf(
+    "app",
+    "core",
+    "domain",
+    "sync-domain",
+    "writing-core",
+    "dictionary-core",
+    "update-core",
+    "fsrs-java",
+)
+val sonarMainSourceRoots = sonarModules.flatMap { module ->
+    listOfNotNull(
+        existingRootPath("$module/src/main/java"),
+        existingRootPath("$module/src/main/kotlin"),
+    )
+}
+val sonarTestSourceRoots = sonarModules.flatMap { module ->
+    listOfNotNull(
+        existingRootPath("$module/src/test/java"),
+        existingRootPath("$module/src/test/kotlin"),
+        existingRootPath("$module/src/androidTest/java"),
+        existingRootPath("$module/src/androidTest/kotlin"),
+    )
+}
 val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
     .orElse(providers.gradleProperty("KANI_VERSION_NAME"))
     .orElse(providers.gradleProperty("KANJI_ANKI_VERSION_NAME"))
@@ -90,6 +116,8 @@ sonar {
         property("sonar.projectKey", "bee-san_kanji_anki")
         property("sonar.organization", "bee-san")
         property("sonar.projectVersion", sonarProjectVersion.get())
+        property("sonar.sources", sonarMainSourceRoots.joinToString(","))
+        property("sonar.tests", sonarTestSourceRoots.joinToString(","))
         property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
         property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
         property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))

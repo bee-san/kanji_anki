@@ -15,7 +15,7 @@ public final class FsrsEngineReferenceTest {
     private static final double TOLERANCE = 1.0e-9;
 
     @Test
-    public void algorithmMetadataPinsUpstreamSource() throws Exception {
+    public void algorithmMetadataPinsUpstreamSource() {
         assertEquals("open-spaced-repetition/py-fsrs", FsrsAlgorithmInfo.UPSTREAM_REPOSITORY);
         assertEquals("v6.3.1", FsrsAlgorithmInfo.UPSTREAM_RELEASE);
         assertEquals("3abe686e9c058d3f3c00bbeb92e68b71211b2b31", FsrsAlgorithmInfo.UPSTREAM_COMMIT);
@@ -79,7 +79,12 @@ public final class FsrsEngineReferenceTest {
         FsrsParameters copied = FsrsParameters.of(custom);
         custom[0] = 99.0;
         assertEquals(0.212, copied.get(0), 0.0);
+    }
 
+    @Test
+    @SuppressWarnings("deprecation")
+    public void parametersFactoriesAndInvalidInputsStayGuarded() {
+        double[] custom = FsrsParameters.latestDefaultValues();
         expectIllegalArgument(() -> FsrsParameters.of(null));
         expectIllegalArgument(() -> FsrsParameters.of(Arrays.copyOf(custom, 20)));
         double[] nonFinite = FsrsParameters.latestDefaultValues();
@@ -106,7 +111,7 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
-    public void memoryStateAndReviewModelsValidateInputs() {
+    public void memoryStateAndReviewModelsExposeValidatedFields() {
         assertTrue(FsrsMemoryState.class.isRecord());
         assertTrue(FsrsReviewInput.class.isRecord());
         assertTrue(FsrsReviewOutput.class.isRecord());
@@ -127,7 +132,11 @@ public final class FsrsEngineReferenceTest {
         assertEquals(state, output.nextState());
         assertEquals(0.8, output.retrievability(), 0.0);
         assertEquals(9, output.nextIntervalDays());
+    }
 
+    @Test
+    public void memoryStateAndReviewModelsRejectInvalidInputs() {
+        FsrsMemoryState state = new FsrsMemoryState(5.0, 6.0);
         expectIllegalArgument(() -> new FsrsMemoryState(0.0, 6.0));
         expectIllegalArgument(() -> new FsrsMemoryState(5.0, 0.5));
         expectIllegalArgument(() -> new FsrsMemoryState(5.0, 10.5));

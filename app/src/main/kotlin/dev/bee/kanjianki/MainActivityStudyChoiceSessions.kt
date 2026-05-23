@@ -9,11 +9,12 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import java.security.SecureRandom
 import java.util.Random
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
     private val meaningKanjiChoicePlanner = MeaningKanjiChoicePlanner()
-    private val meaningChoiceRandom = Random()
+    private val meaningChoiceRandom: Random = SecureRandom()
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
         resetChoiceSession(true)

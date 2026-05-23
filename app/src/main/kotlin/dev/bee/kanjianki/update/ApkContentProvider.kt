@@ -25,7 +25,7 @@ class ApkContentProvider : ContentProvider() {
         try {
             val canonical = file.canonicalPath
             val updatesPath = updatesDir.canonicalPath
-            if ((!canonical.equals(updatesPath) && !canonical.startsWith(updatesPath + File.separator)) || !file.isFile) {
+            if ((canonical != updatesPath && !canonical.startsWith(updatesPath + File.separator)) || !file.isFile) {
                 throw FileNotFoundException("APK not found.")
             }
         } catch (error: Exception) {

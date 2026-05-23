@@ -191,7 +191,7 @@ class KanjiGameEngine {
             val targets = ArrayList<GameCandidate>()
             for (candidate in targets(candidates) { it.hasMeaning() }) {
                 val direct = neighbors[candidate.kanji]
-                if (direct != null && direct.isNotEmpty()) {
+                if (!direct.isNullOrEmpty()) {
                     targets.add(candidate)
                 }
             }

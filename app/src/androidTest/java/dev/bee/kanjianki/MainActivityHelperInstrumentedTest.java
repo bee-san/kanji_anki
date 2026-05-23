@@ -26,7 +26,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -132,18 +131,26 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void baseTextHelpersDescribeStudyModesAndWritingGuides() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                assertCountAndCompactText(activity);
-                assertStudyModeLabels(activity);
-                assertAdaptiveFocusText(activity);
-                assertWritingGuideText(activity);
-            });
-        }
+    public void baseTextHelpersDescribeCountAndCompactText() {
+        assertCountAndCompactText();
     }
 
-    private static void assertCountAndCompactText(MainActivity activity) {
+    @Test
+    public void baseTextHelpersDescribeStudyModeLabels() {
+        assertStudyModeLabels();
+    }
+
+    @Test
+    public void baseTextHelpersDescribeAdaptiveFocusText() {
+        assertAdaptiveFocusText();
+    }
+
+    @Test
+    public void baseTextHelpersDescribeWritingGuideText() {
+        assertWritingGuideText();
+    }
+
+    private static void assertCountAndCompactText() {
         assertEquals("1 item", StudyTextCopy.countText(1, "item", "items"));
         assertEquals("2 items", StudyTextCopy.countText(2, "item", "items"));
         assertEquals("", StudyTextCopy.compact(null, 12));
@@ -151,7 +158,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("a very long s...", StudyTextCopy.compact("a very long sentence that should be shortened", 16));
     }
 
-    private static void assertStudyModeLabels(MainActivity activity) {
+    private static void assertStudyModeLabels() {
         assertEquals("Study", StudyTaskCopy.labelForTask(null));
         assertEquals("Focused recall", StudyTaskCopy.labelForTask("targeted_flashcard"));
         assertEquals("Kanji -> meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
@@ -174,7 +181,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
     }
 
-    private static void assertAdaptiveFocusText(MainActivity activity) {
+    private static void assertAdaptiveFocusText() {
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
         RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
@@ -184,7 +191,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Today's adaptive focus: 2 items left / 5", AdaptiveFocusCopy.adaptiveFocusText(focused));
     }
 
-    private static void assertWritingGuideText(MainActivity activity) {
+    private static void assertWritingGuideText() {
         StrokeGuide emptyGuide = new StrokeGuide("裂", Collections.emptyList());
         StrokeGuide guide = guide("裂");
         assertTrue(WritingFeedbackCopy.guideLabel(3, emptyGuide).startsWith("Write from memory"));
@@ -1359,7 +1366,6 @@ public final class MainActivityHelperInstrumentedTest {
         ))).size());
         assertTrue(activity.candidates(null).isEmpty());
 
-        RecordsStudyModels.StudyItem item = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L);
         StudyStatsStore.StudyStreak streak = new StudyStatsStore.StudyStreak(2, 2, true, 1, 1000L);
         assertEquals("Already saved.", HomeTextCopy.reviewToast(true, "duplicate", streak.currentDays));
         assertTrue(HomeTextCopy.reviewToast(false, MainActivityBase.RATING_AGAIN, streak.currentDays).contains("2-day streak"));
@@ -2450,14 +2456,6 @@ public final class MainActivityHelperInstrumentedTest {
         return false;
     }
 
-    private static void performButtonClick(View root, String label) {
-        Button button = findButton(root, label);
-        if (button == null) {
-            throw new AssertionError("Missing button: " + label);
-        }
-        button.performClick();
-    }
-
     private static void performClickableWithText(View root, String label) {
         View clickable = findClickableWithText(root, label);
         if (clickable == null) {
@@ -2548,120 +2546,50 @@ public final class MainActivityHelperInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            CharSequence value = node.getText();
-            if (value != null && expected.contentEquals(value)) {
-                return true;
-            }
-            CharSequence description = node.getContentDescription();
-            if (description != null && expected.contentEquals(description)) {
-                return true;
-            }
-            int childCount = node.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (child == null) {
-                    continue;
-                }
-                try {
-                    if (containsAccessibilityText(child, expected)) {
-                        return true;
-                    }
-                } finally {
-                    // The recursive call owns the child node lifecycle.
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        CharSequence value = node.getText();
+        if (value != null && expected.contentEquals(value)) {
+            return true;
         }
+        CharSequence description = node.getContentDescription();
+        if (description != null && expected.contentEquals(description)) {
+            return true;
+        }
+        int childCount = node.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityText(child, expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean containsAccessibilityTextContaining(AccessibilityNodeInfo node, String expected) {
         if (node == null) {
             return false;
         }
-        try {
-            CharSequence value = node.getText();
-            if (value != null && value.toString().contains(expected)) {
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(expected)) {
+            return true;
+        }
+        CharSequence description = node.getContentDescription();
+        if (description != null && description.toString().contains(expected)) {
+            return true;
+        }
+        int childCount = node.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityTextContaining(child, expected)) {
                 return true;
             }
-            CharSequence description = node.getContentDescription();
-            if (description != null && description.toString().contains(expected)) {
-                return true;
-            }
-            int childCount = node.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (child == null) {
-                    continue;
-                }
-                try {
-                    if (containsAccessibilityTextContaining(child, expected)) {
-                        return true;
-                    }
-                } finally {
-                    // The recursive call owns the child node lifecycle.
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
         }
-    }
-
-    private static Button findButton(View view, String label) {
-        if (view instanceof Button button && label.contentEquals(button.getText())) {
-            return button;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return null;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            Button found = findButton(group.getChildAt(i), label);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    private static List<EditText> editTexts(View root) {
-        List<EditText> out = new ArrayList<>();
-        collectEditTexts(root, out);
-        return out;
-    }
-
-    private static List<CheckBox> checkBoxes(View root) {
-        List<CheckBox> out = new ArrayList<>();
-        collectCheckBoxes(root, out);
-        return out;
-    }
-
-    private static void collectEditTexts(View view, List<EditText> out) {
-        if (view instanceof EditText editText) {
-            out.add(editText);
-            return;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectEditTexts(group.getChildAt(i), out);
-        }
-    }
-
-    private static void collectCheckBoxes(View view, List<CheckBox> out) {
-        if (view instanceof CheckBox checkBox) {
-            out.add(checkBox);
-            return;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectCheckBoxes(group.getChildAt(i), out);
-        }
+        return false;
     }
 
     private static MotionEvent motion(int action, float x, float y) {

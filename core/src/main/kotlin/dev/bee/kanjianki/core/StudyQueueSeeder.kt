@@ -196,7 +196,7 @@ class StudyQueueSeeder {
         item: RecordsStudyModels.StudyItem,
     ): RecordsImportModels.DashboardRow? {
         val row = rowIndex.rowByFamily[familyKey(item)]
-        val familyRows = rowIndex.rowsByKanji[item.kanji]
+        val familyRows: List<RecordsImportModels.DashboardRow>? = rowIndex.rowsByKanji[item.kanji]
         if (row != null || familyRows == null || (item.answerSignature.isNotEmpty() && familyRows.size != 1)) {
             return row
         }

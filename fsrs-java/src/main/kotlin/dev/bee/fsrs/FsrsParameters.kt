@@ -65,15 +65,6 @@ class FsrsParameters private constructor(
             0.1542,
         )
 
-        /**
-         * Legacy public defaults array retained for source and binary compatibility.
-         *
-         * @deprecated Use [latestDefaultValues] for a defensive copy, or
-         * [latestDefault] for an immutable parameter object.
-         */
-        @Deprecated(
-            message = "Use latestDefaultValues() for a defensive copy or latestDefault() for an immutable parameter object.",
-        )
         @JvmField
         val LATEST_DEFAULT_VALUES: DoubleArray = LATEST_DEFAULT_TEMPLATE.clone()
 
@@ -85,21 +76,13 @@ class FsrsParameters private constructor(
 
         @JvmStatic
         fun of(values: DoubleArray?): FsrsParameters {
-            if (values == null) {
-                throw IllegalArgumentException("parameters must not be null")
-            }
-            if (values.size != PARAMETER_COUNT) {
-                throw IllegalArgumentException("FSRS requires exactly $PARAMETER_COUNT parameters")
-            }
+            requireNotNull(values) { "parameters must not be null" }
+            require(values.size == PARAMETER_COUNT) { "FSRS requires exactly $PARAMETER_COUNT parameters" }
             val copy = values.clone()
             for (index in copy.indices) {
-                if (!copy[index].isFinite()) {
-                    throw IllegalArgumentException("parameter $index must be finite")
-                }
+                require(copy[index].isFinite()) { "parameter $index must be finite" }
             }
-            if (copy[20] <= 0.0) {
-                throw IllegalArgumentException("decay magnitude parameter must be positive")
-            }
+            require(copy[20] > 0.0) { "decay magnitude parameter must be positive" }
             return FsrsParameters(copy)
         }
     }

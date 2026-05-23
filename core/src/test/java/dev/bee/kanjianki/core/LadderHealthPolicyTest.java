@@ -43,6 +43,7 @@ public final class LadderHealthPolicyTest {
                 0,
                 0
         );
+        Map<RecordsBase.LadderRung, Integer> rungCounts = metric.rungCounts();
 
         assertEquals(new LadderHealthPolicy.ItemEvidence("", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.NEW_LEARNING, 0, 0, 0), normalized);
         assertEquals(0, legacyCtor.matureIntervalDays());
@@ -54,7 +55,7 @@ public final class LadderHealthPolicyTest {
         assertEquals(0, metric.promotionReadyCount());
         assertEquals(0, metric.demotionRiskCount());
         assertEquals(0, metric.demotionReadyCount());
-        assertThrows(UnsupportedOperationException.class, () -> metric.rungCounts().put(RecordsBase.LadderRung.KANJI_MEANING, 2));
+        assertThrows(UnsupportedOperationException.class, () -> rungCounts.put(RecordsBase.LadderRung.KANJI_MEANING, 2));
     }
 
     @Test

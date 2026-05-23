@@ -245,10 +245,10 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testSettingsControlsPersist() {
+    public void testSettingsControlsPersistFiltersAndLearning() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            setFrequencyRangeInputs(scenario, "250", "3500");
+            setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study behavior");
@@ -257,31 +257,87 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
             verifyLearningStepValidationAndPresets(scenario);
-            setLearningStepText(scenario);
-            clickText(scenario, "Save learning steps");
-            setStudyAheadMinutes(scenario, "later");
+        }
+    }
+
+    @Test
+    public void testSettingsControlsPersistStudyAheadLadderAndWorkload() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setStudyAheadMinutes("later");
             clickText(scenario, "Save study ahead");
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
-            setStudyAheadMinutes(scenario, "2000");
+            setStudyAheadMinutes("2000");
             clickText(scenario, "Save study ahead");
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
-            setStudyAheadMinutes(scenario, "45");
+            setStudyAheadMinutes("45");
             clickText(scenario, "Save study ahead");
             verifyLadderThresholdValidationAndDefaults(scenario);
-            setLadderThresholdText(scenario);
+            setLadderThresholdText();
             clickText(scenario, "Save ladder thresholds");
             configureManualWorkload(scenario);
             verifyWorkloadAutoActions(scenario);
+        }
+    }
+
+    @Test
+    public void testSettingsControlsPersistRetentionReminderAndStoredValues() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Study behavior");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
             enableMorningReminder(scenario);
+        }
+    }
 
+    @Test
+    public void testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setFrequencyRangeInputs("250", "3500");
+            clickText(scenario, "Save frequency range");
+            clickText(scenario, "Save import filters");
+            clickText(scenario, "Study behavior");
+            clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
+            setLearningStepText();
+            clickText(scenario, "Save learning steps");
+            setStudyAheadMinutes();
+            clickText(scenario, "Save study ahead");
+            setLadderThresholdText();
+            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, "Use manual workload");
+            waitForText(scenario, SettingsTextCopy.workloadStatusText(
+                    AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                    AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+            ));
+            setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
+            waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
+            clickText(scenario, "Save workload");
+            clickText(scenario, SettingsTextCopy.automaticParetoLabel());
+            waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
+            setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
+            waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
+            clickText(scenario, SettingsTextCopy.saveMaximumLabel());
+            clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
+            waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
+            clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
+            clickText(scenario, "95%");
+            verifyRetentionValidationAndRanges(scenario);
+            clickText(scenario, "Save retention");
+            clickText(scenario, "Automation");
+            clickText(scenario, "Morning 08:00");
+            clickText(scenario, "Enable reminder");
+            clickTextIfPresent("Allow");
+            waitForText(scenario, "Daily around 08:00");
             assertNavigationSettingsPersisted();
         }
     }
 
-    private static void setFrequencyRangeInputs(ActivityScenario<MainActivity> scenario, String minRank, String maxRank) {
+    private static void setFrequencyRangeInputs(String minRank, String maxRank) {
         setComposeTextField(SettingsTextCopy.minRankLabel(), minRank);
         setComposeTextField(SettingsTextCopy.maxRankLabel(), maxRank);
     }
@@ -328,22 +384,22 @@ public final class MainActivityInstrumentedTest {
 
     private static void verifyLearningStepValidationAndPresets(ActivityScenario<MainActivity> scenario) {
         RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-        setLearningStepText(scenario, "bad", "5m 20m");
+        setLearningStepText("bad", "5m 20m");
         clickText(scenario, SettingsTextCopy.saveLearningStepsLabel());
         assertLearningStepSettings(scenario, defaults);
 
-        setLearningStepText(scenario, "2m 15m", "5m 20m");
+        setLearningStepText("2m 15m", "5m 20m");
         clickText(scenario, SettingsTextCopy.ankiDefaultLabel());
         assertLearningStepFields(scenario, defaults.newStepsText(), defaults.reviewStepsText());
         clickText(scenario, SettingsTextCopy.sameLearningStepsLabel());
         assertLearningStepFields(scenario, defaults.newStepsText(), defaults.newStepsText());
     }
 
-    private static void setLearningStepText(ActivityScenario<MainActivity> scenario) {
-        setLearningStepText(scenario, "2m 15m", "5m 20m");
+    private static void setLearningStepText() {
+        setLearningStepText("2m 15m", "5m 20m");
     }
 
-    private static void setLearningStepText(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
+    private static void setLearningStepText(String newSteps, String reviewSteps) {
         setComposeTextField(MainActivityBase.LABEL_NEW_CARDS, newSteps);
         setComposeTextField(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
     }
@@ -364,11 +420,11 @@ public final class MainActivityInstrumentedTest {
         });
     }
 
-    private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
-        setStudyAheadMinutes(scenario, "45");
+    private static void setStudyAheadMinutes() {
+        setStudyAheadMinutes("45");
     }
 
-    private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario, String minutes) {
+    private static void setStudyAheadMinutes(String minutes) {
         setComposeTextField(SettingsTextCopy.studyAheadMinutesLabel(), minutes);
     }
 
@@ -377,7 +433,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void verifyLadderThresholdValidationAndDefaults(ActivityScenario<MainActivity> scenario) {
-        setLadderThresholdText(scenario, "later", "0");
+        setLadderThresholdText("later", "0");
         clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
         assertLadderThresholdSettings(
                 scenario,
@@ -385,7 +441,7 @@ public final class MainActivityInstrumentedTest {
                 RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
         );
 
-        setLadderThresholdText(scenario, "99", "7");
+        setLadderThresholdText("99", "7");
         clickText(scenario, SettingsTextCopy.useDefaultLadderThresholdsLabel());
         assertLadderThresholdFields(
                 scenario,
@@ -394,11 +450,11 @@ public final class MainActivityInstrumentedTest {
         );
     }
 
-    private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
-        setLadderThresholdText(scenario, "30", "2");
+    private static void setLadderThresholdText() {
+        setLadderThresholdText("30", "2");
     }
 
-    private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario, String promotionDays, String failStreak) {
+    private static void setLadderThresholdText(String promotionDays, String failStreak) {
         setComposeTextField(SettingsTextCopy.fsrsDaysToGoUpLabel(), promotionDays);
         setComposeTextField(SettingsTextCopy.failsToGoDownLabel(), failStreak);
     }
@@ -597,19 +653,19 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            setFrequencyRangeInputs(scenario, "many", Integer.toString(defaults.suspendedRankMax));
+            setFrequencyRangeInputs("many", Integer.toString(defaults.suspendedRankMax));
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
 
-            setFrequencyRangeInputs(scenario, "0", "25");
+            setFrequencyRangeInputs("0", "25");
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
 
-            setFrequencyRangeInputs(scenario, "10", "50000");
+            setFrequencyRangeInputs("10", "50000");
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
 
-            setFrequencyRangeInputs(scenario, "300", "20");
+            setFrequencyRangeInputs("300", "20");
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             assertFrequencyRangeStored(20, 300);
         }
@@ -2443,11 +2499,7 @@ public final class MainActivityInstrumentedTest {
 
     private static void dispatchActivityTouch(MainActivity activity, long downTime, long eventTime, int action, float x, float y) {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
-        try {
-            activity.dispatchTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        activity.dispatchTouchEvent(event);
     }
 
     private static void enterFirstEditText(ActivityScenario<MainActivity> scenario, String text) {
@@ -2567,11 +2619,11 @@ public final class MainActivityInstrumentedTest {
                 "Min rank",
                 "Max rank"
         );
-        assertImportFilterDefaultState(activity);
+        assertImportFilterDefaultState();
         assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
     }
 
-    private static void assertImportFilterDefaultState(MainActivity activity) {
+    private static void assertImportFilterDefaultState() {
         assertComposeCheckBox(SettingsTextCopy.activeCardsLabel(), false);
         assertComposeCheckBox(SettingsTextCopy.suspendedCardsLabel(), true);
         assertComposeCheckBox(SettingsTextCopy.taggedCardsLabel(), false);
@@ -2985,11 +3037,7 @@ public final class MainActivityInstrumentedTest {
 
     private static void sendTouch(View view, long downTime, long eventTime, int action, float x, float y) {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
-        try {
-            view.onTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        view.onTouchEvent(event);
     }
 
     private static StrokeGuide strokeGuide(MainActivity activity, String kanji) {
@@ -3024,16 +3072,6 @@ public final class MainActivityInstrumentedTest {
         List<T> results = new ArrayList<>();
         collectTypes(root, type, results);
         return results;
-    }
-
-    private static CheckBox findCheckBox(View root, String text) {
-        for (CheckBox box : findTypes(root, CheckBox.class)) {
-            CharSequence value = box.getText();
-            if (value != null && text.contentEquals(value)) {
-                return box;
-            }
-        }
-        return null;
     }
 
     private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {
@@ -3140,35 +3178,6 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
-    }
-
-    private static EditText editTextAfterLabel(MainActivity activity, String label) {
-        List<View> views = new ArrayList<>();
-        collectViews(activity.findViewById(android.R.id.content), views);
-        boolean sawLabel = false;
-        for (View view : views) {
-            if (view instanceof TextView) {
-                CharSequence value = ((TextView) view).getText();
-                if (value != null && value.toString().equals(label)) {
-                    sawLabel = true;
-                    continue;
-                }
-            }
-            if (sawLabel && view instanceof EditText) {
-                return (EditText) view;
-            }
-        }
-        throw new AssertionError("Missing EditText after label: " + label + "\nVisible text: " + visibleText(activity.findViewById(android.R.id.content)));
-    }
-
-    private static EditText editTextWithContentDescription(MainActivity activity, String description) {
-        for (EditText input : findTypes(activity.findViewById(android.R.id.content), EditText.class)) {
-            CharSequence value = input.getContentDescription();
-            if (value != null && value.toString().equals(description)) {
-                return input;
-            }
-        }
-        throw new AssertionError("Missing EditText with content description: " + description);
     }
 
     private static void setComposeSliderToEnd(String description) {

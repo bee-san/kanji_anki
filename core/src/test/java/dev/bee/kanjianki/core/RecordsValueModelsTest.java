@@ -24,7 +24,7 @@ public class RecordsValueModelsTest {
     private static final String TEST_SENTENCE = "sentence";
 
     @Test
-    public void splitModelConstructorsStayHiddenWhileExposingRecordApi() throws Exception {
+    public void splitModelConstructorsStayHiddenWhileExposingRecordApi() {
         SplitProbe probe = new SplitProbe();
         assertTrue(probe instanceof RecordsBase);
         assertTrue(probe.defaultSuspendedCards());

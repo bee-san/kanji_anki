@@ -4,11 +4,12 @@ import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.KanjiGameRoundState
 import dev.bee.kanjianki.core.RecordsImportModels
+import java.security.SecureRandom
 import java.util.Random
 
 internal abstract class MainActivityGames : MainActivityHome() {
     private val gameEngine = KanjiGameEngine()
-    private val gameRandom = Random()
+    private val gameRandom: Random = SecureRandom()
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
 
     override fun renderGames() {
@@ -120,36 +121,22 @@ internal abstract class MainActivityGames : MainActivityHome() {
     ) {
         val roundComplete = gameRound.roundComplete()
         val color = gameResultTitleColor(roundComplete, correct)
+        val primaryLabel = gamePrimaryLabel(roundComplete)
+        val primaryAction = gamePrimaryAction(question.mode, roundComplete)
         renderHomeRoute {
             GamesPlayScreen(title = question.mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
                         title = KanjiGameCopy.resultTitle(roundComplete, correct),
                         titleColor = color,
-                        finalScore = if (roundComplete) {
-                            KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions)
-                        } else {
-                            null
-                        },
-                        accuracy = if (roundComplete) {
-                            KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered)
-                        } else {
-                            null
-                        },
+                        finalScore = gameFinalScore(roundComplete),
+                        accuracy = gameAccuracy(roundComplete),
                         answer = KanjiGameCopy.answerText(question.correctAnswer),
-                        selectedAnswer = if (question.isCorrect(selected)) {
-                            null
-                        } else {
-                            KanjiGameCopy.selectedAnswerText(selected)
-                        },
+                        selectedAnswer = gameSelectedAnswer(selected, correct),
                         explanation = question.explanation,
-                        primaryLabel = if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT,
+                        primaryLabel = primaryLabel,
                         primaryColor = colorForGameMode(question.mode),
-                        onPrimary = if (roundComplete) {
-                            Runnable { startGame(question.mode) }
-                        } else {
-                            Runnable { renderGameQuestion(question.mode) }
-                        },
+                        onPrimary = primaryAction,
                         onGames = Runnable { renderGames() }
                     )
                 )
@@ -191,6 +178,41 @@ internal abstract class MainActivityGames : MainActivityHome() {
             KanjiGameEngine.GameMode.MEANING_POP -> CORAL
             KanjiGameEngine.GameMode.READING_RUSH -> TEAL
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> BLUE
+        }
+    }
+
+    private fun gameFinalScore(roundComplete: Boolean): String? {
+        return if (roundComplete) {
+            KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions)
+        } else {
+            null
+        }
+    }
+
+    private fun gameAccuracy(roundComplete: Boolean): String? {
+        return if (roundComplete) {
+            KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered)
+        } else {
+            null
+        }
+    }
+
+    private fun gameSelectedAnswer(selected: String, correct: Boolean): String? {
+        return if (correct) null else KanjiGameCopy.selectedAnswerText(selected)
+    }
+
+    private fun gamePrimaryLabel(roundComplete: Boolean): String {
+        return if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT
+    }
+
+    private fun gamePrimaryAction(
+        mode: KanjiGameEngine.GameMode,
+        roundComplete: Boolean
+    ): Runnable {
+        return if (roundComplete) {
+            Runnable { startGame(mode) }
+        } else {
+            Runnable { renderGameQuestion(mode) }
         }
     }
 

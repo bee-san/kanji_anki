@@ -2,12 +2,14 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.graphics.Typeface
-import java.util.concurrent.ThreadLocalRandom
+import java.security.SecureRandom
 
 internal object StudyFontVariants {
+    private val fontRandom = SecureRandom()
+
     @JvmStatic
     fun random(context: Context): Typeface {
-        return forVariant(context, ThreadLocalRandom.current().nextInt(3))
+        return forVariant(context, fontRandom.nextInt(3))
     }
 
     @JvmStatic

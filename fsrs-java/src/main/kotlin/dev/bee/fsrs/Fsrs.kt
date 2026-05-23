@@ -13,31 +13,24 @@ object Fsrs {
 
     @JvmStatic
     fun <T> requireNonNull(value: T?, name: String): T {
-        if (value == null) {
-            throw IllegalArgumentException("$name must not be null")
-        }
-        return value
+        return requireNotNull(value) { "$name must not be null" }
     }
 
     @JvmStatic
     fun validateElapsedDays(elapsedDays: Int) {
-        if (elapsedDays < 0) {
-            throw IllegalArgumentException("elapsedDays must be non-negative")
-        }
+        require(elapsedDays >= 0) { "elapsedDays must be non-negative" }
     }
 
     @JvmStatic
     fun validateDesiredRetention(desiredRetention: Double) {
-        if (!desiredRetention.isFinite() || desiredRetention <= 0.0 || desiredRetention >= 1.0) {
-            throw IllegalArgumentException("desiredRetention must be finite and in (0, 1)")
+        require(desiredRetention.isFinite() && desiredRetention > 0.0 && desiredRetention < 1.0) {
+            "desiredRetention must be finite and in (0, 1)"
         }
     }
 
     @JvmStatic
     fun validateMaximumInterval(maximumInterval: Int) {
-        if (maximumInterval < 1) {
-            throw IllegalArgumentException("maximumInterval must be at least 1")
-        }
+        require(maximumInterval >= 1) { "maximumInterval must be at least 1" }
     }
 
     @JvmStatic

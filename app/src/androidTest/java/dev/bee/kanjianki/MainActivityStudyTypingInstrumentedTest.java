@@ -251,31 +251,23 @@ public final class MainActivityStudyTypingInstrumentedTest {
         if (node == null) {
             return false;
         }
-        try {
-            CharSequence value = node.getText();
-            if (value != null && expected.contentEquals(value)) {
-                return true;
-            }
-            CharSequence description = node.getContentDescription();
-            if (description != null && expected.contentEquals(description)) {
-                return true;
-            }
-            for (int i = 0; i < node.getChildCount(); i++) {
-                AccessibilityNodeInfo child = node.getChild(i);
-                if (child == null) {
-                    continue;
-                }
-                try {
-                    if (containsAccessibilityText(child, expected)) {
-                        return true;
-                    }
-                } finally {
-                    // The recursive call owns the child node lifecycle.
-                }
-            }
-            return false;
-        } finally {
-            node.recycle();
+        CharSequence value = node.getText();
+        if (value != null && expected.contentEquals(value)) {
+            return true;
         }
+        CharSequence description = node.getContentDescription();
+        if (description != null && expected.contentEquals(description)) {
+            return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityText(child, expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

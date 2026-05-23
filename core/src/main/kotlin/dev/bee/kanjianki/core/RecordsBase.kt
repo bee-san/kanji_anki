@@ -207,7 +207,7 @@ abstract class RecordsBase protected constructor() {
             @JvmStatic
             fun fromStored(orderValue: String?, enabledValue: String?): StudyLadderSettings {
                 val order = splitRungs(orderValue)
-                val enabled = splitRungs(enabledValue)
+                val enabled = splitRungs(enabledValue).toMutableList()
                 if (!order.contains(LadderRung.MEANING_KANJI) &&
                     hasAlwaysAvailableRung(enabled) &&
                     !enabled.contains(LadderRung.MEANING_KANJI)
@@ -225,9 +225,9 @@ abstract class RecordsBase protected constructor() {
                 return rung != null && rung != LadderRung.SIMILAR_KANJI
             }
 
-            private fun splitRungs(value: String?): MutableList<LadderRung> {
+            private fun splitRungs(value: String?): List<LadderRung> {
                 val out = ArrayList<LadderRung>()
-                if (value == null || value.trim().isEmpty()) {
+                if (value.isNullOrBlank()) {
                     return out
                 }
                 for (part in value.trim().split(Regex("[,\\s]+"))) {
@@ -236,7 +236,7 @@ abstract class RecordsBase protected constructor() {
                         out.add(rung)
                     }
                 }
-                return out
+                return out.toList()
             }
 
             private fun normalizeOrder(requested: List<LadderRung?>?): MutableList<LadderRung> {
@@ -273,14 +273,11 @@ abstract class RecordsBase protected constructor() {
                         break
                     }
                 }
-                if (previousIndex >= 0 && nextIndex >= 0 && previousIndex < nextIndex) {
-                    out.add(nextIndex, missing)
-                } else if (previousIndex >= 0) {
-                    out.add(previousIndex + 1, missing)
-                } else if (nextIndex >= 0) {
-                    out.add(nextIndex, missing)
-                } else {
-                    out.add(missing)
+                when {
+                    previousIndex >= 0 && nextIndex >= 0 && previousIndex < nextIndex -> out.add(nextIndex, missing)
+                    previousIndex >= 0 -> out.add(previousIndex + 1, missing)
+                    nextIndex >= 0 -> out.add(nextIndex, missing)
+                    else -> out.add(missing)
                 }
             }
 
@@ -289,7 +286,7 @@ abstract class RecordsBase protected constructor() {
                 order: List<LadderRung>
             ): MutableList<LadderRung> {
                 val out = ArrayList<LadderRung>()
-                if (requested == null || requested.isEmpty()) {
+                if (requested.isNullOrEmpty()) {
                     out.addAll(order)
                     return out
                 }
@@ -310,16 +307,16 @@ abstract class RecordsBase protected constructor() {
                 return false
             }
 
-            private fun defaultsOrder(): MutableList<LadderRung> {
-                val out = ArrayList<LadderRung>()
-                out.add(LadderRung.WRITE_KANJI)
-                out.add(LadderRung.SIMILAR_KANJI)
-                out.add(LadderRung.TYPE_MEANING)
-                out.add(LadderRung.MEANING_KANJI)
-                out.add(LadderRung.KANJI_MEANING)
-                out.add(LadderRung.FONT_MEANING)
-                out.add(LadderRung.WORD_READING)
-                return out
+            private fun defaultsOrder(): List<LadderRung> {
+                return listOf(
+                    LadderRung.WRITE_KANJI,
+                    LadderRung.SIMILAR_KANJI,
+                    LadderRung.TYPE_MEANING,
+                    LadderRung.MEANING_KANJI,
+                    LadderRung.KANJI_MEANING,
+                    LadderRung.FONT_MEANING,
+                    LadderRung.WORD_READING,
+                )
             }
 
             private fun defaultsEnabled(): MutableList<LadderRung> = ArrayList(defaultsOrder())
@@ -433,9 +430,7 @@ abstract class RecordsBase protected constructor() {
 
         @JvmStatic
         fun arg(args: Array<Any?>, index: Int, context: String): Any? {
-            if (index >= args.size) {
-                throw IllegalArgumentException("$context expected more arguments")
-            }
+            require(index < args.size) { "$context expected more arguments" }
             return args[index]
         }
 

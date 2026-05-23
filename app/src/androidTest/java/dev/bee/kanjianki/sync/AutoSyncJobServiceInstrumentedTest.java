@@ -33,7 +33,7 @@ public final class AutoSyncJobServiceInstrumentedTest {
         AtomicBoolean shutdown = new AtomicBoolean();
         AtomicReference<Boolean> stoppedValue = new AtomicReference<>();
         AutoSyncJobService service = new AutoSyncJobService(
-                job -> job.run(),
+                Runnable::run,
                 () -> shutdown.set(true),
                 params -> {
                     assertNull(params);

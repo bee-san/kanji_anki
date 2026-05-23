@@ -231,12 +231,7 @@ public final class DrawingPadViewInstrumentedTest {
 
         pad.setGuide(null, 3, true);
         Bitmap revealedHint = renderToBitmap(pad);
-        try {
-            assertTrue(countDifferentPixels(practiceHint, revealedHint) > 20);
-        } finally {
-            practiceHint.recycle();
-            revealedHint.recycle();
-        }
+        assertTrue(countDifferentPixels(practiceHint, revealedHint) > 20);
         assertFalse(pad.hasInk());
     }
 
@@ -270,17 +265,9 @@ public final class DrawingPadViewInstrumentedTest {
         sendTouch(pad, downTime, 100L, MotionEvent.ACTION_DOWN, 100f, 100f);
 
         MotionEvent pointerDown = twoPointerEvent(downTime, 110L, MotionEvent.ACTION_POINTER_DOWN, 1, 0, 1);
-        try {
-            pad.onTouchEvent(pointerDown);
-        } finally {
-            pointerDown.recycle();
-        }
+        pad.onTouchEvent(pointerDown);
         MotionEvent nonActivePointerUp = twoPointerEvent(downTime, 120L, MotionEvent.ACTION_POINTER_UP, 1, 0, 1);
-        try {
-            pad.onTouchEvent(nonActivePointerUp);
-        } finally {
-            nonActivePointerUp.recycle();
-        }
+        pad.onTouchEvent(nonActivePointerUp);
         assertFalse(pad.hasInk());
 
         sendTouch(pad, downTime, 140L, MotionEvent.ACTION_MOVE, 220f, 240f);
@@ -307,11 +294,7 @@ public final class DrawingPadViewInstrumentedTest {
                 400f,
                 400f
         );
-        try {
-            pad.onTouchEvent(pointerDown);
-        } finally {
-            pointerDown.recycle();
-        }
+        pad.onTouchEvent(pointerDown);
         MotionEvent activePointerUp = twoPointerEvent(
                 downTime,
                 120L,
@@ -324,11 +307,7 @@ public final class DrawingPadViewInstrumentedTest {
                 420f,
                 440f
         );
-        try {
-            pad.onTouchEvent(activePointerUp);
-        } finally {
-            activePointerUp.recycle();
-        }
+        pad.onTouchEvent(activePointerUp);
 
         sendTouch(pad, downTime, 140L, MotionEvent.ACTION_MOVE, 700f, 720f);
 
@@ -346,11 +325,7 @@ public final class DrawingPadViewInstrumentedTest {
 
         sendTouch(pad, downTime, 100L, MotionEvent.ACTION_DOWN, 100f, 100f);
         MotionEvent wrongPointerMove = onePointerEvent(downTime, 120L, MotionEvent.ACTION_MOVE, 9, 600f, 600f);
-        try {
-            assertTrue(pad.onTouchEvent(wrongPointerMove));
-        } finally {
-            wrongPointerMove.recycle();
-        }
+        assertTrue(pad.onTouchEvent(wrongPointerMove));
         sendTouch(pad, downTime, 140L, MotionEvent.ACTION_UP, 200f, 200f);
 
         CapturedWriting writing = pad.capturedWriting();
@@ -376,11 +351,7 @@ public final class DrawingPadViewInstrumentedTest {
 
         sendTouch(pad, downTime, 100L, MotionEvent.ACTION_DOWN, 100f, 100f);
         MotionEvent wrongPointerUp = onePointerEvent(downTime, 140L, MotionEvent.ACTION_UP, 9, 620f, 640f);
-        try {
-            assertTrue(pad.onTouchEvent(wrongPointerUp));
-        } finally {
-            wrongPointerUp.recycle();
-        }
+        assertTrue(pad.onTouchEvent(wrongPointerUp));
 
         CapturedWriting writing = pad.capturedWriting();
         assertEquals(1, writing.strokes.size());
@@ -395,11 +366,7 @@ public final class DrawingPadViewInstrumentedTest {
         long downTime = 100L;
 
         MotionEvent pointerUp = twoPointerEvent(downTime, 120L, MotionEvent.ACTION_POINTER_UP, 1, 0, 1);
-        try {
-            assertTrue(pad.onTouchEvent(pointerUp));
-        } finally {
-            pointerUp.recycle();
-        }
+        assertTrue(pad.onTouchEvent(pointerUp));
         sendTouch(pad, downTime, 140L, MotionEvent.ACTION_CANCEL, 300f, 300f);
 
         assertFalse(pad.hasInk());
@@ -436,12 +403,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.setTarget("A");
         pad.setGuide(new StrokeGuide("A", Collections.emptyList()), 2, true);
         Bitmap outlined = renderToBitmap(pad);
-        try {
-            assertTrue(countDifferentPixels(blank, outlined) > 20);
-        } finally {
-            blank.recycle();
-            outlined.recycle();
-        }
+        assertTrue(countDifferentPixels(blank, outlined) > 20);
         assertFalse(pad.hasInk());
     }
 
@@ -455,21 +417,12 @@ public final class DrawingPadViewInstrumentedTest {
         pad.setTarget("A");
         pad.setGuide(null, 3, false);
         Bitmap hidden = renderToBitmap(pad);
-        try {
-            assertEquals(0, countDifferentPixels(blank, hidden));
-        } finally {
-            hidden.recycle();
-        }
+        assertEquals(0, countDifferentPixels(blank, hidden));
 
         pad.setTarget(null);
         pad.setGuide(null, 2, false);
         Bitmap hiddenWithoutTarget = renderToBitmap(pad);
-        try {
-            assertEquals(0, countDifferentPixels(blank, hiddenWithoutTarget));
-        } finally {
-            blank.recycle();
-            hiddenWithoutTarget.recycle();
-        }
+        assertEquals(0, countDifferentPixels(blank, hiddenWithoutTarget));
         assertFalse(pad.hasInk());
     }
 
@@ -481,19 +434,11 @@ public final class DrawingPadViewInstrumentedTest {
         pad.setGuide(guide, new HintState(HintLevel.BLIND, 0, 0), false);
         int blindPixels;
         Bitmap blind = renderToBitmap(pad);
-        try {
-            blindPixels = countGuidePixels(blind);
-        } finally {
-            blind.recycle();
-        }
+        blindPixels = countGuidePixels(blind);
 
         pad.setGuide(guide, HintState.initial(), true);
         Bitmap revealed = renderToBitmap(pad);
-        try {
-            assertTrue(countGuidePixels(revealed) > blindPixels);
-        } finally {
-            revealed.recycle();
-        }
+        assertTrue(countGuidePixels(revealed) > blindPixels);
         assertFalse(pad.hasInk());
     }
 
@@ -509,11 +454,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.setGuide(twoStrokeGuide(), (HintState) null, true);
         assertTrue(pad.isReplayOverlayVisible());
         Bitmap replaying = renderToBitmap(pad);
-        try {
-            assertTrue(countBluePixels(replaying) > 0);
-        } finally {
-            replaying.recycle();
-        }
+        assertTrue(countBluePixels(replaying) > 0);
 
         pad.setGuide(new StrokeGuide("空", Collections.emptyList()), HintState.initial(), true);
         assertFalse(pad.isReplayOverlayVisible());
@@ -530,11 +471,7 @@ public final class DrawingPadViewInstrumentedTest {
         android.os.SystemClock.sleep(1000L);
 
         Bitmap finishedReplay = renderToBitmap(pad);
-        try {
-            assertTrue(countBluePixels(finishedReplay) > 400);
-        } finally {
-            finishedReplay.recycle();
-        }
+        assertTrue(countBluePixels(finishedReplay) > 400);
         assertTrue(pad.isReplayOverlayVisible());
     }
 
@@ -551,11 +488,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.startReplay();
 
         Bitmap partialReplay = renderToBitmap(pad);
-        try {
-            assertTrue(countBluePixels(partialReplay) > 0);
-        } finally {
-            partialReplay.recycle();
-        }
+        assertTrue(countBluePixels(partialReplay) > 0);
         assertTrue(pad.isReplayOverlayVisible());
     }
 
@@ -569,11 +502,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.startReplayAt(android.os.SystemClock.uptimeMillis() + 10_000L);
 
         Bitmap firstFrame = renderToBitmap(pad);
-        try {
-            assertTrue(countBluePixels(firstFrame) > 0);
-        } finally {
-            firstFrame.recycle();
-        }
+        assertTrue(countBluePixels(firstFrame) > 0);
         assertTrue(pad.isReplayOverlayVisible());
     }
 
@@ -589,8 +518,7 @@ public final class DrawingPadViewInstrumentedTest {
     }
 
     private static void drawToBitmap(DrawingPadView pad) {
-        Bitmap bitmap = renderToBitmap(pad);
-        bitmap.recycle();
+        renderToBitmap(pad);
     }
 
     private static Bitmap renderToBitmap(DrawingPadView pad) {
@@ -660,22 +588,14 @@ public final class DrawingPadViewInstrumentedTest {
 
     private static void sendTouch(DrawingPadView pad, long downTime, long eventTime, int action, float x, float y) {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
-        try {
-            pad.onTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        pad.onTouchEvent(event);
     }
 
     private static void sendMoveWithHistory(DrawingPadView pad, long downTime) {
         MotionEvent event = MotionEvent.obtain(downTime, 120L, MotionEvent.ACTION_MOVE, 160f, 180f, 0);
-        try {
-            event.addBatch(130L, 240f, 280f, 1f, 1f, 0);
-            event.addBatch(140L, 360f, 390f, 1f, 1f, 0);
-            pad.onTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        event.addBatch(130L, 240f, 280f, 1f, 1f, 0);
+        event.addBatch(140L, 360f, 390f, 1f, 1f, 0);
+        pad.onTouchEvent(event);
     }
 
     private static MotionEvent twoPointerEvent(long downTime, long eventTime, int actionMasked, int actionIndex, int firstId, int secondId) {

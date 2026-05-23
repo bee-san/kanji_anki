@@ -2,6 +2,8 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 import static org.junit.Assert.assertEquals;
 
 public final class SettingsTextCopyDelegationTest {
@@ -9,69 +11,115 @@ public final class SettingsTextCopyDelegationTest {
     public void wrapperDelegatesToExtractedHelpers() {
         RecordsSyncModels.Settings importSettings = settings(true, true, true, true, true, 3);
         assertEquals(
-                SettingsSummaryTextCopy.settingsImportSummary(importSettings),
-                SettingsTextCopy.settingsImportSummary(importSettings)
+                Arrays.asList(
+                        SettingsSummaryTextCopy.settingsImportSummary(importSettings),
+                        SettingsSummaryTextCopy.matchingCardsSummary(importSettings),
+                        SettingsSummaryTextCopy.syncStatusHeadline(true, null, 4, 2),
+                        SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0),
+                        SettingsAutomationTextCopy.settingsReminderSummary(true, false, "21:05"),
+                        SettingsAutomationTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow")
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.settingsImportSummary(importSettings),
+                        SettingsTextCopy.matchingCardsSummary(importSettings),
+                        SettingsTextCopy.syncStatusHeadline(true, null, 4, 2),
+                        SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0),
+                        SettingsTextCopy.settingsReminderSummary(true, false, "21:05"),
+                        SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow")
+                )
         );
         assertEquals(
-                SettingsSummaryTextCopy.matchingCardsSummary(importSettings),
-                SettingsTextCopy.matchingCardsSummary(importSettings)
+                Arrays.asList(
+                        SettingsSectionTextCopy.settingsAnkiSourceTitle(),
+                        SettingsLearningTextCopy.learningStepsTitle(),
+                        SettingsImportFiltersTextCopy.importFiltersTitle(),
+                        SettingsReferenceDataTextCopy.frequencyRangeTitle(),
+                        SettingsStudyPlanTextCopy.newCardSortTitle(),
+                        SettingsStudyPlanTextCopy.fsrsRetentionTitle(),
+                        SettingsStudyPlanTextCopy.studyLadderTitle(),
+                        SettingsStudyAheadTextCopy.studyAheadTitle(),
+                        SettingsStudyAheadTextCopy.studyAheadBody(),
+                        SettingsStudyAheadTextCopy.saveStudyAheadLabel(),
+                        SettingsStudyAheadTextCopy.studyAheadSavedToast(),
+                        SettingsStudyAheadTextCopy.studyAheadMinutesLabel(),
+                        SettingsStudyAheadTextCopy.studyAheadMinutesRange(),
+                        SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText(),
+                        SettingsStudyAheadTextCopy.studyAheadOutOfRangeErrorText(),
+                        SettingsStudyAheadTextCopy.studyAheadMaxDescription(),
+                        SettingsLadderThresholdTextCopy.ladderThresholdsTitle(),
+                        SettingsLadderThresholdTextCopy.ladderThresholdsBody(),
+                        SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel(),
+                        SettingsLadderThresholdTextCopy.failsToGoDownLabel()
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.settingsAnkiSourceTitle(),
+                        SettingsTextCopy.learningStepsTitle(),
+                        SettingsTextCopy.importFiltersTitle(),
+                        SettingsTextCopy.frequencyRangeTitle(),
+                        SettingsTextCopy.newCardSortTitle(),
+                        SettingsTextCopy.fsrsRetentionTitle(),
+                        SettingsTextCopy.studyLadderTitle(),
+                        SettingsTextCopy.studyAheadTitle(),
+                        SettingsTextCopy.studyAheadBody(),
+                        SettingsTextCopy.saveStudyAheadLabel(),
+                        SettingsTextCopy.studyAheadSavedToast(),
+                        SettingsTextCopy.studyAheadMinutesLabel(),
+                        SettingsTextCopy.studyAheadMinutesRange(),
+                        SettingsTextCopy.studyAheadWholeNumberErrorText(),
+                        SettingsTextCopy.studyAheadOutOfRangeErrorText(),
+                        SettingsTextCopy.studyAheadMaxDescription(),
+                        SettingsTextCopy.ladderThresholdsTitle(),
+                        SettingsTextCopy.ladderThresholdsBody(),
+                        SettingsTextCopy.fsrsDaysToGoUpLabel(),
+                        SettingsTextCopy.failsToGoDownLabel()
+                )
         );
         assertEquals(
-                SettingsSummaryTextCopy.syncStatusHeadline(true, null, 4, 2),
-                SettingsTextCopy.syncStatusHeadline(true, null, 4, 2)
+                Arrays.asList(
+                        SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel(),
+                        SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel(),
+                        SettingsLadderThresholdTextCopy.ladderThresholdsSavedToast(),
+                        SettingsNoteTypeTextCopy.noteTypeFieldsTitle(),
+                        SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"),
+                        SettingsNoteTypeTextCopy.noteTypeFieldsBody(),
+                        SettingsNoteTypeTextCopy.requiredFieldsTitle(),
+                        SettingsNoteTypeTextCopy.requiredFieldsBody(),
+                        SettingsNoteTypeTextCopy.expressionFieldLabel(),
+                        SettingsNoteTypeTextCopy.readingFieldLabel(),
+                        SettingsNoteTypeTextCopy.meaningFieldLabel(),
+                        SettingsNoteTypeTextCopy.sentenceFieldLabel(),
+                        SettingsNoteTypeTextCopy.frequencyFieldLabel(),
+                        SettingsNoteTypeTextCopy.frequencySortFieldLabel(),
+                        SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel(),
+                        SettingsNoteTypeTextCopy.useKikuLabel(),
+                        SettingsNoteTypeTextCopy.saveNoteTypeLabel(),
+                        SettingsNoteTypeTextCopy.noteTypeRequiredToast(),
+                        SettingsNoteTypeTextCopy.expressionFieldRequiredToast(),
+                        SettingsNoteTypeTextCopy.noteTypeSavedToast()
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.useDefaultLadderThresholdsLabel(),
+                        SettingsTextCopy.saveLadderThresholdsLabel(),
+                        SettingsTextCopy.ladderThresholdsSavedToast(),
+                        SettingsTextCopy.noteTypeFieldsTitle(),
+                        SettingsTextCopy.noteTypeUsingText("Kiku"),
+                        SettingsTextCopy.noteTypeFieldsBody(),
+                        SettingsTextCopy.requiredFieldsTitle(),
+                        SettingsTextCopy.requiredFieldsBody(),
+                        SettingsTextCopy.expressionFieldLabel(),
+                        SettingsTextCopy.readingFieldLabel(),
+                        SettingsTextCopy.meaningFieldLabel(),
+                        SettingsTextCopy.sentenceFieldLabel(),
+                        SettingsTextCopy.frequencyFieldLabel(),
+                        SettingsTextCopy.frequencySortFieldLabel(),
+                        SettingsTextCopy.chooseFromAnkiDroidLabel(),
+                        SettingsTextCopy.useKikuLabel(),
+                        SettingsTextCopy.saveNoteTypeLabel(),
+                        SettingsTextCopy.noteTypeRequiredToast(),
+                        SettingsTextCopy.expressionFieldRequiredToast(),
+                        SettingsTextCopy.noteTypeSavedToast()
+                )
         );
-        assertEquals(
-            SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0),
-            SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0)
-        );
-        assertEquals(
-                SettingsAutomationTextCopy.settingsReminderSummary(true, false, "21:05"),
-                SettingsTextCopy.settingsReminderSummary(true, false, "21:05")
-        );
-        assertEquals(
-                SettingsAutomationTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow"),
-                SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow")
-        );
-        assertEquals(SettingsSectionTextCopy.settingsAnkiSourceTitle(), SettingsTextCopy.settingsAnkiSourceTitle());
-        assertEquals(SettingsLearningTextCopy.learningStepsTitle(), SettingsTextCopy.learningStepsTitle());
-        assertEquals(SettingsImportFiltersTextCopy.importFiltersTitle(), SettingsTextCopy.importFiltersTitle());
-        assertEquals(SettingsReferenceDataTextCopy.frequencyRangeTitle(), SettingsTextCopy.frequencyRangeTitle());
-        assertEquals(SettingsStudyPlanTextCopy.newCardSortTitle(), SettingsTextCopy.newCardSortTitle());
-        assertEquals(SettingsStudyPlanTextCopy.fsrsRetentionTitle(), SettingsTextCopy.fsrsRetentionTitle());
-        assertEquals(SettingsStudyPlanTextCopy.studyLadderTitle(), SettingsTextCopy.studyLadderTitle());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadTitle(), SettingsTextCopy.studyAheadTitle());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadBody(), SettingsTextCopy.studyAheadBody());
-        assertEquals(SettingsStudyAheadTextCopy.saveStudyAheadLabel(), SettingsTextCopy.saveStudyAheadLabel());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadSavedToast(), SettingsTextCopy.studyAheadSavedToast());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadMinutesLabel(), SettingsTextCopy.studyAheadMinutesLabel());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadMinutesRange(), SettingsTextCopy.studyAheadMinutesRange());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText(), SettingsTextCopy.studyAheadWholeNumberErrorText());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadOutOfRangeErrorText(), SettingsTextCopy.studyAheadOutOfRangeErrorText());
-        assertEquals(SettingsStudyAheadTextCopy.studyAheadMaxDescription(), SettingsTextCopy.studyAheadMaxDescription());
-        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsTitle(), SettingsTextCopy.ladderThresholdsTitle());
-        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsBody(), SettingsTextCopy.ladderThresholdsBody());
-        assertEquals(SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel(), SettingsTextCopy.fsrsDaysToGoUpLabel());
-        assertEquals(SettingsLadderThresholdTextCopy.failsToGoDownLabel(), SettingsTextCopy.failsToGoDownLabel());
-        assertEquals(SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel(), SettingsTextCopy.useDefaultLadderThresholdsLabel());
-        assertEquals(SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel(), SettingsTextCopy.saveLadderThresholdsLabel());
-        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsSavedToast(), SettingsTextCopy.ladderThresholdsSavedToast());
-        assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsTitle(), SettingsTextCopy.noteTypeFieldsTitle());
-        assertEquals(SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"), SettingsTextCopy.noteTypeUsingText("Kiku"));
-        assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsBody(), SettingsTextCopy.noteTypeFieldsBody());
-        assertEquals(SettingsNoteTypeTextCopy.requiredFieldsTitle(), SettingsTextCopy.requiredFieldsTitle());
-        assertEquals(SettingsNoteTypeTextCopy.requiredFieldsBody(), SettingsTextCopy.requiredFieldsBody());
-        assertEquals(SettingsNoteTypeTextCopy.expressionFieldLabel(), SettingsTextCopy.expressionFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.readingFieldLabel(), SettingsTextCopy.readingFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.meaningFieldLabel(), SettingsTextCopy.meaningFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.sentenceFieldLabel(), SettingsTextCopy.sentenceFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.frequencyFieldLabel(), SettingsTextCopy.frequencyFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.frequencySortFieldLabel(), SettingsTextCopy.frequencySortFieldLabel());
-        assertEquals(SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel(), SettingsTextCopy.chooseFromAnkiDroidLabel());
-        assertEquals(SettingsNoteTypeTextCopy.useKikuLabel(), SettingsTextCopy.useKikuLabel());
-        assertEquals(SettingsNoteTypeTextCopy.saveNoteTypeLabel(), SettingsTextCopy.saveNoteTypeLabel());
-        assertEquals(SettingsNoteTypeTextCopy.noteTypeRequiredToast(), SettingsTextCopy.noteTypeRequiredToast());
-        assertEquals(SettingsNoteTypeTextCopy.expressionFieldRequiredToast(), SettingsTextCopy.expressionFieldRequiredToast());
-        assertEquals(SettingsNoteTypeTextCopy.noteTypeSavedToast(), SettingsTextCopy.noteTypeSavedToast());
     }
 
     private static RecordsSyncModels.Settings settings(

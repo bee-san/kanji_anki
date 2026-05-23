@@ -118,7 +118,7 @@ class WritingAnalysis private constructor(
         }
 
         private fun hintLevelFrom(hintOptions: Array<out Any?>?): HintLevel {
-            return if (hintOptions != null && hintOptions.isNotEmpty() && hintOptions[0] is HintLevel) {
+            return if (!hintOptions.isNullOrEmpty() && hintOptions[0] is HintLevel) {
                 hintOptions[0] as HintLevel
             } else {
                 HintLevel.BLIND

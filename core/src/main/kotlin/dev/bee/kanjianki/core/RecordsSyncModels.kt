@@ -152,7 +152,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
                     NEW_CARD_SORT_RETRIEVABILITY_RISK == value ||
                     NEW_CARD_SORT_KANI_WEAKNESS == value
                 ) {
-                    return value!!
+                    return value
                 }
                 return DEFAULT_NEW_CARD_SORT_MODE
             }

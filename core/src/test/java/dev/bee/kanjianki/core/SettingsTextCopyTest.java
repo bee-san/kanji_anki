@@ -22,181 +22,286 @@ public final class SettingsTextCopyTest {
 
     @Test
     public void settingsStatusSummariesPreserveAutomationCopy() {
-        assertEquals("Blocked", SettingsTextCopy.settingsReminderSummary(true, true, "21:05"));
-        assertEquals("21:05", SettingsTextCopy.settingsReminderSummary(true, false, "21:05"));
-        assertEquals("Off", SettingsTextCopy.settingsReminderSummary(false, false, "21:05"));
-        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(false, true, "07:30"));
-        assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(true, true, "07:30"));
-        assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(true, false, "07:30"));
-        assertEquals("Verified APK ready", SettingsTextCopy.settingsUpdateSummary(true, false));
-        assertEquals("Automatic checks on", SettingsTextCopy.settingsUpdateSummary(false, true));
-        assertEquals("Manual checks", SettingsTextCopy.settingsUpdateSummary(false, false));
         assertEquals(
-                "4 suspended cards archived, 2 rare kanji added; active cards optional",
-                SettingsTextCopy.syncStatusHeadline(true, "ignored", 4, 2)
-        );
-        assertEquals("Sync blocked: No provider", SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0));
-        assertEquals("Sync blocked: null", SettingsTextCopy.syncStatusHeadline(false, null, 0, 0));
-        assertEquals("unknown version", SettingsTextCopy.versionText(null));
-        assertEquals("unknown version", SettingsTextCopy.versionText("  "));
-        assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
-        assertEquals("release-v0.4.33", SettingsTextCopy.versionText("release-v0.4.33"));
-        assertEquals("Anki source", SettingsTextCopy.settingsAnkiSourceTitle());
-        assertEquals(
-                "What Kani reads from AnkiDroid, and which cards become practice.",
-                SettingsTextCopy.settingsAnkiSourceBody()
-        );
-        assertEquals("Study behavior", SettingsTextCopy.settingsStudyBehaviorTitle());
-        assertEquals(
-                "How much appears today, how quickly repeats return, and when cards move rungs.",
-                SettingsTextCopy.settingsStudyBehaviorBody()
-        );
-        assertEquals("Automation", SettingsTextCopy.settingsAutomationTitle());
-        assertEquals(
-                "Background nudges, daily AnkiDroid refreshes, and app update checks.",
-                SettingsTextCopy.settingsAutomationBody()
-        );
-        assertEquals("Reference data", SettingsTextCopy.settingsReferenceDataTitle());
-        assertEquals(
-                "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.",
-                SettingsTextCopy.settingsReferenceDataBody()
-        );
-        assertEquals("GitHub updater", SettingsTextCopy.updatePageTitle());
-        assertEquals(
-                "Current version 1.2.3. Checks GitHub Releases, verifies the APK, and asks Android to install it.",
-                SettingsTextCopy.updatePageBody("1.2.3")
-        );
-        assertEquals("Automatic updates", SettingsTextCopy.automaticUpdatesTitle());
-        assertEquals("Check for update", SettingsTextCopy.checkForUpdateLabel());
-        assertEquals("On: checks about once a day", SettingsTextCopy.autoUpdatePanelStatus(true));
-        assertEquals("Off", SettingsTextCopy.autoUpdatePanelStatus(false));
-        assertEquals("Last check: not yet", SettingsTextCopy.autoUpdateLastCheckLine("not yet"));
-        assertEquals("Last result: none", SettingsTextCopy.autoUpdateLastResultLine("none"));
-        assertEquals("Install permission: Ready", SettingsTextCopy.installPermissionLine(true));
-        assertEquals("Install permission: Missing", SettingsTextCopy.installPermissionLine(false));
-        assertEquals("Verified APK ready: 0.4.33", SettingsTextCopy.verifiedApkReadyLine("v0.4.33"));
-        assertEquals(
-                "Android needs confirmation before Kani can replace itself.",
-                SettingsTextCopy.pendingUpdateFallback()
-        );
-        assertEquals("Install verified update", SettingsTextCopy.installVerifiedUpdateLabel());
-        assertEquals("Set up app installs", SettingsTextCopy.setupAppInstallsLabel());
-        assertEquals("Turn off automatic updates", SettingsTextCopy.automaticUpdatesToggleLabel(true));
-        assertEquals("Turn on automatic updates", SettingsTextCopy.automaticUpdatesToggleLabel(false));
-        assertEquals("Back to settings", SettingsTextCopy.backToSettingsLabel());
-        assertEquals("Settings cockpit", SettingsTextCopy.settingsCockpitLabel());
-        assertEquals(
-                "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.",
-                SettingsTextCopy.settingsHeroBody()
-        );
-        assertEquals("Note type", SettingsTextCopy.noteTypeStatusLabel());
-        assertEquals("Import filters", SettingsTextCopy.importFiltersStatusLabel());
-        assertEquals("Import ranks", SettingsTextCopy.importRanksStatusLabel());
-        assertEquals("Reminder", SettingsTextCopy.reminderStatusLabel());
-        assertEquals("Daily sync", SettingsTextCopy.dailySyncStatusLabel());
-        assertEquals("Updates", SettingsTextCopy.updatesStatusLabel());
-        assertEquals("Matching cards", SettingsTextCopy.matchingCardsStatusLabel());
-        assertEquals("Reminder: Off", SettingsTextCopy.statusPillDescription("Reminder", "Off"));
-        assertEquals("Collapse Study behavior", SettingsTextCopy.categoryToggleDescription(true, "Study behavior"));
-        assertEquals("Expand Automation", SettingsTextCopy.categoryToggleDescription(false, "Automation"));
-        assertEquals("1 card", SettingsTextCopy.settingsCategoryPanelCount(1));
-        assertEquals("2 cards", SettingsTextCopy.settingsCategoryPanelCount(2));
-        assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
-        assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
-        assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));
-        assertEquals(
-                "Manual sync once, then Kani will keep itself refreshed once per day.",
-                SettingsTextCopy.autoSyncDetail(false, true, "", "", "")
+                Arrays.asList(
+                        "Blocked",
+                        "21:05",
+                        "Off",
+                        "After first sync",
+                        "07:30",
+                        "Off",
+                        "Verified APK ready",
+                        "Automatic checks on",
+                        "Manual checks",
+                        "4 suspended cards archived, 2 rare kanji added; active cards optional",
+                        "Sync blocked: No provider",
+                        "Sync blocked: null",
+                        "unknown version",
+                        "unknown version",
+                        "0.4.33",
+                        "release-v0.4.33",
+                        "Anki source",
+                        "What Kani reads from AnkiDroid, and which cards become practice.",
+                        "Study behavior",
+                        "How much appears today, how quickly repeats return, and when cards move rungs.",
+                        "Automation",
+                        "Background nudges, daily AnkiDroid refreshes, and app update checks.",
+                        "Reference data",
+                        "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution."
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
+                        SettingsTextCopy.settingsReminderSummary(true, false, "21:05"),
+                        SettingsTextCopy.settingsReminderSummary(false, false, "21:05"),
+                        SettingsTextCopy.settingsAutoSyncSummary(false, true, "07:30"),
+                        SettingsTextCopy.settingsAutoSyncSummary(true, true, "07:30"),
+                        SettingsTextCopy.settingsAutoSyncSummary(true, false, "07:30"),
+                        SettingsTextCopy.settingsUpdateSummary(true, false),
+                        SettingsTextCopy.settingsUpdateSummary(false, true),
+                        SettingsTextCopy.settingsUpdateSummary(false, false),
+                        SettingsTextCopy.syncStatusHeadline(true, "ignored", 4, 2),
+                        SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0),
+                        SettingsTextCopy.syncStatusHeadline(false, null, 0, 0),
+                        SettingsTextCopy.versionText(null),
+                        SettingsTextCopy.versionText("  "),
+                        SettingsTextCopy.versionText("v0.4.33"),
+                        SettingsTextCopy.versionText("release-v0.4.33"),
+                        SettingsTextCopy.settingsAnkiSourceTitle(),
+                        SettingsTextCopy.settingsAnkiSourceBody(),
+                        SettingsTextCopy.settingsStudyBehaviorTitle(),
+                        SettingsTextCopy.settingsStudyBehaviorBody(),
+                        SettingsTextCopy.settingsAutomationTitle(),
+                        SettingsTextCopy.settingsAutomationBody(),
+                        SettingsTextCopy.settingsReferenceDataTitle(),
+                        SettingsTextCopy.settingsReferenceDataBody()
+                )
         );
         assertEquals(
-                "Scheduled once per local day. Android may batch the exact time.",
-                SettingsTextCopy.autoSyncDetail(true, true, "", "", "")
+                Arrays.asList(
+                        "GitHub updater",
+                        "Current version 1.2.3. Checks GitHub Releases, verifies the APK, and asks Android to install it.",
+                        "Automatic updates",
+                        "Check for update",
+                        "On: checks about once a day",
+                        "Off",
+                        "Last check: not yet",
+                        "Last result: none",
+                        "Install permission: Ready",
+                        "Install permission: Missing",
+                        "Verified APK ready: 0.4.33",
+                        "Android needs confirmation before Kani can replace itself.",
+                        "Install verified update",
+                        "Set up app installs",
+                        "Turn off automatic updates",
+                        "Turn on automatic updates",
+                        "Back to settings",
+                        "Settings cockpit",
+                        "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.",
+                        "Note type",
+                        "Import filters",
+                        "Import ranks",
+                        "Reminder",
+                        "Daily sync",
+                        "Updates"
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.updatePageTitle(),
+                        SettingsTextCopy.updatePageBody("1.2.3"),
+                        SettingsTextCopy.automaticUpdatesTitle(),
+                        SettingsTextCopy.checkForUpdateLabel(),
+                        SettingsTextCopy.autoUpdatePanelStatus(true),
+                        SettingsTextCopy.autoUpdatePanelStatus(false),
+                        SettingsTextCopy.autoUpdateLastCheckLine("not yet"),
+                        SettingsTextCopy.autoUpdateLastResultLine("none"),
+                        SettingsTextCopy.installPermissionLine(true),
+                        SettingsTextCopy.installPermissionLine(false),
+                        SettingsTextCopy.verifiedApkReadyLine("v0.4.33"),
+                        SettingsTextCopy.pendingUpdateFallback(),
+                        SettingsTextCopy.installVerifiedUpdateLabel(),
+                        SettingsTextCopy.setupAppInstallsLabel(),
+                        SettingsTextCopy.automaticUpdatesToggleLabel(true),
+                        SettingsTextCopy.automaticUpdatesToggleLabel(false),
+                        SettingsTextCopy.backToSettingsLabel(),
+                        SettingsTextCopy.settingsCockpitLabel(),
+                        SettingsTextCopy.settingsHeroBody(),
+                        SettingsTextCopy.noteTypeStatusLabel(),
+                        SettingsTextCopy.importFiltersStatusLabel(),
+                        SettingsTextCopy.importRanksStatusLabel(),
+                        SettingsTextCopy.reminderStatusLabel(),
+                        SettingsTextCopy.dailySyncStatusLabel(),
+                        SettingsTextCopy.updatesStatusLabel()
+                )
         );
-        assertEquals("Daily background sync is paused.", SettingsTextCopy.autoSyncDetail(true, false, "", "", "tomorrow"));
         assertEquals(
-                "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
-                SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow")
-        );
-        assertEquals(
-                "Last auto success yesterday. Last auto attempt today.",
-                SettingsTextCopy.autoSyncDetail(true, false, "yesterday", "today", "tomorrow")
+                Arrays.asList(
+                        "Matching cards",
+                        "Reminder: Off",
+                        "Collapse Study behavior",
+                        "Expand Automation",
+                        "1 card",
+                        "2 cards",
+                        "Starts after first successful sync",
+                        "On around 07:30",
+                        "Off",
+                        "Manual sync once, then Kani will keep itself refreshed once per day.",
+                        "Scheduled once per local day. Android may batch the exact time.",
+                        "Daily background sync is paused.",
+                        "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
+                        "Last auto success yesterday. Last auto attempt today."
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.matchingCardsStatusLabel(),
+                        SettingsTextCopy.statusPillDescription("Reminder", "Off"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
+                        SettingsTextCopy.categoryToggleDescription(false, "Automation"),
+                        SettingsTextCopy.settingsCategoryPanelCount(1),
+                        SettingsTextCopy.settingsCategoryPanelCount(2),
+                        SettingsTextCopy.autoSyncStatus(false, true, "07:30"),
+                        SettingsTextCopy.autoSyncStatus(true, true, "07:30"),
+                        SettingsTextCopy.autoSyncStatus(true, false, "07:30"),
+                        SettingsTextCopy.autoSyncDetail(false, true, "", "", ""),
+                        SettingsTextCopy.autoSyncDetail(true, true, "", "", ""),
+                        SettingsTextCopy.autoSyncDetail(true, false, "", "", "tomorrow"),
+                        SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow"),
+                        SettingsTextCopy.autoSyncDetail(true, false, "yesterday", "today", "tomorrow")
+                )
         );
     }
 
     @Test
     public void importAndFrequencyPanelCopyPreservesLabelsAndToasts() {
-        assertEquals("Import filters", SettingsTextCopy.importFiltersTitle());
         assertEquals(
-                "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.",
-                SettingsTextCopy.importFiltersBody()
+                Arrays.asList(
+                        "Import filters",
+                        "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.",
+                        "Active cards",
+                        "Suspended cards",
+                        "Tagged cards",
+                        "Weak cards",
+                        "Browser query",
+                        "deck:Japanese tag:kani",
+                        "Anki browser query",
+                        "tag1, tag2",
+                        "Anki note tags",
+                        "FSRS difficulty",
+                        "Lapses",
+                        "Minimum matching cards per kanji",
+                        "Save import filters",
+                        "Enter an Anki browser query or turn off Browser query.",
+                        "Turn on at least one import source.",
+                        "Import filters saved. Sync again to rebuild practice.",
+                        "Presets",
+                        "Import preset saved. Sync again to rebuild practice.",
+                        "Use numeric import thresholds.",
+                        "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
+                        "Frequency range",
+                        "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000."
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.importFiltersTitle(),
+                        SettingsTextCopy.importFiltersBody(),
+                        SettingsTextCopy.activeCardsLabel(),
+                        SettingsTextCopy.suspendedCardsLabel(),
+                        SettingsTextCopy.taggedCardsLabel(),
+                        SettingsTextCopy.weakCardsLabel(),
+                        SettingsTextCopy.browserQueryLabel(),
+                        SettingsTextCopy.ankiBrowserQueryHint(),
+                        SettingsTextCopy.ankiBrowserQueryLabel(),
+                        SettingsTextCopy.ankiNoteTagsHint(),
+                        SettingsTextCopy.ankiNoteTagsLabel(),
+                        SettingsTextCopy.fsrsDifficultyLabel(),
+                        SettingsTextCopy.lapsesLabel(),
+                        SettingsTextCopy.minimumMatchingCardsLabel(),
+                        SettingsTextCopy.saveImportFiltersLabel(),
+                        SettingsTextCopy.browserQueryRequiredToast(),
+                        SettingsTextCopy.importSourceRequiredToast(),
+                        SettingsTextCopy.importFiltersSavedToast(),
+                        SettingsTextCopy.presetsTitle(),
+                        SettingsTextCopy.importPresetSavedToast(),
+                        SettingsTextCopy.numericImportThresholdsToast(),
+                        SettingsTextCopy.importThresholdRangeToast(),
+                        SettingsTextCopy.frequencyRangeTitle(),
+                        SettingsTextCopy.frequencyRangeBody()
+                )
         );
-        assertEquals("Active cards", SettingsTextCopy.activeCardsLabel());
-        assertEquals("Suspended cards", SettingsTextCopy.suspendedCardsLabel());
-        assertEquals("Tagged cards", SettingsTextCopy.taggedCardsLabel());
-        assertEquals("Weak cards", SettingsTextCopy.weakCardsLabel());
-        assertEquals("Browser query", SettingsTextCopy.browserQueryLabel());
-        assertEquals("deck:Japanese tag:kani", SettingsTextCopy.ankiBrowserQueryHint());
-        assertEquals("Anki browser query", SettingsTextCopy.ankiBrowserQueryLabel());
-        assertEquals("tag1, tag2", SettingsTextCopy.ankiNoteTagsHint());
-        assertEquals("Anki note tags", SettingsTextCopy.ankiNoteTagsLabel());
-        assertEquals("FSRS difficulty", SettingsTextCopy.fsrsDifficultyLabel());
-        assertEquals("Lapses", SettingsTextCopy.lapsesLabel());
-        assertEquals("Minimum matching cards per kanji", SettingsTextCopy.minimumMatchingCardsLabel());
-        assertEquals("Save import filters", SettingsTextCopy.saveImportFiltersLabel());
-        assertEquals("Enter an Anki browser query or turn off Browser query.", SettingsTextCopy.browserQueryRequiredToast());
-        assertEquals("Turn on at least one import source.", SettingsTextCopy.importSourceRequiredToast());
-        assertEquals("Import filters saved. Sync again to rebuild practice.", SettingsTextCopy.importFiltersSavedToast());
-        assertEquals("Presets", SettingsTextCopy.presetsTitle());
-        assertEquals("Import preset saved. Sync again to rebuild practice.", SettingsTextCopy.importPresetSavedToast());
-        assertEquals("Use numeric import thresholds.", SettingsTextCopy.numericImportThresholdsToast());
-        assertEquals("Use difficulty 1-10, lapses 1-100, and cards 1-1000.", SettingsTextCopy.importThresholdRangeToast());
-        assertEquals("Frequency range", SettingsTextCopy.frequencyRangeTitle());
         assertEquals(
-                "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.",
-                SettingsTextCopy.frequencyRangeBody()
+                Arrays.asList(
+                        "Min rank",
+                        "Max rank",
+                        "Minimum rank",
+                        "Maximum rank",
+                        "Save frequency range",
+                        "Enter numeric ranks.",
+                        "Use ranks from 1 to 20000.",
+                        "Frequency range saved. Sync again to rebuild practice.",
+                        "Offline data & licenses",
+                        "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.",
+                        "Open data licenses",
+                        "Data licenses",
+                        "Dictionary and stroke-order data bundled for offline study.",
+                        "Dictionary data",
+                        "Stroke data",
+                        "Fonts",
+                        "Note type & clue fields",
+                        "Using Kiku",
+                        "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.",
+                        "Required fields"
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.minRankLabel(),
+                        SettingsTextCopy.maxRankLabel(),
+                        SettingsTextCopy.minimumRankLabel(),
+                        SettingsTextCopy.maximumRankLabel(),
+                        SettingsTextCopy.saveFrequencyRangeLabel(),
+                        SettingsTextCopy.numericRanksToast(),
+                        SettingsTextCopy.rankRangeToast(),
+                        SettingsTextCopy.frequencyRangeSavedToast(),
+                        SettingsTextCopy.offlineDataLicensesTitle(),
+                        SettingsTextCopy.offlineDataLicensesBody(),
+                        SettingsTextCopy.openDataLicensesLabel(),
+                        SettingsTextCopy.dataLicensesTitle(),
+                        SettingsTextCopy.dataLicensesBody(),
+                        SettingsTextCopy.dictionaryDataTitle(),
+                        SettingsTextCopy.strokeDataTitle(),
+                        SettingsTextCopy.fontsTitle(),
+                        SettingsTextCopy.noteTypeFieldsTitle(),
+                        SettingsTextCopy.noteTypeUsingText("Kiku"),
+                        SettingsTextCopy.noteTypeFieldsBody(),
+                        SettingsTextCopy.requiredFieldsTitle()
+                )
         );
-        assertEquals("Min rank", SettingsTextCopy.minRankLabel());
-        assertEquals("Max rank", SettingsTextCopy.maxRankLabel());
-        assertEquals("Minimum rank", SettingsTextCopy.minimumRankLabel());
-        assertEquals("Maximum rank", SettingsTextCopy.maximumRankLabel());
-        assertEquals("Save frequency range", SettingsTextCopy.saveFrequencyRangeLabel());
-        assertEquals("Enter numeric ranks.", SettingsTextCopy.numericRanksToast());
-        assertEquals("Use ranks from 1 to 20000.", SettingsTextCopy.rankRangeToast());
-        assertEquals("Frequency range saved. Sync again to rebuild practice.", SettingsTextCopy.frequencyRangeSavedToast());
-        assertEquals("Offline data & licenses", SettingsTextCopy.offlineDataLicensesTitle());
         assertEquals(
-                "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.",
-                SettingsTextCopy.offlineDataLicensesBody()
+                Arrays.asList(
+                        "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.",
+                        "Expression field",
+                        "Reading field",
+                        "Meaning field",
+                        "Sentence field",
+                        "Frequency field",
+                        "Frequency sort field",
+                        "Choose from AnkiDroid",
+                        "Use Kiku",
+                        "Save note type",
+                        "Enter a note type name.",
+                        "Choose the field that contains kanji.",
+                        "Note type saved. Sync again to rebuild practice."
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.requiredFieldsBody(),
+                        SettingsTextCopy.expressionFieldLabel(),
+                        SettingsTextCopy.readingFieldLabel(),
+                        SettingsTextCopy.meaningFieldLabel(),
+                        SettingsTextCopy.sentenceFieldLabel(),
+                        SettingsTextCopy.frequencyFieldLabel(),
+                        SettingsTextCopy.frequencySortFieldLabel(),
+                        SettingsTextCopy.chooseFromAnkiDroidLabel(),
+                        SettingsTextCopy.useKikuLabel(),
+                        SettingsTextCopy.saveNoteTypeLabel(),
+                        SettingsTextCopy.noteTypeRequiredToast(),
+                        SettingsTextCopy.expressionFieldRequiredToast(),
+                        SettingsTextCopy.noteTypeSavedToast()
+                )
         );
-        assertEquals("Open data licenses", SettingsTextCopy.openDataLicensesLabel());
-        assertEquals("Data licenses", SettingsTextCopy.dataLicensesTitle());
-        assertEquals("Dictionary and stroke-order data bundled for offline study.", SettingsTextCopy.dataLicensesBody());
-        assertEquals("Dictionary data", SettingsTextCopy.dictionaryDataTitle());
-        assertEquals("Stroke data", SettingsTextCopy.strokeDataTitle());
-        assertEquals("Fonts", SettingsTextCopy.fontsTitle());
-        assertEquals("Note type & clue fields", SettingsTextCopy.noteTypeFieldsTitle());
-        assertEquals("Using Kiku", SettingsTextCopy.noteTypeUsingText("Kiku"));
-        assertEquals(
-                "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.",
-                SettingsTextCopy.noteTypeFieldsBody()
-        );
-        assertEquals("Required fields", SettingsTextCopy.requiredFieldsTitle());
-        assertEquals(
-                "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.",
-                SettingsTextCopy.requiredFieldsBody()
-        );
-        assertEquals("Expression field", SettingsTextCopy.expressionFieldLabel());
-        assertEquals("Reading field", SettingsTextCopy.readingFieldLabel());
-        assertEquals("Meaning field", SettingsTextCopy.meaningFieldLabel());
-        assertEquals("Sentence field", SettingsTextCopy.sentenceFieldLabel());
-        assertEquals("Frequency field", SettingsTextCopy.frequencyFieldLabel());
-        assertEquals("Frequency sort field", SettingsTextCopy.frequencySortFieldLabel());
-        assertEquals("Choose from AnkiDroid", SettingsTextCopy.chooseFromAnkiDroidLabel());
-        assertEquals("Use Kiku", SettingsTextCopy.useKikuLabel());
-        assertEquals("Save note type", SettingsTextCopy.saveNoteTypeLabel());
-        assertEquals("Enter a note type name.", SettingsTextCopy.noteTypeRequiredToast());
-        assertEquals("Choose the field that contains kanji.", SettingsTextCopy.expressionFieldRequiredToast());
-        assertEquals("Note type saved. Sync again to rebuild practice.", SettingsTextCopy.noteTypeSavedToast());
     }
 
     @Test
@@ -263,62 +368,95 @@ public final class SettingsTextCopyTest {
     public void rangeRetentionAndLadderCopyPreserveSettingsLabels() {
         RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults();
 
-        assertEquals("Jiten ranks 1-20000", SettingsTextCopy.frequencyRangeStatusText(1, 20000));
-        assertEquals("Desired retention: 95%", SettingsTextCopy.retentionStatusText(95));
-        assertEquals("FSRS retention", SettingsTextCopy.fsrsRetentionTitle());
         assertEquals(
-                "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.",
-                SettingsTextCopy.fsrsRetentionBody()
-        );
-        assertEquals("Use Jiten-rank retention ranges", SettingsTextCopy.useJitenRankRetentionRangesLabel());
-        assertEquals(
-                "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
-                SettingsTextCopy.jitenRankRetentionRangesBody()
-        );
-        assertEquals("Use example ranges", SettingsTextCopy.useExampleRangesLabel());
-        assertEquals("Save retention", SettingsTextCopy.saveRetentionLabel());
-        assertEquals("95%", SettingsTextCopy.retentionPresetLabel(95));
-        assertEquals("Write kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WRITE_KANJI));
-        assertEquals("Similar kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SIMILAR_KANJI));
-        assertEquals("Type the meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.TYPE_MEANING));
-        assertEquals("Meaning -> kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.MEANING_KANJI));
-        assertEquals("Kanji -> meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.KANJI_MEANING));
-        assertEquals("Font -> meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.FONT_MEANING));
-        assertEquals("Word -> reading", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WORD_READING));
-        assertEquals("Enabled always available rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.WRITE_KANJI));
-        assertEquals("Enabled conditional rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.SIMILAR_KANJI));
-        assertEquals("Study ladder", SettingsTextCopy.studyLadderTitle());
-        assertEquals(
-                "Turn rungs off or move them up and down. At least one always-available rung stays on.",
-                SettingsTextCopy.studyLadderBody()
-        );
-        assertEquals("On", SettingsTextCopy.ladderToggleLabel(true));
-        assertEquals("Off", SettingsTextCopy.ladderToggleLabel(false));
-        assertEquals("Up", SettingsTextCopy.moveUpLabel());
-        assertEquals("Down", SettingsTextCopy.moveDownLabel());
-        assertEquals("Restore default ladder", SettingsTextCopy.restoreDefaultLadderLabel());
-        assertEquals("Study ladder restored.", SettingsTextCopy.studyLadderRestoredToast());
-        assertEquals("Keep at least one always-available rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast());
-        assertEquals("Write kanji off.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true));
-        assertEquals("Write kanji on.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, false));
-        assertEquals("Ladder thresholds", SettingsTextCopy.ladderThresholdsTitle());
-        assertEquals(
-                "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.",
-                SettingsTextCopy.ladderThresholdsBody()
-        );
-        assertEquals("FSRS days to go up", SettingsTextCopy.fsrsDaysToGoUpLabel());
-        assertEquals("Fails to go down", SettingsTextCopy.failsToGoDownLabel());
-        assertEquals(
-                String.format(
-                        Locale.ROOT,
-                        "Use %d and %d",
-                        RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
-                        RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+                Arrays.asList(
+                        "Jiten ranks 1-20000",
+                        "Desired retention: 95%",
+                        "FSRS retention",
+                        "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.",
+                        "Use Jiten-rank retention ranges",
+                        "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
+                        "Use example ranges",
+                        "Save retention",
+                        "95%",
+                        "Write kanji",
+                        "Similar kanji",
+                        "Type the meaning",
+                        "Meaning -> kanji",
+                        "Kanji -> meaning",
+                        "Font -> meaning",
+                        "Word -> reading",
+                        "Enabled always available rung",
+                        "Enabled conditional rung",
+                        "Study ladder",
+                        "Turn rungs off or move them up and down. At least one always-available rung stays on."
                 ),
-                SettingsTextCopy.useDefaultLadderThresholdsLabel()
+                Arrays.asList(
+                        SettingsTextCopy.frequencyRangeStatusText(1, 20000),
+                        SettingsTextCopy.retentionStatusText(95),
+                        SettingsTextCopy.fsrsRetentionTitle(),
+                        SettingsTextCopy.fsrsRetentionBody(),
+                        SettingsTextCopy.useJitenRankRetentionRangesLabel(),
+                        SettingsTextCopy.jitenRankRetentionRangesBody(),
+                        SettingsTextCopy.useExampleRangesLabel(),
+                        SettingsTextCopy.saveRetentionLabel(),
+                        SettingsTextCopy.retentionPresetLabel(95),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WRITE_KANJI),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SIMILAR_KANJI),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.TYPE_MEANING),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.MEANING_KANJI),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.KANJI_MEANING),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.FONT_MEANING),
+                        SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WORD_READING),
+                        SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.WRITE_KANJI),
+                        SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.SIMILAR_KANJI),
+                        SettingsTextCopy.studyLadderTitle(),
+                        SettingsTextCopy.studyLadderBody()
+                )
         );
-        assertEquals("Save ladder thresholds", SettingsTextCopy.saveLadderThresholdsLabel());
-        assertEquals("Ladder thresholds saved.", SettingsTextCopy.ladderThresholdsSavedToast());
+        assertEquals(
+                Arrays.asList(
+                        "On",
+                        "Off",
+                        "Up",
+                        "Down",
+                        "Restore default ladder",
+                        "Study ladder restored.",
+                        "Keep at least one always-available rung on.",
+                        "Write kanji off.",
+                        "Write kanji on.",
+                        "Ladder thresholds",
+                        "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.",
+                        "FSRS days to go up",
+                        "Fails to go down",
+                        String.format(
+                                Locale.ROOT,
+                                "Use %d and %d",
+                                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+                        ),
+                        "Save ladder thresholds",
+                        "Ladder thresholds saved."
+                ),
+                Arrays.asList(
+                        SettingsTextCopy.ladderToggleLabel(true),
+                        SettingsTextCopy.ladderToggleLabel(false),
+                        SettingsTextCopy.moveUpLabel(),
+                        SettingsTextCopy.moveDownLabel(),
+                        SettingsTextCopy.restoreDefaultLadderLabel(),
+                        SettingsTextCopy.studyLadderRestoredToast(),
+                        SettingsTextCopy.keepAlwaysAvailableRungToast(),
+                        SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true),
+                        SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, false),
+                        SettingsTextCopy.ladderThresholdsTitle(),
+                        SettingsTextCopy.ladderThresholdsBody(),
+                        SettingsTextCopy.fsrsDaysToGoUpLabel(),
+                        SettingsTextCopy.failsToGoDownLabel(),
+                        SettingsTextCopy.useDefaultLadderThresholdsLabel(),
+                        SettingsTextCopy.saveLadderThresholdsLabel(),
+                        SettingsTextCopy.ladderThresholdsSavedToast()
+                )
+        );
         assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
     }
 

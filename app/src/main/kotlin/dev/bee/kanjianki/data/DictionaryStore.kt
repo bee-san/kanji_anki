@@ -359,37 +359,49 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         private fun validateSqlite(database: File): ValidationResult {
             return try {
                 SQLiteDatabase.openDatabase(database.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-                    val tableResult = validateColumns(db, "kanji", REQUIRED_KANJI_COLUMNS)
-                    if (!tableResult.ok) {
-                        return tableResult
-                    }
-                    val rankTableResult = validateColumns(db, "jiten_ranks", REQUIRED_JITEN_RANK_COLUMNS)
-                    if (!rankTableResult.ok) {
-                        return rankTableResult
-                    }
-                    val metaTableResult = validateColumns(db, "dictionary_meta", setOf("key", "value"))
-                    if (!metaTableResult.ok) {
-                        return metaTableResult
-                    }
-                    val meta = readMeta(db)
-                    for (key in REQUIRED_META_KEYS) {
-                        if (!meta.containsKey(key) || meta[key].orEmpty().isEmpty()) {
-                            return ValidationResult.rejected("Dictionary metadata is missing $key.")
-                        }
-                    }
-                    if (SUPPORTED_SCHEMA_VERSION != meta["schema_version"]) {
-                        return ValidationResult.rejected("Dictionary schema version is unsupported.")
-                    }
-                    db.rawQuery("SELECT literal FROM kanji LIMIT 1", null).use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            ValidationResult.ok()
-                        } else {
-                            ValidationResult.rejected("Dictionary has no kanji rows.")
-                        }
-                    }
+                    validateSqlite(db)
                 }
             } catch (_: SQLiteException) {
                 ValidationResult.rejected("Dictionary database is invalid.")
+            }
+        }
+
+        private fun validateSqlite(db: SQLiteDatabase): ValidationResult {
+            validateColumnsOrReject(db, "kanji", REQUIRED_KANJI_COLUMNS)?.let { return it }
+            validateColumnsOrReject(db, "jiten_ranks", REQUIRED_JITEN_RANK_COLUMNS)?.let { return it }
+            validateColumnsOrReject(db, "dictionary_meta", setOf("key", "value"))?.let { return it }
+            validateMeta(readMeta(db))?.let { return it }
+            return validateHasKanjiRows(db)
+        }
+
+        private fun validateColumnsOrReject(
+            db: SQLiteDatabase,
+            table: String,
+            requiredColumns: Set<String>,
+        ): ValidationResult? {
+            val validation = validateColumns(db, table, requiredColumns)
+            return if (validation.ok) null else validation
+        }
+
+        private fun validateMeta(meta: Map<String, String>): ValidationResult? {
+            for (key in REQUIRED_META_KEYS) {
+                if (!meta.containsKey(key) || meta[key].orEmpty().isEmpty()) {
+                    return ValidationResult.rejected("Dictionary metadata is missing $key.")
+                }
+            }
+            if (SUPPORTED_SCHEMA_VERSION != meta["schema_version"]) {
+                return ValidationResult.rejected("Dictionary schema version is unsupported.")
+            }
+            return null
+        }
+
+        private fun validateHasKanjiRows(db: SQLiteDatabase): ValidationResult {
+            db.rawQuery("SELECT literal FROM kanji LIMIT 1", null).use { cursor ->
+                return if (cursor.moveToFirst()) {
+                    ValidationResult.ok()
+                } else {
+                    ValidationResult.rejected("Dictionary has no kanji rows.")
+                }
             }
         }
 
@@ -422,8 +434,8 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         }
 
         private fun splitList(value: String?): List<String> {
-            if (value == null || value.isEmpty()) {
-                return ArrayList()
+            if (value.isNullOrEmpty()) {
+                return emptyList()
             }
             val out: MutableList<String> = ArrayList()
             for (cell in LIST_PART_SEPARATOR.split(value, -1)) {
@@ -596,7 +608,10 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
 
         private fun deleteQuietly(file: File?) {
             if (file != null && file.exists()) {
-                file.delete()
+                val deleted = file.delete()
+                if (!deleted && file.exists()) {
+                    return
+                }
             }
         }
     }

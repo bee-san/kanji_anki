@@ -67,7 +67,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         for (note in snapshot.notes) {
             val deckIds = deckIdsByNote[note.noteId]
             val decks = deckNamesByNote[note.noteId]
-            if (decks == null || decks.isEmpty()) {
+            if (decks.isNullOrEmpty()) {
                 continue
             }
             val expression = TextUtil.normalizeJapanese(note.expression(settings))
@@ -231,7 +231,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         for (note in notes.values) {
             val deckIds = deckIdsByNote[note.noteId]
             val decks = deckNamesByNote[note.noteId]
-            if (decks == null || decks.isEmpty()) {
+            if (decks.isNullOrEmpty()) {
                 continue
             }
             val noteValues = ContentValues()

@@ -3,6 +3,16 @@ package dev.bee.kanjianki.data
 import android.database.sqlite.SQLiteDatabase
 
 internal object LocalStoreTableCreator {
+    private const val COLUMN_FIRST_SEEN_AT = "first_seen_at INTEGER NOT NULL"
+    private const val COLUMN_LAST_SEEN_AT = "last_seen_at INTEGER NOT NULL"
+    private const val COLUMN_TARGET_KANJI = "target_kanji TEXT NOT NULL"
+    private const val COLUMN_CHOICE_SIGNATURE = "choice_signature TEXT NOT NULL"
+    private const val COLUMN_ID_AUTOINCREMENT = "id INTEGER PRIMARY KEY AUTOINCREMENT"
+    private const val COLUMN_CREATED_AT = "created_at INTEGER NOT NULL"
+    private const val COLUMN_SYNC_ID = "sync_id INTEGER NOT NULL"
+    private const val COLUMN_FINISHED_AT = "finished_at INTEGER NOT NULL"
+    private const val COLUMN_MODEL_NAME = "model_name TEXT NOT NULL"
+
     fun createStudyTaskLogTable(db: SQLiteDatabase) {
         db.execSQL(LocalStoreBase.STUDY_TASK_LOG_TABLE_SQL)
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_task_log_answered ON ${LocalStoreBase.TABLE_STUDY_TASK_LOG}(answered_at)")
@@ -27,8 +37,8 @@ internal object LocalStoreTableCreator {
             "search_text TEXT NOT NULL",
             "source_count INTEGER NOT NULL",
             "example_count INTEGER NOT NULL",
-            "first_seen_at INTEGER NOT NULL",
-            "last_seen_at INTEGER NOT NULL",
+            COLUMN_FIRST_SEEN_AT,
+            COLUMN_LAST_SEEN_AT,
         )
         db.createTableIfMissing(
             LocalStoreBase.TABLE_LOCAL_KANJI_SUSPENSIONS,
@@ -44,8 +54,8 @@ internal object LocalStoreTableCreator {
             "kanji_a TEXT NOT NULL",
             "kanji_b TEXT NOT NULL",
             "source TEXT NOT NULL",
-            "first_seen_at INTEGER NOT NULL",
-            "last_seen_at INTEGER NOT NULL",
+            COLUMN_FIRST_SEEN_AT,
+            COLUMN_LAST_SEEN_AT,
             "PRIMARY KEY (kanji_a, kanji_b, source)",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_a ON similar_kanji_pairs(kanji_a)")
@@ -55,8 +65,8 @@ internal object LocalStoreTableCreator {
     fun createSimilarKanjiPracticeTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
-            "target_kanji TEXT NOT NULL",
-            "choice_signature TEXT NOT NULL",
+            COLUMN_TARGET_KANJI,
+            COLUMN_CHOICE_SIGNATURE,
             "primary_meaning TEXT NOT NULL",
             "choices TEXT NOT NULL",
             "due_at INTEGER NOT NULL",
@@ -65,33 +75,33 @@ internal object LocalStoreTableCreator {
             "correct_count INTEGER NOT NULL DEFAULT 0",
             "wrong_count INTEGER NOT NULL DEFAULT 0",
             "active_token TEXT NOT NULL DEFAULT ''",
-            "first_seen_at INTEGER NOT NULL",
-            "last_seen_at INTEGER NOT NULL",
+            COLUMN_FIRST_SEEN_AT,
+            COLUMN_LAST_SEEN_AT,
             "PRIMARY KEY (target_kanji, choice_signature)",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_choice_due ON similar_kanji_choice_state(passed_at, due_at)")
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
-            "id INTEGER PRIMARY KEY AUTOINCREMENT",
-            "target_kanji TEXT NOT NULL",
+            COLUMN_ID_AUTOINCREMENT,
+            COLUMN_TARGET_KANJI,
             "repair_kanji TEXT NOT NULL",
-            "choice_signature TEXT NOT NULL",
+            COLUMN_CHOICE_SIGNATURE,
             "wrong_selection TEXT NOT NULL",
             "prompt_meaning TEXT NOT NULL",
             "status TEXT NOT NULL",
             "due_at INTEGER NOT NULL",
             "active_token TEXT NOT NULL DEFAULT ''",
             "attempts INTEGER NOT NULL DEFAULT 0",
-            "created_at INTEGER NOT NULL",
+            COLUMN_CREATED_AT,
             "updated_at INTEGER NOT NULL",
             "completed_at INTEGER NOT NULL DEFAULT 0",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_repair_due ON similar_kanji_repair_queue(status, due_at, created_at)")
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
-            "id INTEGER PRIMARY KEY AUTOINCREMENT",
-            "target_kanji TEXT NOT NULL",
-            "choice_signature TEXT NOT NULL",
+            COLUMN_ID_AUTOINCREMENT,
+            COLUMN_TARGET_KANJI,
+            COLUMN_CHOICE_SIGNATURE,
             "selected_kanji TEXT NOT NULL",
             "correct INTEGER NOT NULL",
             "reviewed_at INTEGER NOT NULL",
@@ -102,16 +112,16 @@ internal object LocalStoreTableCreator {
     fun createHistoricalSyncTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS,
-            "id INTEGER PRIMARY KEY AUTOINCREMENT",
-            "sync_id INTEGER NOT NULL",
+            COLUMN_ID_AUTOINCREMENT,
+            COLUMN_SYNC_ID,
             "started_at INTEGER NOT NULL",
-            "finished_at INTEGER NOT NULL",
+            COLUMN_FINISHED_AT,
             "card_id INTEGER NOT NULL",
             "note_id INTEGER NOT NULL",
             "deck_id TEXT NOT NULL DEFAULT ''",
             "deck_name TEXT NOT NULL",
             "model_id INTEGER NOT NULL DEFAULT 0",
-            "model_name TEXT NOT NULL",
+            COLUMN_MODEL_NAME,
             "ord INTEGER NOT NULL",
             "queue INTEGER NOT NULL",
             "type INTEGER NOT NULL",
@@ -129,11 +139,11 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_card_snapshots_note ON ${LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS}(sync_id, note_id)")
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SYNC_NOTE_SNAPSHOTS,
-            "sync_id INTEGER NOT NULL",
-            "finished_at INTEGER NOT NULL",
+            COLUMN_SYNC_ID,
+            COLUMN_FINISHED_AT,
             "note_id INTEGER NOT NULL",
             "model_id INTEGER NOT NULL DEFAULT 0",
-            "model_name TEXT NOT NULL",
+            COLUMN_MODEL_NAME,
             "deck_ids TEXT NOT NULL DEFAULT ''",
             "deck_names TEXT NOT NULL",
             "expression TEXT NOT NULL",
@@ -148,8 +158,8 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_note_snapshots_kanji ON ${LocalStoreBase.TABLE_SYNC_NOTE_SNAPSHOTS}(sync_id, extracted_kanji)")
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS,
-            "sync_id INTEGER NOT NULL",
-            "finished_at INTEGER NOT NULL",
+            COLUMN_SYNC_ID,
+            COLUMN_FINISHED_AT,
             "kanji TEXT NOT NULL",
             "active_cards INTEGER NOT NULL",
             "suspended_cards INTEGER NOT NULL",
@@ -173,8 +183,8 @@ internal object LocalStoreTableCreator {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_IMPORT_RULE_AUDITS,
             "sync_id INTEGER PRIMARY KEY",
-            "created_at INTEGER NOT NULL",
-            "model_name TEXT NOT NULL",
+            COLUMN_CREATED_AT,
+            COLUMN_MODEL_NAME,
             "enabled_sources TEXT NOT NULL",
             "rank_min INTEGER NOT NULL",
             "rank_max INTEGER NOT NULL",
@@ -187,7 +197,7 @@ internal object LocalStoreTableCreator {
         )
         db.createTableIfMissing(
             LocalStoreBase.TABLE_IMPORT_DECISIONS,
-            "sync_id INTEGER NOT NULL",
+            COLUMN_SYNC_ID,
             "kanji TEXT NOT NULL",
             "decision TEXT NOT NULL",
             "reason_code TEXT NOT NULL",
@@ -202,7 +212,7 @@ internal object LocalStoreTableCreator {
             "rule_types TEXT NOT NULL",
             "source_card_ids TEXT NOT NULL",
             "source_note_ids TEXT NOT NULL",
-            "created_at INTEGER NOT NULL",
+            COLUMN_CREATED_AT,
             "PRIMARY KEY (sync_id, kanji)",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_import_decisions_kanji_sync ON ${LocalStoreBase.TABLE_IMPORT_DECISIONS}(kanji, sync_id)")

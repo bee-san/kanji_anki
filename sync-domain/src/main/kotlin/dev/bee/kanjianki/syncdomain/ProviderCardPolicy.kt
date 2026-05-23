@@ -17,11 +17,8 @@ class ProviderCardPolicy private constructor() {
         private const val RETRIEVABILITY = "retrievability"
         private val EMPTY = FsrsMemoryState(null, null, null)
         private val FSRS_DATA_VALUE = Pattern.compile(
-            "(?:\"|')?(stability|difficulty|retrievability|s|d|r)(?:\"|')?\\s*[:=]\\s*\"?([-+]?[0-9]+(?:\\.[0-9]+)?)\"?",
-            Pattern.CASE_INSENSITIVE
+            "(?i)['\"]?(stability|difficulty|retrievability|s|d|r)['\"]?\\s*[:=]\\s*['\"]?([^\\s,'\"{}\\[\\]]+)"
         )
-        private val FINITE_DOUBLE_VALUE =
-            Pattern.compile("[-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?")
 
         @JvmStatic
         fun shouldReportCardProgress(scanned: Int, total: Int): Boolean {
@@ -75,11 +72,7 @@ class ProviderCardPolicy private constructor() {
 
         @JvmStatic
         fun parseDouble(value: String?): Double? {
-            if (value == null || !FINITE_DOUBLE_VALUE.matcher(value).matches()) {
-                return null
-            }
-            val parsed = value.toDouble()
-            return if (parsed.isInfinite()) null else parsed
+            return value?.trim()?.toDoubleOrNull()?.takeIf { it.isFinite() }
         }
 
         private fun firstFiniteDouble(firstValue: String?, fallbackValue: String?): Double? {

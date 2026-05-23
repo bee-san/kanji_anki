@@ -35,11 +35,7 @@ class AutoSyncJobService : JobService {
 
     override fun onStartJob(params: JobParameters?): Boolean {
         return startJob(
-            object : RunningMarker {
-                override fun markRunning() {
-                    stopped = false
-                }
-            },
+            { stopped = false },
             executor,
             Runnable { autoSyncTask.run(params) },
         )
@@ -47,11 +43,7 @@ class AutoSyncJobService : JobService {
 
     override fun onStopJob(params: JobParameters?): Boolean {
         return stopJob(
-            object : StopMarker {
-                override fun markStopped() {
-                    stopped = true
-                }
-            },
+            { stopped = true },
         )
     }
 

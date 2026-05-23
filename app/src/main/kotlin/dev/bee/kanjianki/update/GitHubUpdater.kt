@@ -640,7 +640,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 return ApkMetadata("", "", 0)
             }
             return ApkMetadata(
-                info.packageName ?: "",
+                info.packageName,
                 info.versionName ?: "",
                 info.applicationInfo?.targetSdkVersion ?: 0,
             )

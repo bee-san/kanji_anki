@@ -11,7 +11,7 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler
 class BootReminderReceiver internal constructor(
     private val actions: RescheduleActions,
 ) : BroadcastReceiver() {
-    constructor() : this(AndroidRescheduleActions())
+    constructor() : this(AndroidRescheduleActions)
 
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action
@@ -21,19 +21,15 @@ class BootReminderReceiver internal constructor(
         handle(context, action, actions)
     }
 
-    interface ActionReader<T> {
+    fun interface ActionReader<T> {
         fun read(source: T): String?
     }
 
-    interface RescheduleActions {
+    fun interface RescheduleActions {
         fun schedule(context: Context?)
     }
 
-    private class IntentActionReader : ActionReader<Intent> {
-        override fun read(source: Intent): String? = source.action
-    }
-
-    private class AndroidRescheduleActions : RescheduleActions {
+    private object AndroidRescheduleActions : RescheduleActions {
         override fun schedule(context: Context?) {
             val receiverContext = context!!
             ReminderScheduler.schedule(receiverContext)
@@ -44,7 +40,7 @@ class BootReminderReceiver internal constructor(
     }
 
     companion object {
-        private val INTENT_ACTION_READER: ActionReader<Intent> = IntentActionReader()
+        private val INTENT_ACTION_READER: ActionReader<Intent> = ActionReader { source -> source.action }
 
         @JvmStatic
         fun handle(context: Context?, intent: Intent?, actions: RescheduleActions) {
