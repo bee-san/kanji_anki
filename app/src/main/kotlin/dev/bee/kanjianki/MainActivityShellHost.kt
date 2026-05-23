@@ -7,7 +7,6 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
         prepareRoute(selected)
         activity.contentScrollY = initialScrollY
-        activity.studyActionBar = null
         activity.setContent {
             MainActivityComposeRoute(
                 model = MainActivityShellModel(selectedRoute = selected),
@@ -28,7 +27,6 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     ) {
         prepareRoute(selected)
         activity.contentScrollY = initialScrollY
-        activity.studyActionBar = null
         beforeContent()
         activity.setContent {
             MainActivityComposeRouteWithActionBar(

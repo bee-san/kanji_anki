@@ -8,7 +8,6 @@ import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
-import android.widget.LinearLayout
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
@@ -56,12 +55,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var contentScrollY = 0
-
-    @JvmField
-    var studyActionBar: LinearLayout? = null
-
-    @JvmField
-    var studyActionBarBottomInset = 0
 
     @JvmField
     var activeSession: RecordsSchedulerModels.StudySession? = null
@@ -371,17 +364,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             ::renderHome,
             ::renderSettings,
         )
-    }
-
-    fun styleStudyActionBarShell() {
-        studyActionBar?.let {
-            applyStudyActionBarPadding()
-            it.setBackgroundColor(STUDY_BG)
-        }
-    }
-
-    fun applyStudyActionBarPadding() {
-        studyActionBar?.setPadding(dp(18), dp(10), dp(18), dp(8) + studyActionBarBottomInset)
     }
 
     fun startOfDay(now: Long): Long {

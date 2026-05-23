@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -155,11 +154,6 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     fun hideStudyActionBar() {
-        val studyActionBar = home.studyActionBar
-        if (studyActionBar != null) {
-            studyActionBar.removeAllViews()
-            studyActionBar.visibility = View.GONE
-        }
         home.flashcardActionBarState = null
     }
 

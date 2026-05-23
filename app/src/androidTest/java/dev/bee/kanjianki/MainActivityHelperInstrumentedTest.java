@@ -1118,7 +1118,6 @@ public final class MainActivityHelperInstrumentedTest {
                 View root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "裂");
                 assertHasText(activity, "Correct");
-                assertNull(activity.studyActionBar);
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
                 performClickableWithText(root, "Next");
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
@@ -1163,7 +1162,6 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "Draw this kanji");
 
                 activity.activeSession = null;
-                activity.studyActionBar = null;
                 activity.buildComposeWritingActionBarState();
                 activity.checkWriting();
                 activity.submitReview(MainActivityBase.RATING_GOOD, false);
@@ -1364,11 +1362,9 @@ public final class MainActivityHelperInstrumentedTest {
             MainActivity activity,
             RecordsSchedulerModels.StudySession writing
     ) {
-        activity.studyActionBar = null;
         activity.buildFlashcardActionBar(false);
         assertNotNull(activity.flashcardActionBarState);
         assertFalse(activity.flashcardActionBarState.getRevealed());
-        activity.studyActionBar = new LinearLayout(activity);
         activity.buildFlashcardActionBar(true);
         assertTrue(activity.flashcardActionBarState.getRevealed());
         activity.flashcardAnswerRevealed = true;
@@ -1611,7 +1607,6 @@ public final class MainActivityHelperInstrumentedTest {
 
                 RecordsSchedulerModels.StudySession gestureSession = sessionWithToken("提", BridgeScheduler.TASK_KANJI_MEANING, row("提", "carry", "テイ", Collections.emptyList()), "gesture-token");
                 activity.activeSession = gestureSession;
-                activity.studyActionBar = new LinearLayout(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.flashcardHeroPanel = new LinearLayout(activity);
                 activity.flashcardRevealState = null;
@@ -1935,7 +1930,6 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(fallback.getManualOverrideVisible());
                 primary.getOnNext().run();
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
-                assertNull(activity.studyActionBar);
             });
         }
     }
