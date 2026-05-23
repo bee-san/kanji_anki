@@ -6,7 +6,7 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest verified commit before this note: `12a50fdb Document green rewrite verification`
+- Latest verified commit before this note: `44df402e Clean androidTest assertion smells`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`, mergeable
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -67,7 +67,7 @@ Completed foundations include:
 ## Verification Baseline
 
 The final proof pass on 2026-05-23 verified code head
-`12a50fdb6718794bbaba85025ab86c49097e94f6`.
+`44df402eb6e2b80bb240e29492676cfc1e375639`.
 
 The focused local gates passed with:
 
@@ -77,6 +77,9 @@ The focused local gates passed with:
 ./gradlew ciFast
 ```
 
+The clean compile gate passed with Kotlin daemon cache warnings followed by
+Gradle's non-daemon fallback compile; the command returned `BUILD SUCCESSFUL`.
+
 The targeted emulator gates passed with:
 
 ```bash
@@ -85,14 +88,23 @@ env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_S
 env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.sync.ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents
 ```
 
-The latest writing-core ABI regression gate passed with:
+The inventory and route-shape audit passed with:
 
 ```bash
-./gradlew :writing-core:test
+find app/src/main core/src/main domain/src/main dictionary-core/src/main writing-core/src/main sync-domain/src/main fsrs-java/src/main update-core/src/main -name '*.java' -print | sort
+rg -n "AndroidView|ComposeView|setContent|composeRoute|LinearLayout|ScrollView|TextView|Button\(" app/src/main/kotlin app/src/main/java
+rg -n "ForTests|forTests|set.*ForTests|@VisibleForTesting" app/src/main/kotlin app/src/main/java core/src/main domain/src/main dictionary-core/src/main writing-core/src/main sync-domain/src/main fsrs-java/src/main update-core/src/main
 ```
 
-GitHub Actions run `26329651475` passed for commit
-`12a50fdb6718794bbaba85025ab86c49097e94f6`:
+The Java inventory command returns only
+`core/src/main/java/dev/bee/kanjianki/core/FrequencyRetentionRanges.java`.
+The route-shape search shows production `setContent`/`composeRoute` entry
+points and one production `AndroidView` in `MainActivityStudyWritingPadCompose`;
+there is no production `ComposeView`. The production test-bridge search returns
+no matches.
+
+GitHub Actions run `26331843021` passed for commit
+`44df402eb6e2b80bb240e29492676cfc1e375639`:
 
 - App unit tests and coverage
 - JVM tests and coverage
@@ -100,8 +112,8 @@ GitHub Actions run `26329651475` passed for commit
 - App lint and androidTest compile
 - Fast confidence gate
 
-The manual SonarQube PR-safe workflow run `26329756841` also passed for the
-same branch head.
+SonarQube workflow run `26331843026` passed for the same commit, and the
+SonarCloud Code Analysis check completed successfully.
 
 Local Gradle may fail inside the Codex sandbox with:
 
@@ -113,14 +125,10 @@ When that happens, rerun the same Gradle command outside the sandbox via the app
 
 ## Review Agent State
 
-Reviewer agents have been used after pushed commits. The latest actionable review covered the study done-actions Compose slice and found two coverage gaps:
-
-```bash
-git show --stat --oneline 2f1cf8e6
-git show --check 2f1cf8e6
-```
-
-Commit `2f1cf8e6` closes those gaps by clicking `Study more new cards` in the helper test and covering both populated and empty extra-new-card states in the Compose test.
+Reviewer agents have been used after pushed commits. The latest actionable
+review covered Sonar/code-smell and CI risks after the Robolectric coverage
+slice. Commits `57a053dc` and `44df402e` close the reported lint/workflow and
+androidTest assertion-style findings.
 
 ## Rewrite Exit Checklist
 

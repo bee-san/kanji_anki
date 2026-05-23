@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified code commit before this refresh: `12a50fdb`
+- Last verified code commit before this refresh: `44df402e`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -39,10 +39,29 @@ item is satisfied.
   Settings, Browse, Detail, Stats, Games, and Update route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
-- GitHub Actions run `26329651475` passed for commit
-  `12a50fdb6718794bbaba85025ab86c49097e94f6`.
-- Manual SonarQube PR-safe workflow run `26329756841` passed for the same
-  branch head.
+- GitHub Actions run `26331843021` passed for commit
+  `44df402eb6e2b80bb240e29492676cfc1e375639`.
+- SonarQube workflow run `26331843026` passed for the same branch head, and the
+  SonarCloud Code Analysis check completed successfully.
+
+## Final Prompt-To-Artifact Audit
+
+This audit was refreshed on 2026-05-23 against commit
+`44df402eb6e2b80bb240e29492676cfc1e375639`.
+
+| Requirement | Evidence |
+| --- | --- |
+| Kotlin-first production code with only the documented Java exception | `find app/src/main core/src/main domain/src/main dictionary-core/src/main writing-core/src/main sync-domain/src/main fsrs-java/src/main update-core/src/main -name '*.java' -print \| sort` returns only `core/src/main/java/dev/bee/kanjianki/core/FrequencyRetentionRanges.java`. |
+| Direct Compose user-facing routes, with handwriting pad as the only documented `AndroidView` exception | `rg -n "AndroidView\|ComposeView\|setContent\|composeRoute\|LinearLayout\|ScrollView\|TextView\|Button\\(" app/src/main/kotlin app/src/main/java` shows `MainActivityShellHost.setContent`, route `composeRoute` entry points, and one production `AndroidView` in `MainActivityStudyWritingPadCompose`; no production `ComposeView` remains. |
+| Production test bridges removed | `rg -n "ForTests\|forTests\|set.*ForTests\|@VisibleForTesting" app/src/main/kotlin app/src/main/java core/src/main domain/src/main dictionary-core/src/main writing-core/src/main sync-domain/src/main fsrs-java/src/main update-core/src/main` returns no matches. |
+| Home, Settings, Browse, Detail, Stats, Games, and Update route parity smoke | `env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.MainActivityPrimaryRouteSmokeInstrumentedTest` passed on the current head. |
+| Study flashcard, writing, similar-kanji choice, and meaning-kanji choice route parity smoke | `env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.MainActivityStudyRouteSmokeInstrumentedTest` passed on the current head. |
+| Manual sync progress/parity smoke | `env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.sync.ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents` passed on the current head. |
+| Clean compile gate | `./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin` passed on the current head. Local Kotlin daemon cache warnings recovered through Gradle's fallback compiler and the command returned `BUILD SUCCESSFUL`. |
+| androidTest compilation gate | `./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac` passed on the current head. |
+| Deterministic local fast gate | `./gradlew ciFast` passed on the current head. |
+| PR CI and SonarQube green | PR #11 check rollup is green for `44df402e`: Android CI run `26331843021`, SonarQube run `26331843026`, and SonarCloud Code Analysis all succeeded. |
+| Branch state | `git status --short --branch` reports `codex-android-architecture-20260518...origin/codex-android-architecture-20260518` with no local changes before this evidence-doc update. |
 
 ## Completion Checklist
 
