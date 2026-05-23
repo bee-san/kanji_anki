@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `1dfef958`
+- Last verified code commit before this refresh: `12a50fdb`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -26,6 +26,10 @@ item is satisfied.
   dependency overrides now go through the debug-only mutable
   `MainActivityRuntimeOverrides`.
 - Latest local verification on 2026-05-23 passed `./gradlew ciFast`.
+- Latest clean compile verification on 2026-05-23 passed
+  `./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin`.
+- Latest androidTest compilation verification on 2026-05-23 passed
+  `./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`.
 - Latest targeted emulator smoke on 2026-05-23 passed
   `MainActivityStudyRouteSmokeInstrumentedTest`, covering production Study
   flashcard, writing, similar-kanji choice, and meaning-kanji choice route
@@ -35,12 +39,12 @@ item is satisfied.
   Settings, Browse, Detail, Stats, Games, and Update route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
-- GitHub Actions run `26329449365` passed for commit
-  `1dfef958239f9a8c6dbc5d34d76c1fadebec1eda`.
-- Manual SonarQube PR-safe workflow run `26329550585` passed for the same
+- GitHub Actions run `26329651475` passed for commit
+  `12a50fdb6718794bbaba85025ab86c49097e94f6`.
+- Manual SonarQube PR-safe workflow run `26329756841` passed for the same
   branch head.
 
-## Remaining Migration Items
+## Completion Checklist
 
 ### 1. Finish Direct Compose Routing
 
@@ -158,11 +162,12 @@ fields, constructor visibility, or nullable behavior.
   Study choice, Browse/Detail, Stats, Games, manual sync, and update/settings
   navigation.
 - Current smoke evidence: Home, Settings, Browse, Detail, Stats, Games, and
-  Update are covered by the targeted primary-route emulator smoke test added in
-  `ff506966`. Manual sync was exercised on the emulator and reached `Sync
-  complete` on the live emulator dataset. Study flashcard, Study writing,
-  Study similar-kanji choice, and Study meaning-kanji choice are covered by the
-  targeted production-route emulator smoke test updated in `933709ae`.
+  Update are covered by
+  `MainActivityPrimaryRouteSmokeInstrumentedTest`. Manual sync is covered by
+  `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
+  Study flashcard, Study writing, Study similar-kanji choice, and Study
+  meaning-kanji choice are covered by
+  `MainActivityStudyRouteSmokeInstrumentedTest`.
 
 ## Paste-Ready `/goal`
 

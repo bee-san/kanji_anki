@@ -6,8 +6,8 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `1dfef958 Document complete study route smoke`
-- Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
+- Latest verified commit before this note: `12a50fdb Document green rewrite verification`
+- Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`, mergeable
 
 If `/tmp` has been wiped, resume from a normal checkout:
 
@@ -32,7 +32,7 @@ from the writable clone/worktree and push from there.
 
 ## Current Rewrite State
 
-The rewrite branch is intentionally being moved in small, reviewable commits. The app still keeps the original Android package identity and is not ready to merge to `main` yet.
+The rewrite branch is intentionally being moved in small, reviewable commits. The app still keeps the original Android package identity, and the final proof pass for the current code head has now completed.
 
 Completed foundations include:
 
@@ -57,22 +57,32 @@ Completed foundations include:
   The live emulator smoke reached `Sync complete`; the local save stage is still
   a relatively long persistence window on the emulator dataset, but it is no
   longer mislabeled as practice-queue work.
-- Study flashcard and Study writing have targeted production-route emulator
-  smoke coverage in `MainActivityStudyRouteSmokeInstrumentedTest`.
+- Study flashcard, Study writing, similar-kanji choice, and meaning-kanji choice
+  have targeted production-route emulator smoke coverage in
+  `MainActivityStudyRouteSmokeInstrumentedTest`.
+- Home, Settings, Browse, Detail, Stats, Games, and Update have targeted
+  production-route emulator smoke coverage in
+  `MainActivityPrimaryRouteSmokeInstrumentedTest`.
 
 ## Verification Baseline
 
-The most recent focused local gate passed with:
+The final proof pass on 2026-05-23 verified code head
+`12a50fdb6718794bbaba85025ab86c49097e94f6`.
+
+The focused local gates passed with:
 
 ```bash
+./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin
+./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac
 ./gradlew ciFast
 ```
 
-The latest targeted emulator gates passed with:
+The targeted emulator gates passed with:
 
 ```bash
-env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.sync.ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents
+env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.MainActivityPrimaryRouteSmokeInstrumentedTest
 env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.MainActivityStudyRouteSmokeInstrumentedTest
+env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.sync.ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents
 ```
 
 The latest writing-core ABI regression gate passed with:
@@ -81,8 +91,8 @@ The latest writing-core ABI regression gate passed with:
 ./gradlew :writing-core:test
 ```
 
-GitHub Actions run `26329449365` passed for commit
-`1dfef958239f9a8c6dbc5d34d76c1fadebec1eda`:
+GitHub Actions run `26329651475` passed for commit
+`12a50fdb6718794bbaba85025ab86c49097e94f6`:
 
 - App unit tests and coverage
 - JVM tests and coverage
@@ -90,7 +100,7 @@ GitHub Actions run `26329449365` passed for commit
 - App lint and androidTest compile
 - Fast confidence gate
 
-The manual SonarQube PR-safe workflow run `26329550585` also passed for the
+The manual SonarQube PR-safe workflow run `26329756841` also passed for the
 same branch head.
 
 Local Gradle may fail inside the Codex sandbox with:
@@ -114,7 +124,10 @@ Commit `2f1cf8e6` closes those gaps by clicking `Study more new cards` in the he
 
 ## Rewrite Exit Checklist
 
-This is the definitive remaining work. The rewrite is done only when every item in this checklist is complete, reviewed, committed, pushed, and the final verification gates pass. Do not add unrelated Java extraction or helper cleanup unless it directly completes one of these items.
+This checklist is now the completion audit baseline. The rewrite is done only
+when every item in this checklist maps to the evidence above, the evidence note
+is committed and pushed, and the final pushed branch remains clean with green
+PR checks.
 
 ### 1. Finish the direct Compose app shell
 
