@@ -128,6 +128,26 @@ public final class MainActivityStudyRouteSmokeInstrumentedTest {
             assertVisible("Which kanji means split?");
             assertVisible("裂");
             assertVisible("列");
+
+            scenario.onActivity(activity -> {
+                seedMeaningChoiceRows(activity);
+                RecordsSchedulerModels.StudySession meaningChoice = session(
+                        row,
+                        "meaning-choice-smoke",
+                        BridgeScheduler.TASK_MEANING_KANJI,
+                        false
+                );
+                activity.activeStudyPlan = plan("裂");
+                activity.activeSession = meaningChoice;
+                activity.startActiveStudyTask(activity.sessionTaskKey(meaningChoice), "裂", meaningChoice.taskType, System.currentTimeMillis());
+                activity.renderSession(meaningChoice);
+            });
+
+            assertVisible("Recall");
+            assertVisible("Choose the kanji");
+            assertVisible("Meaning -> kanji");
+            assertVisible("裂");
+            assertVisible("烈");
         }
     }
 
@@ -218,6 +238,38 @@ public final class MainActivityStudyRouteSmokeInstrumentedTest {
         } catch (Exception error) {
             throw new AssertionError(error);
         }
+    }
+
+    private static void seedMeaningChoiceRows(MainActivity activity) {
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
+                row("裂", "split", "レツ"),
+                row("列", "row", "レツ"),
+                row("烈", "ardent", "レツ"),
+                row("劣", "inferior", "レツ")
+        );
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Arrays.asList(
+                        TestRecords.kikuNote(1L, "裂語", "レツ", "split", "裂を見た。"),
+                        TestRecords.kikuNote(2L, "列語", "レツ", "row", "列を見た。"),
+                        TestRecords.kikuNote(3L, "烈語", "レツ", "ardent", "烈を見た。"),
+                        TestRecords.kikuNote(4L, "劣語", "レツ", "inferior", "劣を見た。")
+                ),
+                Arrays.asList(
+                        TestRecords.kikuCard(10L, 1L).build(),
+                        TestRecords.kikuCard(20L, 2L).build(),
+                        TestRecords.kikuCard(30L, 3L).build(),
+                        TestRecords.kikuCard(40L, 4L).build()
+                )
+        );
+        activity.store.saveSuccessfulSync(
+                snapshot,
+                Collections.emptyList(),
+                rows,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                new LocalStore.SyncTiming(3000L, 4000L),
+                null,
+                null
+        );
     }
 
     private static void assertVisible(String text) {
