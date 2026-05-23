@@ -65,6 +65,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Fetch pull request base
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+
       - name: Detect changed project areas
         id: changed-areas
         run: |
