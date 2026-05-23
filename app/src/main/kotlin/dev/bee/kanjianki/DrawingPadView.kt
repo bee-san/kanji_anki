@@ -173,7 +173,7 @@ class DrawingPadView(context: Context) : View(context) {
         return replayStrokes.isNotEmpty()
     }
 
-    fun isReplayOverlayVisibleForTests(): Boolean {
+    fun isReplayOverlayVisible(): Boolean {
         return replayOverlayVisible
     }
 

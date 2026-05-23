@@ -101,11 +101,11 @@ public final class DrawingPadViewInstrumentedTest {
         pad.captureReplaySnapshot();
         pad.startReplay();
         assertTrue(pad.hasReplaySnapshot());
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
         drawToBitmap(pad);
 
         sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 500f, 500f);
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
         assertEquals(2, edits.get());
         sendTouch(pad, 200L, 220L, MotionEvent.ACTION_UP, 560f, 560f);
     }
@@ -190,12 +190,12 @@ public final class DrawingPadViewInstrumentedTest {
         pad.startReplay();
 
         assertTrue(pad.hasReplaySnapshot());
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
 
         pad.clearReplaySnapshot();
 
         assertFalse(pad.hasReplaySnapshot());
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -219,7 +219,7 @@ public final class DrawingPadViewInstrumentedTest {
         sendTouch(pad, 100L, 120L, MotionEvent.ACTION_UP, 800f, 800f);
         drawToBitmap(pad);
         assertTrue(pad.hasInk());
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -245,7 +245,7 @@ public final class DrawingPadViewInstrumentedTest {
         DrawingPadView pad = laidOutPad();
 
         pad.startReplay();
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
         sendTouch(pad, 100L, 100L, MotionEvent.ACTION_MOVE, 10f, 10f);
         assertFalse(pad.hasInk());
 
@@ -260,7 +260,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.captureReplaySnapshot();
         pad.startReplay();
         drawToBitmap(pad);
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -366,7 +366,7 @@ public final class DrawingPadViewInstrumentedTest {
 
         pad.captureReplaySnapshot();
         drawToBitmap(pad);
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -507,7 +507,7 @@ public final class DrawingPadViewInstrumentedTest {
         pad.startReplay();
 
         pad.setGuide(twoStrokeGuide(), (HintState) null, true);
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
         Bitmap replaying = renderToBitmap(pad);
         try {
             assertTrue(countBluePixels(replaying) > 0);
@@ -516,7 +516,7 @@ public final class DrawingPadViewInstrumentedTest {
         }
 
         pad.setGuide(new StrokeGuide("空", Collections.emptyList()), HintState.initial(), true);
-        assertFalse(pad.isReplayOverlayVisibleForTests());
+        assertFalse(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -535,7 +535,7 @@ public final class DrawingPadViewInstrumentedTest {
         } finally {
             finishedReplay.recycle();
         }
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -556,7 +556,7 @@ public final class DrawingPadViewInstrumentedTest {
         } finally {
             partialReplay.recycle();
         }
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
     }
 
     @Test
@@ -574,7 +574,7 @@ public final class DrawingPadViewInstrumentedTest {
         } finally {
             firstFrame.recycle();
         }
-        assertTrue(pad.isReplayOverlayVisibleForTests());
+        assertTrue(pad.isReplayOverlayVisible());
     }
 
     private static DrawingPadView laidOutPad() {

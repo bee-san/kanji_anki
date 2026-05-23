@@ -1856,7 +1856,7 @@ public final class MainActivityInstrumentedTest {
                 DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasInk());
-                assertFalse(pad.isReplayOverlayVisibleForTests());
+                assertFalse(pad.isReplayOverlayVisible());
             });
         }
     }

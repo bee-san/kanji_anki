@@ -1890,7 +1890,7 @@ public final class MainActivityHelperInstrumentedTest {
                 addInk(activity.drawingPad);
                 activity.drawingPad.captureReplaySnapshot();
                 activity.replayWritingAnalysis();
-                assertTrue(activity.drawingPad.isReplayOverlayVisibleForTests());
+                assertTrue(activity.drawingPad.isReplayOverlayVisible());
             });
         }
     }
