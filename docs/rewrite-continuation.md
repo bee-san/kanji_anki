@@ -1,13 +1,13 @@
 # Kani Rewrite Continuation
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 
 ## Branch and PR
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `882b8702 Migrate update metadata helpers to Kotlin`
-- Latest confirmed PR state: draft, mergeable, head SHA `2f1cf8e643b23d0bd055a6a440f9f9e82a0388e8`
+- Latest confirmed pushed commit before this note: `1fc1545c Rename replay overlay state query`
+- Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
 
 If `/tmp` has been wiped, resume from a normal checkout:
 
@@ -44,14 +44,28 @@ Completed foundations include:
 - Real Compose surfaces now include Home header/actions/CTA/metrics, Home recent mistakes and browse-detail timeline, Stats, Settings update/reference/category/automation hero areas, Games question card, Study top bar, flashcard card/actions, writing action bars, and done actions.
 - Recent pushed slices removed the legacy shell/content/scroll mirrors, removed production `ComposeView` and `TextView` helper wrappers, rendered flashcards directly in Compose, and migrated `update-core` production code to Kotlin.
 - Production View interop is now limited to the handwriting pad `AndroidView`, which hosts the real `DrawingPadView`.
-- Study helper bridges are being pushed into `androidTest`; `learningPanel(session)` no longer lives in `MainActivityStudy`.
+- `writing-core/src/main` and `sync-domain/src/main` are Kotlin-only.
+- Production `ForTests` APIs have been removed from app main sources. Instrumentation dependency overrides now go through the debug-only mutable `MainActivityRuntimeOverrides`; the release variant exposes null-only overrides, and the drawing-pad replay state query is production-neutral.
+- Study helper bridges have been pushed into `androidTest`; `learningPanel(session)` no longer lives in `MainActivityStudy`.
 
 ## Verification Baseline
 
 The most recent focused local gate passed with:
 
 ```bash
-./gradlew --no-daemon :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac :app:testDebugUnitTest :app:lintDebug
+./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac
+```
+
+The latest variant-boundary gate passed with:
+
+```bash
+./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:compileReleaseKotlin
+```
+
+The latest writing-core ABI regression gate passed with:
+
+```bash
+./gradlew :writing-core:test
 ```
 
 Earlier in this branch, GitHub Actions run `26056399662` passed:
@@ -126,6 +140,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
 - Large core Java files are migrated in risk order: record/model containers, scheduler/review logic, copy/text helpers, import selection, game/planner logic, and analyzers.
 - Java-to-Kotlin migrations preserve Java-callable APIs where tests or Android code still depend on method-style accessors.
 - Current intentional Java exception: `FrequencyRetentionRanges.java` stays Java until this compatibility contract is no longer needed, because its nested `Rule` constructor must remain genuinely private to Java reflection. Kotlin private nested constructors emit a public synthetic `DefaultConstructorMarker` constructor.
+- Current hard Java inventory: only `core/src/main/java/dev/bee/kanjianki/core/FrequencyRetentionRanges.java` remains under main sources for app/core/domain/dictionary-core/writing-core/sync-domain/fsrs-java/update-core.
 
 ### 7. Finish fsrs-java and scheduler parity
 

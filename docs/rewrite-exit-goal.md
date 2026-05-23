@@ -7,9 +7,11 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `882b8702`
+- Last verified commit before this refresh: `1fc1545c`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
+- `writing-core/src/main` is Kotlin-only.
+- `sync-domain/src/main` is Kotlin-only.
 - `update-core/src/main` is Kotlin-only.
 - `core/src/main/java/dev/bee/kanjianki/core` has 1 Java file.
 - `FrequencyRetentionRanges.java` is the intentional compatibility exception
@@ -17,6 +19,9 @@ item is satisfied.
 - Compose is wired through direct `setContent` route surfaces. The only live
   production `AndroidView` bridge is the handwriting pad, which must host the
   real `DrawingPadView`.
+- Production `ForTests` APIs have been removed from app main sources; test
+  dependency overrides now go through the debug-only mutable
+  `MainActivityRuntimeOverrides`.
 
 ## Remaining Migration Items
 
@@ -35,12 +40,14 @@ item is satisfied.
 
 ### 2. Remove Production Test Bridges
 
-- Helpers whose only purpose is instrumentation access move from
+- Helpers whose only purpose is instrumentation access have moved from
   `app/src/main` into `app/src/androidTest`.
-- Production `MainActivity*` classes do not expose methods solely because tests
+- Production `MainActivity*` classes must not expose methods solely because tests
   call them.
 - Tests either drive the real Compose route, call pure model builders, or use
   androidTest-local bridge helpers.
+- Current hard inventory: `rg "ForTests|forTests|set.*ForTests|@VisibleForTesting"
+  app/src/main/kotlin app/src/main/java` returns no matches.
 
 ### 3. Finish Settings As A Model-Driven Compose Screen
 
@@ -109,6 +116,9 @@ fields, constructor visibility, or nullable behavior.
 - Any Room/DataStore/Hilt adoption is either completed for a bounded vertical
   slice or deferred with a written reason. Do not claim the modern stack is done
   if the app still uses the existing local-store implementation.
+- Current state: Room, DataStore, and Hilt are not adopted in production code;
+  final completion must either implement bounded slices or leave an explicit
+  deferral note tied to the existing repository boundaries.
 
 ### 9. Verification And Review Gates
 
