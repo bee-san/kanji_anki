@@ -6,7 +6,7 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `4da4e2b9 Add study route smoke test`
+- Latest confirmed pushed commit before this note: `2718956b Cover study choice Compose route smoke`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -152,7 +152,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
 - `update-core/src/main` remains Kotlin-only.
 - Large core Java files are migrated in risk order: record/model containers, scheduler/review logic, copy/text helpers, import selection, game/planner logic, and analyzers.
 - Java-to-Kotlin migrations preserve Java-callable APIs where tests or Android code still depend on method-style accessors.
-- Current intentional Java exception: `FrequencyRetentionRanges.java` stays Java until this compatibility contract is no longer needed, because its nested `Rule` constructor must remain genuinely private to Java reflection. Kotlin private nested constructors emit a public synthetic `DefaultConstructorMarker` constructor.
+- Current intentional Java exception: `FrequencyRetentionRanges.java` stays Java until this compatibility contract is no longer needed, because its nested `Rule` constructor must remain genuinely private to Java reflection. A Kotlin replacement attempt emitted a public synthetic `DefaultConstructorMarker` constructor and failed `FrequencyRetentionRangesTest#ruleConstructorStaysPrivateForJavaInterop`.
 - Current hard Java inventory: only `core/src/main/java/dev/bee/kanjianki/core/FrequencyRetentionRanges.java` remains under main sources for app/core/domain/dictionary-core/writing-core/sync-domain/fsrs-java/update-core.
 
 ### 7. Finish fsrs-java and scheduler parity
@@ -177,7 +177,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
   - `./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`
   - `./gradlew :app:testDebugUnitTest`
   - `./gradlew ciFast`
-- Manual or emulator smoke coverage must include Home, Settings, Study flashcard, Study writing, Study choice cards, browse/detail, sync/update, and Stats before merging.
+- Manual or emulator smoke coverage must include Home, Settings, Study flashcard, Study writing, Study choice cards, browse/detail, sync/update, and Stats before merging. The current targeted route smoke covers Study flashcard, writing, and similar-kanji choice.
 
 ### 10. Final merge criteria
 

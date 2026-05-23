@@ -7,15 +7,18 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `4da4e2b9`
+- Last verified commit before this refresh: `2718956b`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
 - `sync-domain/src/main` is Kotlin-only.
 - `update-core/src/main` is Kotlin-only.
 - `core/src/main/java/dev/bee/kanjianki/core` has 1 Java file.
-- `FrequencyRetentionRanges.java` is the intentional compatibility exception
-  unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
+- `FrequencyRetentionRanges.java` is the intentional compatibility exception:
+  the Kotlin replacement attempt emitted a public synthetic
+  `DefaultConstructorMarker` constructor for nested `Rule`, while
+  `FrequencyRetentionRangesTest#ruleConstructorStaysPrivateForJavaInterop`
+  requires exactly one private Java-visible constructor.
 - Compose is wired through direct `setContent` route surfaces. The only live
   production `AndroidView` bridge is the handwriting pad, which must host the
   real `DrawingPadView`.
@@ -25,7 +28,7 @@ item is satisfied.
 - Latest local verification on 2026-05-23 passed `./gradlew ciFast`.
 - Latest targeted emulator smoke on 2026-05-23 passed
   `MainActivityStudyRouteSmokeInstrumentedTest`, covering production Study
-  flashcard and writing route rendering.
+  flashcard, writing, and similar-kanji choice route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
 
@@ -95,11 +98,10 @@ Migrate or explicitly justify every remaining file. The finite remaining list is
 
 - `FrequencyRetentionRanges.java`
 
-The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
-only if its Java-reflection privacy contract is documented and tested. The
-remaining migration order is:
-
-1. Compatibility exception audit: `FrequencyRetentionRanges.java`.
+The only accepted exception is `FrequencyRetentionRanges.java`, because its
+Java-reflection privacy contract is documented and tested. A Kotlin migration
+attempt was rejected by the existing reflection test after emitting an
+additional public synthetic constructor.
 
 Every Java-to-Kotlin migration must preserve Java-callable APIs where Android
 code or tests still depend on method-style accessors, Java records, public
@@ -144,12 +146,13 @@ fields, constructor visibility, or nullable behavior.
   - `./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`
 - PR checks are green.
 - A final smoke pass covers Home, Settings, Study flashcard, Study writing,
-  Browse/Detail, Stats, Games, manual sync, and update/settings navigation.
+  Study choice, Browse/Detail, Stats, Games, manual sync, and update/settings
+  navigation.
 - Current smoke evidence: Home, Settings, Browse, Stats, Games, Update, and
   manual sync were exercised on the emulator; manual sync reached `Sync
-  complete` on the live emulator dataset. Study flashcard and Study writing are
-  covered by the targeted production-route emulator smoke test added in
-  `4da4e2b9`.
+  complete` on the live emulator dataset. Study flashcard, Study writing, and
+  Study similar-kanji choice are covered by the targeted production-route
+  emulator smoke test updated in `2718956b`.
 
 ## Paste-Ready `/goal`
 
