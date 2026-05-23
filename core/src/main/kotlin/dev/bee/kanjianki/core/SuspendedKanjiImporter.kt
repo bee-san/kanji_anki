@@ -23,7 +23,7 @@ class SuspendedKanjiImporter {
         settings: RecordsSyncModels.Settings,
     ): List<RecordsImportModels.SuspendedImport> {
         val notesById = snapshot.notesById()
-        val sourcesByKanji = LinkedHashMap<String, MutableList<RecordsImportModels.SuspendedSource>>()
+        val sourcesByKanji = LinkedHashMap<String, List<RecordsImportModels.SuspendedSource>>()
         for (card in snapshot.cards) {
             val note = notesById[card.noteId]
             if (card.suspended && note != null) {
@@ -44,7 +44,7 @@ class SuspendedKanjiImporter {
     }
 
     private fun addSuspendedSources(
-        sourcesByKanji: MutableMap<String, MutableList<RecordsImportModels.SuspendedSource>>,
+        sourcesByKanji: MutableMap<String, List<RecordsImportModels.SuspendedSource>>,
         card: RecordsSyncModels.Card,
         note: RecordsSyncModels.Note,
         settings: RecordsSyncModels.Settings,
@@ -53,18 +53,16 @@ class SuspendedKanjiImporter {
         for (kanji in TextUtil.extractKanji(expression)) {
             val rank = ranks.rankOf(kanji)
             if (rank != null && rank >= minRank && rank <= maxRank) {
-                sourcesByKanji.getOrPut(kanji) { ArrayList() }
-                    .add(
-                        RecordsImportModels.SuspendedSource(
-                            kanji,
-                            card.cardId,
-                            note.noteId,
-                            expression,
-                            TextUtil.normalizeJapanese(note.reading(settings)),
-                            TextUtil.firstMeaningLine(note.meaning(settings)),
-                            TextUtil.normalizeJapanese(note.sentence(settings)),
-                        ),
-                    )
+                val source = RecordsImportModels.SuspendedSource(
+                    kanji,
+                    card.cardId,
+                    note.noteId,
+                    expression,
+                    TextUtil.normalizeJapanese(note.reading(settings)),
+                    TextUtil.firstMeaningLine(note.meaning(settings)),
+                    TextUtil.normalizeJapanese(note.sentence(settings)),
+                )
+                sourcesByKanji[kanji] = sourcesByKanji[kanji].orEmpty() + source
             }
         }
     }

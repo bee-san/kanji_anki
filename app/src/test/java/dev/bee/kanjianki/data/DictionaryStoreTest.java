@@ -20,6 +20,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class DictionaryStoreTest {
+    private static final String[] MISSING_KANJI_INPUTS = {null, " ", "not-kanji"};
+
     @Test
     public void bundledDictionaryInstallsKanjiData() throws Exception {
         DictionaryStore store = openStore();
@@ -85,24 +87,12 @@ public final class DictionaryStoreTest {
     }
 
     @Test
-    public void lookupRejectsNullKanji() throws Exception {
+    public void lookupRejectsMissingKanji() throws Exception {
         DictionaryStore store = DictionaryStore.open(ApplicationProvider.getApplicationContext());
 
-        assertNull(store.lookupKanji(null));
-    }
-
-    @Test
-    public void lookupRejectsBlankKanji() throws Exception {
-        DictionaryStore store = DictionaryStore.open(ApplicationProvider.getApplicationContext());
-
-        assertNull(store.lookupKanji(" "));
-    }
-
-    @Test
-    public void lookupRejectsUnknownKanji() throws Exception {
-        DictionaryStore store = DictionaryStore.open(ApplicationProvider.getApplicationContext());
-
-        assertNull(store.lookupKanji("not-kanji"));
+        for (String input : MISSING_KANJI_INPUTS) {
+            assertNull(store.lookupKanji(input));
+        }
     }
 
     private static DictionaryStore openStore() throws Exception {

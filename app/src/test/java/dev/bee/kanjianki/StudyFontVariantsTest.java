@@ -19,31 +19,13 @@ import static org.junit.Assert.assertSame;
 @Config(sdk = 35)
 public final class StudyFontVariantsTest {
     @Test
-    public void fontVariantLoadsDefaultStudyFont() {
+    public void fontVariantsLoadStudyFonts() {
         Context context = ApplicationProvider.getApplicationContext();
 
-        assertNotNull(StudyFontVariants.forVariant(context, 0));
-    }
-
-    @Test
-    public void fontVariantLoadsSecondStudyFont() {
-        Context context = ApplicationProvider.getApplicationContext();
-
-        assertNotNull(StudyFontVariants.forVariant(context, 1));
-    }
-
-    @Test
-    public void fontVariantLoadsThirdStudyFont() {
-        Context context = ApplicationProvider.getApplicationContext();
-
-        assertNotNull(StudyFontVariants.forVariant(context, 2));
-    }
-
-    @Test
-    public void fontVariantLoadsFallbackStudyFont() {
-        Context context = ApplicationProvider.getApplicationContext();
-
-        assertNotNull(StudyFontVariants.forVariant(context, 99));
+        int[] variants = {0, 1, 2, 99};
+        for (int variant : variants) {
+            assertNotNull(StudyFontVariants.forVariant(context, variant));
+        }
     }
 
     @Test
