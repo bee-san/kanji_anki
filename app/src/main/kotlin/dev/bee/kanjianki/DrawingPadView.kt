@@ -131,7 +131,7 @@ class DrawingPadView(context: Context) : View(context) {
         guideState = state ?: HintState.fromWritingLevel(3)
         guideLevel = guideState.level().writingLevel()
         this.revealGuide = revealGuide
-        if (!revealGuide || guide == null || guide.isEmpty) {
+        if (!revealGuide || guide == null || guide.isEmpty()) {
             replayOverlayVisible = false
             replayStartedAtMillis = 0L
         }
@@ -382,7 +382,7 @@ class DrawingPadView(context: Context) : View(context) {
 
     private fun drawGuide(canvas: Canvas, width: Float, height: Float) {
         val guide = guide
-        if (guide != null && !guide.isEmpty) {
+        if (guide != null && !guide.isEmpty()) {
             drawStrokeHints(canvas, width, height)
             return
         }
