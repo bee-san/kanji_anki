@@ -207,6 +207,26 @@ public class WritingRatingMapperTest {
                 HintLevel.BLIND,
                 "ignored"
         );
+        WritingAnalysis oneHintOption = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Collections.emptyList(),
+                null,
+                HintLevel.TRACE
+        );
+        WritingAnalysis manyHintOptions = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Collections.emptyList(),
+                null,
+                HintLevel.OUTLINE,
+                3,
+                "ignored"
+        );
         WritingAnalysis nullHintOptions = new WritingAnalysis(
                 WritingAnalysis.Status.PASS,
                 "good",
@@ -232,6 +252,10 @@ public class WritingRatingMapperTest {
         assertEquals(0.744, passedWithoutScore.confidenceScore(), 0.001);
         assertEquals(0.0, failedWithoutScore.confidenceScore(), 0.001);
         assertEquals(0, failedWithoutScore.hintsUsed());
+        assertEquals(HintLevel.TRACE, oneHintOption.hintLevel());
+        assertEquals(0, oneHintOption.hintsUsed());
+        assertEquals(HintLevel.OUTLINE, manyHintOptions.hintLevel());
+        assertEquals(3, manyHintOptions.hintsUsed());
         assertEquals(HintLevel.BLIND, nullHintOptions.hintLevel());
         assertEquals(0, nullHintOptions.hintsUsed());
         assertEquals(HintLevel.BLIND, emptyHintOptions.hintLevel());

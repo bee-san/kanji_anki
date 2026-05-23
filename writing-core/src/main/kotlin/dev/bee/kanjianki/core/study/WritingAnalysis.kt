@@ -3,7 +3,7 @@ package dev.bee.kanjianki.core.study
 import java.util.ArrayList
 import java.util.Collections
 
-class WritingAnalysis(
+class WritingAnalysis private constructor(
     @JvmField val status: Status,
     @JvmField val rating: String?,
     @JvmField val writingPassed: Boolean,
@@ -11,6 +11,7 @@ class WritingAnalysis(
     candidates: List<RecognitionCandidate>?,
     @JvmField val strokeOrder: StrokeOrderEvaluator.StrokeOrderResult?,
     hintOptions: Array<out Any?>?,
+    @Suppress("UNUSED_PARAMETER") constructorToken: ConstructorToken,
 ) {
     constructor(
         status: Status,
@@ -19,7 +20,7 @@ class WritingAnalysis(
         message: String?,
         candidates: List<RecognitionCandidate>?,
         strokeOrder: StrokeOrderEvaluator.StrokeOrderResult?,
-    ) : this(status, rating, writingPassed, message, candidates, strokeOrder, emptyArray())
+    ) : this(status, rating, writingPassed, message, candidates, strokeOrder, emptyArray(), ConstructorToken())
 
     constructor(
         status: Status,
@@ -28,9 +29,39 @@ class WritingAnalysis(
         message: String?,
         candidates: List<RecognitionCandidate>?,
         strokeOrder: StrokeOrderEvaluator.StrokeOrderResult?,
-        hintLevel: Any?,
-        hintsUsed: Any?,
-    ) : this(status, rating, writingPassed, message, candidates, strokeOrder, arrayOf(hintLevel, hintsUsed))
+        hintOptions: Array<out Any?>?,
+    ) : this(status, rating, writingPassed, message, candidates, strokeOrder, hintOptions, ConstructorToken())
+
+    constructor(
+        status: Status,
+        rating: String?,
+        writingPassed: Boolean,
+        message: String?,
+        candidates: List<RecognitionCandidate>?,
+        strokeOrder: StrokeOrderEvaluator.StrokeOrderResult?,
+        hintOption: Any?,
+    ) : this(status, rating, writingPassed, message, candidates, strokeOrder, arrayOf(hintOption), ConstructorToken())
+
+    constructor(
+        status: Status,
+        rating: String?,
+        writingPassed: Boolean,
+        message: String?,
+        candidates: List<RecognitionCandidate>?,
+        strokeOrder: StrokeOrderEvaluator.StrokeOrderResult?,
+        firstHintOption: Any?,
+        secondHintOption: Any?,
+        vararg remainingHintOptions: Any?,
+    ) : this(
+        status,
+        rating,
+        writingPassed,
+        message,
+        candidates,
+        strokeOrder,
+        combineHintOptions(firstHintOption, secondHintOption, remainingHintOptions),
+        ConstructorToken()
+    )
 
     enum class Status {
         PASS,
@@ -76,6 +107,16 @@ class WritingAnalysis(
     fun hintsUsed(): Int = hintsUsed
 
     companion object {
+        private class ConstructorToken
+
+        private fun combineHintOptions(
+            firstHintOption: Any?,
+            secondHintOption: Any?,
+            remainingHintOptions: Array<out Any?>,
+        ): Array<out Any?> {
+            return arrayOf(firstHintOption, secondHintOption, *remainingHintOptions)
+        }
+
         private fun hintLevelFrom(hintOptions: Array<out Any?>?): HintLevel {
             return if (hintOptions != null && hintOptions.isNotEmpty() && hintOptions[0] is HintLevel) {
                 hintOptions[0] as HintLevel
