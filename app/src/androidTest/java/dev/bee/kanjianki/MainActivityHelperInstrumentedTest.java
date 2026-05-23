@@ -541,14 +541,25 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static void appendOptionalSyncSummaryLines(MainActivity activity, LinearLayout summary, ManualSyncEngine.SyncResult result) {
         if (!result.adaptiveSummary.isEmpty()) {
-            summary.addView(activity.text(result.adaptiveSummary, 15, Color.WHITE, false));
+            summary.addView(testText(activity, result.adaptiveSummary, 15, Color.WHITE, false));
         }
         if (result.importedSuspendedKanji > 0) {
-            summary.addView(activity.text(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
+            summary.addView(testText(activity, HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
         }
         if (result.message != null && !result.message.isEmpty()) {
-            summary.addView(activity.text(result.message, 14, Color.WHITE, false));
+            summary.addView(testText(activity, result.message, 14, Color.WHITE, false));
         }
+    }
+
+    private static TextView testText(Context context, String value, int sp, int color, boolean bold) {
+        TextView view = new TextView(context);
+        view.setText(value == null ? "" : value);
+        view.setTextSize((float) sp);
+        view.setTextColor(color);
+        view.setIncludeFontPadding(true);
+        view.setLineSpacing(0f, 1.05f);
+        view.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
+        return view;
     }
 
     private static void verifyImportThresholdReader(MainActivity activity) {

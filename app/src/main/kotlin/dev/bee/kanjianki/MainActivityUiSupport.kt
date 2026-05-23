@@ -2,12 +2,9 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isEmpty
@@ -22,26 +19,6 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.isAppearanceLightStatusBars = true
         controller.isAppearanceLightNavigationBars = true
-    }
-
-    fun text(value: String?, sp: Int, color: Int, bold: Boolean): TextView {
-        return TextView(this).apply {
-            text = value ?: ""
-            textSize = sp.toFloat()
-            setTextColor(color)
-            includeFontPadding = true
-            setLineSpacing(0f, 1.05f)
-            typeface = Typeface.DEFAULT
-            setTypeface(typeface, if (bold) Typeface.BOLD else Typeface.NORMAL)
-        }
-    }
-
-    fun panel(fill: Int, stroke: Int, radius: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(fill)
-            setStroke(dp(1), stroke)
-            cornerRadius = radius.toFloat()
-        }
     }
 
     fun dp(value: Int): Int {

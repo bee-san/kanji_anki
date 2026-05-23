@@ -1,10 +1,6 @@
 package dev.bee.kanjianki
 
 import android.app.AlertDialog
-import android.graphics.Typeface
-import android.view.Gravity
-import android.widget.LinearLayout
-import android.widget.TextView
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -241,15 +237,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun rowColor(item: RecordsStudyModels.StudyItem, now: Long): Int {
         return focusQueue.rowColor(item, now)
-    }
-
-    fun kanjiTile(value: String, sizePx: Int, textSp: Int): TextView {
-        return text(value, textSp, INK, true).apply {
-            gravity = Gravity.CENTER
-            setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD)
-            background = panel(BLUSH, BLUSH, dp(10))
-            layoutParams = LinearLayout.LayoutParams(sizePx, sizePx)
-        }
     }
 
     private companion object {

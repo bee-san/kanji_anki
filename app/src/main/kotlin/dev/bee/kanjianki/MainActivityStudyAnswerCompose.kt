@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
