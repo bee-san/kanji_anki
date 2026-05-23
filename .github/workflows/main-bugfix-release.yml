@@ -6,6 +6,7 @@ on:
       - main
 
 permissions:
+  actions: write
   contents: write
 
 jobs:
@@ -88,4 +89,10 @@ jobs:
             git tag "${release_tag}" "${sha}"
             git push origin "refs/tags/${release_tag}"
             git fetch --force --tags origin
+
+            echo "Dispatching Android Release for ${release_tag}."
+            gh workflow run android-release.yml \
+              --repo "${GITHUB_REPOSITORY}" \
+              --ref "${release_tag}" \
+              -f "release_tag=${release_tag}"
           done
