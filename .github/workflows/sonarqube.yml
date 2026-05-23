@@ -138,9 +138,6 @@ jobs:
         run: |
           set -euo pipefail
           FULL_COVERAGE=false
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            FULL_COVERAGE=true
-          fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.full_coverage }}" = "true" ]; then
             FULL_COVERAGE=true
           fi
@@ -270,7 +267,7 @@ jobs:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           SONAR_PROJECT_VERSION: ${{ steps.sonar-version.outputs.version }}
         with:
-          api-level: 30
+          api-level: 35
           target: aosp_atd
           arch: x86_64
           profile: pixel_2

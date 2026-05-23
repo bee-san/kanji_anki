@@ -5,6 +5,8 @@ plugins {
 }
 
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import java.util.Properties
 
@@ -75,6 +77,10 @@ android {
         jacocoVersion = "0.8.14"
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
@@ -109,6 +115,13 @@ android {
 
 jacoco {
     toolVersion = "0.8.14"
+}
+
+tasks.withType<Test>().configureEach {
+    extensions.configure<JacocoTaskExtension>("jacoco") {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
 }
 
 tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
@@ -174,6 +187,8 @@ dependencies {
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.15.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
