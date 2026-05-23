@@ -47,6 +47,12 @@ Completed foundations include:
 - `writing-core/src/main` and `sync-domain/src/main` are Kotlin-only.
 - Production `ForTests` APIs have been removed from app main sources. Instrumentation dependency overrides now go through the debug-only mutable `MainActivityRuntimeOverrides`; the release variant exposes null-only overrides, and the drawing-pad replay state query is production-neutral.
 - Study helper bridges have been pushed into `androidTest`; `learningPanel(session)` no longer lives in `MainActivityStudy`.
+- Room, DataStore, and Hilt are explicitly deferred from this PR. The live
+  production data stack is still `LocalStore`/`SQLiteOpenHelper` with focused
+  repository/storage seams such as `SettingsRepository`, `SettingsStorage`,
+  `SyncRunRepository`, and feature-specific `LocalStore*` classes. Do not claim
+  those libraries are migrated unless Gradle dependencies and production code
+  are added in a later persistence PR.
 
 ## Verification Baseline
 
@@ -153,6 +159,8 @@ This is the definitive remaining work. The rewrite is done only when every item 
 - `LocalStore`, `SettingsRepository`, historical sync storage, migration hooks, schema helpers, and activity-owned repository adapters have clear ownership and focused tests.
 - UI code does not know SQL details, migration details, or raw storage keys except through explicit repository/model APIs.
 - Settings storage fallback behavior, import provenance, sync run history, timeline events, study logs, and stats evidence remain backward compatible with existing installs.
+- Room/DataStore/Hilt are deferred for a separate persistence PR; this rewrite
+  is not complete by claiming those libraries are present.
 
 ### 9. Finish parity coverage
 

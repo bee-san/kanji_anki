@@ -119,6 +119,13 @@ fields, constructor visibility, or nullable behavior.
 - Current state: Room, DataStore, and Hilt are not adopted in production code;
   final completion must either implement bounded slices or leave an explicit
   deferral note tied to the existing repository boundaries.
+- Current deferral: this PR does not adopt Room, DataStore, or Hilt. It keeps
+  `LocalStore`/`SQLiteOpenHelper` for backward-compatible migrations and runtime
+  data, while narrowing persistence behind focused classes such as
+  `SettingsRepository`, `SettingsStorage`, `SyncRunRepository`, and the
+  `LocalStore*` feature stores. A future Room/DataStore/Hilt migration should be
+  a separate persistence PR with schema fixtures and upgrade tests, not a hidden
+  requirement of this Compose route rewrite.
 
 ### 9. Verification And Review Gates
 
