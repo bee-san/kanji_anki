@@ -1366,11 +1366,11 @@ public final class MainActivityHelperInstrumentedTest {
     ) {
         activity.studyActionBar = null;
         activity.buildFlashcardActionBar(false);
+        assertNotNull(activity.flashcardActionBarState);
+        assertFalse(activity.flashcardActionBarState.getRevealed());
         activity.studyActionBar = new LinearLayout(activity);
-        activity.buildFlashcardActionBar(false);
-        assertEquals(1, activity.studyActionBar.getChildCount());
         activity.buildFlashcardActionBar(true);
-        assertEquals(1, activity.studyActionBar.getChildCount());
+        assertTrue(activity.flashcardActionBarState.getRevealed());
         activity.flashcardAnswerRevealed = true;
         activity.revealFlashcardAnswer();
         activity.flashcardCard = null;

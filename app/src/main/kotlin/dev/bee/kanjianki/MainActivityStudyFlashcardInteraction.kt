@@ -7,10 +7,6 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.core.view.isNotEmpty
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.platform.ComposeView
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -18,42 +14,14 @@ import dev.bee.kanjianki.core.TypingAnswerMatcher
 
 internal class MainActivityStudyFlashcardInteraction(private val activity: MainActivityStudy) {
     fun buildFlashcardActionBar(revealed: Boolean) {
-        val existing = activity.flashcardActionBarState
-        if (existing != null) {
-            existing.revealed = revealed
-        }
-        val studyActionBar = activity.studyActionBar ?: return
-        activity.styleStudyActionBarShell()
-        studyActionBar.visibility = View.VISIBLE
-        if (existing != null) {
-            if (studyActionBar.isNotEmpty()) {
-                return
-            }
-        }
-
-        studyActionBar.removeAllViews()
-        val state = existing ?: FlashcardActionBarState(
+        val state = activity.flashcardActionBarState ?: FlashcardActionBarState(
             revealed,
             Runnable { revealFlashcardAnswer() },
             Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
             Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
         )
         activity.flashcardActionBarState = state
-        studyActionBar.addView(ComposeView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme {
-                    Surface {
-                        StudyFlashcardActionBar(
-                            revealed = state.revealed,
-                            onReveal = { state.onReveal.run() },
-                            onFail = { state.onFail.run() },
-                            onPass = { state.onPass.run() },
-                        )
-                    }
-                }
-            }
-        })
+        state.revealed = revealed
     }
 
     fun revealFlashcardAnswer() {
