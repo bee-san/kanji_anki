@@ -67,7 +67,9 @@ jobs:
 
       - name: Fetch pull request base
         if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: git fetch --no-tags --depth=1 origin "${PR_BASE_REF}:refs/remotes/origin/${PR_BASE_REF}"
 
       - name: Detect changed project areas
         id: changed-areas
@@ -136,6 +138,9 @@ jobs:
         run: |
           set -euo pipefail
           FULL_COVERAGE=false
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FULL_COVERAGE=true
+          fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.full_coverage }}" = "true" ]; then
             FULL_COVERAGE=true
           fi
@@ -193,14 +198,17 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           SONAR_ARGS=()
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             SONAR_ARGS+=(
-              "-Dsonar.pullrequest.key=${{ github.event.pull_request.number }}"
-              "-Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}"
-              "-Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}"
+              "-Dsonar.pullrequest.key=${PR_NUMBER}"
+              "-Dsonar.pullrequest.branch=${PR_HEAD_REF}"
+              "-Dsonar.pullrequest.base=${PR_BASE_REF}"
             )
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
@@ -256,6 +264,9 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         with:
           api-level: 30
           target: aosp_atd
@@ -268,9 +279,9 @@ jobs:
             SONAR_ARGS=()
             if [ "${{ github.event_name }}" = "pull_request" ]; then
               SONAR_ARGS+=(
-                "-Dsonar.pullrequest.key=${{ github.event.pull_request.number }}"
-                "-Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}"
-                "-Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}"
+                "-Dsonar.pullrequest.key=${PR_NUMBER}"
+                "-Dsonar.pullrequest.branch=${PR_HEAD_REF}"
+                "-Dsonar.pullrequest.base=${PR_BASE_REF}"
               )
             elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
               PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"

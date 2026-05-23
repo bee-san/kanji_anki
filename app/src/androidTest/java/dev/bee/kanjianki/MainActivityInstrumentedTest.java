@@ -309,32 +309,40 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save study ahead");
             setLadderThresholdText();
             clickText(scenario, "Save ladder thresholds");
-            clickText(scenario, "Use manual workload");
-            waitForText(scenario, SettingsTextCopy.workloadStatusText(
-                    AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
-                    AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
-            ));
-            setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
-            waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
-            clickText(scenario, "Save workload");
-            clickText(scenario, SettingsTextCopy.automaticParetoLabel());
-            waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
-            setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
-            waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
-            clickText(scenario, SettingsTextCopy.saveMaximumLabel());
-            clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
-            waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
-            clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
-            clickText(scenario, "95%");
-            verifyRetentionValidationAndRanges(scenario);
-            clickText(scenario, "Save retention");
-            clickText(scenario, "Automation");
-            clickText(scenario, "Morning 08:00");
-            clickText(scenario, "Enable reminder");
-            clickTextIfPresent("Allow");
-            waitForText(scenario, "Daily around 08:00");
+            setNavigationWorkloadControls(scenario);
+            setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();
         }
+    }
+
+    private static void setNavigationWorkloadControls(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "Use manual workload");
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        ));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
+        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.automaticParetoLabel());
+        waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
+        waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
+        clickText(scenario, SettingsTextCopy.saveMaximumLabel());
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
+        waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
+    }
+
+    private static void setNavigationRetentionAndReminder(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "95%");
+        verifyRetentionValidationAndRanges(scenario);
+        clickText(scenario, "Save retention");
+        clickText(scenario, "Automation");
+        clickText(scenario, "Morning 08:00");
+        clickText(scenario, "Enable reminder");
+        clickTextIfPresent("Allow");
+        waitForText(scenario, "Daily around 08:00");
     }
 
     private static void setFrequencyRangeInputs(String minRank, String maxRank) {
@@ -3066,12 +3074,6 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
-    }
-
-    private static <T extends View> List<T> findTypes(View root, Class<T> type) {
-        List<T> results = new ArrayList<>();
-        collectTypes(root, type, results);
-        return results;
     }
 
     private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {

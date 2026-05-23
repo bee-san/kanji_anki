@@ -38,7 +38,7 @@ class SuspendedKanjiImporter {
                 rank,
                 true,
                 maxRank,
-                sources,
+                sources.toList(),
             )
         }.sortedWith(compareBy<RecordsImportModels.SuspendedImport> { it.jitenRank ?: Int.MAX_VALUE }.thenBy { it.kanji })
     }
