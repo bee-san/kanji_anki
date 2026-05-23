@@ -248,12 +248,12 @@ jobs:
               by_name.setdefault(run.get("name"), []).append(run)
 
           pending = []
-          missing = []
+          skipped = []
           failures = []
           for name in required:
               candidates = by_name.get(name, [])
               if not candidates:
-                  missing.append(name)
+                  skipped.append(name)
                   continue
               latest = sorted(
                   candidates,
@@ -273,14 +273,14 @@ jobs:
               print("failure")
               for failure in failures:
                   print(failure)
-          elif pending or missing:
+          elif pending:
               print("pending")
               for item in pending:
                   print(item)
-              for name in missing:
-                  print(f"{name}: missing")
           else:
               print("success")
+              for name in skipped:
+                  print(f"{name}: skipped or not required by path filters")
           PY
             )"
 
