@@ -1096,14 +1096,13 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession similarFallback = session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row);
                 activity.activeSession = similarFallback;
                 activity.renderSession(similarFallback);
-                assertNotNull(activity.flashcardCard);
-                assertSame(activity.flashcardCard, activity.flashcardGestureArea);
+                assertNotNull(activity.flashcardActionBarState);
                 assertFalse(activity.flashcardAnswerRevealed);
                 activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
                 activity.renderSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
                 assertHasText(activity, MainActivityBase.LABEL_SIMILAR_KANJI);
                 assertHasText(activity, "Which kanji means split?");
-                assertNull(activity.flashcardGestureArea);
+                assertNull(activity.flashcardGestureBounds);
                 assertFalse(activity.flashcardAnswerRevealed);
                 seedRows(activity, Arrays.asList(
                         row("裂", "split", "レツ", Collections.emptyList()),
@@ -1112,7 +1111,7 @@ public final class MainActivityHelperInstrumentedTest {
                         row("劣", "inferior", "レツ", Collections.emptyList())
                 ));
                 activity.renderSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
-                assertNull(activity.flashcardGestureArea);
+                assertNull(activity.flashcardGestureBounds);
                 assertFalse(activity.flashcardAnswerRevealed);
                 View root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "裂");
@@ -1124,8 +1123,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession meaningFallback = session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList()));
                 activity.activeSession = meaningFallback;
                 activity.renderSession(meaningFallback);
-                assertNotNull(activity.flashcardCard);
-                assertSame(activity.flashcardCard, activity.flashcardGestureArea);
+                assertNotNull(activity.flashcardActionBarState);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
@@ -1368,7 +1366,6 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.flashcardActionBarState.getRevealed());
         activity.flashcardAnswerRevealed = true;
         activity.revealFlashcardAnswer();
-        activity.flashcardCard = null;
         activity.expandFlashcardForAnswer();
 
         assertFalse(activity.handleFlashcardGesture(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 1f, 1f, 0)));
@@ -1530,7 +1527,7 @@ public final class MainActivityHelperInstrumentedTest {
                 LinearLayout area = new LinearLayout(activity);
                 ((ViewGroup) activity.findViewById(android.R.id.content)).addView(area, new LinearLayout.LayoutParams(300, 300));
                 area.layout(0, 0, 300, 300);
-                activity.flashcardGestureArea = area;
+                activity.setFlashcardGestureBounds(0f, 0f, 300f, 300f);
                 activity.typingAnswerState = new TypingAnswerState();
                 assertFalse(activity.typingAnswerState.containsWindowPoint(40f, 40f));
 
@@ -1568,8 +1565,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderSession(failSession);
-                assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
-                assertEquals(activity.flashcardCard, activity.flashcardGestureArea);
+                assertNotNull(activity.flashcardActionBarState);
                 View root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
@@ -1596,7 +1592,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
                 activity.renderSession(passSession);
-                assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
+                assertNotNull(activity.flashcardActionBarState);
                 root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "Reveal");
                 performClickableWithText(root, MainActivityBase.LABEL_PASS);
@@ -1609,8 +1605,6 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.flashcardHeroPanel = new LinearLayout(activity);
                 activity.flashcardRevealState = null;
-                activity.flashcardCard = new LinearLayout(activity);
-                activity.flashcardCard.setLayoutParams(new LinearLayout.LayoutParams(-1, 0, 1));
                 activity.flashcardAnswerRevealed = false;
                 activity.flashcardTouchStartX = 100f;
                 activity.flashcardTouchStartY = 100f;

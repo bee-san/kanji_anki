@@ -4,8 +4,6 @@ import android.graphics.Rect
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.Toast
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
@@ -61,24 +59,12 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
     }
 
     fun expandFlashcardForAnswer() {
-        val card = activity.flashcardCard ?: return
-        val currentFullHeight = card.height
-        if (currentFullHeight > 0) {
-            card.minimumHeight = currentFullHeight
-        }
-        val params = card.layoutParams
-        if (params is LinearLayout.LayoutParams) {
-            params.height = ViewGroup.LayoutParams.WRAP_CONTENT
-            params.weight = 0f
-            card.layoutParams = params
-            card.requestLayout()
-        }
+        // The direct Compose card resizes from state; the legacy View expansion path is gone.
     }
 
     fun handleFlashcardGesture(event: MotionEvent): Boolean {
         val session = activity.activeSession
-        val gestureArea = activity.flashcardGestureArea
-        if (session == null || session.writingRequired || gestureArea == null) {
+        if (session == null || session.writingRequired || activity.flashcardGestureBounds == null) {
             activity.flashcardTouchTracking = false
             return false
         }
@@ -92,7 +78,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     activity.flashcardTouchTracking = false
                     return false
                 }
-                activity.flashcardTouchTracking = isTouchInsideView(gestureArea, event)
+                activity.flashcardTouchTracking = isTouchInsideFlashcard(event)
                 if (activity.flashcardTouchTracking) {
                     activity.flashcardTouchStartX = event.rawX
                     activity.flashcardTouchStartY = event.rawY
@@ -105,7 +91,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     return false
                 }
                 activity.flashcardTouchTracking = false
-                if (!isTouchInsideView(gestureArea, event)) {
+                if (!isTouchInsideFlashcard(event)) {
                     return false
                 }
                 handleFlashcardRelease(event)
@@ -154,6 +140,11 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         if (!view.getGlobalVisibleRect(bounds)) {
             return false
         }
+        return bounds.contains(event.rawX.toInt(), event.rawY.toInt())
+    }
+
+    private fun isTouchInsideFlashcard(event: MotionEvent): Boolean {
+        val bounds = activity.flashcardGestureBounds ?: return false
         return bounds.contains(event.rawX.toInt(), event.rawY.toInt())
     }
 }

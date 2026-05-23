@@ -144,7 +144,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     private fun resetWritingInteractionState(session: RecordsSchedulerModels.StudySession) {
         home.activeAnalysis = null
         home.checkingWriting = false
-        home.flashcardGestureArea = null
+        home.flashcardGestureBounds = null
         home.flashcardAnswerRevealed = false
         home.flashcardTouchTracking = false
         home.typingAnswerState = null

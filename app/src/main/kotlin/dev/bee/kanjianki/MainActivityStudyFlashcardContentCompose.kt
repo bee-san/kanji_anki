@@ -42,9 +42,9 @@ private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
 
 @Composable
-fun FlashcardCard(model: FlashcardCardModel) {
+fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 8.dp

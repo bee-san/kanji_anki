@@ -143,7 +143,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         if (resetTouchTracking) {
             home.flashcardTouchTracking = false
         }
-        home.flashcardGestureArea = null
+        home.flashcardGestureBounds = null
         home.typingAnswerState = null
         home.drawingPad = null
         home.hintsUsed = 0

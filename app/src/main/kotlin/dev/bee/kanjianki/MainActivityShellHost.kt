@@ -49,8 +49,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     }
 
     private fun resetStudyInteractionState() {
-        activity.flashcardGestureArea = null
-        activity.flashcardCard = null
+        activity.flashcardGestureBounds = null
         activity.writingAnswerPanelState = null
         activity.flashcardRevealState = null
         activity.flashcardActionBarState = null

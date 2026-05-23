@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -90,10 +91,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var studyAnswerPanel: View? = null
 
     @JvmField
-    var flashcardGestureArea: View? = null
-
-    @JvmField
-    var flashcardCard: View? = null
+    var flashcardGestureBounds: Rect? = null
 
     @JvmField
     var flashcardHeroPanel: View? = null
@@ -243,6 +241,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     fun handlePermissionResult(requestCode: Int, grantResults: IntArray) {
         permissionHandler.handlePermissionResult(requestCode, grantResults)
+    }
+
+    fun setFlashcardGestureBounds(left: Float, top: Float, right: Float, bottom: Float) {
+        flashcardGestureBounds = Rect(
+            kotlin.math.floor(left).toInt(),
+            kotlin.math.floor(top).toInt(),
+            kotlin.math.ceil(right).toInt(),
+            kotlin.math.ceil(bottom).toInt(),
+        )
     }
 
     fun handlePostNotificationPermission(grantResults: IntArray) {
