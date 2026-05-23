@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `933709ae`
+- Last verified commit before this refresh: `1dfef958`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -35,6 +35,10 @@ item is satisfied.
   Settings, Browse, Detail, Stats, Games, and Update route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
+- GitHub Actions run `26329449365` passed for commit
+  `1dfef958239f9a8c6dbc5d34d76c1fadebec1eda`.
+- Manual SonarQube PR-safe workflow run `26329550585` passed for the same
+  branch head.
 
 ## Remaining Migration Items
 
@@ -149,6 +153,7 @@ fields, constructor visibility, or nullable behavior.
   - `./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin`
   - `./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`
 - PR checks are green.
+- SonarQube PR-safe analysis is green.
 - A final smoke pass covers Home, Settings, Study flashcard, Study writing,
   Study choice, Browse/Detail, Stats, Games, manual sync, and update/settings
   navigation.

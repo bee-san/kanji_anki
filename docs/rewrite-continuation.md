@@ -6,7 +6,7 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `933709ae Cover meaning choice study route smoke`
+- Latest confirmed pushed commit before this note: `1dfef958 Document complete study route smoke`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -81,13 +81,17 @@ The latest writing-core ABI regression gate passed with:
 ./gradlew :writing-core:test
 ```
 
-Earlier in this branch, GitHub Actions run `26056399662` passed:
+GitHub Actions run `26329449365` passed for commit
+`1dfef958239f9a8c6dbc5d34d76c1fadebec1eda`:
 
 - App unit tests and coverage
 - JVM tests and coverage
 - Dictionary and asset tests
 - App lint and androidTest compile
 - Fast confidence gate
+
+The manual SonarQube PR-safe workflow run `26329550585` also passed for the
+same branch head.
 
 Local Gradle may fail inside the Codex sandbox with:
 
