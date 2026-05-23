@@ -21,7 +21,7 @@ class ImportAuditBuilder private constructor() {
     ) {
         private val modelName: String = modelName ?: ""
         private val importTags: List<String> = Collections.unmodifiableList(ArrayList(importTags ?: emptyList()))
-        private val importBrowserQuery: String = importBrowserQuery?.trim() ?: ""
+        private val importBrowserQuery: String = javaTrim(importBrowserQuery)
 
         fun modelName(): String = modelName
         fun importActiveCards(): Boolean = importActiveCards
@@ -306,6 +306,10 @@ class ImportAuditBuilder private constructor() {
 
         private fun safe(imported: ImportCandidate?): ImportCandidate {
             return imported ?: ImportCandidate("", null, false, emptyList())
+        }
+
+        private fun javaTrim(value: String?): String {
+            return value?.trim { it <= ' ' } ?: ""
         }
     }
 }

@@ -127,16 +127,20 @@ class ImportSettingsRepairPolicy private constructor() {
         }
 
         private fun importTagsEmptyOrAbsent(value: String?): Boolean {
-            return value == null || value.trim().isEmpty() || !hasImportTags(value)
+            return value == null || javaTrim(value).isEmpty() || !hasImportTags(value)
         }
 
         private fun hasImportTags(value: String): Boolean {
-            for (part in IMPORT_TAG_SEPARATOR.split(value.trim())) {
-                if (part.trim().isNotEmpty()) {
+            for (part in IMPORT_TAG_SEPARATOR.split(javaTrim(value))) {
+                if (javaTrim(part).isNotEmpty()) {
                     return true
                 }
             }
             return false
+        }
+
+        private fun javaTrim(value: String?): String {
+            return value?.trim { it <= ' ' } ?: ""
         }
     }
 }

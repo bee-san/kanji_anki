@@ -110,6 +110,19 @@ public class ImportAuditBuilderTest {
         );
     }
 
+    @Test
+    public void browserQueryTrimPreservesJavaWhitespaceSemantics() {
+        ImportAuditBuilder.RuleAudit audit = ImportAuditBuilder.ruleAudit(
+                settings(false, false, false, Collections.emptyList(), false, true, "\u00a0")
+        );
+
+        assertEquals(Collections.singletonList(ImportRuleMatch.SOURCE_BROWSER_QUERY), audit.enabledSources());
+        assertEquals(
+                "{\"model_name\":\"Basic\",\"import_active_cards\":false,\"import_suspended_cards\":false,\"import_tagged_cards\":false,\"import_tags\":[],\"import_weak_cards\":false,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"\u00a0\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
+                audit.settingsJson()
+        );
+    }
+
     private static ImportAuditBuilder.SettingsSnapshot settings(
             boolean active,
             boolean suspended,

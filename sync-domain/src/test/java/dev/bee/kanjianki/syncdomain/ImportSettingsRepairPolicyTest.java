@@ -51,6 +51,11 @@ public final class ImportSettingsRepairPolicyTest {
         assertNoRepair(ImportSettingsRepairPolicy.oldDefaultRepair(settings(1, 1, 0, "", 0, 7.0, 2, 2), 7.0, 2, 1));
     }
 
+    @Test
+    public void importTagTrimPreservesJavaWhitespaceSemantics() {
+        assertNoRepair(ImportSettingsRepairPolicy.oldDefaultRepair(settings(1, 1, 0, "\u00a0", 0, 7.0, 2, 1), 7.0, 2, 1));
+    }
+
     private static void assertNoRepair(ImportSettingsRepairPolicy.RepairDecision repair) {
         assertFalse(repair.shouldRepair());
         assertEquals(0, repair.importActiveCards());
