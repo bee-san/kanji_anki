@@ -35,16 +35,15 @@ class AutoSyncJobService : JobService {
 
     override fun onStartJob(params: JobParameters?): Boolean {
         return startJob(
-            { stopped = false },
+            RunningMarker { stopped = false },
             executor,
             Runnable { autoSyncTask.run(params) },
         )
     }
 
     override fun onStopJob(params: JobParameters?): Boolean {
-        return stopJob(
-            { stopped = true },
-        )
+        stopped = true
+        return stopJob()
     }
 
     override fun onDestroy() {
@@ -74,10 +73,6 @@ class AutoSyncJobService : JobService {
 
     fun interface RunningMarker {
         fun markRunning()
-    }
-
-    fun interface StopMarker {
-        fun markStopped()
     }
 
     fun interface JobExecutor {
@@ -136,8 +131,7 @@ class AutoSyncJobService : JobService {
         }
 
         @JvmStatic
-        fun stopJob(stopMarker: StopMarker): Boolean {
-            stopMarker.markStopped()
+        fun stopJob(): Boolean {
             return true
         }
 

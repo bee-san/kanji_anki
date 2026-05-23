@@ -16,7 +16,6 @@ public final class AutoSyncJobServiceTest {
     public void startStopAndDestroyDelegateToLifecycleCollaborators() {
         AtomicBoolean markedRunning = new AtomicBoolean();
         AtomicBoolean ranJob = new AtomicBoolean();
-        AtomicBoolean markedStopped = new AtomicBoolean();
         AtomicBoolean shutdown = new AtomicBoolean();
 
         assertTrue(AutoSyncJobService.startJob(
@@ -31,9 +30,8 @@ public final class AutoSyncJobServiceTest {
         assertTrue(markedRunning.get());
         assertTrue(ranJob.get());
 
-        assertTrue(AutoSyncJobService.stopJob(() -> markedStopped.set(true)));
+        assertTrue(AutoSyncJobService.stopJob());
         AutoSyncJobService.destroyJob(() -> shutdown.set(true));
-        assertTrue(markedStopped.get());
         assertTrue(shutdown.get());
     }
 

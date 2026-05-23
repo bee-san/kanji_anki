@@ -85,6 +85,9 @@ jobs:
             exit 0
           elif [ "${{ github.event_name }}" = "push" ]; then
             BASE_SHA="${{ github.event.before }}"
+            if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+              git fetch --no-tags --depth=1 origin "${BASE_SHA}" || true
+            fi
           else
             BASE_SHA="${{ github.sha }}"
           fi

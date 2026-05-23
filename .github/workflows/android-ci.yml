@@ -88,7 +88,7 @@ jobs:
               app/build/test-results/**
           - id: app-static
             label: App lint and androidTest compile
-            tasks: ':app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
+            tasks: ':app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
             reports: |
               app/build/reports/**
               app/build/outputs/androidTest-results/**
