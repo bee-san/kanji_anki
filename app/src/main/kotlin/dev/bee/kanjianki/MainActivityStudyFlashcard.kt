@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.core.study.HintState
 
 internal class MainActivityStudyFlashcard(private val activity: MainActivityStudy) {
     private val interaction = MainActivityStudyFlashcardInteraction(activity)
@@ -48,17 +47,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     private fun resetFlashcardInteractionState() {
-        activity.activeSimilarWritingRepair = null
-        activity.activeAnalysis = null
-        activity.checkingWriting = false
-        activity.flashcardAnswerRevealed = false
-        activity.flashcardTouchTracking = false
-        activity.typingAnswerState = null
-        activity.hintsUsed = 0
-        activity.setHintState(HintState.initial())
-        activity.drawingPad = null
-        activity.flashcardHeroPanel = null
-        activity.hideStudyActionBar()
+        MainActivityStudyInteractionReset.resetFlashcard(activity)
     }
 
     private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {

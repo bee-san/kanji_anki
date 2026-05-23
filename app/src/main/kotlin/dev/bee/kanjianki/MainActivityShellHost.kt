@@ -45,16 +45,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         if (MainActivityBase.NAV_STUDY != selected) {
             activity.abandonActiveStudyTask()
         }
-        resetStudyInteractionState()
-    }
-
-    private fun resetStudyInteractionState() {
-        activity.flashcardGestureBounds = null
-        activity.writingAnswerPanelState = null
-        activity.flashcardRevealState = null
-        activity.flashcardActionBarState = null
-        activity.flashcardAnswerRevealed = false
-        activity.flashcardTouchTracking = false
+        MainActivityStudyInteractionReset.resetRoute(activity)
     }
 
 }

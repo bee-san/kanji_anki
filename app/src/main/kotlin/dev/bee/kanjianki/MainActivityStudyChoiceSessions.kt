@@ -9,7 +9,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.core.study.HintState
 import java.util.Random
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
@@ -17,7 +16,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     private val meaningChoiceRandom = Random()
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSessionState(true)
+        resetChoiceSession(true)
 
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
@@ -74,7 +73,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderSimilarKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSessionState(false)
+        resetChoiceSession(false)
 
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
@@ -132,23 +131,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun resetChoiceSession(resetTouchTracking: Boolean) {
-        resetChoiceSessionState(resetTouchTracking)
-    }
-
-    private fun resetChoiceSessionState(resetTouchTracking: Boolean) {
-        home.activeSimilarWritingRepair = null
-        home.activeAnalysis = null
-        home.checkingWriting = false
-        home.flashcardAnswerRevealed = false
-        if (resetTouchTracking) {
-            home.flashcardTouchTracking = false
-        }
-        home.flashcardGestureBounds = null
-        home.typingAnswerState = null
-        home.drawingPad = null
-        home.hintsUsed = 0
-        home.setHintState(HintState.initial())
-        home.hideStudyActionBar()
+        MainActivityStudyInteractionReset.resetChoice(home, resetTouchTracking)
     }
 
     private companion object {
