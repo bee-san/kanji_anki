@@ -28,8 +28,8 @@ internal class AnkiDroidArchiveCleanup(
         }
 
         var tagged = 0
-        var failed = cleanup.alreadyFailedCards()
-        for (noteId in cleanup.notesToTag()) {
+        var failed = cleanup.alreadyFailedCards
+        for (noteId in cleanup.notesToTag) {
             if (tagNoteArchived(authority, noteId)) {
                 tagged++
             } else {
@@ -37,7 +37,7 @@ internal class AnkiDroidArchiveCleanup(
             }
         }
         val message = ProviderArchiveCleanupPolicy.removalMessage(tagged, failed)
-        return AnkiDroidGateway.RemovalSummary(cleanup.sourceCards(), 0, tagged, message)
+        return AnkiDroidGateway.RemovalSummary(cleanup.sourceCards, 0, tagged, message)
     }
 
     private fun archiveCleanupCards(cards: List<RecordsSyncModels.Card>): List<ProviderArchiveCleanupPolicy.Card> {
