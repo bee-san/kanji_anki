@@ -9,6 +9,11 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'domain/**'
+      - 'sync-domain/**'
+      - 'writing-core/**'
+      - 'dictionary-core/**'
+      - 'update-core/**'
       - '.github/workflows/codeql.yml'
       - 'build.gradle*'
       - 'settings.gradle*'
@@ -66,6 +71,11 @@ jobs:
           ./gradlew clean \
             :fsrs-java:compileJava \
             :core:compileJava \
+            :domain:compileKotlin \
+            :sync-domain:compileJava \
+            :writing-core:compileJava \
+            :dictionary-core:compileJava \
+            :update-core:compileJava \
             :app:compileDebugJavaWithJavac \
             --no-daemon \
             --no-build-cache \

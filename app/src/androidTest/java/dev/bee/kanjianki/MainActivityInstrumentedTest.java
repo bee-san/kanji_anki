@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabaseLockedException;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -21,8 +22,6 @@ import android.view.View;
 import android.view.ViewParent;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -39,7 +38,9 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.FrequencyRetentionRanges;
+import dev.bee.kanjianki.core.SettingsInputRules;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
@@ -118,7 +119,7 @@ public final class MainActivityInstrumentedTest {
                     .getUiAutomation()
                     .grantRuntimePermission(target.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
         } catch (SecurityException ignored) {
-            assertNotNull(ignored);
+            // Some devices do not allow the shell identity to grant this permission.
         }
     }
 
@@ -129,18 +130,18 @@ public final class MainActivityInstrumentedTest {
         }
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
@@ -195,9 +196,8 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, RAMEN_RADICAL_GAP);
                 activity.renderBrowseKanji("拉");
-                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
-                assertNotNull(search);
-                assertEquals("拉", search.getText().toString());
+                assertEquals("拉", activity.activeBrowseQuery);
+                assertHasText(activity, "拉");
             });
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity(activity -> {
@@ -219,9 +219,8 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Back to Browse Kanji");
             scenario.onActivity(activity -> {
-                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
-                assertNotNull(search);
-                assertEquals("拉", search.getText().toString());
+                assertEquals("拉", activity.activeBrowseQuery);
+                assertHasText(activity, "拉");
             });
         }
     }
@@ -246,36 +245,109 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testSettingsControlsPersist() {
+    public void testSettingsControlsPersistFiltersAndLearning() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            configureFrequencyRangeSliders(scenario);
+            setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study behavior");
             verifyStudyBehaviorPanel(scenario);
-            setLearningStepText(scenario);
-            clickText(scenario, "Save learning steps");
-            setStudyAheadMinutes(scenario);
+            clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
+            verifyLearningStepValidationAndPresets(scenario);
+        }
+    }
+
+    @Test
+    public void testSettingsControlsPersistStudyAheadLadderAndWorkload() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setStudyAheadMinutes("later");
             clickText(scenario, "Save study ahead");
-            setLadderThresholdText(scenario);
+            assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
+            setStudyAheadMinutes("2000");
+            clickText(scenario, "Save study ahead");
+            assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
+            setStudyAheadMinutes("45");
+            clickText(scenario, "Save study ahead");
+            verifyLadderThresholdValidationAndDefaults(scenario);
+            setLadderThresholdText();
             clickText(scenario, "Save ladder thresholds");
             configureManualWorkload(scenario);
+            verifyWorkloadAutoActions(scenario);
+        }
+    }
+
+    @Test
+    public void testSettingsControlsPersistRetentionReminderAndStoredValues() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Study behavior");
             clickText(scenario, "95%");
+            verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
             enableMorningReminder(scenario);
+        }
+    }
 
+    @Test
+    public void testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setFrequencyRangeInputs("250", "3500");
+            clickText(scenario, "Save frequency range");
+            clickText(scenario, "Save import filters");
+            clickText(scenario, "Study behavior");
+            clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
+            setLearningStepText();
+            clickText(scenario, "Save learning steps");
+            setStudyAheadMinutes();
+            clickText(scenario, "Save study ahead");
+            setLadderThresholdText();
+            clickText(scenario, "Save ladder thresholds");
+            setNavigationWorkloadControls(scenario);
+            setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();
         }
     }
 
-    private static void configureFrequencyRangeSliders(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> {
-            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-            assertTrue(sliders.size() >= 2);
-            sliders.get(0).setProgress(249);
-            sliders.get(1).setProgress(3499);
-        });
+    private static void setNavigationWorkloadControls(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "Use manual workload");
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        ));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
+        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.automaticParetoLabel());
+        waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
+        waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
+        clickText(scenario, SettingsTextCopy.saveMaximumLabel());
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
+        waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
+    }
+
+    private static void setNavigationRetentionAndReminder(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "95%");
+        verifyRetentionValidationAndRanges(scenario);
+        clickText(scenario, "Save retention");
+        clickText(scenario, "Automation");
+        clickText(scenario, "Morning 08:00");
+        clickText(scenario, "Enable reminder");
+        clickTextIfPresent("Allow");
+        waitForText(scenario, "Daily around 08:00");
+    }
+
+    private static void setFrequencyRangeInputs(String minRank, String maxRank) {
+        setComposeTextField(SettingsTextCopy.minRankLabel(), minRank);
+        setComposeTextField(SettingsTextCopy.maxRankLabel(), maxRank);
     }
 
     private static void verifyStudyBehaviorPanel(ActivityScenario<MainActivity> scenario) {
@@ -291,33 +363,162 @@ public final class MainActivityInstrumentedTest {
         });
     }
 
-    private static void setLearningStepText(ActivityScenario<MainActivity> scenario) {
+    private static void verifyRetentionValidationAndRanges(ActivityScenario<MainActivity> scenario) {
+        setRankRetentionEnabled(true);
+        setRetentionRanges("not a range");
+        clickText(scenario, SettingsTextCopy.saveRetentionLabel());
+        assertFrequencyRetentionDisabled(scenario);
+
+        clickText(scenario, SettingsTextCopy.useExampleRangesLabel());
+        assertRetentionRanges(FrequencyRetentionRanges.exampleText());
+        setRetentionRanges("1-500=95%\n501-20000=85%");
+    }
+
+    private static void setRankRetentionEnabled(boolean enabled) {
+        setComposeCheckBox(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX, enabled);
+    }
+
+    private static void setRetentionRanges(String ranges) {
+        setComposeTextField(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
+    }
+
+    private static void assertRetentionRanges(String ranges) {
+        assertComposeTextFieldValue(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
+    }
+
+    private static void assertFrequencyRetentionDisabled(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> assertFalse(activity.store.schedulerParameters().frequencyRetentionEnabled));
+    }
+
+    private static void verifyLearningStepValidationAndPresets(ActivityScenario<MainActivity> scenario) {
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
+        setLearningStepText("bad", "5m 20m");
+        clickText(scenario, SettingsTextCopy.saveLearningStepsLabel());
+        assertLearningStepSettings(scenario, defaults);
+
+        setLearningStepText("2m 15m", "5m 20m");
+        clickText(scenario, SettingsTextCopy.ankiDefaultLabel());
+        assertLearningStepFields(scenario, defaults.newStepsText(), defaults.reviewStepsText());
+        clickText(scenario, SettingsTextCopy.sameLearningStepsLabel());
+        assertLearningStepFields(scenario, defaults.newStepsText(), defaults.newStepsText());
+    }
+
+    private static void setLearningStepText() {
+        setLearningStepText("2m 15m", "5m 20m");
+    }
+
+    private static void setLearningStepText(String newSteps, String reviewSteps) {
+        setComposeTextField(MainActivityBase.LABEL_NEW_CARDS, newSteps);
+        setComposeTextField(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
+    }
+
+    private static void assertLearningStepFields(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
+        assertComposeTextFieldValue(MainActivityBase.LABEL_NEW_CARDS, newSteps);
+        assertComposeTextFieldValue(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
+    }
+
+    private static void assertLearningStepSettings(
+            ActivityScenario<MainActivity> scenario,
+            RecordsSchedulerModels.LearningStepSettings expected
+    ) {
         scenario.onActivity(activity -> {
-            editTextAfterLabel(activity, "New cards").setText("2m 15m");
-            editTextAfterLabel(activity, "Review misses").setText("5m 20m");
+            RecordsSchedulerModels.LearningStepSettings actual = activity.store.learningStepSettings();
+            assertEquals(expected.newStepsMinutes, actual.newStepsMinutes);
+            assertEquals(expected.reviewStepsMinutes, actual.reviewStepsMinutes);
         });
     }
 
-    private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> editTextAfterLabel(activity, "Minutes (0-1440)").setText("45"));
+    private static void setStudyAheadMinutes() {
+        setStudyAheadMinutes("45");
     }
 
-    private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
+    private static void setStudyAheadMinutes(String minutes) {
+        setComposeTextField(SettingsTextCopy.studyAheadMinutesLabel(), minutes);
+    }
+
+    private static void assertStudyAheadMinutes(ActivityScenario<MainActivity> scenario, int expected) {
+        scenario.onActivity(activity -> assertEquals(expected, activity.store.studyAheadMinutes()));
+    }
+
+    private static void verifyLadderThresholdValidationAndDefaults(ActivityScenario<MainActivity> scenario) {
+        setLadderThresholdText("later", "0");
+        clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
+        assertLadderThresholdSettings(
+                scenario,
+                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+        );
+
+        setLadderThresholdText("99", "7");
+        clickText(scenario, SettingsTextCopy.useDefaultLadderThresholdsLabel());
+        assertLadderThresholdFields(
+                scenario,
+                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+        );
+    }
+
+    private static void setLadderThresholdText() {
+        setLadderThresholdText("30", "2");
+    }
+
+    private static void setLadderThresholdText(String promotionDays, String failStreak) {
+        setComposeTextField(SettingsTextCopy.fsrsDaysToGoUpLabel(), promotionDays);
+        setComposeTextField(SettingsTextCopy.failsToGoDownLabel(), failStreak);
+    }
+
+    private static void assertLadderThresholdFields(
+            ActivityScenario<MainActivity> scenario,
+            int promotionDays,
+            int failStreak
+    ) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        assertNotNull(device.wait(Until.findObject(By.text(Integer.toString(promotionDays))), 3000L));
+        assertNotNull(device.wait(Until.findObject(By.text(Integer.toString(failStreak))), 3000L));
+    }
+
+    private static void assertLadderThresholdSettings(
+            ActivityScenario<MainActivity> scenario,
+            int promotionDays,
+            int failStreak
+    ) {
         scenario.onActivity(activity -> {
-            editTextAfterLabel(activity, "FSRS days to go up").setText("30");
-            editTextAfterLabel(activity, "Fails to go down").setText("2");
+            assertEquals(promotionDays, activity.store.getIntSetting(
+                    SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
+                    RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS
+            ));
+            assertEquals(failStreak, activity.store.getIntSetting(
+                    SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
+                    RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+            ));
         });
     }
 
     private static void configureManualWorkload(ActivityScenario<MainActivity> scenario) {
         clickText(scenario, "Use manual workload");
-        waitForText(scenario, "Pareto: up to 5 items");
-        scenario.onActivity(activity -> {
-            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-            assertTrue(sliders.size() >= 3);
-            sliders.get(2).setProgress(70);
-        });
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        ));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
         clickText(scenario, "Save workload");
+    }
+
+    private static void verifyWorkloadAutoActions(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, SettingsTextCopy.automaticParetoLabel());
+        waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
+        scenario.onActivity(activity -> assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode()));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
+        waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
+        clickText(scenario, SettingsTextCopy.saveMaximumLabel());
+        scenario.onActivity(activity -> assertEquals(
+                AdaptiveLoadPlanner.MAX_MAX_ITEMS,
+                activity.store.adaptiveLoadMaxItems()
+        ));
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
+        waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
+        scenario.onActivity(activity -> assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode()));
     }
 
     private static void enableMorningReminder(ActivityScenario<MainActivity> scenario) {
@@ -366,26 +567,47 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testReminderSettingsPanelCanEnableAndTurnOffReminder() {
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(true);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(true);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Automation");
+            waitForText(scenario, "Daily reminder");
+            clickText(scenario, "Morning 08:00");
+            waitForText(scenario, "Reminder time: 08:00");
+            clickText(scenario, "Enable reminder");
+            waitForText(scenario, "Daily around 08:00");
+            assertReminderSettings(true, 8, 0);
+
+            clickText(scenario, "Turn off reminder");
+            waitForText(scenario, "Off");
+            assertReminderSettings(false, 8, 0);
+        } finally {
+            MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+            MainActivityRuntimeOverrides.setNotificationsAllowed(null);
+        }
+    }
+
+    @Test
     public void testImportFilterValidationBlocksEmptySourcesAndEmptyBrowserQuery() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            scenario.onActivity(activity -> {
-                setImportFilterChecked(activity, "Active cards", false);
-                setImportFilterChecked(activity, "Suspended cards", false);
-                setImportFilterChecked(activity, "Tagged cards", false);
-                setImportFilterChecked(activity, "Weak cards", false);
-                setImportFilterChecked(activity, "Browser query", false);
-                editTextAfterLabel(activity, "Anki note tags").setText("");
-                editTextAfterLabel(activity, "Anki browser query").setText("");
-            });
+            setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.taggedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.weakCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), false);
+            setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "");
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "");
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> setImportFilterChecked(activity, "Browser query", true));
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> editTextAfterLabel(activity, "Anki browser query").setText("deck:Japanese tag:kani"));
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Japanese tag:kani");
             clickText(scenario, "Save import filters");
             waitForText(scenario, "Import filters");
             try (LocalStore store = new LocalStore(context)) {
@@ -401,6 +623,63 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), true);
+            setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "not numeric");
+            clickText(scenario, "Save import filters");
+            assertDefaultImportSettingsStillStored();
+
+            setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.taggedCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.weakCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Kiku tag:kani");
+            setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "tagAlpha, tagBeta");
+            setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "8.5");
+            setComposeTextField(SettingsTextCopy.lapsesLabel(), "4");
+            setComposeTextField(SettingsTextCopy.minimumMatchingCardsLabel(), "2");
+            clickText(scenario, "Save import filters");
+            waitForText(scenario, "Import filters");
+            assertCustomImportSettingsStored();
+
+            clickText(scenario, "Leech tag");
+            waitForText(scenario, "Import filters");
+            assertLeechImportPresetStored();
+
+            clickText(scenario, "Mining deck");
+            waitForText(scenario, "Import filters");
+            assertMiningDeckPresetStored();
+        }
+    }
+
+    @Test
+    public void testFrequencyRangeValidationRunsThroughAttachedComposePanel() {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setFrequencyRangeInputs("many", Integer.toString(defaults.suspendedRankMax));
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs("0", "25");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs("10", "50000");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs("300", "20");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(20, 300);
+        }
+    }
+
+    @Test
     public void testNoteTypeSettingsValidateCustomSaveAndReset() {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
 
@@ -408,27 +687,23 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Using " + defaults.modelName);
-                noteTypeInput(activity).setText("");
             });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "");
             clickText(scenario, "Save note type");
             assertNoteTypeSettings(defaults);
 
-            scenario.onActivity(activity -> {
-                noteTypeInput(activity).setText("Custom Mining");
-                editTextAfterLabel(activity, "Expression field").setText("");
-            });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "Custom Mining");
+            setComposeTextField(SettingsTextCopy.expressionFieldLabel(), "");
             clickText(scenario, "Save note type");
             assertNoteTypeSettings(defaults);
 
-            scenario.onActivity(activity -> {
-                noteTypeInput(activity).setText("Custom Mining");
-                editTextAfterLabel(activity, "Expression field").setText("Word");
-                editTextAfterLabel(activity, "Reading field").setText("WordReading");
-                editTextAfterLabel(activity, "Meaning field").setText("Gloss");
-                editTextAfterLabel(activity, "Sentence field").setText("Context");
-                editTextAfterLabel(activity, "Frequency field").setText("Freq");
-                editTextAfterLabel(activity, "Frequency sort field").setText("SortKey");
-            });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "Custom Mining");
+            setComposeTextField(SettingsTextCopy.expressionFieldLabel(), "Word");
+            setComposeTextField(SettingsTextCopy.readingFieldLabel(), "WordReading");
+            setComposeTextField(SettingsTextCopy.meaningFieldLabel(), "Gloss");
+            setComposeTextField(SettingsTextCopy.sentenceFieldLabel(), "Context");
+            setComposeTextField(SettingsTextCopy.frequencyFieldLabel(), "Freq");
+            setComposeTextField(SettingsTextCopy.frequencySortFieldLabel(), "SortKey");
             clickText(scenario, "Save note type");
             waitForText(scenario, "Using Custom Mining");
             assertNoteTypeSettings(new RecordsSyncModels.Settings(
@@ -489,7 +764,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
-        MainActivity.setInstallPermissionForTests(false);
+        MainActivityRuntimeOverrides.setInstallPermission(false);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
@@ -504,6 +779,8 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Turn off automatic updates");
             waitForText(scenario, "Off");
+            clickText(scenario, "Turn on automatic updates");
+            waitForText(scenario, "On: checks about once a day");
         }
     }
 
@@ -523,7 +800,18 @@ public final class MainActivityInstrumentedTest {
                     "Android needs confirmation before Kani can replace itself."
             );
         }
-        MainActivity.setInstallPermissionForTests(true);
+        MainActivityRuntimeOverrides.setInstallPermission(true);
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Automation");
+            waitForText(scenario, "Verified APK ready: 9.9.9");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Install permission: Ready");
+                assertHasText(activity, "Install verified update");
+                assertHasText(activity, "Android needs confirmation before Kani can replace itself.");
+            });
+        }
 
         Intent openUpdate = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.EXTRA_OPEN_UPDATE, true);
@@ -1035,7 +1323,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testTryCleanerStartsFreshWritingAttemptAtSameHelpLevel() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1060,7 +1348,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWritingRepairCheckKeepsSingleCleanMatchMessage() {
         seedDueWritingItem(3);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
@@ -1083,7 +1371,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testDiagnosisTextAndReplayAppearAfterCheck() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1103,7 +1391,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testReplayHiddenWhenStrokeGuideMissing() {
         seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", IMPORTED_FROM_SUSPENDED_CARDS), 0);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("鿃"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("鿃"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(MainActivityInstrumentedTest::drawFreeformStroke);
@@ -1118,7 +1406,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testUndoAfterCheckClearsPriorReplayState() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1144,7 +1432,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWritingRepairMissKeepsRepairReference() {
         seedDueWritingItem(3);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
@@ -1495,7 +1783,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testCorrectWritingCheckSubmitsReview() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1533,7 +1821,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testHintAssistedCleanWritingHoldsFadeLevel() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             clickText(scenario, "More help");
@@ -1556,7 +1844,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testMessyRecognizedWritingCanBeSavedHardWithoutAdvancingFade() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1584,7 +1872,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWrongRecognitionCanBeLoggedAsFailedAttempt() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1614,7 +1902,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testTryAgainWithFullGuideStartsFreshAttempt() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1632,7 +1920,7 @@ public final class MainActivityInstrumentedTest {
                 DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasInk());
-                assertFalse(pad.isReplayOverlayVisibleForTests());
+                assertFalse(pad.isReplayOverlayVisible());
             });
         }
     }
@@ -1640,7 +1928,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWrongRecognitionAllowsLoggedManualOverride() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1664,7 +1952,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testMissingModelCanBeManuallyScoredAfterDrawing() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeUnavailableRecognizer());
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeUnavailableRecognizer());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1708,7 +1996,7 @@ public final class MainActivityInstrumentedTest {
                 "The opt-in live AnkiDroid run exercises the successful sync button path instead.",
                 liveAnkiDroidEnabled()
         );
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
             clickText(scenario, "Sync cards");
@@ -1732,7 +2020,7 @@ public final class MainActivityInstrumentedTest {
                 )
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
-        MainActivity.setCollectionGatewayForTests(progressGateway);
+        MainActivityRuntimeOverrides.setCollectionGateway(progressGateway);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
@@ -1740,31 +2028,12 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "1 / 2 cards scanned");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Scanning cards");
-                ProgressBar bar = findType(activity.findViewById(android.R.id.content), ProgressBar.class);
-                assertNotNull(bar);
-                assertFalse(bar.isIndeterminate());
-                assertEquals(1000, bar.getMax());
-                assertEquals(500, bar.getProgress());
+                assertHasText(activity, "1 / 2 cards scanned");
             });
             progressGateway.finish();
             waitForText(scenario, "Sync complete");
         } finally {
             progressGateway.finish();
-        }
-    }
-
-    @Test
-    public void testSyncProgressPanelShowsProcessingImportedCardsAfterScan() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                SyncProgressPanel panel = new SyncProgressPanel(activity);
-                panel.render(SyncProgress.cardsScanned(2, 2));
-                panel.render(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
-
-                assertNotNull(findText(panel, "Processing imported cards"));
-                assertNotNull(findText(panel, "2 / 2 cards scanned"));
-                assertNotNull(findText(panel, "AnkiDroid read finished"));
-            });
         }
     }
 
@@ -1777,7 +2046,7 @@ public final class MainActivityInstrumentedTest {
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
         progressGateway.finish();
-        MainActivity.setCollectionGatewayForTests(progressGateway);
+        MainActivityRuntimeOverrides.setCollectionGateway(progressGateway);
         long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
         saveSyncFinishedAt(yesterday);
         String syncValue = "Yesterday at "
@@ -1805,7 +2074,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() throws Exception {
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
         context.getContentResolver().call(Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY), "reset", null, null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
@@ -1832,7 +2101,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testManualSyncButtonWorksAgainstLiveAnkiDroid() throws Exception {
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveAnkiDroidEnabled());
-        MainActivity.setAnkiDroidGatewayForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
             clickText(scenario, "Sync cards");
@@ -2137,7 +2406,7 @@ public final class MainActivityInstrumentedTest {
             try {
                 released.get(5L, TimeUnit.SECONDS);
             } catch (Exception ignored) {
-                assertNotNull(ignored);
+                // Continue when the UI release signal is not needed for this fake gateway path.
             }
             progress.onSyncProgress(SyncProgress.cardsScanned(snapshot.cards.size(), snapshot.cards.size()));
             return snapshot;
@@ -2238,21 +2507,24 @@ public final class MainActivityInstrumentedTest {
 
     private static void dispatchActivityTouch(MainActivity activity, long downTime, long eventTime, int action, float x, float y) {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
-        try {
-            activity.dispatchTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        activity.dispatchTouchEvent(event);
     }
 
     private static void enterFirstEditText(ActivityScenario<MainActivity> scenario, String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 composeInput = device.wait(Until.findObject(By.clazz(EditText.class.getName())), 1000L);
+        if (composeInput != null) {
+            composeInput.setText(text);
+            device.waitForIdle(2000L);
+            return;
+        }
         scenario.onActivity(activity -> {
             EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
             assertNotNull(input);
             input.setText(text);
             input.setSelection(text.length());
         });
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+        device.waitForIdle(2000L);
     }
 
     private static void enterDialogEditText(String text) {
@@ -2277,6 +2549,29 @@ public final class MainActivityInstrumentedTest {
         return object;
     }
 
+    private static UiObject2 findDeviceTextNow(UiDevice device, String text) {
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).text(text)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).text(text.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(text)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(text.toUpperCase(Locale.ROOT))));
+        }
+        return object;
+    }
+
+    private static String appPackage() {
+        return InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
+    }
+
+    private static UiObject2 firstMatch(List<UiObject2> objects) {
+        return objects.isEmpty() ? null : objects.get(0);
+    }
+
     private static String deviceVisibleText(UiDevice device) {
         List<String> texts = new ArrayList<>();
         for (UiObject2 object : device.findObjects(By.clazz(TextView.class.getName()))) {
@@ -2295,8 +2590,9 @@ public final class MainActivityInstrumentedTest {
     private static void waitForText(ActivityScenario<MainActivity> scenario, String text, long timeoutMillis) {
         long deadline = SystemClock.uptimeMillis() + timeoutMillis;
         boolean[] found = new boolean[]{false};
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         while (SystemClock.uptimeMillis() < deadline) {
-            scenario.onActivity(activity -> found[0] = findText(activity.findViewById(android.R.id.content), text) != null);
+            scenario.onActivity(activity -> found[0] = hasText(activity, text, device));
             if (found[0]) {
                 return;
             }
@@ -2331,38 +2627,33 @@ public final class MainActivityInstrumentedTest {
                 "Min rank",
                 "Max rank"
         );
-        assertImportFilterDefaultState(activity);
+        assertImportFilterDefaultState();
         assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
     }
 
-    private static void assertImportFilterDefaultState(MainActivity activity) {
-        View root = activity.findViewById(android.R.id.content);
-        CheckBox activeCards = findCheckBox(root, "Active cards");
-        CheckBox suspendedCards = findCheckBox(root, "Suspended cards");
-        CheckBox taggedCards = findCheckBox(root, "Tagged cards");
-        CheckBox weakCards = findCheckBox(root, "Weak cards");
-        CheckBox browserQuery = findCheckBox(root, "Browser query");
-        assertNotNull(activeCards);
-        assertNotNull(suspendedCards);
-        assertNotNull(taggedCards);
-        assertNotNull(weakCards);
-        assertNotNull(browserQuery);
-        assertFalse(activeCards.isChecked());
-        assertTrue(suspendedCards.isChecked());
-        assertFalse(taggedCards.isChecked());
-        assertFalse(weakCards.isChecked());
-        assertFalse(browserQuery.isChecked());
+    private static void assertImportFilterDefaultState() {
+        assertComposeCheckBox(SettingsTextCopy.activeCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.suspendedCardsLabel(), true);
+        assertComposeCheckBox(SettingsTextCopy.taggedCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.weakCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.browserQueryLabel(), false);
     }
 
     private void assertNavigationSettingsPersisted() {
         try (LocalStore store = new LocalStore(context)) {
             assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
-            assertEquals(70, store.adaptiveLoadWorkPercent());
-            assertEquals(5, store.adaptiveLoadMaxItems());
+            assertEquals(100, store.adaptiveLoadWorkPercent());
+            assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, store.adaptiveLoadMaxItems());
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
+            assertTrue(store.schedulerParameters().frequencyRetentionEnabled);
+            assertEquals("1-500=95%\n501-20000=85%", store.schedulerParameters().frequencyRetentionRanges);
             assertEquals(Arrays.asList(2, 15), store.learningStepSettings().newStepsMinutes);
             assertEquals(Arrays.asList(5, 20), store.learningStepSettings().reviewStepsMinutes);
             assertEquals(45, store.studyAheadMinutes());
+            assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, store.getStringSetting(
+                    SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY,
+                    RecordsBase.NEW_CARD_SORT_FREQUENCY
+            ));
             assertEquals(30, store.getIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 0));
@@ -2387,6 +2678,15 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
+    private void assertReminderSettings(boolean enabled, int hour, int minute) {
+        try (LocalStore store = new LocalStore(context)) {
+            LocalStore.ReminderSettings reminder = store.reminderSettings();
+            assertEquals(enabled, reminder.enabled);
+            assertEquals(hour, reminder.hour);
+            assertEquals(minute, reminder.minute);
+        }
+    }
+
     private void assertDefaultImportSettingsStillStored() {
         try (LocalStore store = new LocalStore(context)) {
             RecordsSyncModels.Settings saved = SyncSettings.fromStore(store);
@@ -2396,7 +2696,55 @@ public final class MainActivityInstrumentedTest {
             assertEquals(defaults.importTaggedCards, saved.importTaggedCards);
             assertEquals(defaults.importWeakCards, saved.importWeakCards);
             assertEquals(defaults.importBrowserQueryCards, saved.importBrowserQueryCards);
+            assertEquals(defaults.importTags, saved.importTags);
+            assertEquals(defaults.importWeakFsrsDifficultyThreshold, saved.importWeakFsrsDifficultyThreshold, 0.001);
+            assertEquals(defaults.importWeakLapsesThreshold, saved.importWeakLapsesThreshold);
+            assertEquals(defaults.importMinMatchingCardsPerKanji, saved.importMinMatchingCardsPerKanji);
             assertEquals(defaults.importBrowserQuery, saved.importBrowserQuery);
+        }
+    }
+
+    private void assertCustomImportSettingsStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertTrue(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertTrue(saved.importTaggedCardsEnabled());
+        assertEquals(Arrays.asList("tagAlpha", "tagBeta"), saved.importTags);
+        assertTrue(saved.importWeakCards);
+        assertEquals(8.5, saved.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(4, saved.importWeakLapsesThreshold);
+        assertEquals(2, saved.importMinMatchingCardsPerKanji);
+        assertTrue(saved.browserQueryImportEnabled());
+        assertEquals("deck:Kiku tag:kani", saved.importBrowserQuery);
+    }
+
+    private void assertLeechImportPresetStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertFalse(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertTrue(saved.importTaggedCardsEnabled());
+        assertEquals(Collections.singletonList("leech"), saved.importTags);
+        assertFalse(saved.browserQueryImportEnabled());
+    }
+
+    private void assertMiningDeckPresetStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertFalse(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertFalse(saved.importTaggedCardsEnabled());
+        assertTrue(saved.browserQueryImportEnabled());
+        assertEquals("deck:Mining", saved.importBrowserQuery);
+    }
+
+    private void assertFrequencyRangeStored(int minRank, int maxRank) {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertEquals(minRank, saved.suspendedRankMin);
+        assertEquals(maxRank, saved.suspendedRankMax);
+    }
+
+    private RecordsSyncModels.Settings storedSettings() {
+        try (LocalStore store = new LocalStore(context)) {
+            return SyncSettings.fromStore(store);
         }
     }
 
@@ -2548,7 +2896,8 @@ public final class MainActivityInstrumentedTest {
 
     private static void assertHasText(MainActivity activity, String text) {
         View root = activity.findViewById(android.R.id.content);
-        assertNotNull("Missing text: " + text + "\nVisible text: " + visibleText(root), findText(root, text));
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        assertTrue("Missing text: " + text + "\nVisible text: " + visibleText(root), hasText(activity, text, device));
     }
 
     private static void assertHasTexts(MainActivity activity, String... texts) {
@@ -2558,10 +2907,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void assertNoText(MainActivity activity, String text) {
-        View found = findText(activity.findViewById(android.R.id.content), text);
-        if (found != null) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        if (hasText(activity, text, device)) {
             throw new AssertionError("Unexpected text before reveal: " + text);
         }
+    }
+
+    private static boolean hasText(MainActivity activity, String text, UiDevice device) {
+        View root = activity.findViewById(android.R.id.content);
+        return findText(root, text) != null || findDeviceTextNow(device, text) != null;
     }
 
     private static String visibleText(View root) {
@@ -2592,12 +2946,6 @@ public final class MainActivityInstrumentedTest {
         for (String text : texts) {
             assertNoText(activity, text);
         }
-    }
-
-    private static EditText noteTypeInput(MainActivity activity) {
-        EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
-        assertNotNull(input);
-        return input;
     }
 
     private void assertNoteTypeSettings(RecordsSyncModels.Settings expected) {
@@ -2697,11 +3045,7 @@ public final class MainActivityInstrumentedTest {
 
     private static void sendTouch(View view, long downTime, long eventTime, int action, float x, float y) {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
-        try {
-            view.onTouchEvent(event);
-        } finally {
-            event.recycle();
-        }
+        view.onTouchEvent(event);
     }
 
     private static StrokeGuide strokeGuide(MainActivity activity, String kanji) {
@@ -2730,28 +3074,6 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
-    }
-
-    private static <T extends View> List<T> findTypes(View root, Class<T> type) {
-        List<T> results = new ArrayList<>();
-        collectTypes(root, type, results);
-        return results;
-    }
-
-    private static CheckBox findCheckBox(View root, String text) {
-        for (CheckBox box : findTypes(root, CheckBox.class)) {
-            CharSequence value = box.getText();
-            if (value != null && text.contentEquals(value)) {
-                return box;
-            }
-        }
-        return null;
-    }
-
-    private static void setImportFilterChecked(MainActivity activity, String text, boolean checked) {
-        CheckBox box = findCheckBox(activity.findViewById(android.R.id.content), text);
-        assertNotNull(box);
-        box.setChecked(checked);
     }
 
     private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {
@@ -2860,23 +3182,55 @@ public final class MainActivityInstrumentedTest {
         return null;
     }
 
-    private static EditText editTextAfterLabel(MainActivity activity, String label) {
-        List<View> views = new ArrayList<>();
-        collectViews(activity.findViewById(android.R.id.content), views);
-        boolean sawLabel = false;
-        for (View view : views) {
-            if (view instanceof TextView) {
-                CharSequence value = ((TextView) view).getText();
-                if (value != null && value.toString().equals(label)) {
-                    sawLabel = true;
-                    continue;
-                }
-            }
-            if (sawLabel && view instanceof EditText) {
-                return (EditText) view;
-            }
+    private static void setComposeSliderToEnd(String description) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 slider = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing slider: " + description + "\nDevice text: " + deviceVisibleText(device), slider);
+        assertTrue("Slider is not enabled: " + description, slider.isEnabled());
+        Rect bounds = slider.getVisibleBounds();
+        slider.click(new Point(bounds.right - 2, bounds.centerY()));
+        device.waitForIdle(2000L);
+    }
+
+    private static void setComposeTextField(String description, String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
+        input.setText(text);
+        device.waitForIdle(2000L);
+    }
+
+    private static void assertComposeTextFieldValue(String description, String expected) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
+        assertEquals(expected, input.getText());
+    }
+
+    private static void setImportFilterChecked(String description, boolean checked) {
+        setComposeCheckBox(description, checked);
+    }
+
+    private static void setComposeCheckBox(String description, boolean checked) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 checkbox = composeCheckBox(device, description);
+        if (checkbox.isChecked() != checked) {
+            checkbox.click();
+            device.waitForIdle(2000L);
         }
-        throw new AssertionError("Missing EditText after label: " + label + "\nVisible text: " + visibleText(activity.findViewById(android.R.id.content)));
+        assertComposeCheckBox(description, checked);
+    }
+
+    private static void assertComposeCheckBox(String description, boolean checked) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 checkbox = composeCheckBox(device, description);
+        assertEquals("Unexpected checkbox state: " + description, checked, checkbox.isChecked());
+    }
+
+    private static UiObject2 composeCheckBox(UiDevice device, String description) {
+        UiObject2 checkbox = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing checkbox: " + description + "\nDevice text: " + deviceVisibleText(device), checkbox);
+        return checkbox;
     }
 
     private static void collectViews(View root, List<View> views) {

@@ -5,25 +5,39 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.AdaptiveFocusCopy;
+import dev.bee.kanjianki.core.DateTextPolicy;
+import dev.bee.kanjianki.core.FocusQueueCopy;
+import dev.bee.kanjianki.core.HomeTextCopy;
+import dev.bee.kanjianki.core.KanjiGameEngine;
+import dev.bee.kanjianki.core.SettingsImportPreset;
+import dev.bee.kanjianki.core.SettingsInputRules;
+import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
+import dev.bee.kanjianki.core.StatsTextCopy;
+import dev.bee.kanjianki.core.TimelineCopy;
+import dev.bee.kanjianki.core.StudyTaskCopy;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.Typeface;
-import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
+import androidx.compose.ui.platform.ComposeView;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -37,7 +51,9 @@ import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeOrderEvaluator;
+import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
+import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.StudyStatsStore;
@@ -45,11 +61,14 @@ import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
+import dev.bee.kanjianki.MainActivityStudyWritingStatus;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import kotlin.Unit;
 
 import java.io.File;
 import java.io.StringReader;
@@ -58,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
@@ -76,95 +96,115 @@ public final class MainActivityHelperInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.helper_no_anki"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.helper_no_anki"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
 
     @Test
-    public void baseTextHelpersDescribeStudyModesAndWritingGuides() {
+    public void launcherHostsHomeInsideComposeShell() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertCountAndCompactText(activity);
-                assertStudyModeLabels(activity);
-                assertAdaptiveFocusText(activity);
-                assertWritingGuideText(activity);
+                ViewGroup activityContent = activity.findViewById(android.R.id.content);
+                assertEquals(1, activityContent.getChildCount());
+                assertTrue(activityContent.getChildAt(0) instanceof ComposeView);
+                assertHasText(activity, "Kani");
             });
         }
     }
 
-    private static void assertCountAndCompactText(MainActivity activity) {
-        assertEquals("1 item", activity.countText(1, "item", "items"));
-        assertEquals("2 items", activity.countText(2, "item", "items"));
-        assertEquals("", activity.compact(null, 12));
-        assertEquals("short", activity.compact("short", 12));
-        assertEquals("a very long s...", activity.compact("a very long sentence that should be shortened", 16));
+    @Test
+    public void baseTextHelpersDescribeCountAndCompactText() {
+        assertCountAndCompactText();
     }
 
-    private static void assertStudyModeLabels(MainActivity activity) {
-        assertEquals("Study", activity.labelForTask(null));
-        assertEquals("Focused recall", activity.labelForTask("targeted_flashcard"));
-        assertEquals("Kanji -> meaning", activity.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
-        assertEquals("Type the meaning", activity.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
-        assertEquals("Meaning -> kanji", activity.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
-        assertEquals("Font -> meaning", activity.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
-        assertEquals("Word -> reading", activity.labelForTask(BridgeScheduler.TASK_WORD_READING));
-        assertEquals("Write kanji", activity.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
-        assertEquals("Similar kanji", activity.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
-        assertEquals("Quick recall", activity.labelForTask("meaning_flashcard"));
-        assertEquals("Font check", activity.labelForTask("font_recognition"));
-        assertEquals("Write to repair", activity.labelForTask("repair_writing"));
-        assertEquals("Focused practice", activity.labelForTask("targeted_writing"));
-        assertEquals("New problem kanji", activity.labelForTask("context_writing"));
-        assertEquals("Guided review", activity.labelForTask("guided_writing"));
-        assertEquals("Memory check", activity.labelForTask("blind_writing"));
-        assertEquals("Memory check", activity.labelForTask("sampled_handwriting"));
-        assertEquals("Learn the shape", activity.labelForTask("confusable_recognition"));
-        assertEquals("Study", activity.labelForTask("unexpected"));
+    @Test
+    public void baseTextHelpersDescribeStudyModeLabels() {
+        assertStudyModeLabels();
+    }
+
+    @Test
+    public void baseTextHelpersDescribeAdaptiveFocusText() {
+        assertAdaptiveFocusText();
+    }
+
+    @Test
+    public void baseTextHelpersDescribeWritingGuideText() {
+        assertWritingGuideText();
+    }
+
+    private static void assertCountAndCompactText() {
+        assertEquals("1 item", StudyTextCopy.countText(1, "item", "items"));
+        assertEquals("2 items", StudyTextCopy.countText(2, "item", "items"));
+        assertEquals("", StudyTextCopy.compact(null, 12));
+        assertEquals("short", StudyTextCopy.compact("short", 12));
+        assertEquals("a very long s...", StudyTextCopy.compact("a very long sentence that should be shortened", 16));
+    }
+
+    private static void assertStudyModeLabels() {
+        assertEquals("Study", StudyTaskCopy.labelForTask(null));
+        assertEquals("Focused recall", StudyTaskCopy.labelForTask("targeted_flashcard"));
+        assertEquals("Kanji -> meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
+        assertEquals("Type the meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
+        assertEquals("Meaning -> kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
+        assertEquals("Font -> meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
+        assertEquals("Word -> reading", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_WORD_READING));
+        assertEquals("Write kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
+        assertEquals("Similar kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
+        assertEquals("Quick recall", StudyTaskCopy.labelForTask("meaning_flashcard"));
+        assertEquals("Font check", StudyTaskCopy.labelForTask("font_recognition"));
+        assertEquals("Write to repair", StudyTaskCopy.labelForTask("repair_writing"));
+        assertEquals("Focused practice", StudyTaskCopy.labelForTask("targeted_writing"));
+        assertEquals("New problem kanji", StudyTaskCopy.labelForTask("context_writing"));
+        assertEquals("Guided review", StudyTaskCopy.labelForTask("guided_writing"));
+        assertEquals("Memory check", StudyTaskCopy.labelForTask("blind_writing"));
+        assertEquals("Memory check", StudyTaskCopy.labelForTask("sampled_handwriting"));
+        assertEquals("Learn the shape", StudyTaskCopy.labelForTask("confusable_recognition"));
+        assertEquals("Study", StudyTaskCopy.labelForTask("unexpected"));
         assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
     }
 
-    private static void assertAdaptiveFocusText(MainActivity activity) {
+    private static void assertAdaptiveFocusText() {
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
         RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
-        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(null));
-        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(waiting));
-        assertEquals("Adaptive focus is set to all current problem kanji", activity.adaptiveFocusText(all));
-        assertEquals("Today's adaptive focus: 2 items left / 5", activity.adaptiveFocusText(focused));
+        assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(null));
+        assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(waiting));
+        assertEquals("Adaptive focus is set to all current problem kanji", AdaptiveFocusCopy.adaptiveFocusText(all));
+        assertEquals("Today's adaptive focus: 2 items left / 5", AdaptiveFocusCopy.adaptiveFocusText(focused));
     }
 
-    private static void assertWritingGuideText(MainActivity activity) {
+    private static void assertWritingGuideText() {
         StrokeGuide emptyGuide = new StrokeGuide("裂", Collections.emptyList());
         StrokeGuide guide = guide("裂");
-        assertTrue(activity.guideLabel(3, emptyGuide).startsWith("Write from memory"));
-        assertTrue(activity.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
-        assertTrue(activity.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
-        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", activity.guideLabel(HintState.fromWritingLevel(0), guide));
-        assertEquals("Copy the faint outline; the current stroke is emphasized.", activity.guideLabel(HintState.fromWritingLevel(1), guide));
-        assertEquals("Write with only the current stroke hinted, then check.", activity.guideLabel(HintState.fromWritingLevel(2), guide));
-        assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
-        assertEquals("Trace", activity.stageLabel(HintLevel.TRACE));
-        assertEquals("Blind", activity.stageLabel(HintLevel.BLIND));
-        assertEquals("", activity.attemptProgressText(null));
-        assertEquals("", activity.targetRevealText(null));
+        assertTrue(WritingFeedbackCopy.guideLabel(3, emptyGuide).startsWith("Write from memory"));
+        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
+        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
+        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide));
+        assertEquals("Copy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide));
+        assertEquals("Write with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide));
+        assertEquals("Write from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide));
+        assertEquals("Trace", WritingFeedbackCopy.stageLabel(HintLevel.TRACE));
+        assertEquals("Blind", WritingFeedbackCopy.stageLabel(HintLevel.BLIND));
+        assertEquals("", WritingFeedbackCopy.attemptProgressText(null, null, false));
+        assertEquals("", WritingFeedbackCopy.targetRevealText(null, null));
     }
 
     @Test
@@ -192,16 +232,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.store.reminderSettings().enabled);
 
                 long now = System.currentTimeMillis();
-                RecordsStudyModels.StudyItem retired = studyItem("退", RecordsBase.LadderRung.KANJI_MEANING, "retired", now);
-                RecordsStudyModels.StudyItem learningDue = studyItem("学", RecordsBase.LadderRung.KANJI_MEANING, "learning", now - 1L);
-                RecordsStudyModels.StudyItem learningFuture = studyItem("未", RecordsBase.LadderRung.KANJI_MEANING, "learning", now + 60_000L);
                 RecordsStudyModels.StudyItem reviewDue = studyItem("復", RecordsBase.LadderRung.KANJI_MEANING, "review", now - 1L);
-                assertFalse(activity.itemDueForFocus(null, now));
-                assertFalse(activity.itemDueForFocus(retired, now));
-                assertTrue(activity.itemDueForFocus(learningDue, now));
-                assertFalse(activity.itemDueForFocus(learningFuture, now));
-                assertFalse(activity.itemDueForFocus(studyItem("新", RecordsBase.LadderRung.KANJI_MEANING, "review", now).copyBuilder().totalReviews(0).build(), now));
-                assertTrue(activity.itemDueForFocus(reviewDue.copyBuilder().totalReviews(1).build(), now));
                 activity.studyMoreNewCardKanji.add("復");
                 RecordsSchedulerModels.AdaptiveLoadPlan extraPlan = activity.studyMoreNewCardsPlan(
                         Collections.singletonList(row("復", "review", "フク", Collections.emptyList())),
@@ -223,13 +254,12 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.markStudyTaskCompleted("topbar:one");
                 activity.markStudyTaskCompleted("topbar:two");
                 activity.continueAllKanjiSession = true;
-                assertTrue(activity.studyTopBar(all) instanceof StudyTopBarView);
                 RecordsStudyModels.StudyItem clueItem = studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertEquals(
                         "Fallback prompt",
-                        activity.sessionClue(new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
+                        StudyTextCopy.sessionClue(activity.currentDictionaryLookup(), new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
                 );
-                assertEquals("Fallback", activity.canonicalKanjiMeaning("?", "fallback", 40));
+                assertEquals("Fallback", StudyTextCopy.canonicalKanjiMeaning(activity.currentDictionaryLookup(), "?", "fallback", 40));
                 FakeWritingRecognizer cachedRecognizer = new FakeWritingRecognizer(
                         CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready")),
                         CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready")),
@@ -249,33 +279,6 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void baseEqualHeightRowSkipsGoneChildrenAndHonorsExactHeight() {
-        MainActivityBase.EqualHeightRow equalRow = new MainActivityBase.EqualHeightRow(context);
-        TextView gone = new TextView(context);
-        gone.setVisibility(View.GONE);
-        equalRow.addView(gone, new LinearLayout.LayoutParams(100, 40));
-        equalRow.measure(
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.AT_MOST)
-        );
-        assertEquals(0, equalRow.getMeasuredHeight());
-
-        TextView visible = new TextView(context);
-        visible.setText("Tall");
-        LinearLayout.LayoutParams visibleLp = new LinearLayout.LayoutParams(100, 30);
-        visibleLp.setMargins(0, 3, 0, 7);
-        equalRow.addView(visible, visibleLp);
-        equalRow.measure(
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(60, View.MeasureSpec.EXACTLY)
-        );
-        assertEquals(60, equalRow.getMeasuredHeight());
-        assertEquals(60, MainActivityBase.EqualHeightRow.measuredOuterHeight(visible));
-        MainActivityBase.EqualHeightRow.measureVisibleChild(gone, 20);
-        MainActivityBase.EqualHeightRow.measureVisibleChild(visible, 0);
-    }
-
-    @Test
     public void studySessionHelpersPickExamplesPromptsTitlesAndTaskKinds() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
@@ -290,26 +293,26 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(suspended, activity.exampleForSession(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals(active, activity.exampleForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
 
-                assertEquals("What is the reading?", activity.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("What does this kanji mean?", activity.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("Read this word", activity.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("Type the meaning", activity.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertEquals("Recognise this kanji", activity.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
-                assertEquals("Name this kanji", activity.flashcardTitle(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("Read", activity.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("Type", activity.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertEquals("Recognise", activity.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("活動語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
-                assertEquals("語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
-                assertEquals("active", activity.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
-                assertEquals("active", activity.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("", activity.collectionMeaningForSession(null));
+                assertEquals("What is the reading?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("Read this word", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("Type the meaning", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertEquals("Recognise this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
+                assertEquals("Name this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("Read", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("Type", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("活動語", StudyTextCopy.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
+                assertEquals("語", StudyTextCopy.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
+                assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
+                assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("", StudyTextCopy.collectionMeaningForSession(null));
 
-                assertTrue(activity.isWordReadingTask(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertTrue(activity.isTypingMeaningTask(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertTrue(activity.isFontRecognitionTask(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
-                assertTrue(activity.isRecallTask(session("語", "blind_writing", row)));
-                assertFalse(activity.isRecallTask(null));
+                assertTrue(StudyTaskCopy.isWordReadingTask(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertTrue(StudyTaskCopy.isTypingMeaningTask(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertTrue(StudyTaskCopy.isFontRecognitionTask(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
+                assertTrue(StudyTaskCopy.isRecallTask(session("語", "blind_writing", row)));
+                assertFalse(StudyTaskCopy.isRecallTask(null));
             });
         }
     }
@@ -344,26 +347,31 @@ public final class MainActivityHelperInstrumentedTest {
                         0
                 );
 
-                assertTrue(activity.diagnosisText(wrong).contains("Stroke 1: likely wrong order"));
-                assertTrue(activity.diagnosisText(wrong).contains("Recognized, but the stroke path was messy"));
-                assertEquals("Stroke 2: likely wrong direction", activity.diagnosisLine(diagnosis.entries.get(1)));
-                assertEquals("Stroke 3: may be missing", activity.diagnosisLine(diagnosis.entries.get(2)));
-                assertEquals("Stroke 4: shape looks rough", activity.diagnosisLine(diagnosis.entries.get(3)));
-                assertTrue(activity.canShowDiagnosis(wrong));
-                assertFalse(activity.canShowDiagnosis(analysis(WritingAnalysis.Status.NO_INK, false, order)));
+                assertTrue(StrokeDiagnosisFormatter.text(wrong).contains("Stroke 1: likely wrong order"));
+                assertTrue(StrokeDiagnosisFormatter.text(wrong).contains("Recognized, but the stroke path was messy"));
+                assertEquals("Stroke 2: likely wrong direction", StrokeDiagnosisFormatter.line(diagnosis.entries.get(1)));
+                assertEquals("Stroke 3: may be missing", StrokeDiagnosisFormatter.line(diagnosis.entries.get(2)));
+                assertEquals("Stroke 4: shape looks rough", StrokeDiagnosisFormatter.line(diagnosis.entries.get(3)));
+                assertTrue(StrokeDiagnosisFormatter.canShow(wrong));
+                assertFalse(StrokeDiagnosisFormatter.canShow(analysis(WritingAnalysis.Status.NO_INK, false, order)));
 
-                assertTrue(activity.canSubmitAnalysis(wrong));
-                assertTrue(activity.canManualOverride(wrong));
-                assertTrue(activity.canPracticeAfterAnalysis(wrong));
-                assertFalse(activity.canSubmitAnalysis(null));
-                assertFalse(activity.canManualOverride(close));
-                assertTrue(activity.shouldIncreaseSupportAfterAnalysis(wrong));
-                assertFalse(activity.shouldIncreaseSupportAfterAnalysis(close));
-                assertTrue(activity.shouldShowLearningPanel(wrong));
-                assertFalse(activity.shouldShowLearningPanel(analysis(WritingAnalysis.Status.NO_INK, false, order)));
-                assertTrue(activity.attemptProgressText(close).contains("Try cleaner"));
-                assertTrue(activity.attemptProgressText(pass).contains("less help"));
-                assertTrue(activity.targetRevealText(wrong).contains("Target: 裂"));
+                assertTrue(WritingFeedbackCopy.canSubmitAnalysis(wrong));
+                assertTrue(WritingFeedbackCopy.canManualOverride(wrong));
+                assertTrue(WritingFeedbackCopy.canPracticeAfterAnalysis(wrong));
+                assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
+                assertFalse(WritingFeedbackCopy.canManualOverride(close));
+                assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(wrong));
+                assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(close));
+                assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(wrong, false, false, 1));
+                assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(
+                        analysis(WritingAnalysis.Status.NO_INK, false, order),
+                        false,
+                        false,
+                        1
+                ));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(close, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(close)).contains("Try cleaner"));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(pass, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(pass)).contains("less help"));
+                assertTrue(WritingFeedbackCopy.targetRevealText(wrong, activity.activeSession == null ? null : activity.activeSession.item.kanji).contains("Target: 裂"));
             });
         }
     }
@@ -383,24 +391,25 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyVersionRankAndRetentionText(MainActivity activity) {
-        assertEquals("unknown version", activity.versionText(""));
-        assertEquals("0.4.33", activity.versionText("v0.4.33"));
-        assertEquals(1, MainActivitySettings.boolFlag(true));
-        assertEquals(0, MainActivitySettings.boolFlag(false));
-        assertEquals(0, activity.rankSliderProgress(-20));
-        assertEquals(19999, activity.rankSliderProgress(50_000));
-        assertEquals(1, activity.rankFromSliderProgress(-4));
-        assertEquals(20000, activity.rankFromSliderProgress(50_000));
-        assertEquals("Jiten ranks 10-25", activity.frequencyRangeStatusText(10, 25));
-        assertEquals(80, activity.retentionPercent(0.1));
-        assertEquals(97, activity.retentionPercent(1.0));
-        assertEquals("Desired retention: 90%", activity.retentionStatusText(90));
+        assertEquals("unknown version", SettingsTextCopy.versionText(""));
+        assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
+        assertEquals(1, SettingsImportPreset.boolFlag(true));
+        assertEquals(0, SettingsImportPreset.boolFlag(false));
+        assertEquals(0, SettingsInputRules.rankSliderProgress(-20));
+        assertEquals(19999, SettingsInputRules.rankSliderProgress(50_000));
+        assertEquals(1, SettingsInputRules.rankFromSliderProgress(-4));
+        assertEquals(20000, SettingsInputRules.rankFromSliderProgress(50_000));
+        assertEquals("Jiten ranks 10-25", SettingsTextCopy.frequencyRangeStatusText(10, 25));
+        assertEquals(80, SettingsInputRules.retentionPercent(0.1));
+        assertEquals(97, SettingsInputRules.retentionPercent(1.0));
+        assertEquals("Desired retention: 90%", SettingsTextCopy.retentionStatusText(90));
     }
 
     private static void verifyImportSourceSummaries(MainActivity activity) {
-        assertTrue(activity.validImportThresholds(7.5, 3, 2));
-        assertFalse(activity.validImportThresholds(0.5, 3, 2));
-        assertFalse(activity.hasSelectedImportSource(
+        MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
+        assertTrue(SettingsInputRules.validImportThresholds(7.5, 3, 2));
+        assertFalse(SettingsInputRules.validImportThresholds(0.5, 3, 2));
+        assertFalse(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, false),
@@ -409,7 +418,7 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, true),
                 checked(activity, false),
@@ -418,7 +427,34 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
+                checked(activity, true),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        assertTrue(validation.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, true),
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        assertTrue(validation.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                null,
+                checked(activity, true),
+                null,
+                null,
+                null
+        ));
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, true),
@@ -427,7 +463,16 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.singletonList("leeches"),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, true),
+                checked(activity, false),
+                null,
+                Collections.singletonList("leeches"),
+                null
+        ));
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, false),
@@ -436,9 +481,9 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 "deck:Kiku"
         ));
-        assertEquals("3 matching cards per kanji", activity.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
-        assertTrue(activity.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
-        assertEquals("No sources", activity.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
+        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
+        assertTrue(SettingsTextCopy.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
+        assertEquals("No sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
     }
 
     private static void verifyAutoSyncSummaries(MainActivity activity) {
@@ -447,48 +492,96 @@ public final class MainActivityHelperInstrumentedTest {
         LocalStore.AutoSyncSettings disabled = new LocalStore.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L);
         LocalStore.AutoSyncSettings enabledNoHistory = new LocalStore.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L);
         LocalStore.AutoSyncSettings disabledNoHistory = new LocalStore.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L);
-        assertEquals("After first sync", activity.settingsAutoSyncSummary(unconfigured));
-        assertEquals("07:30", activity.settingsAutoSyncSummary(enabled));
-        assertEquals("Off", activity.settingsAutoSyncSummary(disabled));
-        assertEquals("Starts after first successful sync", activity.autoSyncStatus(unconfigured));
-        assertEquals("On around 07:30", activity.autoSyncStatus(enabled));
-        assertEquals("Off", activity.autoSyncStatus(disabled));
-        assertTrue(activity.autoSyncDetail(enabled).contains("Last auto success"));
-        assertTrue(activity.autoSyncDetail(disabled).contains("Last auto attempt"));
-        assertTrue(activity.autoSyncDetail(enabledNoHistory).contains("Scheduled once"));
-        assertTrue(activity.autoSyncDetail(disabledNoHistory).contains("paused"));
+        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
+        assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
+        assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
+        assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                enabled.configured,
+                enabled.enabled,
+                DateTextPolicy.shortDateTime(enabled.lastSuccessAt),
+                DateTextPolicy.shortDateTime(enabled.lastAttemptAt),
+                DateTextPolicy.shortDateTime(enabled.nextRunAt)
+        ).contains("Last auto success"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                disabled.configured,
+                disabled.enabled,
+                "",
+                DateTextPolicy.shortDateTime(disabled.lastAttemptAt),
+                ""
+        ).contains("Last auto attempt"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                enabledNoHistory.configured,
+                enabledNoHistory.enabled,
+                "",
+                "",
+                ""
+        ).contains("Scheduled once"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                disabledNoHistory.configured,
+                disabledNoHistory.enabled,
+                "",
+                "",
+                ""
+        ).contains("paused"));
     }
 
     private static void verifyWorkloadAndReminderSummaries(MainActivity activity) {
-        assertEquals("Pareto: up to 5 items", activity.workloadStatusText(20, 5));
-        assertEquals("All kanji: up to 9 items", activity.workloadStatusText(100, 9));
-        assertEquals("Maximum: 1 item", activity.maxItemsStatusText(1));
-        assertEquals("Auto Pareto: waiting for problem kanji", activity.autoWorkloadStatusText(null));
+        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
+        assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
+        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
+        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
                 "Auto Pareto: 2 items today",
-                activity.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
+                SettingsTextCopy.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
         );
-        assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
-        assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
-        assertEquals("Off", activity.reminderStatus(new LocalStore.ReminderSettings(false, 21, 5), false));
-        assertEquals("21:05", activity.reminderTime(21, 5));
-        assertEquals("Reminder time: 21:05", activity.reminderTimeButtonLabel(21, 5));
+        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
+        assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
+        assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
+        assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
+        assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
-        assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), activity.maxItemsStatusText(0));
+        assertEquals("Maximum: " + StudyTextCopy.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
+    }
+
+    private static void appendOptionalSyncSummaryLines(MainActivity activity, LinearLayout summary, ManualSyncEngine.SyncResult result) {
+        if (!result.adaptiveSummary.isEmpty()) {
+            summary.addView(testText(activity, result.adaptiveSummary, 15, Color.WHITE, false));
+        }
+        if (result.importedSuspendedKanji > 0) {
+            summary.addView(testText(activity, HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
+        }
+        if (result.message != null && !result.message.isEmpty()) {
+            summary.addView(testText(activity, result.message, 14, Color.WHITE, false));
+        }
+    }
+
+    private static TextView testText(Context context, String value, int sp, int color, boolean bold) {
+        TextView view = new TextView(context);
+        view.setText(value == null ? "" : value);
+        view.setTextSize((float) sp);
+        view.setTextColor(color);
+        view.setIncludeFontPadding(true);
+        view.setLineSpacing(0f, 1.05f);
+        view.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
+        return view;
     }
 
     private static void verifyImportThresholdReader(MainActivity activity) {
+        MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
         EditText difficulty = new EditText(activity);
         EditText lapses = new EditText(activity);
         EditText minMatching = new EditText(activity);
         difficulty.setText("not numeric");
         lapses.setText("3");
         minMatching.setText("2");
-        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        assertNull(validation.readImportThresholds(difficulty, lapses, minMatching));
         difficulty.setText("0.5");
-        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        assertNull(validation.readImportThresholds(difficulty, lapses, minMatching));
         difficulty.setText("7.5");
-        MainActivityBase.ImportThresholds thresholds = activity.readImportThresholds(difficulty, lapses, minMatching);
+        MainActivityBase.ImportThresholds thresholds = validation.readImportThresholds(difficulty, lapses, minMatching);
         assertNotNull(thresholds);
         assertEquals(7.5, thresholds.difficulty, 0.001);
         assertEquals(3, thresholds.lapseThreshold);
@@ -496,446 +589,11 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyRankAndMaxItemControls(MainActivity activity) {
-        int[] selectedRanks = {10, 100};
-        TextView rankStatus = new TextView(activity);
-        EditText minRank = new EditText(activity);
-        EditText maxRank = new EditText(activity);
-        SeekBar minSlider = new SeekBar(activity);
-        SeekBar maxSlider = new SeekBar(activity);
-        activity.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
-        touchSeekBar(minSlider);
-        touchSeekBar(maxSlider);
-        minSlider.setProgress(activity.rankSliderProgress(50));
-        maxSlider.setProgress(activity.rankSliderProgress(80));
-        assertEquals(50, selectedRanks[0]);
-        assertEquals(80, selectedRanks[1]);
-        minSlider.setProgress(activity.rankSliderProgress(90));
-        assertEquals(80, selectedRanks[0]);
-        maxSlider.setProgress(activity.rankSliderProgress(70));
-        assertEquals(80, selectedRanks[1]);
-        assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
-        verifyMaxItemControls(activity);
-    }
-
-    private static void verifyMaxItemControls(MainActivity activity) {
-        LinearLayout maxOnlyBox = new LinearLayout(activity);
-        int[] selectedMaxOnly = {AdaptiveLoadPlanner.MIN_MAX_ITEMS};
-        activity.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
-        SeekBar maxOnlySlider = seekBars(maxOnlyBox).get(0);
-        touchSeekBar(maxOnlySlider);
-        maxOnlySlider.setProgress(3);
-        assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 3), selectedMaxOnly[0]);
-
-        LinearLayout linkedMaxBox = new LinearLayout(activity);
-        int[] selectedMax = {5};
-        int[] selectedWorkload = {20};
-        TextView workloadStatus = new TextView(activity);
-        activity.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
-        SeekBar linkedSlider = seekBars(linkedMaxBox).get(0);
-        touchSeekBar(linkedSlider);
-        linkedSlider.setProgress(5);
-        assertTrue(workloadStatus.getText().toString().contains("Pareto: up to"));
-    }
-
-    @Test
-    public void settingsCategoriesTogglePanelsAndReferenceNavigation() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                activity.renderSettings();
-                assertTrue(activity.settingsAnkiExpanded);
-                assertFalse(activity.settingsStudyExpanded);
-                assertTrue(containsText(activity.content, "Frequency range"));
-                assertFalse(containsText(activity.content, "Daily workload"));
-
-                performClickableWithText(activity.content, "Study behavior");
-                assertTrue(activity.settingsStudyExpanded);
-                assertTrue(containsText(activity.content, "Daily workload"));
-
-                performClickableWithText(activity.content, "Anki source");
-                assertFalse(activity.settingsAnkiExpanded);
-                assertFalse(containsText(activity.content, "Frequency range"));
-
-                performClickableWithText(activity.content, "Automation");
-                assertTrue(activity.settingsSyncExpanded);
-                assertTrue(containsText(activity.content, "Daily Anki sync"));
-
-                performClickableWithText(activity.content, "Reference data");
-                assertTrue(activity.settingsAppExpanded);
-                assertTrue(containsText(activity.content, "Offline data & licenses"));
-                performButtonClick(activity.content, "Open data licenses");
-                assertHasText(activity, "Data licenses");
-                performButtonClick(activity.content, "Back to settings");
-                assertHasText(activity, "Settings cockpit");
-            });
-        }
-    }
-
-    @Test
-    public void settingsPanelsPersistWorkloadAndLearningStepActions() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
-                LinearLayout autoPanel = activity.workloadSettingsPanel();
-                performButtonClick(autoPanel, "Save maximum");
-                performButtonClick(autoPanel, "Use manual workload");
-                assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode());
-
-                activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
-                LinearLayout manualPanel = activity.workloadSettingsPanel();
-                List<SeekBar> manualSliders = seekBars(manualPanel);
-                manualSliders.get(0).setProgress(40);
-                touchSeekBar(manualSliders.get(0));
-                manualSliders.get(1).setProgress(4);
-                touchSeekBar(manualSliders.get(1));
-                performButtonClick(manualPanel, "Save workload");
-                assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode());
-                performButtonClick(manualPanel, "Use automatic Pareto");
-                assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
-
-                LinearLayout stepsPanel = activity.learningStepsSettingsPanel();
-                editTexts(stepsPanel).get(0).setText("bad");
-                performButtonClick(stepsPanel, "Save learning steps");
-                performButtonClick(stepsPanel, "Anki default");
-                performButtonClick(stepsPanel, "Both 1m 10m");
-                performButtonClick(stepsPanel, "Save learning steps");
-                assertEquals("1m, 10m", activity.store.learningStepSettings().reviewStepsText());
-            });
-        }
-    }
-
-    @Test
-    public void importFilterAndFrequencyPanelsValidateAndPersistRealSettings() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                RecordsSyncModels.Settings saved = verifyImportFilterPanel(activity);
-                verifyFrequencyRangePanel(activity, saved);
-                verifyImportPresetButtons(activity);
-            });
-        }
-    }
-
-    private static RecordsSyncModels.Settings verifyImportFilterPanel(MainActivity activity) {
-        LinearLayout importPanel = activity.importFilterSettingsPanel(activity.settings());
-        List<CheckBox> boxes = checkBoxes(importPanel);
-        List<EditText> inputs = editTexts(importPanel);
-        assertEquals(5, boxes.size());
-        assertEquals(5, inputs.size());
-
-        boxes.get(4).setChecked(true);
-        inputs.get(0).setText("");
-        performButtonClick(importPanel, "Save import filters");
-        assertFalse(activity.settings().importBrowserQueryCards);
-
-        for (CheckBox box : boxes) {
-            box.setChecked(false);
-        }
-        performButtonClick(importPanel, "Save import filters");
-        assertTrue(activity.settings().importSuspendedCards);
-
-        boxes.get(1).setChecked(true);
-        inputs.get(2).setText("not numeric");
-        performButtonClick(importPanel, "Save import filters");
-        assertTrue(activity.settings().importSuspendedCards);
-
-        boxes.get(0).setChecked(true);
-        boxes.get(1).setChecked(false);
-        boxes.get(2).setChecked(true);
-        boxes.get(3).setChecked(true);
-        boxes.get(4).setChecked(true);
-        inputs.get(0).setText("deck:Kiku tag:kani");
-        inputs.get(1).setText("tagAlpha, tagBeta");
-        inputs.get(2).setText("8.5");
-        inputs.get(3).setText("4");
-        inputs.get(4).setText("2");
-        performButtonClick(importPanel, "Save import filters");
-
-        RecordsSyncModels.Settings saved = activity.settings();
-        assertTrue(saved.importActiveCards);
-        assertFalse(saved.importSuspendedCards);
-        assertTrue(saved.importTaggedCardsEnabled());
-        assertEquals(Arrays.asList("tagAlpha", "tagBeta"), saved.importTags);
-        assertTrue(saved.importWeakCards);
-        assertEquals(8.5, saved.importWeakFsrsDifficultyThreshold, 0.001);
-        assertEquals(4, saved.importWeakLapsesThreshold);
-        assertEquals(2, saved.importMinMatchingCardsPerKanji);
-        assertTrue(saved.browserQueryImportEnabled());
-        assertEquals("deck:Kiku tag:kani", saved.importBrowserQuery);
-        return saved;
-    }
-
-    private static void verifyFrequencyRangePanel(MainActivity activity, RecordsSyncModels.Settings saved) {
-        LinearLayout frequencyPanel = activity.frequencyRangeSettingsPanel(activity.settings());
-        List<EditText> rankInputs = editTexts(frequencyPanel);
-        assertEquals(2, rankInputs.size());
-        rankInputs.get(0).setText("many");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-
-        rankInputs.get(0).setText("0");
-        rankInputs.get(1).setText("25");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-        rankInputs.get(0).setText("10");
-        rankInputs.get(1).setText("50000");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-
-        rankInputs.get(0).setText("300");
-        rankInputs.get(1).setText("20");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        RecordsSyncModels.Settings ranked = activity.settings();
-        assertEquals(20, ranked.suspendedRankMin);
-        assertEquals(300, ranked.suspendedRankMax);
-    }
-
-    private static void verifyImportPresetButtons(MainActivity activity) {
-        LinearLayout tagPresetPanel = activity.importFilterSettingsPanel(activity.settings());
-        performButtonClick(tagPresetPanel, "Leech tag");
-        RecordsSyncModels.Settings leechPreset = activity.settings();
-        assertFalse(leechPreset.importActiveCards);
-        assertFalse(leechPreset.importSuspendedCards);
-        assertTrue(leechPreset.importTaggedCardsEnabled());
-        assertEquals(Collections.singletonList("leech"), leechPreset.importTags);
-        assertFalse(leechPreset.browserQueryImportEnabled());
-
-        LinearLayout deckPresetPanel = activity.importFilterSettingsPanel(activity.settings());
-        performButtonClick(deckPresetPanel, "Mining deck");
-        RecordsSyncModels.Settings deckPreset = activity.settings();
-        assertFalse(deckPreset.importActiveCards);
-        assertFalse(deckPreset.importSuspendedCards);
-        assertFalse(deckPreset.importTaggedCardsEnabled());
-        assertTrue(deckPreset.browserQueryImportEnabled());
-        assertEquals("deck:Mining", deckPreset.importBrowserQuery);
-    }
-
-    @Test
-    public void noteTypeInputsWriteRealAndroidFieldsAndFallbackGuesses() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                EditText noteType = new EditText(activity);
-                EditText expression = new EditText(activity);
-                EditText reading = new EditText(activity);
-                EditText meaning = new EditText(activity);
-                EditText sentence = new EditText(activity);
-                EditText frequency = new EditText(activity);
-                EditText frequencySort = new EditText(activity);
-                NoteTypeFieldMappings.Inputs inputs = new NoteTypeFieldMappings.Inputs(
-                        noteType,
-                        expression,
-                        reading,
-                        meaning,
-                        sentence,
-                        frequency,
-                        frequencySort
-                );
-
-                NoteTypeFieldMappings.chooseNoteType(
-                        new NoteTypeFieldMappings.Choice("Fallback Model", Arrays.asList("Front", "Back", "Kana")),
-                        inputs
-                );
-
-                assertEquals("Fallback Model", noteType.getText().toString());
-                assertEquals("Front", expression.getText().toString());
-                assertEquals("Kana", reading.getText().toString());
-                assertEquals("Back", meaning.getText().toString());
-                assertEquals("", sentence.getText().toString());
-                assertEquals("", frequency.getText().toString());
-                assertEquals("", frequencySort.getText().toString());
-
-                LinearLayout panel = activity.noteTypeSettingsPanel(activity.settings());
-                List<EditText> panelInputs = editTexts(panel);
-                panelInputs.get(0).setText("");
-                performButtonClick(panel, "Save note type");
-                assertEquals("Kiku", activity.settings().modelName);
-                panelInputs.get(0).setText("Custom");
-                panelInputs.get(1).setText("");
-                performButtonClick(panel, "Save note type");
-                assertEquals("Kiku", activity.settings().modelName);
-                performButtonClick(panel, "Use Kiku");
-                performButtonClick(panel, "Save note type");
-                assertEquals("Kiku", activity.settings().modelName);
-            });
-        }
-    }
-
-    @Test
-    public void settingsValidationPanelsPersistStudyAheadLadderRetentionAndReminder() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                LinearLayout studyAhead = activity.studyAheadSettingsPanel();
-                EditText minutes = editTexts(studyAhead).get(0);
-                minutes.setText("later");
-                performButtonClick(studyAhead, "Save study ahead");
-                minutes.setText("2000");
-                performButtonClick(studyAhead, "Save study ahead");
-                minutes.setText("45");
-                performButtonClick(studyAhead, "Save study ahead");
-                assertEquals(45, activity.store.studyAheadMinutes());
-
-                LinearLayout ladder = activity.ladderThresholdSettingsPanel();
-                List<EditText> thresholdInputs = editTexts(ladder);
-                thresholdInputs.get(0).setText("oops");
-                thresholdInputs.get(1).setText("3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                thresholdInputs.get(0).setText("21");
-                thresholdInputs.get(1).setText("3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                thresholdInputs.get(0).setText("3");
-                thresholdInputs.get(1).setText("0");
-                performButtonClick(ladder, "Save ladder thresholds");
-                performButtonClick(ladder, "Use 21 and 3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                RecordsSyncModels.Settings updated = activity.settings();
-                assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, updated.ladderPromotionIntervalDays);
-                assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, updated.ladderDemotionFailStreak);
-
-                LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
-                assertNotNull(findButton(ladderOrder, "Restore default ladder"));
-                activity.toggleLadderRung(RecordsBase.LadderRung.SIMILAR_KANJI);
-                assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI));
-                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6));
-                assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
-
-                LinearLayout newCardSort = activity.newCardSortSettingsPanel(activity.settings());
-                performButtonClick(newCardSort, "Retrievability risk");
-                performButtonClick(newCardSort, "Save new card sort");
-                assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, activity.settings().newCardSortMode);
-
-                LinearLayout retention = activity.retentionSettingsPanel();
-                SeekBar retentionSlider = seekBars(retention).get(0);
-                retentionSlider.setProgress(10);
-                touchSeekBar(retentionSlider);
-                performButtonClick(retention, "95%");
-                performButtonClick(retention, "Save retention");
-                assertEquals(0.95, activity.store.schedulerParameters().targetRetention, 0.001);
-                retention = activity.retentionSettingsPanel();
-                checkBoxes(retention).get(0).setChecked(true);
-                editTexts(retention).get(0).setText("1-500=95%\n501-20000=85%");
-                performButtonClick(retention, "Save retention");
-                RecordsSchedulerModels.SchedulerParameters savedRetention = activity.store.schedulerParameters();
-                assertTrue(savedRetention.frequencyRetentionEnabled);
-                assertEquals("1-500=95%\n501-20000=85%", savedRetention.frequencyRetentionRanges);
-
-                activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 21, 0));
-                LinearLayout reminder = activity.reminderSettingsPanel();
-                Button timeButton = findButton(reminder, "Reminder time: 21:00");
-                performButtonClick(reminder, "Morning 08:00");
-                assertEquals("Reminder time: 08:00", timeButton.getText().toString());
-                performButtonClick(reminder, "Turn off reminder");
-                assertFalse(activity.store.reminderSettings().enabled);
-                assertEquals(MainActivityBase.CORAL, activity.reminderStatusColor(new LocalStore.ReminderSettings(true, 21, 0), true));
-                assertEquals(MainActivityBase.TEAL, activity.reminderStatusColor(new LocalStore.ReminderSettings(true, 21, 0), false));
-                assertEquals(MainActivityBase.MUTED, activity.reminderStatusColor(new LocalStore.ReminderSettings(false, 21, 0), false));
-
-                int[] selectedHour = {21};
-                int[] selectedMinute = {0};
-                Button timeButtonDirect = new Button(activity);
-                activity.applyReminderTimeSelection(selectedHour, selectedMinute, timeButtonDirect, 6, 5);
-                assertEquals(6, selectedHour[0]);
-                assertEquals(5, selectedMinute[0]);
-                assertEquals("Reminder time: 06:05", timeButtonDirect.getText().toString());
-                Intent notificationIntent = activity.notificationSettingsIntent();
-                assertEquals(Settings.ACTION_APP_NOTIFICATION_SETTINGS, notificationIntent.getAction());
-                assertEquals(activity.getPackageName(), notificationIntent.getStringExtra(Settings.EXTRA_APP_PACKAGE));
-            });
-        }
-    }
-
-    @Test
-    public void automationPanelsToggleSyncUpdatesAndReminderActions() {
-        MainActivity.setInstallPermissionForTests(false);
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                activity.store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 6, 45, 1000L, 1000L, 2000L));
-                LinearLayout syncOn = activity.autoSyncSettingsPanel();
-                performButtonClick(syncOn, "Turn off daily sync");
-                assertFalse(activity.store.autoSyncSettings().enabled);
-
-                LinearLayout syncOff = activity.autoSyncSettingsPanel();
-                performButtonClick(syncOff, "Turn on daily sync");
-                assertTrue(activity.store.autoSyncSettings().enabled);
-
-                activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
-                LinearLayout missingPermission = activity.updateSettingsPanel();
-                assertTrue(containsText(missingPermission, "Install permission: Missing"));
-                assertNotNull(findButton(missingPermission, "Set up app installs"));
-                performButtonClick(missingPermission, "Open updater");
-                assertHasText(activity, "GitHub updater");
-
-                MainActivity.setInstallPermissionForTests(true);
-                LinearLayout readyUpdate = activity.updateSettingsPanel();
-                assertTrue(containsText(readyUpdate, "Install permission: Ready"));
-                assertTrue(containsText(readyUpdate, "Verified APK ready: 0.5.0"));
-                assertNotNull(findButton(readyUpdate, "Install verified update"));
-
-                performButtonClick(readyUpdate, "Turn off automatic updates");
-                assertFalse(activity.store.autoUpdateStatus().enabled);
-                LinearLayout updateOff = activity.updateSettingsPanel();
-                performButtonClick(updateOff, "Turn on automatic updates");
-                assertTrue(activity.store.autoUpdateStatus().enabled);
-
-                activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));
-                activity.saveReminderFromSelection(6, 15, false);
-                LocalStore.ReminderSettings reminder = activity.store.reminderSettings();
-                assertFalse(reminder.enabled);
-                assertEquals(6, reminder.hour);
-                assertEquals(15, reminder.minute);
-                assertNotNull(findButton(activity.reminderSettingsPanel(), "Enable reminder"));
-            });
-        } finally {
-            MainActivity.setInstallPermissionForTests(null);
-        }
-    }
-
-    @Test
-    public void updateUiContinuationStopsAfterNavigationAway() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                activity.base(MainActivityBase.NAV_SETTINGS_ROUTE);
-                int firstRun = activity.beginUpdateUiRun();
-                assertTrue(activity.updateUiRunStillActive(firstRun));
-
-                activity.renderSettings();
-                assertFalse(activity.updateUiRunStillActive(firstRun));
-
-                int staleRun = activity.beginUpdateUiRun();
-                int activeRun = activity.beginUpdateUiRun();
-                assertFalse(activity.updateUiRunStillActive(staleRun));
-                assertTrue(activity.updateUiRunStillActive(activeRun));
-
-                activity.renderHome();
-                assertFalse(activity.updateUiRunStillActive(activeRun));
-            });
-        }
-    }
-
-    @Test
-    public void reminderSavingCoversPermissionRequestsAndBlockedNotifications() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                MainActivity.setRuntimeNotificationPermissionForTests(false);
-                activity.saveReminderFromSelection(7, 45, true);
-                assertTrue(activity.pendingReminderSettings.enabled);
-                assertEquals(7, activity.pendingReminderSettings.hour);
-                assertEquals(45, activity.pendingReminderSettings.minute);
-
-                MainActivity.setRuntimeNotificationPermissionForTests(true);
-                MainActivity.setNotificationsAllowedForTests(false);
-                activity.saveReminderFromSelection(8, 15, true);
-                LocalStore.ReminderSettings saved = activity.store.reminderSettings();
-                assertTrue(saved.enabled);
-                assertEquals(8, saved.hour);
-                assertEquals(15, saved.minute);
-                assertContainsText(activity.reminderSettingsPanel(), "Android notifications are off for Kani");
-
-                activity.pendingReminderSettings = new LocalStore.ReminderSettings(true, 9, 30);
-                activity.saveGrantedReminderPermission(activity.pendingReminderSettings);
-                assertEquals(9, activity.store.reminderSettings().hour);
-            });
-        } finally {
-            MainActivity.setRuntimeNotificationPermissionForTests(null);
-            MainActivity.setNotificationsAllowedForTests(null);
-        }
+        assertEquals(49, SettingsInputRules.rankSliderProgress(50));
+        assertEquals(50, SettingsInputRules.rankFromSliderProgress(49));
+        SettingsInputRules.RankRange normalized = SettingsInputRules.normalizedRankRange(300, 20);
+        assertEquals(20, normalized.minRank());
+        assertEquals(300, normalized.maxRank());
     }
 
     @Test
@@ -954,70 +612,66 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyHomeSyncFocusAndStreakText(MainActivity activity) {
-        assertEquals("Never synced", activity.homeSyncValue(null));
-        assertEquals("", activity.sentenceCase(""));
-        assertEquals("", activity.sentenceCase(null));
-        assertEquals("Synced today", activity.sentenceCase("synced today"));
+        assertEquals("Never synced", HomeTextCopy.homeSyncValue(null));
+        assertEquals("", HomeTextCopy.sentenceCase(""));
+        assertEquals("", HomeTextCopy.sentenceCase(null));
+        assertEquals("Synced today", HomeTextCopy.sentenceCase("synced today"));
 
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 2, 2, Arrays.asList("裂", "語"), 0, true, "all");
         RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 4, 1, Arrays.asList("裂", "語"), 0, false, "focus");
-        assertEquals("Waiting", activity.focusHeadline(null));
-        assertEquals("Waiting", activity.focusHeadline(waiting));
-        assertEquals("All current", activity.focusHeadline(all));
-        assertEquals("1 items left / 4", activity.focusHeadline(focused));
+        assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
+        assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
+        assertEquals("All current", HomeTextCopy.focusHeadline(all));
+        assertEquals("1 items left / 4", HomeTextCopy.focusHeadline(focused));
 
         StudyStatsStore.StudyStreak none = new StudyStatsStore.StudyStreak(0, 0, false, 0, 0L);
         StudyStatsStore.StudyStreak doneToday = new StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L);
         StudyStatsStore.StudyStreak doneNoBest = new StudyStatsStore.StudyStreak(1, 0, true, 1, 1000L);
-        assertEquals("No streak yet", activity.streakHeadline(none));
-        assertEquals("2-day streak", activity.streakHeadline(doneToday));
-        assertEquals("Not done today", activity.streakMetricBody(none));
-        assertEquals("Best: 5 days", activity.streakMetricBody(doneToday));
-        assertEquals("Done today", activity.streakMetricBody(doneNoBest));
-        assertEquals("1 day", activity.streakDayCount(1));
-        assertEquals("3 days", activity.streakDayCount(3));
+        assertEquals("No streak yet", HomeTextCopy.streakHeadline(none.currentDays));
+        assertEquals("2-day streak", HomeTextCopy.streakHeadline(doneToday.currentDays));
+        assertEquals("Not done today", HomeTextCopy.streakMetricBody(none.studiedToday, none.bestDays));
+        assertEquals("Best: 5 days", HomeTextCopy.streakMetricBody(doneToday.studiedToday, doneToday.bestDays));
+        assertEquals("Done today", HomeTextCopy.streakMetricBody(doneNoBest.studiedToday, doneNoBest.bestDays));
+        assertEquals("1 day", HomeTextCopy.streakDayCount(1));
+        assertEquals("3 days", HomeTextCopy.streakDayCount(3));
     }
 
     private static void verifyStudyTimeRankAndQueueText(MainActivity activity) {
-        assertEquals("0 sec", activity.formatStudyTime(-500L));
-        assertEquals("59 sec", activity.formatStudyTime(59_000L));
-        assertEquals("1 min", activity.formatStudyTime(60_000L));
-        assertEquals("1 min 5 sec", activity.formatStudyTime(65_000L));
-        assertEquals("1 hr", activity.formatStudyTime(3_600_000L));
-        assertEquals("1 hr 1 min", activity.formatStudyTime(3_660_000L));
-        assertEquals("0.38", activity.formatWeakness(0.375));
+        assertEquals("0 sec", StatsTextCopy.formatStudyTime(-500L));
+        assertEquals("59 sec", StatsTextCopy.formatStudyTime(59_000L));
+        assertEquals("1 min", StatsTextCopy.formatStudyTime(60_000L));
+        assertEquals("1 min 5 sec", StatsTextCopy.formatStudyTime(65_000L));
+        assertEquals("1 hr", StatsTextCopy.formatStudyTime(3_600_000L));
+        assertEquals("1 hr 1 min", StatsTextCopy.formatStudyTime(3_660_000L));
+        assertEquals("0.38", StatsTextCopy.formatWeakness(0.375));
 
-        assertEquals(0, activity.stateRank("learning"));
-        assertEquals(1, activity.stateRank("review"));
-        assertEquals(2, activity.stateRank("new"));
-        assertEquals(3, activity.stateRank("retired"));
         assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
         assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));
 
-        assertEquals("Needs focused kanji practice.", activity.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
+        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
         assertEquals(
                 "Shape mix-up made this a writing-practice target.",
-                activity.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", Collections.emptyList()))
+                FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", Collections.emptyList()))
         );
-        assertEquals("custom evidence", activity.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", Collections.emptyList())));
+        assertEquals("custom evidence", FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", Collections.emptyList())));
 
-        assertEquals("write kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L)));
-        assertEquals("type meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.TYPE_MEANING, "review", 0L)));
-        assertEquals("similar kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.SIMILAR_KANJI, "review", 0L)));
-        assertEquals("font -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.FONT_MEANING, "review", 0L)));
-        assertEquals("word -> reading", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WORD_READING, "review", 0L)));
-        assertEquals("kanji -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)));
+        assertEquals("write kanji", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L)));
+        assertEquals("type meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.TYPE_MEANING, "review", 0L)));
+        assertEquals("similar kanji", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.SIMILAR_KANJI, "review", 0L)));
+        assertEquals("font -> meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.FONT_MEANING, "review", 0L)));
+        assertEquals("word -> reading", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WORD_READING, "review", 0L)));
+        assertEquals("kanji -> meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)));
     }
 
     private static void verifySourceEvidenceAndEmptyQueue(MainActivity activity) {
         RecordsImportModels.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
         RecordsImportModels.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
-        assertEquals("From 活動語 · missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Arrays.asList(active, suspended))));
-        assertEquals("From 活動語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(active))));
-        assertEquals("Missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(suspended))));
-        assertEquals("From your AnkiDroid sync", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.emptyList())));
+        assertEquals("From 活動語 · missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Arrays.asList(active, suspended))));
+        assertEquals("From 活動語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(active))));
+        assertEquals("Missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(suspended))));
+        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.emptyList())));
         seedRows(activity, Collections.singletonList(row("空", "empty", "クウ", Collections.emptyList())));
         activity.renderFocusQueue();
         assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
@@ -1028,30 +682,31 @@ public final class MainActivityHelperInstrumentedTest {
             RecordsImportModels.KanjiInventoryItem inventory,
             RecordsImportModels.DashboardRow row
     ) {
-        assertEquals("裂", activity.detailDisplayKanji("fallback", row, inventory));
-        assertEquals("語", activity.detailDisplayKanji("fallback", null, inventory));
-        assertEquals("fallback", activity.detailDisplayKanji("fallback", null, null));
-        assertEquals("Historical recovery", activity.inventoryTitle(null));
-        assertEquals("Historical recovery", activity.inventoryTitle(new RecordsImportModels.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
-        assertEquals("language", activity.inventoryTitle(inventory));
+        assertEquals("裂", HomeTextCopy.detailDisplayKanji("fallback", row, inventory));
+        assertEquals("語", HomeTextCopy.detailDisplayKanji("fallback", null, inventory));
+        assertEquals("fallback", HomeTextCopy.detailDisplayKanji("fallback", null, null));
+        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(null));
+        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(new RecordsImportModels.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
+        assertEquals("language", HomeTextCopy.inventoryTitle(inventory));
 
         RecordsStudyModels.KanjiRecoveryTimeline activeTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline restingTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline retiredTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "retired", 0L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline noRowTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, null, Collections.emptyList());
-        assertEquals("Active repair", activity.timelineStatusText(activeTimeline));
-        assertEquals("Resting until review", activity.timelineStatusText(restingTimeline));
-        assertEquals("Retired by Anki support", activity.timelineStatusText(retiredTimeline));
-        assertEquals("Retired by Anki support", activity.timelineStatusText(noRowTimeline));
-        assertEquals(MainActivityBase.TEAL, activity.timelineStatusColor(retiredTimeline));
-        assertEquals(MainActivityBase.BLUE, activity.timelineStatusColor(restingTimeline));
-        assertEquals(MainActivityBase.CORAL, activity.timelineStatusColor(activeTimeline));
-        assertEquals(MainActivityBase.CORAL, activity.timelineEventColor("review_failed"));
-        assertEquals(MainActivityBase.TEAL, activity.timelineEventColor("review_passed"));
-        assertEquals(MainActivityBase.BLUE, activity.timelineEventColor("sync"));
-        assertEquals("", activity.timelineSourceLine(event("", "")));
-        assertEquals("Source: 活動語", activity.timelineSourceLine(event("活動語", "")));
-        assertEquals("Source: 活動語  カツドウゴ", activity.timelineSourceLine(event("活動語", "カツドウゴ")));
+        MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
+        assertEquals("Active repair", TimelineCopy.statusText(activeTimeline, System.currentTimeMillis()));
+        assertEquals("Resting until review", TimelineCopy.statusText(restingTimeline, System.currentTimeMillis()));
+        assertEquals("Retired by Anki support", TimelineCopy.statusText(retiredTimeline, System.currentTimeMillis()));
+        assertEquals("Retired by Anki support", TimelineCopy.statusText(noRowTimeline, System.currentTimeMillis()));
+        assertEquals(MainActivityBase.TEAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(retiredTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.BLUE, browseDetail.timelineToneColor(TimelineCopy.statusTone(restingTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(activeTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, browseDetail.timelineToneColor(TimelineCopy.eventTone("review_failed")));
+        assertEquals(MainActivityBase.TEAL, browseDetail.timelineToneColor(TimelineCopy.eventTone("review_passed")));
+        assertEquals(MainActivityBase.BLUE, browseDetail.timelineToneColor(TimelineCopy.eventTone("sync")));
+        assertEquals("", TimelineCopy.sourceLine(event("", "")));
+        assertEquals("Source: 活動語", TimelineCopy.sourceLine(event("活動語", "")));
+        assertEquals("Source: 活動語  カツドウゴ", TimelineCopy.sourceLine(event("活動語", "カツドウゴ")));
     }
 
     private static void verifyDetailPanels(
@@ -1059,25 +714,30 @@ public final class MainActivityHelperInstrumentedTest {
             RecordsImportModels.KanjiInventoryItem inventory,
             RecordsImportModels.DashboardRow row
     ) {
-        activity.content.removeAllViews();
-        activity.addDetailIdentity(null, inventory, false);
-        assertTrue(containsText(activity.content, "language"));
-        assertTrue(containsText(activity.content, "ゴ"));
+        MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
+        BrowseDetailIdentityModel inventoryIdentity = browseDetail.detailIdentityModel(null, inventory, false);
+        assertEquals("language", inventoryIdentity.getTitle());
+        assertEquals("ゴ", inventoryIdentity.getReading());
 
-        activity.content.removeAllViews();
-        activity.addDetailIdentity(null, new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L), false);
-        assertTrue(containsText(activity.content, "Historical recovery"));
-        assertFalse(containsText(activity.content, "ゴ"));
+        BrowseDetailIdentityModel historicalIdentity = browseDetail.detailIdentityModel(
+                null,
+                new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L),
+                false
+        );
+        assertEquals("Historical recovery", historicalIdentity.getTitle());
+        assertEquals("", historicalIdentity.getReading());
 
-        LinearLayout inventoryReason = activity.detailReasonPanel(null, inventory);
-        assertTrue(containsText(inventoryReason, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertTrue(containsText(inventoryReason, "Anki browser: kanji:語"));
-        LinearLayout fallbackReason = activity.detailReasonPanel(null, null);
-        assertTrue(containsText(fallbackReason, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertFalse(containsTextContaining(fallbackReason, "Anki browser:"));
-        LinearLayout rowReason = activity.detailReasonPanel(row, inventory);
-        assertTrue(containsText(rowReason, "reason text"));
-        assertTrue(containsText(rowReason, "Anki browser: 裂"));
+        BrowseDetailPanelModel inventoryReason = browseDetail.detailReasonPanelModel(null, inventory);
+        assertTrue(inventoryReason.getLines().contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(inventoryReason.getLines().contains("Anki browser: kanji:語"));
+
+        BrowseDetailPanelModel historicalReason = browseDetail.detailReasonPanelModel(null, null);
+        assertTrue(historicalReason.getLines().contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertFalse(historicalReason.getLines().toString().contains("Anki browser:"));
+
+        BrowseDetailPanelModel activeReason = browseDetail.detailReasonPanelModel(row, inventory);
+        assertTrue(activeReason.getLines().contains("reason text"));
+        assertTrue(activeReason.getLines().contains("Anki browser: 裂"));
     }
 
     @Test
@@ -1085,37 +745,58 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 boolean[] metricClicked = {false};
-                View metric = activity.metricCard(
+                HomeMetricModel metric = new HomeMetricModel(
                         R.drawable.ic_sync_24,
                         MainActivityBase.TEAL,
                         "Sync",
                         "Ready",
                         "Tap to sync",
-                        () -> metricClicked[0] = true
+                        () -> {
+                            metricClicked[0] = true;
+                            return Unit.INSTANCE;
+                        }
                 );
-                metric.performClick();
+                metric.getOnClick().invoke();
                 assertTrue(metricClicked[0]);
 
                 boolean[] headerClicked = {false};
-                View header = activity.homeSectionHeader("Focus queue", "View all", () -> headerClicked[0] = true);
+                View header = HomeComposeTestViews.homeSectionHeaderTestView(activity, "Focus queue", "View all", () -> headerClicked[0] = true);
                 performClickableWithText(header, "View all >");
                 assertTrue(headerClicked[0]);
 
-                performClickableWithText(activity.homeActionRow(), "Browse Kanji");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Browse Kanji");
                 assertHasText(activity, "Browse Kanji");
 
-                performClickableWithText(activity.homeActionRow(), "Recent mistakes");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
                 assertHasText(activity, "No recent mistakes yet");
 
-                performClickableWithText(activity.homeActionRow(), "Stats");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
 
-                performClickableWithText(activity.homeActionRow(), "Settings");
-                assertHasText(activity, "Settings cockpit");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Settings");
+                assertHasText(activity, "Automation");
 
-                activity.fullWidthHomeButton().performClick();
+                HomeComposeTestViews.fullWidthHomeButtonTestView(activity).performClick();
                 assertHasText(activity, "Kani");
+            });
+        }
+    }
+
+    @Test
+    public void renderHomeUsesSingleComposeScreenForEmptyAndActiveStates() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                activity.renderHome();
+                assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
+                assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
+
+                seedRows(activity, Collections.singletonList(row("裂", "split", "レツ", Collections.emptyList())));
+                activity.renderHome();
+                assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
+                assertHasText(activity, HomeTextCopy.viewAllLabel() + " >");
+                assertHasText(activity, "裂");
+                assertHasText(activity, "split");
             });
         }
     }
@@ -1132,20 +813,54 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
+                activity.renderSyncResult(syncResult(false, true, 0, 0, "", ""));
+                assertHasText(activity, "Kani is already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
                 assertHasText(activity, "Sync needs attention");
                 assertHasText(activity, "Provider unavailable.");
+                activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
+                assertHasText(activity, "Try again after checking AnkiDroid permissions.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Auto Pareto: 2 items today"));
                 assertHasText(activity, "Sync complete");
                 assertHasText(activity, "Cleanup finished.");
 
                 LinearLayout summary = new LinearLayout(activity);
-                activity.addOptionalSyncSummaryLines(summary, syncResult(true, false, 1, 2, "Done.", "Focus summary"));
+                appendOptionalSyncSummaryLines(activity, summary, syncResult(true, false, 1, 2, "Done.", "Focus summary"));
                 assertEquals(3, summary.getChildCount());
                 assertEquals("fallback", activity.nonEmptyOr("", "fallback"));
                 assertEquals("value", activity.nonEmptyOr("value", "fallback"));
+            });
+        }
+    }
+
+    @Test
+    public void gamesHostPathsRenderComposeResultAndUnavailableStates() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                activity.renderGames();
+                assertHasText(activity, "Games");
+
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                assertHasText(activity, "Game not ready");
+
+                seedRows(activity, Arrays.asList(
+                        row("裂", "split", "レツ", Collections.emptyList()),
+                        row("語", "language", "ゴ", Collections.emptyList())
+                ));
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                assertHasText(activity, "Pick the meaning");
+                performClickableWithText(activity.findViewById(android.R.id.content), "split");
+                assertContainsText(activity.findViewById(android.R.id.content), "Answer:");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Next");
+                assertHasText(activity, "Pick the meaning");
+
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                performClickableWithText(activity.findViewById(android.R.id.content), "language");
+                assertContainsText(activity.findViewById(android.R.id.content), "Answer:");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Games");
+                assertHasText(activity, "Games");
             });
         }
     }
@@ -1177,6 +892,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "Nothing to study yet");
         activity.renderNoStudySession(dueLater);
         assertHasText(activity, "Nothing due now");
+        performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
+        assertHasText(activity, "Kani");
         activity.renderFocusDone(complete);
         assertHasText(activity, "Today's focus done");
         assertHasText(activity, "Today's focus: 0 items left / 3");
@@ -1220,14 +937,14 @@ public final class MainActivityHelperInstrumentedTest {
         activity.resetStudyRunProgress();
         assertEquals(0, activity.studySessionTracker.completedCount());
         assertEquals(0, activity.studySessionTracker.targetCount());
-        assertFalse(activity.studyRunAtHardCap());
+        assertFalse(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.initializeSessionProgressTarget(dueLater);
         assertEquals(2, activity.studySessionTracker.targetCount());
         activity.markStudyTaskCompleted("cap:one");
         activity.markStudyTaskCompleted("cap:two");
-        assertTrue(activity.studyRunAtHardCap());
+        assertTrue(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.continueAllKanjiSession = true;
-        assertFalse(activity.studyRunAtHardCap());
+        assertFalse(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.clearStudyModeOverrides();
         assertFalse(activity.continueAllKanjiSession);
 
@@ -1264,6 +981,12 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.studySessionTracker.hasActiveTask());
         activity.completeActiveStudyTask("task:active", "passed", 2000L);
         assertFalse(activity.studySessionTracker.hasActiveTask());
+        int completedBeforeRepair = activity.studySessionTracker.completedCount();
+        activity.startActiveStudyTask("repair:active", "裂", BridgeScheduler.TASK_KANJI_MEANING, 3000L);
+        assertTrue(activity.studySessionTracker.hasActiveTask());
+        activity.completeActiveRepairStudyTask("repair:active", "passed", 4000L);
+        assertFalse(activity.studySessionTracker.hasActiveTask());
+        assertEquals(completedBeforeRepair, activity.studySessionTracker.completedCount());
         activity.abandonActiveStudyTask();
     }
 
@@ -1272,15 +995,13 @@ public final class MainActivityHelperInstrumentedTest {
             RecordsSchedulerModels.StudySession session,
             long now
     ) {
-        View grid = activity.similarKanjiGrid(Arrays.asList("裂", "列", "烈"), "裂");
-        assertEquals(2, ((ViewGroup) grid).getChildCount());
-        RecordsStudyModels.StudyItem targeted = activity.newTargetedStudyItem("謎", 1234L);
+        RecordsStudyModels.StudyItem targeted = new BridgeScheduler().newTargetedStudyItem("謎", 1234L, activity.studyLadderSettings());
         assertEquals("謎", targeted.kanji);
         assertEquals("new", targeted.state);
         assertEquals(1234L, targeted.dueAtMillis);
         RecordsStudyModels.StudyItem existingTarget = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
-        assertSame(existingTarget, activity.studyItemForTargetedKanji(Collections.singletonList(existingTarget), session.item.kanji, now));
-        assertEquals("new", activity.studyItemForTargetedKanji(Collections.emptyList(), "謎", 1234L).state);
+        assertSame(existingTarget, new BridgeScheduler().targetedStudyItem(Collections.singletonList(existingTarget), session.item.kanji, now, activity.studyLadderSettings()));
+        assertEquals("new", new BridgeScheduler().targetedStudyItem(Collections.emptyList(), "謎", 1234L, activity.studyLadderSettings()).state);
         assertEquals(activity.dp(300), activity.studyPadHeightForScreenDp(699));
         assertEquals(activity.dp(340), activity.studyPadHeightForScreenDp(700));
         assertEquals(activity.dp(390), activity.studyPadHeightForScreenDp(820));
@@ -1314,11 +1035,14 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.AdaptiveLoadPlan complete = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 2, 0, Arrays.asList("裂", "語"), 0, false, "Done");
 
                 activity.renderFocusDone(complete);
-                assertNotNull(findButton(activity.content, "Study more new cards"));
-                performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                assertHasText(activity, "Study more new cards");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Study more new cards");
+                assertHasText(activity, "How many extra new cards do you want to study now?");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Cancel");
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderFocusDone(complete);
-                performButtonClick(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
                 assertHasText(activity, "Kani");
 
@@ -1326,10 +1050,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.studySessionTracker.setTargetCount(2);
                 activity.markStudyTaskCompleted("continue:one");
                 activity.renderStudyRunDone(complete);
-                performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderStudyRunDone(null);
-                performButtonClick(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
 
                 int available = activity.availableStudyMoreNewCards();
@@ -1347,8 +1071,13 @@ public final class MainActivityHelperInstrumentedTest {
                         false,
                         "Prompt fallback"
                 );
-                assertTrue(containsText(activity.flashcardAnswerPanel(promptOnly), "Prompt fallback"));
-                assertEquals("split", activity.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
+                View promptAnswerPanel = StudyComposeTestViews.flashcardAnswerPanelTestView(activity, promptOnly);
+                ViewGroup root = activity.findViewById(android.R.id.content);
+                root.addView(promptAnswerPanel);
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+                assertHasText(activity, "Prompt fallback");
+                root.removeView(promptAnswerPanel);
+                assertEquals("split", StudyTextCopy.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
                 assertEquals(Typeface.SERIF, activity.fontResource(0, Typeface.SERIF));
             });
         }
@@ -1363,7 +1092,7 @@ public final class MainActivityHelperInstrumentedTest {
                         new WritingRecognizer.Candidate("裂", 0.9f)
                 )))
         );
-        MainActivity.setWritingRecognizerForTests(recognizer);
+        MainActivityRuntimeOverrides.setWritingRecognizer(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
@@ -1378,28 +1107,77 @@ public final class MainActivityHelperInstrumentedTest {
                         true,
                         "Prompt only"
                 );
-                assertTrue(containsText(activity.learningPanel(promptOnly), "Prompt only"));
-                assertTrue(containsText(activity.heroKanjiPanel(session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
+                assertTrue(containsText(StudyComposeTestViews.learningPanelTestView(activity, promptOnly), "Prompt only"));
+                assertTrue(containsText(StudyComposeTestViews.heroKanjiPanelTestView(activity, session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
                 assertNotNull(activity.randomFontVariantTypeface());
 
-                activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
-                assertNotNull(activity.flashcardCard);
-                assertSame(activity.flashcardCard, activity.flashcardGestureArea);
+                RecordsSchedulerModels.StudySession similarFallback = session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row);
+                activity.activeSession = similarFallback;
+                activity.renderSession(similarFallback);
+                assertNotNull(activity.flashcardActionBarState);
                 assertFalse(activity.flashcardAnswerRevealed);
+                activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
+                activity.renderSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
+                assertHasText(activity, MainActivityBase.LABEL_SIMILAR_KANJI);
+                assertHasText(activity, "Which kanji means split?");
+                assertNull(activity.flashcardGestureBounds);
+                assertFalse(activity.flashcardAnswerRevealed);
+                seedRows(activity, Arrays.asList(
+                        row("裂", "split", "レツ", Collections.emptyList()),
+                        row("列", "row", "レツ", Collections.emptyList()),
+                        row("烈", "ardent", "レツ", Collections.emptyList()),
+                        row("劣", "inferior", "レツ", Collections.emptyList())
+                ));
+                activity.renderSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
+                assertNull(activity.flashcardGestureBounds);
+                assertFalse(activity.flashcardAnswerRevealed);
+                View root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "裂");
+                assertHasText(activity, "Correct");
+                assertEquals(0, activity.store.reviewStatsSince(0L).total);
+                performClickableWithText(root, "Next");
+                assertEquals(1, activity.store.reviewStatsSince(0L).good);
+
+                RecordsSchedulerModels.StudySession meaningFallback = session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList()));
+                activity.activeSession = meaningFallback;
+                activity.renderSession(meaningFallback);
+                assertNotNull(activity.flashcardActionBarState);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
-                activity.renderWritingSession(recall);
+                activity.renderSession(recall);
                 assertHasText(activity, "Prompt: Split, rend");
-                performButtonClick(activity.studyActionBar, "Erase");
+                assertNotNull(activity.writingToolActionsView);
+                assertNotNull(activity.writingPrimaryActionsView);
+                assertNotNull(activity.writingFallbackActionsView);
+                assertFalse(activity.writingToolActionsView.currentModel().getUndoEnabled());
+                assertTrue(activity.writingToolActionsView.currentModel().getHintVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModel().getCheckVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModel().getCheckEnabled());
+                assertFalse(activity.writingPrimaryActionsView.currentModel().getNextVisible());
+                assertFalse(activity.writingFallbackActionsView.currentModel().getReplayVisible());
+                assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
+                performClickableWithText(activity.findViewById(android.R.id.content), "Erase");
 
                 activity.activeSession = promptOnly;
-                activity.renderWritingSession(promptOnly);
+                activity.renderSession(promptOnly);
                 assertHasText(activity, "Prompt only");
 
+                RecordsSchedulerModels.StudySession nullPromptOnly = new RecordsSchedulerModels.StudySession(
+                        studyItem("?", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L),
+                        null,
+                        "null-prompt-token",
+                        BridgeScheduler.TASK_WRITE_KANJI,
+                        true,
+                        null
+                );
+                activity.activeSession = nullPromptOnly;
+                activity.renderSession(nullPromptOnly);
+                assertHasText(activity, "Draw this kanji");
+
                 activity.activeSession = null;
-                activity.studyActionBar = null;
-                activity.buildStudyActionBar();
+                activity.buildComposeWritingActionBarState();
                 activity.checkWriting();
                 activity.submitReview(MainActivityBase.RATING_GOOD, false);
                 activity.showWritingHint();
@@ -1408,13 +1186,13 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeSession = promptOnly;
                 activity.currentHintState = HintState.fromWritingLevel(2);
-                activity.studyStatus = new TextView(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.downloadWritingModel();
+                activity.studyStatus = new WritingStatusState();
+                prepareWritingActionViews(activity);
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
             scenario.onActivity(activity -> assertTrue(activity.studyStatus.getText().toString().contains("download failed")));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 
@@ -1426,15 +1204,9 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new TextView(activity);
-                activity.resultStatus = new TextView(activity);
-                activity.checkWritingButton = new Button(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.nextAfterPassButton = new Button(activity);
-                activity.manualOverrideButton = new Button(activity);
-                activity.practiceWithGuideButton = new Button(activity);
-                activity.replayButton = new Button(activity);
-                activity.hintButton = new Button(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
+                prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
@@ -1451,10 +1223,10 @@ public final class MainActivityHelperInstrumentedTest {
                                 new WritingRecognizer.Candidate("裂", 0.9f)
                         )))
                 );
-                MainActivity.setWritingRecognizerForTests(staleRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleRecognizer);
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "current-token");
                 activity.recognizeWriting(staleRecognizer, capturedWriting(), sample(), guide("裂"), "裂", "stale-token");
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "changed-token");
             });
             scenario.onActivity(activity -> {
@@ -1470,7 +1242,7 @@ public final class MainActivityHelperInstrumentedTest {
             });
             scenario.onActivity(activity -> assertEquals(WritingAnalysis.Status.RECOGNITION_ERROR, activity.activeAnalysis.status));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 
@@ -1487,15 +1259,15 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "invalid-capture"));
-                MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleStatusRecognizer);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
                 activity.checkWriting();
                 assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
 
-                MainActivity.setWritingRecognizerForTests(null);
-                MainActivity.setWritingRecognizerFactoryForTests(executor -> null);
+                MainActivityRuntimeOverrides.setWritingRecognizer(null);
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(executor -> null);
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "null-recognizer"));
                 layoutPad(activity.drawingPad);
                 addInk(activity.drawingPad);
@@ -1503,19 +1275,19 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(WritingAnalysis.Status.MODEL_UNAVAILABLE, activity.activeAnalysis.status);
 
                 activity.activeAnalysis = null;
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 assertTrue(activity.studyStatus.getText().toString().contains("Automatic handwriting checks are unavailable"));
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
                 assertTrue(activity.studyStatus.getText().toString().contains("unavailable on this device"));
 
-                MainActivity.setWritingRecognizerFactoryForTests(executor -> {
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(executor -> {
                     throw new RuntimeException("ml kit unavailable");
                 });
                 activity.writingRecognizer = null;
                 assertNull(activity.currentWritingRecognizer());
 
-                MainActivity.setWritingRecognizerFactoryForTests(null);
-                MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleStatusRecognizer);
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "old-token"));
                 layoutPad(activity.drawingPad);
                 addInk(activity.drawingPad);
@@ -1524,8 +1296,8 @@ public final class MainActivityHelperInstrumentedTest {
             });
             scenario.onActivity(activity -> assertNull(activity.activeAnalysis));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
-            MainActivity.setWritingRecognizerFactoryForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
+            MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
         }
     }
 
@@ -1578,10 +1350,10 @@ public final class MainActivityHelperInstrumentedTest {
     private static void verifyTokenCandidatesAndReviewToasts(MainActivity activity) {
         assertTrue(activity.isActiveToken("tok"));
         assertFalse(activity.isActiveToken("missing"));
-        assertEquals("", activity.candidateText(null));
+        assertEquals("", WritingFeedbackCopy.candidateText(null));
         assertEquals(
                 "裂, 列, 烈",
-                activity.candidateText(Arrays.asList(
+                WritingFeedbackCopy.candidateText(Arrays.asList(
                         new RecognitionCandidate("裂", 0.9f),
                         new RecognitionCandidate("列", 0.5f),
                         new RecognitionCandidate("烈", 0.4f),
@@ -1594,78 +1366,84 @@ public final class MainActivityHelperInstrumentedTest {
         ))).size());
         assertTrue(activity.candidates(null).isEmpty());
 
-        RecordsStudyModels.StudyItem item = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L);
         StudyStatsStore.StudyStreak streak = new StudyStatsStore.StudyStreak(2, 2, true, 1, 1000L);
-        assertEquals("Already saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "dup"), streak));
-        assertTrue(activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_AGAIN, false, "again"), streak).contains("2-day streak"));
-        assertEquals("Saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_GOOD, false, "good"), null));
+        assertEquals("Already saved.", HomeTextCopy.reviewToast(true, "duplicate", streak.currentDays));
+        assertTrue(HomeTextCopy.reviewToast(false, MainActivityBase.RATING_AGAIN, streak.currentDays).contains("2-day streak"));
+        assertEquals("Saved.", HomeTextCopy.reviewToast(false, MainActivityBase.RATING_GOOD, 0));
     }
 
     private static void verifyFlashcardActionBarAndGestureBranches(
             MainActivity activity,
             RecordsSchedulerModels.StudySession writing
     ) {
-        activity.studyActionBar = null;
         activity.buildFlashcardActionBar(false);
-        activity.studyActionBar = new LinearLayout(activity);
-        activity.buildFlashcardActionBar(false);
-        assertEquals(2, activity.studyActionBar.getChildCount());
+        assertNotNull(activity.flashcardActionBarState);
+        assertFalse(activity.flashcardActionBarState.getRevealed());
         activity.buildFlashcardActionBar(true);
-        assertEquals(2, activity.studyActionBar.getChildCount());
+        assertTrue(activity.flashcardActionBarState.getRevealed());
         activity.flashcardAnswerRevealed = true;
         activity.revealFlashcardAnswer();
-        activity.flashcardCard = null;
         activity.expandFlashcardForAnswer();
 
         assertFalse(activity.handleFlashcardGesture(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 1f, 1f, 0)));
         activity.activeSession = writing;
-        assertEquals(MainActivityBase.LABEL_PRACTICE, activity.studyModeLabel(writing));
+        assertEquals(MainActivityBase.LABEL_PRACTICE, StudyTaskCopy.studyModeLabel(writing));
         assertFalse(activity.handleFlashcardGesture(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 1f, 1f, 0)));
     }
 
     private static void prepareWritingControls(MainActivity activity, RecordsSchedulerModels.StudySession writing) {
         activity.activeSession = writing;
         activity.currentHintState = HintState.fromWritingLevel(3);
-        activity.studyStatus = new TextView(activity);
-        activity.resultStatus = new TextView(activity);
-        activity.checkWritingButton = new Button(activity);
-        activity.downloadModelButton = new Button(activity);
-        activity.nextAfterPassButton = new Button(activity);
-        activity.manualOverrideButton = new Button(activity);
-        activity.practiceWithGuideButton = new Button(activity);
-        activity.replayButton = new Button(activity);
-        activity.hintButton = new Button(activity);
+        activity.studyStatus = new WritingStatusState();
+        activity.writingResultStatus = new WritingResultStatusHandle();
+        prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
     }
 
     private static void verifyWritingButtonAndModelStatus(MainActivity activity, WritingAnalysis wrong) {
+        MainActivityStudyWritingStatus writingStatus = new MainActivityStudyWritingStatus(activity);
         activity.checkingWriting = true;
-        assertEquals("Checking...", activity.checkWritingButtonText(false));
+        activity.updateResultActions();
+        WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
+        assertEquals("Checking...", primary.getCheckText());
+        assertFalse(primary.getCheckEnabled());
         activity.checkingWriting = false;
-        assertEquals("Try cleaner", activity.checkWritingButtonText(true));
-        activity.updateCheckWritingButton(false, true);
-        assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
+        activity.activeAnalysis = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                MainActivityBase.RATING_HARD,
+                true,
+                "Messy",
+                Collections.emptyList(),
+                wrong.strokeOrder
+        );
+        activity.updateResultActions();
+        primary = activity.writingPrimaryActionsView.currentModel();
+        assertEquals("Try cleaner", primary.getCheckText());
+        assertTrue(primary.getCheckEnabled());
 
         activity.writingModelStatusKnown = true;
         activity.writingModelDownloaded = true;
-        activity.updateDownloadModelButton();
-        assertEquals(View.GONE, activity.downloadModelButton.getVisibility());
-        activity.updateNextAfterPassButton(true);
-        assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
-        assertEquals(MainActivityBase.LABEL_PASS, activity.nextAfterPassButton.getText().toString());
-
+        activity.updateResultActions();
+        primary = activity.writingPrimaryActionsView.currentModel();
+        assertFalse(primary.getDownloadVisible());
         activity.activeAnalysis = wrong;
-        activity.updateFallbackActionButtons(true, false, guide("裂"));
-        assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
-        assertEquals(View.VISIBLE, activity.practiceWithGuideButton.getVisibility());
-        activity.showModelUnavailable("checker unavailable");
-        assertTrue(activity.resultStatus.getText().toString().contains("checker unavailable"));
+        activity.updateResultActions();
+        primary = activity.writingPrimaryActionsView.currentModel();
+        assertTrue(primary.getNextVisible());
+        assertEquals("Fail", primary.getNextText());
 
-        activity.setWritingModelStatusMessage(null, new RuntimeException("offline"));
+        WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModel();
+        assertTrue(fallback.getManualOverrideVisible());
+        assertTrue(fallback.getPracticeWithGuideVisible());
+        activity.showModelUnavailable("checker unavailable");
+        assertTrue(activity.writingResultStatus.getText().toString().contains("checker unavailable"));
+        assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
+
+        writingStatus.setWritingModelStatusMessage(null, new RuntimeException("offline"));
         assertTrue(activity.studyStatus.getText().toString().contains("Unable to read"));
-        activity.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing"), null);
+        writingStatus.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing"), null);
         assertTrue(activity.studyStatus.getText().toString().contains("Download the handwriting checker"));
-        activity.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready"), null);
+        writingStatus.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready"), null);
         assertTrue(activity.studyStatus.getText().toString().contains("Handwriting checker ready"));
     }
 
@@ -1678,11 +1456,11 @@ public final class MainActivityHelperInstrumentedTest {
         activity.activeAnalysis = null;
         assertTrue(activity.showNoInkWhenNeeded());
         assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
-        assertFalse(activity.isTeachingTask(null));
-        assertTrue(activity.isTeachingTask(session("裂", "context_writing", row)));
-        assertTrue(activity.isTeachingTask(session("裂", "guided_writing", row)));
-        assertTrue(activity.isTeachingTask(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)));
-        assertFalse(activity.isTeachingTask(new RecordsSchedulerModels.StudySession(
+        assertFalse(StudyTaskCopy.isTeachingTask(null));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", "context_writing", row)));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", "guided_writing", row)));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)));
+        assertFalse(StudyTaskCopy.isTeachingTask(new RecordsSchedulerModels.StudySession(
                 studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(3).build(),
                 row,
                 "tok-target-done",
@@ -1707,6 +1485,14 @@ public final class MainActivityHelperInstrumentedTest {
                 true,
                 "split"
         )).level());
+        HintState nextHintState = HintState.fromWritingLevel(2);
+        activity.currentPracticeLevel = 99;
+        activity.setHintState(nextHintState);
+        assertEquals(nextHintState, activity.currentHintState);
+        assertEquals(nextHintState.level().writingLevel(), activity.currentPracticeLevel);
+        activity.setHintState(null);
+        assertEquals(HintState.initial(), activity.currentHintState);
+        assertEquals(HintState.initial().level().writingLevel(), activity.currentPracticeLevel);
         verifyHelpAndLearningPanelState(activity, writing, row, order);
     }
 
@@ -1725,37 +1511,47 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.canRevealMoreHelp());
         activity.activeSession = session("裂", "blind_writing", row);
         activity.currentPracticeLevel = 1;
-        assertFalse(activity.shouldShowLearningPanel(null));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, true, false, activity.currentPracticeLevel));
+        activity.activeAnalysis = null;
+        assertFalse(activity.writingActionPresentation().answerPanelVisible);
         activity.activeSession = session("裂", "context_writing", row);
-        assertTrue(activity.shouldShowLearningPanel(null));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, activity.currentPracticeLevel));
+        assertTrue(activity.writingActionPresentation().answerPanelVisible);
         activity.currentPracticeLevel = 3;
-        assertFalse(activity.shouldShowLearningPanel(null));
-        assertTrue(activity.shouldShowLearningPanel(analysis(WritingAnalysis.Status.PASS, true, order)));
-        assertFalse(activity.shouldIncreaseSupportAfterAnalysis(null));
-        assertFalse(activity.canManualOverride(null));
-        assertFalse(activity.canPracticeAfterAnalysis(null));
-        assertFalse(activity.canSubmitAnalysis(null));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, activity.currentPracticeLevel));
+        assertFalse(activity.writingActionPresentation().answerPanelVisible);
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(
+                analysis(WritingAnalysis.Status.PASS, true, order),
+                false,
+                true,
+                activity.currentPracticeLevel
+        ));
+        activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
+        assertTrue(activity.writingActionPresentation().answerPanelVisible);
+        activity.activeAnalysis = null;
+        assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(null));
+        assertFalse(WritingFeedbackCopy.canManualOverride(null));
+        assertFalse(WritingFeedbackCopy.canPracticeAfterAnalysis(null));
+        assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
     }
 
     @Test
-    public void flashcardGestureTrackingCoversTypingBoundsCancelAndOutsideRelease() {
+    public void flashcardGestureTrackingCoversMissingTypingBoundsCancelAndOutsideRelease() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_TYPE_MEANING, row);
                 LinearLayout area = new LinearLayout(activity);
-                EditText input = new EditText(activity);
-                activity.content.addView(area, new LinearLayout.LayoutParams(300, 300));
-                activity.content.addView(input, new LinearLayout.LayoutParams(180, 90));
+                ((ViewGroup) activity.findViewById(android.R.id.content)).addView(area, new LinearLayout.LayoutParams(300, 300));
                 area.layout(0, 0, 300, 300);
-                input.layout(20, 20, 180, 90);
-                activity.flashcardGestureArea = area;
-                activity.typingAnswerInput = input;
+                activity.setFlashcardGestureBounds(0f, 0f, 300f, 300f);
+                activity.typingAnswerState = new TypingAnswerState();
+                assertFalse(activity.typingAnswerState.containsWindowPoint(40f, 40f));
 
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, 40f, 40f)));
-                assertFalse(activity.flashcardTouchTracking);
+                assertTrue(activity.flashcardTouchTracking);
 
-                activity.typingAnswerInput = null;
+                activity.typingAnswerState = null;
                 activity.flashcardTouchTracking = false;
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_UP, 40f, 40f)));
                 activity.flashcardTouchTracking = true;
@@ -1785,32 +1581,47 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = failSession;
                 activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
-                activity.renderFlashcardSession(failSession);
-                performButtonClick(activity.studyActionBar, "Reveal");
+                activity.renderSession(failSession);
+                assertNotNull(activity.flashcardActionBarState);
+                View root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
-                assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
-                performButtonClick(activity.studyActionBar, "Fail");
+                assertTrue(containsText(root, "split"));
+                activity.flashcardTouchStartX = 100f;
+                activity.flashcardTouchStartY = 100f;
+                assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
+                RecordsSchedulerModels.ReviewStats gestureFailStats = activity.store.reviewStatsSince(0L);
+                assertEquals(1, gestureFailStats.total);
+                assertEquals(1, gestureFailStats.again);
+
+                failSession = sessionWithToken("裂", BridgeScheduler.TASK_KANJI_MEANING, row, "fail-token-button");
+                activity.activeSession = failSession;
+                activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
+                activity.renderSession(failSession);
+                root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
+                performClickableWithText(root, "Fail");
                 RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
-                assertEquals(1, failStats.total);
-                assertEquals(1, failStats.again);
+                assertEquals(2, failStats.total);
+                assertEquals(2, failStats.again);
 
                 RecordsSchedulerModels.StudySession passSession = sessionWithToken("語", BridgeScheduler.TASK_KANJI_MEANING, row("語", "language", "ゴ", Collections.emptyList()), "pass-token");
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
-                activity.renderFlashcardSession(passSession);
-                performButtonClick(activity.studyActionBar, "Reveal");
-                performButtonClick(activity.studyActionBar, MainActivityBase.LABEL_PASS);
+                activity.renderSession(passSession);
+                assertNotNull(activity.flashcardActionBarState);
+                root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
+                performClickableWithText(root, MainActivityBase.LABEL_PASS);
                 RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);
-                assertEquals(2, passStats.total);
+                assertEquals(3, passStats.total);
                 assertEquals(1, passStats.good);
 
                 RecordsSchedulerModels.StudySession gestureSession = sessionWithToken("提", BridgeScheduler.TASK_KANJI_MEANING, row("提", "carry", "テイ", Collections.emptyList()), "gesture-token");
                 activity.activeSession = gestureSession;
-                activity.studyActionBar = new LinearLayout(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.flashcardHeroPanel = new LinearLayout(activity);
-                activity.flashcardCard = new LinearLayout(activity);
-                activity.flashcardCard.setLayoutParams(new LinearLayout.LayoutParams(-1, 0, 1));
+                activity.flashcardRevealState = null;
                 activity.flashcardAnswerRevealed = false;
                 activity.flashcardTouchStartX = 100f;
                 activity.flashcardTouchStartY = 100f;
@@ -1828,8 +1639,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.flashcardTouchStartY = 100f;
                 assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
                 RecordsSchedulerModels.ReviewStats gestureStats = activity.store.reviewStatsSince(0L);
-                assertEquals(3, gestureStats.total);
-                assertEquals(2, gestureStats.again);
+                assertEquals(4, gestureStats.total);
+                assertEquals(3, gestureStats.again);
             });
         }
     }
@@ -1851,34 +1662,40 @@ public final class MainActivityHelperInstrumentedTest {
             MainActivity activity,
             RecordsImportModels.DashboardRow activeRow
     ) {
-        View passiveMetric = activity.metricCard(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
-        assertFalse(passiveMetric.isClickable());
-        assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
-        assertTrue(containsText(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)), "Meaning not stored yet"));
+        HomeMetricModel passiveMetric = new HomeMetricModel(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
+        assertNull(passiveMetric.getOnClick());
+                assertFalse(containsText(HomeComposeTestViews.homeSectionHeaderTestView(activity, "Focus queue", null, null), "Focus queue >"));
+        BrowseExampleCardModel activeExample = new MainActivityHomeBrowseDetail(activity)
+                .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
+        assertEquals("裂語  レツゴ", activeExample.getExpression());
+        assertEquals("split word", activeExample.getMeaning());
         RecordsStudyModels.StudyItem relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, relearning), 1000L), "relearning"));
+        HomeFocusQueueCardModel relearningRow = MainActivityHomeFocusQueueCompose.homeFocusQueueCardModel(activity, new MainActivityBase.QueueEntry(activeRow, relearning), 1000L);
+        assertTrue(relearningRow.getTags().stream().anyMatch(tag -> tag.getLabel().equals("relearning")));
         RecordsStudyModels.StudyItem learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .totalReviews(1)
                 .build();
-        assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, learning), 1000L), "learning"));
+        HomeFocusQueueCardModel learningRow = MainActivityHomeFocusQueueCompose.homeFocusQueueCardModel(activity, new MainActivityBase.QueueEntry(activeRow, learning), 1000L);
+        assertTrue(learningRow.getTags().stream().anyMatch(tag -> tag.getLabel().equals("learning")));
         seedRows(activity, Collections.singletonList(activeRow));
         activity.renderStudyForKanji("裂");
         assertHasText(activity, "Name this kanji");
         activity.store.setKanjiLocallySuspended("裂", true, 1000L);
 
         activity.renderBrowseKanji("裂");
+        assertEquals("裂", activity.activeBrowseQuery);
         assertHasText(activity, "SUSPENDED");
-        performClickableWithText(activity.content, "split");
+        performClickableWithText(activity.findViewById(android.R.id.content), "split");
         assertHasText(activity, "Back to Browse Kanji");
         assertHasText(activity, "Local inventory");
-        performButtonClick(activity.content, "Unsuspend locally");
+        performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
-        activity.renderDetail("missing");
+        activity.renderDetail("missing", false, "");
         assertHasText(activity, "Kanji not found");
     }
 
@@ -1887,18 +1704,18 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "No recent mistakes yet");
         activity.store.saveReview(new RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
-        assertContainsText(activity.content, "Rated again");
+        assertContainsText(activity.findViewById(android.R.id.content), "Rated again");
 
-        View emptyStatus = activity.timelineStatusCard(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
-        assertTrue(containsText(emptyStatus, "No active Anki evidence in the latest local sync."));
+        MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel emptyTimeline = new MainActivityHomeBrowseDetail(activity)
+                .recoveryTimelineModel(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+        assertEquals("No active Anki evidence in the latest local sync.", emptyTimeline.supportText);
     }
 
     private static void verifyStatsVerdictBranches(
             MainActivity activity,
             RecordsImportModels.DashboardRow activeRow
     ) {
-        LinearLayout noEvidence = activity.statsVerdictPanel(StudyStatsStore.KaniOutcomeStats.empty());
-        assertTrue(containsText(noEvidence, "Kani is not currently working for you"));
+        assertEquals("Kani is not currently working for you", StatsTextCopy.verdictTitle(false));
         StudyStatsStore.LadderHealthMetric ladderOnly = new StudyStatsStore.LadderHealthMetric(
                 Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 1),
                 1,
@@ -1912,10 +1729,20 @@ public final class MainActivityHelperInstrumentedTest {
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(activity.statsVerdictBody(null, false, false).contains("No Kani evidence"));
-        assertTrue(activity.statsVerdictBody(ladderStats, false, true).contains("Kani is tracking"));
-        assertTrue(activity.ladderHealthBody(ladderOnly).contains("more than 21 days"));
-        assertTrue(containsText(activity.statsVerdictPanel(ladderStats), "Kani is not currently working for you"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
+        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
+        assertTrue(StatsTextCopy.ladderHealthBody(
+                ladderOnly.totalActiveItems,
+                ladderOnly.promotionReadyCount,
+                ladderOnly.demotionRiskCount,
+                ladderOnly.demotionReadyCount,
+                ladderOnly.ladderPromotionIntervalDays,
+                ladderOnly.ladderDemotionFailStreak
+        ).contains("more than 21 days"));
+        assertFalse(StatsTextCopy.verdictWorking(
+                ladderStats.weakKanjiImproved.improvedCount,
+                ladderStats.matureSupportGained.matureSupportGained
+        ));
         verifyWorkingStatsVerdict(activity, activeRow);
     }
 
@@ -1951,12 +1778,29 @@ public final class MainActivityHelperInstrumentedTest {
                 ),
                 busyLadder
         );
-        String workingBody = activity.statsVerdictBody(workingStats, true, true);
+        String workingBody = StatsTextCopy.verdictBody(
+                true,
+                true,
+                true,
+                workingStats.weakKanjiImproved.improvedCount,
+                workingStats.matureSupportGained.matureSupportGained,
+                busyLadder.promotionReadyCount,
+                busyLadder.demotionRiskCount,
+                busyLadder.totalActiveItems
+        );
         assertTrue(workingBody.contains("weak kanji are burning down"));
         assertTrue(workingBody.contains("mature Anki cards have been gained"));
         assertTrue(workingBody.contains("review-phase item is ready to climb"));
         assertTrue(workingBody.contains("review-phase items with miss streaks"));
-        assertTrue(activity.ladderHealthBody(busyLadder).contains("at the demotion threshold"));
+        assertTrue(StatsTextCopy.ladderHealthBody(
+                busyLadder.totalActiveItems,
+                busyLadder.promotionReadyCount,
+                busyLadder.demotionRiskCount,
+                busyLadder.demotionReadyCount,
+                busyLadder.ladderPromotionIntervalDays,
+                busyLadder.ladderDemotionFailStreak
+        ).contains("at the demotion threshold"));
+        assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size());
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
         assertTrue(activity.queuedEntries(
@@ -1968,16 +1812,16 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static void verifySyncResultStudyNow(MainActivity activity) {
         activity.renderSyncResult(syncResult(true, false, 1, 0, "", ""));
-        performButtonClick(activity.content, MainActivityBase.LABEL_STUDY_NOW);
+        performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_STUDY_NOW);
         assertHasText(activity, "Name this kanji");
         assertHasText(activity, "What does this kanji mean?");
 
         LinearLayout summary = new LinearLayout(activity);
-        activity.addOptionalSyncSummaryLines(summary, syncResult(true, false, 1, 0, "", ""));
+        appendOptionalSyncSummaryLines(activity, summary, syncResult(true, false, 1, 0, "", ""));
         assertEquals(0, summary.getChildCount());
-        activity.content.removeAllViews();
-        activity.addRecoveryTimeline(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
-        assertTrue(containsText(activity.content, "Timeline will fill in after the next sync or review."));
+        MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel emptyTimeline = new MainActivityHomeBrowseDetail(activity)
+                .recoveryTimelineModel(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+        assertEquals("No timeline events yet.", emptyTimeline.emptyText);
     }
 
     @Test
@@ -1991,48 +1835,59 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
-                activity.studyStatus = new TextView(activity);
-                activity.resultStatus = new TextView(activity);
-                activity.checkWritingButton = new Button(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.nextAfterPassButton = new Button(activity);
-                activity.manualOverrideButton = new Button(activity);
-                activity.practiceWithGuideButton = new Button(activity);
-                activity.replayButton = new Button(activity);
-                activity.hintButton = new Button(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
+                prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
 
                 StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator
                         .evaluate(guide("裂"), sample())
                         .withDiagnosis(StrokeDiagnosis.builder().add(StrokeDiagnosis.Label.WRONG_DIRECTION, 1).build());
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
-                assertTrue(activity.canReplayAnalysis(activity.activeAnalysis, guide("裂")));
-                activity.resultStatus.setText("Previous result");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                assertTrue(WritingFeedbackCopy.canReplayAnalysis(
+                        activity.activeAnalysis,
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
+                activity.writingResultStatus.show("Previous result", activity.CORAL);
                 activity.handleDrawingEdited();
                 assertNull(activity.activeAnalysis);
                 assertTrue(activity.studyStatus.getText().toString().contains("Updated ink"));
-                assertEquals(View.GONE, activity.resultStatus.getVisibility());
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, order), guide("裂")));
-                assertFalse(activity.canReplayAnalysis(activity.activeAnalysis, guide("裂")));
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.WRONG, false, order), null));
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.WRONG, false, order), new StrokeGuide("裂", Collections.emptyList())));
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        activity.activeAnalysis,
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.WRONG, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        null
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.WRONG, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        new StrokeGuide("裂", Collections.emptyList())
+                ));
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
-                activity.resultStatus.setText("Messy pass");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                activity.writingResultStatus.show("Messy pass", activity.TEAL);
                 activity.startCleanerRetry();
                 assertNull(activity.activeAnalysis);
                 assertTrue(activity.studyStatus.getText().toString().contains("Try cleaner"));
-                assertEquals(View.GONE, activity.resultStatus.getVisibility());
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
 
                 activity.checkingWriting = true;
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
-                activity.resultStatus.setText("Still checking");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                activity.writingResultStatus.show("Still checking", activity.CORAL);
                 activity.handleDrawingEdited();
                 assertNotNull(activity.activeAnalysis);
-                assertEquals(View.VISIBLE, activity.resultStatus.getVisibility());
+                assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
 
                 activity.checkingWriting = false;
                 activity.activeSession = writing;
@@ -2041,7 +1896,7 @@ public final class MainActivityHelperInstrumentedTest {
                 addInk(activity.drawingPad);
                 activity.drawingPad.captureReplaySnapshot();
                 activity.replayWritingAnalysis();
-                assertTrue(activity.drawingPad.isReplayOverlayVisibleForTests());
+                assertTrue(activity.drawingPad.isReplayOverlayVisible());
             });
         }
     }
@@ -2060,20 +1915,31 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
                 activity.updateResultActions();
-                assertEquals("Fail", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
-                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
+                WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModel();
+                assertEquals("Fail", primary.getNextText());
+                assertTrue(primary.getNextVisible());
+                assertTrue(fallback.getManualOverrideVisible());
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
                 activity.updateResultActions();
-                assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
-                assertEquals("Save hard", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+                primary = activity.writingPrimaryActionsView.currentModel();
+                fallback = activity.writingFallbackActionsView.currentModel();
+                assertEquals("Try cleaner", primary.getCheckText());
+                assertEquals("Save hard", primary.getNextText());
+                assertTrue(fallback.getManualOverrideVisible());
+                primary.getOnCheck().run();
+                assertNull(activity.activeAnalysis);
+                assertTrue(activity.studyStatus.getText().toString().contains("Try cleaner"));
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
                 activity.updateResultActions();
-                assertEquals("Pass", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.GONE, activity.manualOverrideButton.getVisibility());
+                primary = activity.writingPrimaryActionsView.currentModel();
+                fallback = activity.writingFallbackActionsView.currentModel();
+                assertEquals("Pass", primary.getNextText());
+                assertFalse(fallback.getManualOverrideVisible());
+                primary.getOnNext().run();
+                assertEquals(1, activity.store.reviewStatsSince(0L).good);
             });
         }
     }
@@ -2103,29 +1969,14 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void homeAndReminderActionGridsUseTwoColumnsWithWrappingHeights() {
+    public void homeActionGridUsesTwoColumnsWithWrappingHeights() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                View homeGrid = activity.homeActionRow();
+                View homeGrid = HomeComposeTestViews.homeActionRowTestView(activity);
                 measureAtWidth(homeGrid, 320);
                 assertTwoColumnGrid(homeGrid, 3);
                 assertTrue(containsText(homeGrid, "Recent mistakes"));
                 assertTrue(containsText(homeGrid, "Settings"));
-
-                Button time = new Button(activity);
-                int[] hour = new int[]{8};
-                int[] minute = new int[]{0};
-                List<View> presets = Arrays.asList(
-                        activity.reminderPresetButton("Morning", 8, 0, hour, minute, time),
-                        activity.reminderPresetButton("Lunch", 12, 30, hour, minute, time),
-                        activity.reminderPresetButton("Evening", 19, 0, hour, minute, time),
-                        activity.reminderPresetButton("Night", 21, 0, hour, minute, time)
-                );
-                View reminderGrid = activity.twoColumnGrid(presets);
-                measureAtWidth(reminderGrid, 320);
-                assertTwoColumnGrid(reminderGrid, 2);
-                assertTrue(containsText(reminderGrid, "Morning 08:00"));
-                assertTrue(containsText(reminderGrid, "Night 21:00"));
             });
         }
     }
@@ -2134,9 +1985,9 @@ public final class MainActivityHelperInstrumentedTest {
     public void browseAndDetailCopyAvoidMisleadingOrBlankRows() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertEquals("No matches", activity.browseResultHeading(0));
-                assertEquals("2 kanji", activity.browseResultHeading(2));
-                assertEquals("Showing first 300 matches", activity.browseResultHeading(300));
+                assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
+                assertEquals("2 kanji", HomeTextCopy.browseResultHeading(2));
+                assertEquals("Showing first 300 matches", HomeTextCopy.browseResultHeading(300));
 
                 RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
                         "裂",
@@ -2152,27 +2003,14 @@ public final class MainActivityHelperInstrumentedTest {
                         0,
                         Collections.emptyList()
                 );
-                LinearLayout why = activity.detailReasonPanel(row, null);
-                assertTrue(containsText(why, "Current local practice evidence from AnkiDroid."));
-                assertContainsText(why, "Anki browser: deck:Japanese");
+                MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
+                BrowseDetailPanelModel reason = browseDetail.detailReasonPanelModel(row, null);
+                assertTrue(reason.getLines().contains("Current local practice evidence from AnkiDroid."));
+                assertTrue(reason.getLines().get(1).contains("Anki browser: deck:Japanese"));
 
-                activity.content = new LinearLayout(activity);
-                activity.addDetailIdentity(row, null, false);
-                assertTrue(containsText(activity.content, "split"));
-                assertEquals(1, activity.content.getChildCount());
-            });
-        }
-    }
-
-    @Test
-    public void updaterLoadingRowShowsIndeterminateProgress() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                LinearLayout row = activity.indeterminateProgressRow("Checking GitHub Releases");
-                ProgressBar progress = findProgressBar(row);
-                assertNotNull(progress);
-                assertTrue(progress.isIndeterminate());
-                assertTrue(containsText(row, "Checking GitHub Releases"));
+                BrowseDetailIdentityModel identity = browseDetail.detailIdentityModel(row, null, false);
+                assertEquals("split", identity.getTitle());
+                assertEquals("", identity.getReading());
             });
         }
     }
@@ -2186,33 +2024,40 @@ public final class MainActivityHelperInstrumentedTest {
                         new WritingRecognizer.Candidate("裂", 0.9f)
                 )))
         );
-        MainActivity.setWritingRecognizerForTests(recognizer);
+        MainActivityRuntimeOverrides.setWritingRecognizer(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                activity.studyStatus = new TextView(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.refreshWritingModelStatus();
+                activity.studyStatus = new WritingStatusState();
+                prepareWritingActionViews(activity);
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(2);
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
             });
             scenario.onActivity(activity -> {
                 assertTrue(activity.writingModelStatusKnown);
                 assertFalse(activity.writingModelDownloaded);
                 assertTrue(activity.studyStatus.getText().toString().contains("Download the handwriting checker"));
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
+                assertTrue(primary.getDownloadVisible());
+                primary.getOnDownload().run();
+            });
+            scenario.onActivity(activity -> {
+                assertTrue(activity.writingModelDownloaded);
+                assertTrue(activity.studyStatus.getText().toString().contains("Handwriting checker ready"));
 
                 StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator
                         .evaluate(guide("裂"), sample())
                         .withDiagnosis(StrokeDiagnosis.builder().add(StrokeDiagnosis.Label.WRONG_ORDER, 1).build());
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
                 activity.studyStatus.setText("Existing analysis message");
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
             });
             scenario.onActivity(activity -> {
                 assertEquals("Existing analysis message", activity.studyStatus.getText().toString());
                 activity.activeAnalysis = null;
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
             scenario.onActivity(activity -> {
                 assertTrue(activity.writingModelDownloaded);
@@ -2235,7 +2080,7 @@ public final class MainActivityHelperInstrumentedTest {
                         || activity.activeAnalysis.status == WritingAnalysis.Status.WRONG);
             });
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 
@@ -2254,8 +2099,8 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new TextView(activity);
-                activity.resultStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.checkWriting();
                 assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
@@ -2265,7 +2110,8 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.showModelUnavailable("The handwriting checker is unavailable on this device.");
                 assertEquals(WritingAnalysis.Status.MODEL_UNAVAILABLE, activity.activeAnalysis.status);
-                assertTrue(activity.resultStatus.getText().toString().contains("unavailable"));
+                assertTrue(activity.writingResultStatus.getText().toString().contains("unavailable"));
+                assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
 
                 activity.replayWritingAnalysis();
                 activity.activeSession = null;
@@ -2543,15 +2389,9 @@ public final class MainActivityHelperInstrumentedTest {
     private static void prepareWritingUi(MainActivity activity, RecordsSchedulerModels.StudySession session) {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
-        activity.studyStatus = new TextView(activity);
-        activity.resultStatus = new TextView(activity);
-        activity.checkWritingButton = new Button(activity);
-        activity.downloadModelButton = new Button(activity);
-        activity.nextAfterPassButton = new Button(activity);
-        activity.manualOverrideButton = new Button(activity);
-        activity.practiceWithGuideButton = new Button(activity);
-        activity.replayButton = new Button(activity);
-        activity.hintButton = new Button(activity);
+        activity.studyStatus = new WritingStatusState();
+        activity.writingResultStatus = new WritingResultStatusHandle();
+        prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
         activity.drawingPad = new DrawingPadView(activity);
         activity.drawingPad.setTarget(session.item.kanji);
@@ -2561,8 +2401,15 @@ public final class MainActivityHelperInstrumentedTest {
         activity.writingModelDownloaded = false;
     }
 
+    private static void prepareWritingActionViews(MainActivity activity) {
+        activity.writingToolActionsView = new WritingToolActionsView(activity);
+        activity.writingPrimaryActionsView = new WritingPrimaryActionsView(activity);
+        activity.writingFallbackActionsView = new WritingFallbackActionsView(activity);
+    }
+
     private static void assertHasText(MainActivity activity, String text) {
-        if (!containsText(activity.findViewById(android.R.id.content), text)) {
+        View root = activity.findViewById(android.R.id.content);
+        if (!containsText(root, text) && findDeviceTextNow(text) == null) {
             throw new AssertionError("Missing text: " + text);
         }
     }
@@ -2575,6 +2422,9 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static boolean containsText(View view, String expected) {
         if (view instanceof TextView textView && expected.contentEquals(textView.getText())) {
+            return true;
+        }
+        if (view instanceof androidx.compose.ui.platform.ComposeView composeView && containsAccessibilityText(composeView.createAccessibilityNodeInfo(), expected)) {
             return true;
         }
         if (!(view instanceof ViewGroup group)) {
@@ -2592,6 +2442,9 @@ public final class MainActivityHelperInstrumentedTest {
         if (view instanceof TextView textView && textView.getText().toString().contains(expected)) {
             return true;
         }
+        if (view instanceof androidx.compose.ui.platform.ComposeView composeView && containsAccessibilityTextContaining(composeView.createAccessibilityNodeInfo(), expected)) {
+            return true;
+        }
         if (!(view instanceof ViewGroup group)) {
             return false;
         }
@@ -2603,18 +2456,16 @@ public final class MainActivityHelperInstrumentedTest {
         return false;
     }
 
-    private static void performButtonClick(View root, String label) {
-        Button button = findButton(root, label);
-        if (button == null) {
-            throw new AssertionError("Missing button: " + label);
-        }
-        button.performClick();
-    }
-
     private static void performClickableWithText(View root, String label) {
         View clickable = findClickableWithText(root, label);
         if (clickable == null) {
-            throw new AssertionError("Missing clickable text: " + label);
+            UiObject2 object = findDeviceClickableTextNow(label);
+            if (object == null) {
+                throw new AssertionError("Missing clickable text: " + label);
+            }
+            object.click();
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+            return;
         }
         clickable.performClick();
     }
@@ -2635,107 +2486,114 @@ public final class MainActivityHelperInstrumentedTest {
         return null;
     }
 
-    private static Button findButton(View view, String label) {
-        if (view instanceof Button button && label.contentEquals(button.getText())) {
-            return button;
+    private static UiObject2 findDeviceTextNow(String label) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).text(label)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(label)));
         }
-        if (!(view instanceof ViewGroup group)) {
-            return null;
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).text(label.toUpperCase(Locale.ROOT))));
         }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            Button found = findButton(group.getChildAt(i), label);
-            if (found != null) {
-                return found;
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(label.toUpperCase(Locale.ROOT))));
+        }
+        return object;
+    }
+
+    private static UiObject2 findDeviceClickableTextNow(String label) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).text(label)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).textContains(label)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).text(label.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).textContains(label.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).desc(label)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).descContains(label)));
+        }
+        if (object != null && !object.isClickable()) {
+            UiObject2 parent = object.getParent();
+            while (parent != null && parent != object && !parent.isClickable()) {
+                object = parent;
+                parent = object.getParent();
+            }
+            if (parent != null && parent.isClickable()) {
+                object = parent;
             }
         }
-        return null;
+        return object != null && object.isClickable() ? object : null;
     }
 
-    private static ProgressBar findProgressBar(View view) {
-        if (view instanceof ProgressBar progressBar) {
-            return progressBar;
+    private static String appPackage() {
+        return InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
+    }
+
+    private static UiObject2 firstMatch(List<UiObject2> objects) {
+        return objects.isEmpty() ? null : objects.get(0);
+    }
+
+    private static boolean containsAccessibilityText(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
         }
-        if (!(view instanceof ViewGroup group)) {
-            return null;
+        CharSequence value = node.getText();
+        if (value != null && expected.contentEquals(value)) {
+            return true;
         }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            ProgressBar found = findProgressBar(group.getChildAt(i));
-            if (found != null) {
-                return found;
+        CharSequence description = node.getContentDescription();
+        if (description != null && expected.contentEquals(description)) {
+            return true;
+        }
+        int childCount = node.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityText(child, expected)) {
+                return true;
             }
         }
-        return null;
+        return false;
     }
 
-    private static List<EditText> editTexts(View root) {
-        List<EditText> out = new ArrayList<>();
-        collectEditTexts(root, out);
-        return out;
-    }
-
-    private static List<CheckBox> checkBoxes(View root) {
-        List<CheckBox> out = new ArrayList<>();
-        collectCheckBoxes(root, out);
-        return out;
-    }
-
-    private static List<SeekBar> seekBars(View root) {
-        List<SeekBar> out = new ArrayList<>();
-        collectSeekBars(root, out);
-        return out;
-    }
-
-    private static void collectEditTexts(View view, List<EditText> out) {
-        if (view instanceof EditText editText) {
-            out.add(editText);
-            return;
+    private static boolean containsAccessibilityTextContaining(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
         }
-        if (!(view instanceof ViewGroup group)) {
-            return;
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(expected)) {
+            return true;
         }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectEditTexts(group.getChildAt(i), out);
+        CharSequence description = node.getContentDescription();
+        if (description != null && description.toString().contains(expected)) {
+            return true;
         }
-    }
-
-    private static void collectCheckBoxes(View view, List<CheckBox> out) {
-        if (view instanceof CheckBox checkBox) {
-            out.add(checkBox);
-            return;
+        int childCount = node.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) {
+                continue;
+            }
+            if (containsAccessibilityTextContaining(child, expected)) {
+                return true;
+            }
         }
-        if (!(view instanceof ViewGroup group)) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectCheckBoxes(group.getChildAt(i), out);
-        }
-    }
-
-    private static void collectSeekBars(View view, List<SeekBar> out) {
-        if (view instanceof SeekBar seekBar) {
-            out.add(seekBar);
-            return;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectSeekBars(group.getChildAt(i), out);
-        }
+        return false;
     }
 
     private static MotionEvent motion(int action, float x, float y) {
         return MotionEvent.obtain(0L, 0L, action, x, y, 0);
-    }
-
-    private static void touchSeekBar(SeekBar seekBar) {
-        seekBar.measure(
-                View.MeasureSpec.makeMeasureSpec(240, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(56, View.MeasureSpec.EXACTLY)
-        );
-        seekBar.layout(0, 0, 240, 56);
-        seekBar.onTouchEvent(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 120f, 28f, 0));
-        seekBar.onTouchEvent(MotionEvent.obtain(0L, 20L, MotionEvent.ACTION_UP, 180f, 28f, 0));
     }
 
     private static void deleteRecursively(File file) {

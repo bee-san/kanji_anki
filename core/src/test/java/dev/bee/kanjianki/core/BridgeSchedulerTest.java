@@ -206,6 +206,59 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void targetedSessionUsesExistingItemAndLearnerMeaningPrompt() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem existing = itemAtRung("裂", RecordsBase.LadderRung.WORD_READING)
+                .copyBuilder()
+                .state("review")
+                .activeToken("keep-token")
+                .hasSimilarKanji(true)
+                .build();
+
+        RecordsSchedulerModels.StudySession session = scheduler.targetedSession(
+                Collections.singletonList(existing),
+                rowWithMeaning("裂", "split", "reason fallback"),
+                1234L,
+                RecordsBase.StudyLadderSettings.defaults()
+        );
+
+        assertNotNull(session);
+        assertEquals("keep-token", session.token);
+        assertEquals("keep-token", session.item.activeToken);
+        assertSame(existing, scheduler.targetedStudyItem(Collections.singletonList(existing), "裂", 1234L, RecordsBase.StudyLadderSettings.defaults()));
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item.rung);
+        assertEquals("word_reading", session.taskType);
+        assertEquals("split", session.prompt);
+        assertFalse(session.writingRequired);
+    }
+
+    @Test
+    public void targetedSessionCreatesNewItemWithFallbackPromptAndEffectiveRung() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+
+        RecordsSchedulerModels.StudySession session = scheduler.targetedSession(
+                Collections.emptyList(),
+                rowWithMeaning("謎", "", "local reason"),
+                1234L,
+                ladder
+        );
+
+        assertNotNull(session);
+        assertEquals("謎", session.item.kanji);
+        assertEquals("new", session.item.state);
+        assertEquals(1234L, session.item.dueAtMillis);
+        assertEquals(1234L, session.item.createdAtMillis);
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, session.item.rung);
+        assertEquals("meaning_kanji", session.taskType);
+        assertEquals("local reason", session.prompt);
+        assertFalse(session.writingRequired);
+        assertTrue(session.token.startsWith("謎-"));
+        assertEquals(session.token, session.item.activeToken);
+    }
+
+    @Test
     public void nextSessionPrioritizesDueReviewsBeforeNewCards() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem newProblem = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING);
@@ -840,6 +893,81 @@ public class BridgeSchedulerTest {
         assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis);
         assertEquals(18.01, result.item.stability, 0.0);
         assertEquals(5.99, result.item.difficulty, 0.0);
+    }
+
+    @Test
+    public void reviewTransitionPassesOverdueElapsedDaysToFsrs() {
+        RecordingFsrsAdapter adapter = new RecordingFsrsAdapter(3L * BridgeScheduler.DAY);
+        BridgeScheduler scheduler = new BridgeScheduler(adapter);
+        long now = 40L * BridgeScheduler.DAY;
+        long dueAt = now - 2L * BridgeScheduler.DAY;
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .activeToken("overdue")
+                .build();
+
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+                item,
+                new RecordsSchedulerModels.ReviewRequest("裂", "overdue", "good", false, false, false, 0),
+                new HashSet<>(),
+                now
+        );
+
+        assertEquals(9, adapter.elapsedDays);
+        assertEquals(now + 3L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(3, result.item.matureIntervalDays);
+    }
+
+    @Test
+    public void reviewTransitionFloorsFractionalElapsedDaysForFsrs() {
+        RecordingFsrsAdapter adapter = new RecordingFsrsAdapter(4L * BridgeScheduler.DAY);
+        BridgeScheduler scheduler = new BridgeScheduler(adapter);
+        long halfDay = BridgeScheduler.DAY / 2L;
+        long now = 40L * BridgeScheduler.DAY + halfDay;
+        long dueAt = now - 2L * BridgeScheduler.DAY - halfDay;
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .kanjiMeaningMemory(taskMemory)
+                .activeToken("fractional")
+                .build();
+
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+                item,
+                new RecordsSchedulerModels.ReviewRequest("裂", "fractional", "good", false, false, false, 0),
+                new HashSet<>(),
+                now
+        );
+
+        assertEquals(9, adapter.elapsedDays);
+        assertEquals(now + 4L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(4, result.item.matureIntervalDays);
     }
 
     @Test
@@ -1692,6 +1820,10 @@ public class BridgeSchedulerTest {
     public void studyAheadClampsNegativeToZeroAndAboveDayToDay() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
+        assertEquals(
+                (long) SettingsInputRules.MAX_STUDY_AHEAD_MINUTES * 60_000L,
+                StudyLadderRules.clampStudyAheadMillis(Long.MAX_VALUE)
+        );
         long dueIn1Hour = now + 60L * 60_000L;
         long dueIn25Hours = now + 25L * 60L * 60_000L;
         RecordsStudyModels.StudyItem nearItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn1Hour);
@@ -1811,6 +1943,10 @@ public class BridgeSchedulerTest {
         return new RecordsImportModels.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, new ArrayList<>());
     }
 
+    private RecordsImportModels.DashboardRow rowWithMeaning(String kanji, String meaning, String reasonText) {
+        return new RecordsImportModels.DashboardRow(kanji, 900, meaning, "reading", "search", 10, "reason", reasonText, 1, 0, 0, new ArrayList<>());
+    }
+
     private RecordsImportModels.DashboardRow rowWithExamples(String kanji, int score, RecordsImportModels.Example... examples) {
         ArrayList<RecordsImportModels.Example> list = new ArrayList<>();
         Collections.addAll(list, examples);
@@ -1873,6 +2009,38 @@ public class BridgeSchedulerTest {
                 int elapsedDays,
                 double targetRetention
         ) {
+            return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
+        }
+    }
+
+    private static final class RecordingFsrsAdapter implements KaniFsrsAdapter {
+        private final long reviewIntervalMillis;
+        private int elapsedDays = -1;
+
+        RecordingFsrsAdapter(long reviewIntervalMillis) {
+            this.reviewIntervalMillis = reviewIntervalMillis;
+        }
+
+        @Override
+        public KaniFsrsReviewResult initialReview(
+                String rating,
+                double currentStability,
+                double currentDifficulty,
+                double targetRetention,
+                boolean isNewLearning
+        ) {
+            return new KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY);
+        }
+
+        @Override
+        public KaniFsrsReviewResult review(
+                double stability,
+                double difficulty,
+                String rating,
+                int elapsedDays,
+                double targetRetention
+        ) {
+            this.elapsedDays = elapsedDays;
             return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
         }
     }

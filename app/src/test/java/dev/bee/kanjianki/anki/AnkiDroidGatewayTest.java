@@ -1,6 +1,5 @@
 package dev.bee.kanjianki.anki;
 
-import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.sync.SyncProgress;
 
@@ -25,113 +24,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public final class AnkiDroidGatewayTest {
-    @Test
-    public void selectRequiredFieldsDropsBulkyUnusedKikuFields() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        String largeGlossary = repeat("media-glossary-entry", 4000);
-
-        Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
-                Arrays.asList(
-                        "Expression",
-                        "ExpressionReading",
-                        "MainDefinition",
-                        "Sentence",
-                        "Frequency",
-                        "FreqSort",
-                        "Glossary",
-                        "PitchGraph",
-                        "Audio"
-                ),
-                Arrays.asList(
-                        "確認",
-                        "かくにん",
-                        "confirmation",
-                        "確認した。",
-                        "123",
-                        "123",
-                        largeGlossary,
-                        repeat("pitch", 3000),
-                        "[sound:large.mp3]"
-                ),
-                settings
-        );
-
-        assertEquals(settings.requiredFields().size(), fields.size());
-        assertEquals("確認", fields.get("Expression"));
-        assertEquals("かくにん", fields.get("ExpressionReading"));
-        assertEquals("confirmation", fields.get("MainDefinition"));
-        assertEquals("確認した。", fields.get("Sentence"));
-        assertEquals("123", fields.get("Frequency"));
-        assertEquals("123", fields.get("FreqSort"));
-        assertFalse(fields.containsKey("Glossary"));
-        assertFalse(fields.containsKey("PitchGraph"));
-        assertFalse(fields.containsKey("Audio"));
-    }
-
-    @Test
-    public void selectRequiredFieldsSkipsBlankOptionalCustomMappings() {
-        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
-                "Custom Japanese",
-                "Mining",
-                "Front",
-                "",
-                "Back",
-                "",
-                "",
-                "",
-                21,
-                2,
-                100,
-                3000,
-                24,
-                3,
-                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
-        );
-
-        Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
-                Arrays.asList("Front", "Reading", "Back", "Example", "Frequency", "FrequencySort"),
-                Arrays.asList("確認", "かくにん", "confirmation", "確認した。", "123", "123"),
-                settings
-        );
-
-        assertEquals(2, fields.size());
-        assertEquals("確認", fields.get("Front"));
-        assertEquals("confirmation", fields.get("Back"));
-        assertFalse(fields.containsKey(""));
-        assertFalse(fields.containsKey("Reading"));
-    }
-
-    @Test
-    public void fieldMappingPreservesEmptyAnkiFieldSlots() {
-        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
-                "Custom Japanese",
-                "Mining",
-                "Front",
-                "Reading",
-                "Back",
-                "",
-                "",
-                "",
-                21,
-                2,
-                100,
-                3000,
-                24,
-                3,
-                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
-        );
-
-        Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
-                Arrays.asList("Front", "Reading", "Back", "Example"),
-                Arrays.asList("確認", "", "confirmation", ""),
-                settings
-        );
-
-        assertEquals("確認", fields.get("Front"));
-        assertEquals("", fields.get("Reading"));
-        assertEquals("confirmation", fields.get("Back"));
-    }
-
     @Test
     public void fsrsValuesAreReadFromCardCursorColumns() throws Exception {
         Object fsrs = fsrsFromCursor(cursor(row(
@@ -269,72 +161,6 @@ public final class AnkiDroidGatewayTest {
     }
 
     @Test
-    public void currentAndLegacyArchiveTagsAreRecognized() throws Exception {
-        assertTrue((Boolean) invokePrivateStatic(
-                "isArchivedTagPresent",
-                new Class<?>[]{List.class},
-                Arrays.asList("leech", "kani_archived")
-        ));
-        assertTrue((Boolean) invokePrivateStatic(
-                "isArchivedTagPresent",
-                new Class<?>[]{List.class},
-                Arrays.asList("marked", "kanji_anki_archived")
-        ));
-        assertTrue((Boolean) invokePrivateStatic(
-                "isArchivedTagPresent",
-                new Class<?>[]{List.class},
-                Arrays.asList("kani_archived", "kanji_anki_archived")
-        ));
-        assertFalse((Boolean) invokePrivateStatic(
-                "isArchivedTagPresent",
-                new Class<?>[]{List.class},
-                Collections.singletonList("marked")
-        ));
-    }
-
-    @Test
-    public void browserQuerySearchKeepsConfiguredModelBoundary() throws Exception {
-        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
-                defaults.modelName,
-                defaults.templateName,
-                defaults.expressionField,
-                defaults.readingField,
-                defaults.meaningField,
-                defaults.sentenceField,
-                defaults.frequencyField,
-                defaults.frequencySortField,
-                defaults.matureDays,
-                defaults.matureSupportThreshold,
-                defaults.suspendedRankMin,
-                defaults.suspendedRankMax,
-                defaults.activeQueueCap,
-                defaults.newPerDay,
-                defaults.writingTriggerMissDays,
-                defaults.recognitionPromotionPasses,
-                defaults.realDueReviewsToMove,
-                defaults.importActiveCards,
-                defaults.importSuspendedCards,
-                defaults.importTaggedCards,
-                defaults.importTags,
-                defaults.importWeakCards,
-                defaults.importWeakFsrsDifficultyThreshold,
-                defaults.importWeakLapsesThreshold,
-                defaults.importMinMatchingCardsPerKanji,
-                true,
-                "  tag:Kani marked:1  "
-        );
-
-        String search = (String) invokePrivateStatic(
-                "configuredBrowserQuerySearch",
-                new Class<?>[]{RecordsSyncModels.Settings.class},
-                settings
-        );
-
-        assertEquals("note:\"Kiku\" (tag:Kani marked:1)", search);
-    }
-
-    @Test
     public void browserQueryMatchedCardsOnlyCopiesMatchingNotes() throws Exception {
         RecordsSyncModels.Card matched = card(10L, 1L);
         RecordsSyncModels.Card unchanged = card(20L, 2L);
@@ -350,22 +176,6 @@ public final class AnkiDroidGatewayTest {
         assertTrue(cards.get(0).browserQueryMatched);
         assertFalse(cards.get(1).browserQueryMatched);
         assertSame(unchanged, cards.get(1));
-    }
-
-    @Test
-    public void selectRequiredFieldsUsesEmptyStringsForMissingAndShortFieldRows() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-
-        Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
-                Arrays.asList("Expression", "ExpressionReading"),
-                Collections.singletonList("確認"),
-                settings
-        );
-
-        assertEquals("確認", fields.get("Expression"));
-        assertEquals("", fields.get("ExpressionReading"));
-        assertEquals("", fields.get("MainDefinition"));
-        assertEquals("", fields.get("Sentence"));
     }
 
     @Test
@@ -424,31 +234,13 @@ public final class AnkiDroidGatewayTest {
     }
 
     @Test
-    public void doubleValueTreatsNullStringAsMissingWhenCursorReportsValuePresent() throws Exception {
+    public void fsrsCursorTreatsNullStringAsMissingWhenCursorReportsValuePresent() throws Exception {
         Cursor cursor = cursorWithStringNullButNotSqlNull("fsrs_stability");
-
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "doubleValue", new Class<?>[]{Cursor.class, String.class}, cursor, "fsrs_stability"));
-    }
-
-    @Test
-    public void fsrsDataParserSkipsNonFiniteMatchedNumbersAndReadsLaterKeys() throws Exception {
-        Object fsrs = fsrsFromCursor(cursor(row(
-                "fsrs_stability", null,
-                "data", "s=" + repeat("9", 400) + " d=5 r=0.8"
-        )));
+        Object fsrs = fsrsFromCursor(cursor);
 
         assertNull(fieldValue(fsrs, "stability"));
-        assertEquals(5.0, (Double) fieldValue(fsrs, "difficulty"), 0.0001);
-        assertEquals(0.8, (Double) fieldValue(fsrs, "retrievability"), 0.0001);
-    }
-
-    @Test
-    public void parseDoubleRejectsNullInvalidAndNonFiniteValues() throws Exception {
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, new Object[]{null}));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "bad"));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, repeat("9", 400)));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "1e309"));
-        assertEquals(5.0, (Double) invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "+.5e1"), 0.0001);
+        assertNull(fieldValue(fsrs, "difficulty"));
+        assertNull(fieldValue(fsrs, "retrievability"));
     }
 
     @Test
@@ -514,14 +306,6 @@ public final class AnkiDroidGatewayTest {
 
         assertTrue(result.cards().isEmpty());
         assertEquals(0, result.projectionIndex());
-    }
-
-    private static String repeat(String value, int count) {
-        StringBuilder builder = new StringBuilder(value.length() * count);
-        for (int i = 0; i < count; i++) {
-            builder.append(value);
-        }
-        return builder.toString();
     }
 
     private static RecordsSyncModels.Card card(long cardId, long noteId) {

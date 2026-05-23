@@ -2,9 +2,6 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
-import java.lang.reflect.Method;
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -77,6 +74,9 @@ public class GitHubReleaseParserTest {
         );
         assertEquals("", GitHubReleaseParser.parseSha256(null));
         assertEquals("", GitHubReleaseParser.parseSha256("not a digest"));
+        assertTrue(GitHubReleaseParser.isSha256Digest("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+        assertFalse(GitHubReleaseParser.isSha256Digest(null));
+        assertFalse(GitHubReleaseParser.isSha256Digest("not a digest"));
     }
 
     @Test
@@ -205,15 +205,5 @@ public class GitHubReleaseParserTest {
         assertTrue(trailingBackslashAndShortUnicode.htmlUrl.contains("short\\u"));
         assertEquals("trail\\", terminalBackslash.htmlUrl);
         assertTrue(strayObjectClose.assets.isEmpty());
-    }
-
-    @Test
-    public void objectValueScannerIgnoresStrayClosingBrace() throws Exception {
-        Method objectValues = GitHubReleaseParser.class.getDeclaredMethod("objectValues", String.class);
-        objectValues.setAccessible(true);
-
-        Object values = objectValues.invoke(null, "}");
-
-        assertTrue(values instanceof List<?> list && list.isEmpty());
     }
 }

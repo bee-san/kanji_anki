@@ -1,0 +1,54 @@
+package dev.bee.kanjianki.core;
+
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+public final class KanjiGameRoundStateTest {
+    @Test
+    public void newRoundStartsEmptyAndShowsCurrentQuestionProgress() {
+        KanjiGameRoundState round = KanjiGameRoundState.newRound(10);
+
+        assertEquals(10, round.totalQuestions);
+        assertEquals(0, round.answered);
+        assertEquals(0, round.correct);
+        assertEquals(0, round.streak);
+        assertEquals(0, round.progress(false));
+        assertEquals(1, round.progress(true));
+        assertEquals(0, round.accuracyPercent());
+        assertFalse(round.roundComplete());
+    }
+
+    @Test
+    public void answersTrackScoreStreakCompletionAndAccuracy() {
+        KanjiGameRoundState round = KanjiGameRoundState.newRound(3)
+                .answer(true)
+                .answer(true)
+                .answer(false);
+
+        assertEquals(3, round.answered);
+        assertEquals(2, round.correct);
+        assertEquals(0, round.streak);
+        assertEquals(3, round.progress(false));
+        assertEquals(3, round.progress(true));
+        assertEquals(67, round.accuracyPercent());
+        assertEquals(67, KanjiGameRoundState.accuracyPercent(2, 3));
+        assertTrue(round.roundComplete());
+    }
+
+    @Test
+    public void correctAnswerContinuesStreakAfterAMissResetsIt() {
+        KanjiGameRoundState round = KanjiGameRoundState.newRound(4)
+                .answer(true)
+                .answer(false)
+                .answer(true);
+
+        assertEquals(3, round.answered);
+        assertEquals(2, round.correct);
+        assertEquals(1, round.streak);
+        assertEquals(3, round.progress(false));
+        assertFalse(round.roundComplete());
+    }
+}

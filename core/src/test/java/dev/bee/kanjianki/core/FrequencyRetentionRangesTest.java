@@ -2,11 +2,14 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class FrequencyRetentionRangesTest {
     @Test
@@ -31,5 +34,13 @@ public class FrequencyRetentionRangesTest {
         assertThrows(IllegalArgumentException.class, () -> FrequencyRetentionRanges.parse("1-500=100%"));
         assertThrows(IllegalArgumentException.class, () -> FrequencyRetentionRanges.parse("1-500=90%\n500-800=85%"));
         assertThrows(IllegalArgumentException.class, () -> FrequencyRetentionRanges.parse("abc=90%"));
+    }
+
+    @Test
+    public void ruleConstructorStaysPrivateForJavaInterop() {
+        Constructor<?>[] constructors = FrequencyRetentionRanges.Rule.class.getDeclaredConstructors();
+
+        assertEquals(1, constructors.length);
+        assertTrue(Modifier.isPrivate(constructors[0].getModifiers()));
     }
 }

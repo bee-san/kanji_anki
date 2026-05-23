@@ -96,6 +96,29 @@ public final class KanjiImportSelectorTest {
     }
 
     @Test
+    public void activeOptInMatchesKeepActiveSourceTypeAndRuleProvenance() throws Exception {
+        RecordsSyncModels.Settings settings = settings(true, false, true, "focus", true, 7.0, 2, 1);
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        RecordsSyncModels.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける", "focus")),
+                Collections.singletonList(card(10, 1, false, 2, 8.0))
+        );
+
+        List<RecordsImportModels.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("裂"), kanjiList(imports));
+        RecordsImportModels.SuspendedSource source = imports.get(0).sources.get(0);
+        assertEquals(RecordsBase.SOURCE_ACTIVE, source.sourceType);
+        assertFalse(source.suspended);
+        assertTrue(source.forcePractice);
+        assertEquals(Arrays.asList(
+                RecordsBase.SOURCE_ACTIVE,
+                RecordsBase.SOURCE_TAGGED,
+                RecordsBase.SOURCE_WEAK
+        ), source.ruleTypes);
+    }
+
+    @Test
     public void weakCardsMatchByLapses() throws Exception {
         RecordsSyncModels.Settings settings = settings(false, false, false, "", true, 9.0, 2, 1);
         JitenKanjiRanks ranks = ranks("浅,1500\n深,1600\n");

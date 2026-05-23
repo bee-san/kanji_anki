@@ -1,11 +1,19 @@
 plugins {
     `java-library`
+    id("org.jetbrains.kotlin.jvm")
     jacoco
 }
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
+    compilerOptions {
+        freeCompilerArgs.add("-Xjvm-default=all")
     }
 }
 
@@ -43,5 +51,6 @@ tasks.check {
 }
 
 dependencies {
+    api(kotlin("stdlib"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

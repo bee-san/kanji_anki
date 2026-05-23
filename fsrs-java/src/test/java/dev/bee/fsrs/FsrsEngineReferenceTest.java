@@ -2,7 +2,6 @@ package dev.bee.fsrs;
 
 import org.junit.Test;
 
-import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -16,17 +15,17 @@ public final class FsrsEngineReferenceTest {
     private static final double TOLERANCE = 1.0e-9;
 
     @Test
-    public void algorithmMetadataPinsUpstreamSource() throws Exception {
+    public void algorithmMetadataPinsUpstreamSource() {
         assertEquals("open-spaced-repetition/py-fsrs", FsrsAlgorithmInfo.UPSTREAM_REPOSITORY);
         assertEquals("v6.3.1", FsrsAlgorithmInfo.UPSTREAM_RELEASE);
         assertEquals("3abe686e9c058d3f3c00bbeb92e68b71211b2b31", FsrsAlgorithmInfo.UPSTREAM_COMMIT);
         assertEquals("6d42ecb259bbaaa02101f13c5e1b2ec7cdc77eae", FsrsAlgorithmInfo.UPSTREAM_SCHEDULER_BLOB);
         assertEquals("FSRS-6.x 21-parameter snapshot", FsrsAlgorithmInfo.ALGORITHM_LABEL);
         assertEquals(21, FsrsAlgorithmInfo.PARAMETER_COUNT);
-
-        Constructor<FsrsAlgorithmInfo> constructor = FsrsAlgorithmInfo.class.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        assertNotNull(constructor.newInstance());
+        assertEquals(
+                "open-spaced-repetition/py-fsrs v6.3.1 3abe686e9c058d3f3c00bbeb92e68b71211b2b31",
+                FsrsAlgorithmInfo.upstreamReference()
+        );
     }
 
     @Test
@@ -41,16 +40,36 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void parametersValidateAndDefensivelyCopyValues() {
         FsrsParameters defaults = FsrsParameters.latestDefault();
         double[] values = defaults.toArray();
 
         assertEquals(21, FsrsParameters.PARAMETER_COUNT);
         assertArrayEquals(FsrsParameters.latestDefaultValues(), values, 0.0);
+        assertArrayEquals(FsrsParameters.latestDefaultValues(), FsrsParameters.LATEST_DEFAULT_VALUES, 0.0);
         assertEquals(0.212, defaults.get(0), 0.0);
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
         assertEquals(-0.1542, defaults.decay(), 0.0);
         assertEquals(Math.pow(0.9, 1.0 / defaults.decay()) - 1.0, defaults.factor(), 0.0);
+        assertEquals(0.212, defaults.initialStability(FsrsRating.AGAIN), 0.0);
+        assertEquals(8.2956, defaults.initialStability(FsrsRating.EASY), 0.0);
+        assertEquals(6.4133, defaults.initialDifficultyBase(), 0.0);
+        assertEquals(0.8334, defaults.initialDifficultyExponent(), 0.0);
+        assertEquals(3.0194, defaults.difficultyDeltaScale(), 0.0);
+        assertEquals(0.001, defaults.difficultyMeanReversionWeight(), 0.0);
+        assertEquals(1.8722, defaults.recallStabilityBase(), 0.0);
+        assertEquals(0.1666, defaults.recallStabilityStabilityDecay(), 0.0);
+        assertEquals(0.796, defaults.recallStabilityRetrievabilitySensitivity(), 0.0);
+        assertEquals(1.4835, defaults.forgetStabilityBase(), 0.0);
+        assertEquals(0.0614, defaults.forgetStabilityDifficultyDecay(), 0.0);
+        assertEquals(0.2629, defaults.forgetStabilityStabilityGrowth(), 0.0);
+        assertEquals(1.6483, defaults.forgetStabilityRetrievabilitySensitivity(), 0.0);
+        assertEquals(0.6014, defaults.hardPenalty(), 0.0);
+        assertEquals(1.8729, defaults.easyBonus(), 0.0);
+        assertEquals(0.5425, defaults.shortTermBase(), 0.0);
+        assertEquals(0.0912, defaults.shortTermRatingOffset(), 0.0);
+        assertEquals(0.0658, defaults.shortTermStabilityDecay(), 0.0);
         assertTrue(defaults.toString().startsWith("FsrsParameters["));
 
         values[0] = 99.0;
@@ -60,7 +79,12 @@ public final class FsrsEngineReferenceTest {
         FsrsParameters copied = FsrsParameters.of(custom);
         custom[0] = 99.0;
         assertEquals(0.212, copied.get(0), 0.0);
+    }
 
+    @Test
+    @SuppressWarnings("deprecation")
+    public void parametersFactoriesAndInvalidInputsStayGuarded() {
+        double[] custom = FsrsParameters.latestDefaultValues();
         expectIllegalArgument(() -> FsrsParameters.of(null));
         expectIllegalArgument(() -> FsrsParameters.of(Arrays.copyOf(custom, 20)));
         double[] nonFinite = FsrsParameters.latestDefaultValues();
@@ -72,7 +96,26 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
-    public void memoryStateAndReviewModelsValidateInputs() {
+    @SuppressWarnings("deprecation")
+    public void deprecatedPublicDefaultArrayDoesNotBackCurrentDefaults() {
+        double original = FsrsParameters.LATEST_DEFAULT_VALUES[0];
+        try {
+            FsrsParameters.LATEST_DEFAULT_VALUES[0] = 99.0;
+
+            assertEquals(original, FsrsParameters.latestDefault().get(0), 0.0);
+            assertEquals(original, FsrsParameters.latestDefaultValues()[0], 0.0);
+            assertState(FsrsEngine.latestDefault().initialState(FsrsRating.AGAIN), original, 6.4133);
+        } finally {
+            FsrsParameters.LATEST_DEFAULT_VALUES[0] = original;
+        }
+    }
+
+    @Test
+    public void memoryStateAndReviewModelsExposeValidatedFields() {
+        assertTrue(FsrsMemoryState.class.isRecord());
+        assertTrue(FsrsReviewInput.class.isRecord());
+        assertTrue(FsrsReviewOutput.class.isRecord());
+
         FsrsMemoryState state = new FsrsMemoryState(5.0, 6.0);
         assertEquals(5.0, state.stability(), 0.0);
         assertEquals(6.0, state.difficulty(), 0.0);
@@ -89,7 +132,11 @@ public final class FsrsEngineReferenceTest {
         assertEquals(state, output.nextState());
         assertEquals(0.8, output.retrievability(), 0.0);
         assertEquals(9, output.nextIntervalDays());
+    }
 
+    @Test
+    public void memoryStateAndReviewModelsRejectInvalidInputs() {
+        FsrsMemoryState state = new FsrsMemoryState(5.0, 6.0);
         expectIllegalArgument(() -> new FsrsMemoryState(0.0, 6.0));
         expectIllegalArgument(() -> new FsrsMemoryState(5.0, 0.5));
         expectIllegalArgument(() -> new FsrsMemoryState(5.0, 10.5));
@@ -175,6 +222,43 @@ public final class FsrsEngineReferenceTest {
         expectIllegalArgument(() -> engine.review(null));
     }
 
+    @Test
+    public void engineInterfaceKeepsDefaultNextDifficultyForExistingImplementations() {
+        FsrsEngine engine = new FsrsEngine() {
+            @Override
+            public FsrsMemoryState initialState(FsrsRating firstRating) {
+                return new FsrsMemoryState(1.0, 5.0);
+            }
+
+            @Override
+            public double retrievability(FsrsMemoryState state, int elapsedDays) {
+                return 0.9;
+            }
+
+            @Override
+            public FsrsMemoryState nextState(FsrsMemoryState previousState, FsrsRating rating, int elapsedDays) {
+                return new FsrsMemoryState(previousState.stability(), 4.0);
+            }
+
+            @Override
+            public double shortTermStability(double stability, FsrsRating rating) {
+                return stability;
+            }
+
+            @Override
+            public int nextIntervalDays(double stability, double desiredRetention, int maximumInterval) {
+                return 1;
+            }
+
+            @Override
+            public FsrsReviewOutput review(FsrsReviewInput input) {
+                return new FsrsReviewOutput(input.previousState(), 0.9, 1);
+            }
+        };
+
+        assertEquals(4.0, engine.nextDifficulty(6.0, FsrsRating.GOOD), 0.0);
+    }
+
     private static void assertState(FsrsMemoryState state, double stability, double difficulty) {
         assertEquals(stability, state.stability(), TOLERANCE);
         assertEquals(difficulty, state.difficulty(), TOLERANCE);
@@ -186,12 +270,10 @@ public final class FsrsEngineReferenceTest {
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
             assertNotNull(expected.getMessage());
-        } catch (ReflectiveOperationException reflectionFailure) {
-            throw new AssertionError(reflectionFailure);
         }
     }
 
     private interface ThrowingRunnable {
-        void run() throws ReflectiveOperationException;
+        void run();
     }
 }

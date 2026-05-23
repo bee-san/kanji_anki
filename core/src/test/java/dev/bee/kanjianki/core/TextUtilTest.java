@@ -21,6 +21,15 @@ public class TextUtilTest {
     }
 
     @Test
+    public void normalizesOnlySingleKanjiGlyphs() {
+        assertEquals("裂", TextUtil.normalizeSingleKanji("　裂　"));
+        assertEquals("", TextUtil.normalizeSingleKanji(null));
+        assertEquals("", TextUtil.normalizeSingleKanji("裂提"));
+        assertEquals("", TextUtil.normalizeSingleKanji("あ"));
+        assertEquals("", TextUtil.normalizeSingleKanji("A"));
+    }
+
+    @Test
     public void stripsHtmlAndRubyReadingsForMeaning() {
         String html = "<div><ruby>提<rt>てい</rt></ruby><b>presentation</b>; showing</div>";
         assertEquals("提 presentation", TextUtil.firstMeaningLine(html));

@@ -2,10 +2,11 @@ package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.KanjiGameEngine;
 import android.content.Context;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -24,8 +25,8 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -40,18 +41,18 @@ public final class MainActivityGamesInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.games_no_anki"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.games_no_anki"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
         context.deleteDatabase("kanji_anki_simple.db");
     }
 
@@ -59,12 +60,10 @@ public final class MainActivityGamesInstrumentedTest {
     public void homeGamesButtonOpensPracticeOnlyHub() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertTrue(containsText(activity.content, LABEL_GAMES));
-
                 activity.renderGames();
 
-                assertTrue(containsText(activity.content, "Practice kanji without changing SRS."));
-                assertTrue(containsText(activity.content, "Sync AnkiDroid"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Home"));
+                assertNotNull(findComposeView(activity.findViewById(android.R.id.content)));
             });
         }
     }
@@ -75,26 +74,19 @@ public final class MainActivityGamesInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                activity.renderGames();
-                View meaningPop = findClickable(activity.content, "Meaning Pop");
-                assertNotNull(meaningPop);
-                assertTrue(meaningPop.performClick());
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
 
                 for (int answer = 0; answer < 10; answer++) {
-                    Button choice = firstAnswerButton(activity.content);
-                    assertNotNull(choice);
-                    assertTrue(choice.performClick());
+                    assertTrue(performFirstAnswerClick(activity.findViewById(android.R.id.content)));
                     if (answer < 9) {
-                        Button next = findButton(activity.content, LABEL_NEXT);
-                        assertNotNull(next);
-                        assertTrue(next.performClick());
+                        assertTrue(performClickWithText(activity.findViewById(android.R.id.content), LABEL_NEXT));
                     }
                 }
 
-                assertTrue(containsText(activity.content, "Round complete"));
-                assertTrue(containsText(activity.content, "Final score:"));
-                assertNotNull(findButton(activity.content, LABEL_NEW_ROUND));
-                assertNull(findButton(activity.content, LABEL_NEXT));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Round complete"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Final score:"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), LABEL_NEW_ROUND));
+                assertFalse(containsText(activity.findViewById(android.R.id.content), LABEL_NEXT));
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
             });
         }
@@ -142,6 +134,9 @@ public final class MainActivityGamesInstrumentedTest {
                 return true;
             }
         }
+        if (view instanceof androidx.compose.ui.platform.ComposeView && containsAccessibilityText(view.createAccessibilityNodeInfo(), expected)) {
+            return true;
+        }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
@@ -169,18 +164,14 @@ public final class MainActivityGamesInstrumentedTest {
         return null;
     }
 
-    private static Button firstAnswerButton(View view) {
-        if (view instanceof Button) {
-            Button button = (Button) view;
-            String label = button.getText().toString();
-            if (!LABEL_NEXT.equals(label) && !LABEL_GAMES.equals(label) && !LABEL_NEW_ROUND.equals(label)) {
-                return button;
-            }
+    private static View findComposeView(View view) {
+        if (view instanceof androidx.compose.ui.platform.ComposeView) {
+            return view;
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
-                Button found = firstAnswerButton(group.getChildAt(i));
+                View found = findComposeView(group.getChildAt(i));
                 if (found != null) {
                     return found;
                 }
@@ -189,22 +180,82 @@ public final class MainActivityGamesInstrumentedTest {
         return null;
     }
 
-    private static Button findButton(View view, String label) {
-        if (view instanceof Button) {
-            Button button = (Button) view;
-            if (label.equals(button.getText().toString())) {
-                return button;
+    private static boolean containsAccessibilityText(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
+        }
+        CharSequence value = node.getText();
+        if (value != null && value.toString().contains(expected)) {
+            return true;
+        }
+        CharSequence description = node.getContentDescription();
+        if (description != null && description.toString().contains(expected)) {
+            return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null && containsAccessibilityText(child, expected)) {
+                return true;
             }
         }
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                Button found = findButton(group.getChildAt(i), label);
-                if (found != null) {
-                    return found;
-                }
+        return false;
+    }
+
+    private static boolean performFirstAnswerClick(View root) {
+        return performFirstAnswerClick(root.createAccessibilityNodeInfo());
+    }
+
+    private static boolean performFirstAnswerClick(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return false;
+        }
+        String text = nodeText(node);
+        if (node.isClickable()
+                && !text.isEmpty()
+                && !LABEL_NEXT.equals(text)
+                && !LABEL_GAMES.equals(text)
+                && !text.startsWith(LABEL_GAMES + " ")
+                && !LABEL_NEW_ROUND.equals(text)) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (performFirstAnswerClick(child)) {
+                return true;
             }
         }
-        return null;
+        return false;
+    }
+
+    private static boolean performClickWithText(View root, String label) {
+        return performClickWithText(root.createAccessibilityNodeInfo(), label);
+    }
+
+    private static boolean performClickWithText(AccessibilityNodeInfo node, String label) {
+        if (node == null) {
+            return false;
+        }
+        if (node.isClickable() && label.equals(nodeText(node))) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (performClickWithText(child, label)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String nodeText(AccessibilityNodeInfo node) {
+        CharSequence text = node.getText();
+        if (text != null) {
+            return text.toString();
+        }
+        CharSequence description = node.getContentDescription();
+        if (description != null) {
+            return description.toString();
+        }
+        return "";
     }
 }

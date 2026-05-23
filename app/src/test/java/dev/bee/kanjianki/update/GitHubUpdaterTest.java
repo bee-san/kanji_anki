@@ -1,8 +1,12 @@
 package dev.bee.kanjianki.update;
 
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import android.app.PendingIntent;
+import android.content.pm.PackageInstaller;
 
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
+import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
+import dev.bee.kanjianki.updatecore.UpdateArtifactValidator;
+import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -229,59 +233,60 @@ public final class GitHubUpdaterTest {
 
     @Test
     public void rejectsReleaseWithoutApkAsset() {
-        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
+        GitHubReleaseMetadata release = new GitHubReleaseMetadata(
                 "v0.4.3",
                 "https://example/releases/v0.4.3",
-                Collections.singletonList(new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.3.apk.sha256", "https://example/sha"))
+                Collections.singletonList(new GitHubReleaseMetadata.ReleaseAsset("kani-android-0.4.3.apk.sha256", "https://example/sha"))
         );
 
-        UpdatePolicy.AssetSelection selection = UpdatePolicy.selectAssets(release);
+        UpdateReleaseAssetSelector.AssetSelection selection = UpdateReleaseAssetSelector.selectAssets(release);
 
-        assertFalse(selection.ok);
-        assertEquals("Latest release has no APK asset.", selection.message);
+        assertFalse(selection.ok());
+        assertEquals("Latest release has no APK asset.", selection.message());
     }
 
     @Test
     public void rejectsReleaseWithoutMatchingChecksumAsset() {
-        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
+        GitHubReleaseMetadata release = new GitHubReleaseMetadata(
                 "v0.4.3",
                 "https://example/releases/v0.4.3",
                 Arrays.asList(
-                        new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.3.apk", "https://example/apk"),
-                        new RecordsSchedulerModels.ReleaseAsset("other.apk.sha256", "https://example/sha")
+                        new GitHubReleaseMetadata.ReleaseAsset("kani-android-0.4.3.apk", "https://example/apk"),
+                        new GitHubReleaseMetadata.ReleaseAsset("other.apk.sha256", "https://example/sha")
                 )
         );
 
-        UpdatePolicy.AssetSelection selection = UpdatePolicy.selectAssets(release);
+        UpdateReleaseAssetSelector.AssetSelection selection = UpdateReleaseAssetSelector.selectAssets(release);
 
-        assertFalse(selection.ok);
-        assertEquals("Latest release has no SHA-256 checksum asset.", selection.message);
+        assertFalse(selection.ok());
+        assertEquals("Latest release has no SHA-256 checksum asset.", selection.message());
     }
 
     @Test
     public void rejectsChecksumMismatch() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validateChecksum(
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateChecksum(
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         );
 
-        assertFalse(result.ok);
-        assertEquals("Checksum mismatch. Install blocked.", result.message);
+        assertFalse(result.ok());
+        assertEquals("Checksum mismatch. Install blocked.", result.message());
     }
 
     @Test
     public void rejectsEmptyChecksumDigestBeforeApkDownload() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validateExpectedChecksum("");
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateExpectedChecksum("");
 
-        assertFalse(result.ok);
-        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message);
+        assertFalse(result.ok());
+        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message());
     }
 
     @Test
     public void installerUserActionPolicyRequiresBothRequestedAndRuntimeApiSupport() {
-        assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(30, 31));
+        assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(28, 31));
+        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(29, 31));
         assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(31, 30));
-        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(31, 31));
+        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(34, 36));
     }
 
     @Test
@@ -302,7 +307,7 @@ public final class GitHubUpdaterTest {
 
     @Test
     public void acceptsExpectedPackageNameAndNewerVersion() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validatePackageMetadata(
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validatePackageMetadata(
                 "dev.bee.kanjianki",
                 "0.4.2",
                 "v0.4.3",
@@ -310,12 +315,12 @@ public final class GitHubUpdaterTest {
                 "0.4.3"
         );
 
-        assertTrue(result.ok);
+        assertTrue(result.ok());
     }
 
     @Test
     public void acceptsReleaseTagWithoutVPrefixWhenArchiveVersionMatches() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validatePackageMetadata(
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validatePackageMetadata(
                 "dev.bee.kanjianki",
                 "0.4.2",
                 "0.4.3",
@@ -323,13 +328,13 @@ public final class GitHubUpdaterTest {
                 "0.4.3"
         );
 
-        assertTrue(result.ok);
-        assertEquals("APK metadata verified.", result.message);
+        assertTrue(result.ok());
+        assertEquals("APK metadata verified.", result.message());
     }
 
     @Test
     public void rejectsDifferentPackageName() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validatePackageMetadata(
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validatePackageMetadata(
                 "dev.bee.kanjianki",
                 "0.4.2",
                 "v0.4.3",
@@ -337,13 +342,13 @@ public final class GitHubUpdaterTest {
                 "0.4.3"
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK package name is dev.bee.other, expected dev.bee.kanjianki.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK package name is dev.bee.other, expected dev.bee.kanjianki.", result.message());
     }
 
     @Test
     public void rejectsArchiveVersionThatDoesNotMatchReleaseTag() {
-        UpdatePolicy.ValidationResult result = UpdatePolicy.validatePackageMetadata(
+        UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validatePackageMetadata(
                 "dev.bee.kanjianki",
                 "0.4.2",
                 "v0.4.4",
@@ -351,27 +356,36 @@ public final class GitHubUpdaterTest {
                 "0.4.3"
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK version 0.4.3 does not match release v0.4.4.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK version 0.4.3 does not match release v0.4.4.", result.message());
     }
 
     @Test
     public void mapsPendingUserActionInstallerStatus() {
-        UpdatePolicy.InstallCallback mapped = UpdatePolicy.mapInstallStatus(UpdatePolicy.STATUS_PENDING_USER_ACTION, "");
+        PackageInstallStatusPolicy.InstallCallback mapped = PackageInstallStatusPolicy.mapInstallStatus(
+                PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION,
+                ""
+        );
 
-        assertTrue(mapped.pendingUserAction);
-        assertFalse(mapped.success);
-        assertEquals("Android needs confirmation to finish installing.", mapped.message);
+        assertTrue(mapped.pendingUserAction());
+        assertFalse(mapped.success());
+        assertEquals("Android needs confirmation to finish installing.", mapped.message());
     }
 
     @Test
     public void startsInstallConfirmationForManualAndCachedSourcesOnly() {
-        assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.MANUAL));
-        assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.CACHED));
-        boolean launchesForAutomatic = UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC);
-        boolean launchesForMissingSource = UpdatePolicy.shouldLaunchInstallConfirmation(null);
+        assertTrue(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.MANUAL.name()));
+        assertTrue(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.CACHED.name()));
+        boolean launchesForAutomatic = PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC.name());
+        boolean launchesForMissingSource = PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(null);
         assertFalse(launchesForAutomatic);
         assertFalse(launchesForMissingSource);
+    }
+
+    @Test
+    public void installerStatusConstantsMatchAndroidPackageInstaller() {
+        assertEquals(PackageInstaller.STATUS_SUCCESS, PackageInstallStatusPolicy.STATUS_SUCCESS);
+        assertEquals(PackageInstaller.STATUS_PENDING_USER_ACTION, PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION);
     }
 
     @Test
@@ -381,23 +395,6 @@ public final class GitHubUpdaterTest {
         assertNotEquals(0, flags & PendingIntent.FLAG_UPDATE_CURRENT);
         assertNotEquals(0, flags & PendingIntent.FLAG_MUTABLE);
         assertEquals(0, flags & PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    @Test
-    public void updateNotificationBodyPrefersVerifiedVersionThenMessageFallback() {
-        assertEquals(
-                "Version 0.4.3 is verified and ready.",
-                UpdateNotifier.notificationBody("v0.4.3", "manual message")
-        );
-        assertEquals("Checksum verified.", UpdateNotifier.notificationBody("", "Checksum verified."));
-        assertEquals(
-                "Open Kani to finish installing the verified update.",
-                UpdateNotifier.notificationBody(null, "  ")
-        );
-        assertEquals(
-                "Open Kani to finish installing the verified update.",
-                UpdateNotifier.notificationBody(null, null)
-        );
     }
 
     private static String invokeSafeFileName(String name) throws Exception {

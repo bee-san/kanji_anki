@@ -1,6 +1,26 @@
 name: SonarQube
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'fsrs-java/**'
+      - 'domain/**'
+      - 'sync-domain/**'
+      - 'writing-core/**'
+      - 'dictionary-core/**'
+      - 'update-core/**'
+      - 'tools/**'
+      - '.github/workflows/sonarqube.yml'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradlew*'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
   workflow_dispatch:
     inputs:
       full_coverage:
@@ -15,6 +35,11 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'domain/**'
+      - 'sync-domain/**'
+      - 'writing-core/**'
+      - 'dictionary-core/**'
+      - 'update-core/**'
       - 'tools/**'
       - '.github/workflows/sonarqube.yml'
       - 'build.gradle*'
@@ -34,12 +59,17 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
+      pull-requests: read
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+
+      - name: Fetch pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: git fetch --no-tags --depth=1 origin "${PR_BASE_REF}:refs/remotes/origin/${PR_BASE_REF}"
 
       - name: Detect changed project areas
         id: changed-areas
@@ -47,9 +77,17 @@ jobs:
           set -euo pipefail
 
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            echo "core=true" >> "$GITHUB_OUTPUT"
+            echo "fsrs=true" >> "$GITHUB_OUTPUT"
+            echo "pure_modules=true" >> "$GITHUB_OUTPUT"
+            echo "gradle=true" >> "$GITHUB_OUTPUT"
+            exit 0
           elif [ "${{ github.event_name }}" = "push" ]; then
             BASE_SHA="${{ github.event.before }}"
+            if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+              git fetch --no-tags --depth=1 origin "${BASE_SHA}" || true
+            fi
           else
             BASE_SHA="${{ github.sha }}"
           fi
@@ -65,6 +103,7 @@ jobs:
           APP_CHANGED=false
           CORE_CHANGED=false
           FSRS_CHANGED=false
+          PURE_MODULES_CHANGED=false
           GRADLE_CHANGED=false
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -81,6 +120,9 @@ jobs:
                 fsrs-java/*)
                   FSRS_CHANGED=true
                   ;;
+                domain/*|sync-domain/*|writing-core/*|dictionary-core/*|update-core/*)
+                  PURE_MODULES_CHANGED=true
+                  ;;
                 build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/sonarqube.yml)
                   GRADLE_CHANGED=true
                   ;;
@@ -91,6 +133,7 @@ jobs:
           echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
           echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
           echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "pure_modules=$PURE_MODULES_CHANGED" >> "$GITHUB_OUTPUT"
           echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Select coverage mode
@@ -127,11 +170,11 @@ jobs:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
@@ -154,55 +197,83 @@ jobs:
         if: steps.coverage-mode.outputs.full != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          SONAR_PROJECT_VERSION: ${{ steps.sonar-version.outputs.version }}
         run: |
           set -euo pipefail
+          SONAR_ARGS=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SONAR_ARGS+=(
+              "-Dsonar.pullrequest.key=${PR_NUMBER}"
+              "-Dsonar.pullrequest.branch=${PR_HEAD_REF}"
+              "-Dsonar.pullrequest.base=${PR_BASE_REF}"
+            )
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
+            if [ -n "${PR_INFO}" ]; then
+              IFS=$'\t' read -r PR_NUMBER PR_BASE PR_HEAD <<< "${PR_INFO}"
+              SONAR_ARGS+=(
+                "-Dsonar.pullrequest.key=${PR_NUMBER}"
+                "-Dsonar.pullrequest.branch=${PR_HEAD}"
+                "-Dsonar.pullrequest.base=${PR_BASE}"
+              )
+            fi
+          fi
           TASKS=()
           if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
+          fi
+          if [ "${{ steps.changed-areas.outputs.pure_modules }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS+=(
+              :domain:test :domain:jacocoTestReport
+              :sync-domain:test :sync-domain:jacocoTestReport
+              :writing-core:test :writing-core:jacocoTestReport
+              :dictionary-core:test :dictionary-core:jacocoTestReport
+              :update-core:test :update-core:jacocoTestReport
+            )
           fi
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac )
+            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
           fi
           if [ ${#TASKS[@]} -eq 0 ]; then
-            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
+            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
           fi
-          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
-          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew \
+            :core:jar \
+            :domain:jar \
+            :sync-domain:jar \
+            :writing-core:jar \
+            :dictionary-core:jar \
+            :update-core:jar \
+            :app:compileDebugJavaWithJavac \
+            "${TASKS[@]}" \
+            --parallel \
+            -Dorg.gradle.parallel=true \
+            -PsonarFullCoverage=false \
+            -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }} "${SONAR_ARGS[@]}"
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'
         uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          SONAR_PROJECT_VERSION: ${{ steps.sonar-version.outputs.version }}
         with:
-          api-level: 30
+          api-level: 35
           target: aosp_atd
           arch: x86_64
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -eu
-            ./gradlew \
-              :core:test \
-              :core:jacocoTestReport \
-              :fsrs-java:test \
-              :fsrs-java:jacocoTestReport \
-              :app:testDebugUnitTest \
-              :app:jacocoDebugUnitTestReport \
-              :app:lintDebug \
-              :app:compileDebugAndroidTestJavaWithJavac \
-              :app:createDebugCoverageReport \
-              --parallel \
-              -Dorg.gradle.parallel=true \
-              -PsonarFullCoverage=true \
-              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
-            test -f app/build/reports/coverage/androidTest/debug/connected/report.xml
-            ./gradlew sonar \
-              --parallel \
-              -Dorg.gradle.parallel=true \
-              -PsonarFullCoverage=true \
-              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          script: bash .github/scripts/sonar-full-coverage.sh

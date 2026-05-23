@@ -51,6 +51,18 @@ public class StudyLadderSettingsTest {
     }
 
     @Test
+    public void constructorIgnoresNullRungsFromJavaCallers() {
+        RecordsBase.StudyLadderSettings ladder = new RecordsBase.StudyLadderSettings(
+                Arrays.asList(null, RecordsBase.LadderRung.KANJI_MEANING, null),
+                Arrays.asList(null, RecordsBase.LadderRung.KANJI_MEANING, null)
+        );
+
+        assertFalse(ladder.orderedRungs.contains(null));
+        assertFalse(ladder.enabledRungs.contains(null));
+        assertEquals("kanji_meaning", ladder.enabledText());
+    }
+
+    @Test
     public void storedValuesNormalizeUnknownsAndMissingRungs() {
         RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.fromStored(
                 "word_reading unknown kanji_meaning",

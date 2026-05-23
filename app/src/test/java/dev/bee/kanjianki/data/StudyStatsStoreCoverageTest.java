@@ -6,6 +6,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -119,6 +121,30 @@ public final class StudyStatsStoreCoverageTest {
         assertEquals(1, stats.ladderHealth.promotionReadyCount);
         assertEquals(1, stats.ladderHealth.demotionRiskCount);
         assertEquals(1, stats.ladderHealth.demotionReadyCount);
+    }
+
+    @Test
+    public void ladderHealthSkipsNullRungKeysAndTreatsNullCountsAsZero() {
+        Map<RecordsBase.LadderRung, Integer> counts = new LinkedHashMap<>();
+        counts.put(null, 4);
+        counts.put(RecordsBase.LadderRung.WRITE_KANJI, null);
+        counts.put(RecordsBase.LadderRung.TYPE_MEANING, -3);
+        counts.put(RecordsBase.LadderRung.KANJI_MEANING, 2);
+
+        StudyStatsStore.LadderHealthMetric metric = new StudyStatsStore.LadderHealthMetric(
+                counts,
+                1,
+                21,
+                3,
+                0,
+                0,
+                0
+        );
+
+        assertEquals(0, metric.countFor(null));
+        assertEquals(0, metric.countFor(RecordsBase.LadderRung.WRITE_KANJI));
+        assertEquals(0, metric.countFor(RecordsBase.LadderRung.TYPE_MEANING));
+        assertEquals(2, metric.countFor(RecordsBase.LadderRung.KANJI_MEANING));
     }
 
     private static StudyStatsStore.OutcomeEvidence outcome(

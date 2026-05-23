@@ -1,0 +1,103 @@
+package dev.bee.kanjianki.core
+
+import java.util.Collections
+import kotlin.math.max
+import kotlin.math.min
+
+/** Public helpers for ladder movement and rung availability. */
+object StudyLadderRules {
+    const val DAY: Long = 86_400_000L
+
+    const val MINUTE: Long = 60_000L
+    const val MIN_RECOGNITION_STAGE: Int = -1
+    const val MAX_RECOGNITION_STAGE: Int = 2
+    const val STATE_NEW: String = "new"
+    const val STATE_LEARNING: String = "learning"
+    const val STATE_REVIEW: String = "review"
+    const val STATE_RETIRED: String = "retired"
+
+    @JvmStatic
+    fun promoteRung(current: RecordsBase.LadderRung, hasSimilarKanji: Boolean): RecordsBase.LadderRung {
+        return promoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    @JvmStatic
+    fun promoteRung(
+        current: RecordsBase.LadderRung,
+        hasSimilarKanji: Boolean,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): RecordsBase.LadderRung {
+        return safeLadder(ladder).nextRung(current, hasSimilarKanji)
+    }
+
+    @JvmStatic
+    fun demoteRung(current: RecordsBase.LadderRung, hasSimilarKanji: Boolean): RecordsBase.LadderRung {
+        return demoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    @JvmStatic
+    fun demoteRung(
+        current: RecordsBase.LadderRung,
+        hasSimilarKanji: Boolean,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): RecordsBase.LadderRung {
+        return safeLadder(ladder).previousRung(current, hasSimilarKanji)
+    }
+
+    @JvmStatic
+    fun rungsForItem(item: RecordsStudyModels.StudyItem): List<RecordsBase.LadderRung> {
+        return rungsForItem(item, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    @JvmStatic
+    fun rungsForItem(
+        item: RecordsStudyModels.StudyItem,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsBase.LadderRung> {
+        val out = ArrayList<RecordsBase.LadderRung>()
+        val safeLadder = safeLadder(ladder)
+        for (rung in safeLadder.orderedRungs) {
+            if (safeLadder.isValidForItem(rung, item.hasSimilarKanji)) {
+                out.add(rung)
+            }
+        }
+        return Collections.unmodifiableList(out)
+    }
+
+    @JvmStatic
+    fun safeLadder(ladder: RecordsBase.StudyLadderSettings?): RecordsBase.StudyLadderSettings {
+        return ladder ?: RecordsBase.StudyLadderSettings.defaults()
+    }
+
+    @JvmStatic
+    fun alignRungToLadder(
+        item: RecordsStudyModels.StudyItem,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): RecordsStudyModels.StudyItem {
+        val effective = safeLadder(ladder).effectiveRung(item.rung, item.hasSimilarKanji)
+        return if (effective == item.rung) item else item.withRung(effective)
+    }
+
+    @JvmStatic
+    fun stepDelayMillis(minutes: Int): Long {
+        return max(1L, max(1, minutes).toLong()) * MINUTE
+    }
+
+    @JvmStatic
+    fun clampStudyAheadMillis(studyAheadMillis: Long): Long {
+        if (studyAheadMillis <= 0L) {
+            return 0L
+        }
+        return min(studyAheadMillis, SettingsInputRules.MAX_STUDY_AHEAD_MINUTES.toLong() * MINUTE)
+    }
+
+    @JvmStatic
+    fun rungToLegacyStage(rung: RecordsBase.LadderRung): Int {
+        return when (rung) {
+            RecordsBase.LadderRung.TYPE_MEANING -> MIN_RECOGNITION_STAGE
+            RecordsBase.LadderRung.FONT_MEANING -> 1
+            RecordsBase.LadderRung.WORD_READING -> MAX_RECOGNITION_STAGE
+            else -> 0
+        }
+    }
+}

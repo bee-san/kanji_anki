@@ -1,5 +1,6 @@
 plugins {
     id("java-library")
+    id("org.jetbrains.kotlin.jvm")
     jacoco
 }
 
@@ -7,6 +8,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 tasks.withType<Test>().configureEach {
@@ -43,6 +48,10 @@ tasks.check {
 }
 
 dependencies {
+    api(project(":dictionary-core"))
+    api(project(":domain"))
+    api(project(":sync-domain"))
     implementation(project(":fsrs-java"))
+    implementation(project(":update-core"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

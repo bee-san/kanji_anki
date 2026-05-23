@@ -14,8 +14,6 @@ import org.junit.runner.RunWith;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -34,7 +32,7 @@ public final class DatabaseBackupSchedulerInstrumentedTest {
     }
 
     @Test
-    public void cancelUsesApplicationContextAndDailyBackupWorkName() {
+    public void cancelUsesApplicationContextFromWrappedContext() throws Exception {
         Context appContext = ApplicationProvider.getApplicationContext();
         Context outerContext = new ContextWrapper(appContext) {
             @Override
@@ -42,15 +40,13 @@ public final class DatabaseBackupSchedulerInstrumentedTest {
                 return appContext;
             }
         };
-        Context[] factoryContext = new Context[1];
-        String[] cancelledWorkName = new String[1];
 
-        DatabaseBackupScheduler.cancel(outerContext, context -> {
-            factoryContext[0] = context;
-            return workName -> cancelledWorkName[0] = workName;
-        });
+        DatabaseBackupScheduler.schedule(outerContext);
+        DatabaseBackupScheduler.cancel(outerContext);
 
-        assertSame(appContext, factoryContext[0]);
-        assertEquals("kani_daily_db_backup", cancelledWorkName[0]);
+        List<WorkInfo> workInfos = WorkManager.getInstance(appContext)
+                .getWorkInfosForUniqueWork("kani_daily_db_backup")
+                .get(5, TimeUnit.SECONDS);
+        assertTrue(workInfos.isEmpty() || workInfos.get(0).getState() == WorkInfo.State.CANCELLED);
     }
 }
