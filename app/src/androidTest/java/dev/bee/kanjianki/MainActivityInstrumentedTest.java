@@ -130,18 +130,18 @@ public final class MainActivityInstrumentedTest {
         }
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
@@ -504,8 +504,8 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testReminderSettingsPanelCanEnableAndTurnOffReminder() {
-        MainActivity.setRuntimeNotificationPermissionForTests(true);
-        MainActivity.setNotificationsAllowedForTests(true);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(true);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(true);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
             clickText(scenario, "Automation");
@@ -520,8 +520,8 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "Off");
             assertReminderSettings(false, 8, 0);
         } finally {
-            MainActivity.setRuntimeNotificationPermissionForTests(null);
-            MainActivity.setNotificationsAllowedForTests(null);
+            MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+            MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         }
     }
 
@@ -700,7 +700,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
-        MainActivity.setInstallPermissionForTests(false);
+        MainActivityRuntimeOverrides.setInstallPermission(false);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
@@ -736,7 +736,7 @@ public final class MainActivityInstrumentedTest {
                     "Android needs confirmation before Kani can replace itself."
             );
         }
-        MainActivity.setInstallPermissionForTests(true);
+        MainActivityRuntimeOverrides.setInstallPermission(true);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
@@ -1259,7 +1259,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testTryCleanerStartsFreshWritingAttemptAtSameHelpLevel() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1284,7 +1284,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWritingRepairCheckKeepsSingleCleanMatchMessage() {
         seedDueWritingItem(3);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
@@ -1307,7 +1307,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testDiagnosisTextAndReplayAppearAfterCheck() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1327,7 +1327,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testReplayHiddenWhenStrokeGuideMissing() {
         seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", IMPORTED_FROM_SUSPENDED_CARDS), 0);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("鿃"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("鿃"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(MainActivityInstrumentedTest::drawFreeformStroke);
@@ -1342,7 +1342,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testUndoAfterCheckClearsPriorReplayState() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1368,7 +1368,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWritingRepairMissKeepsRepairReference() {
         seedDueWritingItem(3);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
@@ -1719,7 +1719,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testCorrectWritingCheckSubmitsReview() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1757,7 +1757,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testHintAssistedCleanWritingHoldsFadeLevel() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             clickText(scenario, "More help");
@@ -1780,7 +1780,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testMessyRecognizedWritingCanBeSavedHardWithoutAdvancingFade() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
@@ -1808,7 +1808,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWrongRecognitionCanBeLoggedAsFailedAttempt() {
         seedDueWritingItem(2);
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1838,7 +1838,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testTryAgainWithFullGuideStartsFreshAttempt() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1864,7 +1864,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testWrongRecognitionAllowsLoggedManualOverride() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1888,7 +1888,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testMissingModelCanBeManuallyScoredAfterDrawing() {
         seedDueWritingItem();
-        MainActivity.setWritingRecognizerForTests(new FakeUnavailableRecognizer());
+        MainActivityRuntimeOverrides.setWritingRecognizer(new FakeUnavailableRecognizer());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
@@ -1932,7 +1932,7 @@ public final class MainActivityInstrumentedTest {
                 "The opt-in live AnkiDroid run exercises the successful sync button path instead.",
                 liveAnkiDroidEnabled()
         );
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
             clickText(scenario, "Sync cards");
@@ -1956,7 +1956,7 @@ public final class MainActivityInstrumentedTest {
                 )
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
-        MainActivity.setCollectionGatewayForTests(progressGateway);
+        MainActivityRuntimeOverrides.setCollectionGateway(progressGateway);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
@@ -1982,7 +1982,7 @@ public final class MainActivityInstrumentedTest {
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
         progressGateway.finish();
-        MainActivity.setCollectionGatewayForTests(progressGateway);
+        MainActivityRuntimeOverrides.setCollectionGateway(progressGateway);
         long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
         saveSyncFinishedAt(yesterday);
         String syncValue = "Yesterday at "
@@ -2010,7 +2010,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() throws Exception {
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
         context.getContentResolver().call(Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY), "reset", null, null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
@@ -2037,7 +2037,7 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testManualSyncButtonWorksAgainstLiveAnkiDroid() throws Exception {
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveAnkiDroidEnabled());
-        MainActivity.setAnkiDroidGatewayForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
             clickText(scenario, "Sync cards");

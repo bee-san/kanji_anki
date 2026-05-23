@@ -97,24 +97,24 @@ public final class MainActivityHelperInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.helper_no_anki"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.helper_no_anki"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
@@ -1085,7 +1085,7 @@ public final class MainActivityHelperInstrumentedTest {
                         new WritingRecognizer.Candidate("裂", 0.9f)
                 )))
         );
-        MainActivity.setWritingRecognizerForTests(recognizer);
+        MainActivityRuntimeOverrides.setWritingRecognizer(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
@@ -1185,7 +1185,7 @@ public final class MainActivityHelperInstrumentedTest {
             });
             scenario.onActivity(activity -> assertTrue(activity.studyStatus.getText().toString().contains("download failed")));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 
@@ -1216,7 +1216,7 @@ public final class MainActivityHelperInstrumentedTest {
                                 new WritingRecognizer.Candidate("裂", 0.9f)
                         )))
                 );
-                MainActivity.setWritingRecognizerForTests(staleRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleRecognizer);
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "current-token");
                 activity.recognizeWriting(staleRecognizer, capturedWriting(), sample(), guide("裂"), "裂", "stale-token");
                 new MainActivityStudyWritingStatus(activity).downloadWritingModel();
@@ -1235,7 +1235,7 @@ public final class MainActivityHelperInstrumentedTest {
             });
             scenario.onActivity(activity -> assertEquals(WritingAnalysis.Status.RECOGNITION_ERROR, activity.activeAnalysis.status));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 
@@ -1252,15 +1252,15 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "invalid-capture"));
-                MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleStatusRecognizer);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
                 activity.checkWriting();
                 assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
 
-                MainActivity.setWritingRecognizerForTests(null);
-                MainActivity.setWritingRecognizerFactoryForTests(executor -> null);
+                MainActivityRuntimeOverrides.setWritingRecognizer(null);
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(executor -> null);
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "null-recognizer"));
                 layoutPad(activity.drawingPad);
                 addInk(activity.drawingPad);
@@ -1273,14 +1273,14 @@ public final class MainActivityHelperInstrumentedTest {
                 new MainActivityStudyWritingStatus(activity).downloadWritingModel();
                 assertTrue(activity.studyStatus.getText().toString().contains("unavailable on this device"));
 
-                MainActivity.setWritingRecognizerFactoryForTests(executor -> {
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(executor -> {
                     throw new RuntimeException("ml kit unavailable");
                 });
                 activity.writingRecognizer = null;
                 assertNull(activity.currentWritingRecognizer());
 
-                MainActivity.setWritingRecognizerFactoryForTests(null);
-                MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);
+                MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+                MainActivityRuntimeOverrides.setWritingRecognizer(staleStatusRecognizer);
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "old-token"));
                 layoutPad(activity.drawingPad);
                 addInk(activity.drawingPad);
@@ -1289,8 +1289,8 @@ public final class MainActivityHelperInstrumentedTest {
             });
             scenario.onActivity(activity -> assertNull(activity.activeAnalysis));
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
-            MainActivity.setWritingRecognizerFactoryForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
+            MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
         }
     }
 
@@ -2018,7 +2018,7 @@ public final class MainActivityHelperInstrumentedTest {
                         new WritingRecognizer.Candidate("裂", 0.9f)
                 )))
         );
-        MainActivity.setWritingRecognizerForTests(recognizer);
+        MainActivityRuntimeOverrides.setWritingRecognizer(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
@@ -2074,7 +2074,7 @@ public final class MainActivityHelperInstrumentedTest {
                         || activity.activeAnalysis.status == WritingAnalysis.Status.WRONG);
             });
         } finally {
-            MainActivity.setWritingRecognizerForTests(null);
+            MainActivityRuntimeOverrides.setWritingRecognizer(null);
         }
     }
 

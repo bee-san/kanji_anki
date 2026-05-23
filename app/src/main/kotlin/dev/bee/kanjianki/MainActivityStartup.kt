@@ -11,7 +11,7 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler
 internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         activity.store = LocalStore(activity)
-        activity.gateway = MainActivityBase.ankiDroidGatewayForTests ?: AnkiDroidGateway(activity)
+        activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
         activity.requestAnkiPermissionIfNeeded()
         ReminderScheduler.schedule(activity)
         AutoSyncScheduler.schedule(activity)

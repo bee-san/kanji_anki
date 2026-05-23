@@ -91,7 +91,7 @@ fun SettingsUpdatePage(model: SettingsUpdatePageModel) {
 }
 
 private fun canInstallUpdates(activity: MainActivitySettings): Boolean {
-    MainActivityBase.installPermissionForTests?.let { return it }
+    MainActivityRuntimeOverrides.installPermission?.let { return it }
     return activity.packageManager.canRequestPackageInstalls()
 }
 

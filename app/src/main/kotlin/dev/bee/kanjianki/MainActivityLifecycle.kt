@@ -16,7 +16,7 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
     fun onDestroy() {
         activity.io.shutdownNow()
         val recognizer = activity.writingRecognizer
-        if (recognizer != null && recognizer !== MainActivityBase.writingRecognizerForTests) {
+        if (recognizer != null && recognizer !== MainActivityRuntimeOverrides.writingRecognizer) {
             recognizer.close()
         }
         if (storeOrNull() != null) {

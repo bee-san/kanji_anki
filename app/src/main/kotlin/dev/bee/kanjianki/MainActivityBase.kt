@@ -184,10 +184,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val startup = MainActivityStartup(this)
     private val activityLifecycle = MainActivityLifecycle(this)
 
-    fun interface WritingRecognizerFactory {
-        fun create(executor: ExecutorService): WritingRecognizer
-    }
-
     abstract fun renderHome()
     abstract fun renderUpdate()
     abstract fun renderSettings()
@@ -294,11 +290,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun hasRuntimeNotificationPermissionForReminder(): Boolean {
-        return runtimeNotificationPermissionForTests ?: ReminderScheduler.hasRuntimeNotificationPermission(this)
+        return MainActivityRuntimeOverrides.runtimeNotificationPermission
+            ?: ReminderScheduler.hasRuntimeNotificationPermission(this)
     }
 
     fun notificationsAllowedForReminders(): Boolean {
-        return notificationsAllowedForTests ?: ReminderScheduler.notificationsAllowed(this)
+        return MainActivityRuntimeOverrides.notificationsAllowed ?: ReminderScheduler.notificationsAllowed(this)
     }
 
     fun candidates(result: WritingRecognizer.RecognitionResult): List<RecognitionCandidate> {
@@ -431,61 +428,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         @JvmField
         val LILAC: Int = MainActivityUiSupport.LILAC
 
-        @JvmField
-        var ankiDroidGatewayForTests: AnkiDroidGateway? = null
-
-        @JvmField
-        var collectionGatewayForTests: CollectionGateway? = null
-
-        @JvmField
-        var writingRecognizerForTests: WritingRecognizer? = null
-
-        @JvmField
-        var writingRecognizerFactoryForTests: WritingRecognizerFactory? = null
-
-        @JvmField
-        var installPermissionForTests: Boolean? = null
-
-        @JvmField
-        var runtimeNotificationPermissionForTests: Boolean? = null
-
-        @JvmField
-        var notificationsAllowedForTests: Boolean? = null
-
-        @JvmStatic
-        fun setWritingRecognizerForTests(recognizer: WritingRecognizer?) {
-            writingRecognizerForTests = recognizer
-        }
-
-        @JvmStatic
-        fun setWritingRecognizerFactoryForTests(factory: WritingRecognizerFactory?) {
-            writingRecognizerFactoryForTests = factory
-        }
-
-        @JvmStatic
-        fun setRuntimeNotificationPermissionForTests(granted: Boolean?) {
-            runtimeNotificationPermissionForTests = granted
-        }
-
-        @JvmStatic
-        fun setNotificationsAllowedForTests(allowed: Boolean?) {
-            notificationsAllowedForTests = allowed
-        }
-
-        @JvmStatic
-        fun setAnkiDroidGatewayForTests(gateway: AnkiDroidGateway?) {
-            ankiDroidGatewayForTests = gateway
-        }
-
-        @JvmStatic
-        fun setCollectionGatewayForTests(gateway: CollectionGateway?) {
-            collectionGatewayForTests = gateway
-        }
-
-        @JvmStatic
-        fun setInstallPermissionForTests(allowed: Boolean?) {
-            installPermissionForTests = allowed
-        }
     }
 
 }

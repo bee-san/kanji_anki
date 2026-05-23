@@ -45,24 +45,24 @@ public final class MainActivityStudyTypingInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.typing_no_anki"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.typing_no_anki"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         context.deleteDatabase("kanji_anki_simple.db");
     }
 

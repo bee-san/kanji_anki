@@ -46,24 +46,24 @@ public final class MainActivitySettingsInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.settings_no_anki"));
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.settings_no_anki"));
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
     }
 
     @After
     public void tearDown() {
-        MainActivity.setAnkiDroidGatewayForTests(null);
-        MainActivity.setCollectionGatewayForTests(null);
-        MainActivity.setWritingRecognizerForTests(null);
-        MainActivity.setWritingRecognizerFactoryForTests(null);
-        MainActivity.setInstallPermissionForTests(null);
-        MainActivity.setRuntimeNotificationPermissionForTests(null);
-        MainActivity.setNotificationsAllowedForTests(null);
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
+        MainActivityRuntimeOverrides.setCollectionGateway(null);
+        MainActivityRuntimeOverrides.setWritingRecognizer(null);
+        MainActivityRuntimeOverrides.setWritingRecognizerFactory(null);
+        MainActivityRuntimeOverrides.setInstallPermission(null);
+        MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+        MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
@@ -258,7 +258,7 @@ public final class MainActivitySettingsInstrumentedTest {
 
     @Test
     public void automationPanelsToggleSyncUpdatesAndReminderActions() {
-        MainActivity.setInstallPermissionForTests(false);
+        MainActivityRuntimeOverrides.setInstallPermission(false);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 MainActivitySettingsAutomationReminder reminderHelper = new MainActivitySettingsAutomationReminder(activity);
@@ -277,7 +277,7 @@ public final class MainActivitySettingsInstrumentedTest {
                 );
                 assertFalse(missingPermission.getCanInstallUpdates());
 
-                MainActivity.setInstallPermissionForTests(true);
+                MainActivityRuntimeOverrides.setInstallPermission(true);
                 SettingsUpdatePanelModel readyUpdate = settingsUpdatePanelModel(
                         activity,
                         SettingsTextCopy.automaticUpdatesTitle()
@@ -300,7 +300,7 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertEquals(6, activity.reminderSettingsPanelModel().getSelectedHour()[0]);
             });
         } finally {
-            MainActivity.setInstallPermissionForTests(null);
+            MainActivityRuntimeOverrides.setInstallPermission(null);
         }
     }
 
@@ -333,14 +333,14 @@ public final class MainActivitySettingsInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 MainActivitySettingsAutomationReminder reminder = new MainActivitySettingsAutomationReminder(activity);
-                MainActivity.setRuntimeNotificationPermissionForTests(false);
+                MainActivityRuntimeOverrides.setRuntimeNotificationPermission(false);
                 reminder.saveReminderFromSelection(7, 45, true);
                 assertTrue(activity.pendingReminderSettings.enabled);
                 assertEquals(7, activity.pendingReminderSettings.hour);
                 assertEquals(45, activity.pendingReminderSettings.minute);
 
-                MainActivity.setRuntimeNotificationPermissionForTests(true);
-                MainActivity.setNotificationsAllowedForTests(false);
+                MainActivityRuntimeOverrides.setRuntimeNotificationPermission(true);
+                MainActivityRuntimeOverrides.setNotificationsAllowed(false);
                 reminder.saveReminderFromSelection(8, 15, true);
                 LocalStore.ReminderSettings saved = activity.store.reminderSettings();
                 assertTrue(saved.enabled);
@@ -353,8 +353,8 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertEquals(9, activity.store.reminderSettings().hour);
             });
         } finally {
-            MainActivity.setRuntimeNotificationPermissionForTests(null);
-            MainActivity.setNotificationsAllowedForTests(null);
+            MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
+            MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         }
     }
 

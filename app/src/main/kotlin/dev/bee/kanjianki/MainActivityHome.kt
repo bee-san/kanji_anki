@@ -99,7 +99,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 progressPanel = progressView,
             )
         }
-        val syncGateway = MainActivityBase.collectionGatewayForTests ?: gateway
+        val syncGateway = MainActivityRuntimeOverrides.collectionGateway ?: gateway
         val coordinator = ManualSyncCoordinator(
             io,
             main::post,
