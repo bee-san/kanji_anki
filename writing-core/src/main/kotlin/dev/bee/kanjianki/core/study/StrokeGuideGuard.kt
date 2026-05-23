@@ -27,6 +27,7 @@ class StrokeGuideGuard private constructor() {
         const val DEFAULT_CORRIDOR_FRACTION: Float = 0.18f
 
         @JvmStatic
+        @Suppress("SENSELESS_COMPARISON")
         fun evaluatePoint(
             guide: StrokeGuide?,
             committedStrokeCount: Int,
@@ -39,6 +40,7 @@ class StrokeGuideGuard private constructor() {
         }
 
         @JvmStatic
+        @Suppress("SENSELESS_COMPARISON")
         fun evaluatePoint(
             guide: StrokeGuide?,
             committedStrokeCount: Int,
@@ -59,7 +61,7 @@ class StrokeGuideGuard private constructor() {
                 return Decision.rejected(guide.strokeCount(), "All guided strokes are already drawn.")
             }
             val expected = guide.strokes[strokeIndex]
-            if (expected.points.isEmpty()) {
+            if (expected == null || expected.points.isEmpty()) {
                 return Decision.allow()
             }
             val corridor = max(1f, min(width, height) * max(0f, corridorFraction))
@@ -77,11 +79,12 @@ class StrokeGuideGuard private constructor() {
             return min(guide.strokeCount(), max(0, committedStrokeCount) + 1)
         }
 
+        @Suppress("SENSELESS_COMPARISON")
         private fun distanceToStroke(stroke: InkStroke, width: Float, height: Float, x: Float, y: Float): Float {
             var previous: InkPoint? = null
             var best = Float.MAX_VALUE
             for (point in stroke.points) {
-                if (!finite(point.x) || !finite(point.y)) {
+                if (point == null || !finite(point.x) || !finite(point.y)) {
                     continue
                 }
                 val scaled = InkPoint(point.x * width, point.y * height, point.timestampMillis)

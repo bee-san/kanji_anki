@@ -105,6 +105,19 @@ public class StrokeGuideGuardTest {
         assertFalse(StrokeGuideGuard.evaluatePoint(guide, 0, 1000f, 1000f, 950f, 950f).allowed);
     }
 
+    @Test
+    public void javaNullGuideContentsStayFreeformOrIgnored() {
+        StrokeGuide nullStrokeGuide = new StrokeGuide("空", Collections.singletonList(null));
+        StrokeGuide nullPointGuide = new StrokeGuide(
+                "空",
+                Collections.singletonList(new InkStroke(Arrays.asList(null, new InkPoint(0.5f, 0.5f, 0L))))
+        );
+
+        assertTrue(StrokeGuideGuard.evaluatePoint(nullStrokeGuide, 0, 1000f, 1000f, 900f, 500f).allowed);
+        assertTrue(StrokeGuideGuard.evaluatePoint(nullPointGuide, 0, 1000f, 1000f, 510f, 500f).allowed);
+        assertFalse(StrokeGuideGuard.evaluatePoint(nullPointGuide, 0, 1000f, 1000f, 950f, 950f).allowed);
+    }
+
     private static StrokeGuide twoStrokeGuide() {
         return new StrokeGuide(
                 "川",
