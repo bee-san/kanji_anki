@@ -33,18 +33,18 @@ object ReminderCopyPolicy {
                 "Kani recovery is due",
                 String.format(
                     Locale.ROOT,
-                    "%d problem kanji %s due. Open Kani to review %s.",
+                    "%d problem kanji %s due. Open Kani to review %s now.",
                     due,
                     if (due == 1) "is" else "are",
                     if (due == 1) "it" else "them",
                 ),
             )
         }
-        return ReminderCopy("Kani is caught up", "All caught up. Open Kani for extra practice if you like.")
+        return ReminderCopy("Kani is caught up", "No problem kanji are due. Open Kani for extra practice if you want.")
     }
 
     private fun syncCopy(): ReminderCopy {
-        return ReminderCopy("Sync Kani", "Open Kani and sync AnkiDroid.")
+        return ReminderCopy("Sync Kani", "Open Kani and tap Sync.")
     }
 
     private fun currentDueCount(

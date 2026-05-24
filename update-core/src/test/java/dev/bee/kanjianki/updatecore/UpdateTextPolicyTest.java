@@ -27,17 +27,17 @@ public final class UpdateTextPolicyTest {
 
     @Test
     public void notificationBodyFallsBackToMessageOrDefault() {
-        assertEquals("Kani update ready. Open Kani to install it.", UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE);
+        assertEquals("Kani update is ready. Open Kani to install it.", UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE);
         assertEquals(
-                "Kani checked the update. Open Kani to install it.",
+                "Checksum verified. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody("", "Checksum verified.")
         );
         assertEquals(
-                UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE,
+                "Kani update is ready. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody(null, "  ")
         );
         assertEquals(
-                UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE,
+                "Kani update is ready. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody(null, null)
         );
     }

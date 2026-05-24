@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.updatecore
 
 object UpdateTextPolicy {
-    const val DEFAULT_PENDING_UPDATE_MESSAGE = "Kani update ready. Open Kani to install it."
+    const val DEFAULT_PENDING_UPDATE_MESSAGE = "Kani update is ready. Open Kani to install it."
 
     @JvmStatic
     fun readableMessage(error: Throwable?): String {
@@ -17,21 +17,16 @@ object UpdateTextPolicy {
 
     @JvmStatic
     fun notificationBody(version: String?, message: String?): String {
-        var body = if (version.isNullOrEmpty()) {
-            appendInstallAction(message)
-        } else {
-            "Version ${version.replaceFirst("^v".toRegex(), "")} is ready. Open Kani to install it."
+        if (!version.isNullOrEmpty()) {
+            return "Version ${version.replaceFirst("^v".toRegex(), "")} is ready. Open Kani to install it."
         }
-        if (body.isNullOrBlank()) {
-            body = DEFAULT_PENDING_UPDATE_MESSAGE
-        }
-        return body
+        return appendInstallAction(message)
     }
 
-    private fun appendInstallAction(message: String?): String? {
+    private fun appendInstallAction(message: String?): String {
         if (message.isNullOrBlank()) {
-            return message
+            return DEFAULT_PENDING_UPDATE_MESSAGE
         }
-        return "Kani checked the update. Open Kani to install it."
+        return "${message.trim()} Open Kani to install it."
     }
 }
