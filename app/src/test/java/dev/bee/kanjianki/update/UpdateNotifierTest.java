@@ -50,8 +50,8 @@ public final class UpdateNotifierTest {
         assertTrue(controller.channelCreated);
         assertTrue(controller.notified);
         assertEquals("channel notify", controller.events.toString());
-        assertEquals("Kani update needs confirmation", controller.title);
-        assertEquals("Version 0.4.3 is verified. Open Kani to confirm installation and keep the app current.", controller.body);
+        assertEquals("Kani update ready to install", controller.title);
+        assertEquals("Version 0.4.3 is ready. Open Kani to install it.", controller.body);
     }
 
     @Test

@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.updatecore
 
 object UpdateTextPolicy {
-    const val DEFAULT_PENDING_UPDATE_MESSAGE = "A verified Kani update is waiting. Open Kani to confirm installation and keep the app current."
+    const val DEFAULT_PENDING_UPDATE_MESSAGE = "Kani update ready. Open Kani to install it."
 
     @JvmStatic
     fun readableMessage(error: Throwable?): String {
@@ -20,7 +20,7 @@ object UpdateTextPolicy {
         var body = if (version.isNullOrEmpty()) {
             appendInstallAction(message)
         } else {
-            "Version ${version.replaceFirst("^v".toRegex(), "")} is verified. Open Kani to confirm installation and keep the app current."
+            "Version ${version.replaceFirst("^v".toRegex(), "")} is ready. Open Kani to install it."
         }
         if (body.isNullOrBlank()) {
             body = DEFAULT_PENDING_UPDATE_MESSAGE
@@ -32,6 +32,6 @@ object UpdateTextPolicy {
         if (message.isNullOrBlank()) {
             return message
         }
-        return "$message Open Kani to confirm installation and keep the app current."
+        return "Kani checked the update. Open Kani to install it."
     }
 }
