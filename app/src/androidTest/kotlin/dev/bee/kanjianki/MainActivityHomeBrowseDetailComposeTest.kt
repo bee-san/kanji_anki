@@ -125,7 +125,7 @@ class MainActivityHomeBrowseDetailComposeTest {
             androidx.compose.foundation.layout.Column {
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
-                        title = "Why it is here",
+                        title = "",
                         lines = listOf("Current local practice evidence from AnkiDroid.", "Anki browser: deck:Japanese"),
                         color = 0xFF6E5CE6.toInt(),
                         style = BrowseDetailPanelStyle.BAND
@@ -151,7 +151,6 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("Why it is here").assertIsDisplayed()
         composeRule.onNodeWithText("Current local practice evidence from AnkiDroid.").assertIsDisplayed()
         composeRule.onNodeWithText("Anki browser: deck:Japanese").assertIsDisplayed()
         composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
@@ -237,7 +236,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             suspended = false
                         ),
                         reason = BrowseDetailPanelModel(
-                            title = "Why it is here",
+                            title = "",
                             lines = listOf("Current local practice evidence from AnkiDroid."),
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
@@ -289,7 +288,6 @@ class MainActivityHomeBrowseDetailComposeTest {
         }
 
         composeRule.onNodeWithText("裂").assertIsDisplayed()
-        composeRule.onNodeWithText("Why it is here").assertIsDisplayed()
         composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
         composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
         composeRule.onNodeWithText("Examples").assertIsDisplayed()

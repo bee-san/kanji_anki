@@ -39,7 +39,7 @@ public final class FocusQueueCopyTest {
         long now = 5_000L;
 
         assertEquals(
-                "Why: weakness 42 · support 1/3 · kanji -> meaning · due now",
+                "weakness 42 · support 1/3 · kanji -> meaning · due now",
                 FocusQueueCopy.focusReasonLine(
                         row("弱", 42, 1, "reason"),
                         item("弱", RecordsBase.LadderRung.KANJI_MEANING, StudyLadderRules.STATE_REVIEW, now, 1),
@@ -47,7 +47,7 @@ public final class FocusQueueCopyTest {
                         3)
         );
         assertEquals(
-                "Why: write kanji · learning",
+                "write kanji · learning",
                 FocusQueueCopy.focusReasonLine(
                         row("書", 0, 3, "reason"),
                         item("書", RecordsBase.LadderRung.WRITE_KANJI, StudyLadderRules.STATE_LEARNING, now + 1L, 1),

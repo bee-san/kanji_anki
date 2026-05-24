@@ -253,7 +253,7 @@ object HomeTextCopy {
     fun backToBrowseKanjiLabel(): String = "Back to Browse Kanji"
 
     @JvmStatic
-    fun detailReasonTitle(): String = "Why it is here"
+    fun detailReasonTitle(): String = ""
 
     @JvmStatic
     fun historicalReasonText(): String =

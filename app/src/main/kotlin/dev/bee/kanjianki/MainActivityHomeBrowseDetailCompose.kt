@@ -208,12 +208,14 @@ fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
             modifier = Modifier.padding(if (band) 20.dp else 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = model.title,
-                color = if (band) BrowseWhite else BrowseInk,
-                fontSize = if (band) 22.sp else 19.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (model.title.isNotBlank()) {
+                Text(
+                    text = model.title,
+                    color = if (band) BrowseWhite else BrowseInk,
+                    fontSize = if (band) 22.sp else 19.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             model.lines.forEach { line ->
                 Text(
                     text = line,

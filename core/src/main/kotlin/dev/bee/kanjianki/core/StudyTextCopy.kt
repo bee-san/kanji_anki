@@ -1,8 +1,6 @@
 package dev.bee.kanjianki.core
 
 object StudyTextCopy {
-    const val SIMILAR_REPAIR_REASON: String = "Why: similar-kanji miss \u00b7 writing repair \u00b7 practice-only"
-
     @JvmStatic
     fun countText(count: Int, singular: String?, plural: String?): String {
         return "$count " + if (count == 1) singular else plural
@@ -149,6 +147,7 @@ object StudyTextCopy {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     @JvmStatic
     fun studyReasonLine(
         similarRepairActive: Boolean,
@@ -156,12 +155,7 @@ object StudyTextCopy {
         matureSupportThreshold: Int,
         nowMillis: Long,
     ): String {
-        if (similarRepairActive) {
-            return SIMILAR_REPAIR_REASON
-        }
-        val row = session?.row ?: return ""
-        val item = session.item ?: return ""
-        return FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold)
+        return ""
     }
 
     @JvmStatic

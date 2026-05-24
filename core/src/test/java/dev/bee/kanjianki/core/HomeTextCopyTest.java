@@ -185,7 +185,6 @@ public final class HomeTextCopyTest {
                         "Historical recovery",
                         "Historical recovery",
                         "language",
-                        "Why it is here",
                         "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
                         "Current local practice evidence from AnkiDroid.",
                         "manual reason"
@@ -197,7 +196,6 @@ public final class HomeTextCopyTest {
                         HomeTextCopy.inventoryTitle(null),
                         HomeTextCopy.inventoryTitle(inventory("語", "", "")),
                         HomeTextCopy.inventoryTitle(inventory),
-                        HomeTextCopy.detailReasonTitle(),
                         HomeTextCopy.historicalReasonText(),
                         HomeTextCopy.activeReasonText(row),
                         HomeTextCopy.activeReasonText(rowWithReason)

@@ -152,19 +152,13 @@ public final class StudyTextCopyTest {
     }
 
     @Test
-    public void studyReasonLinePrefersActiveSimilarRepairThenFocusReason() {
+    public void studyReasonLineIsHiddenFromStudyCards() {
         RecordsStudyModels.StudyItem item = studyItem("裂");
         RecordsImportModels.DashboardRow row = row("裂", "split", "reason", Collections.emptyList());
         RecordsSchedulerModels.StudySession session = session(item, row, "prompt");
 
-        assertEquals(
-                "Why: similar-kanji miss \u00b7 writing repair \u00b7 practice-only",
-                StudyTextCopy.studyReasonLine(true, session, 3, 1000L)
-        );
-        assertEquals(
-                "Why: weakness 1 \u00b7 support 1/3 \u00b7 kanji -> meaning \u00b7 due now",
-                StudyTextCopy.studyReasonLine(false, session, 3, 1000L)
-        );
+        assertEquals("", StudyTextCopy.studyReasonLine(true, session, 3, 1000L));
+        assertEquals("", StudyTextCopy.studyReasonLine(false, session, 3, 1000L));
         assertEquals("", StudyTextCopy.studyReasonLine(false, null, 3, 1000L));
         assertEquals("", StudyTextCopy.studyReasonLine(false, session(item, null, "prompt"), 3, 1000L));
     }

@@ -29,7 +29,7 @@ class HomeFocusQueueComposeTest {
                             kanji = "裂",
                             meaning = "split; tear",
                             sourceEvidence = "From phrase · missed card",
-                            reasonLine = "Why: weakness 80 · support 0/2 · kanji -> meaning · due now",
+                            reasonLine = "weakness 80 · support 0/2 · kanji -> meaning · due now",
                             body = "Needs focused kanji practice.",
                             tags = listOf(
                                 HomeFocusQueueTagModel("kanji -> meaning", androidx.compose.ui.graphics.Color(0xFF6E5CE6)),

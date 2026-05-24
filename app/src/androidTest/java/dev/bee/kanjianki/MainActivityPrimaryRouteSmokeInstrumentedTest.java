@@ -77,7 +77,6 @@ public final class MainActivityPrimaryRouteSmokeInstrumentedTest {
             scenario.onActivity(activity -> activity.renderDetail("裂", true, "裂"));
             assertVisible("Back to Browse Kanji");
             assertVisible("裂");
-            assertVisible("Why it is here");
 
             scenario.onActivity(MainActivity::renderStats);
             assertVisible("Stats");

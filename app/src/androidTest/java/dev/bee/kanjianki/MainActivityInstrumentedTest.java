@@ -1565,7 +1565,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "1 / 3");
                 assertHasText(activity, "Write to repair");
-                assertHasText(activity, "Why: similar-kanji miss · writing repair · practice-only");
+                assertNoText(activity, "similar-kanji miss · writing repair · practice-only");
             });
 
             assertSimilarChoiceReviewStored("again");
@@ -2751,7 +2751,6 @@ public final class MainActivityInstrumentedTest {
     private static void assertKanjiDetailReady(MainActivity activity) {
         assertHasTexts(
                 activity,
-                "Why it is here",
                 IMPORTED_FROM_SUSPENDED_CARDS,
                 "Review this now",
                 "Copy Anki search",

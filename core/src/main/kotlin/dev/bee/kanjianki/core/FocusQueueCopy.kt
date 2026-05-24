@@ -65,7 +65,7 @@ object FocusQueueCopy {
         } else if (StudyLadderRules.STATE_LEARNING == item.state) {
             parts.add(StudyLadderRules.STATE_LEARNING)
         }
-        return "Why: ${parts.joinToString(" · ")}"
+        return parts.joinToString(" · ")
     }
 
     @JvmStatic
