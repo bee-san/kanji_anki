@@ -43,7 +43,7 @@ object UpdateNotifier {
         }
         val body = UpdateTextPolicy.notificationBody(version, message)
         controller.ensureChannel()
-        controller.notifyUpdate("Kani update ready", body)
+        controller.notifyUpdate("Kani update needs confirmation", body)
         return true
     }
 
@@ -81,7 +81,7 @@ object UpdateNotifier {
                 "App updates",
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
-            channel.description = "Verified Kani APK updates waiting for install confirmation."
+            channel.description = "Verified Kani updates that need your confirmation before installation."
             channel.setShowBadge(true)
             manager.createNotificationChannel(channel)
         }

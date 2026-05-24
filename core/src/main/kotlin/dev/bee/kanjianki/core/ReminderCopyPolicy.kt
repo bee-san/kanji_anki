@@ -5,13 +5,10 @@ import java.util.Locale
 object ReminderCopyPolicy {
     @JvmStatic
     fun forPlan(request: AdaptiveLoadPlanner.PlanRequest?): ReminderCopy {
-        val safeRequest = request ?: return ReminderCopy(
-            "Sync Kani",
-            "Sync AnkiDroid to find the kanji your reviews keep exposing.",
-        )
+        val safeRequest = request ?: return syncCopy()
         val rows = safeRows(safeRequest)
         if (rows.isEmpty()) {
-            return ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.")
+            return syncCopy()
         }
         val plan = AdaptiveLoadPlanner().plan(safeRequest)
         return forCounts(plan.remaining, currentDueCount(rows, safeItems(safeRequest), safeRequest.nowMillis()))
@@ -24,9 +21,10 @@ object ReminderCopyPolicy {
                 "Kani focus is ready",
                 String.format(
                     Locale.ROOT,
-                    "%d focus kanji %s left today. Draw one now.",
+                    "%d focus kanji %s waiting today. Open Kani to review %s while the focus queue is active.",
                     focusRemaining,
                     if (focusRemaining == 1) "is" else "are",
+                    if (focusRemaining == 1) "it" else "them",
                 ),
             )
         }
@@ -35,13 +33,19 @@ object ReminderCopyPolicy {
                 "Kani recovery is due",
                 String.format(
                     Locale.ROOT,
-                    "%d problem kanji %s ready. Draw one now.",
+                    "%d problem kanji %s due now. Open Kani to review %s before %s.",
                     due,
                     if (due == 1) "is" else "are",
+                    if (due == 1) "it" else "them",
+                    if (due == 1) "it slips further" else "they slip further",
                 ),
             )
         }
-        return ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.")
+        return ReminderCopy("Kani is caught up", "No problem kanji are due right now. Open Kani only if you want extra practice.")
+    }
+
+    private fun syncCopy(): ReminderCopy {
+        return ReminderCopy("Sync Kani", "Open Kani and sync AnkiDroid so reminders reflect your current review queue.")
     }
 
     private fun currentDueCount(

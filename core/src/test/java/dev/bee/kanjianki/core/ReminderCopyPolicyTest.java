@@ -31,7 +31,7 @@ public final class ReminderCopyPolicyTest {
                 utc(2026, Calendar.MAY, 15, 8, 0)));
 
         assertEquals("Sync Kani", copy.title);
-        assertEquals("Sync AnkiDroid to find the kanji your reviews keep exposing.", copy.message);
+        assertEquals("Open Kani and sync AnkiDroid so reminders reflect your current review queue.", copy.message);
     }
 
     @Test
@@ -45,7 +45,7 @@ public final class ReminderCopyPolicyTest {
                 now));
 
         assertEquals("Kani focus is ready", copy.title);
-        assertEquals("1 focus kanji is left today. Draw one now.", copy.message);
+        assertEquals("1 focus kanji is waiting today. Open Kani to review it while the focus queue is active.", copy.message);
     }
 
     @Test
@@ -59,7 +59,7 @@ public final class ReminderCopyPolicyTest {
                 now));
 
         assertEquals("Kani focus is ready", copy.title);
-        assertEquals("1 focus kanji is left today. Draw one now.", copy.message);
+        assertEquals("1 focus kanji is waiting today. Open Kani to review it while the focus queue is active.", copy.message);
     }
 
     @Test
@@ -71,13 +71,13 @@ public final class ReminderCopyPolicyTest {
         ReminderCopyPolicy.ReminderCopy rest = ReminderCopyPolicy.forCounts(0, 0);
 
         assertEquals("Kani focus is ready", oneFocus.title);
-        assertEquals("1 focus kanji is left today. Draw one now.", oneFocus.message);
-        assertEquals("3 focus kanji are left today. Draw one now.", manyFocus.message);
+        assertEquals("1 focus kanji is waiting today. Open Kani to review it while the focus queue is active.", oneFocus.message);
+        assertEquals("3 focus kanji are waiting today. Open Kani to review them while the focus queue is active.", manyFocus.message);
         assertEquals("Kani recovery is due", oneDue.title);
-        assertEquals("1 problem kanji is ready. Draw one now.", oneDue.message);
-        assertEquals("2 problem kanji are ready. Draw one now.", manyDue.message);
-        assertEquals("Check Kani", rest.title);
-        assertEquals("Your queue can rest today. Open Kani if you want an extra problem kanji rep.", rest.message);
+        assertEquals("1 problem kanji is due now. Open Kani to review it before it slips further.", oneDue.message);
+        assertEquals("2 problem kanji are due now. Open Kani to review them before they slip further.", manyDue.message);
+        assertEquals("Kani is caught up", rest.title);
+        assertEquals("No problem kanji are due right now. Open Kani only if you want extra practice.", rest.message);
     }
 
     private static long utc(int year, int month, int day, int hour, int minute) {
