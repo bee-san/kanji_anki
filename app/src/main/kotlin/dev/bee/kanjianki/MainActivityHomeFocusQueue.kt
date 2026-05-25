@@ -10,6 +10,11 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
+    private data class RecentMistakesRouteData(
+        val mistakes: List<StudyStatsStore.RecentMistake>,
+        val activeRows: List<RecordsImportModels.DashboardRow>,
+    )
+
     fun renderFocusQueue() {
         val now = System.currentTimeMillis()
         val rows = home.store.activeDashboardRows()
@@ -34,26 +39,35 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     }
 
     fun renderRecentMistakes() {
-        val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
-        val mistakesModel = if (mistakes.isEmpty()) {
-            HomeRecentMistakesPanelModel(
-                emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
-                emptyBody = HomeTextCopy.noRecentMistakesBody(),
-                cards = emptyList(),
-                emptyStyle = HomeEmptyStateStyle.LegacyBand
-            )
-        } else {
-            homeRecentMistakesPanelModel(home, mistakes, home.store.activeDashboardRows())
-        }
-        val model = HomeRecentMistakesScreenModel(
-            title = HomeTextCopy.recentMistakesTitle(),
-            homeLabel = HomeTextCopy.homeLabel(),
-            onHome = home::renderHome,
-            mistakes = mistakesModel
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.recentMistakesTitle(),
+            load = {
+                val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
+                val rows = if (mistakes.isEmpty()) emptyList() else home.store.activeDashboardRows()
+                RecentMistakesRouteData(mistakes, rows)
+            },
+            render = { data ->
+                val mistakesModel = if (data.mistakes.isEmpty()) {
+                    HomeRecentMistakesPanelModel(
+                        emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
+                        emptyBody = HomeTextCopy.noRecentMistakesBody(),
+                        cards = emptyList(),
+                        emptyStyle = HomeEmptyStateStyle.LegacyBand
+                    )
+                } else {
+                    homeRecentMistakesPanelModel(home, data.mistakes, data.activeRows)
+                }
+                val model = HomeRecentMistakesScreenModel(
+                    title = HomeTextCopy.recentMistakesTitle(),
+                    homeLabel = HomeTextCopy.homeLabel(),
+                    onHome = home::renderHome,
+                    mistakes = mistakesModel
+                )
+                home.renderHomeRoute {
+                    HomeRecentMistakesScreen(model)
+                }
+            },
         )
-        home.renderHomeRoute {
-            HomeRecentMistakesScreen(model)
-        }
     }
 
     fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {

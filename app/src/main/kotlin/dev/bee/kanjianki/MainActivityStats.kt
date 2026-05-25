@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
@@ -7,10 +8,15 @@ import dev.bee.kanjianki.data.StudyStatsStore
 
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
-        val model = buildStatsScreenModel()
-        composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
-            StatsRouteScreen(model = model, onHome = this::renderHome)
-        }
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.statsActionLabel(),
+            load = { buildStatsScreenModel() },
+            render = { model ->
+                composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
+                    StatsRouteScreen(model = model, onHome = this::renderHome)
+                }
+            },
+        )
     }
 
     fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {

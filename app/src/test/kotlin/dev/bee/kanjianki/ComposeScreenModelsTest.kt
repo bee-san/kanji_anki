@@ -10,6 +10,77 @@ import org.junit.Test
 
 class ComposeScreenModelsTest {
     @Test
+    fun asyncHomeRouteLoaderShowsLoadingBeforeBackgroundWork() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading") },
+            load = {
+                events.add("load")
+                "ready"
+            },
+            render = { value -> events.add("render:$value") },
+        )
+
+        assertEquals(listOf("loading"), events)
+
+        background.runNext()
+        assertEquals(listOf("loading", "load"), events)
+
+        main.runNext()
+        assertEquals(listOf("loading", "load", "render:ready"), events)
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderIgnoresStaleBackgroundResults() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading:first") },
+            load = { "first" },
+            render = { value -> events.add("render:$value") },
+        )
+        loader.load(
+            showLoading = { events.add("loading:second") },
+            load = { "second" },
+            render = { value -> events.add("render:$value") },
+        )
+
+        background.runNext()
+        background.runNext()
+        main.runNext()
+        main.runNext()
+
+        assertEquals(listOf("loading:first", "loading:second", "render:second"), events)
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderCancelPendingIgnoresQueuedResult() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading") },
+            load = { "ready" },
+            render = { value -> events.add("render:$value") },
+        )
+        loader.cancelPending()
+
+        background.runNext()
+        main.runNext()
+
+        assertEquals(listOf("loading"), events)
+    }
+
+    @Test
     fun shellModelDefaultsToHomeAndCopiesSelectedRoute() {
         assertEquals("home", MainActivityShellModel().selectedRoute)
 
