@@ -6,9 +6,41 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class ComposeScreenModelsTest {
+    @Test
+    fun asyncHomeRouteLoaderReturnsImmediatelyWhenLoadBlocks() {
+        val background = Executors.newSingleThreadExecutor()
+        val releaseLoad = CountDownLatch(1)
+        val rendered = CountDownLatch(1)
+        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+
+        try {
+            val started = System.nanoTime()
+            loader.load(
+                showLoading = {},
+                load = {
+                    releaseLoad.await(5, TimeUnit.SECONDS)
+                    "ready"
+                },
+                render = { rendered.countDown() },
+            )
+            val responseMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+
+            assertTrue("tap-to-loading response took ${responseMillis}ms", responseMillis < 200)
+
+            releaseLoad.countDown()
+            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
+        } finally {
+            background.shutdownNow()
+        }
+    }
+
     @Test
     fun asyncHomeRouteLoaderShowsLoadingBeforeBackgroundWork() {
         val events = mutableListOf<String>()
