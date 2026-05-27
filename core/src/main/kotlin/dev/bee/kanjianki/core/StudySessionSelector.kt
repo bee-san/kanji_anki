@@ -157,7 +157,7 @@ class StudySessionSelector {
                 return due
             }
             if (isUnseenNewItem(left) && isUnseenNewItem(right)) {
-                val newCardSort = StudyQueueSeeder.compareRowsForNewCardSort(
+                val newCardSort = NewCardSortPlanner.compareRowsForSettings(
                     rowByKanji[left.kanji],
                     rowByKanji[right.kanji],
                     settings,
