@@ -26,19 +26,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         }
 
         val answerPanel = home.flashcardAnswerPanelModel(session)
-        val reason = StudyTextCopy.studyReasonLine(
-            home.activeSimilarWritingRepair != null,
-            session,
-            home.settings().matureSupportThreshold,
-            System.currentTimeMillis()
-        )
         val model = MeaningChoiceSessionModel(
             "Recall",
             LABEL_CHOOSE_KANJI,
             StudyTaskCopy.labelForTask(session.taskType),
             "Pick the kanji that matches the meaning.",
-            reason,
-            StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
+            "",
+            StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt),
             choiceCard.choices,
             answerPanel,
             KanjiChoiceHandler { glyph ->
@@ -49,7 +43,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 val correct = choiceCard.isCorrect(glyph)
                 val prompt = home.activeSession?.prompt ?: ""
                 MeaningChoiceResultModel(
-                    StudyTextCopy.meaningKanjiChoiceResult(choiceCard, prompt, correct),
+                    StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
                     if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
                 )
             },

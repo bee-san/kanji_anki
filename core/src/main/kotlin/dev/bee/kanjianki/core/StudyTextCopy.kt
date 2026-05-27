@@ -70,7 +70,16 @@ object StudyTextCopy {
 
     @JvmStatic
     fun meaningKanjiChoiceQuestion(card: RecordsImportModels.MeaningKanjiChoiceCard?, prompt: String?): String {
-        return "Which kanji means " + cleanLearnerText(card?.primaryMeaning, prompt, 96) + "?"
+        return meaningKanjiChoiceQuestion(null, card, prompt)
+    }
+
+    @JvmStatic
+    fun meaningKanjiChoiceQuestion(
+        dictionaryLookup: DictionaryLookup?,
+        card: RecordsImportModels.MeaningKanjiChoiceCard?,
+        prompt: String?,
+    ): String {
+        return "Which kanji means " + meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 96) + "?"
     }
 
     @JvmStatic
@@ -79,8 +88,18 @@ object StudyTextCopy {
         prompt: String?,
         correct: Boolean,
     ): String {
+        return meaningKanjiChoiceResult(null, card, prompt, correct)
+    }
+
+    @JvmStatic
+    fun meaningKanjiChoiceResult(
+        dictionaryLookup: DictionaryLookup?,
+        card: RecordsImportModels.MeaningKanjiChoiceCard?,
+        prompt: String?,
+        correct: Boolean,
+    ): String {
         val targetKanji = card?.targetKanji ?: ""
-        val meaning = cleanLearnerText(card?.primaryMeaning, prompt, 72)
+        val meaning = meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 72)
         if (correct) {
             return "Correct. $targetKanji means $meaning."
         }
@@ -166,6 +185,15 @@ object StudyTextCopy {
     @JvmStatic
     fun compact(value: String?, maxChars: Int): String {
         return StudyCueFormatter.compact(value, maxChars)
+    }
+
+    private fun meaningKanjiChoiceMeaning(
+        dictionaryLookup: DictionaryLookup?,
+        card: RecordsImportModels.MeaningKanjiChoiceCard?,
+        prompt: String?,
+        maxChars: Int,
+    ): String {
+        return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, card?.primaryMeaning ?: prompt, maxChars)
     }
 
     private fun sessionClueRawText(session: RecordsSchedulerModels.StudySession?): String? {
