@@ -191,6 +191,7 @@ public class RecordsValueModelsTest {
         assertEquals("mine archive", full.importTagsText());
         assertEquals(RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, full.importWeakFsrsDifficultyThreshold, 0.001);
         assertEquals(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, settingsWithSortMode(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY).newCardSortMode);
+        assertEquals(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY, settingsWithSortMode(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY).newCardSortMode);
         assertEquals(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE, settingsWithSortMode("not-real").newCardSortMode);
         assertEquals(Arrays.asList("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort"), full.requiredFields());
         assertEquals(Arrays.asList("mine", "archive"), RecordsBase.parseImportTags(" mine, archive mine "));

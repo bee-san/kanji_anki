@@ -68,6 +68,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty"
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk"
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness"
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balanced priority"
             else -> "Frequency"
         }
     }

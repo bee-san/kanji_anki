@@ -24,7 +24,8 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             newCardSortOption(RecordsBase.NEW_CARD_SORT_FREQUENCY),
             newCardSortOption(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
             newCardSortOption(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
-            newCardSortOption(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS)
+            newCardSortOption(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
+            newCardSortOption(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
     }
 

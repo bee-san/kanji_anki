@@ -382,6 +382,7 @@ abstract class RecordsBase protected constructor() {
         const val NEW_CARD_SORT_FSRS_DIFFICULTY: String = "fsrs_difficulty"
         const val NEW_CARD_SORT_RETRIEVABILITY_RISK: String = "retrievability_risk"
         const val NEW_CARD_SORT_KANI_WEAKNESS: String = "kani_weakness"
+        const val NEW_CARD_SORT_BALANCED_PRIORITY: String = "balanced_priority"
         const val DEFAULT_NEW_CARD_SORT_MODE: String = NEW_CARD_SORT_FREQUENCY
         const val DEFAULT_FREQUENCY_RETENTION_ENABLED: Boolean = false
         const val DEFAULT_FREQUENCY_RETENTION_RANGES: String = ""
