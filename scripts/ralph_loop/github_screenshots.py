@@ -56,10 +56,20 @@ def _current_sha(repo_root: Path, runner: Runner) -> tuple[str | None, str | Non
     return sha, None
 
 
-def _is_protected_branch(branch: str) -> bool:
-    if branch in PROTECTED_BRANCHES:
+def _default_branch(repo_root: Path, runner: Runner) -> str | None:
+    process = _run(runner, ["git", "rev-parse", "--abbrev-ref", "origin/HEAD"], repo_root)
+    if process.returncode != 0:
+        return None
+    ref = process.stdout.strip()
+    if not ref:
+        return None
+    return ref.removeprefix("origin/")
+
+
+def _is_protected_branch(branch: str, default_branch: str | None = None) -> bool:
+    if branch in PROTECTED_BRANCHES or branch == default_branch:
         return True
-    return branch.startswith("release/") or branch.startswith("hotfix/release")
+    return branch.startswith(("release/", "releases/", "release-", "hotfix/release"))
 
 
 def _gh_ready(repo_root: Path, runner: Runner, require: bool) -> dict[str, object] | None:
@@ -149,7 +159,8 @@ def run_remote_screenshots(
     if branch_error:
         return _status("failed", branch_error)
     assert branch is not None
-    if _is_protected_branch(branch):
+    default_branch = _default_branch(repo_root, runner)
+    if _is_protected_branch(branch, default_branch):
         return _status("failed", f"Refusing to run on protected branch {branch!r}; use a non-main PR branch.")
 
     sha, sha_error = _current_sha(repo_root, runner)

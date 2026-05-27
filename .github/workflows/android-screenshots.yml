@@ -49,10 +49,22 @@ jobs:
           sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Build debug APK
-        run: ./gradlew "${{ inputs.gradle_task }}"
+        env:
+          GRADLE_TASK: ${{ inputs.gradle_task }}
+        run: |
+          case "$GRADLE_TASK" in
+            ':app:assembleDebug') ;;
+            *)
+              echo "::error::Unsupported gradle_task '$GRADLE_TASK'. Only :app:assembleDebug is allowed."
+              exit 1
+              ;;
+          esac
+          ./gradlew "$GRADLE_TASK"
 
       - name: Launch app and capture screenshots
         uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        env:
+          SCREENSHOT_ROUTE: ${{ inputs.screenshot_route }}
         with:
           api-level: 35
           target: google_apis
@@ -63,7 +75,7 @@ jobs:
           script: |
             ANDROID_SCREENSHOT_API_LEVEL=35 \
             ANDROID_SCREENSHOT_PROFILE=pixel_6 \
-              bash ci/scripts/capture_android_screenshots.sh '${{ inputs.screenshot_route }}'
+              bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"
 
       - name: Upload screenshots
         if: always()

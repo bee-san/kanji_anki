@@ -34,6 +34,17 @@ def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
 
 
 class GithubScreenshotsTest(unittest.TestCase):
+    def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
+        workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
+
+        self.assertIn("GRADLE_TASK: ${{ inputs.gradle_task }}", workflow)
+        self.assertIn('case "$GRADLE_TASK" in', workflow)
+        self.assertIn('./gradlew "$GRADLE_TASK"', workflow)
+        self.assertNotIn('./gradlew "${{ inputs.gradle_task }}"', workflow)
+        self.assertIn("SCREENSHOT_ROUTE: ${{ inputs.screenshot_route }}", workflow)
+        self.assertIn('bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"', workflow)
+        self.assertNotIn("capture_android_screenshots.sh '${{ inputs.screenshot_route }}'", workflow)
+
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -88,25 +99,27 @@ class GithubScreenshotsTest(unittest.TestCase):
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            main_runner = FakeRunner(
-                {
-                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "main\n"),
-                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
-                }
-            )
+            for protected_branch in ("main", "release-1.2", "releases/1.2", "trunk"):
+                main_runner = FakeRunner(
+                    {
+                        ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), f"{protected_branch}\n"),
+                        ("git", "rev-parse", "--abbrev-ref", "origin/HEAD"): ok(("git", "rev-parse", "--abbrev-ref", "origin/HEAD"), "origin/trunk\n"),
+                        ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                    }
+                )
 
-            result = github_screenshots.run_remote_screenshots(
-                repo_root=root,
-                workflow="android-screenshots.yml",
-                artifact="android-screenshots",
-                screenshot_route="all",
-                out_dir=root / "out",
-                push_pr_branch=True,
-                runner=main_runner,
-            )
+                result = github_screenshots.run_remote_screenshots(
+                    repo_root=root,
+                    workflow="android-screenshots.yml",
+                    artifact="android-screenshots",
+                    screenshot_route="all",
+                    out_dir=root / "out",
+                    push_pr_branch=True,
+                    runner=main_runner,
+                )
 
-            self.assertEqual("failed", result["status"])
-            self.assertIn("Refusing to run on protected branch", result["message"])
+                self.assertEqual("failed", result["status"], protected_branch)
+                self.assertIn("Refusing to run on protected branch", result["message"])
 
             branch_runner = FakeRunner(
                 {
