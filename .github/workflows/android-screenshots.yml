@@ -1,0 +1,74 @@
+name: Android Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradle_task:
+        description: Gradle task that builds the debug APK
+        required: false
+        default: ':app:assembleDebug'
+      screenshot_route:
+        description: Optional route/state selector for screenshot capture
+        required: false
+        default: 'all'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-screenshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    name: Capture Android screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Build debug APK
+        run: ./gradlew "${{ inputs.gradle_task }}"
+
+      - name: Launch app and capture screenshots
+        uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            ANDROID_SCREENSHOT_API_LEVEL=35 \
+            ANDROID_SCREENSHOT_PROFILE=pixel_6 \
+              bash ci/scripts/capture_android_screenshots.sh '${{ inputs.screenshot_route }}'
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-screenshots
+          path: screenshots/**
+          if-no-files-found: warn
