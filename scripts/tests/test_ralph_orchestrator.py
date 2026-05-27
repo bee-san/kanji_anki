@@ -51,6 +51,31 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertTrue(kwargs["require_remote_screenshots"])
             self.assertEqual(2, profile_command.call_count)
 
+    def test_pending_remote_visual_status_is_not_accepted_at_top_level(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots") as remote, patch.object(
+                orchestrator, "_run_profile_command"
+            ) as profile_command:
+                remote.return_value = {"status": "remote_visual_pending", "message": "workflow is unavailable"}
+
+                output = StringIO()
+                with redirect_stdout(output):
+                    exit_code = orchestrator.main(
+                        [
+                            "--repo-root",
+                            str(root),
+                            "--audit-only",
+                            "--max-iterations",
+                            "1",
+                        ]
+                    )
+
+            self.assertEqual(1, exit_code)
+            self.assertIn('"status": "remote_visual_pending"', output.getvalue())
+            self.assertIn('"remote_visual_pending"', output.getvalue())
+            profile_command.assert_not_called()
+
     def test_iterations_cap_is_required_and_hard_limited(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

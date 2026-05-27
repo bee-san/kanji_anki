@@ -97,7 +97,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         require_remote_screenshots=args.require_remote_screenshots,
     )
     summary["remote_visual"] = remote_result
-    if remote_result["status"] not in {"passed", "remote_visual_pending"}:
+    if remote_result["status"] != "passed":
         summary["status"] = remote_result["status"]
 
     context_path = run_dir / "remote-visual-context.json"
@@ -119,7 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     result = run(args)
     print(json.dumps(result, indent=2, sort_keys=True))
-    if result["status"] in {"passed", "remote_visual_pending"}:
+    if result["status"] == "passed":
         return 0
     return 1
 
