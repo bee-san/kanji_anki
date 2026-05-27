@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from subprocess import CompletedProcess
+
+from scripts.ralph_loop import github_screenshots
+
+
+class FakeRunner:
+    def __init__(self, responses: dict[tuple[str, ...], CompletedProcess[str]] | None = None) -> None:
+        self.responses = responses or {}
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str], cwd: Path | None = None) -> CompletedProcess[str]:
+        self.calls.append(args)
+        key = tuple(args)
+        if key in self.responses:
+            return self.responses[key]
+        return CompletedProcess(args, 0, "", "")
+
+
+def ok(args: tuple[str, ...], stdout: object = "") -> CompletedProcess[str]:
+    text = stdout if isinstance(stdout, str) else json.dumps(stdout)
+    return CompletedProcess(list(args), 0, text, "")
+
+
+def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
+    return CompletedProcess(list(args), 1, "", stderr)
+
+
+class GithubScreenshotsTest(unittest.TestCase):
+    def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            out = root / ".ralph-loop" / "runs" / "123" / "remote-screenshots"
+            run_list = [
+                {"databaseId": 122, "headSha": "older", "status": "completed", "conclusion": "success"},
+                {"databaseId": 123, "headSha": "abc123", "status": "completed", "conclusion": "success"},
+            ]
+            runner = FakeRunner(
+                {
+                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
+                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                    ("gh", "auth", "status"): ok(("gh", "auth", "status")),
+                    ("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"): ok(("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"), "bee-san/kanji_anki\n"),
+                    ("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=home"): ok(("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=home")),
+                    ("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"): ok(("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"), run_list),
+                    ("gh", "run", "watch", "123", "--exit-status"): ok(("gh", "run", "watch", "123", "--exit-status")),
+                }
+            )
+
+            result = github_screenshots.run_remote_screenshots(
+                repo_root=root,
+                workflow="android-screenshots.yml",
+                artifact="android-screenshots",
+                screenshot_route="home",
+                out_dir=out,
+                runner=runner,
+            )
+
+            self.assertEqual("missing_artifact", result["status"])
+            self.assertIn("manifest.json", result["message"])
+            self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
+
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "manifest.json").write_text('{"routes":["home_empty_sync_required"]}', encoding="utf-8")
+            (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+            result = github_screenshots.run_remote_screenshots(
+                repo_root=root,
+                workflow="android-screenshots.yml",
+                artifact="android-screenshots",
+                screenshot_route="home",
+                out_dir=out,
+                runner=runner,
+            )
+
+            self.assertEqual("passed", result["status"])
+            self.assertEqual(123, result["run_id"])
+            self.assertEqual(str(out / "manifest.json"), result["manifest"])
+            self.assertEqual([str(out / "home.png")], result["pngs"])
+
+    def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            main_runner = FakeRunner(
+                {
+                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "main\n"),
+                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                }
+            )
+
+            result = github_screenshots.run_remote_screenshots(
+                repo_root=root,
+                workflow="android-screenshots.yml",
+                artifact="android-screenshots",
+                screenshot_route="all",
+                out_dir=root / "out",
+                push_pr_branch=True,
+                runner=main_runner,
+            )
+
+            self.assertEqual("failed", result["status"])
+            self.assertIn("Refusing to run on protected branch", result["message"])
+
+            branch_runner = FakeRunner(
+                {
+                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
+                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                    ("gh", "auth", "status"): fail(("gh", "auth", "status"), "not logged in"),
+                }
+            )
+
+            result = github_screenshots.run_remote_screenshots(
+                repo_root=root,
+                workflow="android-screenshots.yml",
+                artifact="android-screenshots",
+                screenshot_route="all",
+                out_dir=root / "out",
+                push_pr_branch=False,
+                runner=branch_runner,
+            )
+
+            self.assertEqual("remote_visual_pending", result["status"])
+            self.assertFalse(any(call[:3] == ["git", "push", "-u"] for call in branch_runner.calls))
+
+    def test_pushes_current_branch_only_when_explicitly_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runner = FakeRunner(
+                {
+                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
+                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                    ("gh", "auth", "status"): ok(("gh", "auth", "status")),
+                    ("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"): ok(("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"), "bee-san/kanji_anki\n"),
+                    ("git", "push", "-u", "origin", "feature/visual"): ok(("git", "push", "-u", "origin", "feature/visual")),
+                    ("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all"): ok(("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all")),
+                    ("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"): ok(("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"), [{"databaseId": 10, "headSha": "abc123", "status": "completed", "conclusion": "success"}]),
+                    ("gh", "run", "watch", "10", "--exit-status"): ok(("gh", "run", "watch", "10", "--exit-status")),
+                }
+            )
+
+            github_screenshots.run_remote_screenshots(
+                repo_root=root,
+                workflow="android-screenshots.yml",
+                artifact="android-screenshots",
+                screenshot_route="all",
+                out_dir=root / "out",
+                push_pr_branch=True,
+                runner=runner,
+            )
+
+            self.assertIn(["git", "push", "-u", "origin", "feature/visual"], runner.calls)
+
+
+if __name__ == "__main__":
+    unittest.main()
