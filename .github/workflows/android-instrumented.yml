@@ -89,5 +89,7 @@ jobs:
           if-no-files-found: ignore
           path: |
             ${{ runner.temp }}/ankidroid-fixture-logcat.txt
+            ${{ runner.temp }}/ankidroid-fixture-provider-probe.txt
+            ${{ runner.temp }}/ankidroid-fixture-instrumentation.txt
             app/build/reports/**
             app/build/outputs/androidTest-results/**
