@@ -306,6 +306,9 @@ object SettingsTextCopy {
     fun saveNewCardSortLabel(): String = SettingsStudyPlanTextCopy.saveNewCardSortLabel()
 
     @JvmStatic
+    fun newCardSortDescription(mode: String?): String = SettingsStudyPlanTextCopy.newCardSortDescription(mode)
+
+    @JvmStatic
     fun fsrsRetentionTitle(): String = SettingsStudyPlanTextCopy.fsrsRetentionTitle()
 
     @JvmStatic

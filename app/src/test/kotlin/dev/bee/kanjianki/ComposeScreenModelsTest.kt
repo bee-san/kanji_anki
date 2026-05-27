@@ -538,8 +538,8 @@ class ComposeScreenModelsTest {
     fun newCardSortModelKeepsOptionsAndSaverContract() {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
-        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency")
-        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk")
+        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Jiten frequency first.")
+        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Cards most likely to be forgotten first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
             body = "Choose how Kani admits new problem kanji.",
@@ -551,6 +551,7 @@ class ComposeScreenModelsTest {
 
         assertEquals("Frequency", frequency.label)
         assertEquals("frequency", frequency.mode)
+        assertEquals("Jiten frequency first.", frequency.description)
         assertEquals("New card order", model.title)
         assertEquals("Choose how Kani admits new problem kanji.", model.body)
         assertEquals("frequency", model.initialMode)

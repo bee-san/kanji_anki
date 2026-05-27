@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 data class SettingsNewCardSortOptionModel(
     val label: String,
     val mode: String,
+    val description: String,
 )
 
 fun interface SettingsNewCardSortSaver {

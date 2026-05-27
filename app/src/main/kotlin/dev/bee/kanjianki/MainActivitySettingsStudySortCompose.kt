@@ -82,13 +82,25 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                         contentColor = StudySortInk
                     )
                 ) {
-                    Text(
-                        text = option.label,
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = option.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = option.description,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = StudySortMuted,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
             Button(
