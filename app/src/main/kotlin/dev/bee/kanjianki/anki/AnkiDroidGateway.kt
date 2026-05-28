@@ -7,7 +7,6 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.OperationCanceledException
-import android.util.Log
 import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.annotation.RequiresApi
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -150,7 +149,7 @@ class AnkiDroidGateway private constructor(
                 notes.putIfAbsent(key, value)
             }
         } catch (error: Exception) {
-            Log.w(TAG, "Browser query note re-read failed; using tracked IDs only.", error)
+            throw browserQueryFailure(error)
         }
     }
 
@@ -349,8 +348,8 @@ class AnkiDroidGateway private constructor(
         val cursor = try {
             resolver.query(uriFor(target.authority, URI_SEGMENT_NOTES), null, search, null, null)
         } catch (error: Exception) {
-            throw SyncFailure.permanent("AnkiDroid could not run the browser query. Check the query in Import filters.", error)
-        } ?: return ids
+            throw browserQueryFailure(error)
+        } ?: throw browserQueryFailure(null)
         cursor.use { queryCursor ->
             while (queryCursor.moveToNext()) {
                 val modelId = longValue(queryCursor, COLUMN_MODEL_ID, mapping.modelId)
@@ -360,6 +359,10 @@ class AnkiDroidGateway private constructor(
             }
         }
         return ids
+    }
+
+    private fun browserQueryFailure(cause: Throwable?): SyncFailure {
+        return SyncFailure.permanent("AnkiDroid could not run the browser query. Check the query in Import filters.", cause)
     }
 
     private class ModelMapping(
