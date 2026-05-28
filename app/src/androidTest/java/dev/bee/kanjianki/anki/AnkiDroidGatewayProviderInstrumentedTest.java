@@ -430,6 +430,78 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    public void browserQueryProviderContractMatchesActiveNoteWithNoteTypeConjunction() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_active"));
+
+        assertTrue(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractMatchesSuspendedNoteWithParenthesizedQuery() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_suspended"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        RecordsSyncModels.Card suspended = cardFor(snapshot, 2L);
+        assertTrue(suspended.suspended);
+        assertTrue(suspended.browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractLeavesUnmatchedNotesUnmarked() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_unmatched"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractFiltersArchivedMatchesOut() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_archived"));
+
+        assertNull(cardOrNull(snapshot, 3L));
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(2, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractIgnoresOtherNoteTypes() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_other_type"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractMapsInvalidQueryToConfigError() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        try {
+            gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_invalid"));
+            fail("Expected invalid browser query failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertEquals("AnkiDroid could not run the browser query. Check the query in Import filters.", error.getMessage());
+        }
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
     public void browserQueryMarksMatchingActiveCardForImport() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         RecordsSyncModels.Settings settings = browserQueryOnlySettings();
@@ -777,6 +849,23 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
             }
         }
         fail("Expected dashboard row for " + kanji);
+        return null;
+    }
+
+    private RecordsSyncModels.Card cardFor(RecordsSyncModels.CollectionSnapshot snapshot, long noteId) {
+        RecordsSyncModels.Card card = cardOrNull(snapshot, noteId);
+        if (card == null) {
+            fail("Expected card for note " + noteId);
+        }
+        return card;
+    }
+
+    private RecordsSyncModels.Card cardOrNull(RecordsSyncModels.CollectionSnapshot snapshot, long noteId) {
+        for (RecordsSyncModels.Card card : snapshot.cards) {
+            if (card.noteId == noteId) {
+                return card;
+            }
+        }
         return null;
     }
 

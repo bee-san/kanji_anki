@@ -493,7 +493,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     private Cursor notes(String selection) {
         MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "mid", "flds", "tags"});
         boolean suspendedOnly = selection != null && selection.contains("is:suspended");
-        boolean browserQuery = selection != null && selection.contains("(") && !suspendedOnly;
+        boolean browserQuery = isKikuBrowserQuerySearch(selection) && !suspendedOnly;
         if (suspendedOnly && nullSuspendedSearchCursor) {
             return null;
         }
@@ -519,14 +519,23 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             if (nullBrowserQueryCursor) {
                 return null;
             }
-            if (browserQueryWrongModel) {
-                cursor.addRow(new Object[]{1L, 999L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
+            if (selection.contains("tag:kani_contract_invalid")) {
+                throw new IllegalArgumentException("Invalid search");
             }
-            if (browserQueryMatchesActive) {
+            if (selection.contains("tag:kani_contract_other_type")) {
+                cursor.addRow(new Object[]{101L, 200L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100"), activeTags});
+            }
+            if (selection.contains("tag:kani_contract_active") || browserQueryMatchesActive) {
                 cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
             }
-            if (browserQueryMatchesSuspended) {
+            if (selection.contains("tag:kani_contract_suspended") || browserQueryMatchesSuspended) {
                 cursor.addRow(new Object[]{2L, 100L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500", repeat("suspended-glossary", 200)), suspendedTags});
+            }
+            if (selection.contains("tag:kani_contract_archived")) {
+                cursor.addRow(new Object[]{3L, 100L, fields("認", "みとめる", "recognize", "認めた。", "200", "200", repeat("missing-glossary", 200)), "kani_archived"});
+            }
+            if (browserQueryWrongModel) {
+                cursor.addRow(new Object[]{1L, 999L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
             }
             if (browserQueryMatchesMissingNote) {
                 cursor.addRow(new Object[]{3L, 100L, fields("認", "みとめる", "recognize", "認めた。", "200", "200", repeat("missing-glossary", 200)), ""});
@@ -692,6 +701,13 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                 && selection.contains("note:\"")
                 && !selection.contains("is:suspended")
                 && !selection.contains("(");
+    }
+
+    private static boolean isKikuBrowserQuerySearch(String selection) {
+        return selection != null
+                && selection.contains("note:\"Kiku\"")
+                && selection.contains("(")
+                && selection.trim().endsWith(")");
     }
 
     private static final class ThrowingCursor extends MatrixCursor {
