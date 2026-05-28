@@ -94,14 +94,32 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
                     value = minRankText,
                     tag = SettingsFrequencyRangeTestTags.MIN_RANK_INPUT,
                     modifier = Modifier.weight(1f),
-                    onValueChange = { minRankText = it }
+                    onValueChange = { value ->
+                        minRankText = value
+                        val parsed = value.toIntOrNull()
+                        if (parsed != null && SettingsInputRules.validRank(parsed)) {
+                            val nextMin = minOf(parsed, maxRank)
+                            model.selectedRanks[0] = nextMin
+                            minRankText = formatRank(nextMin)
+                            minRank = nextMin
+                        }
+                    }
                 )
                 RankInput(
                     label = model.maxRankLabel,
                     value = maxRankText,
                     tag = SettingsFrequencyRangeTestTags.MAX_RANK_INPUT,
                     modifier = Modifier.weight(1f),
-                    onValueChange = { maxRankText = it }
+                    onValueChange = { value ->
+                        maxRankText = value
+                        val parsed = value.toIntOrNull()
+                        if (parsed != null && SettingsInputRules.validRank(parsed)) {
+                            val nextMax = maxOf(parsed, minRank)
+                            model.selectedRanks[1] = nextMax
+                            maxRankText = formatRank(nextMax)
+                            maxRank = nextMax
+                        }
+                    }
                 )
             }
             RankSlider(
