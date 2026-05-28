@@ -2,8 +2,10 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertCountEquals
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
@@ -59,5 +61,55 @@ class SettingsStudySortComposeTest {
         composeRule.runOnIdle {
             assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, savedMode.get())
         }
+    }
+
+    @Test
+    fun updatesPreviewRowsForSelectedSortMode() {
+        composeRule.setContent {
+            SettingsNewCardSortPanel(
+                model = SettingsNewCardSortPanelModel(
+                    title = SettingsTextCopy.newCardSortTitle(),
+                    body = SettingsTextCopy.newCardSortBody(),
+                    initialMode = RecordsBase.NEW_CARD_SORT_FREQUENCY,
+                    options = listOf(
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+                            RecordsBase.NEW_CARD_SORT_FREQUENCY,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+                        ),
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                        ),
+                    ),
+                    saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
+                    previewRowsByMode = mapOf(
+                        RecordsBase.NEW_CARD_SORT_FREQUENCY to listOf(
+                            SettingsNewCardSortPreviewRowModel("日", "sun", "#1 frequency"),
+                        ),
+                        RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK to listOf(
+                            SettingsNewCardSortPreviewRowModel("難", "difficult", "Risk 82%"),
+                        ),
+                    ),
+                    onSave = SettingsNewCardSortSaver {},
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Next up preview").assertIsDisplayed()
+        composeRule.onNodeWithText("日").assertIsDisplayed()
+        composeRule.onNodeWithText("sun").assertIsDisplayed()
+        composeRule.onNodeWithText("#1 frequency").assertIsDisplayed()
+        composeRule.onAllNodesWithText("難").assertCountEquals(0)
+
+        composeRule
+            .onNodeWithText(SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+            .performClick()
+
+        composeRule.onNodeWithText("難").assertIsDisplayed()
+        composeRule.onNodeWithText("difficult").assertIsDisplayed()
+        composeRule.onNodeWithText("Risk 82%").assertIsDisplayed()
+        composeRule.onAllNodesWithText("日").assertCountEquals(0)
     }
 }

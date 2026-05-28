@@ -435,7 +435,7 @@ class StudyQueueSeeder {
             rows: List<RecordsImportModels.DashboardRow>,
             settings: RecordsSyncModels.Settings?,
         ): List<RecordsImportModels.DashboardRow> {
-            return NewCardSortPlanner.sortedRowsForSettings(rows, settings)
+            return NewCardSortPlanner.sortedAdmissionRows(rows, settings)
         }
 
         @JvmStatic
