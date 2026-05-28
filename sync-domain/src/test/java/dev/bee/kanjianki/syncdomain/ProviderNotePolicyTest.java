@@ -114,6 +114,14 @@ public final class ProviderNotePolicyTest {
         assertEquals("note:\"Kiku\"", ProviderNotePolicy.modelSearch("Kiku"));
     }
 
+    @Test
+    public void modelSearchEscapesQuotesAndBackslashesInModelNames() {
+        assertEquals(
+                "note:\"Kiku \\\"Main\\\" \\\\ One\" (tag:kani)",
+                ProviderNotePolicy.configuredBrowserQuerySearch("Kiku \"Main\" \\ One", "tag:kani")
+        );
+    }
+
     private static String repeat(String value, int count) {
         StringBuilder builder = new StringBuilder(value.length() * count);
         for (int i = 0; i < count; i++) {
