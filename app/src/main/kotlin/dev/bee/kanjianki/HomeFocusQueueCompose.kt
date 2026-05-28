@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -131,7 +134,10 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
-            .clickable(onClick = model.onClick),
+            .semantics {
+                contentDescription = "Focus queue card ${model.kanji}, ${model.meaning}"
+            }
+            .clickable(role = Role.Button, onClick = model.onClick),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)

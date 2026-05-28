@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -110,7 +111,7 @@ fun HomeMetricCard(
             if (model.onClick == null) {
                 Modifier
             } else {
-                Modifier.clickable(onClick = model.onClick)
+                Modifier.clickable(role = Role.Button, onClick = model.onClick)
             }
         )
     Box(

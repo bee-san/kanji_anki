@@ -1,5 +1,11 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -68,7 +74,14 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.onNodeWithText("Ready").assertIsDisplayed()
         composeRule.onNodeWithText("Streak").assertIsDisplayed()
         composeRule.onNodeWithText("Focus").assertIsDisplayed()
-        composeRule.onNodeWithTag(homeMetricCardTestTag("Sync")).performClick()
+        composeRule.onNodeWithTag(homeMetricCardTestTag("Sync"))
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        composeRule.onNodeWithTag(homeMetricCardTestTag("Streak"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        composeRule.onNodeWithTag(homeMetricCardTestTag("Focus"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
 
         assertTrue(clicked)
         assertMetricCardHeightsEqual()
@@ -87,7 +100,10 @@ class MainActivityHomeOverviewComposeTest {
         }
 
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Sync AnkiDroid").performClick()
+        composeRule.onNodeWithContentDescription("Sync AnkiDroid")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
 
         assertTrue(clicked)
     }
@@ -106,7 +122,10 @@ class MainActivityHomeOverviewComposeTest {
 
         composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY_NOW).assertIsDisplayed()
         composeRule.onNodeWithText(HomeTextCopy.studySupportText()).assertIsDisplayed()
-        composeRule.onNodeWithContentDescription(MainActivityBase.LABEL_STUDY_NOW).performClick()
+        composeRule.onNodeWithContentDescription(MainActivityBase.LABEL_STUDY_NOW)
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         assertTrue(clicked)
     }
 
