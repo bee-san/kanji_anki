@@ -133,6 +133,61 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun meaningChoiceOptionClickRecordsSelectedAnswer() {
+        var selected = ""
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = { selected = it },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        assertEquals("列", selected)
+    }
+
+    @Test
+    fun meaningChoiceResultNextActionRecordsSelectedAnswer() {
+        var selected = ""
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = { selected = it },
+                    resultResolver = MeaningChoiceResultResolver { glyph ->
+                        MeaningChoiceResultModel(
+                            status = "Selected: $glyph",
+                            statusColor = MainActivityBase.TEAL,
+                        )
+                    },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂")).assertIsNotEnabled()
+        composeRule.onNodeWithTag(similarChoiceTestTag("烈")).assertIsNotEnabled()
+        composeRule.runOnIdle { assertEquals("", selected) }
+
+        composeRule.onNodeWithText("Next").performClick()
+
+        assertEquals("列", selected)
+    }
+
+    @Test
     fun meaningChoiceSessionClearsRevealedAnswerWhenModelChanges() {
         var selected = ""
         val first = meaningChoiceModel(
@@ -237,6 +292,7 @@ class MainActivityStudyChoiceComposeTest {
             answerGlyph: String,
             answerDetail: String,
             onChoice: (String) -> Unit,
+            resultResolver: MeaningChoiceResultResolver? = null,
         ): MeaningChoiceSessionModel {
             return MeaningChoiceSessionModel(
                 modeLabel = "Recall",
@@ -261,6 +317,7 @@ class MainActivityStudyChoiceComposeTest {
                     helperText = null,
                 ),
                 onChoice = KanjiChoiceHandler { onChoice(it) },
+                resultResolver = resultResolver,
             )
         }
     }
