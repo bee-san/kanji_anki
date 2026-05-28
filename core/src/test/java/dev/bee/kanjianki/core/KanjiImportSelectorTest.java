@@ -222,6 +222,40 @@ public final class KanjiImportSelectorTest {
     }
 
     @Test
+    public void defaultSettingsIgnoreBrowserQueryMatchedActiveCard() throws Exception {
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        RecordsSyncModels.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        RecordsSyncModels.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<RecordsImportModels.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertTrue(imports.isEmpty());
+    }
+
+    @Test
+    public void activeOnlyImportDoesNotForcePractice() throws Exception {
+        RecordsSyncModels.Settings settings = settings(true, false, false, "", false, 7.0, 2, 1);
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        RecordsSyncModels.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(card(10, 1, false))
+        );
+
+        List<RecordsImportModels.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("裂"), kanjiList(imports));
+        RecordsImportModels.SuspendedSource source = imports.get(0).sources.get(0);
+        assertEquals(RecordsBase.SOURCE_ACTIVE, source.sourceType);
+        assertFalse(source.suspended);
+        assertFalse(source.forcePractice);
+        assertEquals(Collections.singletonList(RecordsBase.SOURCE_ACTIVE), source.ruleTypes);
+    }
+
+    @Test
     public void browserQueryEnabledImportsActiveCardMarkedAsMatched() throws Exception {
         RecordsSyncModels.Settings settings = settingsWithBrowserQuery(false, false, true, "tag:kani");
         JitenKanjiRanks ranks = ranks("裂,1500\n");
@@ -238,6 +272,30 @@ public final class KanjiImportSelectorTest {
         assertEquals(Collections.singletonList(RecordsBase.SOURCE_BROWSER_QUERY), imports.get(0).sources.get(0).ruleTypes);
         assertTrue(imports.get(0).sources.get(0).forcePractice);
         assertFalse(imports.get(0).sources.get(0).suspended);
+    }
+
+    @Test
+    public void activeBrowserQueryAndTaggedDedupeSingleCardWithBrowserSourceType() throws Exception {
+        RecordsSyncModels.Settings settings = settingsWithActiveTaggedAndBrowserQuery("target");
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        RecordsSyncModels.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        RecordsSyncModels.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける", "target")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<RecordsImportModels.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("裂"), kanjiList(imports));
+        assertEquals(1, imports.get(0).sources.size());
+        RecordsImportModels.SuspendedSource source = imports.get(0).sources.get(0);
+        assertEquals(RecordsBase.SOURCE_BROWSER_QUERY, source.sourceType);
+        assertTrue(source.forcePractice);
+        assertEquals(Arrays.asList(
+                RecordsBase.SOURCE_ACTIVE,
+                RecordsBase.SOURCE_TAGGED,
+                RecordsBase.SOURCE_BROWSER_QUERY
+        ), source.ruleTypes);
     }
 
     @Test
@@ -374,6 +432,22 @@ public final class KanjiImportSelectorTest {
             String browserQuery,
             int minMatching
     ) {
+        return settingsWithBrowserQuery(active, suspended, false, "", browserQueryCards, browserQuery, minMatching);
+    }
+
+    private RecordsSyncModels.Settings settingsWithActiveTaggedAndBrowserQuery(String tags) {
+        return settingsWithBrowserQuery(true, false, true, tags, true, "tag:kani", 1);
+    }
+
+    private RecordsSyncModels.Settings settingsWithBrowserQuery(
+            boolean active,
+            boolean suspended,
+            boolean tagged,
+            String tags,
+            boolean browserQueryCards,
+            String browserQuery,
+            int minMatching
+    ) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         return new RecordsSyncModels.Settings(
                 defaults.modelName,
@@ -395,8 +469,8 @@ public final class KanjiImportSelectorTest {
                 defaults.realDueReviewsToMove,
                 active,
                 suspended,
-                false,
-                Collections.emptyList(),
+                tagged,
+                RecordsBase.parseImportTags(tags),
                 false,
                 7.0,
                 2,
