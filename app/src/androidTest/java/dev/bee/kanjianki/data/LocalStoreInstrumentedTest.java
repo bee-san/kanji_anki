@@ -811,7 +811,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionSixteenMigrationRebuildsLadderTablesFromLegacySchedulerState() {
+    public void testVersionSixteenMigrationPreservesLegacySchedulerStateAndClearsSideQueues() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -889,11 +889,55 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
 
-        assertEquals(0, count("study_items"));
+        assertEquals(1, count("study_items"));
         assertEquals(0, count("learning_repeats"));
         assertEquals(0, count("similar_kanji_choice_state"));
         assertEquals(0, count("similar_kanji_repair_queue"));
         assertMigratedStudyColumns();
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "word_reading");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 950L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 30L);
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "kanji_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "new_learning");
+    }
+
+    @Test
+    public void testOldStudyRowsInitializeSiblingSuppressionFieldsAsUnsuppressed() {
+        store.close();
+        context.deleteDatabase("kanji_anki_simple.db");
+        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        try {
+            createLegacyV1Schema(db);
+            ContentValuesBuilder.insert(db, "study_items")
+                    .put("kanji", "水")
+                    .put("state", "review")
+                    .put("due_at", 2000L)
+                    .put("stability", 3.0)
+                    .put("difficulty", 5.0)
+                    .put("total_reviews", 7)
+                    .put("lapses", 0)
+                    .put("learning_step", 0)
+                    .put("writing_level", 1)
+                    .put("active_token", "old-token")
+                    .put("created_at", 100L)
+                    .commit();
+            db.setVersion(1);
+        } finally {
+            db.close();
+        }
+
+        store = new LocalStore(context);
+
+        assertEquals(1, count("study_items"));
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
+        assertScalarString("study_items", "kanji_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "font_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "word_reading_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "writing_remediation_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "kanji_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "new_learning");
     }
 
     private void assertMigratedColumnsExist() {
