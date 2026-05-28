@@ -153,6 +153,9 @@ object SettingsTextCopy {
     fun ankiBrowserQueryLabel(): String = SettingsImportFiltersTextCopy.ankiBrowserQueryLabel()
 
     @JvmStatic
+    fun ankiBrowserQueryHelperText(): String = SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText()
+
+    @JvmStatic
     fun ankiNoteTagsHint(): String = SettingsImportFiltersTextCopy.ankiNoteTagsHint()
 
     @JvmStatic
