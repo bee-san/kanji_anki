@@ -93,6 +93,7 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 label = model.browserQueryLabel,
                 value = model.state.browserQuery,
                 hint = model.browserQueryHint,
+                helperText = model.browserQueryHelperText,
                 testTag = SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT,
                 onValueChange = { model.state.browserQuery = it }
             )
@@ -190,6 +191,7 @@ private fun ImportFilterTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     hint: String = "",
+    helperText: String = "",
     keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -216,6 +218,15 @@ private fun ImportFilterTextField(
                 fontSize = 18.sp
             )
         )
+        if (helperText.isNotEmpty()) {
+            Text(
+                text = helperText,
+                color = ImportFilterMuted,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 

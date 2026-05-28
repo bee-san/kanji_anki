@@ -31,6 +31,11 @@ object SettingsImportFiltersTextCopy {
     fun ankiBrowserQueryLabel(): String = "Anki browser query"
 
     @JvmStatic
+    fun ankiBrowserQueryHelperText(): String {
+        return "Import cards matched by this query; Kani still applies note type, rank range, and matching-card threshold."
+    }
+
+    @JvmStatic
     fun ankiNoteTagsHint(): String = "tag1, tag2"
 
     @JvmStatic

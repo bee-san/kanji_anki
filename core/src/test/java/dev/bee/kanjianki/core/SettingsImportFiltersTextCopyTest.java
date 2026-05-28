@@ -19,6 +19,10 @@ public final class SettingsImportFiltersTextCopyTest {
         assertEquals("Browser query", SettingsImportFiltersTextCopy.browserQueryLabel());
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint());
         assertEquals("Anki browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel());
+        assertEquals(
+                "Import cards matched by this query; Kani still applies note type, rank range, and matching-card threshold.",
+                SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText()
+        );
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint());
         assertEquals("Anki note tags", SettingsImportFiltersTextCopy.ankiNoteTagsLabel());
         assertEquals("FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel());
