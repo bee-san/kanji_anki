@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class ImportAuditBuilderTest {
     @Test
@@ -105,7 +106,23 @@ public class ImportAuditBuilderTest {
                 audit.enabledSources()
         );
         assertEquals(
-                "{\"model_name\":\"Basic\",\"import_active_cards\":true,\"import_suspended_cards\":true,\"import_tagged_cards\":true,\"import_tags\":[\"leech\",\"hard\\\"tag\"],\"import_weak_cards\":true,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"deck:\\\"foo\\\"\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
+                "{\"model_name\":\"Basic\",\"import_active_cards\":true,\"import_suspended_cards\":true,\"import_tagged_cards\":true,\"import_tags\":[\"leech\",\"hard\\\"tag\"],\"import_weak_cards\":true,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"[redacted]\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
+                audit.settingsJson()
+        );
+    }
+
+    @Test
+    public void settingsJsonRedactsBrowserQueryTextWhileKeepingSourceEnabled() {
+        String privateQuery = "deck:Private Sentence Tag rated:30:1";
+
+        ImportAuditBuilder.RuleAudit audit = ImportAuditBuilder.ruleAudit(
+                settings(false, false, false, Collections.emptyList(), false, true, privateQuery)
+        );
+
+        assertEquals(Collections.singletonList(ImportRuleMatch.SOURCE_BROWSER_QUERY), audit.enabledSources());
+        assertFalse(audit.settingsJson().contains(privateQuery));
+        assertEquals(
+                "{\"model_name\":\"Basic\",\"import_active_cards\":false,\"import_suspended_cards\":false,\"import_tagged_cards\":false,\"import_tags\":[],\"import_weak_cards\":false,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"[redacted]\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
                 audit.settingsJson()
         );
     }
@@ -118,7 +135,7 @@ public class ImportAuditBuilderTest {
 
         assertEquals(Collections.singletonList(ImportRuleMatch.SOURCE_BROWSER_QUERY), audit.enabledSources());
         assertEquals(
-                "{\"model_name\":\"Basic\",\"import_active_cards\":false,\"import_suspended_cards\":false,\"import_tagged_cards\":false,\"import_tags\":[],\"import_weak_cards\":false,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"\u00a0\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
+                "{\"model_name\":\"Basic\",\"import_active_cards\":false,\"import_suspended_cards\":false,\"import_tagged_cards\":false,\"import_tags\":[],\"import_weak_cards\":false,\"import_weak_fsrs_difficulty\":0.85,\"import_weak_lapses\":3,\"import_browser_query_cards\":true,\"import_browser_query\":\"[redacted]\",\"rank_min\":500,\"rank_max\":2000,\"min_matching_cards\":2}",
                 audit.settingsJson()
         );
     }
