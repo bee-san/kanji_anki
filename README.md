@@ -102,6 +102,8 @@ If Gradle daemons from other workspaces interfere on a shared machine, isolate t
 GRADLE_USER_HOME="$PWD/.gradle-task" ./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest
 ```
 
+For CI and SonarQube triage, see `docs/ci-sonar-reliability-runbook.md`.
+
 Release builds require signing environment variables:
 
 ```bash
