@@ -13,14 +13,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -32,36 +28,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
-
-private val RetentionInk = Color(0xFF2D1635)
-private val RetentionMuted = Color(0xFF6C5674)
-private val RetentionTeal = Color(0xFF24756C)
-private val RetentionPinkDark = Color(0xFFDA3A7A)
-private val RetentionPanelBorder = Color(0xFFFFC7DE)
-private val RetentionButtonBorder = Color(0xFFEEBDDA)
-private val RetentionWhite = Color(0xFFFFFFFF)
-private val RetentionPanelShape = RoundedCornerShape(24.dp)
-private val RetentionButtonShape = RoundedCornerShape(12.dp)
 
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
     var retentionPercent by rememberSaveable { mutableIntStateOf(model.selectedRetentionPercent[0]) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RetentionPanelShape,
-        color = RetentionWhite,
-        border = BorderStroke(1.dp, RetentionPanelBorder),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniUiTokens.White,
+        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -70,19 +54,19 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = RetentionInk,
+                color = KaniUiTokens.Ink,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = SettingsTextCopy.retentionStatusText(retentionPercent),
-                color = RetentionTeal,
+                color = KaniUiTokens.Teal,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.body,
-                color = RetentionMuted,
+                color = KaniUiTokens.Muted,
                 fontSize = 15.sp
             )
             RetentionSlider(retentionPercent) { value ->
@@ -113,7 +97,7 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
             )
             Text(
                 text = model.rankRangesBody,
-                color = RetentionMuted,
+                color = KaniUiTokens.Muted,
                 fontSize = 15.sp
             )
             OutlinedTextField(
@@ -128,7 +112,7 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 maxLines = 5,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = RetentionInk,
+                    color = KaniUiTokens.Ink,
                     fontSize = 16.sp
                 )
             )
@@ -139,31 +123,16 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                     model.state.frequencyRetentionRanges = model.exampleRangesText
                 }
             )
-            Button(
+            KaniPrimaryButton(
+                label = model.saveLabel,
                 onClick = {
                     model.onSave.save(
                         retentionPercent,
                         model.state.frequencyRetentionEnabled,
                         model.state.frequencyRetentionRanges
                     )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = RetentionButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RetentionPinkDark,
-                    contentColor = RetentionWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                }
+            )
         }
     }
 }
@@ -185,11 +154,11 @@ private fun RetentionCheckbox(label: String, checked: Boolean, onCheckedChange: 
         Checkbox(
             checked = checked,
             onCheckedChange = null,
-            colors = CheckboxDefaults.colors(checkedColor = RetentionPinkDark)
+            colors = CheckboxDefaults.colors(checkedColor = KaniUiTokens.Primary)
         )
         Text(
             text = label,
-            color = RetentionInk,
+            color = KaniUiTokens.Ink,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
         )
@@ -218,22 +187,5 @@ private fun RetentionOutlinedButton(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 50.dp),
-        shape = RetentionButtonShape,
-        border = BorderStroke(1.dp, RetentionButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = RetentionWhite,
-            contentColor = RetentionInk
-        )
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    KaniOutlinedButton(label = label, modifier = modifier, onClick = onClick)
 }

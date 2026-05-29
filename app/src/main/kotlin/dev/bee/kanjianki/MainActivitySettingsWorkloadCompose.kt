@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,19 +16,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
-
-private val WorkloadInk = Color(0xFF2D1635)
-private val WorkloadMuted = Color(0xFF6C5674)
-private val WorkloadTeal = Color(0xFF24756C)
-private val WorkloadPanelBorder = Color(0xFFFFC7DE)
-private val WorkloadWhite = Color(0xFFFFFFFF)
-private val WorkloadPanelShape = RoundedCornerShape(24.dp)
 
 @Composable
 fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {
@@ -39,9 +29,9 @@ fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = WorkloadPanelShape,
-        color = WorkloadWhite,
-        border = BorderStroke(1.dp, WorkloadPanelBorder),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniUiTokens.White,
+        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -50,7 +40,7 @@ fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = WorkloadInk,
+                color = KaniUiTokens.Ink,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -77,13 +67,13 @@ private fun AutoWorkloadContent(
 ) {
     Text(
         text = model.autoStatus,
-        color = WorkloadTeal,
+        color = KaniUiTokens.Teal,
         fontSize = 17.sp,
         fontWeight = FontWeight.Bold
     )
     Text(
         text = model.automaticBody,
-        color = WorkloadMuted,
+        color = KaniUiTokens.Muted,
         fontSize = 15.sp
     )
     MaxItemsControl(model, maxItems, onMaxItemsChanged)
@@ -105,13 +95,13 @@ private fun ManualWorkloadContent(
 ) {
     Text(
         text = SettingsTextCopy.workloadStatusText(workloadPercent, maxItems),
-        color = WorkloadTeal,
+        color = KaniUiTokens.Teal,
         fontSize = 17.sp,
         fontWeight = FontWeight.Bold
     )
     Text(
         text = model.manualBody,
-        color = WorkloadMuted,
+        color = KaniUiTokens.Muted,
         fontSize = 15.sp
     )
     WorkloadSlider(model, workloadPercent, onWorkloadChanged)
@@ -120,7 +110,7 @@ private fun ManualWorkloadContent(
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
-                color = WorkloadMuted,
+                color = KaniUiTokens.Muted,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
             )
