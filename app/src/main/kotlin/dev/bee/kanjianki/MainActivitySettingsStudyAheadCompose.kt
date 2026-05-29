@@ -26,6 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 
+private val StudyAheadInk = KaniUiTokens.Ink
+private val StudyAheadMuted = KaniUiTokens.Muted
+private val StudyAheadPanelBorder = KaniUiTokens.PanelBorder
+private val StudyAheadWhite = KaniUiTokens.White
+private val StudyAheadPanelShape = KaniUiTokens.PanelShape
+
 object SettingsStudyAheadTestTags {
     const val MINUTES_INPUT = "settings-study-ahead-minutes-input"
 }
@@ -35,9 +41,9 @@ fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
     var minutesText by rememberSaveable { mutableStateOf(model.initialMinutesText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = StudyAheadPanelShape,
+        color = StudyAheadWhite,
+        border = BorderStroke(1.dp, StudyAheadPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -46,18 +52,18 @@ fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = StudyAheadInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.body,
-                color = KaniUiTokens.Muted,
+                color = StudyAheadMuted,
                 fontSize = 15.sp
             )
             Text(
                 text = model.minutesLabel,
-                color = KaniUiTokens.Ink,
+                color = StudyAheadInk,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -71,7 +77,7 @@ fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = KaniUiTokens.Ink,
+                    color = StudyAheadInk,
                     fontSize = 20.sp
                 )
             )

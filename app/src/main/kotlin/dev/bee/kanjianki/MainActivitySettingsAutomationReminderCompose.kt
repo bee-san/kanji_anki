@@ -23,6 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
+private val ReminderInk = KaniUiTokens.Ink
+private val ReminderMuted = KaniUiTokens.Muted
+private val ReminderCoral = KaniUiTokens.Coral
+private val ReminderPanelBorder = KaniUiTokens.PanelBorder
+private val ReminderWhite = KaniUiTokens.White
+private val ReminderPanelShape = KaniUiTokens.PanelShape
+
 internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
 
 @Composable
@@ -39,9 +46,9 @@ fun SettingsReminderPanel(model: SettingsReminderPanelModel) {
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = ReminderPanelShape,
+        color = ReminderWhite,
+        border = BorderStroke(1.dp, ReminderPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -50,7 +57,7 @@ fun SettingsReminderPanel(model: SettingsReminderPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = ReminderInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -62,7 +69,7 @@ fun SettingsReminderPanel(model: SettingsReminderPanelModel) {
             )
             Text(
                 text = model.body,
-                color = KaniUiTokens.Muted,
+                color = ReminderMuted,
                 fontSize = 15.sp
             )
             ReminderOutlinedButton(
@@ -112,7 +119,7 @@ private fun ReminderWarning(warning: String?) {
     }
     Text(
         text = warning,
-        color = KaniUiTokens.Coral,
+        color = ReminderCoral,
         fontSize = 14.sp
     )
 }

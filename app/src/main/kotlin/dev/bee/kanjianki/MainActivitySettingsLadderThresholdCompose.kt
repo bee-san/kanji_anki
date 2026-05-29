@@ -26,6 +26,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val LadderThresholdInk = KaniUiTokens.Ink
+private val LadderThresholdMuted = KaniUiTokens.Muted
+private val LadderThresholdPanelBorder = KaniUiTokens.PanelBorder
+private val LadderThresholdWhite = KaniUiTokens.White
+private val LadderThresholdPanelShape = KaniUiTokens.PanelShape
+
 object SettingsLadderThresholdTestTags {
     const val PROMOTION_DAYS_INPUT = "settings-ladder-threshold-promotion-days-input"
     const val FAIL_STREAK_INPUT = "settings-ladder-threshold-fail-streak-input"
@@ -37,9 +43,9 @@ fun SettingsLadderThresholdPanel(model: SettingsLadderThresholdPanelModel) {
     var failStreakText by rememberSaveable { mutableStateOf(model.initialFailStreakText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = LadderThresholdPanelShape,
+        color = LadderThresholdWhite,
+        border = BorderStroke(1.dp, LadderThresholdPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -48,13 +54,13 @@ fun SettingsLadderThresholdPanel(model: SettingsLadderThresholdPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = LadderThresholdInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.body,
-                color = KaniUiTokens.Muted,
+                color = LadderThresholdMuted,
                 fontSize = 15.sp
             )
             LadderThresholdInput(
@@ -90,7 +96,7 @@ private fun LadderThresholdInput(
 ) {
     Text(
         text = label,
-        color = KaniUiTokens.Ink,
+        color = LadderThresholdInk,
         fontSize = 15.sp,
         fontWeight = FontWeight.Bold
     )
@@ -104,7 +110,7 @@ private fun LadderThresholdInput(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         textStyle = MaterialTheme.typography.bodyLarge.copy(
-            color = KaniUiTokens.Ink,
+            color = LadderThresholdInk,
             fontSize = 20.sp
         )
     )

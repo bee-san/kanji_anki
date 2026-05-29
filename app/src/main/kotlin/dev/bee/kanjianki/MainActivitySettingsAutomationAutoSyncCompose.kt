@@ -16,13 +16,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val AutoSyncInk = KaniUiTokens.Ink
+private val AutoSyncMuted = KaniUiTokens.Muted
+private val AutoSyncPanelBorder = KaniUiTokens.PanelBorder
+private val AutoSyncWhite = KaniUiTokens.White
+private val AutoSyncPanelShape = KaniUiTokens.PanelShape
+
 @Composable
 fun SettingsAutoSyncPanel(model: SettingsAutoSyncPanelModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = AutoSyncPanelShape,
+        color = AutoSyncWhite,
+        border = BorderStroke(1.dp, AutoSyncPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -31,7 +37,7 @@ fun SettingsAutoSyncPanel(model: SettingsAutoSyncPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = AutoSyncInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -43,7 +49,7 @@ fun SettingsAutoSyncPanel(model: SettingsAutoSyncPanelModel) {
             )
             Text(
                 text = model.detail,
-                color = KaniUiTokens.Muted,
+                color = AutoSyncMuted,
                 fontSize = 15.sp
             )
             AutoSyncActionButton(model)

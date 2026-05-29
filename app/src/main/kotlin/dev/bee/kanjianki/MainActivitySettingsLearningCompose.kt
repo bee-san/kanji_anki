@@ -29,15 +29,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val LearningStepsInk = KaniUiTokens.Ink
+private val LearningStepsMuted = KaniUiTokens.Muted
+private val LearningStepsPanelBorder = KaniUiTokens.PanelBorder
+private val LearningStepsWhite = KaniUiTokens.White
+private val LearningStepsPanelShape = KaniUiTokens.PanelShape
+
 @Composable
 fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
     var newStepsText by rememberSaveable { mutableStateOf(model.initialNewStepsText) }
     var reviewStepsText by rememberSaveable { mutableStateOf(model.initialReviewStepsText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = LearningStepsPanelShape,
+        color = LearningStepsWhite,
+        border = BorderStroke(1.dp, LearningStepsPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -46,13 +52,13 @@ fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = LearningStepsInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.body,
-                color = KaniUiTokens.Muted,
+                color = LearningStepsMuted,
                 fontSize = 15.sp
             )
             LearningStepsInput(
@@ -100,7 +106,7 @@ private fun LearningStepsInput(
 ) {
     Text(
         text = label,
-        color = KaniUiTokens.Ink,
+        color = LearningStepsInk,
         fontSize = 15.sp,
         fontWeight = FontWeight.Bold
     )
@@ -114,7 +120,7 @@ private fun LearningStepsInput(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
         textStyle = MaterialTheme.typography.bodyLarge.copy(
-            color = KaniUiTokens.Ink,
+            color = LearningStepsInk,
             fontSize = 20.sp
         )
     )

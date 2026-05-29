@@ -17,6 +17,8 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
 
+private val WorkloadControlTeal = KaniUiTokens.Teal
+
 object SettingsWorkloadControlDescriptions {
     const val WORKLOAD_PERCENT_SLIDER = "Daily workload percentage"
     const val MAX_ITEMS_SLIDER = "Maximum Pareto items"
@@ -58,7 +60,7 @@ internal fun MaxItemsControl(
 ) {
     Text(
         text = SettingsTextCopy.maxItemsStatusText(maxItems),
-        color = KaniUiTokens.Teal,
+        color = WorkloadControlTeal,
         fontSize = 17.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 8.dp)

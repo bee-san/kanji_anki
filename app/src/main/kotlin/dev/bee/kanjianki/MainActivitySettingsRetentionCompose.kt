@@ -38,14 +38,22 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
 
+private val RetentionInk = KaniUiTokens.Ink
+private val RetentionMuted = KaniUiTokens.Muted
+private val RetentionTeal = KaniUiTokens.Teal
+private val RetentionPinkDark = KaniUiTokens.Primary
+private val RetentionPanelBorder = KaniUiTokens.PanelBorder
+private val RetentionWhite = KaniUiTokens.White
+private val RetentionPanelShape = KaniUiTokens.PanelShape
+
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
     var retentionPercent by rememberSaveable { mutableIntStateOf(model.selectedRetentionPercent[0]) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = KaniUiTokens.PanelShape,
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
+        shape = RetentionPanelShape,
+        color = RetentionWhite,
+        border = BorderStroke(1.dp, RetentionPanelBorder),
         shadowElevation = 2.dp
     ) {
         Column(
@@ -54,19 +62,19 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = KaniUiTokens.Ink,
+                color = RetentionInk,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = SettingsTextCopy.retentionStatusText(retentionPercent),
-                color = KaniUiTokens.Teal,
+                color = RetentionTeal,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.body,
-                color = KaniUiTokens.Muted,
+                color = RetentionMuted,
                 fontSize = 15.sp
             )
             RetentionSlider(retentionPercent) { value ->
@@ -97,7 +105,7 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
             )
             Text(
                 text = model.rankRangesBody,
-                color = KaniUiTokens.Muted,
+                color = RetentionMuted,
                 fontSize = 15.sp
             )
             OutlinedTextField(
@@ -112,7 +120,7 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 maxLines = 5,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = KaniUiTokens.Ink,
+                    color = RetentionInk,
                     fontSize = 16.sp
                 )
             )
@@ -154,11 +162,11 @@ private fun RetentionCheckbox(label: String, checked: Boolean, onCheckedChange: 
         Checkbox(
             checked = checked,
             onCheckedChange = null,
-            colors = CheckboxDefaults.colors(checkedColor = KaniUiTokens.Primary)
+            colors = CheckboxDefaults.colors(checkedColor = RetentionPinkDark)
         )
         Text(
             text = label,
-            color = KaniUiTokens.Ink,
+            color = RetentionInk,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
         )
