@@ -56,11 +56,11 @@ class HomeChromeComposeTest {
         }
 
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
-        composeRule.onNodeWithText("View all >")
+        composeRule.onNodeWithText("View all")
             .assertIsDisplayed()
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-        composeRule.onNodeWithText("View all >").performClick()
+        composeRule.onNodeWithText("View all").performClick()
         assertTrue(clicked)
     }
 
