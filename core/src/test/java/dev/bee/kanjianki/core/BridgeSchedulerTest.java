@@ -1292,6 +1292,80 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void fsrsPromotionBoundaryRequiresMoreThanConfiguredDays() {
+        long dueAt = 30L * BridgeScheduler.DAY;
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .build();
+
+        RecordsSchedulerModels.ReviewResult exactBoundary = schedulerWithReviewIntervalDays(21).applyReview(
+                item.withToken("exact-boundary"),
+                new RecordsSchedulerModels.ReviewRequest("裂", "exact-boundary", "good", false, false, false, 0),
+                new HashSet<>(),
+                dueAt
+        );
+        RecordsSchedulerModels.ReviewResult beyondBoundary = schedulerWithReviewIntervalDays(22).applyReview(
+                item.withToken("beyond-boundary"),
+                new RecordsSchedulerModels.ReviewRequest("裂", "beyond-boundary", "good", false, false, false, 0),
+                new HashSet<>(),
+                dueAt
+        );
+
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, exactBoundary.item.rung);
+        assertEquals(21, exactBoundary.item.matureIntervalDays);
+        assertEquals(dueAt + 21L * BridgeScheduler.DAY, exactBoundary.item.dueAtMillis);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, beyondBoundary.item.rung);
+        assertEquals(22, beyondBoundary.item.matureIntervalDays);
+        assertEquals(dueAt + 22L * BridgeScheduler.DAY, beyondBoundary.item.dueAtMillis);
+    }
+
+    @Test
+    public void matureSiblingSuppressionBoundaryStartsAtTwentyOneDays() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem staleSuppressed = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder()
+                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
+                .suppressedAtMillis(123L)
+                .build();
+        RecordsStudyModels.StudyItem youngFont = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
+                .copyBuilder()
+                .matureIntervalDays(20)
+                .totalReviews(12)
+                .build();
+        RecordsStudyModels.StudyItem boundaryFont = reviewItem("語", RecordsBase.LadderRung.FONT_MEANING, 0L)
+                .copyBuilder()
+                .matureIntervalDays(21)
+                .totalReviews(12)
+                .build();
+        RecordsStudyModels.StudyItem boundaryKanji = reviewItem("語", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(
+                Arrays.asList(staleSuppressed, youngFont, boundaryKanji, boundaryFont)
+        );
+
+        RecordsStudyModels.StudyItem unsuppressedYoungSibling = findItem(result, "裂");
+        RecordsStudyModels.StudyItem suppressedBoundarySibling = findItem(result, "語");
+        assertTrue(unsuppressedYoungSibling.suppressedByTaskType.isEmpty());
+        assertEquals(0L, unsuppressedYoungSibling.suppressedAtMillis);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), suppressedBoundarySibling.suppressedByTaskType);
+        assertTrue(suppressedBoundarySibling.suppressedAtMillis > 0L);
+    }
+
+    @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.TaskMemory matureMemory = new RecordsStudyModels.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10);
