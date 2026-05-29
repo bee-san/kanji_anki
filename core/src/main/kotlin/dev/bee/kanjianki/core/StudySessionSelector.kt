@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.core
 
+import java.util.Collections
+import java.util.Random
+
 class StudySessionSelector {
     fun nextSession(
         items: List<RecordsStudyModels.StudyItem>,
@@ -34,6 +37,98 @@ class StudySessionSelector {
         val writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI
         val prompt = row!!.reasonText
         return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
+    }
+
+    fun randomizedTaskKeys(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings,
+        ladder: RecordsBase.StudyLadderSettings?,
+        randomSeed: Long?,
+    ): List<String> {
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
+        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val rowByKanji = rowByKanji(rows)
+        val dueItems = activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+            .filter { it.dueAtMillis <= horizon }
+            .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
+            .toMutableList()
+        if (randomSeed == null) {
+            Collections.shuffle(dueItems)
+        } else {
+            Collections.shuffle(dueItems, Random(randomSeed))
+        }
+        return dueItems.map { sessionTaskKeyForItem(it) }
+    }
+
+    fun nextSessionForTaskKeys(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings,
+        ladder: RecordsBase.StudyLadderSettings?,
+        taskKeys: List<String>,
+    ): RecordsSchedulerModels.StudySession? {
+        val dueItems = dueItemByTaskKey(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, ladder)
+        for (taskKey in taskKeys) {
+            val item = dueItems[taskKey]
+            if (item != null) {
+                return sessionForItem(item, rowByKanji(rows))
+            }
+        }
+        return null
+    }
+
+    fun sessionTaskKeyForItem(item: RecordsStudyModels.StudyItem?): String {
+        if (item == null) {
+            return ""
+        }
+        return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
+    }
+
+    private fun dueItemByTaskKey(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): Map<String, RecordsStudyModels.StudyItem> {
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
+        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val rowByKanji = rowByKanji(rows)
+        val out = LinkedHashMap<String, RecordsStudyModels.StudyItem>()
+        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+            .filter { it.dueAtMillis <= horizon }
+            .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }) {
+            out.putIfAbsent(sessionTaskKeyForItem(item), item)
+        }
+        return out
+    }
+
+    private fun sessionForItem(
+        item: RecordsStudyModels.StudyItem,
+        rowByKanji: Map<String, RecordsImportModels.DashboardRow>,
+    ): RecordsSchedulerModels.StudySession? {
+        val row = rowByKanji[item.kanji] ?: return null
+        val token = StudyTokenPolicy.studyItem(item.kanji, item.activeToken)
+        val taskType = StudyTaskTypes.forRung(item.rung)
+        val writingRequired = item.rung == RecordsBase.LadderRung.WRITE_KANJI
+        return RecordsSchedulerModels.StudySession(item.withToken(token), row, token, taskType, writingRequired, row.reasonText)
+    }
+
+    private fun rowByKanji(rows: List<RecordsImportModels.DashboardRow>): Map<String, RecordsImportModels.DashboardRow> {
+        val out = HashMap<String, RecordsImportModels.DashboardRow>()
+        for (row in rows) {
+            out[row.kanji] = row
+        }
+        return out
     }
 
     fun dueCount(

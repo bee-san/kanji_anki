@@ -11,6 +11,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -337,6 +338,75 @@ public class BridgeSchedulerTest {
         assertNotNull(relearningSession);
         assertEquals("習", relearningSession.item.kanji);
         assertEquals("kanji_meaning", relearningSession.taskType);
+    }
+
+    @Test
+    public void randomizedSessionTaskKeysUseDeterministicSeedAcrossTaskTypes() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<RecordsStudyModels.StudyItem> items = Arrays.asList(
+                reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L),
+                reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L),
+                reviewItem("示", RecordsBase.LadderRung.WORD_READING, 0L)
+        );
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("謎", 10), row("裂", 80), row("示", 50));
+
+        List<String> first = scheduler.randomizedSessionTaskKeys(items, rows, 1000L, 0L, null, RecordsSyncModels.Settings.kikuDefaults(), RecordsBase.StudyLadderSettings.defaults(), 42L);
+        List<String> second = scheduler.randomizedSessionTaskKeys(items, rows, 1000L, 0L, null, RecordsSyncModels.Settings.kikuDefaults(), RecordsBase.StudyLadderSettings.defaults(), 42L);
+        List<String> dueSorted = Arrays.asList(
+                BridgeScheduler.sessionTaskKeyForItem(items.get(1)),
+                BridgeScheduler.sessionTaskKeyForItem(items.get(0)),
+                BridgeScheduler.sessionTaskKeyForItem(items.get(2))
+        );
+
+        assertEquals(first, second);
+        assertEquals(3, first.size());
+        assertTrue(first.containsAll(dueSorted));
+        assertNotEquals(dueSorted, first);
+    }
+
+    @Test
+    public void plannedSessionSkipsWrongAnswerRelearningRepeatUntilNextSession() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem failedReview = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("review-token");
+        RecordsStudyModels.StudyItem nextReview = reviewItem("謎", RecordsBase.LadderRung.WORD_READING, 0L);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 80), row("謎", 10));
+        List<String> initialPlan = Arrays.asList(
+                BridgeScheduler.sessionTaskKeyForItem(failedReview),
+                BridgeScheduler.sessionTaskKeyForItem(nextReview)
+        );
+
+        RecordsSchedulerModels.ReviewResult wrong = scheduler.applyReview(
+                failedReview,
+                new RecordsSchedulerModels.ReviewRequest("裂", "review-token", "again", false, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+        RecordsSchedulerModels.StudySession currentSessionNext = scheduler.nextSessionForTaskKeys(
+                Arrays.asList(wrong.item, nextReview),
+                rows,
+                1000L,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults(),
+                initialPlan.subList(1, initialPlan.size())
+        );
+        List<String> nextSessionPlan = scheduler.randomizedSessionTaskKeys(
+                Arrays.asList(wrong.item, nextReview),
+                rows,
+                wrong.item.dueAtMillis,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults(),
+                7L
+        );
+
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, wrong.item.phase);
+        assertTrue(wrong.item.dueAtMillis > 1000L);
+        assertNotNull(currentSessionNext);
+        assertEquals("謎", currentSessionNext.item.kanji);
+        assertTrue(nextSessionPlan.contains(BridgeScheduler.sessionTaskKeyForItem(wrong.item)));
     }
 
     @Test
