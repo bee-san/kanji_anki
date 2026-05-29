@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -16,10 +17,14 @@ class RalphOrchestratorTest(unittest.TestCase):
     def test_remote_screenshot_flags_call_github_renderer_without_mutating_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            project_root = Path(__file__).resolve().parents[2]
+            shutil.copytree(project_root / "scripts" / "prompts", root / "scripts" / "prompts")
             with patch.object(orchestrator.github_screenshots, "run_remote_screenshots") as remote, patch.object(
                 orchestrator, "_run_profile_command"
             ) as profile_command:
-                remote.return_value = {"status": "passed", "run_id": 77, "manifest": str(root / "manifest.json"), "pngs": [str(root / "home.png")]}
+                manifest_path = root / "manifest.json"
+                manifest_path.write_text('{"schema":"ui-manifest-v1","files":[]}', encoding="utf-8")
+                remote.return_value = {"status": "passed", "run_id": 77, "manifest": str(manifest_path), "pngs": [str(root / "home.png")]}
                 profile_command.return_value = {"status": "passed"}
 
                 with redirect_stdout(StringIO()):
@@ -43,13 +48,19 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertEqual(0, exit_code)
             remote.assert_called_once()
             kwargs = remote.call_args.kwargs
-            self.assertEqual(root, kwargs["repo_root"])
+            self.assertEqual(root.resolve(), kwargs["repo_root"])
             self.assertEqual("android-screenshots.yml", kwargs["workflow"])
             self.assertEqual("android-screenshots", kwargs["artifact"])
             self.assertEqual("home", kwargs["screenshot_route"])
             self.assertFalse(kwargs["push_pr_branch"])
             self.assertTrue(kwargs["require_remote_screenshots"])
             self.assertEqual(2, profile_command.call_count)
+            design_prompt = profile_command.call_args_list[0].args[1]
+            button_prompt = profile_command.call_args_list[1].args[1]
+            self.assertIn("Ralph's independent Kani design critic", design_prompt)
+            self.assertIn('"schema":"ui-manifest-v1"', design_prompt)
+            self.assertIn("Ralph's Kani button-contract reviewer", button_prompt)
+            self.assertIn('"schema": "button-contract-v1"', button_prompt)
 
     def test_pending_remote_visual_status_is_not_accepted_at_top_level(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

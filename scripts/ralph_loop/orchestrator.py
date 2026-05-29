@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Sequence, cast
 
 from scripts.ralph_loop import github_screenshots
+from scripts.ralph_loop import prompts
 
 
 def positive_int(value: str) -> int:
@@ -63,10 +64,42 @@ def _run_profile_command(template: str, prompt: str, repo_root: Path) -> dict[st
     return {"status": status, "returncode": process.returncode, "stdout": process.stdout, "stderr": process.stderr}
 
 
-def _remote_visual_prompt(result: dict[str, object]) -> str:
-    return (
-        "Inspect the Kani remote Android screenshot artifact. Return JSON only with visual/status findings.\n\n"
-        + json.dumps(result, indent=2, sort_keys=True)
+def _read_json_file_or_default(path: Path | None, default: dict[str, object]) -> str:
+    if path is None or not path.exists():
+        return json.dumps(default, indent=2, sort_keys=True)
+    return path.read_text(encoding="utf-8")
+
+
+def _path_from_result(result: dict[str, object], key: str) -> Path | None:
+    value = result.get(key)
+    if isinstance(value, str) and value:
+        return Path(value)
+    return None
+
+
+def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
+    manifest_json = _read_json_file_or_default(
+        _path_from_result(result, "manifest"),
+        {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
+    )
+    return prompts.load_project_prompt(repo_root, "ralph_design_critic.md").render(
+        screenshots_json=json.dumps(result, indent=2, sort_keys=True),
+        manifest_json=manifest_json,
+    )
+
+
+def _button_contract_prompt(result: dict[str, object], repo_root: Path, run_dir: Path) -> str:
+    manifest_json = _read_json_file_or_default(
+        _path_from_result(result, "manifest"),
+        {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
+    )
+    button_contract_json = _read_json_file_or_default(
+        run_dir / "button-contract.json",
+        {"schema": "button-contract-v1", "rows": [], "status": "not_found"},
+    )
+    return prompts.load_project_prompt(repo_root, "ralph_button_contract_reviewer.md").render(
+        manifest_json=manifest_json,
+        button_contract_json=button_contract_json,
     )
 
 
@@ -106,10 +139,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     summary["remote_visual_context"] = str(context_path)
 
     if remote_result["status"] == "passed":
-        prompt = _remote_visual_prompt(remote_result)
         summary["profile_reviews"] = {
-            "design": _run_profile_command(args.critic_cmd, prompt, repo_root),
-            "button_qa": _run_profile_command(args.button_cmd, prompt, repo_root),
+            "design": _run_profile_command(args.critic_cmd, _remote_visual_prompt(remote_result, repo_root), repo_root),
+            "button_qa": _run_profile_command(args.button_cmd, _button_contract_prompt(remote_result, repo_root, run_dir), repo_root),
         }
 
     return summary
