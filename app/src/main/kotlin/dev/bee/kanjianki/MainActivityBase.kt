@@ -387,6 +387,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val NAV_SETTINGS_ROUTE = "settings"
         const val LABEL_BACK_HOME = "Back home"
         const val LABEL_MEANING = "Meaning"
+        const val LABEL_FAIL = "Fail"
         const val LABEL_PASS = "Pass"
         const val LABEL_PRACTICE = "Practice"
         const val LABEL_SIMILAR_KANJI = "Similar kanji"

@@ -179,6 +179,7 @@ private fun MeaningChoiceInsetPanel(
                     MeaningChoiceResultActionBar(
                         status = result.status,
                         statusColor = result.statusColor,
+                        actionLabel = result.actionLabel,
                         onNext = { model.onChoice.onChoice(selectedChoice) },
                     )
                 }

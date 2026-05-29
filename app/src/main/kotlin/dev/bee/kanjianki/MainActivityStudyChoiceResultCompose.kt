@@ -2,15 +2,9 @@
 
 package dev.bee.kanjianki
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -21,13 +15,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val StudyChoiceResultPrimary = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-private val StudyChoiceResultPrimaryBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-
 @Composable
 internal fun MeaningChoiceResultActionBar(
     status: String,
     statusColor: Int,
+    actionLabel: String,
     onNext: () -> Unit,
 ) {
     Column(
@@ -44,26 +36,11 @@ internal fun MeaningChoiceResultActionBar(
             lineHeight = 18.sp,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
         )
-        Button(
+        StudyPrimaryActionButton(
+            label = actionLabel,
             onClick = onNext,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 62.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = StudyChoiceResultPrimary,
-                contentColor = Color.White
-            ),
-            border = BorderStroke(1.dp, StudyChoiceResultPrimaryBorder),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-        ) {
-            Text(
-                text = "Next",
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
-        }
+        )
     }
 }
