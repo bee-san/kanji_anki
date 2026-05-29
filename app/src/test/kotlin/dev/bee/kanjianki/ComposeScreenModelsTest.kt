@@ -1099,7 +1099,7 @@ class ComposeScreenModelsTest {
             strokeColor = STATS_TEAL_COLOR,
         )
         val section = StatsCardModel(
-            title = "Weakness Burn-Down",
+            title = "Weak kanji trend",
             summary = "3 weak kanji improved",
             body = "Average weakness fell.",
             lines = listOf(line),
@@ -1131,7 +1131,7 @@ class ComposeScreenModelsTest {
         assertEquals(18, verdict.titleSizeSp)
         assertEquals(25, verdict.summarySizeSp)
         assertEquals(15, verdict.bodySizeSp)
-        assertEquals("Weakness Burn-Down", section.title)
+        assertEquals("Weak kanji trend", section.title)
         assertEquals("3 weak kanji improved", section.summary)
         assertEquals("Average weakness fell.", section.body)
         assertEquals(listOf(line), section.lines)

@@ -15,7 +15,7 @@ object StatsTextCopy {
 
     @JvmStatic
     fun verdictTitle(working: Boolean): String {
-        return if (working) "Kani is working for you" else "Kani is not currently working for you"
+        return if (working) "Kani is working for you" else "Waiting for Kani evidence"
     }
 
     @JvmStatic
@@ -30,7 +30,7 @@ object StatsTextCopy {
         totalActiveItems: Int,
     ): String {
         if (!hasStats) {
-            return "No Kani evidence is available yet. Study weak kanji, then sync AnkiDroid so this page can compare before and after."
+            return "Study in Kani, then sync AnkiDroid to unlock trends."
         }
         if (working) {
             return workingVerdictBody(
@@ -43,9 +43,9 @@ object StatsTextCopy {
         if (hasLadder) {
             return "Kani is tracking " +
                 StudyTextCopy.countText(totalActiveItems, "active kanji", "active kanji") +
-                ", but no weakness burn-down or mature Anki support conversion has landed yet. Study due reviews, then sync AnkiDroid."
+                ". Trends appear after reviews and sync."
         }
-        return "No before-and-after evidence yet. Do Kani reviews, then sync AnkiDroid so this page can compare weak kanji and mature support."
+        return "Do Kani reviews, then sync AnkiDroid to compare before and after."
     }
 
     @JvmStatic
@@ -58,33 +58,33 @@ object StatsTextCopy {
         ladderDemotionFailStreak: Int,
     ): String {
         if (totalActiveItems == 0) {
-            return "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder."
+            return "No active ladder items yet. Sync or study weak kanji to fill the ladder."
         }
         var body = StudyTextCopy.countText(
             promotionReadyCount,
-            "FSRS-mature review item",
-            "FSRS-mature review items",
+            "ready to climb",
+            "ready to climb",
         ) +
             " · " +
             StudyTextCopy.countText(
                 demotionRiskCount,
-                "demotion-risk review item",
-                "demotion-risk review items",
+                "at risk",
+                "at risk",
             )
         if (demotionReadyCount > 0) {
             body += " · " +
                 StudyTextCopy.countText(
                     demotionReadyCount,
-                    "at the demotion threshold",
-                    "at the demotion threshold",
+                    "ready to fall",
+                    "ready to fall",
                 )
         }
         return body +
-            ". Thresholds: climb when FSRS schedules more than " +
+            ". Rules: climb after more than " +
             ladderPromotionIntervalDays +
-            " days; demote after " +
+            " days; fall after " +
             ladderDemotionFailStreak +
-            " real due-review fails."
+            " misses."
     }
 
     @JvmStatic
@@ -112,13 +112,13 @@ object StatsTextCopy {
         averageAfterWeakness: Double,
     ): String {
         if (improvedCount == 0) {
-            return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync."
+            return "Weakness trends appear after Kani reviews and a successful AnkiDroid sync."
         }
         return "Average weakness: " +
             formatWeakness(averageBeforeWeakness) +
             " -> " +
             formatWeakness(averageAfterWeakness) +
-            " after Kani practice."
+            "."
     }
 
     @JvmStatic
@@ -153,12 +153,12 @@ object StatsTextCopy {
     @JvmStatic
     fun notHelpingBody(noImpactEvidence: Boolean, hasNotHelpingRows: Boolean): String {
         if (noImpactEvidence) {
-            return "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after."
+            return "Review in Kani, then sync AnkiDroid to compare before and after."
         }
         if (!hasNotHelpingRows) {
-            return "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence."
+            return "No kanji need attention right now."
         }
-        return "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here."
+        return "Shown only after enough Kani reviews and synced Anki evidence."
     }
 
     @JvmStatic

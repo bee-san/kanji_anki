@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -79,7 +78,7 @@ fun StatsScreen(model: StatsScreenModel, modifier: Modifier = Modifier) {
 private fun StatsCard(model: StatsCardModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = KaniUiTokens.PanelShape,
         color = ComposeColor(model.fillColor),
         border = BorderStroke(1.dp, ComposeColor(model.strokeColor))
     ) {
