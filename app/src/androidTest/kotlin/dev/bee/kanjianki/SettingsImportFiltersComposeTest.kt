@@ -1,5 +1,8 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -10,8 +13,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -21,64 +26,125 @@ class SettingsImportFiltersComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun rendersFieldsPresetsAndWiresActions() {
-        var presetApplied = false
-        var saved = false
-        var savedBrowserQuery = ""
-        val state = SettingsImportFiltersState(
-            activeCards = false,
-            suspendedCards = true,
-            taggedCards = false,
-            weakCards = false,
-            browserQueryCards = false,
-            browserQuery = "",
-            tags = "",
-            difficulty = "7.5",
-            lapses = "3",
-            minMatching = "2"
-        )
+    fun freshSettingsRenderBrowserQueryUncheckedAndEmpty() {
+        val state = freshState()
 
-        composeRule.setContent {
-            SettingsImportFiltersPanel(
-                model = SettingsImportFiltersPanelModel(
-                    title = SettingsTextCopy.importFiltersTitle(),
-                    summary = "Suspended cards",
-                    body = SettingsTextCopy.importFiltersBody(),
-                    presetsTitle = SettingsTextCopy.presetsTitle(),
-                    presets = listOf(
-                        SettingsImportPresetButtonModel("Leech tag", SettingsImportFilterAction { presetApplied = true })
-                    ),
-                    state = state,
-                    activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
-                    suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
-                    taggedCardsLabel = SettingsTextCopy.taggedCardsLabel(),
-                    weakCardsLabel = SettingsTextCopy.weakCardsLabel(),
-                    browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
-                    browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
-                    browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
-                    tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
-                    tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
-                    difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),
-                    lapsesLabel = SettingsTextCopy.lapsesLabel(),
-                    minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
-                    saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-                    onSave = SettingsImportFilterAction {
-                        savedBrowserQuery = state.browserQuery
-                        saved = true
-                    }
-                )
-            )
-        }
+        render(state = state)
 
         composeRule.onNodeWithText(SettingsTextCopy.importFiltersTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.presetsTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.ankiBrowserQueryLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.ankiBrowserQueryHint()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.ankiBrowserQueryHelperText()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.minimumMatchingCardsLabel()).assertIsDisplayed()
         composeRule.onNodeWithContentDescription(SettingsTextCopy.activeCardsLabel()).assertIsOff()
         composeRule.onNodeWithContentDescription(SettingsTextCopy.suspendedCardsLabel()).assertIsOn()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).assertIsOff()
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).assertTextEquals("")
+    }
+
+    @Test
+    fun blankBrowserQueryValidationBlocksSaveWhenChecked() {
+        var saved = false
+        var validationMessage = ""
+        val state = freshState(suspendedCards = false)
+
+        render(
+            state = state,
+            onSave = {
+                if (state.browserQueryCards && state.browserQuery.trim().isEmpty()) {
+                    validationMessage = SettingsTextCopy.browserQueryRequiredToast()
+                } else {
+                    saved = true
+                }
+            }
+        )
+
         composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).performClick()
-        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).assertIsOn()
-        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).performTextReplacement("deck:Kiku")
+        composeRule.onNodeWithText(SettingsTextCopy.saveImportFiltersLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(SettingsTextCopy.browserQueryRequiredToast(), validationMessage)
+            assertFalse(saved)
+        }
+    }
+
+    @Test
+    fun nonblankBrowserQueryCanBeSaved() {
+        var saved = false
+        var savedBrowserQuery = ""
+        val state = freshState(suspendedCards = false)
+
+        render(
+            state = state,
+            onSave = {
+                savedBrowserQuery = state.browserQuery
+                saved = true
+            }
+        )
+
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).performClick()
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).performTextReplacement("deck:Kiku tag:kani")
+        composeRule.onNodeWithText(SettingsTextCopy.saveImportFiltersLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(saved)
+            assertTrue(state.browserQueryCards)
+            assertEquals("deck:Kiku tag:kani", savedBrowserQuery)
+        }
+    }
+
+    @Test
+    fun turningOffBrowserQueryPreservesTypedText() {
+        val state = freshState(browserQueryCards = true, browserQuery = "deck:Kiku tag:kani")
+
+        render(state = state)
+
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertFalse(state.browserQueryCards)
+            assertEquals("deck:Kiku tag:kani", state.browserQuery)
+        }
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).assertTextEquals("deck:Kiku tag:kani")
+    }
+
+    @Test
+    fun summaryUsesQueryPillWithoutPrivateBrowserQuery() {
+        render(
+            state = freshState(browserQueryCards = true, browserQuery = "deck:Private tag:secret"),
+            summary = "query; 2 matching cards per kanji"
+        )
+
+        composeRule.onNodeWithText("query; 2 matching cards per kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("deck:Private tag:secret").assertDoesNotExist()
+    }
+
+    @Test
+    fun longBrowserQueryFitsNarrowPanel() {
+        val longQuery = "deck:Japanese tag:kani (rated:7:1 OR prop:cdn:d>20) -tag:private source:very-long-custom-import-filter"
+
+        render(
+            state = freshState(browserQueryCards = true, browserQuery = longQuery),
+            widthDp = 320
+        )
+
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.saveImportFiltersLabel()).assertIsDisplayed()
+    }
+
+    @Test
+    fun presetAndOtherFieldsStillWireActions() {
+        var presetApplied = false
+        var saved = false
+        val state = freshState(difficulty = "7.5", lapses = "3", minMatching = "2")
+
+        render(
+            state = state,
+            presets = listOf(SettingsImportPresetButtonModel("Leech tag", SettingsImportFilterAction { presetApplied = true })),
+            onSave = { saved = true }
+        )
+
         composeRule.onNodeWithTag(SettingsImportFiltersTestTags.TAGS_INPUT).performTextReplacement("leeches, custom")
         composeRule.onNodeWithTag(SettingsImportFiltersTestTags.DIFFICULTY_INPUT).assertTextEquals("7.5")
         composeRule.onNodeWithText("Leech tag").performClick()
@@ -87,9 +153,76 @@ class SettingsImportFiltersComposeTest {
         composeRule.runOnIdle {
             assertTrue(presetApplied)
             assertTrue(saved)
-            assertTrue(state.browserQueryCards)
-            assertEquals("deck:Kiku", savedBrowserQuery)
             assertEquals("leeches, custom", state.tags)
         }
+    }
+
+    private fun render(
+        state: SettingsImportFiltersState,
+        summary: String = "Suspended cards",
+        widthDp: Int? = null,
+        presets: List<SettingsImportPresetButtonModel> = emptyList(),
+        onSave: () -> Unit = {},
+    ) {
+        composeRule.setContent {
+            val content = @androidx.compose.runtime.Composable {
+                SettingsImportFiltersPanel(
+                    model = SettingsImportFiltersPanelModel(
+                        title = SettingsTextCopy.importFiltersTitle(),
+                        summary = summary,
+                        body = SettingsTextCopy.importFiltersBody(),
+                        presetsTitle = SettingsTextCopy.presetsTitle(),
+                        presets = presets,
+                        state = state,
+                        activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
+                        suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
+                        taggedCardsLabel = SettingsTextCopy.taggedCardsLabel(),
+                        weakCardsLabel = SettingsTextCopy.weakCardsLabel(),
+                        browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
+                        browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
+                        browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
+                        browserQueryHelperText = SettingsTextCopy.ankiBrowserQueryHelperText(),
+                        tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
+                        tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
+                        difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),
+                        lapsesLabel = SettingsTextCopy.lapsesLabel(),
+                        minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
+                        saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
+                        onSave = SettingsImportFilterAction { onSave() }
+                    )
+                )
+            }
+            if (widthDp == null) {
+                content()
+            } else {
+                Box(modifier = Modifier.width(widthDp.dp)) { content() }
+            }
+        }
+    }
+
+    private fun freshState(
+        activeCards: Boolean = false,
+        suspendedCards: Boolean = true,
+        taggedCards: Boolean = false,
+        weakCards: Boolean = false,
+        browserQueryCards: Boolean = false,
+        browserQuery: String = "",
+        tags: String = "",
+        difficulty: String = "7.5",
+        lapses: String = "3",
+        minMatching: String = "2",
+    ): SettingsImportFiltersState {
+        return SettingsImportFiltersState(
+            activeCards = activeCards,
+            suspendedCards = suspendedCards,
+            taggedCards = taggedCards,
+            weakCards = weakCards,
+            browserQueryCards = browserQueryCards,
+            browserQuery = browserQuery,
+            tags = tags,
+            difficulty = difficulty,
+            lapses = lapses,
+            minMatching = minMatching
+        )
     }
 }

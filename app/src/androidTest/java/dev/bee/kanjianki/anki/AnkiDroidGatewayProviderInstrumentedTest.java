@@ -430,6 +430,78 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    public void browserQueryProviderContractMatchesActiveNoteWithNoteTypeConjunction() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_active"));
+
+        assertTrue(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractMatchesSuspendedNoteWithParenthesizedQuery() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_suspended"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        RecordsSyncModels.Card suspended = cardFor(snapshot, 2L);
+        assertTrue(suspended.suspended);
+        assertTrue(suspended.browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractLeavesUnmatchedNotesUnmarked() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_unmatched"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractFiltersArchivedMatchesOut() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_archived"));
+
+        assertNull(cardOrNull(snapshot, 3L));
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(2, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractIgnoresOtherNoteTypes() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_other_type"));
+
+        assertFalse(cardFor(snapshot, 1L).browserQueryMatched);
+        assertFalse(cardFor(snapshot, 2L).browserQueryMatched);
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryProviderContractMapsInvalidQueryToConfigError() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        try {
+            gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_invalid"));
+            fail("Expected invalid browser query failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertEquals("AnkiDroid could not run the browser query. Check the query in Import filters.", error.getMessage());
+        }
+        assertEquals(1, providerInt("browserQueryQueries"));
+    }
+
+    @Test
     public void browserQueryMarksMatchingActiveCardForImport() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         RecordsSyncModels.Settings settings = browserQueryOnlySettings();
@@ -448,15 +520,17 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    public void nullBrowserQueryCursorLeavesCardsUnmarkedWithoutFailingRead() throws Exception {
+    public void nullBrowserQueryCursorIsPermanentConfigFailure() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "nullBrowserQueryCursor", null, null);
 
-        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
-
-        assertEquals(2, snapshot.cards.size());
-        assertFalse(snapshot.cards.get(0).browserQueryMatched);
-        assertFalse(snapshot.cards.get(1).browserQueryMatched);
+        try {
+            gateway.readCollection(browserQueryOnlySettings());
+            fail("Expected browser query cursor failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertEquals("AnkiDroid could not run the browser query. Check the query in Import filters.", error.getMessage());
+        }
     }
 
     @Test
@@ -490,16 +564,29 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    public void browserQueryRereadFailureDoesNotFailTheCollectionRead() throws Exception {
+    public void browserQueryRereadFailureIsPermanentConfigFailure() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "browserQueryMatchesMissingNote", null, null);
         context.getContentResolver().call(providerUri(), "failBrowserQueryReread", null, null);
 
-        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+        try {
+            gateway.readCollection(browserQueryOnlySettings());
+            fail("Expected browser query re-read failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertEquals("AnkiDroid could not run the browser query. Check the query in Import filters.", error.getMessage());
+            assertEquals(2, providerInt("browserQueryQueries"));
+        }
+    }
 
-        assertEquals(2, snapshot.notes.size());
-        assertEquals(2, snapshot.cards.size());
-        assertEquals(2, providerInt("browserQueryQueries"));
+    @Test
+    public void disabledAndBlankBrowserQuerySettingsSkipBrowserQuerySearch() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        gateway.readCollection(browserQuerySettings(false, "tag:kani"));
+        gateway.readCollection(browserQuerySettings(true, "   "));
+
+        assertEquals(0, providerInt("browserQueryQueries"));
     }
 
     @Test
@@ -765,6 +852,23 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         return null;
     }
 
+    private RecordsSyncModels.Card cardFor(RecordsSyncModels.CollectionSnapshot snapshot, long noteId) {
+        RecordsSyncModels.Card card = cardOrNull(snapshot, noteId);
+        if (card == null) {
+            fail("Expected card for note " + noteId);
+        }
+        return card;
+    }
+
+    private RecordsSyncModels.Card cardOrNull(RecordsSyncModels.CollectionSnapshot snapshot, long noteId) {
+        for (RecordsSyncModels.Card card : snapshot.cards) {
+            if (card.noteId == noteId) {
+                return card;
+            }
+        }
+        return null;
+    }
+
     private Uri providerUri() {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
     }
@@ -868,6 +972,10 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     private RecordsSyncModels.Settings browserQueryOnlySettings() {
+        return browserQuerySettings(true, "tag:kani");
+    }
+
+    private RecordsSyncModels.Settings browserQuerySettings(boolean enabled, String query) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         return new RecordsSyncModels.Settings(
                 defaults.modelName,
@@ -895,8 +1003,8 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
                 defaults.importWeakFsrsDifficultyThreshold,
                 defaults.importWeakLapsesThreshold,
                 defaults.importMinMatchingCardsPerKanji,
-                true,
-                "tag:kani"
+                enabled,
+                query
         );
     }
 

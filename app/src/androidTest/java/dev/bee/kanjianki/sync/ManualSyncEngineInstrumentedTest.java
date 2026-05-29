@@ -125,6 +125,113 @@ public final class ManualSyncEngineInstrumentedTest {
     }
 
     @Test
+    public void browserQueryActiveCardsCreateRowsWithoutSuspendedArchive() {
+        RecordsSyncModels.Settings settings = importSettings(false, false, false, "", false, 1, true, "deck:Mining");
+        RecordsSyncModels.Note matched = note(1L, "裂ける", "さける", "split", "裂ける音。");
+        RecordsSyncModels.Note unmatched = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Arrays.asList(matched, unmatched),
+                Arrays.asList(
+                        browserQueryCard(10L, 1L, false),
+                        new RecordsSyncModels.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 12, 0, false)
+                )
+        );
+        RecordingGateway gateway = new RecordingGateway(snapshot, new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"));
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.success);
+        assertTrue(store.suspendedImports().isEmpty());
+        assertEquals(0, store.latestSync().suspendedCards);
+        assertTrue(gateway.selectedSuspendedImports.isEmpty());
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
+        assertEquals(1, rows.size());
+        RecordsImportModels.DashboardRow row = rows.get(0);
+        assertEquals("裂", row.kanji);
+        assertEquals(1, row.activeExampleCount);
+        assertEquals(0, row.suspendedExampleCount);
+        assertEquals("browser_query", row.examples.get(0).sourceType);
+    }
+
+    @Test
+    public void browserQuerySuspendedCardsArchiveWhenSuspendedFilterOff() {
+        RecordsSyncModels.Settings settings = importSettings(false, false, false, "", false, 1, true, "is:suspended deck:Mining");
+        RecordsSyncModels.Note matched = note(1L, "謎", "なぞ", "mystery", "謎を見た。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Collections.singletonList(matched),
+                Collections.singletonList(browserQueryCard(10L, 1L, true))
+        );
+        RecordingGateway gateway = new RecordingGateway(snapshot, new AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done"));
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.success);
+        assertEquals(1, store.latestSync().suspendedCards);
+        assertEquals(1, store.suspendedImports().size());
+        assertEquals(1, gateway.selectedSuspendedImports.size());
+        assertEquals("謎", gateway.selectedSuspendedImports.get(0).kanji);
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
+        assertEquals(1, rows.size());
+        assertEquals(1, rows.get(0).suspendedExampleCount);
+        assertEquals("suspended", rows.get(0).examples.get(0).sourceType);
+    }
+
+    @Test
+    public void suspendedSourceAndBrowserQuerySourceDedupeSameCard() {
+        RecordsSyncModels.Settings settings = importSettings(false, true, false, "", false, 1, true, "is:suspended deck:Mining");
+        RecordsSyncModels.Note matched = note(1L, "謎", "なぞ", "mystery", "謎を見た。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Collections.singletonList(matched),
+                Collections.singletonList(browserQueryCard(10L, 1L, true))
+        );
+        RecordingGateway gateway = new RecordingGateway(snapshot, new AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done"));
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.success);
+        assertEquals(1, gateway.selectedSuspendedImports.size());
+        assertEquals(1, gateway.selectedSuspendedImports.get(0).sources.size());
+        RecordsImportModels.SuspendedSource source = gateway.selectedSuspendedImports.get(0).sources.get(0);
+        assertEquals(10L, source.cardId);
+        assertEquals("suspended", source.sourceType);
+        assertTrue(source.ruleTypes.contains("suspended"));
+        assertTrue(source.ruleTypes.contains("browser_query"));
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
+        assertEquals(1, rows.size());
+        assertEquals(1, rows.get(0).examples.size());
+    }
+
+    @Test
+    public void browserQueryRowsStillUseAdaptiveWorkload() {
+        RecordsSyncModels.Settings settings = importSettings(false, false, false, "", false, 1, true, "deck:Mining");
+        store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
+        store.saveAdaptiveLoadWorkPercent(0);
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Arrays.asList(
+                        note(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。"),
+                        note(2L, "謎", "なぞ", "mystery", "謎を見た。"),
+                        note(3L, "裂ける", "さける", "split", "裂ける音。")
+                ),
+                Arrays.asList(
+                        browserQueryCard(10L, 1L, false),
+                        browserQueryCard(20L, 2L, false),
+                        browserQueryCard(30L, 3L, false)
+                )
+        );
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new FakeGateway(snapshot, new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
+                settings
+        ).run();
+
+        assertTrue(result.success);
+        assertTrue(result.adaptiveSummary.contains("Very little"));
+        assertEquals(1, activeStudyItemCount(store.studyItems()));
+    }
+
+    @Test
     public void importFiltersCanCreateRowsFromTaggedActiveCardsWithoutArchivingExcludedSuspendedCards() {
         RecordsSyncModels.Settings settings = importSettings(false, false, true, "focus", false, 1);
         RecordsSyncModels.Note taggedActive = note(1L, "裂ける", "さける", "split", "裂ける音。", "focus");
@@ -288,6 +395,22 @@ public final class ManualSyncEngineInstrumentedTest {
         );
     }
 
+    private RecordsSyncModels.Card browserQueryCard(long cardId, long noteId, boolean suspended) {
+        return new RecordsSyncModels.Card(
+                cardId,
+                noteId,
+                0,
+                "Kiku",
+                suspended ? -1 : 2,
+                suspended ? 0 : 2,
+                0,
+                suspended ? 0 : 3,
+                12,
+                0,
+                suspended
+        ).withBrowserQueryMatched(true);
+    }
+
     private int activeStudyItemCount(List<RecordsStudyModels.StudyItem> items) {
         int count = 0;
         for (RecordsStudyModels.StudyItem item : items) {
@@ -326,6 +449,19 @@ public final class ManualSyncEngineInstrumentedTest {
             boolean weak,
             int minMatching
     ) {
+        return importSettings(active, suspended, tagged, tags, weak, minMatching, false, "");
+    }
+
+    private RecordsSyncModels.Settings importSettings(
+            boolean active,
+            boolean suspended,
+            boolean tagged,
+            String tags,
+            boolean weak,
+            int minMatching,
+            boolean browserQueryCards,
+            String browserQuery
+    ) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         return new RecordsSyncModels.Settings(
                 defaults.modelName,
@@ -352,7 +488,9 @@ public final class ManualSyncEngineInstrumentedTest {
                 weak,
                 defaults.importWeakFsrsDifficultyThreshold,
                 defaults.importWeakLapsesThreshold,
-                minMatching
+                minMatching,
+                browserQueryCards,
+                browserQuery
         );
     }
 

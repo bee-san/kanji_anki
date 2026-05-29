@@ -33,6 +33,10 @@ class ProviderNotePolicy private constructor() {
         }
 
         @JvmStatic
-        fun modelSearch(modelName: String): String = "$NOTE_MODEL_QUERY_PREFIX$modelName\""
+        fun modelSearch(modelName: String): String = "$NOTE_MODEL_QUERY_PREFIX${escapeQuotedSearchValue(modelName)}\""
+
+        private fun escapeQuotedSearchValue(value: String): String {
+            return value.replace("\\", "\\\\").replace("\"", "\\\"")
+        }
     }
 }
