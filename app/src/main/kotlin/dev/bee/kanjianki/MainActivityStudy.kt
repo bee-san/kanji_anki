@@ -60,6 +60,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun renderStudy() {
+        cancelPendingHomeRouteLoads()
         studyQueueCoordinator.renderStudy()
     }
 
@@ -110,6 +111,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun renderStudyForKanji(kanji: String?) {
+        cancelPendingHomeRouteLoads()
         studyQueueCoordinator.renderStudyForKanji(kanji)
     }
 

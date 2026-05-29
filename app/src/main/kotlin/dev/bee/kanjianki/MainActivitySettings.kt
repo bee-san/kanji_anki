@@ -15,6 +15,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderUpdate() {
+        cancelPendingHomeRouteLoads()
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
@@ -42,11 +43,15 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         } else {
             0
         }
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
-            SettingsScreen(
-                MainActivitySettingsScreenCoordinator(this).settingsScreenModel()
-            )
-        }
+        renderAsyncHomeRoute(
+            loadingTitle = MainActivityBase.NAV_SETTINGS,
+            load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
+            render = { model ->
+                composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
+                    SettingsScreen(model)
+                }
+            },
+        )
     }
 
     fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
