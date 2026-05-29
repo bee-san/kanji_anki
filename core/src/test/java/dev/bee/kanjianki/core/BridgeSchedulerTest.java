@@ -891,6 +891,18 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void dueCountersDoNotCountSuppressedSiblingsWithoutRows() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem word = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        List<RecordsStudyModels.StudyItem> suppressed = scheduler.applySuppression(Arrays.asList(kanji, word));
+
+        assertEquals(1, scheduler.dueCount(suppressed, 1000L));
+    }
+
+    @Test
     public void immaturePromotedSiblingHidesLowerFamilyWithoutPermanentSuppression() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem immatureWord = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
