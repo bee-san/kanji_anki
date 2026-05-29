@@ -10,13 +10,15 @@ import java.util.Locale
 
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
+        val previewRowsByMode = newCardSortPreviewRowsByMode()
         return SettingsNewCardSortPanelModel(
             title = SettingsTextCopy.newCardSortTitle(),
             body = SettingsTextCopy.newCardSortBody(),
             initialMode = current.newCardSortMode,
             options = newCardSortOptions(),
             saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
-            previewRowsByMode = newCardSortPreviewRowsByMode(),
+            previewRowsByMode = previewRowsByMode,
+            previewWarningsByMode = newCardSortPreviewWarningsByMode(previewRowsByMode),
             onSave = SettingsNewCardSortSaver { mode -> saveNewCardSort(mode) }
         )
     }
@@ -50,6 +52,24 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
                 .take(PREVIEW_LIMIT)
                 .map { row -> previewRow(row, option.mode) }
         }
+    }
+
+    private fun newCardSortPreviewWarningsByMode(
+        previewRowsByMode: Map<String, List<SettingsNewCardSortPreviewRowModel>>,
+    ): Map<String, String> {
+        if (previewRowsByMode.isEmpty()) {
+            return emptyMap()
+        }
+        val warnings = LinkedHashMap<String, String>()
+        for ((mode, rows) in previewRowsByMode) {
+            val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
+                activity.store.hasSimilarLocalPair(first, second)
+            }
+            if (examples.isNotEmpty()) {
+                warnings[mode] = SettingsTextCopy.newCardSortConfusablePreviewWarning(examples)
+            }
+        }
+        return warnings
     }
 
     private fun previewRow(

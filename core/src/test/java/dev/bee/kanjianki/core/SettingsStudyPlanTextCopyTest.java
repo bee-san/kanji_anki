@@ -27,6 +27,14 @@ public final class SettingsStudyPlanTextCopyTest {
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
         assertEquals("Choose how unseen cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody());
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
+        assertEquals(
+                "Heads up: visually similar kanji appear close together in this preview: 人/入, 土/士.",
+                SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(java.util.Arrays.asList("人/入", "土/士"))
+        );
+        assertEquals(
+                "Heads up: visually similar kanji appear close together in this preview.",
+                SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(java.util.Collections.emptyList())
+        );
         assertEquals("Deck limits", SettingsStudyPlanTextCopy.deckLimitsTitle());
         assertEquals("Set the maximum new cards Kani admits each day, matching Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody());
         assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel());

@@ -309,6 +309,9 @@ object SettingsTextCopy {
     fun saveNewCardSortLabel(): String = SettingsStudyPlanTextCopy.saveNewCardSortLabel()
 
     @JvmStatic
+    fun newCardSortConfusablePreviewWarning(examples: List<String>): String = SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(examples)
+
+    @JvmStatic
     fun newCardSortDescription(mode: String?): String = SettingsStudyPlanTextCopy.newCardSortDescription(mode)
 
     @JvmStatic

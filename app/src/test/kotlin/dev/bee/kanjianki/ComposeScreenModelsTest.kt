@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.data.LocalStoreBase
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
@@ -849,6 +850,61 @@ class ComposeScreenModelsTest {
         assertEquals(listOf(riskPreview), model.previewRows(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals(emptyList<SettingsNewCardSortPreviewRowModel>(), model.previewRows("missing"))
         assertEquals(frequencyPreview, frequencyPreview.copy())
+        assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun newCardSortPreviewWarningsFindNearbySimilarPairsWithDeterministicCap() {
+        val rows = listOf(
+            SettingsNewCardSortPreviewRowModel("人", "person", "#1 frequency"),
+            SettingsNewCardSortPreviewRowModel("犬", "dog", "#2 frequency"),
+            SettingsNewCardSortPreviewRowModel("入", "enter", "#3 frequency"),
+            SettingsNewCardSortPreviewRowModel("土", "soil", "#4 frequency"),
+            SettingsNewCardSortPreviewRowModel("士", "samurai", "#5 frequency"),
+            SettingsNewCardSortPreviewRowModel("未", "not yet", "#6 frequency"),
+            SettingsNewCardSortPreviewRowModel("末", "end", "#7 frequency"),
+            SettingsNewCardSortPreviewRowModel("日", "sun", "#8 frequency"),
+            SettingsNewCardSortPreviewRowModel("曰", "say", "#9 frequency"),
+        )
+
+        val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
+            setOf(setOf("人", "入"), setOf("土", "士"), setOf("未", "末"), setOf("日", "曰")).contains(setOf(first, second))
+        }
+
+        assertEquals(listOf("人/入", "土/士", "未/末"), examples)
+    }
+
+    @Test
+    fun newCardSortPreviewWarningsIgnoreDistantAndUnknownPairs() {
+        val rows = listOf(
+            SettingsNewCardSortPreviewRowModel("人", "person", "#1 frequency"),
+            SettingsNewCardSortPreviewRowModel("犬", "dog", "#2 frequency"),
+            SettingsNewCardSortPreviewRowModel("木", "tree", "#3 frequency"),
+            SettingsNewCardSortPreviewRowModel("入", "enter", "#4 frequency"),
+        )
+
+        val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
+            setOf(first, second) == setOf("人", "入")
+        }
+
+        assertEquals(emptyList<String>(), examples)
+    }
+
+    @Test
+    fun newCardSortPreviewWarningTextFollowsSelectedMode() {
+        val warning = SettingsTextCopy.newCardSortConfusablePreviewWarning(listOf("人/入"))
+        val model = SettingsNewCardSortPanelModel(
+            title = "New card order",
+            body = "Choose how Kani admits new problem kanji.",
+            initialMode = RecordsBase.NEW_CARD_SORT_FREQUENCY,
+            options = emptyList(),
+            saveLabel = "Save order",
+            previewWarningsByMode = mapOf(RecordsBase.NEW_CARD_SORT_FREQUENCY to warning),
+            onSave = SettingsNewCardSortSaver {},
+        )
+
+        assertEquals(warning, model.previewWarning(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals(null, model.previewWarning(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals(model, model.copy())
     }
 
