@@ -37,19 +37,14 @@ internal fun KaniPrimaryButton(
     textSizeSp: Int = 17,
     onClick: () -> Unit,
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = minHeightDp.dp),
-        shape = KaniUiTokens.ButtonShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = KaniUiTokens.Primary,
-            contentColor = KaniUiTokens.White
-        )
-    ) {
-        KaniButtonText(label = label, sizeSp = textSizeSp)
-    }
+    KaniActionButton(
+        label = label,
+        primary = true,
+        modifier = modifier,
+        minHeightDp = minHeightDp,
+        textSizeSp = textSizeSp,
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -60,19 +55,53 @@ internal fun KaniOutlinedButton(
     textSizeSp: Int = 16,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = minHeightDp.dp),
-        shape = KaniUiTokens.ButtonShape,
-        border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = KaniUiTokens.White,
-            contentColor = KaniUiTokens.Ink
-        )
-    ) {
-        KaniButtonText(label = label, sizeSp = textSizeSp)
+    KaniActionButton(
+        label = label,
+        primary = false,
+        modifier = modifier,
+        minHeightDp = minHeightDp,
+        textSizeSp = textSizeSp,
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun KaniActionButton(
+    label: String,
+    primary: Boolean,
+    modifier: Modifier,
+    minHeightDp: Int,
+    textSizeSp: Int,
+    onClick: () -> Unit,
+) {
+    val sizedModifier = modifier
+        .fillMaxWidth()
+        .heightIn(min = minHeightDp.dp)
+    if (primary) {
+        Button(
+            onClick = onClick,
+            modifier = sizedModifier,
+            shape = KaniUiTokens.ButtonShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = KaniUiTokens.Primary,
+                contentColor = KaniUiTokens.White
+            )
+        ) {
+            KaniButtonText(label = label, sizeSp = textSizeSp)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = sizedModifier,
+            shape = KaniUiTokens.ButtonShape,
+            border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = KaniUiTokens.White,
+                contentColor = KaniUiTokens.Ink
+            )
+        ) {
+            KaniButtonText(label = label, sizeSp = textSizeSp)
+        }
     }
 }
 
