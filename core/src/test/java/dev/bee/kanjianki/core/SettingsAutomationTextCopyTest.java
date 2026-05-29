@@ -11,7 +11,7 @@ public final class SettingsAutomationTextCopyTest {
         assertEquals("0.4.33", SettingsAutomationTextCopy.versionText("v0.4.33"));
         assertEquals("GitHub updater", SettingsAutomationTextCopy.updatePageTitle());
         assertEquals(
-                "Current version 1.2.3. Checks GitHub Releases, verifies the APK, and asks Android to install it.",
+                "Current version 1.2.3. Checks GitHub Releases and verifies the APK before install.",
                 SettingsAutomationTextCopy.updatePageBody("1.2.3")
         );
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle());
@@ -33,7 +33,7 @@ public final class SettingsAutomationTextCopyTest {
         assertEquals("After first sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"));
         assertEquals("Verified APK ready", SettingsAutomationTextCopy.settingsUpdateSummary(true, false));
         assertEquals("Starts after first successful sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"));
-        assertEquals("Manual sync once, then Kani will keep itself refreshed once per day.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""));
+        assertEquals("Sync once manually; Kani refreshes daily after that.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""));
         assertEquals("Daily Anki sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle());
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel());
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel());

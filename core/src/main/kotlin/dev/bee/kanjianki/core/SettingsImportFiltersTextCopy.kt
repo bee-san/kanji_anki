@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included."
+        return "Suspended cards are the default. Add active, tagged, or weak cards only when needed."
     }
 
     @JvmStatic

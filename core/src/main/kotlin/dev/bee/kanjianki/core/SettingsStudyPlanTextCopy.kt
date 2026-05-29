@@ -8,7 +8,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule."
+        return "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -19,7 +19,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule."
+        return "Manual workload sets today's Kani intake; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -99,7 +99,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority."
+        return "Choose how unseen cards enter study; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -110,7 +110,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule."
+        return "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged."
     }
 
     @JvmStatic

@@ -39,7 +39,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
         return "Current version " + versionName.toString() +
-            ". Checks GitHub Releases, verifies the APK, and asks Android to install it."
+            ". Checks GitHub Releases and verifies the APK before install."
     }
 
     @JvmStatic
@@ -112,7 +112,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Manual sync once, then Kani will keep itself refreshed once per day."
+            return "Sync once manually; Kani refreshes daily after that."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last auto success ", lastSuccessText)
@@ -122,7 +122,7 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled once per local day. Android may batch the exact time."
+                "Scheduled daily; Android may batch the time."
             } else {
                 "Daily background sync is paused."
             }
@@ -161,7 +161,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work."
+        return "Daily nudge for active problem kanji. Android may batch the time."
     }
 
     @JvmStatic
