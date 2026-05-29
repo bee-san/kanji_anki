@@ -23,16 +23,33 @@ class NewCardSortPlanner {
         private const val BALANCED_WEIGHT_INVERSE_FREQUENCY = 0.10
 
         @JvmStatic
+        fun sortedAdmissionRows(
+            rows: List<RecordsImportModels.DashboardRow>,
+            settings: RecordsSyncModels.Settings?,
+        ): List<RecordsImportModels.DashboardRow> = sortedRowsForSettings(rows, settings)
+
+        @JvmStatic
+        fun sortedAdmissionRows(
+            rows: List<RecordsImportModels.DashboardRow>,
+            mode: String?,
+        ): List<RecordsImportModels.DashboardRow> = sortedRowsForMode(rows, mode)
+
+        @JvmStatic
         fun sortedRowsForSettings(
             rows: List<RecordsImportModels.DashboardRow>,
             settings: RecordsSyncModels.Settings?,
+        ): List<RecordsImportModels.DashboardRow> = sortedRowsForMode(rows, settings?.newCardSortMode)
+
+        private fun sortedRowsForMode(
+            rows: List<RecordsImportModels.DashboardRow>,
+            modeArg: String?,
         ): List<RecordsImportModels.DashboardRow> {
-            val mode = settings?.newCardSortMode ?: RecordsBase.DEFAULT_NEW_CARD_SORT_MODE
+            val mode = RecordsSyncModels.Settings.normalizeNewCardSortMode(modeArg)
             if (RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY == mode) {
                 return sortedBalancedRows(rows)
             }
             val out = ArrayList(rows)
-            out.sortWith { left, right -> compareRowsForSettings(left, right, settings) }
+            out.sortWith { left, right -> compareRowsForMode(left, right, mode) }
             return out
         }
 
@@ -41,8 +58,14 @@ class NewCardSortPlanner {
             left: RecordsImportModels.DashboardRow?,
             right: RecordsImportModels.DashboardRow?,
             settings: RecordsSyncModels.Settings?,
+        ): Int = compareRowsForMode(left, right, settings?.newCardSortMode)
+
+        private fun compareRowsForMode(
+            left: RecordsImportModels.DashboardRow?,
+            right: RecordsImportModels.DashboardRow?,
+            modeArg: String?,
         ): Int {
-            val mode = settings?.newCardSortMode ?: RecordsBase.DEFAULT_NEW_CARD_SORT_MODE
+            val mode = RecordsSyncModels.Settings.normalizeNewCardSortMode(modeArg)
             if (RecordsBase.NEW_CARD_SORT_FREQUENCY == mode) {
                 return compareRank(left, right)
             }

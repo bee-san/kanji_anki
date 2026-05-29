@@ -5,9 +5,12 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -103,6 +106,10 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                     }
                 }
             }
+            val previewRows = model.previewRows(selectedMode)
+            if (previewRows.isNotEmpty()) {
+                NewCardSortPreview(rows = previewRows)
+            }
             Button(
                 onClick = { model.onSave.save(selectedMode) },
                 modifier = Modifier
@@ -121,6 +128,50 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = StudySortButtonShape,
+        color = Color(0xFFFFF7FB),
+        border = BorderStroke(1.dp, StudySortButtonBorder),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Next up preview",
+                color = StudySortInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            rows.forEach { row ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = row.kanji,
+                        color = StudySortInk,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = row.primaryMeaning,
+                        color = StudySortInk,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = row.scoreLabel,
+                        color = StudySortMuted,
+                        fontSize = 12.sp,
+                    )
+                }
             }
         }
     }

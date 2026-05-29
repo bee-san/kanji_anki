@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStoreBase
 import androidx.compose.ui.geometry.Rect
@@ -561,6 +562,47 @@ class ComposeScreenModelsTest {
         model.onSave.save(risk.mode)
         assertEquals("retrievability_risk", savedMode)
         assertEquals(frequency, frequency.copy())
+        assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun newCardSortPreviewRowsHideWhenUnavailable() {
+        val model = SettingsNewCardSortPanelModel(
+            title = "New card order",
+            body = "Choose how Kani admits new problem kanji.",
+            initialMode = RecordsBase.NEW_CARD_SORT_FREQUENCY,
+            options = emptyList(),
+            saveLabel = "Save order",
+            previewRowsByMode = emptyMap(),
+            onSave = SettingsNewCardSortSaver {},
+        )
+
+        assertEquals(false, model.hasPreviewRows())
+        assertEquals(emptyList<SettingsNewCardSortPreviewRowModel>(), model.previewRows(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+    }
+
+    @Test
+    fun newCardSortPreviewRowsUseSelectedModeOrder() {
+        val frequencyPreview = SettingsNewCardSortPreviewRowModel("日", "sun", "#1 frequency")
+        val riskPreview = SettingsNewCardSortPreviewRowModel("難", "difficult", "Risk 82%")
+        val model = SettingsNewCardSortPanelModel(
+            title = "New card order",
+            body = "Choose how Kani admits new problem kanji.",
+            initialMode = RecordsBase.NEW_CARD_SORT_FREQUENCY,
+            options = emptyList(),
+            saveLabel = "Save order",
+            previewRowsByMode = mapOf(
+                RecordsBase.NEW_CARD_SORT_FREQUENCY to listOf(frequencyPreview),
+                RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK to listOf(riskPreview),
+            ),
+            onSave = SettingsNewCardSortSaver {},
+        )
+
+        assertEquals(true, model.hasPreviewRows())
+        assertEquals(listOf(frequencyPreview), model.previewRows(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals(listOf(riskPreview), model.previewRows(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals(emptyList<SettingsNewCardSortPreviewRowModel>(), model.previewRows("missing"))
+        assertEquals(frequencyPreview, frequencyPreview.copy())
         assertEquals(model, model.copy())
     }
 
