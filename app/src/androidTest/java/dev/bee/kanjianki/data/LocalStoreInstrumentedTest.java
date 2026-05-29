@@ -1683,6 +1683,26 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testNewPerDayDeckLimitPersistsIntoSyncSettings() {
+        store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, 37);
+        store.close();
+        store = new LocalStore(context);
+
+        RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+
+        assertEquals(37, settings.newPerDay);
+    }
+
+    @Test
+    public void testNewPerDayDeckLimitIsBoundedInSyncSettings() {
+        store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, 2000);
+
+        RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+
+        assertEquals(999, settings.newPerDay);
+    }
+
+    @Test
     public void testLearningStepSettingsAndRepeatsPersist() {
         store.saveLearningStepSettings(new RecordsSchedulerModels.LearningStepSettings(
                 Arrays.asList(2, 15),

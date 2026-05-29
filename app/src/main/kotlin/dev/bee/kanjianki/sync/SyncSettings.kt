@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.sync
 
+import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
@@ -29,6 +30,7 @@ internal object SyncSettings {
     const val IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY = "import_browser_query_cards"
     const val IMPORT_BROWSER_QUERY_SETTING_KEY = "import_browser_query"
     const val NEW_CARD_SORT_MODE_SETTING_KEY = "new_card_sort_mode"
+    const val NEW_PER_DAY_SETTING_KEY = "new_per_day"
 
     private const val ABSENT_INT_SETTING = Int.MIN_VALUE
     private val ABSENT_DOUBLE_SETTING = Double.NaN
@@ -105,6 +107,10 @@ internal object SyncSettings {
         )
         val newCardSortMode = store?.getStringSetting(NEW_CARD_SORT_MODE_SETTING_KEY, defaults.newCardSortMode)
             ?: defaults.newCardSortMode
+        val newPerDay = DeckLimitsSettingsPolicy.normalizeNewPerDay(
+            store?.getIntSetting(NEW_PER_DAY_SETTING_KEY, defaults.newPerDay)
+                ?: defaults.newPerDay
+        )
         return RecordsSyncModels.Settings(
             modelName,
             defaults.templateName,
@@ -119,7 +125,7 @@ internal object SyncSettings {
             minRank,
             maxRank,
             defaults.activeQueueCap,
-            defaults.newPerDay,
+            newPerDay,
             writingTriggerMissDays,
             recognitionPromotionPasses,
             realDueReviewsToMove,

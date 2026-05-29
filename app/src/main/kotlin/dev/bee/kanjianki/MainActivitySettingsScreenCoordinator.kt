@@ -115,6 +115,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     activity.renderSettings(true)
                 },
                 MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
+                MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
                 MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
                 MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
                 activity.learningStepsSettingsPanelModel(),
