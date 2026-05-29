@@ -20,6 +20,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 ## CI And Static Analysis Notes
 
+For the full operator triage checklist, gate map, and release check-name
+maintenance notes, see `docs/ci-sonar-reliability-runbook.md`.
+
 The normal local confidence gate is `./gradlew ciFast`. It runs deterministic
 JVM tests, coverage reports/checks, app unit tests, Android instrumentation
 compilation, lint, and Python asset tests. GitHub's default Android CI splits

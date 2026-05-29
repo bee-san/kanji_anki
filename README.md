@@ -67,6 +67,8 @@ Other product areas:
 ./gradlew :core:test :app:assembleDebug
 ```
 
+For CI and SonarQube triage, see `docs/ci-sonar-reliability-runbook.md`.
+
 Release builds require signing environment variables:
 
 ```bash
