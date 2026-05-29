@@ -29,4 +29,16 @@ public final class HomeSyncConfirmDialogModelTest {
         assertEquals(1, confirmed.get());
         assertEquals(1, dismissed.get());
     }
+
+    @Test
+    public void createAcceptsOnboardingConfirmLabel() {
+        HomeSyncConfirmDialogModel model = HomeSyncConfirmDialogModels.create(
+                "Install AnkiDroid first.",
+                "Install AnkiDroid",
+                () -> {},
+                () -> {}
+        );
+
+        assertEquals("Install AnkiDroid", model.getConfirmLabel());
+    }
 }
