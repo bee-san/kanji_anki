@@ -811,38 +811,18 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionSixteenMigrationRebuildsLadderTablesFromLegacySchedulerState() {
+    public void testVersionSixteenMigrationPreservesLegacySchedulerStateAndClearsSideQueues() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
         try {
             createLegacyV15SchedulerSchema(db);
-            ContentValuesBuilder.insert(db, "study_items")
-                    .put("kanji", "書")
-                    .put("state", "review")
-                    .put("due_at", 1000L)
-                    .put("stability", 2.0)
-                    .put("difficulty", 4.0)
-                    .put("total_reviews", 4)
-                    .put("lapses", 1)
-                    .put("learning_step", 0)
-                    .put("writing_level", 0)
-                    .put("recognition_stage", 2)
-                    .put("consecutive_failed_recognition_days", 2)
-                    .put("last_failed_recognition_day", 900L)
-                    .put("writing_remediation_pending", 1)
-                    .put("suppressed_by_task_type", "word_reading")
-                    .put("suppressed_at", 950L)
-                    .put("mature_interval_days", 30)
-                    .put("answer_signature", "書|書く|かく|write")
-                    .put("typing_meaning_memory", "")
-                    .put("kanji_meaning_memory", "")
-                    .put("font_meaning_memory", "")
-                    .put("word_reading_memory", "")
-                    .put("writing_remediation_memory", "")
-                    .put("active_token", "legacy-token")
-                    .put("created_at", 500L)
-                    .commit();
+            insertLegacyV15StudyItem(db, "書", "review", 2, 1, "word_reading", 950L, "書|書く|かく|write");
+            insertLegacyV15StudyItem(db, "型", "learning", -1, 0, "", 0L, "型|かた|type");
+            insertLegacyV15StudyItem(db, "水", "new", 0, 0, "", 0L, "水|みず|water");
+            insertLegacyV15StudyItem(db, "字", "review", 1, 0, "", 0L, "字|じ|character");
+            insertLegacyV15StudyItem(db, "読", "review", 2, 0, "", 0L, "読|よむ|read");
+            insertLegacyV15StudyItem(db, "語", "review", 3, 0, "", 0L, "語|ご|word");
             ContentValuesBuilder.insert(db, "learning_repeats")
                     .put("kanji", "書")
                     .put("answer_signature", "書|書く|かく|write")
@@ -889,11 +869,100 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
 
-        assertEquals(0, count("study_items"));
+        assertEquals(6, count("study_items"));
         assertEquals(0, count("learning_repeats"));
         assertEquals(0, count("similar_kanji_choice_state"));
         assertEquals(0, count("similar_kanji_repair_queue"));
         assertMigratedStudyColumns();
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "word_reading");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 950L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 30L);
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "write_kanji");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "review");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"型", "型|かた|type"}, "type_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"型", "型|かた|type"}, "new_learning");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"水", "水|みず|water"}, "kanji_meaning");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"字", "字|じ|character"}, "font_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"字", "字|じ|character"}, "review");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"読", "読|よむ|read"}, "word_reading");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"語", "語|ご|word"}, "word_reading");
+    }
+
+    private void insertLegacyV15StudyItem(
+            SQLiteDatabase db,
+            String kanji,
+            String state,
+            int recognitionStage,
+            int writingRemediationPending,
+            String suppressedByTaskType,
+            long suppressedAt,
+            String answerSignature
+    ) {
+        ContentValuesBuilder.insert(db, "study_items")
+                .put("kanji", kanji)
+                .put("state", state)
+                .put("due_at", 1000L)
+                .put("stability", 2.0)
+                .put("difficulty", 4.0)
+                .put("total_reviews", "review".equals(state) ? 4 : 0)
+                .put("lapses", 1)
+                .put("learning_step", 0)
+                .put("writing_level", 0)
+                .put("recognition_stage", recognitionStage)
+                .put("consecutive_failed_recognition_days", 2)
+                .put("last_failed_recognition_day", 900L)
+                .put("writing_remediation_pending", writingRemediationPending)
+                .put("suppressed_by_task_type", suppressedByTaskType)
+                .put("suppressed_at", suppressedAt)
+                .put("mature_interval_days", 30)
+                .put("answer_signature", answerSignature)
+                .put("typing_meaning_memory", "")
+                .put("kanji_meaning_memory", "")
+                .put("font_meaning_memory", "")
+                .put("word_reading_memory", "")
+                .put("writing_remediation_memory", "")
+                .put("active_token", "legacy-token")
+                .put("created_at", 500L)
+                .commit();
+    }
+
+    @Test
+    public void testOldStudyRowsInitializeSiblingSuppressionFieldsAsUnsuppressed() {
+        store.close();
+        context.deleteDatabase("kanji_anki_simple.db");
+        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        try {
+            createLegacyV1Schema(db);
+            ContentValuesBuilder.insert(db, "study_items")
+                    .put("kanji", "水")
+                    .put("state", "review")
+                    .put("due_at", 2000L)
+                    .put("stability", 3.0)
+                    .put("difficulty", 5.0)
+                    .put("total_reviews", 7)
+                    .put("lapses", 0)
+                    .put("learning_step", 0)
+                    .put("writing_level", 1)
+                    .put("active_token", "old-token")
+                    .put("created_at", 100L)
+                    .commit();
+            db.setVersion(1);
+        } finally {
+            db.close();
+        }
+
+        store = new LocalStore(context);
+
+        assertEquals(1, count("study_items"));
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
+        assertScalarString("study_items", "kanji_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "font_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "word_reading_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "writing_remediation_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "kanji_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "new_learning");
     }
 
     private void assertMigratedColumnsExist() {
