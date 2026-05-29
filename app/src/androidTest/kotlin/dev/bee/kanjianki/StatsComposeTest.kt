@@ -55,7 +55,7 @@ class StatsComposeTest {
             StatsScreen(
                 model = StatsScreenModel(
                     title = "Stats",
-                    intro = "Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.",
+                    intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
                     verdict = StatsCardModel(
                         title = "Kani is working",
                         body = "Weak kanji and support are both improving.",
@@ -68,7 +68,7 @@ class StatsComposeTest {
                     ),
                     sections = listOf(
                         StatsCardModel(
-                            title = "Weakness Burn-Down",
+                            title = "Weak kanji trend",
                             summary = "3 weak kanji improved",
                             body = "Average weakness fell from 2.1 to 1.4.",
                             lines = listOf(
@@ -82,7 +82,7 @@ class StatsComposeTest {
                             strokeColor = TEAL
                         ),
                         StatsCardModel(
-                            title = "Anki Support Conversion",
+                            title = "Anki support",
                             summary = "2 mature cards gained",
                             body = "1 kanji gained first mature support.",
                             lines = listOf(
@@ -96,7 +96,7 @@ class StatsComposeTest {
                             strokeColor = BLUE
                         ),
                         StatsCardModel(
-                            title = "Kani Not Helping Yet",
+                            title = "Needs attention",
                             summary = "4 kanji with enough evidence",
                             body = "These entries still need more Anki evidence.",
                             lines = listOf(
@@ -116,7 +116,7 @@ class StatsComposeTest {
                             strokeColor = CORAL
                         ),
                         StatsCardModel(
-                            title = "Ladder Health",
+                            title = "Ladder status",
                             summary = "6 active kanji on the ladder",
                             body = "2 are ready to promote; 1 is at demotion risk.",
                             lines = listOf(
@@ -136,7 +136,7 @@ class StatsComposeTest {
                             strokeColor = GOLD
                         ),
                         StatsCardModel(
-                            title = "Answered study time",
+                            title = "Study time",
                             summary = "Today: 12m 30s",
                             body = "Last 7 days: 1h 12m",
                             lines = listOf(
@@ -167,11 +167,11 @@ class StatsComposeTest {
         }
 
         composeRule.onNodeWithText("Stats").assertIsDisplayed()
-        composeRule.onNodeWithText("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.").assertIsDisplayed()
-        composeRule.onNodeWithText("Weakness Burn-Down").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki Support Conversion").assertIsDisplayed()
-        composeRule.onNodeWithText("Kani Not Helping Yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Ladder Health").assertIsDisplayed()
-        composeRule.onNodeWithText("Answered study time").assertIsDisplayed()
+        composeRule.onNodeWithText("Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.").assertIsDisplayed()
+        composeRule.onNodeWithText("Weak kanji trend").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki support").assertIsDisplayed()
+        composeRule.onNodeWithText("Needs attention").assertIsDisplayed()
+        composeRule.onNodeWithText("Ladder status").assertIsDisplayed()
+        composeRule.onNodeWithText("Study time").assertIsDisplayed()
     }
 }

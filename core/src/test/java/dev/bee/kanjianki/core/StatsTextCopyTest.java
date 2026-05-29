@@ -17,23 +17,23 @@ public final class StatsTextCopyTest {
     }
 
     @Test
-    public void verdictTitlePreservesWorkingAndNotWorkingCopy() {
+    public void verdictTitlePreservesWorkingAndWaitingCopy() {
         assertEquals("Kani is working for you", StatsTextCopy.verdictTitle(true));
-        assertEquals("Kani is not currently working for you", StatsTextCopy.verdictTitle(false));
+        assertEquals("Waiting for Kani evidence", StatsTextCopy.verdictTitle(false));
     }
 
     @Test
-    public void verdictBodyPreservesEmptyAndLadderOnlyCopy() {
+    public void verdictBodyKeepsEmptyAndLadderOnlyCopyBrief() {
         assertEquals(
-                "No Kani evidence is available yet. Study weak kanji, then sync AnkiDroid so this page can compare before and after.",
+                "Study in Kani, then sync AnkiDroid to unlock trends.",
                 StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0)
         );
         assertEquals(
-                "Kani is tracking 2 active kanji, but no weakness burn-down or mature Anki support conversion has landed yet. Study due reviews, then sync AnkiDroid.",
+                "Kani is tracking 2 active kanji. Trends appear after reviews and sync.",
                 StatsTextCopy.verdictBody(true, false, true, 0, 0, 0, 0, 2)
         );
         assertEquals(
-                "No before-and-after evidence yet. Do Kani reviews, then sync AnkiDroid so this page can compare weak kanji and mature support.",
+                "Do Kani reviews, then sync AnkiDroid to compare before and after.",
                 StatsTextCopy.verdictBody(true, false, false, 0, 0, 0, 0, 0)
         );
     }
@@ -47,13 +47,13 @@ public final class StatsTextCopyTest {
     }
 
     @Test
-    public void ladderHealthBodyPreservesThresholdAndEmptyCopy() {
+    public void ladderHealthBodyDemotesThresholdDetailsAndKeepsEmptyCopyBrief() {
         assertEquals(
-                "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.",
+                "No active ladder items yet. Sync or study weak kanji to fill the ladder.",
                 StatsTextCopy.ladderHealthBody(0, 0, 0, 0, 21, 3)
         );
         assertEquals(
-                "2 FSRS-mature review items · 1 demotion-risk review item · 1 at the demotion threshold. Thresholds: climb when FSRS schedules more than 21 days; demote after 3 real due-review fails.",
+                "2 ready to climb · 1 at risk · 1 ready to fall. Rules: climb after more than 21 days; fall after 3 misses.",
                 StatsTextCopy.ladderHealthBody(5, 2, 1, 1, 21, 3)
         );
     }
@@ -72,11 +72,11 @@ public final class StatsTextCopyTest {
     @Test
     public void weaknessAndSupportFormattingPreservesStatsRows() {
         assertEquals(
-                "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.",
+                "Weakness trends appear after Kani reviews and a successful AnkiDroid sync.",
                 StatsTextCopy.weaknessImprovementBody(0, 0.0, 0.0)
         );
         assertEquals(
-                "Average weakness: 0.80 -> 0.25 after Kani practice.",
+                "Average weakness: 0.80 -> 0.25.",
                 StatsTextCopy.weaknessImprovementBody(2, 0.8, 0.25)
         );
         assertEquals("裂  0.80 -> 0.25", StatsTextCopy.weaknessImprovementExample("裂", 0.8, 0.25));
@@ -86,15 +86,15 @@ public final class StatsTextCopyTest {
     @Test
     public void impactAndTimeFormattingPreservesStatsHelpers() {
         assertEquals(
-                "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after.",
+                "Review in Kani, then sync AnkiDroid to compare before and after.",
                 StatsTextCopy.notHelpingBody(true, false)
         );
         assertEquals(
-                "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence.",
+                "No kanji need attention right now.",
                 StatsTextCopy.notHelpingBody(false, false)
         );
         assertEquals(
-                "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here.",
+                "Shown only after enough Kani reviews and synced Anki evidence.",
                 StatsTextCopy.notHelpingBody(false, true)
         );
         assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4));
