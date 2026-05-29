@@ -6,8 +6,15 @@ object LearningStepsSettingsPolicy {
     @JvmStatic
     fun saveRequest(newStepsText: String?, reviewStepsText: String?): SaveResult {
         val parsedNew = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(newStepsText)
-        val parsedReview = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(reviewStepsText)
-        if (parsedNew.isEmpty() || parsedReview.isEmpty()) {
+        if (parsedNew.isEmpty()) {
+            return SaveResult.invalid(STEP_FORMAT_ERROR)
+        }
+        val parsedReview = if (reviewStepsText != null && reviewStepsText.trim().isEmpty()) {
+            emptyList()
+        } else {
+            RecordsSchedulerModels.LearningStepSettings.tryParseSteps(reviewStepsText)
+        }
+        if (parsedReview.isEmpty() && (reviewStepsText == null || reviewStepsText.trim().isNotEmpty())) {
             return SaveResult.invalid(STEP_FORMAT_ERROR)
         }
         return SaveResult.valid(RecordsSchedulerModels.LearningStepSettings(parsedNew, parsedReview))

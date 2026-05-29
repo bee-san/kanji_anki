@@ -41,6 +41,14 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
 
             @JvmStatic
             fun parseSteps(value: String?, fallback: List<Int?>?): List<Int> {
+                return parseSteps(value, fallback, false)
+            }
+
+            @JvmStatic
+            fun parseSteps(value: String?, fallback: List<Int?>?, allowEmpty: Boolean): List<Int> {
+                if (allowEmpty && value != null && value.trim().isEmpty()) {
+                    return Collections.emptyList()
+                }
                 val parsed = tryParseSteps(value)
                 return if (parsed.isEmpty()) normalizeSteps(fallback, defaultNewSteps(), false) else parsed
             }

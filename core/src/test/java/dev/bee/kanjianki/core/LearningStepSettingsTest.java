@@ -68,6 +68,8 @@ public final class LearningStepSettingsTest {
         assertEquals(Arrays.asList(5, 15), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", Arrays.asList(5, 15)));
         assertEquals(Arrays.asList(1, 10), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", null));
         assertEquals(Arrays.asList(30), RecordsSchedulerModels.LearningStepSettings.parseSteps("30m", Arrays.asList(5, 15)));
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.parseSteps("", Arrays.asList(10), true).isEmpty());
+        assertEquals(Arrays.asList(10), RecordsSchedulerModels.LearningStepSettings.parseSteps("soon", Arrays.asList(10), true));
 
         RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
                 Arrays.asList(3, null, 9),
