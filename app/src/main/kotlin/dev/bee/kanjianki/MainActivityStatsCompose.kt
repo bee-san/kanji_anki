@@ -76,6 +76,13 @@ fun StatsScreen(model: StatsScreenModel, modifier: Modifier = Modifier) {
 
 @Composable
 private fun StatsCard(model: StatsCardModel) {
+    if (model.emptyState) {
+        HomeEmptyState(
+            title = model.title,
+            body = model.body.orEmpty()
+        )
+        return
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = KaniUiTokens.PanelShape,

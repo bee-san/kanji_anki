@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -173,5 +174,27 @@ class StatsComposeTest {
         composeRule.onNodeWithText("Needs attention").assertIsDisplayed()
         composeRule.onNodeWithText("Ladder status").assertIsDisplayed()
         composeRule.onNodeWithText("Study time").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersNoStatsVerdictAsSharedEmptyState() {
+        composeRule.setContent {
+            StatsScreen(
+                model = StatsScreenModel(
+                    title = "Stats",
+                    intro = "Kani does not replace Anki.",
+                    verdict = StatsCardModel(
+                        title = "No Kani impact evidence yet",
+                        body = "Study weak kanji, then sync AnkiDroid so this page can compare before and after.",
+                        strokeColor = STATS_MUTED_COLOR,
+                        emptyState = true
+                    ),
+                    sections = emptyList()
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No Kani impact evidence yet")).assertIsDisplayed()
+        composeRule.onNodeWithText("Study weak kanji, then sync AnkiDroid so this page can compare before and after.").assertIsDisplayed()
     }
 }

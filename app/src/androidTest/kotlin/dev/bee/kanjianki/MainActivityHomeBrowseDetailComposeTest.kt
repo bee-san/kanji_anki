@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
@@ -116,6 +117,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("No matches").assertIsDisplayed()
         composeRule.onNodeWithText("No local kanji found").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid first, or try a different search.").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No local kanji found")).assertIsDisplayed()
         composeRule.onAllNodesWithText("SUSPENDED").assertCountEquals(0)
     }
 

@@ -14,6 +14,7 @@ data class StatsCardModel(
     val lines: List<StatsLineModel> = emptyList(),
     val fillColor: Int = STATS_WHITE_COLOR,
     val strokeColor: Int,
+    val emptyState: Boolean = false,
     val titleColor: Int = STATS_MUTED_COLOR,
     val summaryColor: Int = STATS_INK_COLOR,
     val bodyColor: Int = STATS_MUTED_COLOR,

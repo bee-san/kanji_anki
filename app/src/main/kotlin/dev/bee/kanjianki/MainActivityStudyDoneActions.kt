@@ -23,7 +23,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             seededPlan,
             studyDoneScreenModel(
                 "Nothing due now",
-                null,
+                "All caught up",
                 "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
                 emptyList(),
                 false,
