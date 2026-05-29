@@ -118,6 +118,12 @@ object SettingsStudyPlanTextCopy {
     fun saveNewCardSortLabel(): String = "Save new card sort"
 
     @JvmStatic
+    fun newCardSortConfusablePreviewWarning(examples: List<String>): String {
+        val suffix = if (examples.isEmpty()) "" else ": " + examples.joinToString(", ")
+        return "Heads up: visually similar kanji appear close together in this preview$suffix."
+    }
+
+    @JvmStatic
     fun fsrsRetentionTitle(): String = "FSRS retention"
 
     @JvmStatic

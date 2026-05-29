@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,7 +55,9 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 15.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
@@ -77,7 +82,8 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                     onClick = { selectedMode = option.mode },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 50.dp),
+                        .heightIn(min = 50.dp)
+                        .testTag("new-card-sort-option-${option.mode}"),
                     shape = StudySortButtonShape,
                     border = BorderStroke(1.dp, StudySortButtonBorder),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -108,13 +114,14 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
             }
             val previewRows = model.previewRows(selectedMode)
             if (previewRows.isNotEmpty()) {
-                NewCardSortPreview(rows = previewRows)
+                NewCardSortPreview(rows = previewRows, warning = model.previewWarning(selectedMode))
             }
             Button(
                 onClick = { model.onSave.save(selectedMode) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp),
+                    .heightIn(min = 56.dp)
+                    .testTag("new-card-sort-save"),
                 shape = StudySortButtonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = StudySortPinkDark,
@@ -134,7 +141,7 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
 }
 
 @Composable
-private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>) {
+private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>, warning: String?) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = StudySortButtonShape,
@@ -172,6 +179,14 @@ private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>) {
                         fontSize = 12.sp,
                     )
                 }
+            }
+            if (!warning.isNullOrBlank()) {
+                Text(
+                    text = warning,
+                    color = StudySortPinkDark,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
