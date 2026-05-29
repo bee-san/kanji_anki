@@ -4,11 +4,10 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
-import dev.bee.kanjianki.core.TextUtil
 import java.util.Collections
-import java.util.Locale
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -71,13 +70,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     fun searchKanjiInventory(query: String?): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
-        val normalized = TextUtil.normalizeJapanese(query ?: "").lowercase(Locale.ROOT)
+        val parsed = KanjiInventorySearchQuery.parse(query)
         val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
         var selection: String? = null
         var args: Array<String>? = null
-        if (normalized.isNotEmpty()) {
-            selection = "search_text LIKE ?"
-            args = arrayOf("%$normalized%")
+        if (!parsed.isEmpty()) {
+            selection = parsed.terms().joinToString(" AND ") { "search_text LIKE ?" }
+            args = parsed.terms().map { "%$it%" }.toTypedArray()
         }
         db.query(
             TABLE_KANJI_INVENTORY,
