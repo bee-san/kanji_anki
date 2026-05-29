@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -206,6 +207,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun saveAdaptiveLoadMode(mode: String?) {
         studySettings().saveAdaptiveLoadMode(mode)
+    }
+
+    fun saveNewCardSortMode(mode: String?): NewCardSortSettingsPolicy.SaveRequest {
+        return studySettings().saveNewCardSortMode(mode)
     }
 
     fun reminderSettings(): ReminderSettings = studySettings().reminderSettings()

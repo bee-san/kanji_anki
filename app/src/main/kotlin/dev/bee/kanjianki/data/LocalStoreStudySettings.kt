@@ -9,6 +9,8 @@ import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
+    private val newCardSortSettings = NewCardSortSettingsRepository(store.settingsRepository())
+
     fun getIntSetting(key: String, fallback: Int): Int = store.settingsRepository().getInt(key, fallback)
 
     fun getLongSetting(key: String, fallback: Long): Long = store.settingsRepository().getLong(key, fallback)
@@ -102,6 +104,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun saveAdaptiveLoadMode(mode: String?) {
         putStringSetting(AdaptiveLoadPlanner.MODE_SETTING_KEY, AdaptiveLoadPlanner.normalizeWorkloadMode(mode))
     }
+
+    fun saveNewCardSortMode(mode: String?) = newCardSortSettings.saveMode(mode)
 
     fun reminderSettings(): LocalStoreBase.ReminderSettings {
         return LocalStoreBase.ReminderSettings(
