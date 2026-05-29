@@ -47,7 +47,7 @@ class GithubScreenshotsTest(unittest.TestCase):
 
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             out = root / ".ralph-loop" / "runs" / "123" / "remote-screenshots"
             run_list = [
                 {"databaseId": 122, "headSha": "older", "status": "completed", "conclusion": "success"},
