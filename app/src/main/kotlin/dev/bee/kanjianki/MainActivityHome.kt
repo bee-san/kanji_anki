@@ -1,6 +1,6 @@
 package dev.bee.kanjianki
 
-import android.app.AlertDialog
+import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -16,6 +16,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
+    private var latestHomeRouteContent: (@Composable () -> Unit)? = null
+    internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
 
     abstract fun renderStats()
     abstract fun renderGames()
@@ -83,12 +85,28 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun confirmSync() {
         val current = settings()
-        AlertDialog.Builder(this)
-            .setTitle(HomeTextCopy.syncDialogTitle())
-            .setMessage(HomeTextCopy.syncDialogMessage(current))
-            .setPositiveButton(HomeTextCopy.syncDialogPositiveLabel()) { _, _ -> runSync() }
-            .setNegativeButton(HomeTextCopy.cancelLabel(), null)
-            .show()
+        pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
+            message = HomeTextCopy.syncDialogMessage(current),
+            onConfirm = Runnable {
+                pendingHomeSyncDialog = null
+                runSync()
+            },
+            onDismiss = Runnable {
+                pendingHomeSyncDialog = null
+                rerenderLatestHomeRoute()
+            },
+        )
+        rerenderLatestHomeRoute()
+    }
+
+    internal fun rememberHomeRouteContent(content: @Composable () -> Unit) {
+        latestHomeRouteContent = content
+    }
+
+    private fun rerenderLatestHomeRoute() {
+        latestHomeRouteContent?.let { content ->
+            renderHomeRoute(content)
+        }
     }
 
     fun runSync() {
