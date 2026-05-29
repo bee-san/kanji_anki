@@ -1998,7 +1998,7 @@ public final class MainActivityInstrumentedTest {
         );
         MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid");
+            clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
             LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
@@ -2023,7 +2023,7 @@ public final class MainActivityInstrumentedTest {
         MainActivityRuntimeOverrides.setCollectionGateway(progressGateway);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid");
+            clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
             waitForText(scenario, "1 / 2 cards scanned");
             scenario.onActivity(activity -> {
@@ -2077,7 +2077,7 @@ public final class MainActivityInstrumentedTest {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
         context.getContentResolver().call(Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY), "reset", null, null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid");
+            clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
             LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
@@ -2103,7 +2103,7 @@ public final class MainActivityInstrumentedTest {
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveAnkiDroidEnabled());
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid");
+            clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
             waitForText(scenario, "Sync complete", 300_000L);
             LocalStore.SyncStatus status = waitForLatestSync();
@@ -2424,7 +2424,14 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static void clickText(ActivityScenario<MainActivity> scenario, String text) {
+    private static void clickHomeSyncEntryPoint(ActivityScenario<MainActivity> scenario) {
+        if (clickTextInActivityIfPresent(scenario, "Sync AnkiDroid")) {
+            return;
+        }
+        clickText(scenario, "Sync");
+    }
+
+    private static boolean clickTextInActivityIfPresent(ActivityScenario<MainActivity> scenario, String text) {
         boolean[] clicked = new boolean[]{false};
         scenario.onActivity(activity -> {
             View view = findExactText(activity.findViewById(android.R.id.content), text);
@@ -2438,6 +2445,12 @@ public final class MainActivityInstrumentedTest {
         });
         if (clicked[0]) {
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+        }
+        return clicked[0];
+    }
+
+    private static void clickText(ActivityScenario<MainActivity> scenario, String text) {
+        if (clickTextInActivityIfPresent(scenario, text)) {
             return;
         }
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
