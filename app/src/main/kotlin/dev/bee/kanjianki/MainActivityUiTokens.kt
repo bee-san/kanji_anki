@@ -23,10 +23,13 @@ internal object KaniUiTokens {
     val Coral = Color(MainActivityUiSupport.CORAL)
     val Teal = Color(0xFF24756C)
     val White = Color(0xFFFFFFFF)
+    val PanelFill = Color(0xFFFFFDFE)
     val PanelBorder = Color(0xFFFFC7DE)
+    val SubtleButtonBorder = Color(0xFFEBD6E4)
     val ButtonBorder = Color(0xFFEEBDDA)
     val PanelShape = RoundedCornerShape(24.dp)
     val ButtonShape = RoundedCornerShape(12.dp)
+    val WideButtonShape = RoundedCornerShape(22.dp)
 }
 
 @Composable
