@@ -82,7 +82,7 @@ object HomeTextCopy {
     fun appTitle(): String = "Kani"
 
     @JvmStatic
-    fun appSubtitle(): String = "Your AnkiDroid companion app to cure kanji blindness"
+    fun appSubtitle(): String = "An AnkiDroid companion for focused kanji repair"
 
     @JvmStatic
     fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"
@@ -98,7 +98,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "After the first sync, this screen shows the kanji that need focused recall and writing practice."
+        "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice."
 
     @JvmStatic
     fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid first to build a focus queue."
@@ -145,7 +145,7 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani imports suspended ${safeSettings.modelName} cards by default, keeps them safe locally, " +
+        return "Kani imports suspended ${safeSettings.modelName} cards by default, archives suspended-card evidence locally, " +
             "and only uses active cards when that import filter is enabled."
     }
 
