@@ -1,7 +1,10 @@
 package dev.bee.kanjianki
 
+import android.content.Intent
+import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
+import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -88,12 +91,13 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        val current = settings()
+        val plan = importOnboardingPlan()
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
-            message = HomeTextCopy.syncDialogMessage(current),
+            message = plan.body(),
+            confirmLabel = plan.primaryActionLabel(),
             onConfirm = Runnable {
                 pendingHomeSyncDialog = null
-                runSync()
+                handleImportOnboardingAction(plan.state())
             },
             onDismiss = Runnable {
                 pendingHomeSyncDialog = null
@@ -101,6 +105,40 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
         )
         rerenderLatestHomeRoute()
+    }
+
+    private fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+        val current = settings()
+        val provider = gateway.status()
+        return HomeImportOnboardingPolicy.plan(
+            provider.installed,
+            provider.permissionGranted,
+            provider.canSync,
+            onboardingLastSync(),
+            provider.permission,
+            current,
+        )
+    }
+
+    private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
+        val sync = store.latestSync() ?: return null
+        return HomeImportOnboardingPolicy.LastSync(sync.status, sync.importedKanji, sync.errorMessage)
+    }
+
+    private fun handleImportOnboardingAction(state: HomeImportOnboardingPolicy.State) {
+        when (state) {
+            HomeImportOnboardingPolicy.State.INSTALL_ANKIDROID -> openAnkiDroidInstallPage()
+            HomeImportOnboardingPolicy.State.GRANT_PERMISSION,
+            HomeImportOnboardingPolicy.State.RECOVER_PERMISSION -> requestAnkiPermissionIfNeeded()
+            HomeImportOnboardingPolicy.State.CHOOSE_SOURCE -> renderSettings()
+            HomeImportOnboardingPolicy.State.READY_FIRST_SYNC,
+            HomeImportOnboardingPolicy.State.RECOVER_SYNC,
+            HomeImportOnboardingPolicy.State.SYNCED -> runSync()
+        }
+    }
+
+    private fun openAnkiDroidInstallPage() {
+        startActivity(Intent(Intent.ACTION_VIEW, ANKIDROID_INSTALL_URL.toUri()))
     }
 
     internal fun rememberHomeRouteContent(content: @Composable () -> Unit) {
@@ -263,6 +301,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     private companion object {
         const val HOME_PREVIEW_ROW_LIMIT = 3
+        const val ANKIDROID_INSTALL_URL = "https://ankidroid.org/#download"
     }
 
     fun renderBrowseKanji(query: String?) {

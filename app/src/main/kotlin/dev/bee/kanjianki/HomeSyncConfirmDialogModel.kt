@@ -18,10 +18,20 @@ object HomeSyncConfirmDialogModels {
         onConfirm: Runnable,
         onDismiss: Runnable,
     ): HomeSyncConfirmDialogModel {
+        return create(message, HomeTextCopy.syncDialogPositiveLabel(), onConfirm, onDismiss)
+    }
+
+    @JvmStatic
+    fun create(
+        message: String,
+        confirmLabel: String,
+        onConfirm: Runnable,
+        onDismiss: Runnable,
+    ): HomeSyncConfirmDialogModel {
         return HomeSyncConfirmDialogModel(
             title = HomeTextCopy.syncDialogTitle(),
             message = message,
-            confirmLabel = HomeTextCopy.syncDialogPositiveLabel(),
+            confirmLabel = confirmLabel,
             dismissLabel = HomeTextCopy.cancelLabel(),
             onConfirm = onConfirm,
             onDismiss = onDismiss,
