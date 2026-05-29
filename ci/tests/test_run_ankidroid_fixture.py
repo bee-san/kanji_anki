@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Dict, Optional, Tuple
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -14,7 +15,11 @@ def write_executable(path: Path, content: str) -> None:
     path.chmod(0o755)
 
 
-def run_fixture(tmp_path: Path, fake_adb_body: str) -> subprocess.CompletedProcess[str]:
+def run_fixture(
+    tmp_path: Path,
+    fake_adb_body: str,
+    extra_env: Optional[Dict[str, str]] = None,
+) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     write_executable(tmp_path / "gradlew", "#!/usr/bin/env bash\nexit 0\n")
@@ -29,6 +34,8 @@ def run_fixture(tmp_path: Path, fake_adb_body: str) -> subprocess.CompletedProce
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     env["RUNNER_TEMP"] = str(tmp_path)
+    if extra_env:
+        env.update(extra_env)
 
     return subprocess.run(
         ["bash", str(SCRIPT), str(ankidroid), str(collection)],
@@ -49,7 +56,9 @@ case "$*" in
   logcat\\ -d*) exit 0 ;;
   wait-for-device*) exit 0 ;;
   install*) exit 0 ;;
+{extra_cases}
   shell\\ monkey*) exit 0 ;;
+  shell\\ am\\ start*) exit 0 ;;
   root*) exit 0 ;;
   push*) exit 0 ;;
   shell\\ *stat*) exit 0 ;;
@@ -58,7 +67,6 @@ case "$*" in
   shell\\ am\\ force-stop*) exit 0 ;;
   shell\\ pm\\ grant*) exit 0 ;;
   logcat\\ -c*) exit 0 ;;
-{extra_cases}
   shell\\ content\\ query*) echo 'Row: 0 _id=123, name=Kiku'; exit 0 ;;
   shell\\ mkdir*) exit 0 ;;
   shell\\ am\\ instrument*) echo 'OK (45 tests)'; exit 0 ;;
@@ -68,11 +76,15 @@ esac
 
 
 class RunAnkiDroidFixtureTest(unittest.TestCase):
-    def run_fixture_in_tmp(self, fake_adb_body: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+    def run_fixture_in_tmp(
+        self,
+        fake_adb_body: str,
+        extra_env: Optional[Dict[str, str]] = None,
+    ) -> Tuple[subprocess.CompletedProcess[str], Path]:
         tmp_context = tempfile.TemporaryDirectory()
         self.addCleanup(tmp_context.cleanup)
         tmp_path = Path(tmp_context.name)
-        return run_fixture(tmp_path, fake_adb_body), tmp_path
+        return run_fixture(tmp_path, fake_adb_body, extra_env=extra_env), tmp_path
 
     def test_fixture_retries_transient_external_storage_mount_failure(self):
         fake_adb = base_fake_adb(
@@ -125,6 +137,50 @@ OUT
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Process crashed", result.stdout)
         self.assertIn("Instrumentation reported a failure", result.stdout)
+
+    def test_fixture_falls_back_to_explicit_ankidroid_activity_start(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ monkey*) exit 1 ;;
+  shell\\ am\\ start*) exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn("shell monkey -p com.ichi2.anki 1", adb_calls)
+        self.assertIn("shell am start -W -n com.ichi2.anki/.IntentHandler", adb_calls)
+
+    def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
+        result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn("kanjiLiveAnkiDroid true", adb_calls)
+        self.assertIn("kanjiLiveMinimumNotes 1", adb_calls)
+
+    def test_fixture_can_omit_lowered_minimum_notes_for_real_collection_gate(self):
+        result, tmp_path = self.run_fixture_in_tmp(
+            base_fake_adb(),
+            extra_env={"KANJI_LIVE_MINIMUM_NOTES": ""},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn("kanjiLiveAnkiDroid true", adb_calls)
+        self.assertNotIn("kanjiLiveMinimumNotes", adb_calls)
+
+    def test_fixture_allows_overriding_instrumentation_classes(self):
+        result, tmp_path = self.run_fixture_in_tmp(
+            base_fake_adb(),
+            extra_env={"KANJI_LIVE_TEST_CLASSES": "dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn("dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest", adb_calls)
+        self.assertNotIn("MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid", adb_calls)
 
 
 if __name__ == "__main__":

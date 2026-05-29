@@ -5,6 +5,7 @@ The GitHub Actions instrumented workflow generates a tiny deterministic Kiku
 of checking in private user data.
 
 The fixture is intentionally small. The live instrumentation suite passes
-`kanjiLiveMinimumNotes=2` in CI. Local release testing against the copied user
+`kanjiLiveMinimumNotes=1` in CI. Local release testing against the copied user
 collection must omit that argument so the default 7,000-note threshold remains
-in force.
+in force. See `docs/local-ankidroid-provider-testing.md` for the local emulator
+wrapper, diagnostics, and real-collection privacy policy.
