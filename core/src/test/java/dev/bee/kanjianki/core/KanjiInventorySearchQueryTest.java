@@ -2,6 +2,8 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -24,6 +26,19 @@ public final class KanjiInventorySearchQueryTest {
 
         assertTrue(query.matches("カタカナ language study"));
         assertFalse(query.matches("カタカナ reading"));
+    }
+
+    @Test
+    public void termsListIsUnmodifiableFromJava() {
+        KanjiInventorySearchQuery query = KanjiInventorySearchQuery.parse("語 vocabulary");
+        List<String> terms = query.terms();
+
+        try {
+            terms.add("extra");
+            throw new AssertionError("terms should be unmodifiable");
+        } catch (UnsupportedOperationException expected) {
+            assertEquals(2, query.terms().size());
+        }
     }
 
     @Test
