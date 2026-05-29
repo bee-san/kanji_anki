@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public final class NewCardSortPlannerTest {
     private final NewCardSortPlanner planner = new NewCardSortPlanner();
@@ -77,6 +78,51 @@ public final class NewCardSortPlannerTest {
         );
 
         assertEquals(Arrays.asList("丁", "丙", "乙", "甲"), kanji(sorted));
+    }
+
+    @Test
+    public void nullSettingsAndUnknownModeUseFrequencySort() {
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("語", 30), row("字", 10));
+
+        assertEquals(Arrays.asList("字", "語"), kanji(planner.sortedRows(rows, null)));
+        assertEquals(Arrays.asList("字", "語"), kanji(planner.sortedRows(rows, settings("unknown-mode"))));
+    }
+
+    @Test
+    public void compareRowsKeepsNullRowsAfterRankedRows() {
+        RecordsImportModels.DashboardRow ranked = row("字", 10);
+
+        assertTrue(planner.compareRows(null, ranked, settings(RecordsBase.NEW_CARD_SORT_FREQUENCY)) > 0);
+        assertTrue(planner.compareRows(ranked, null, settings(RecordsBase.NEW_CARD_SORT_FREQUENCY)) < 0);
+        assertEquals(0, planner.compareRows(null, null, settings(RecordsBase.NEW_CARD_SORT_FREQUENCY)));
+    }
+
+    @Test
+    public void nonFiniteDifficultyFallsBackToRankAndKanji() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("乙", 20, 0, 0, example(Double.NaN, 0.4)),
+                        row("甲", 10, 0, 0, example(Double.POSITIVE_INFINITY, 0.2)),
+                        row("丁", 30, 0, 0, example(5.0, 0.9))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY)
+        );
+
+        assertEquals(Arrays.asList("丁", "甲", "乙"), kanji(sorted));
+    }
+
+    @Test
+    public void invalidRetrievabilityValuesFallBackToRankAndKanji() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("乙", 20, 0, 0, example(5.0, -0.1)),
+                        row("甲", 10, 0, 0, example(5.0, 101.0)),
+                        row("丁", 30, 0, 0, example(5.0, 25.0))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK)
+        );
+
+        assertEquals(Arrays.asList("丁", "甲", "乙"), kanji(sorted));
     }
 
     private static List<String> kanji(List<RecordsImportModels.DashboardRow> rows) {
