@@ -30,7 +30,7 @@ fun HomeScreen(model: HomeScreenModel) {
                 HomeEmptyState(
                     title = requireNotNull(model.emptyTitle),
                     body = requireNotNull(model.emptyBody),
-                    style = HomeEmptyStateStyle.LegacyBand
+                    style = HomeEmptyStateStyle.Panel
                 )
             }
         } else {

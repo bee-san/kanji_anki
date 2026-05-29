@@ -26,7 +26,7 @@ public final class HomeTextCopyTest {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
         assertEquals("All current", HomeTextCopy.focusHeadline(all));
-        assertEquals("1 items left / 4", HomeTextCopy.focusHeadline(focused));
+        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused));
     }
 
     @Test
@@ -36,8 +36,8 @@ public final class HomeTextCopyTest {
         assertEquals("Recent review miss", HomeTextCopy.recentMistakeTitle(null));
         assertEquals("Recent review miss", HomeTextCopy.recentMistakeTitle(""));
         assertEquals("split", HomeTextCopy.recentMistakeTitle("split"));
-        assertEquals("Rated again on Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"));
-        assertEquals("Rated  on ", HomeTextCopy.recentMistakeSubtitle(null, null));
+        assertEquals("Again · Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"));
+        assertEquals("Recent miss", HomeTextCopy.recentMistakeSubtitle(null, null));
     }
 
     @Test

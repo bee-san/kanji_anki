@@ -117,7 +117,7 @@ fun HomeMetricCard(
     Box(
         modifier = cardModifier
             .fillMaxWidth()
-            .heightIn(min = 136.dp)
+            .heightIn(min = 118.dp)
             .clip(shape)
             .background(Color.White)
             .border(1.dp, borderColor, shape)
@@ -156,7 +156,7 @@ fun HomeMetricCard(
             )
             if (!model.body.isNullOrEmpty()) {
                 Text(
-                    text = StudyTextCopy.compact(model.body, 18),
+                    text = StudyTextCopy.compact(model.body, 22),
                     color = HomeMetricMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Normal,
