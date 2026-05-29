@@ -8,6 +8,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public final class SettingsTextCopyTest {
     @Test
@@ -79,7 +80,7 @@ public final class SettingsTextCopyTest {
         assertEquals(
                 Arrays.asList(
                         "GitHub updater",
-                        "Current version 1.2.3. Checks GitHub Releases, verifies the APK, and asks Android to install it.",
+                        "Current version 1.2.3. Checks GitHub Releases and verifies the APK before install.",
                         "Automatic updates",
                         "Check for update",
                         "On: checks about once a day",
@@ -96,7 +97,7 @@ public final class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings cockpit",
-                        "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.",
+                        "Source, study, automation, and reference settings. Each setting appears once.",
                         "Note type",
                         "Import filters",
                         "Import ranks",
@@ -143,8 +144,8 @@ public final class SettingsTextCopyTest {
                         "Starts after first successful sync",
                         "On around 07:30",
                         "Off",
-                        "Manual sync once, then Kani will keep itself refreshed once per day.",
-                        "Scheduled once per local day. Android may batch the exact time.",
+                        "Sync once manually; Kani refreshes daily after that.",
+                        "Scheduled daily; Android may batch the time.",
                         "Daily background sync is paused.",
                         "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
                         "Last auto success yesterday. Last auto attempt today."
@@ -169,11 +170,39 @@ public final class SettingsTextCopyTest {
     }
 
     @Test
+    public void settingsPanelBodiesStayScannable() {
+        for (String body : Arrays.asList(
+                SettingsTextCopy.settingsAnkiSourceBody(),
+                SettingsTextCopy.settingsStudyBehaviorBody(),
+                SettingsTextCopy.settingsAutomationBody(),
+                SettingsTextCopy.settingsHeroBody(),
+                SettingsTextCopy.importFiltersBody(),
+                SettingsTextCopy.frequencyRangeBody(),
+                SettingsTextCopy.offlineDataLicensesBody(),
+                SettingsTextCopy.automaticWorkloadBody(),
+                SettingsTextCopy.manualWorkloadBody(),
+                SettingsTextCopy.studyLadderBody(),
+                SettingsTextCopy.autoSyncDetail(false, true, "", "", ""),
+                SettingsTextCopy.autoSyncDetail(true, true, "", "", ""),
+                SettingsTextCopy.updatePageBody("1.2.3"),
+                SettingsTextCopy.dailyReminderBody(),
+                SettingsTextCopy.studyAheadBody(),
+                SettingsTextCopy.ladderThresholdsBody()
+        )) {
+            assertTrue(body, body.length() <= 100);
+        }
+
+        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("cannot appear"));
+        assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"));
+        assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"));
+    }
+
+    @Test
     public void importAndFrequencyPanelCopyPreservesLabelsAndToasts() {
         assertEquals(
                 Arrays.asList(
                         "Import filters",
-                        "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.",
+                        "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -195,7 +224,7 @@ public final class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Frequency range",
-                        "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000."
+                        "Import suspended cards only inside this Jiten rank range. Default: 100-3000."
                 ),
                 Arrays.asList(
                         SettingsTextCopy.importFiltersTitle(),
@@ -235,7 +264,7 @@ public final class SettingsTextCopyTest {
                         "Use ranks from 1 to 20000.",
                         "Frequency range saved. Sync again to rebuild practice.",
                         "Offline data & licenses",
-                        "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.",
+                        "View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution.",
                         "Open data licenses",
                         "Data licenses",
                         "Dictionary and stroke-order data bundled for offline study.",
@@ -317,13 +346,13 @@ public final class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0));
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle());
         assertEquals(
-                "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.",
+                "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         );
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel());
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel());
         assertEquals(
-                "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.",
+                "Manual workload sets today's Kani intake; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         );
         assertEquals(Arrays.asList("Very little", "Pareto", "Balanced", "More", "All kanji"), Arrays.asList(SettingsTextCopy.workloadScaleLabels()));
@@ -341,7 +370,7 @@ public final class SettingsTextCopyTest {
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast());
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle());
         assertEquals(
-                "Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).",
+                "Pull soon-due cards into the queue. 0 disables it; learning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         );
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel());
@@ -367,7 +396,7 @@ public final class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null));
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle());
         assertEquals(
-                "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.",
+                "Choose how unseen cards enter study; due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         );
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel());
@@ -382,7 +411,7 @@ public final class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "FSRS retention",
-                        "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.",
+                        "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.",
                         "Use Jiten-rank retention ranges",
                         "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
                         "Use example ranges",
@@ -435,7 +464,7 @@ public final class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.",
+                        "Cards climb after strong due reviews; learning repeats stay practice-only.",
                         "FSRS days to go up",
                         "Fails to go down",
                         String.format(
@@ -473,7 +502,7 @@ public final class SettingsTextCopyTest {
     public void reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle());
         assertEquals(
-                "Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.",
+                "Daily nudge for active problem kanji. Android may batch the time.",
                 SettingsTextCopy.dailyReminderBody()
         );
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));

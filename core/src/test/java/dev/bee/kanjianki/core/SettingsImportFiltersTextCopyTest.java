@@ -9,7 +9,7 @@ public final class SettingsImportFiltersTextCopyTest {
     public void importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle());
         assertEquals(
-                "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.",
+                "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
                 SettingsImportFiltersTextCopy.importFiltersBody()
         );
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel());

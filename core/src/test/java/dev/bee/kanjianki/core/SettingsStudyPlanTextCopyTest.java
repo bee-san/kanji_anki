@@ -25,12 +25,12 @@ public final class SettingsStudyPlanTextCopyTest {
                 SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         );
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
-        assertEquals("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", SettingsStudyPlanTextCopy.newCardSortBody());
+        assertEquals("Choose how unseen cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody());
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000));
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95));
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle());
-        assertEquals("Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.", SettingsStudyPlanTextCopy.fsrsRetentionBody());
+        assertEquals("Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.", SettingsStudyPlanTextCopy.fsrsRetentionBody());
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel());
         assertEquals("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody());
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel());

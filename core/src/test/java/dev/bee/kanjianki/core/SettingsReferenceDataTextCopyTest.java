@@ -9,7 +9,7 @@ public final class SettingsReferenceDataTextCopyTest {
     public void referenceDataHelpersPreserveFormatting() {
         assertEquals("Frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle());
         assertEquals(
-                "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.",
+                "Import suspended cards only inside this Jiten rank range. Default: 100-3000.",
                 SettingsReferenceDataTextCopy.frequencyRangeBody()
         );
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel());
@@ -21,7 +21,7 @@ public final class SettingsReferenceDataTextCopyTest {
         assertEquals("Use ranks from 1 to 20000.", SettingsReferenceDataTextCopy.rankRangeToast());
         assertEquals("Frequency range saved. Sync again to rebuild practice.", SettingsReferenceDataTextCopy.frequencyRangeSavedToast());
         assertEquals("Offline data & licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle());
-        assertEquals("One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.", SettingsReferenceDataTextCopy.offlineDataLicensesBody());
+        assertEquals("View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution.", SettingsReferenceDataTextCopy.offlineDataLicensesBody());
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel());
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle());
         assertEquals("Dictionary and stroke-order data bundled for offline study.", SettingsReferenceDataTextCopy.dataLicensesBody());

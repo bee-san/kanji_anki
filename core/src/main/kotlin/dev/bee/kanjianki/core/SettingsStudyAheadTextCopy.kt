@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki)."
+        return "Pull soon-due cards into the queue. 0 disables it; learning delays still apply."
     }
 
     @JvmStatic

@@ -10,7 +10,7 @@ public final class SettingsLadderThresholdTextCopyTest {
     @Test
     public void ladderThresholdStringsStayStable() {
         assertEquals("Ladder thresholds", SettingsLadderThresholdTextCopy.ladderThresholdsTitle());
-        assertEquals("Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody());
+        assertEquals("Cards climb after strong due reviews; learning repeats stay practice-only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody());
         assertEquals("FSRS days to go up", SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel());
         assertEquals("Fails to go down", SettingsLadderThresholdTextCopy.failsToGoDownLabel());
         assertEquals(

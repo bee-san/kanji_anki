@@ -16,7 +16,7 @@ public final class SettingsSectionTextCopyTest {
         assertEquals("Reference data", SettingsSectionTextCopy.settingsReferenceDataTitle());
         assertEquals("Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody());
         assertEquals("Settings cockpit", SettingsSectionTextCopy.settingsCockpitLabel());
-        assertEquals("Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.", SettingsSectionTextCopy.settingsHeroBody());
+        assertEquals("Source, study, automation, and reference settings. Each setting appears once.", SettingsSectionTextCopy.settingsHeroBody());
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel());
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel());
         assertEquals("Import ranks", SettingsSectionTextCopy.importRanksStatusLabel());
