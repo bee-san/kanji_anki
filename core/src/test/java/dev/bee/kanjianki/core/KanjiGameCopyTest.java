@@ -65,9 +65,9 @@ public final class KanjiGameCopyTest {
         assertEquals("Round complete", KanjiGameCopy.resultTitle(true, false));
         assertEquals("Correct", KanjiGameCopy.resultTitle(false, true));
         assertEquals("Not quite", KanjiGameCopy.resultTitle(false, false));
-        assertEquals("Answer: pull", KanjiGameCopy.answerText("pull"));
-        assertEquals("You chose: push", KanjiGameCopy.selectedAnswerText("push"));
-        assertEquals("Final score: 7/10", KanjiGameCopy.finalScoreText(7, 10));
+        assertEquals("Correct answer: pull", KanjiGameCopy.answerText("pull"));
+        assertEquals("Your answer: push", KanjiGameCopy.selectedAnswerText("push"));
+        assertEquals("Score: 7/10", KanjiGameCopy.finalScoreText(7, 10));
         assertEquals("Accuracy: 70%", KanjiGameCopy.accuracyText(7, 10));
         assertEquals("Accuracy: 0%", KanjiGameCopy.accuracyText(7, 0));
     }
@@ -79,8 +79,8 @@ public final class KanjiGameCopyTest {
         assertEquals("Round complete", KanjiGameCopy.LABEL_ROUND_COMPLETE);
         assertEquals("New round", KanjiGameCopy.LABEL_NEW_ROUND);
         assertEquals("Sync AnkiDroid", KanjiGameCopy.LABEL_SYNC_ANKIDROID);
-        assertEquals("play", KanjiGameCopy.LABEL_PLAY);
-        assertEquals("locked", KanjiGameCopy.LABEL_LOCKED);
+        assertEquals("Start", KanjiGameCopy.LABEL_PLAY);
+        assertEquals("Needs data", KanjiGameCopy.LABEL_LOCKED);
         assertEquals("Round", KanjiGameCopy.LABEL_ROUND);
         assertEquals("Score", KanjiGameCopy.LABEL_SCORE);
         assertEquals("Streak", KanjiGameCopy.LABEL_STREAK);

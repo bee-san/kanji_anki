@@ -1,16 +1,24 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 
-internal val GamesInk = ComposeColor(0xFF2D1635)
-internal val GamesMuted = ComposeColor(0xFF6C5674)
-internal val GamesCoral = ComposeColor(0xFFFF4C76)
-internal val GamesTeal = ComposeColor(0xFF00AEB5)
-internal val GamesBlue = ComposeColor(0xFF6E5CE6)
+internal val GamesInk = KaniUiTokens.Ink
+internal val GamesMuted = KaniUiTokens.Muted
+internal val GamesCoral = KaniUiTokens.Coral
+internal val GamesTeal = ComposeColor(MainActivityUiSupport.TEAL)
+internal val GamesBlue = ComposeColor(MainActivityUiSupport.BLUE)
 internal val GamesGrey = ComposeColor(0xFFB2B2BA)
-internal val GamesWhite = ComposeColor(0xFFFFFFFF)
-internal val GamesStudyPlum = ComposeColor(0xFF4B2552)
-internal val GamesPanelBorder = ComposeColor(0xFFEBD6E4)
+internal val GamesWhite = KaniUiTokens.White
+internal val GamesStudyPlum = ComposeColor(MainActivityUiSupport.STUDY_PLUM)
+internal val GamesPanelBorder = KaniUiTokens.PanelBorder
+internal val GamesButtonBorder = KaniUiTokens.ButtonBorder
+internal val GamesPanelShape = KaniUiTokens.PanelShape
+internal val GamesButtonShape = KaniUiTokens.ButtonShape
+internal val GamesChoiceShape = RoundedCornerShape(18.dp)
+internal val GamesPillShape = RoundedCornerShape(999.dp)
+internal val GamesScoreShape = RoundedCornerShape(8.dp)
 internal val GamesKanjiFontFamily = FontFamily(Font(R.font.kaisei_tokumin_regular))

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +89,7 @@ fun GamesScreen(model: GamesScreenModel) {
                 Button(
                     onClick = { model.onSync.run() },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = GamesButtonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = GamesCoral,
                         contentColor = GamesWhite
@@ -112,7 +112,7 @@ fun GamesScreen(model: GamesScreenModel) {
 private fun GamesEmptyState(title: String, body: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = GamesChoiceShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, GamesPanelBorder)
     ) {
@@ -140,7 +140,7 @@ private fun GamesModeCard(model: GamesModeCardModel) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = model.available, onClick = { model.onClick.run() }),
-        shape = RoundedCornerShape(18.dp),
+        shape = GamesChoiceShape,
         color = fill,
         border = BorderStroke(1.dp, stroke)
     ) {
@@ -160,7 +160,7 @@ private fun GamesModeCard(model: GamesModeCardModel) {
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = GamesPillShape,
                     color = chipFill,
                     border = BorderStroke(1.dp, chipStroke)
                 ) {
