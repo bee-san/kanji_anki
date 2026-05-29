@@ -85,8 +85,8 @@ internal object StudySchedulerMigration {
             "font_meaning_memory",
             "word_reading_memory",
             "writing_remediation_memory",
-            "'kanji_meaning'",
-            "'new_learning'",
+            legacyRungSql(),
+            legacyPhaseSql(),
             "0",
             "0",
             "0",
@@ -97,4 +97,15 @@ internal object StudySchedulerMigration {
         return "INSERT OR REPLACE INTO $studyItemsTable (${columns.joinToString(", ")}) " +
             "SELECT ${selected.joinToString(", ")} FROM $OLD_STUDY_ITEMS_TABLE"
     }
+
+    private fun legacyRungSql(): String = "CASE " +
+        "WHEN writing_remediation_pending = 1 THEN 'write_kanji' " +
+        "WHEN recognition_stage < 0 THEN 'type_meaning' " +
+        "WHEN recognition_stage = 1 THEN 'font_meaning' " +
+        "WHEN recognition_stage >= 2 THEN 'word_reading' " +
+        "ELSE 'kanji_meaning' END"
+
+    private fun legacyPhaseSql(): String = "CASE " +
+        "WHEN state = 'review' THEN 'review' " +
+        "ELSE 'new_learning' END"
 }
