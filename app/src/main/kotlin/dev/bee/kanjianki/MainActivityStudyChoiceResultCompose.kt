@@ -17,6 +17,21 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun MeaningChoiceResultActionBar(
+    model: MeaningChoiceSessionModel,
+    state: MeaningChoiceSessionState,
+) {
+    val selectedChoice = state.selectedChoice ?: return
+    val result = model.resultResolver?.resultForChoice(selectedChoice) ?: return
+    MeaningChoiceResultActionBar(
+        status = result.status,
+        statusColor = result.statusColor,
+        actionLabel = result.actionLabel,
+        onNext = { model.onChoice.onChoice(selectedChoice) },
+    )
+}
+
+@Composable
+internal fun MeaningChoiceResultActionBar(
     status: String,
     statusColor: Int,
     actionLabel: String,

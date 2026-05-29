@@ -241,6 +241,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return flashcardUi.flashcardAnswerPanelModel(session)
     }
 
+    fun meaningChoiceAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
+        return flashcardUi.meaningChoiceAnswerPanelModel(session)
+    }
+
     override fun currentDictionaryLookup(): DictionaryLookup {
         return dictionaryLookupProvider.currentDictionaryLookup()
     }

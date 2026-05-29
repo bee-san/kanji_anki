@@ -25,7 +25,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             return
         }
 
-        val answerPanel = home.flashcardAnswerPanelModel(session)
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val model = MeaningChoiceSessionModel(
             "Recall",
             LABEL_CHOOSE_KANJI,
@@ -49,9 +49,18 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 )
             },
         )
-        home.renderComposeStudyRoute {
-            MeaningChoiceSessionCard(model = model)
-        }
+        val state = MeaningChoiceSessionState()
+        home.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
+            content = {
+                MeaningChoiceSessionCard(
+                    model = model,
+                    state = state,
+                    showInlineResultAction = false,
+                )
+            },
+            actionBar = { MeaningChoiceResultActionBar(model = model, state = state) },
+        )
     }
 
     fun meaningKanjiChoiceCardForSession(

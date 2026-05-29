@@ -32,6 +32,30 @@ private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
 private val StudyPinkDark = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
 
+class MeaningChoiceSessionState(selectedChoice: String? = null) {
+    var selectedChoice by mutableStateOf(selectedChoice)
+        private set
+
+    val answered: Boolean
+        get() = selectedChoice != null
+
+    fun select(glyph: String) {
+        if (!answered) {
+            selectedChoice = glyph
+        }
+    }
+}
+
+@Composable
+fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
+    return remember(
+        model.question,
+        model.choices,
+        model.answerPanel.glyph,
+        model.answerPanel.lines,
+    ) { MeaningChoiceSessionState() }
+}
+
 @Composable
 fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifier = Modifier) {
     StudyChoiceSessionSurface(
@@ -47,14 +71,13 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
 }
 
 @Composable
-fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
-    var selectedChoice by remember(
-        model.question,
-        model.choices,
-        model.answerPanel.glyph,
-        model.answerPanel.lines,
-    ) { mutableStateOf<String?>(null) }
-    val answered = selectedChoice != null
+fun MeaningChoiceSessionCard(
+    model: MeaningChoiceSessionModel,
+    state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
+    showInlineResultAction: Boolean = true,
+) {
+    val selectedChoice = state.selectedChoice
+    val answered = state.answered
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
@@ -67,13 +90,14 @@ fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
             answered = answered,
             onAnswered = { glyph ->
                 if (!answered) {
-                    selectedChoice = glyph
+                    state.select(glyph)
                     if (model.resultResolver == null) {
                         model.onChoice.onChoice(glyph)
                     }
                 }
             },
             selectedChoice = selectedChoice,
+            showInlineResultAction = showInlineResultAction,
         )
     }
 }
@@ -100,9 +124,6 @@ private fun StudyChoiceSessionSurface(
             StudyChoiceText(title, sizeSp = 30, color = StudyChoicePlum, bold = true)
             StudyChoiceText(taskLabel, sizeSp = 16, color = StudyPinkDark, bold = true)
             StudyChoiceText(body, sizeSp = 15, color = StudyMuted, bold = false)
-            if (reasonLine.isNotEmpty()) {
-                StudyChoiceText(reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
-            }
             content()
         }
     }
@@ -150,6 +171,7 @@ private fun MeaningChoiceInsetPanel(
     answered: Boolean,
     onAnswered: (String) -> Unit,
     selectedChoice: String?,
+    showInlineResultAction: Boolean,
 ) {
     Surface(
         modifier = Modifier
@@ -175,7 +197,7 @@ private fun MeaningChoiceInsetPanel(
                         .padding(top = 10.dp)
                 )
                 val result = selectedChoice?.let { model.resultResolver?.resultForChoice(it) }
-                if (result != null) {
+                if (showInlineResultAction && result != null) {
                     MeaningChoiceResultActionBar(
                         status = result.status,
                         statusColor = result.statusColor,

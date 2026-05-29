@@ -53,6 +53,79 @@ public final class StudyCuePolicyTest {
     }
 
     @Test
+    public void meaningChoiceAnswerLinesHeadlineCompoundMeaningBeforeIndividualGlosses() {
+        DictionaryLookup.KanjiEntryFields fields = new DictionaryLookup.KanjiEntryFields(
+                "脱",
+                Arrays.asList("undress", "removing"),
+                Collections.singletonList("ダツ"),
+                Collections.singletonList("ぬ.ぐ"),
+                Collections.emptyList(),
+                11,
+                0,
+                47,
+                1500,
+                2200
+        );
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(fields))
+        );
+        RecordsSchedulerModels.StudySession session = session(
+                "脱",
+                false,
+                BridgeScheduler.TASK_MEANING_KANJI,
+                "Loss of strength exhaustion weakness",
+                "だつりょく"
+        );
+        RecordsImportModels.Example example = example("脱力", "だつりょく", "Loss of strength exhaustion weakness");
+
+        assertEquals(
+                Arrays.asList(
+                        "Loss of strength exhaustion weakness",
+                        "Reading: だつりょく",
+                        "From: 脱力",
+                        "Individual kanji meanings: Undress, removing"
+                ),
+                StudyCuePolicy.meaningChoiceAnswerLines(lookup, session, example)
+        );
+    }
+
+    @Test
+    public void meaningChoiceAnswerLinesFallsBackForNonMeaningKanjiTask() {
+        DictionaryLookup.KanjiEntryFields fields = new DictionaryLookup.KanjiEntryFields(
+                "脱",
+                Arrays.asList("undress", "removing"),
+                Collections.singletonList("ダツ"),
+                Collections.singletonList("ぬ.ぐ"),
+                Collections.emptyList(),
+                11,
+                0,
+                47,
+                1500,
+                2200
+        );
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(fields))
+        );
+        RecordsSchedulerModels.StudySession session = session(
+                "脱",
+                false,
+                BridgeScheduler.TASK_KANJI_MEANING,
+                "Loss of strength exhaustion weakness",
+                "だつりょく"
+        );
+        RecordsImportModels.Example example = example("脱力", "だつりょく", "Loss of strength exhaustion weakness");
+
+        assertEquals(
+                Arrays.asList(
+                        "Undress, removing",
+                        "Reading: だつりょく",
+                        "From: 脱力"
+                ),
+                StudyCuePolicy.meaningChoiceAnswerLines(lookup, session, example)
+        );
+    }
+
+    @Test
     public void wordReadingCueUsesExampleReadingAndExpression() {
         RecordsSchedulerModels.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING);
         RecordsImportModels.Example example = example("読書", "ドクショ", "");

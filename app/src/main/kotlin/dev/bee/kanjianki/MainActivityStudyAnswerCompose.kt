@@ -22,7 +22,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.StudyCuePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 
 private val StudyAnswerPlum = Color(MainActivityUiSupport.STUDY_PLUM)
@@ -38,6 +40,25 @@ internal fun flashcardAnswerPanelModel(
     return answerPanelModel(activity, session, "Answer", 76, null)
 }
 
+internal fun meaningChoiceAnswerPanelModel(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): StudyAnswerPanelModel {
+    return answerPanelModel(
+        activity,
+        session,
+        "Answer",
+        76,
+        null,
+    ) { example ->
+        StudyCuePolicy.meaningChoiceAnswerLines(
+            activity.currentDictionaryLookup(),
+            session,
+            example,
+        )
+    }
+}
+
 internal fun learningPanelModel(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
@@ -51,14 +72,17 @@ private fun answerPanelModel(
     title: String,
     glyphSizeSp: Int,
     helperText: String?,
+    answerLines: ((RecordsImportModels.Example?) -> List<String>)? = null,
 ): StudyAnswerPanelModel {
     val lines = if (session.row != null) {
-        StudyCueTexts.answerLines(
+        val example = activity.exampleForSession(session)
+        val textLines = answerLines?.invoke(example) ?: StudyCueTexts.answerLines(
             activity.currentDictionaryLookup(),
             session,
-            activity.exampleForSession(session),
+            example,
             StudyTaskCopy.isWordReadingTask(session)
-        ).mapIndexed { index, line ->
+        )
+        textLines.mapIndexed { index, line ->
             StudyAnswerLineModel(
                 text = line,
                 color = if (line.startsWith("Reading:")) StudyAnswerPink else StudyAnswerPlum,
