@@ -41,6 +41,12 @@ object DatabaseBackupPolicy {
         return old
     }
 
+    @JvmStatic
+    fun sanitizedDiagnosticLine(action: String, error: Throwable): String {
+        val type = error.javaClass.simpleName.ifBlank { "Error" }
+        return "$action Diagnostic: $type"
+    }
+
     private fun matchingBackups(backupDir: File): Array<File>? {
         return backupDir.listFiles { _, name ->
             name.startsWith(BACKUP_PREFIX) && name.endsWith(BACKUP_SUFFIX)

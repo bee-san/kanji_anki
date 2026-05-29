@@ -106,7 +106,10 @@ class DatabaseBackupWorker(
             try {
                 checkpointer.checkpoint(dbFile)
             } catch (error: RuntimeException) {
-                warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
+                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
+                    error,
+                ))
             }
 
             val dest = DatabaseBackupPolicy.backupFile(filesDir, nowMillis)
@@ -117,7 +120,7 @@ class DatabaseBackupWorker(
                 if (!dest.delete()) {
                     warn("Failed to delete incomplete backup: ${dest.name}")
                 }
-                warn("Database backup failed.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
                 return Result.failure()
             }
 
@@ -142,9 +145,15 @@ class DatabaseBackupWorker(
                 db = opener.open(dbFile)
                 db.checkpoint()
             } catch (error: IOException) {
-                warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
+                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
+                    error,
+                ))
             } catch (error: RuntimeException) {
-                warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
+                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
+                    error,
+                ))
             } finally {
                 closeCheckpointDatabase(db)
             }
@@ -166,9 +175,15 @@ class DatabaseBackupWorker(
             try {
                 db.close()
             } catch (error: IOException) {
-                warn("Failed to close database after backup checkpoint.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
+                    "Failed to close database after backup checkpoint.",
+                    error,
+                ))
             } catch (error: RuntimeException) {
-                warn("Failed to close database after backup checkpoint.", error)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
+                    "Failed to close database after backup checkpoint.",
+                    error,
+                ))
             }
         }
 
@@ -203,14 +218,6 @@ class DatabaseBackupWorker(
         private fun warn(message: String) {
             try {
                 Log.w(TAG, message)
-            } catch (_: RuntimeException) {
-                // Android Log is unavailable in local JVM tests.
-            }
-        }
-
-        private fun warn(message: String, error: Throwable) {
-            try {
-                Log.w(TAG, message, error)
             } catch (_: RuntimeException) {
                 // Android Log is unavailable in local JVM tests.
             }
