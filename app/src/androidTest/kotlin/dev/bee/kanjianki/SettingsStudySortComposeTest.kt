@@ -27,11 +27,13 @@ class SettingsStudySortComposeTest {
                     options = listOf(
                         SettingsNewCardSortOptionModel(
                             SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY),
-                            RecordsBase.NEW_CARD_SORT_FREQUENCY
+                            RecordsBase.NEW_CARD_SORT_FREQUENCY,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY)
                         ),
                         SettingsNewCardSortOptionModel(
                             SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
-                            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK
+                            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK)
                         )
                     ),
                     saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
@@ -46,6 +48,9 @@ class SettingsStudySortComposeTest {
         composeRule
             .onNodeWithText(SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
             .performClick()
+        composeRule
+            .onNodeWithText(SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+            .assertIsDisplayed()
         composeRule
             .onNodeWithText(SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
             .assertIsDisplayed()

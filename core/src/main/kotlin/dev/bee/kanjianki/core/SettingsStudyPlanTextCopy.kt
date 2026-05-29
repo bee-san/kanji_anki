@@ -74,6 +74,17 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
+    fun newCardSortDescription(mode: String?): String {
+        return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Mixes Kani weakness, Anki risk, missed examples, and frequency."
+            else -> "Jiten frequency first."
+        }
+    }
+
+    @JvmStatic
     fun frequencyRangeStatusText(minRank: Int, maxRank: Int): String {
         return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank)
     }

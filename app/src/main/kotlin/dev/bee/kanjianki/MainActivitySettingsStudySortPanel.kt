@@ -22,17 +22,18 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
     private fun newCardSortOptions(): List<SettingsNewCardSortOptionModel> {
         return listOf(
             newCardSortOption(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+            newCardSortOption(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
             newCardSortOption(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
             newCardSortOption(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
-            newCardSortOption(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
-            newCardSortOption(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+            newCardSortOption(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS)
         )
     }
 
     private fun newCardSortOption(mode: String): SettingsNewCardSortOptionModel {
         return SettingsNewCardSortOptionModel(
             label = SettingsTextCopy.newCardSortLabel(mode),
-            mode = mode
+            mode = mode,
+            description = SettingsTextCopy.newCardSortDescription(mode)
         )
     }
 

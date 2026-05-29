@@ -16,6 +16,14 @@ public final class SettingsStudyPlanTextCopyTest {
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE));
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
         assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY));
+        assertEquals("Jiten frequency first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY));
+        assertEquals("Harder Anki cards first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
+        assertEquals("Cards most likely to be forgotten first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+        assertEquals("Kanji with weaker Kani history first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals(
+                "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
+                SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
         assertEquals("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", SettingsStudyPlanTextCopy.newCardSortBody());
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
