@@ -141,7 +141,7 @@ class StudySessionSelector {
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         var count = 0
         for (item in items) {
-            if (StudyLadderRules.STATE_RETIRED != item.state && item.dueAtMillis <= horizon) {
+            if (isDueCountCandidate(item, horizon)) {
                 count++
             }
         }
@@ -201,10 +201,17 @@ class StudySessionSelector {
         currentFamilies: Set<String>,
         allowedKanji: Set<String>?,
     ): Boolean {
-        return StudyLadderRules.STATE_RETIRED != item.state &&
-            item.suppressedByTaskType.isEmpty() &&
+        return isQueueVisible(item) &&
             (allowedKanji == null || allowedKanji.contains(item.kanji)) &&
             hasCurrentQueueRow(item, currentRows, currentFamilies)
+    }
+
+    private fun isDueCountCandidate(item: RecordsStudyModels.StudyItem, horizon: Long): Boolean {
+        return isQueueVisible(item) && item.dueAtMillis <= horizon
+    }
+
+    private fun isQueueVisible(item: RecordsStudyModels.StudyItem): Boolean {
+        return StudyLadderRules.STATE_RETIRED != item.state && item.suppressedByTaskType.isEmpty()
     }
 
     private fun hasCurrentQueueRow(
