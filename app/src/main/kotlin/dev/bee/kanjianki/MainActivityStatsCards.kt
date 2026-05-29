@@ -23,12 +23,13 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
     )
 }
 
-private fun MainActivityStats.statsVerdictCard(stats: StudyStatsStore.KaniOutcomeStats?): StatsCardModel {
-    val working = stats != null && StatsTextCopy.verdictWorking(
+private fun MainActivityStats.statsVerdictCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
+    val working = StatsTextCopy.verdictWorking(
         stats.weakKanjiImproved.improvedCount,
         stats.matureSupportGained.matureSupportGained
     )
-    val hasLadder = stats != null && StatsTextCopy.verdictHasLadder(stats.ladderHealth.totalActiveItems)
+    val hasLadder = StatsTextCopy.verdictHasLadder(stats.ladderHealth.totalActiveItems)
+    val hasImpactEvidence = working || hasLadder
     val fillColor = when {
         working -> STATS_VERDICT_WORKING_FILL
         hasLadder -> STATS_VERDICT_LADDER_FILL
@@ -39,25 +40,22 @@ private fun MainActivityStats.statsVerdictCard(stats: StudyStatsStore.KaniOutcom
         hasLadder -> STATS_GOLD_COLOR
         else -> 0xFFB2B2BA.toInt()
     }
-    val body = if (stats == null) {
-        StatsTextCopy.verdictBody(false, working, hasLadder, 0, 0, 0, 0, 0)
-    } else {
-        StatsTextCopy.verdictBody(
-            true,
-            working,
-            hasLadder,
-            stats.weakKanjiImproved.improvedCount,
-            stats.matureSupportGained.matureSupportGained,
-            stats.ladderHealth.promotionReadyCount,
-            stats.ladderHealth.demotionRiskCount,
-            stats.ladderHealth.totalActiveItems
-        )
-    }
+    val body = StatsTextCopy.verdictBody(
+        hasImpactEvidence,
+        working,
+        hasLadder,
+        stats.weakKanjiImproved.improvedCount,
+        stats.matureSupportGained.matureSupportGained,
+        stats.ladderHealth.promotionReadyCount,
+        stats.ladderHealth.demotionRiskCount,
+        stats.ladderHealth.totalActiveItems
+    )
     return StatsCardModel(
         title = StatsTextCopy.verdictTitle(working),
         body = body,
         fillColor = fillColor,
         strokeColor = strokeColor,
+        emptyState = !hasImpactEvidence,
         titleColor = if (working) STATS_TEAL_COLOR else STATS_MUTED_COLOR,
         bodyColor = if (working) STATS_INK_COLOR else STATS_MUTED_COLOR,
         titleSizeSp = 24,

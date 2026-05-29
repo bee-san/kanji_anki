@@ -205,29 +205,10 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
 
 @Composable
 private fun BrowseEmptyState() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = BrowseCardShape,
-        color = ComposeColor(0xFFFFF7D6),
-        border = BorderStroke(1.dp, BrowseGold)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = HomeTextCopy.browseEmptyTitle(),
-                color = BrowseInk,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = HomeTextCopy.browseEmptyBody(),
-                color = BrowseInk,
-                fontSize = 16.sp
-            )
-        }
-    }
+    HomeEmptyState(
+        title = HomeTextCopy.browseEmptyTitle(),
+        body = HomeTextCopy.browseEmptyBody()
+    )
 }
 
 @Composable

@@ -98,19 +98,26 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
                 fontWeight = FontWeight.Bold,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
-            model.headline?.let { headline ->
+            if (!model.showDoneActions && model.summaryLines.isEmpty()) {
+                HomeEmptyState(
+                    title = model.headline ?: model.title,
+                    body = model.body
+                )
+            } else {
+                model.headline?.let { headline ->
+                    Text(
+                        text = headline,
+                        color = StudyDoneSecondaryText,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
-                    text = headline,
-                    color = StudyDoneSecondaryText,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
+                    text = model.body,
+                    color = StudyDoneMuted,
+                    fontSize = 17.sp
                 )
             }
-            Text(
-                text = model.body,
-                color = StudyDoneMuted,
-                fontSize = 17.sp
-            )
             if (model.summaryLines.isNotEmpty()) {
                 StudyDoneSummary(lines = model.summaryLines)
             }

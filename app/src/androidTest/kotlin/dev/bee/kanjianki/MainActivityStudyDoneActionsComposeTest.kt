@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -176,6 +177,7 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText("Study practice").assertIsDisplayed()
         composeRule.onNodeWithText("Nothing to study yet").assertIsDisplayed()
         composeRule.onNodeWithText("Sync from AnkiDroid first.").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("Nothing to study yet")).assertIsDisplayed()
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_BACK_HOME).assertCountEquals(0)
     }
 
@@ -188,7 +190,7 @@ class MainActivityStudyDoneActionsComposeTest {
                 model = StudyDoneScreenModel(
                     modeLabel = MainActivityBase.LABEL_PRACTICE,
                     title = "Nothing due now",
-                    headline = null,
+                    headline = "All caught up",
                     body = "Your active kanji are resting.",
                     summaryLines = emptyList(),
                     showDoneActions = false,
@@ -203,6 +205,8 @@ class MainActivityStudyDoneActionsComposeTest {
         }
 
         composeRule.onNodeWithText("Nothing due now").assertIsDisplayed()
+        composeRule.onNodeWithText("All caught up").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("All caught up")).assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
 
         assertTrue(backClicked)
