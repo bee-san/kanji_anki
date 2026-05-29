@@ -1,8 +1,11 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 
 import org.junit.Test;
 
@@ -10,8 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public final class StudySessionActionsTest {
     @Test
@@ -63,6 +68,29 @@ public final class StudySessionActionsTest {
                         (taskKey, kanji, taskType, nowMillis) -> { }
                 )
         );
+    }
+
+    @Test
+    public void plannedStudySessionInitializesPlanBeforeChoosingSession() {
+        StudySessionTracker tracker = new StudySessionTracker();
+        List<RecordsStudyModels.StudyItem> items = List.of(item("語"), item("謎"));
+        List<RecordsImportModels.DashboardRow> rows = List.of(row("語"), row("謎"));
+
+        RecordsSchedulerModels.StudySession session = StudySessionActions.plannedStudySession(
+                new BridgeScheduler(),
+                tracker,
+                items,
+                rows,
+                2_000L,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults()
+        );
+
+        assertNotNull(session);
+        assertTrue(tracker.pendingPlannedSessionTaskKeys().contains(session.taskType + ":" + session.item.kanji));
+        assertEquals(2, tracker.pendingPlannedSessionTaskKeys().size());
     }
 
     private static RecordsStudyModels.StudyItem item(String kanji) {

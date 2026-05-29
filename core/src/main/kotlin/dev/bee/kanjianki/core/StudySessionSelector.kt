@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.security.SecureRandom
 import java.util.Collections
 import java.util.Random
 
@@ -39,6 +40,7 @@ class StudySessionSelector {
         return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
     }
 
+    @Suppress("java:S2245")
     fun randomizedTaskKeys(
         items: List<RecordsStudyModels.StudyItem>,
         rows: List<RecordsImportModels.DashboardRow>,
@@ -57,7 +59,7 @@ class StudySessionSelector {
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
         if (randomSeed == null) {
-            Collections.shuffle(dueItems)
+            Collections.shuffle(dueItems, SecureRandom())
         } else {
             Collections.shuffle(dueItems, Random(randomSeed))
         }

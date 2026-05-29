@@ -28,20 +28,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return
         }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
-        val scheduler = BridgeScheduler()
-        study.studySessionTracker.initializeSessionPlan(
-            scheduler.randomizedSessionTaskKeys(
-                seeded,
-                rows,
-                now,
-                study.studyAheadMillis(),
-                allowedKanji,
-                study.settings(),
-                study.studyLadderSettings(),
-                null,
-            )
-        )
-        study.activeSession = scheduler.nextSessionForTaskKeys(
+        study.activeSession = StudySessionActions.plannedStudySession(
+            BridgeScheduler(),
+            study.studySessionTracker,
             seeded,
             rows,
             now,
@@ -49,7 +38,6 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             allowedKanji,
             study.settings(),
             study.studyLadderSettings(),
-            study.studySessionTracker.pendingPlannedSessionTaskKeys(),
         )
         study.activeSimilarWritingRepair = null
         val session = study.activeSession
