@@ -118,9 +118,11 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
             @JvmStatic
             protected fun normalizeSteps(steps: List<Int?>?, fallback: List<Int>, allowEmpty: Boolean): List<Int> {
                 val out = ArrayList<Int>()
+                var invalid = false
                 if (steps != null) {
                     for (step in steps) {
                         if (step == null || step <= 0) {
+                            invalid = true
                             out.clear()
                             break
                         }
@@ -130,7 +132,7 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                 if (out.isNotEmpty()) {
                     return out
                 }
-                if (allowEmpty && steps != null) {
+                if (allowEmpty && steps != null && !invalid) {
                     return out
                 }
                 return ArrayList(fallback)
