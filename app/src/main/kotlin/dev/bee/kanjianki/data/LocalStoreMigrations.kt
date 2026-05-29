@@ -9,7 +9,7 @@ internal object LocalStoreMigrations {
         val targetVersion = minOf(newVersion, LocalStoreSchema.DB_VERSION)
         upgradeThroughEight(db, oldVersion, targetVersion, hooks)
         upgradeThroughFifteen(db, oldVersion, targetVersion, hooks)
-        upgradeThroughTwenty(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentyOne(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -94,7 +94,7 @@ internal object LocalStoreMigrations {
         }
     }
 
-    private fun upgradeThroughTwenty(
+    private fun upgradeThroughTwentyOne(
         db: SQLiteDatabase,
         oldVersion: Int,
         targetVersion: Int,
@@ -114,6 +114,9 @@ internal object LocalStoreMigrations {
         }
         if (shouldRun(oldVersion, targetVersion, 20)) {
             hooks.createImportAuditTables(db)
+        }
+        if (shouldRun(oldVersion, targetVersion, 21)) {
+            hooks.addRichReviewColumns(db)
         }
     }
 
