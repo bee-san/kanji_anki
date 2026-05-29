@@ -5,7 +5,6 @@ import android.widget.EditText
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
@@ -76,17 +75,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
         return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel()
-    }
-
-    fun saveStudyAhead(minutesText: String) {
-        val request = StudyAheadSettingsPolicy.saveRequest(minutesText)
-        if (!request.valid) {
-            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show()
-            return
-        }
-        store.saveStudyAheadMinutes(request.minutes)
-        Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
-        renderSettings()
     }
 
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
