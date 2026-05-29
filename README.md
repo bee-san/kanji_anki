@@ -16,7 +16,7 @@
   </a>
 </p>
 
-Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji.
+Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji — the painful "kanji blindness" loop where similar-looking characters keep tripping you up.
 
 Kani helps you:
 1. Find kanji that keep causing trouble in your AnkiDroid reviews.
@@ -64,7 +64,7 @@ Other product areas:
 ## Build
 
 ```bash
-gradle :core:test :app:assembleDebug
+./gradlew :core:test :app:assembleDebug
 ```
 
 Release builds require signing environment variables:
