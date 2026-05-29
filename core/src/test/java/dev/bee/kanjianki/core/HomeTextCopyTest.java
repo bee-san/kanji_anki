@@ -86,6 +86,7 @@ public final class HomeTextCopyTest {
         assertEquals("Streak", HomeTextCopy.streakMetricLabel());
         assertEquals("Focus", HomeTextCopy.focusMetricLabel());
         assertEquals("Start focused practice", HomeTextCopy.studySupportText());
+        assertEquals("Loading…", HomeTextCopy.loadingLabel());
         assertEquals("Browse Kanji", HomeTextCopy.browseActionLabel());
         assertEquals("Recent mistakes", HomeTextCopy.recentMistakesTitle());
         assertEquals("Stats", HomeTextCopy.statsActionLabel());
