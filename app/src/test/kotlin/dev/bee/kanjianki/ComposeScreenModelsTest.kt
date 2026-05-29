@@ -635,6 +635,7 @@ class ComposeScreenModelsTest {
             browserQueryCardsLabel = "Browser query",
             browserQueryLabel = "Query",
             browserQueryHint = "rated:1",
+            browserQueryHelperText = "Use Anki browser syntax",
             tagsLabel = "Tags",
             tagsHint = "kani",
             difficultyLabel = "Difficulty",
