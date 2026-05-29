@@ -278,7 +278,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         )
         val reviewSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
             getStringSetting("review_relearning_steps_minutes", defaults.reviewStepsText()),
-            defaults.reviewStepsMinutes
+            defaults.reviewStepsMinutes,
+            true
         )
         return RecordsSchedulerModels.LearningStepSettings(newSteps, reviewSteps)
     }

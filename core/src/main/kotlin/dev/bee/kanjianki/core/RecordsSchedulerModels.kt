@@ -25,12 +25,12 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         newStepsMinutes: List<Int?>?,
         reviewStepsMinutes: List<Int?>?,
     ) {
-        @JvmField val newStepsMinutes: List<Int> = Collections.unmodifiableList(normalizeSteps(newStepsMinutes, defaultNewSteps()))
-        @JvmField val reviewStepsMinutes: List<Int> = Collections.unmodifiableList(normalizeSteps(reviewStepsMinutes, defaultReviewSteps()))
+        @JvmField val newStepsMinutes: List<Int> = Collections.unmodifiableList(normalizeSteps(newStepsMinutes, defaultNewSteps(), false))
+        @JvmField val reviewStepsMinutes: List<Int> = Collections.unmodifiableList(normalizeSteps(reviewStepsMinutes, defaultReviewSteps(), true))
 
-        fun newStepsText(): String = formatSteps(newStepsMinutes)
+        fun newStepsText(): String = formatSteps(newStepsMinutes, false)
 
-        fun reviewStepsText(): String = formatSteps(reviewStepsMinutes)
+        fun reviewStepsText(): String = formatSteps(reviewStepsMinutes, true)
 
         companion object {
             @JvmField
@@ -41,8 +41,16 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
 
             @JvmStatic
             fun parseSteps(value: String?, fallback: List<Int?>?): List<Int> {
+                return parseSteps(value, fallback, false)
+            }
+
+            @JvmStatic
+            fun parseSteps(value: String?, fallback: List<Int?>?, allowEmpty: Boolean): List<Int> {
+                if (allowEmpty && value != null && value.trim().isEmpty()) {
+                    return Collections.emptyList()
+                }
                 val parsed = tryParseSteps(value)
-                return if (parsed.isEmpty()) normalizeSteps(fallback, defaultNewSteps()) else parsed
+                return if (parsed.isEmpty()) normalizeSteps(fallback, defaultNewSteps(), false) else parsed
             }
 
             @JvmStatic
@@ -58,12 +66,15 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                     }
                     parsed.add(minutes)
                 }
-                return if (parsed.isEmpty()) Collections.emptyList() else normalizeSteps(parsed, defaultNewSteps())
+                return if (parsed.isEmpty()) Collections.emptyList() else normalizeSteps(parsed, defaultNewSteps(), false)
             }
 
             @JvmStatic
-            fun formatSteps(steps: List<Int?>?): String {
-                val normalized = normalizeSteps(steps, defaultNewSteps())
+            fun formatSteps(steps: List<Int?>?): String = formatSteps(steps, false)
+
+            @JvmStatic
+            fun formatSteps(steps: List<Int?>?, allowEmpty: Boolean): String {
+                val normalized = normalizeSteps(steps, defaultNewSteps(), allowEmpty)
                 val parts = ArrayList<String>()
                 for (minutes in normalized) {
                     if (minutes >= 60 && minutes % 60 == 0) {
@@ -113,11 +124,13 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
             }
 
             @JvmStatic
-            protected fun normalizeSteps(steps: List<Int?>?, fallback: List<Int>): List<Int> {
+            protected fun normalizeSteps(steps: List<Int?>?, fallback: List<Int>, allowEmpty: Boolean): List<Int> {
                 val out = ArrayList<Int>()
+                var invalid = false
                 if (steps != null) {
                     for (step in steps) {
                         if (step == null || step <= 0) {
+                            invalid = true
                             out.clear()
                             break
                         }
@@ -125,6 +138,9 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                     }
                 }
                 if (out.isNotEmpty()) {
+                    return out
+                }
+                if (allowEmpty && steps != null && !invalid) {
                     return out
                 }
                 return ArrayList(fallback)

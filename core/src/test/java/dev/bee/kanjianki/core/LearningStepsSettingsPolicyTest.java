@@ -21,6 +21,15 @@ public final class LearningStepsSettingsPolicyTest {
     }
 
     @Test
+    public void saveRequestAllowsEmptyReviewSteps() {
+        LearningStepsSettingsPolicy.SaveResult result = LearningStepsSettingsPolicy.saveRequest("1m, 10m", "");
+
+        assertTrue(result.valid);
+        assertEquals(Arrays.asList(1, 10), result.settings.newStepsMinutes);
+        assertTrue(result.settings.reviewStepsMinutes.isEmpty());
+    }
+
+    @Test
     public void saveResultFactoriesRemainCallableFromJava() {
         RecordsSchedulerModels.LearningStepSettings settings =
                 new RecordsSchedulerModels.LearningStepSettings(Arrays.asList(1), Arrays.asList(10));
@@ -45,7 +54,6 @@ public final class LearningStepsSettingsPolicyTest {
 
     @Test
     public void saveRequestRejectsInvalidReviewStepsWithExistingCopy() {
-        assertInvalid("1m, 10m", "");
         assertInvalid("1m, 10m", "soon");
         assertInvalid("1m, 10m", "0m");
     }

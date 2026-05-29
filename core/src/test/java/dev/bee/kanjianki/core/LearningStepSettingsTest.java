@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -39,10 +40,36 @@ public final class LearningStepSettingsTest {
     }
 
     @Test
+    public void constructorAllowsExplicitEmptyRelearningSteps() {
+        RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
+                null,
+                Collections.emptyList()
+        );
+
+        assertEquals(Arrays.asList(1, 10), settings.newStepsMinutes);
+        assertTrue(settings.reviewStepsMinutes.isEmpty());
+        assertEquals("", settings.reviewStepsText());
+    }
+
+    @Test
+    public void constructorUsesDefaultRelearningStepsWhenUnset() {
+        RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
+                null,
+                null
+        );
+
+        assertEquals(Arrays.asList(1, 10), settings.newStepsMinutes);
+        assertEquals(Arrays.asList(10), settings.reviewStepsMinutes);
+        assertEquals("10m", settings.reviewStepsText());
+    }
+
+    @Test
     public void parseStepsFallsBackAndConstructorNormalizesInvalidLists() {
         assertEquals(Arrays.asList(5, 15), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", Arrays.asList(5, 15)));
         assertEquals(Arrays.asList(1, 10), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", null));
         assertEquals(Arrays.asList(30), RecordsSchedulerModels.LearningStepSettings.parseSteps("30m", Arrays.asList(5, 15)));
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.parseSteps("", Arrays.asList(10), true).isEmpty());
+        assertEquals(Arrays.asList(10), RecordsSchedulerModels.LearningStepSettings.parseSteps("soon", Arrays.asList(10), true));
 
         RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
                 Arrays.asList(3, null, 9),
