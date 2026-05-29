@@ -55,6 +55,27 @@ class ButtonContractTest(unittest.TestCase):
         self.assertTrue(all("unrelated_home_assertion" not in entry for entry in row["existing_tests"]))
         self.assertNotIn("selector_coverage", row["missing_tests"])
 
+    def test_selector_click_evidence_stays_on_same_selector_statement(self) -> None:
+        text = """
+            compose.onNodeWithText("Study now").assertExists();
+            compose.onNodeWithText("Sync with AnkiDroid").performClick();
+        """
+
+        selectors = button_contract._direct_selectors(text)
+
+        self.assertNotIn(("Study now", 'onNodeWithText("Study now") + performClick'), selectors)
+        self.assertIn(("Sync with AnkiDroid", 'onNodeWithText("Sync with AnkiDroid") + performClick'), selectors)
+
+    def test_selector_click_evidence_stops_at_kotlin_statement_without_semicolon(self) -> None:
+        text = """
+            compose.onNodeWithText("Study now").assertExists()
+            unrelated.performClick()
+        """
+
+        selectors = button_contract._direct_selectors(text)
+
+        self.assertEqual([], selectors)
+
     def test_absent_or_weak_evidence_stays_in_missing_tests(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -100,17 +121,30 @@ class ButtonContractTest(unittest.TestCase):
                     "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt": """
                         package dev.bee.kanjianki
                         @Composable fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
+                            toggleLabel = "On",
+                            moveUpLabel = "Up",
+                            moveDownLabel = "Down",
+                            restoreLabel = "Restore default ladder",
+                            toggleDescription = "Turn off Recognition",
+                            moveUpDescription = "Move up Recognition",
+                            moveDownDescription = "Move down Recognition",
+                            restoreDescription = "Restore default ladder",
+                            onToggle = model.onToggle,
+                            onMoveUp = model.onMoveUp,
+                            onMoveDown = model.onMoveDown,
+                            onRestore = model.onRestore,
                             Switch(checked = true, onCheckedChange = { model.onToggle.run("write_kanji", it) })
-                            Button(onClick = { model.onMoveUp.run("write_kanji") }) { Text("Move up") }
-                            Button(onClick = { model.onSave.run() }) { Text("Save study ladder") }
+                            Button(onClick = { model.onMoveUp.run("write_kanji") }) { Text("Up") }
+                            Button(onClick = { model.onRestore.run() }) { Text("Restore default ladder") }
                         }
                     """,
                     "app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.java": """
                         package dev.bee.kanjianki;
                         class MainActivitySettingsInstrumentedTest {
                             void edits_study_ladder() {
-                                compose.onNodeWithText("Save study ladder").performClick();
-                                compose.onNodeWithText("Move up").performClick();
+                                compose.onNodeWithContentDescription("Turn off Recognition").performClick();
+                                compose.onNodeWithText("Up").performClick();
+                                compose.onNodeWithText("Restore default ladder").performClick();
                             }
                         }
                     """,
@@ -129,9 +163,15 @@ class ButtonContractTest(unittest.TestCase):
         row = self._row(contract, "settings-save-toggle-reorder")
         self.assertEqual("SettingsStudyLadderPanel", row["composable"])
         self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt", row["source_file"])
-        self.assertIn("Save study ladder", row["labels"])
+        self.assertIn("On", row["labels"])
+        self.assertIn("Off", row["labels"])
+        self.assertIn("Up", row["labels"])
+        self.assertIn("Down", row["labels"])
+        self.assertIn("Restore default ladder", row["labels"])
+        self.assertNotIn("Save study ladder", row["labels"])
         self.assertNotEqual("SettingsImportFiltersPanel", row["composable"])
-        self.assertTrue(any("Save study ladder" in entry for entry in row["existing_tests"]))
+        self.assertTrue(any("Turn off Recognition" in entry for entry in row["existing_tests"]))
+        self.assertIn("missing source mapping for dedicated save control", row["missing_tests"])
 
     def test_every_row_has_existing_or_missing_tests_and_cli_writes_json_and_markdown(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -158,9 +198,13 @@ class ButtonContractTest(unittest.TestCase):
                     "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt": """
                         package dev.bee.kanjianki
                         @Composable fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
+                            toggleLabel = "On",
+                            moveUpLabel = "Up",
+                            moveDownLabel = "Down",
+                            restoreLabel = "Restore default ladder",
                             Switch(checked = true, onCheckedChange = {})
-                            Button(onClick = {}) { Text("Move up") }
-                            Button(onClick = {}) { Text("Save study ladder") }
+                            Button(onClick = {}) { Text("Up") }
+                            Button(onClick = {}) { Text("Restore default ladder") }
                         }
                     """,
                     "app/src/androidTest/java/dev/bee/kanjianki/MainActivityHelperInstrumentedTest.java": """
