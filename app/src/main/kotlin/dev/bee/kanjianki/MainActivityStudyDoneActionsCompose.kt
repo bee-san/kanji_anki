@@ -12,14 +12,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -69,6 +77,9 @@ fun StudyDoneActions(
 
 @Composable
 fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) {
+    model.studyMoreDialog?.let { dialog ->
+        StudyMoreNewCardsDialog(model = dialog)
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
@@ -125,6 +136,37 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
             }
         }
     }
+}
+
+@Composable
+fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
+    var requestedCount by remember(model.initialCount) { mutableStateOf(model.initialCount.toString()) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { model.onDismiss.run() },
+        title = { Text(text = model.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = model.message)
+                OutlinedTextField(
+                    value = requestedCount,
+                    onValueChange = { requestedCount = it },
+                    label = { Text(text = model.inputLabel) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { model.onConfirm(requestedCount) }) {
+                Text(text = model.confirmLabel)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { model.onDismiss.run() }) {
+                Text(text = model.cancelLabel)
+            }
+        }
+    )
 }
 
 @Composable
