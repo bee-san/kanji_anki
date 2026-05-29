@@ -325,6 +325,50 @@ class BridgeScheduler {
         return sessionSelector.activeQueueItems(safeItems(items), safeRows(rows), nowMillis, studyAheadMillis, allowedKanji, ladder)
     }
 
+    fun randomizedSessionTaskKeys(
+        items: List<RecordsStudyModels.StudyItem>?,
+        rows: List<RecordsImportModels.DashboardRow>?,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings?,
+        ladder: RecordsBase.StudyLadderSettings?,
+        randomSeed: Long?
+    ): List<String> {
+        return sessionSelector.randomizedTaskKeys(
+            safeItems(items),
+            safeRows(rows),
+            nowMillis,
+            studyAheadMillis,
+            allowedKanji,
+            safeSettings(settings),
+            ladder,
+            randomSeed,
+        )
+    }
+
+    fun nextSessionForTaskKeys(
+        items: List<RecordsStudyModels.StudyItem>?,
+        rows: List<RecordsImportModels.DashboardRow>?,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings?,
+        ladder: RecordsBase.StudyLadderSettings?,
+        taskKeys: List<String>?
+    ): RecordsSchedulerModels.StudySession? {
+        return sessionSelector.nextSessionForTaskKeys(
+            safeItems(items),
+            safeRows(rows),
+            nowMillis,
+            studyAheadMillis,
+            allowedKanji,
+            safeSettings(settings),
+            ladder,
+            taskKeys ?: emptyList(),
+        )
+    }
+
     /**
      * Creates a mutable token set from the given list of previously consumed
      * tokens. The returned set is not thread-safe; callers must synchronize
@@ -440,6 +484,11 @@ class BridgeScheduler {
 
         const val TASK_TYPING_MEANING: String = StudyTaskTypes.TYPING_MEANING
         const val TASK_WRITING_REMEDIATION: String = StudyTaskTypes.WRITING_REMEDIATION
+
+        @JvmStatic
+        fun sessionTaskKeyForItem(item: RecordsStudyModels.StudyItem?): String {
+            return StudySessionSelector().sessionTaskKeyForItem(item)
+        }
 
         @JvmStatic
         fun promoteRung(
