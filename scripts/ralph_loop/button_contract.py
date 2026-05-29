@@ -19,7 +19,7 @@ LABEL_RE = re.compile(r"Text\(\s*(?:text\s*=\s*)?\"([^\"]+)\"|(?:label|title|bod
 MODEL_FIELD_RE = re.compile(r"model\.([A-Za-z_][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*TextCopy|MainActivityBase|HomeTextCopy)\.")
 HANDLER_RE = re.compile(r"on(?:Click|CheckedChange|ValueChange)\s*=\s*(?:\{\s*)?([^,}\n]+)|\.clickable\s*\{\s*([^}\n]+)|\.toggleable\s*\([^)]*onValueChange\s*=\s*([^,)]+)")
 INTERACTIVE_RE = re.compile(r"\b(Button|IconButton|TextButton|OutlinedButton|FloatingActionButton|Switch|Checkbox|RadioButton|Slider|TextField|OutlinedTextField)\s*\(|\.(clickable|toggleable|selectable)\b")
-SELECTOR_RE = re.compile(r"onNodeWith(Text|Tag|ContentDescription)\(\s*\"([^\"]+)\"\s*\)(?P<trailer>.{0,240})", re.DOTALL)
+SELECTOR_RE = re.compile(r"onNodeWith(Text|Tag|ContentDescription)\(\s*\"([^\"]+)\"\s*\)")
 HELPER_CLICK_RE = re.compile(r"performClick(?:able)?WithText\([^;\n]*,\s*\"([^\"]+)\"\s*\)")
 PERFORM_CLICK_RE = re.compile(r"\.performClick\s*\(|\.performTouchInput\s*\{|performClick\s*\(")
 ENABLED_RE = re.compile(r"assertIs(?:Not)?Enabled\s*\(|isEnabled\s*\(|disabled|enabled", re.IGNORECASE)
@@ -99,7 +99,7 @@ SEEDS = (
         ("settings", "ladder", "toggle", "reorder", "move", "save"),
         ("SettingsStudyLadder", "StudyLadder", "SettingsStudySort", "SettingsLearningSteps"),
         ("SettingsStudyLadderPanel", "SettingsNewCardSortPanel", "SettingsLearningStepsPanel"),
-        ("Save study ladder", "Move up", "Move down"),
+        ("Save study ladder", "Move up", "Move down", "On", "Off", "Up", "Down", "Restore default ladder"),
     ),
 )
 
@@ -165,10 +165,18 @@ def _labels(text: str) -> list[str]:
         "LABEL_FAIL": "Fail",
         "syncAnkiDroidLabel": "Sync with AnkiDroid",
         "viewAllLabel": "View all >",
+        "moveUpLabel": "Up",
+        "moveDownLabel": "Down",
+        "restoreLabel": "Restore default ladder",
+        "restoreDefaultLadderLabel": "Restore default ladder",
     }
     for key, value in constants.items():
         if key in text and value not in labels:
             labels.append(value)
+    if "toggleLabel" in text:
+        for value in ("On", "Off"):
+            if value not in labels:
+                labels.append(value)
     return labels
 
 
@@ -218,13 +226,27 @@ def _direct_selectors(text: str) -> list[tuple[str, str]]:
     selectors: list[tuple[str, str]] = []
     for match in SELECTOR_RE.finditer(text):
         label = match.group(2)
-        trailer = match.group("trailer")
+        trailer = _selector_statement_trailer(text, match)
         if PERFORM_CLICK_RE.search(trailer):
             selectors.append((label, f"onNodeWith{match.group(1)}(\"{label}\") + performClick"))
     for match in HELPER_CLICK_RE.finditer(text):
         label = match.group(1)
         selectors.append((label, f"performClickableWithText(\"{label}\")"))
     return selectors
+
+
+def _selector_statement_trailer(text: str, match: re.Match[str]) -> str:
+    next_selector = SELECTOR_RE.search(text, match.end())
+    next_semicolon = text.find(";", match.end())
+    next_non_chain_line = re.search(r"\n[ \t]*(?!\.)", text[match.end():])
+    stops = [len(text)]
+    if next_selector:
+        stops.append(next_selector.start())
+    if next_semicolon != -1:
+        stops.append(next_semicolon)
+    if next_non_chain_line:
+        stops.append(match.end() + next_non_chain_line.start())
+    return text[match.end():min(stops)]
 
 
 def _row_for_seed(seed: Seed, sources: list[dict[str, object]], tests: dict[str, list[dict[str, str]]]) -> dict[str, object]:
@@ -314,7 +336,7 @@ def _existing_tests(labels: list[str], tests: dict[str, list[dict[str, str]]]) -
     existing: list[str] = []
     seen: set[str] = set()
     for label in labels:
-        for item in tests.get(label, []):
+        for item in _matching_test_items(label, tests):
             entry = f"{item['path']}:{item['selector']}"
             if entry not in seen:
                 seen.add(entry)
@@ -322,19 +344,39 @@ def _existing_tests(labels: list[str], tests: dict[str, list[dict[str, str]]]) -
     return existing
 
 
+def _matching_test_items(label: str, tests: dict[str, list[dict[str, str]]]) -> list[dict[str, str]]:
+    items = list(tests.get(label, []))
+    if label not in {"On", "Off", "Up", "Down"}:
+        return items
+    word = re.compile(rf"\b{re.escape(label)}\b", re.IGNORECASE)
+    for selector_label, selector_items in tests.items():
+        if selector_label != label and word.search(selector_label):
+            items.extend(selector_items)
+    return items
+
+
 def _missing_tests(seed: Seed, labels: list[str], existing: list[str], source: dict[str, object]) -> list[str]:
     missing: list[str] = []
-    covered_labels = {entry.split('"')[1] for entry in existing if '"' in entry}
     for label in labels:
-        if label not in covered_labels:
+        if not any(_entry_covers_label(entry, label) for entry in existing):
             missing.append(f"missing direct selector/click coverage for \"{label}\"")
     if not labels:
         missing.append("missing obvious UI label extraction")
+    if seed.id == "settings-save-toggle-reorder":
+        missing.append("missing source mapping for dedicated save control")
     if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(existing):
         missing.append("missing enabled/disabled state coverage")
     if not source:
         missing.append("missing source mapping")
     return missing
+
+
+def _entry_covers_label(entry: str, label: str) -> bool:
+    if f'"{label}"' in entry:
+        return True
+    if label in {"On", "Off", "Up", "Down"}:
+        return bool(re.search(rf"\b{re.escape(label)}\b", entry, re.IGNORECASE))
+    return False
 
 
 def _needs_enabled_disabled(seed: Seed, source: dict[str, object]) -> bool:
