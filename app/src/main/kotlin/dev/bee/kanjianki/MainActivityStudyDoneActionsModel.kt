@@ -13,4 +13,16 @@ data class StudyDoneScreenModel(
     val onStudyMore: Runnable,
     val onContinueAll: Runnable,
     val onBackHome: Runnable,
+    val studyMoreDialog: StudyMoreNewCardsDialogModel? = null,
+)
+
+data class StudyMoreNewCardsDialogModel(
+    val title: String,
+    val message: String,
+    val inputLabel: String,
+    val initialCount: Int,
+    val confirmLabel: String,
+    val cancelLabel: String,
+    val onConfirm: (String) -> Boolean,
+    val onDismiss: Runnable,
 )

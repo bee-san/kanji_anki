@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -101,6 +103,53 @@ class MainActivityStudyDoneActionsComposeTest {
 
         assertTrue(continueClicked)
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun rendersStudyMoreDialogAndSubmitsTypedCount() {
+        var confirmedCount = ""
+        var dismissed = false
+
+        composeRule.setContent {
+            StudyDoneScreen(
+                model = StudyDoneScreenModel(
+                    modeLabel = MainActivityBase.LABEL_PRACTICE,
+                    title = "Today's focus done",
+                    headline = null,
+                    body = "Your Pareto focus is complete.",
+                    summaryLines = emptyList(),
+                    showDoneActions = true,
+                    availableStudyMoreNewCards = 4,
+                    showBackHome = false,
+                    backHomePrimary = false,
+                    onStudyMore = Runnable {},
+                    onContinueAll = Runnable {},
+                    onBackHome = Runnable {},
+                    studyMoreDialog = StudyMoreNewCardsDialogModel(
+                        title = "Study more new cards",
+                        message = "How many extra new cards do you want to study now?",
+                        inputLabel = MainActivityBase.LABEL_NEW_CARDS,
+                        initialCount = 2,
+                        confirmLabel = MainActivityBase.LABEL_STUDY,
+                        cancelLabel = "Cancel",
+                        onConfirm = { value ->
+                            confirmedCount = value
+                            false
+                        },
+                        onDismiss = Runnable { dismissed = true }
+                    )
+                )
+            )
+        }
+
+        composeRule.onAllNodesWithText("Study more new cards").assertCountEquals(2)
+        composeRule.onNodeWithText("How many extra new cards do you want to study now?").assertIsDisplayed()
+        composeRule.onNodeWithText("2").performTextReplacement("3")
+        composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY).performClick()
+
+        assertEquals("3", confirmedCount)
+        composeRule.onNodeWithText("Cancel").performClick()
+        assertTrue(dismissed)
     }
 
     @Test

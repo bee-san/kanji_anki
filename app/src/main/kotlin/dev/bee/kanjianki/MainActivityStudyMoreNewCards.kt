@@ -20,7 +20,11 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
     }
 
     fun requestedStudyMoreNewCards(countInput: EditText): Int {
-        val decision = StudyMoreNewCardsPolicy.requestedCount(countInput.text.toString())
+        return requestedStudyMoreNewCards(countInput.text.toString())
+    }
+
+    fun requestedStudyMoreNewCards(requestText: String): Int {
+        val decision = StudyMoreNewCardsPolicy.requestedCount(requestText)
         if (!decision.accepted()) {
             Toast.makeText(study, decision.message(), Toast.LENGTH_SHORT).show()
             return -1
