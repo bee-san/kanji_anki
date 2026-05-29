@@ -327,6 +327,18 @@ object SettingsTextCopy {
     fun retentionPresetLabel(value: Int): String = SettingsStudyPlanTextCopy.retentionPresetLabel(value)
 
     @JvmStatic
+    fun deckLimitsTitle(): String = SettingsStudyPlanTextCopy.deckLimitsTitle()
+
+    @JvmStatic
+    fun deckLimitsBody(): String = SettingsStudyPlanTextCopy.deckLimitsBody()
+
+    @JvmStatic
+    fun newCardsPerDayLabel(): String = SettingsStudyPlanTextCopy.newCardsPerDayLabel()
+
+    @JvmStatic
+    fun saveDeckLimitsLabel(): String = SettingsStudyPlanTextCopy.saveDeckLimitsLabel()
+
+    @JvmStatic
     fun dailyWorkloadTitle(): String = SettingsStudyPlanTextCopy.dailyWorkloadTitle()
 
     @JvmStatic

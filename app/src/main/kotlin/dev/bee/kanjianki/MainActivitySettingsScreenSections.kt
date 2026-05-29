@@ -23,6 +23,7 @@ internal fun settingsStudyBehaviorCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
     newCardSort: SettingsNewCardSortPanelModel,
+    deckLimits: SettingsDeckLimitsPanelModel,
     workload: SettingsWorkloadPanelModel,
     retention: SettingsRetentionPanelModel,
     learningSteps: SettingsLearningStepsPanelModel,
@@ -38,6 +39,7 @@ internal fun settingsStudyBehaviorCategoryModel(
         onToggle,
         listOf(
             newCardSort,
+            deckLimits,
             workload,
             retention,
             learningSteps,

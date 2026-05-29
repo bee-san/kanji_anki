@@ -18,6 +18,10 @@ public final class SettingsStudyPlanTextCopyTest {
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
         assertEquals("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", SettingsStudyPlanTextCopy.newCardSortBody());
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
+        assertEquals("Deck limits", SettingsStudyPlanTextCopy.deckLimitsTitle());
+        assertEquals("Set the maximum new cards Kani admits each day, matching Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody());
+        assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel());
+        assertEquals("Save deck limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel());
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000));
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95));
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle());
