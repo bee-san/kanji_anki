@@ -5,13 +5,10 @@ import java.util.Locale
 object ReminderCopyPolicy {
     @JvmStatic
     fun forPlan(request: AdaptiveLoadPlanner.PlanRequest?): ReminderCopy {
-        val safeRequest = request ?: return ReminderCopy(
-            "Sync Kani",
-            "Sync AnkiDroid to find the kanji your reviews keep exposing.",
-        )
+        val safeRequest = request ?: return syncCopy()
         val rows = safeRows(safeRequest)
         if (rows.isEmpty()) {
-            return ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.")
+            return syncCopy()
         }
         val plan = AdaptiveLoadPlanner().plan(safeRequest)
         return forCounts(plan.remaining, currentDueCount(rows, safeItems(safeRequest), safeRequest.nowMillis()))
@@ -24,9 +21,10 @@ object ReminderCopyPolicy {
                 "Kani focus is ready",
                 String.format(
                     Locale.ROOT,
-                    "%d focus kanji %s left today. Draw one now.",
+                    "%d focus kanji %s waiting. Open Kani to review %s.",
                     focusRemaining,
                     if (focusRemaining == 1) "is" else "are",
+                    if (focusRemaining == 1) "it" else "them",
                 ),
             )
         }
@@ -35,13 +33,18 @@ object ReminderCopyPolicy {
                 "Kani recovery is due",
                 String.format(
                     Locale.ROOT,
-                    "%d problem kanji %s ready. Draw one now.",
+                    "%d problem kanji %s due. Open Kani to review %s now.",
                     due,
                     if (due == 1) "is" else "are",
+                    if (due == 1) "it" else "them",
                 ),
             )
         }
-        return ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.")
+        return ReminderCopy("Kani is caught up", "No problem kanji are due. Open Kani for extra practice if you want.")
+    }
+
+    private fun syncCopy(): ReminderCopy {
+        return ReminderCopy("Sync Kani", "Open Kani and tap Sync.")
     }
 
     private fun currentDueCount(

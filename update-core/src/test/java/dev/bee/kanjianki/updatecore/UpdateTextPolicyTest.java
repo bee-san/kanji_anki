@@ -20,20 +20,24 @@ public final class UpdateTextPolicyTest {
     @Test
     public void notificationBodyPrefersVerifiedVersion() {
         assertEquals(
-                "Version 0.4.3 is verified and ready.",
+                "Version 0.4.3 is ready. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody("v0.4.3", "manual message")
         );
     }
 
     @Test
     public void notificationBodyFallsBackToMessageOrDefault() {
-        assertEquals("Checksum verified.", UpdateTextPolicy.notificationBody("", "Checksum verified."));
+        assertEquals("Kani update is ready. Open Kani to install it.", UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE);
         assertEquals(
-                UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE,
+                "Checksum verified. Open Kani to install it.",
+                UpdateTextPolicy.notificationBody("", "Checksum verified.")
+        );
+        assertEquals(
+                "Kani update is ready. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody(null, "  ")
         );
         assertEquals(
-                UpdateTextPolicy.DEFAULT_PENDING_UPDATE_MESSAGE,
+                "Kani update is ready. Open Kani to install it.",
                 UpdateTextPolicy.notificationBody(null, null)
         );
     }
