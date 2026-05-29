@@ -3,7 +3,6 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,7 +16,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,9 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import dev.bee.kanjianki.core.HomeTextCopy
 
 internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
@@ -122,19 +117,24 @@ fun HomeSectionHeader(
             modifier = Modifier.weight(1f)
         )
         if (actionLabel != null && onAction != null) {
-            Text(
-                text = "$actionLabel >",
-                color = Color(0xFFFF3A70),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier
-                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
-                    .semantics {
-                        role = Role.Button
-                    }
-                    .clickable(onClick = onAction)
-            )
+            OutlinedButton(
+                onClick = onAction,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFFEBD6E4)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF2D1635)
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(start = 12.dp)
+            ) {
+                Text(
+                    text = actionLabel,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                )
+            }
         }
     }
 }
