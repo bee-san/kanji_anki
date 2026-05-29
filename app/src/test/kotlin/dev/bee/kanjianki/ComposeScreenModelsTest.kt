@@ -7,9 +7,112 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class ComposeScreenModelsTest {
+    @Test
+    fun asyncHomeRouteLoaderReturnsImmediatelyWhenLoadBlocks() {
+        val background = Executors.newSingleThreadExecutor()
+        val releaseLoad = CountDownLatch(1)
+        val rendered = CountDownLatch(1)
+        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+
+        try {
+            val started = System.nanoTime()
+            loader.load(
+                showLoading = {},
+                load = {
+                    releaseLoad.await(5, TimeUnit.SECONDS)
+                    "ready"
+                },
+                render = { rendered.countDown() },
+            )
+            val responseMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+
+            assertTrue("tap-to-loading response took ${responseMillis}ms", responseMillis < 200)
+
+            releaseLoad.countDown()
+            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
+        } finally {
+            background.shutdownNow()
+        }
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderShowsLoadingBeforeBackgroundWork() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading") },
+            load = {
+                events.add("load")
+                "ready"
+            },
+            render = { value -> events.add("render:$value") },
+        )
+
+        assertEquals(listOf("loading"), events)
+
+        background.runNext()
+        assertEquals(listOf("loading", "load"), events)
+
+        main.runNext()
+        assertEquals(listOf("loading", "load", "render:ready"), events)
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderIgnoresStaleBackgroundResults() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading:first") },
+            load = { "first" },
+            render = { value -> events.add("render:$value") },
+        )
+        loader.load(
+            showLoading = { events.add("loading:second") },
+            load = { "second" },
+            render = { value -> events.add("render:$value") },
+        )
+
+        background.runNext()
+        background.runNext()
+        main.runNext()
+        main.runNext()
+
+        assertEquals(listOf("loading:first", "loading:second", "render:second"), events)
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderCancelPendingIgnoresQueuedResult() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+
+        loader.load(
+            showLoading = { events.add("loading") },
+            load = { "ready" },
+            render = { value -> events.add("render:$value") },
+        )
+        loader.cancelPending()
+
+        background.runNext()
+        main.runNext()
+
+        assertEquals(listOf("loading"), events)
+    }
+
     @Test
     fun shellModelDefaultsToHomeAndCopiesSelectedRoute() {
         assertEquals("home", MainActivityShellModel().selectedRoute)

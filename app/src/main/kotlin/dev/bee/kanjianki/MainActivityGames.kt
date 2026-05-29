@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.KanjiGameRoundState
@@ -14,13 +15,18 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     override fun renderGames() {
         clearGameSession()
-        val model = gamesScreenModel()
-        renderHomeRoute {
-            GamesMenuScreen(
-                model = model,
-                onHome = this::renderHome
-            )
-        }
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.gamesActionLabel(),
+            load = { gamesScreenModel() },
+            render = { model ->
+                renderHomeRoute {
+                    GamesMenuScreen(
+                        model = model,
+                        onHome = this::renderHome
+                    )
+                }
+            },
+        )
     }
 
     internal fun returnToGames() {

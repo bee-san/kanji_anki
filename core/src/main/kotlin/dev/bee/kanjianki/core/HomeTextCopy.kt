@@ -134,6 +134,9 @@ object HomeTextCopy {
     fun homeLabel(): String = "Home"
 
     @JvmStatic
+    fun loadingLabel(): String = "Loading…"
+
+    @JvmStatic
     fun noRecentMistakesTitle(): String = "No recent mistakes yet"
 
     @JvmStatic

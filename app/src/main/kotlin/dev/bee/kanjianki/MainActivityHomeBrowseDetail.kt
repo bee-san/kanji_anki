@@ -13,13 +13,25 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
+    private data class BrowseRouteData(
+        val query: String,
+        val items: List<RecordsImportModels.KanjiInventoryItem>,
+    )
+
     fun renderBrowseKanji(query: String?) {
-        home.activeBrowseQuery = query ?: ""
-        val items = home.store.searchKanjiInventory(query)
-        val model = browseScreenModel(home, home.activeBrowseQuery, items)
-        home.renderHomeRoute {
-            BrowseScreen(model)
-        }
+        val requestedQuery = query ?: ""
+        home.activeBrowseQuery = requestedQuery
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.browseActionLabel(),
+            load = { BrowseRouteData(requestedQuery, home.store.searchKanjiInventory(requestedQuery)) },
+            render = { data ->
+                home.activeBrowseQuery = data.query
+                val model = browseScreenModel(home, data.query, data.items)
+                home.renderHomeRoute {
+                    BrowseScreen(model)
+                }
+            },
+        )
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean) {

@@ -16,6 +16,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
+    private val asyncHomeRouteLoader by lazy {
+        AsyncHomeRouteLoader(io) { task -> main.post(task) }
+    }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
 
@@ -23,6 +26,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     abstract fun renderGames()
 
     override fun renderHome() {
+        asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
 
         val now = System.currentTimeMillis()
@@ -263,6 +267,30 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun renderBrowseKanji(query: String?) {
         browseDetail.renderBrowseKanji(query)
+    }
+
+    fun <T> renderAsyncHomeRoute(
+        loadingTitle: String,
+        load: () -> T,
+        render: (T) -> Unit,
+    ) {
+        asyncHomeRouteLoader.load(
+            showLoading = {
+                renderHomeRoute {
+                    HomeRouteLoadingScreen(
+                        title = loadingTitle,
+                        homeLabel = HomeTextCopy.homeLabel(),
+                        onHome = this::renderHome,
+                    )
+                }
+            },
+            load = load,
+            render = render,
+        )
+    }
+
+    fun cancelPendingHomeRouteLoads() {
+        asyncHomeRouteLoader.cancelPending()
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
