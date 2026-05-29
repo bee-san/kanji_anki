@@ -46,7 +46,11 @@ class BridgeScheduler {
         startOfDayMillis: Long,
         ladder: RecordsBase.StudyLadderSettings?
     ): List<RecordsStudyModels.StudyItem> {
-        return queueSeeder.seedQueue(safeRows(rows), safeItems(existing), safeSettings(settings), nowMillis, startOfDayMillis, ladder)
+        val resolvedSettings = safeSettings(settings)
+        return suppressionPolicy.apply(
+            queueSeeder.seedQueue(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, ladder),
+            resolvedSettings.matureDays,
+        )
     }
 
     fun seedQueue(
@@ -69,7 +73,11 @@ class BridgeScheduler {
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         ladder: RecordsBase.StudyLadderSettings?
     ): List<RecordsStudyModels.StudyItem> {
-        return queueSeeder.seedQueue(safeRows(rows), safeItems(existing), safeSettings(settings), nowMillis, startOfDayMillis, plan, ladder)
+        val resolvedSettings = safeSettings(settings)
+        return suppressionPolicy.apply(
+            queueSeeder.seedQueue(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, plan, ladder),
+            resolvedSettings.matureDays,
+        )
     }
 
     fun seedExtraNewCards(
@@ -92,7 +100,9 @@ class BridgeScheduler {
         requestedCount: Int,
         ladder: RecordsBase.StudyLadderSettings?
     ): ExtraNewCardsResult {
-        return queueSeeder.seedExtraNewCards(safeRows(rows), safeItems(existing), safeSettings(settings), nowMillis, startOfDayMillis, requestedCount, ladder)
+        val resolvedSettings = safeSettings(settings)
+        val result = queueSeeder.seedExtraNewCards(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, requestedCount, ladder)
+        return ExtraNewCardsResult(suppressionPolicy.apply(result.items, resolvedSettings.matureDays), result.admittedKanji, result.availableCount)
     }
 
     fun nextSession(
