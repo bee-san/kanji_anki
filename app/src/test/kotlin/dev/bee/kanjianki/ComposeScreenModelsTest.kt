@@ -574,6 +574,149 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun settingsCategoryCopyUsesAnkiLikeSections() {
+        assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
+        assertEquals(
+            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+            dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
+        )
+        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals(
+            "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
+        )
+        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals(
+            "Reminders and app update checks that change how Kani runs in the background.",
+            dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
+        )
+        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals(
+            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
+            dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
+        )
+    }
+
+    @Test
+    fun settingsCategoryFactoriesGroupSyncWithImports() {
+        val noop = Runnable {}
+        val noteType = SettingsNoteTypePanelModel(
+            title = "Note type",
+            status = "Kiku",
+            body = "Fields",
+            fields = SettingsNoteTypeFieldState("Kiku", "Kanji", "Reading", "Meaning", "Sentence", "Frequency", "Sort"),
+            requiredTitle = "Required",
+            requiredBody = "Expression required",
+            noteTypeLabel = "Note type",
+            expressionLabel = "Expression",
+            readingLabel = "Reading",
+            meaningLabel = "Meaning",
+            sentenceLabel = "Sentence",
+            frequencyLabel = "Frequency",
+            frequencySortLabel = "Sort",
+            chooseLabel = "Choose",
+            kikuLabel = "Use Kiku",
+            saveLabel = "Save",
+            onChoose = SettingsNoteTypeAction {},
+            onUseKiku = SettingsNoteTypeAction {},
+            onSave = SettingsNoteTypeAction {},
+        )
+        val importFilters = SettingsImportFiltersPanelModel(
+            title = "Import filters",
+            summary = "Suspended",
+            body = "Choose imports",
+            presetsTitle = "Presets",
+            presets = emptyList(),
+            state = SettingsImportFiltersState(false, true, false, false, false, "", "", "0.5", "2", "1"),
+            activeCardsLabel = "Active",
+            suspendedCardsLabel = "Suspended",
+            taggedCardsLabel = "Tagged",
+            weakCardsLabel = "Weak",
+            browserQueryCardsLabel = "Browser query",
+            browserQueryLabel = "Query",
+            browserQueryHint = "rated:1",
+            browserQueryHelperText = "Use Anki browser syntax",
+            tagsLabel = "Tags",
+            tagsHint = "kani",
+            difficultyLabel = "Difficulty",
+            lapsesLabel = "Lapses",
+            minMatchingLabel = "Minimum",
+            saveLabel = "Save",
+            onSave = SettingsImportFilterAction {},
+        )
+        val frequency = SettingsFrequencyRangePanelModel(
+            title = "Frequency range",
+            body = "Ranks",
+            selectedRanks = intArrayOf(1, 500),
+            minRankLabel = "Min",
+            initialMinRankText = "1",
+            maxRankLabel = "Max",
+            initialMaxRankText = "500",
+            minimumRankLabel = "Most frequent",
+            maximumRankLabel = "Least frequent",
+            saveLabel = "Save",
+            onSave = SettingsFrequencyRangeSaveAction { _, _ -> },
+        )
+        val autoSync = SettingsAutoSyncPanelModel(
+            title = "Daily Anki sync",
+            status = "On",
+            statusColor = 0xFF00AEB5.toInt(),
+            detail = "Runs daily",
+            actionLabel = "Turn off",
+            primaryAction = false,
+            onAction = SettingsAutoSyncAction {},
+        )
+        val reminder = SettingsReminderPanelModel(
+            title = "Daily reminder",
+            status = "Off",
+            statusColor = 0xFF6C5674.toInt(),
+            body = "Study reminder",
+            selectedHour = intArrayOf(8),
+            selectedMinute = intArrayOf(0),
+            presets = emptyList(),
+            saveLabel = "Save",
+            turnOffLabel = null,
+            warning = null,
+            notificationSettingsLabel = null,
+            onPickTime = SettingsReminderTimePickerAction { _, _, _ -> },
+            onSave = SettingsReminderAction {},
+            onTurnOff = null,
+            onOpenNotificationSettings = null,
+        )
+        val update = SettingsUpdateOverviewPanelModel(
+            panel = SettingsUpdatePanelModel(
+                title = "Updates",
+                statusLine = "Manual checks",
+                statusColor = ComposeColor.Black,
+                lastCheckLine = "Never checked",
+                lastResultLine = "No result",
+                installPermissionLine = "Allowed",
+                installPermissionColor = ComposeColor.Black,
+                hasPendingUpdate = false,
+                pendingVersionLine = null,
+                pendingMessageLine = null,
+                canInstallUpdates = true,
+                onInstallVerifiedUpdate = {},
+                onOpenInstallSettings = {},
+                onToggleAutomaticUpdates = {},
+                automaticUpdatesToggleLabel = "Enable",
+            ),
+            openUpdaterLabel = "Open updater",
+            onOpenUpdater = {},
+        )
+
+        val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
+        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+
+        assertEquals("Import & sync", importSync.title)
+        assertEquals("4 cards", importSync.panelCount)
+        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
+        assertEquals("Advanced controls", advanced.title)
+        assertEquals("2 cards", advanced.panelCount)
+        assertEquals(listOf(reminder, update), advanced.panels)
+    }
+
+    @Test
     fun referenceDataModelsKeepNavigationAndAttributionFields() {
         var opened = false
         var wentHome = false
