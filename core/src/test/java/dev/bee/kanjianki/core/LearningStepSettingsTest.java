@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -36,6 +37,30 @@ public final class LearningStepSettingsTest {
         assertEquals(Arrays.asList(10), defaults.reviewStepsMinutes);
         assertEquals("1m, 10m", defaults.newStepsText());
         assertEquals("10m", defaults.reviewStepsText());
+    }
+
+    @Test
+    public void constructorAllowsExplicitEmptyRelearningSteps() {
+        RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
+                null,
+                Collections.emptyList()
+        );
+
+        assertEquals(Arrays.asList(1, 10), settings.newStepsMinutes);
+        assertTrue(settings.reviewStepsMinutes.isEmpty());
+        assertEquals("", settings.reviewStepsText());
+    }
+
+    @Test
+    public void constructorUsesDefaultRelearningStepsWhenUnset() {
+        RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
+                null,
+                null
+        );
+
+        assertEquals(Arrays.asList(1, 10), settings.newStepsMinutes);
+        assertEquals(Arrays.asList(10), settings.reviewStepsMinutes);
+        assertEquals("10m", settings.reviewStepsText());
     }
 
     @Test

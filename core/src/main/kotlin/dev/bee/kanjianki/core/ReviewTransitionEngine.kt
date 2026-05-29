@@ -149,11 +149,18 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         state.difficulty = result.difficulty
 
         val relearning = context.learningSettings.reviewStepsMinutes
-        state.phase = RecordsBase.SchedulerPhase.RELEARNING
         state.stepIndex = 0
-        state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(relearning[0])
-        state.schedulerState = StudyLadderRules.STATE_LEARNING
-        state.scheduledIntervalDays = 0
+        if (relearning.isEmpty()) {
+            state.phase = RecordsBase.SchedulerPhase.REVIEW
+            state.due = context.nowMillis + StudyLadderRules.DAY
+            state.schedulerState = StudyLadderRules.STATE_REVIEW
+            state.scheduledIntervalDays = 1
+        } else {
+            state.phase = RecordsBase.SchedulerPhase.RELEARNING
+            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(relearning[0])
+            state.schedulerState = StudyLadderRules.STATE_LEARNING
+            state.scheduledIntervalDays = 0
+        }
 
         if (countsAsRealDue(context, state)) {
             state.realPassStreak = 0

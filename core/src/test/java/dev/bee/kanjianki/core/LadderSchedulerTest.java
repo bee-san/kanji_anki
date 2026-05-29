@@ -323,7 +323,7 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void reviewAgainWithEmptyRelearningStepsGetsDayInterval() {
+    public void reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
         RecordsSchedulerModels.LearningStepSettings noRelearningSteps =
@@ -339,13 +339,12 @@ public class LadderSchedulerTest {
                 noRelearningSteps
         );
 
-        // LearningStepSettings normalizes empty review steps to a default list
-        // ([10m]), so the scheduler always enters RELEARNING on Again. The
-        // "skip relearning with 1-day interval" path in applyReviewAgain is
-        // only reachable if the list were truly empty post-normalization, which
-        // the current normalizeSteps implementation prevents.
-        assertEquals("Phase enters RELEARNING (normalized default applies)",
-                RecordsBase.SchedulerPhase.RELEARNING, result.item.phase);
+        assertEquals("Empty relearning steps skip practice and return to review",
+                RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
+        assertEquals("review", result.item.state);
+        assertEquals("Post-lapse interval is one day", 1000L + BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(1, result.item.matureIntervalDays);
+        assertEquals(1, result.item.lapses);
     }
 
     // ---- Ladder floor and ceiling ----
