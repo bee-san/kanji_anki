@@ -70,13 +70,13 @@ public final class HomeTextCopyTest {
     @Test
     public void homeShellCopyPreservesHeaderMetricsAndEmptyStates() {
         assertEquals("Kani", HomeTextCopy.appTitle());
-        assertEquals("Your AnkiDroid companion app to cure kanji blindness", HomeTextCopy.appSubtitle());
+        assertEquals("An AnkiDroid companion for focused kanji repair", HomeTextCopy.appSubtitle());
         assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel());
         assertEquals("Focus queue", HomeTextCopy.focusQueueTitle());
         assertEquals("View all", HomeTextCopy.viewAllLabel());
         assertEquals("No kanji queued yet", HomeTextCopy.noKanjiQueuedTitle());
         assertEquals(
-                "After the first sync, this screen shows the kanji that need focused recall and writing practice.",
+                "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice.",
                 HomeTextCopy.homeNoKanjiQueuedBody()
         );
         assertEquals("Sync AnkiDroid first to build a focus queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody());
@@ -115,7 +115,7 @@ public final class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle());
         assertEquals(
-                "Kani imports suspended Basic cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.",
+                "Kani imports suspended Basic cards by default, archives suspended-card evidence locally, and only uses active cards when that import filter is enabled.",
                 HomeTextCopy.syncDialogMessage(settings)
         );
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel());

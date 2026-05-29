@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD033 MD041 -->
+
 <p align="center">
   <img alt="Kani app logo" src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="160">
 </p>
@@ -18,18 +20,35 @@
 
 Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji — the painful "kanji blindness" loop where similar-looking characters keep tripping you up.
 
+Kani borrows the parts of Anki that make recall durable: saved evidence from your own cards, FSRS-style review timing, and a repeatable review habit. It intentionally differs from Anki by narrowing the surface area to kanji repair. Kani reads AnkiDroid, builds a small local focus queue, and asks you to practice the characters that are causing real misses instead of managing another general-purpose deck.
+
 Kani helps you:
+
 1. Find kanji that keep causing trouble in your AnkiDroid reviews.
 2. Focus on why they are hard, such as unfamiliar characters or visually similar kanji.
 3. Study them through a small, structured queue instead of another full SRS backlog.
+4. Compare later AnkiDroid evidence so repaired kanji can retire from the queue.
 
 # Features
 
+## AnkiDroid companion model
+
+| Area | Like Anki / AnkiDroid | Kani's kanji-study difference |
+| --- | --- | --- |
+| Source material | Uses your own cards and review evidence. | Reads AnkiDroid locally and turns weak kanji evidence into a focused repair queue. |
+| Scheduling | Uses FSRS-style spacing for review timing. | Schedules Kani practice items only; it does not replace or rewrite Anki's deck schedule. |
+| Card shape | Keeps recall practice deliberate and repeatable. | Uses a configurable ladder: handwriting, typed meaning, recognition, font variation, readings, and similar-kanji practice. |
+| Scope | Supports daily review habits. | Optimizes for kanji blindness, not general vocabulary, grammar, or sentence mining workflows. |
+| Suspended cards | Preserves evidence from cards you no longer actively review. | Archives suspended-card evidence locally by default so missed kanji can still be studied without unsuspending Anki cards. |
+| Progress evidence | Review history remains the source of truth. | Compare later AnkiDroid evidence with Kani reviews to show whether the repair work is helping. |
+
 ## Flashcards
+
 - FSRS scheduling for Kani study items.
 - A progressive ladder that starts with easier prompts and moves toward harder kanji recall as you improve.
 
 The study ladder can surface these prompt styles:
+
 - Handwriting practice with stroke guidance.
 - Typed meaning prompts.
 - Recognition cards for kanji meanings.
@@ -44,10 +63,11 @@ Kani uses the Pareto principle: focus on the kanji most worth studying today ins
 The goal is to spend less time managing study queues and more time reading, listening, and immersing.
 
 Other product areas:
-* Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
-* Jiten kanji frequency ranks are bundled offline for filtering.
-* Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync.
-* Releases are signed and published with APK and SHA-256 checksum artifacts.
+
+- Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
+- Jiten kanji frequency ranks are bundled offline for filtering.
+- Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync.
+- Releases are signed and published with APK and SHA-256 checksum artifacts.
 
 ## Product Contract
 
@@ -58,6 +78,7 @@ Other product areas:
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
 - Jiten kanji frequency ranks are bundled in the offline dictionary DB for filtering. The default suspended import range is ranks `100` through `3000`, and it can be changed in Settings.
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
+- Kani keeps its own local FSRS-style queue and never rewrites Anki's deck schedule.
 - `Study now` is the single study entry point.
 - Releases are signed, tagged as `vMAJOR.MINOR.PATCH`, and published with an APK plus SHA-256 checksum.
 
@@ -67,6 +88,18 @@ Other product areas:
 ./gradlew :core:test :app:assembleDebug
 ```
 
+For a narrow copy check while iterating on centralized product text, run:
+
+```bash
+./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest
+```
+
+If Gradle daemons from other workspaces interfere on a shared machine, isolate the user home for a retry:
+
+```bash
+GRADLE_USER_HOME="$PWD/.gradle-task" ./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest
+```
+
 Release builds require signing environment variables:
 
 ```bash
@@ -74,9 +107,16 @@ KANI_SIGNING_STORE_FILE=/path/to/release.jks
 KANI_SIGNING_STORE_PASSWORD=...
 KANI_SIGNING_KEY_ALIAS=...
 KANI_SIGNING_KEY_PASSWORD=...
-gradle :app:assembleRelease
+./gradlew :app:assembleRelease
 ```
 
 ## Release
 
 Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that tag name. GitHub Actions builds the signed APK, writes a matching `.sha256`, and publishes both files to the release.
+
+## Runbook pointers
+
+- Product contract checks: read this README and the centralized strings in `core/src/main/kotlin/dev/bee/kanjianki/core/HomeTextCopy.kt` before changing user-facing copy.
+- Targeted copy regression: `./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest`.
+- Full local smoke check: `./gradlew :core:test :app:assembleDebug`.
+- Release verification: confirm the GitHub Release contains both the signed APK and matching `.sha256` artifact.
