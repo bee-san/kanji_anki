@@ -64,6 +64,7 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/HomeFocusQueueCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeMetricsCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/HomeSyncConfirmDialogCompose.kt",
     "app/src/main/java/dev/bee/kanjianki/*View.java",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/java/dev/bee/kanjianki/SyncProgressPanel.java",
