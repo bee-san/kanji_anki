@@ -11,6 +11,7 @@ public final class NewCardSortSettingsPolicyTest {
         assertEquals(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, request(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY).mode);
         assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, request(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK).mode);
         assertEquals(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, request(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS).mode);
+        assertEquals(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY, request(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY).mode);
     }
 
     @Test

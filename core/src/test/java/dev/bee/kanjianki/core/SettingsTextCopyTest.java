@@ -354,6 +354,7 @@ public final class SettingsTextCopyTest {
         assertEquals("Anki difficulty", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
         assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
         assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY));
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"));
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null));
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle());

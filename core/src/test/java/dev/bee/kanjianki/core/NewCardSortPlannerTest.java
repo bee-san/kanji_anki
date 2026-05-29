@@ -125,6 +125,75 @@ public final class NewCardSortPlannerTest {
         assertEquals(Arrays.asList("丁", "甲", "乙"), kanji(sorted));
     }
 
+    @Test
+    public void balancedPriorityScoresAcrossFullCandidateSet() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("安", 1000, 0, 0, example(2.0, 0.95)),
+                        row("忘", 5000, 2, 0, example(3.0, 0.10)),
+                        row("弱", 2000, 10, 0, example(4.0, 0.80)),
+                        row("難", 3000, 1, 0, example(10.0, 0.90)),
+                        row("停", 4000, 1, 10, example(3.0, 0.85))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
+
+        assertEquals(Arrays.asList("弱", "忘", "難", "停", "安"), kanji(sorted));
+    }
+
+    @Test
+    public void balancedPriorityTreatsMissingInvalidFsrsValuesAsZeroSignals() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("無", 20, 0, 0, example(Double.NaN, Double.POSITIVE_INFINITY)),
+                        row("有", 30, 1, 0, example(4.0, 0.80)),
+                        row("頻", 10, 0, 0, example(null, null))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
+
+        assertEquals(Arrays.asList("有", "頻", "無"), kanji(sorted));
+    }
+
+    @Test
+    public void balancedPriorityFallsBackToJitenRankThenKanjiWhenScoresTie() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("乙", 20, 1, 1, example(5.0, 0.50)),
+                        row("甲", 20, 1, 1, example(5.0, 0.50)),
+                        row("丙", 10, 1, 1, example(5.0, 0.50))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
+
+        assertEquals(Arrays.asList("丙", "乙", "甲"), kanji(sorted));
+    }
+
+    @Test
+    public void balancedPriorityNormalizesPercentAndFractionRetrievabilityEqually() {
+        List<RecordsImportModels.DashboardRow> sorted = planner.sortedRows(
+                Arrays.asList(
+                        row("率", 30, 1, 0, example(5.0, 45.0)),
+                        row("分", 30, 1, 0, example(5.0, 0.45)),
+                        row("高", 30, 1, 0, example(5.0, 0.90))
+                ),
+                settings(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
+
+        assertEquals(Arrays.asList("分", "率", "高"), kanji(sorted));
+    }
+
+    @Test
+    public void balancedPriorityComparatorUsesDeterministicTwoRowScoringFallback() {
+        int comparison = planner.compareRows(
+                row("低", 10, 0, 0, example(1.0, 0.95)),
+                row("危", 9999, 0, 0, example(1.0, 0.20)),
+                settings(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
+
+        assertEquals(1, Integer.signum(comparison));
+    }
+
     private static List<String> kanji(List<RecordsImportModels.DashboardRow> rows) {
         return rows.stream().map(row -> row.kanji).collect(Collectors.toList());
     }
