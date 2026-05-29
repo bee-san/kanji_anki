@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -26,7 +25,7 @@ import dev.bee.kanjianki.core.KanjiGameCopy
 fun GamesUnavailableCard(model: GamesUnavailableModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = GamesPanelShape,
         color = ComposeColor(0xFFFFF7D6),
         border = BorderStroke(1.dp, ComposeColor(0xFFFFD640))
     ) {
@@ -54,7 +53,7 @@ fun GamesResultCard(model: GamesResultModel) {
     val accent = ComposeColor(model.titleColor)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = GamesPanelShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
     ) {
@@ -109,7 +108,7 @@ fun GamesResultCard(model: GamesResultModel) {
             Button(
                 onClick = { model.onPrimary.run() },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = GamesButtonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ComposeColor(model.primaryColor),
                     contentColor = GamesWhite
@@ -124,8 +123,8 @@ fun GamesResultCard(model: GamesResultModel) {
             OutlinedButton(
                 onClick = { model.onGames.run() },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, GamesPanelBorder),
+                shape = GamesButtonShape,
+                border = BorderStroke(1.dp, GamesButtonBorder),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = GamesWhite,
                     contentColor = GamesInk

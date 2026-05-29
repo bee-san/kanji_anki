@@ -6,8 +6,8 @@ object KanjiGameCopy {
     const val LABEL_ROUND_COMPLETE = "Round complete"
     const val LABEL_NEW_ROUND = "New round"
     const val LABEL_SYNC_ANKIDROID = "Sync AnkiDroid"
-    const val LABEL_PLAY = "play"
-    const val LABEL_LOCKED = "locked"
+    const val LABEL_PLAY = "Start"
+    const val LABEL_LOCKED = "Needs data"
     const val LABEL_ROUND = "Round"
     const val LABEL_SCORE = "Score"
     const val LABEL_STREAK = "Streak"
@@ -64,13 +64,13 @@ object KanjiGameCopy {
     }
 
     @JvmStatic
-    fun answerText(correctAnswer: String?): String = "Answer: $correctAnswer"
+    fun answerText(correctAnswer: String?): String = "Correct answer: $correctAnswer"
 
     @JvmStatic
-    fun selectedAnswerText(selectedAnswer: String?): String = "You chose: $selectedAnswer"
+    fun selectedAnswerText(selectedAnswer: String?): String = "Your answer: $selectedAnswer"
 
     @JvmStatic
-    fun finalScoreText(correct: Int, total: Int): String = "Final score: $correct/$total"
+    fun finalScoreText(correct: Int, total: Int): String = "Score: $correct/$total"
 
     @JvmStatic
     fun accuracyText(correct: Int, answered: Int): String {

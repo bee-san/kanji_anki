@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -63,7 +62,7 @@ private fun GamesScoreCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = GamesScoreShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
     ) {
@@ -104,7 +103,7 @@ fun GamesQuestionCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 7.dp),
-        shape = RoundedCornerShape(8.dp),
+        shape = GamesScoreShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
     ) {
@@ -113,7 +112,7 @@ fun GamesQuestionCard(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = GamesPillShape,
                 color = accent.copy(alpha = 0.12f),
                 border = BorderStroke(1.dp, accent.copy(alpha = 0.34f))
             ) {
@@ -180,8 +179,8 @@ private fun GameChoiceButton(
     OutlinedButton(
         onClick = { onChoiceSelected(choice) },
         modifier = Modifier.fillMaxWidth().heightIn(min = if (useKanjiTypography) 74.dp else 56.dp),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, GamesPanelBorder),
+        shape = GamesChoiceShape,
+        border = BorderStroke(1.dp, GamesButtonBorder),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = GamesWhite,
             contentColor = GamesInk
