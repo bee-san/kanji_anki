@@ -16,40 +16,38 @@
   </a>
 </p>
 
-Kani is an Ankidroid companion app for Japanese learners who find suffer from Kanji Blindness.
+Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji.
 
-Kani will:
-1. Identify problematic Kanji you repeatedly fail
-2. Work out _why_ you fail them (Completely unknown? Similar to other Kanji?)
-3. Gives you structured, personal flashcards to help you learn them
+Kani helps you:
+1. Find kanji that keep causing trouble in your AnkiDroid reviews.
+2. Focus on why they are hard, such as unfamiliar characters or visually similar kanji.
+3. Study them through a small, structured queue instead of another full SRS backlog.
 
 # Features
 
 ## Flashcards
-- FSRS for all Kani flashcards
-- Progressive ladder, if the Kanji is really hard we break it all the way down for you. If it's a bit hard but possible we show you easier flashcards.
+- FSRS scheduling for Kani study items.
+- A progressive ladder that starts with easier prompts and moves toward harder kanji recall as you improve.
 
-Here are some flashcard types you may see:
-- Hand-writing cards with Ringotan style fading away. Trace a Kanji, each time you get it right a stroke will fade away until you 100% mastered it.
-- Recognition, Kanji -> Meaning
-- Different font cards. Some cards will randomise their font to help you learn it across different fonts too
-- Word -> Reading , we take the word(s) with the Kanji you frequently fail in Ankidroid and show you them again so you can learn it this time
-- Similar Kanji. If you fail say 5 words and 2 Kanji are identified as problematic, Kani will be able to tell if its because they are similar to one another and we will help teach you how to tell them apart.
+The study ladder can surface these prompt styles:
+- Handwriting practice with stroke guidance.
+- Typed meaning prompts.
+- Recognition cards for kanji meanings.
+- Font variation to help recognition across different typefaces.
+- Word-to-reading prompts based on words imported from AnkiDroid.
+- Similar-kanji practice when Kani has comparison data for a card.
 
-You can disable / enable / move them up and down the ladder however you want.
+You can enable, disable, and reorder ladder rungs in Settings. Study items move through the ladder according to review results, and `Study now` is the single entry point for practice.
 
-Not another SRS app. Kani uses the Pareto principe to identify kanji actually worth doing that day.
-You know when you're doing Anki and it shows you 私 and you're just like... what was the point of that?
+Kani uses the Pareto principle: focus on the kanji most worth studying today instead of reviewing everything. By default, the suspended-kanji import focuses on Jiten ranks `100` through `3000`, and you can change that range in Settings.
 
-Kani will pick up (by default) up to 5 Kanji that are the absolute best bang for your buck each day, using all the data we have from Ankidroid + your Kani reviews.
+The goal is to spend less time managing study queues and more time reading, listening, and immersing.
 
-No more wasting time. I want you to spend as little time in this app as possible to spend more time immersing.
-
-Random features I like:
-* Frequency based retention. Set 95% retention rate for Kanji with frequency of 1000 or more, and 80% for 1000 - 2000 and so on.
-* Fun games to play to memorise your problematic Kanji while on the train etc
-* Complete control over what is defined as a problematic kanji. You decide how you want to import problematic Kanji!
-* Stats - If Kani is not working for you... it will literally tell you "Kani is not working for you."
+Other product areas:
+* Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
+* Jiten kanji frequency ranks are bundled offline for filtering.
+* Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync.
+* Releases are signed and published with APK and SHA-256 checksum artifacts.
 
 ## Product Contract
 
