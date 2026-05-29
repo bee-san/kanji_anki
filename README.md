@@ -60,6 +60,16 @@ You can enable, disable, and reorder ladder rungs in Settings. Study items move 
 
 Kani uses the Pareto principle: focus on the kanji most worth studying today instead of reviewing everything. By default, the suspended-kanji import focuses on Jiten ranks `100` through `3000`, and you can change that range in Settings.
 
+### Browser query import
+
+Suspended cards remain the default import source. Browser query import is opt-in from Settings for cases where you want Kani to consider the same cards you would find with an Anki browser search, such as:
+
+- `rated:1`
+- `deck:Japanese tag:kani`
+- `prop:due<=0 -is:suspended`
+
+Kani combines the query with the configured note type, then still applies the rank range and minimum matching-card threshold before adding kanji to the practice queue. Query text can include private deck names, tag names, or other collection-specific labels; it is used locally for the AnkiDroid provider search and is redacted from import audit output. If the query selects suspended cards, Kani archives those selected suspended cards locally before the provider cleanup hides them from later syncs.
+
 The goal is to spend less time managing study queues and more time reading, listening, and immersing.
 
 Other product areas:
@@ -76,6 +86,8 @@ Other product areas:
 - The expected note type is `Kiku`, with the `Mining` card template.
 - Required fields are `Expression`, `ExpressionReading`, `MainDefinition`, `Sentence`, `Frequency`, and `FreqSort`.
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
+- Browser query import is opt-in. Suspended-only import remains the default, and query text stays local because it may contain private deck or tag names.
+- Query-selected suspended cards are archived locally before provider cleanup hides them from later syncs.
 - Jiten kanji frequency ranks are bundled in the offline dictionary DB for filtering. The default suspended import range is ranks `100` through `3000`, and it can be changed in Settings.
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
 - Kani keeps its own local FSRS-style queue and never rewrites Anki's deck schedule.
