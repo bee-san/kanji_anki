@@ -62,4 +62,22 @@ public final class DatabaseBackupPolicyTest {
         assertTrue(new File(dir, "kanji_anki_simple_20260515_000001.db").createNewFile());
         assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(dir).isEmpty());
     }
+
+    @Test
+    public void diagnosticLineDoesNotExposePathsOrExceptionMessages() {
+        IOExceptionWithPath error = new IOExceptionWithPath(
+                "open failed: /data/user/0/dev.bee.kanjianki/databases/kanji_anki_simple.db"
+        );
+
+        assertEquals(
+                "Database backup failed. Diagnostic: IOExceptionWithPath",
+                DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error)
+        );
+    }
+
+    private static final class IOExceptionWithPath extends java.io.IOException {
+        IOExceptionWithPath(String message) {
+            super(message);
+        }
+    }
 }
