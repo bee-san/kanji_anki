@@ -2,35 +2,35 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Anki source"
+    fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "What Kani reads from AnkiDroid, and which cards become practice."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study behavior"
+    fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "How much appears today, how quickly repeats return, and when cards move rungs."
+    fun settingsStudyBehaviorBody(): String = "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Automation"
+    fun settingsAutomationTitle(): String = "Advanced controls"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Background nudges, daily AnkiDroid refreshes, and app update checks."
+    fun settingsAutomationBody(): String = "Reminders and app update checks that change how Kani runs in the background."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Reference data"
+    fun settingsReferenceDataTitle(): String = "Display & data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings cockpit"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes."
+        return "Grouped like Anki deck options: import & sync, deck behavior, advanced controls, and display/data. Each setting appears once, next to the thing it changes."
     }
 
     @JvmStatic
