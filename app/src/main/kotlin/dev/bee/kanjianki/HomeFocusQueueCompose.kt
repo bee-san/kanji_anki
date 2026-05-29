@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -103,16 +101,7 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
                 body = requireNotNull(model.emptyBody)
             )
             if (model.showSyncButton) {
-                Button(
-                    onClick = onSync,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ComposeColor(0xFFFF7F9D),
-                        contentColor = ComposeColor.White
-                    )
-                ) {
-                    Text(text = HomeTextCopy.syncAnkiDroidLabel())
-                }
+                KaniPrimaryButton(label = HomeTextCopy.syncAnkiDroidLabel(), onClick = onSync)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -60,8 +60,10 @@ val maybeSonarCoveragePaths = buildList<String> {
 val fastSonarCoverageExclusions = listOf(
     "app/src/main/java/dev/bee/kanjianki/MainActivity*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/MainActivity*.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/HomeChromeCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeFocusQueueCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeMetricsCompose.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
     "app/src/main/java/dev/bee/kanjianki/*View.java",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/java/dev/bee/kanjianki/SyncProgressPanel.java",

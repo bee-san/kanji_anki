@@ -623,7 +623,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
         assertEquals("All current", HomeTextCopy.focusHeadline(all));
-        assertEquals("1 items left / 4", HomeTextCopy.focusHeadline(focused));
+        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused));
 
         StudyStatsStore.StudyStreak none = new StudyStatsStore.StudyStreak(0, 0, false, 0, 0L);
         StudyStatsStore.StudyStreak doneToday = new StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L);
@@ -761,7 +761,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 boolean[] headerClicked = {false};
                 View header = HomeComposeTestViews.homeSectionHeaderTestView(activity, "Focus queue", "View all", () -> headerClicked[0] = true);
-                performClickableWithText(header, "View all >");
+                performClickableWithText(header, "View all");
                 assertTrue(headerClicked[0]);
 
                 performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Browse Kanji");
@@ -794,7 +794,7 @@ public final class MainActivityHelperInstrumentedTest {
                 seedRows(activity, Collections.singletonList(row("裂", "split", "レツ", Collections.emptyList())));
                 activity.renderHome();
                 assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
-                assertHasText(activity, HomeTextCopy.viewAllLabel() + " >");
+                assertHasText(activity, HomeTextCopy.viewAllLabel());
                 assertHasText(activity, "裂");
                 assertHasText(activity, "split");
             });

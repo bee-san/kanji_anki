@@ -19,7 +19,7 @@ object HomeTextCopy {
         if (plan.allKanjiMode) {
             return "All current"
         }
-        return "${plan.remaining} items left / ${plan.target}"
+        return "${plan.remaining} left · target ${plan.target}"
     }
 
     @JvmStatic
@@ -40,9 +40,9 @@ object HomeTextCopy {
 
     @JvmStatic
     fun recentMistakeSubtitle(rating: String?, dateText: String?): String {
-        val safeRating = rating ?: ""
-        val safeDate = dateText ?: ""
-        return "Rated $safeRating on $safeDate"
+        val safeRating = rating?.takeIf { it.isNotEmpty() }?.let(::sentenceCase)
+        val safeDate = dateText?.takeIf { it.isNotEmpty() }
+        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Recent miss" }
     }
 
     @JvmStatic
