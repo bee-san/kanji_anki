@@ -32,7 +32,8 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Import cards matched by this query; Kani still applies note type, rank range, and matching-card threshold."
+        return "Opt in to cards matched by this local Anki search; Kani redacts the query from audits " +
+            "and still applies note type, rank range, and matching-card threshold."
     }
 
     @JvmStatic

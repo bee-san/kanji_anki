@@ -10,10 +10,10 @@ We will probably make it more advanced later.
 
 On sync with AnkiDroid:
 
-1. scan all suspended cards,
+1. scan all suspended cards, plus any opt-in Browser query cards,
 2. extract kanji candidates from those cards,
 3. import only the kanji that pass a frequency filter,
-4. then move the suspended cards out of AnkiDroid and into the app's local archive.
+4. then move selected suspended cards out of AnkiDroid and into the app's local archive.
 
 This keeps the active AnkiDroid collection clean while still letting the app study the right suspended trouble kanji.
 
@@ -21,7 +21,7 @@ This keeps the active AnkiDroid collection clean while still letting the app stu
 
 - AnkiDroid is the source of truth for the active collection.
 - The app is the source of truth for the local suspended-card archive after sync.
-- The app's suspended-kanji import list is derived from suspended AnkiDroid cards at sync time.
+- The app's suspended-kanji import list is derived from suspended AnkiDroid cards at sync time by default. Browser query import is opt-in and uses Anki browser syntax locally.
 
 ## Frequency Source
 
@@ -72,7 +72,9 @@ If this assumption becomes a problem later, change it in this file and module on
 
 ## Scan Scope
 
-The scan should use suspended cards only.
+The default scan uses suspended cards only. Browser query import is opt-in and adds cards matched by the configured Anki browser query.
+
+Browser query examples should stay generic, such as `rated:1`, `deck:Japanese tag:kani`, or `prop:due<=0 -is:suspended`. Query text can contain private deck names, tag names, and other local collection labels, so it must stay local. Import audit output redacts the query, and shared artifacts such as docs, screenshots, and release notes should use generic examples instead of real query text.
 
 Use these inputs from each suspended card:
 
@@ -99,12 +101,12 @@ We should always be able to explain which suspended cards pulled it in.
 
 The sync should conceptually run in this order:
 
-1. read suspended cards from AnkiDroid, plus active cards only when their import filter is enabled,
+1. read suspended cards from AnkiDroid, plus active, tagged, weak, or Browser query cards only when their import filters are enabled,
 2. derive suspended-kanji import candidates from the enabled sources,
 3. filter them through the Jiten rank cutoff,
-4. store suspended cards in the local archive,
+4. store selected suspended cards in the local archive,
 5. store imported suspended kanji in the local database,
-6. remove those suspended cards from AnkiDroid,
+6. hide those archived suspended cards from later AnkiDroid syncs through provider cleanup,
 7. rebuild derived dashboard and study inputs from the new local state.
 
 This matters because the import must happen before the suspended cards disappear from AnkiDroid.

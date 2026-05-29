@@ -20,7 +20,8 @@ public final class SettingsImportFiltersTextCopyTest {
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint());
         assertEquals("Anki browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel());
         assertEquals(
-                "Import cards matched by this query; Kani still applies note type, rank range, and matching-card threshold.",
+                "Opt in to cards matched by this local Anki search; Kani redacts the query from audits " +
+                        "and still applies note type, rank range, and matching-card threshold.",
                 SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText()
         );
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint());
