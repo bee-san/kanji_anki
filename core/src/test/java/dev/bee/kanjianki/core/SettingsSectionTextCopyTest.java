@@ -7,16 +7,16 @@ import static org.junit.Assert.assertEquals;
 public final class SettingsSectionTextCopyTest {
     @Test
     public void sectionLabelsPreserveFormatting() {
-        assertEquals("Anki source", SettingsSectionTextCopy.settingsAnkiSourceTitle());
-        assertEquals("What Kani reads from AnkiDroid, and which cards become practice.", SettingsSectionTextCopy.settingsAnkiSourceBody());
-        assertEquals("Study behavior", SettingsSectionTextCopy.settingsStudyBehaviorTitle());
-        assertEquals("How much appears today, how quickly repeats return, and when cards move rungs.", SettingsSectionTextCopy.settingsStudyBehaviorBody());
-        assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle());
-        assertEquals("Background nudges, daily AnkiDroid refreshes, and app update checks.", SettingsSectionTextCopy.settingsAutomationBody());
-        assertEquals("Reference data", SettingsSectionTextCopy.settingsReferenceDataTitle());
-        assertEquals("Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody());
+        assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle());
+        assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody());
+        assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle());
+        assertEquals("Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody());
+        assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle());
+        assertEquals("Reminders and app update checks that change how Kani runs in the background.", SettingsSectionTextCopy.settingsAutomationBody());
+        assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle());
+        assertEquals("Offline dictionaries, stroke data, fonts, and attribution shown by the app.", SettingsSectionTextCopy.settingsReferenceDataBody());
         assertEquals("Settings cockpit", SettingsSectionTextCopy.settingsCockpitLabel());
-        assertEquals("Source, study, automation, and reference settings. Each setting appears once.", SettingsSectionTextCopy.settingsHeroBody());
+        assertEquals("Grouped by import, deck behavior, automation, and reference data. Each setting appears once.", SettingsSectionTextCopy.settingsHeroBody());
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel());
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel());
         assertEquals("Import ranks", SettingsSectionTextCopy.importRanksStatusLabel());
