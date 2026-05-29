@@ -33,7 +33,7 @@ class MainActivityGamesComposeTest {
                             body = "Pick meanings for kanji from your focus list.",
                             accentColor = 0xFFFF4C76.toInt(),
                             available = true,
-                            chipLabel = "play",
+                            chipLabel = "Start",
                             onClick = Runnable { clicked = true }
                         ),
                         GamesModeCardModel(
@@ -42,7 +42,7 @@ class MainActivityGamesComposeTest {
                             body = "Needs more local kanji data.",
                             accentColor = 0xFF00AEB5.toInt(),
                             available = false,
-                            chipLabel = "locked",
+                            chipLabel = "Needs data",
                             onClick = Runnable {}
                         )
                     )
@@ -55,9 +55,9 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Meaning Pop").assertIsDisplayed()
         composeRule.onNodeWithText("Kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("Pick meanings for kanji from your focus list.").assertIsDisplayed()
-        composeRule.onNodeWithText("play").assertIsDisplayed()
+        composeRule.onNodeWithText("Start").assertIsDisplayed()
         composeRule.onNodeWithText("Reading Rush").assertIsDisplayed()
-        composeRule.onNodeWithText("locked").assertIsDisplayed()
+        composeRule.onNodeWithText("Needs data").assertIsDisplayed()
 
         composeRule.onNodeWithText("Meaning Pop").performClick()
 
@@ -225,8 +225,8 @@ class MainActivityGamesComposeTest {
                     titleColor = 0xFFFF4C76.toInt(),
                     finalScore = null,
                     accuracy = null,
-                    answer = "Answer: language",
-                    selectedAnswer = "You chose: word",
+                    answer = "Correct answer: language",
+                    selectedAnswer = "Your answer: word",
                     explanation = "語 = language",
                     primaryLabel = "Next",
                     primaryColor = 0xFFFF4C76.toInt(),
@@ -237,8 +237,8 @@ class MainActivityGamesComposeTest {
         }
 
         composeRule.onNodeWithText("Not quite").assertIsDisplayed()
-        composeRule.onNodeWithText("Answer: language").assertIsDisplayed()
-        composeRule.onNodeWithText("You chose: word").assertIsDisplayed()
+        composeRule.onNodeWithText("Correct answer: language").assertIsDisplayed()
+        composeRule.onNodeWithText("Your answer: word").assertIsDisplayed()
         composeRule.onNodeWithText("語 = language").assertIsDisplayed()
 
         composeRule.onNodeWithText("Next").performClick()
@@ -260,7 +260,7 @@ class MainActivityGamesComposeTest {
                     model = GamesResultModel(
                         title = "Round complete",
                         titleColor = 0xFF6E5CE6.toInt(),
-                        finalScore = "Final score: 7/10",
+                        finalScore = "Score: 7/10",
                         accuracy = "Accuracy: 70%",
                         answer = null,
                         selectedAnswer = null,
@@ -281,7 +281,7 @@ class MainActivityGamesComposeTest {
         }
 
         composeRule.onNodeWithText("Round complete").assertIsDisplayed()
-        composeRule.onNodeWithText("Final score: 7/10").assertIsDisplayed()
+        composeRule.onNodeWithText("Score: 7/10").assertIsDisplayed()
         composeRule.onNodeWithText("Accuracy: 70%").assertIsDisplayed()
         composeRule.onNodeWithText("Game not ready").assertIsDisplayed()
         composeRule.onNodeWithText("This game needs at least two usable choices from your local kanji data.").assertIsDisplayed()

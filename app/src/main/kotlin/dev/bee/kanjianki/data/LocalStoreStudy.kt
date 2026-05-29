@@ -104,6 +104,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         values.put("writing_clean", if (request.writingClean) 1 else 0)
         values.put("memory_before", taskMemoryText(beforeReview, request.taskType))
         values.put("memory_after", taskMemoryText(afterReview, request.taskType))
+        values.put("scheduler_state_before_json", studyItemSchedulerJson(beforeReview))
         values.put("scheduler_state_after_json", studyItemSchedulerJson(afterReview))
         return db.insertWithOnConflict(TABLE_REVIEW_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE)
     }
@@ -129,8 +130,19 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             ",\"learning_step\":" + item.learningStep +
             ",\"writing_level\":" + item.writingLevel +
             ",\"recognition_stage\":" + item.recognitionStage +
+            ",\"consecutive_failed_recognition_days\":" + item.consecutiveFailedRecognitionDays +
+            ",\"last_failed_recognition_day\":" + item.lastFailedRecognitionDayMillis +
             ",\"writing_remediation_pending\":" + (if (item.writingRemediationPending) "true" else "false") +
+            ",\"suppressed_by_task_type\":" + TextUtil.jsonQuote(item.suppressedByTaskType) +
+            ",\"suppressed_at\":" + item.suppressedAtMillis +
             ",\"mature_interval_days\":" + item.matureIntervalDays +
+            ",\"answer_signature\":" + TextUtil.jsonQuote(item.answerSignature) +
+            ",\"rung\":" + TextUtil.jsonQuote(item.rung.wireName()) +
+            ",\"phase\":" + TextUtil.jsonQuote(item.phase.wireName()) +
+            ",\"real_pass_streak\":" + item.realPassStreak +
+            ",\"real_again_streak\":" + item.realAgainStreak +
+            ",\"last_real_review_due_at\":" + item.lastRealReviewDueAtMillis +
+            ",\"active_token\":" + TextUtil.jsonQuote(item.activeToken) +
             "}"
     }
 

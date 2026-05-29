@@ -11,6 +11,8 @@ import dev.bee.kanjianki.data.LocalStore
 internal class StudySessionTracker {
     private var activeTask: ActiveStudyTask? = null
     private val progressTracker = StudySessionProgressTracker()
+    private val plannedSessionTaskKeys = ArrayList<String>()
+    private val completedPlannedSessionTaskKeys = HashSet<String>()
 
     fun completedCount(): Int = progressTracker.completedCount()
 
@@ -22,6 +24,60 @@ internal class StudySessionTracker {
 
     fun resetProgress() {
         progressTracker.resetProgress()
+        plannedSessionTaskKeys.clear()
+        completedPlannedSessionTaskKeys.clear()
+    }
+
+    fun initializeSessionPlan(taskKeys: List<String>?) {
+        if (taskKeys.isNullOrEmpty() || hasPendingPlannedSessionTask()) {
+            return
+        }
+        plannedSessionTaskKeys.clear()
+        completedPlannedSessionTaskKeys.clear()
+        for (key in taskKeys) {
+            if (key.isNotEmpty() && !plannedSessionTaskKeys.contains(key)) {
+                plannedSessionTaskKeys.add(key)
+            }
+        }
+    }
+
+    fun nextPlannedSessionTaskKey(): String {
+        for (key in plannedSessionTaskKeys) {
+            if (!completedPlannedSessionTaskKeys.contains(key)) {
+                return key
+            }
+        }
+        return ""
+    }
+
+    fun pendingPlannedSessionTaskKeys(): List<String> {
+        val out = ArrayList<String>()
+        for (key in plannedSessionTaskKeys) {
+            if (!completedPlannedSessionTaskKeys.contains(key)) {
+                out.add(key)
+            }
+        }
+        return out
+    }
+
+    fun markPlannedSessionTaskCompleted(taskType: String?, kanji: String?) {
+        val key = plannedSessionTaskKey(taskType, kanji)
+        if (key.isNotEmpty()) {
+            completedPlannedSessionTaskKeys.add(key)
+        }
+    }
+
+    private fun hasPendingPlannedSessionTask(): Boolean {
+        return nextPlannedSessionTaskKey().isNotEmpty()
+    }
+
+    private fun plannedSessionTaskKey(taskType: String?, kanji: String?): String {
+        val safeTaskType = taskType ?: ""
+        val safeKanji = kanji ?: ""
+        if (safeTaskType.isEmpty() || safeKanji.isEmpty()) {
+            return ""
+        }
+        return "$safeTaskType:$safeKanji"
     }
 
     fun initializeTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
@@ -97,6 +153,7 @@ internal class StudySessionTracker {
         )
         if (countProgress) {
             markTaskCompleted(key)
+            markPlannedSessionTaskCompleted(task.taskType, task.kanji)
         }
         activeTask = null
     }

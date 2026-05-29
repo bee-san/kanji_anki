@@ -11,7 +11,7 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
     val studyTime = store.studyTaskTimeStats(System.currentTimeMillis())
     return StatsScreenModel(
         title = "Stats",
-        intro = "Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.",
+        intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
         verdict = statsVerdictCard(stats),
         sections = listOf(
             weaknessBurnDownCard(stats),
@@ -89,7 +89,7 @@ private fun outcomeCard(
 
 private fun MainActivityStats.weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Weakness Burn-Down",
+        title = "Weak kanji trend",
         summary = StudyTextCopy.countText(
             stats.weakKanjiImproved.improvedCount,
             "weak kanji improved",
@@ -114,7 +114,7 @@ private fun MainActivityStats.weaknessBurnDownCard(stats: StudyStatsStore.KaniOu
 
 private fun MainActivityStats.supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Anki Support Conversion",
+        title = "Anki support",
         summary = StudyTextCopy.countText(
             stats.matureSupportGained.matureSupportGained,
             "mature card gained",
@@ -156,7 +156,7 @@ private fun MainActivityStats.notHelpingCard(report: KanjiImpactAnalyzer.Report?
                 )
             )
         }
-        if (report != null && report.needsMoreCardsCount > 0) {
+        if (rows.isNotEmpty() && report != null && report.needsMoreCardsCount > 0) {
             add(
                 StatsLineModel(
                     text = StudyTextCopy.countText(
@@ -172,7 +172,7 @@ private fun MainActivityStats.notHelpingCard(report: KanjiImpactAnalyzer.Report?
         }
     }
     return StatsCardModel(
-        title = "Kani Not Helping Yet",
+        title = "Needs attention",
         summary = StudyTextCopy.countText(rows.size, "kanji with enough evidence", "kanji with enough evidence"),
         body = StatsTextCopy.notHelpingBody(report == null || report.empty(), rows.isNotEmpty()),
         lines = details,
@@ -185,7 +185,7 @@ private fun MainActivityStats.notHelpingCard(report: KanjiImpactAnalyzer.Report?
 
 private fun MainActivityStats.ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsCardModel {
     return outcomeCard(
-        title = "Ladder Health",
+        title = "Ladder status",
         summary = StudyTextCopy.countText(
             metric.totalActiveItems,
             "active kanji on the ladder",
@@ -213,7 +213,7 @@ private fun MainActivityStats.ladderHealthCard(metric: StudyStatsStore.LadderHea
 
 private fun studyTimeCard(stats: StudyStatsStore.StudyTaskTimeStats): StatsCardModel {
     return StatsCardModel(
-        title = "Answered study time",
+        title = "Study time",
         summary = "Today: " + StatsTextCopy.formatStudyTime(stats.todayMillis),
         body = "Last 7 days: " + StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis),
         lines = listOf(

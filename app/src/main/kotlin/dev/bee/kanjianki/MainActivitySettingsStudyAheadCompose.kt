@@ -6,11 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -21,24 +17,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 
-private val StudyAheadInk = Color(0xFF2D1635)
-private val StudyAheadMuted = Color(0xFF6C5674)
-private val StudyAheadPinkDark = Color(0xFFDA3A7A)
-private val StudyAheadPanelBorder = Color(0xFFFFC7DE)
-private val StudyAheadWhite = Color(0xFFFFFFFF)
-private val StudyAheadPanelShape = RoundedCornerShape(24.dp)
-private val StudyAheadButtonShape = RoundedCornerShape(12.dp)
+private val StudyAheadInk = KaniUiTokens.Ink
+private val StudyAheadMuted = KaniUiTokens.Muted
+private val StudyAheadPanelBorder = KaniUiTokens.PanelBorder
+private val StudyAheadWhite = KaniUiTokens.White
+private val StudyAheadPanelShape = KaniUiTokens.PanelShape
 
 object SettingsStudyAheadTestTags {
     const val MINUTES_INPUT = "settings-study-ahead-minutes-input"
@@ -89,25 +81,7 @@ fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
                     fontSize = 20.sp
                 )
             )
-            Button(
-                onClick = { model.onSave.save(minutesText) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = StudyAheadButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = StudyAheadPinkDark,
-                    contentColor = StudyAheadWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.save(minutesText) }
         }
     }
 }

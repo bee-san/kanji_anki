@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes."
+        return "Source, study, automation, and reference settings. Each setting appears once."
     }
 
     @JvmStatic

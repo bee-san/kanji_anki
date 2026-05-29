@@ -4,11 +4,23 @@ import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
     @JvmStatic
+    fun deckLimitsTitle(): String = "Deck limits"
+
+    @JvmStatic
+    fun deckLimitsBody(): String = "Set the maximum new cards Kani admits each day, matching Anki deck options."
+
+    @JvmStatic
+    fun newCardsPerDayLabel(): String = "Maximum new cards/day"
+
+    @JvmStatic
+    fun saveDeckLimitsLabel(): String = "Save deck limits"
+
+    @JvmStatic
     fun dailyWorkloadTitle(): String = "Daily workload"
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule."
+        return "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -19,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule."
+        return "Manual workload sets today's Kani intake; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -68,7 +80,19 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty"
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk"
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness"
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balanced priority"
             else -> "Frequency"
+        }
+    }
+
+    @JvmStatic
+    fun newCardSortDescription(mode: String?): String {
+        return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Mixes Kani weakness, Anki risk, missed examples, and frequency."
+            else -> "Jiten frequency first."
         }
     }
 
@@ -87,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority."
+        return "Choose how unseen cards enter study; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -98,7 +122,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule."
+        return "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged."
     }
 
     @JvmStatic

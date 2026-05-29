@@ -1,5 +1,7 @@
 package dev.bee.kanjianki;
 
+import java.util.Arrays;
+
 import dev.bee.kanjianki.core.BridgeScheduler;
 
 import org.junit.Test;
@@ -49,5 +51,22 @@ public final class StudySessionTrackerTest {
         task.resume(40L);
         task.pause(35L);
         assertEquals(15L, task.activeElapsedMillis);
+    }
+
+    @Test
+    public void sessionPlanSkipsCompletedTaskAndResetsForNewRun() {
+        StudySessionTracker tracker = new StudySessionTracker();
+        tracker.initializeSessionPlan(Arrays.asList("kanji_meaning:裂", "word_reading:謎"));
+
+        assertEquals("kanji_meaning:裂", tracker.nextPlannedSessionTaskKey());
+
+        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂");
+        assertEquals("word_reading:謎", tracker.nextPlannedSessionTaskKey());
+
+        tracker.markPlannedSessionTaskCompleted("word_reading", "謎");
+        assertEquals("", tracker.nextPlannedSessionTaskKey());
+
+        tracker.resetProgress();
+        assertEquals("", tracker.nextPlannedSessionTaskKey());
     }
 }

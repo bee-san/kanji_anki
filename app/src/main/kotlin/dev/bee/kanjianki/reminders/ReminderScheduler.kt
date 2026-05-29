@@ -222,7 +222,7 @@ object ReminderScheduler {
                 "Study reminders",
                 NotificationManager.IMPORTANCE_DEFAULT
             )
-            channel.description = "Daily reminders to study problem kanji in Kani."
+            channel.description = "Friendly Kani review reminders."
             channel.setShowBadge(true)
             manager.createNotificationChannel(channel)
         }

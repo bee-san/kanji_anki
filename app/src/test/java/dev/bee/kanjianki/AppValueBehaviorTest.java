@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 
@@ -45,6 +46,43 @@ public final class AppValueBehaviorTest {
         List<String> lines = StudyCueTexts.answerLines(lookup, session, example, false);
 
         assertEquals(Arrays.asList("Peace, cheap", "Reading: あんしん", "From: 安心"), lines);
+    }
+
+    @Test
+    public void meaningKanjiChoiceCopyUsesDictionaryMeaningWhenAvailable() {
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(new DictionaryLookup.KanjiEntryFields(
+                        "脱",
+                        Arrays.asList("undress", "remove"),
+                        Collections.singletonList("ダツ"),
+                        Collections.singletonList("ぬ.ぐ"),
+                        Collections.emptyList(),
+                        11,
+                        3,
+                        40,
+                        500,
+                        1200
+                )))
+        );
+        RecordsImportModels.MeaningKanjiChoiceCard card = new RecordsImportModels.MeaningKanjiChoiceCard(
+                "脱",
+                "undress, removing",
+                "ダツ",
+                Arrays.asList("脱", "説", "税", "悦")
+        );
+
+        assertEquals(
+                "Which kanji means Undress, remove?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "undress, removing")
+        );
+        assertEquals(
+                "Correct. 脱 means Undress, remove.",
+                StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", true)
+        );
+        assertEquals(
+                "Answer: 脱 · Undress, remove",
+                StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", false)
+        );
     }
 
     @Test

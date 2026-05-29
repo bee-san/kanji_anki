@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,19 +16,18 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val WorkloadInk = Color(0xFF2D1635)
-private val WorkloadMuted = Color(0xFF6C5674)
-private val WorkloadTeal = Color(0xFF24756C)
-private val WorkloadPanelBorder = Color(0xFFFFC7DE)
-private val WorkloadWhite = Color(0xFFFFFFFF)
-private val WorkloadPanelShape = RoundedCornerShape(24.dp)
+private val WorkloadInk = KaniUiTokens.Ink
+private val WorkloadMuted = KaniUiTokens.Muted
+private val WorkloadTeal = KaniUiTokens.Teal
+private val WorkloadPanelBorder = KaniUiTokens.PanelBorder
+private val WorkloadWhite = KaniUiTokens.White
+private val WorkloadPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {

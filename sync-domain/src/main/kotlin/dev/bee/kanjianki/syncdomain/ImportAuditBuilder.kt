@@ -234,11 +234,20 @@ class ImportAuditBuilder private constructor() {
                 ",\"import_weak_fsrs_difficulty\":" + safeSettings.weakFsrsDifficulty() +
                 ",\"import_weak_lapses\":" + safeSettings.weakLapses() +
                 ",\"import_browser_query_cards\":" + safeSettings.importBrowserQueryCards() +
-                ",\"import_browser_query\":" + jsonQuote(safeSettings.importBrowserQuery()) +
+                ",\"import_browser_query\":" + jsonQuote(browserQueryAuditValue(safeSettings)) +
                 ",\"rank_min\":" + safeSettings.rankMin() +
                 ",\"rank_max\":" + safeSettings.rankMax() +
                 ",\"min_matching_cards\":" + safeSettings.minMatchingCards() +
                 "}"
+        }
+
+        @JvmStatic
+        fun browserQueryAuditValue(settings: SettingsSnapshot?): String {
+            val safeSettings = safe(settings)
+            if (safeSettings.importBrowserQueryCards() && safeSettings.importBrowserQuery().isNotEmpty()) {
+                return "[redacted]"
+            }
+            return ""
         }
 
         private fun jsonArray(values: List<String>?): String {

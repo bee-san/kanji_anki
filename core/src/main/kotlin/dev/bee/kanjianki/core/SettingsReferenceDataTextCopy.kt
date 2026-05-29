@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000."
+        return "Import suspended cards only inside this Jiten rank range. Default: 100-3000."
     }
 
     @JvmStatic
@@ -38,7 +38,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution."
+        return "View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution."
     }
 
     @JvmStatic

@@ -1,7 +1,5 @@
 package dev.bee.kanjianki
 
-import android.app.AlertDialog
-import android.content.DialogInterface
 import android.widget.EditText
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -12,6 +10,10 @@ import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyDoneActions(private val home: MainActivityStudy) {
+    private var renderedPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
+    private var renderedScreenModel: StudyDoneScreenModel? = null
+    private var studyMoreDialog: StudyMoreNewCardsDialogModel? = null
+
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
         if (!home.continueAllKanjiSession && seededPlan.focusComplete()) {
             renderFocusDone(seededPlan)
@@ -107,10 +109,27 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         model: StudyDoneScreenModel,
     ) {
+        renderedPlan = plan
+        renderedScreenModel = model
+        renderCurrentStudyDone(plan, model)
+    }
+
+    private fun renderCurrentStudyDone(
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        model: StudyDoneScreenModel,
+    ) {
         home.activeStudyPlan = plan
         home.renderComposeStudyRoute {
-            StudyDoneScreen(model = model, modifier = Modifier.padding(top = 10.dp))
+            StudyDoneScreen(
+                model = model.copy(studyMoreDialog = studyMoreDialog),
+                modifier = Modifier.padding(top = 10.dp)
+            )
         }
+    }
+
+    private fun rerenderStudyDone() {
+        val model = renderedScreenModel ?: return
+        renderCurrentStudyDone(renderedPlan, model)
     }
 
     private fun studyDoneScreenModel(
@@ -170,20 +189,20 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
 
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
         val defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen)
-        val countInput = home.thresholdInput(defaultCount)
-        countInput.hint = MainActivityBase.LABEL_NEW_CARDS
-        countInput.contentDescription = MainActivityBase.LABEL_NEW_CARDS
-
-        val dialog = AlertDialog.Builder(home)
-            .setTitle("Study more new cards")
-            .setMessage("How many extra new cards do you want to study now?")
-            .setView(countInput)
-            .setPositiveButton(MainActivityBase.LABEL_STUDY, null)
-            .setNegativeButton("Cancel", null)
-            .create()
-        dialog.setOnShowListener(StudyMoreNewCardsDialogShowListener(home, dialog, countInput))
-        dialog.show()
-        countInput.requestFocus()
+        studyMoreDialog = StudyMoreNewCardsDialogModel(
+            title = "Study more new cards",
+            message = "How many extra new cards do you want to study now?",
+            inputLabel = MainActivityBase.LABEL_NEW_CARDS,
+            initialCount = defaultCount,
+            confirmLabel = MainActivityBase.LABEL_STUDY,
+            cancelLabel = "Cancel",
+            onConfirm = ::applyStudyMoreNewCardsRequest,
+            onDismiss = Runnable {
+                studyMoreDialog = null
+                rerenderStudyDone()
+            }
+        )
+        rerenderStudyDone()
     }
 
     fun applyStudyMoreNewCardsRequest(countInput: EditText): Boolean {
@@ -191,20 +210,15 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         return requested > 0 && home.startStudyMoreNewCards(requested)
     }
 
-    private class StudyMoreNewCardsDialogShowListener(
-        private val activity: MainActivityStudy,
-        private val dialog: AlertDialog,
-        private val countInput: EditText,
-    ) : DialogInterface.OnShowListener {
-        override fun onShow(opened: DialogInterface) {
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE)
-                .setOnClickListener(
-                    RunnableClickListener {
-                        if (activity.applyStudyMoreNewCardsRequest(countInput)) {
-                            dialog.dismiss()
-                        }
-                    }
-                )
+    fun applyStudyMoreNewCardsRequest(requestText: String): Boolean {
+        val requested = home.requestedStudyMoreNewCards(requestText)
+        if (requested <= 0) {
+            return false
         }
+        val started = home.startStudyMoreNewCards(requested)
+        if (started) {
+            studyMoreDialog = null
+        }
+        return started
     }
 }

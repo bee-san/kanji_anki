@@ -15,13 +15,26 @@ public final class SettingsStudyPlanTextCopyTest {
         assertEquals("Auto Pareto: waiting for problem kanji", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null));
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE));
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY));
+        assertEquals("Jiten frequency first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY));
+        assertEquals("Harder Anki cards first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
+        assertEquals("Cards most likely to be forgotten first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+        assertEquals("Kanji with weaker Kani history first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals(
+                "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
+                SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
+        );
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
-        assertEquals("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", SettingsStudyPlanTextCopy.newCardSortBody());
+        assertEquals("Choose how unseen cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody());
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
+        assertEquals("Deck limits", SettingsStudyPlanTextCopy.deckLimitsTitle());
+        assertEquals("Set the maximum new cards Kani admits each day, matching Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody());
+        assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel());
+        assertEquals("Save deck limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel());
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000));
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95));
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle());
-        assertEquals("Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.", SettingsStudyPlanTextCopy.fsrsRetentionBody());
+        assertEquals("Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.", SettingsStudyPlanTextCopy.fsrsRetentionBody());
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel());
         assertEquals("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody());
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel());

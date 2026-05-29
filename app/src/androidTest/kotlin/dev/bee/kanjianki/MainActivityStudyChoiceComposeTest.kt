@@ -133,6 +133,91 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun meaningChoiceOptionClickRecordsSelectedAnswer() {
+        var selected = ""
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = { selected = it },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        assertEquals("列", selected)
+    }
+
+    @Test
+    fun meaningChoiceResultNextActionRecordsSelectedAnswer() {
+        var selected = ""
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = { selected = it },
+                    resultResolver = MeaningChoiceResultResolver { glyph ->
+                        MeaningChoiceResultModel(
+                            status = "Selected: $glyph",
+                            statusColor = MainActivityBase.TEAL,
+                            actionLabel = MainActivityBase.LABEL_PASS,
+                        )
+                    },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂")).assertIsNotEnabled()
+        composeRule.onNodeWithTag(similarChoiceTestTag("烈")).assertIsNotEnabled()
+        composeRule.runOnIdle { assertEquals("", selected) }
+
+        composeRule.onAllNodesWithText("Next").assertCountEquals(0)
+        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
+
+        assertEquals("列", selected)
+    }
+
+    @Test
+    fun meaningChoiceResultActionUsesFailLabelForWrongChoice() {
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = {},
+                    resultResolver = MeaningChoiceResultResolver { glyph ->
+                        MeaningChoiceResultModel(
+                            status = "Selected: $glyph",
+                            statusColor = MainActivityBase.CORAL,
+                            actionLabel = MainActivityBase.LABEL_FAIL,
+                        )
+                    },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
+        composeRule.onAllNodesWithText("Next").assertCountEquals(0)
+    }
+
+    @Test
     fun meaningChoiceSessionClearsRevealedAnswerWhenModelChanges() {
         var selected = ""
         val first = meaningChoiceModel(
@@ -182,13 +267,14 @@ class MainActivityStudyChoiceComposeTest {
             MeaningChoiceResultActionBar(
                 status = "Correct: 裂",
                 statusColor = MainActivityUiSupport.TEAL,
+                actionLabel = MainActivityBase.LABEL_PASS,
                 onNext = { nextClicks++ }
             )
         }
 
         composeRule.onNodeWithText("Correct: 裂").assertIsDisplayed()
-        composeRule.onNodeWithText("Next").assertIsDisplayed()
-        composeRule.onNodeWithText("Next").performClick()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
 
         assertEquals(1, nextClicks)
     }
@@ -237,6 +323,7 @@ class MainActivityStudyChoiceComposeTest {
             answerGlyph: String,
             answerDetail: String,
             onChoice: (String) -> Unit,
+            resultResolver: MeaningChoiceResultResolver? = null,
         ): MeaningChoiceSessionModel {
             return MeaningChoiceSessionModel(
                 modeLabel = "Recall",
@@ -261,6 +348,7 @@ class MainActivityStudyChoiceComposeTest {
                     helperText = null,
                 ),
                 onChoice = KanjiChoiceHandler { onChoice(it) },
+                resultResolver = resultResolver,
             )
         }
     }

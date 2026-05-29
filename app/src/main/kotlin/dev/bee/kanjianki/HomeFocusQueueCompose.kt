@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -100,16 +101,7 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
                 body = requireNotNull(model.emptyBody)
             )
             if (model.showSyncButton) {
-                Button(
-                    onClick = onSync,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ComposeColor(0xFFFF7F9D),
-                        contentColor = ComposeColor.White
-                    )
-                ) {
-                    Text(text = HomeTextCopy.syncAnkiDroidLabel())
-                }
+                KaniPrimaryButton(label = HomeTextCopy.syncAnkiDroidLabel(), onClick = onSync)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -131,7 +123,10 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
-            .clickable(onClick = model.onClick),
+            .semantics {
+                contentDescription = "Focus queue card ${model.kanji}, ${model.meaning}"
+            }
+            .clickable(role = Role.Button, onClick = model.onClick),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)

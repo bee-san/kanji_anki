@@ -10,8 +10,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public final class StudyReviewActionsTest {
     @Test
@@ -94,6 +96,53 @@ public final class StudyReviewActionsTest {
         assertSame(changed, saved.get());
     }
 
+    @Test
+    public void undoLastAppliedReviewRestoresBeforeSnapshotAndDeletesConsumedToken() {
+        RecordsStudyModels.StudyItem before = item("語", 4);
+        RecordsStudyModels.StudyItem after = item("語", 5)
+                .copyBuilder()
+                .stability(8.0)
+                .difficulty(3.5)
+                .lapses(1)
+                .build();
+        RecordingUndoWriter writer = new RecordingUndoWriter();
+
+        boolean undone = StudyReviewActions.undoLastAppliedReview(
+                new StudyReviewActions.AppliedReviewSnapshot("token-1", before, after),
+                after,
+                writer
+        );
+
+        assertTrue(undone);
+        assertSame(before, writer.savedItem);
+        assertEquals("token-1", writer.deletedToken);
+    }
+
+    @Test
+    public void undoLastAppliedReviewRejectsWhenCurrentSchedulerStateMovedPastAfterSnapshot() {
+        RecordsStudyModels.StudyItem before = item("語", 4);
+        RecordsStudyModels.StudyItem after = item("語", 5)
+                .copyBuilder()
+                .stability(8.0)
+                .difficulty(3.5)
+                .build();
+        RecordsStudyModels.StudyItem reviewedAgain = after.copyBuilder()
+                .totalReviews(6)
+                .stability(9.0)
+                .build();
+        RecordingUndoWriter writer = new RecordingUndoWriter();
+
+        boolean undone = StudyReviewActions.undoLastAppliedReview(
+                new StudyReviewActions.AppliedReviewSnapshot("token-1", before, after),
+                reviewedAgain,
+                writer
+        );
+
+        assertFalse(undone);
+        assertNull(writer.savedItem);
+        assertNull(writer.deletedToken);
+    }
+
     private static RecordsSchedulerModels.ReviewRequest request(String kanji, String rating) {
         return new RecordsSchedulerModels.ReviewRequest(kanji, "token", rating, false, true, false, 0);
     }
@@ -161,6 +210,21 @@ public final class StudyReviewActionsTest {
             this.appliedRating = appliedRating;
             this.beforeReview = beforeReview;
             this.afterReview = afterReview;
+        }
+    }
+
+    private static final class RecordingUndoWriter implements StudyReviewActions.UndoWriter {
+        private RecordsStudyModels.StudyItem savedItem;
+        private String deletedToken;
+
+        @Override
+        public void saveStudyItem(RecordsStudyModels.StudyItem item) {
+            savedItem = item;
+        }
+
+        @Override
+        public void deleteReviewByToken(String token) {
+            deletedToken = token;
         }
     }
 }

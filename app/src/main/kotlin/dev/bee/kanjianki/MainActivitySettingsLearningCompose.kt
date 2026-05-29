@@ -9,14 +9,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,24 +21,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val LearningStepsInk = Color(0xFF2D1635)
-private val LearningStepsMuted = Color(0xFF6C5674)
-private val LearningStepsPinkDark = Color(0xFFDA3A7A)
-private val LearningStepsPanelBorder = Color(0xFFFFC7DE)
-private val LearningStepsButtonBorder = Color(0xFFEEBDDA)
-private val LearningStepsWhite = Color(0xFFFFFFFF)
-private val LearningStepsPanelShape = RoundedCornerShape(24.dp)
-private val LearningStepsButtonShape = RoundedCornerShape(12.dp)
+private val LearningStepsInk = KaniUiTokens.Ink
+private val LearningStepsMuted = KaniUiTokens.Muted
+private val LearningStepsPanelBorder = KaniUiTokens.PanelBorder
+private val LearningStepsWhite = KaniUiTokens.White
+private val LearningStepsPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
@@ -102,25 +92,7 @@ fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
                     }
                 )
             }
-            Button(
-                onClick = { model.onSave.save(newStepsText, reviewStepsText) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = LearningStepsButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LearningStepsPinkDark,
-                    contentColor = LearningStepsWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.save(newStepsText, reviewStepsText) }
         }
     }
 }
@@ -160,22 +132,5 @@ private fun LearningStepsOutlinedButton(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 50.dp),
-        shape = LearningStepsButtonShape,
-        border = BorderStroke(1.dp, LearningStepsButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = LearningStepsWhite,
-            contentColor = LearningStepsInk
-        )
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    KaniOutlinedButton(label = label, modifier = modifier, onClick = onClick)
 }

@@ -11,6 +11,7 @@ fun interface MeaningChoiceResultResolver {
 data class MeaningChoiceResultModel(
     val status: String,
     val statusColor: Int,
+    val actionLabel: String,
 )
 
 data class SimilarChoiceGridModel(

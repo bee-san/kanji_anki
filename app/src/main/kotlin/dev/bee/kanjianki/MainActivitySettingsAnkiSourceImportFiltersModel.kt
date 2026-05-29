@@ -59,6 +59,7 @@ data class SettingsImportFiltersPanelModel(
     val browserQueryCardsLabel: String,
     val browserQueryLabel: String,
     val browserQueryHint: String,
+    val browserQueryHelperText: String,
     val tagsLabel: String,
     val tagsHint: String,
     val difficultyLabel: String,

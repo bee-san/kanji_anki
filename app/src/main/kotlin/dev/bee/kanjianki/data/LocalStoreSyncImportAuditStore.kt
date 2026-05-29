@@ -39,7 +39,7 @@ internal class LocalStoreSyncImportAuditStore {
         values.put("import_tags", settings.importTagsText())
         values.put("weak_fsrs_difficulty", settings.importWeakFsrsDifficultyThreshold)
         values.put("weak_lapses", settings.importWeakLapsesThreshold)
-        values.put("browser_query", settings.normalizedBrowserQuery())
+        values.put("browser_query", ImportAuditBuilder.browserQueryAuditValue(snapshot))
         values.put(LocalStoreBase.COLUMN_SETTINGS_JSON, audit.settingsJson())
         db.insertWithOnConflict(
             LocalStoreBase.TABLE_IMPORT_RULE_AUDITS,

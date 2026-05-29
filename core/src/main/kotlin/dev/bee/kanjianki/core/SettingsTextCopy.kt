@@ -153,6 +153,9 @@ object SettingsTextCopy {
     fun ankiBrowserQueryLabel(): String = SettingsImportFiltersTextCopy.ankiBrowserQueryLabel()
 
     @JvmStatic
+    fun ankiBrowserQueryHelperText(): String = SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText()
+
+    @JvmStatic
     fun ankiNoteTagsHint(): String = SettingsImportFiltersTextCopy.ankiNoteTagsHint()
 
     @JvmStatic
@@ -306,6 +309,9 @@ object SettingsTextCopy {
     fun saveNewCardSortLabel(): String = SettingsStudyPlanTextCopy.saveNewCardSortLabel()
 
     @JvmStatic
+    fun newCardSortDescription(mode: String?): String = SettingsStudyPlanTextCopy.newCardSortDescription(mode)
+
+    @JvmStatic
     fun fsrsRetentionTitle(): String = SettingsStudyPlanTextCopy.fsrsRetentionTitle()
 
     @JvmStatic
@@ -325,6 +331,18 @@ object SettingsTextCopy {
 
     @JvmStatic
     fun retentionPresetLabel(value: Int): String = SettingsStudyPlanTextCopy.retentionPresetLabel(value)
+
+    @JvmStatic
+    fun deckLimitsTitle(): String = SettingsStudyPlanTextCopy.deckLimitsTitle()
+
+    @JvmStatic
+    fun deckLimitsBody(): String = SettingsStudyPlanTextCopy.deckLimitsBody()
+
+    @JvmStatic
+    fun newCardsPerDayLabel(): String = SettingsStudyPlanTextCopy.newCardsPerDayLabel()
+
+    @JvmStatic
+    fun saveDeckLimitsLabel(): String = SettingsStudyPlanTextCopy.saveDeckLimitsLabel()
 
     @JvmStatic
     fun dailyWorkloadTitle(): String = SettingsStudyPlanTextCopy.dailyWorkloadTitle()

@@ -10,7 +10,7 @@ public final class SettingsStudyAheadTextCopyTest {
     @Test
     public void studyAheadStringsStayStable() {
         assertEquals("Study ahead", SettingsStudyAheadTextCopy.studyAheadTitle());
-        assertEquals("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", SettingsStudyAheadTextCopy.studyAheadBody());
+        assertEquals("Pull soon-due cards into the queue. 0 disables it; learning delays still apply.", SettingsStudyAheadTextCopy.studyAheadBody());
         assertEquals("Save study ahead", SettingsStudyAheadTextCopy.saveStudyAheadLabel());
         assertEquals("Study ahead saved.", SettingsStudyAheadTextCopy.studyAheadSavedToast());
         assertEquals("Minutes (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel());

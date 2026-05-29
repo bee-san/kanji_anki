@@ -68,6 +68,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsImportFiltersPanelModel -> SettingsImportFiltersPanel(panel)
         is SettingsFrequencyRangePanelModel -> SettingsFrequencyRangePanel(panel)
         is SettingsNewCardSortPanelModel -> SettingsNewCardSortPanel(panel)
+        is SettingsDeckLimitsPanelModel -> SettingsDeckLimitsPanel(panel)
         is SettingsWorkloadPanelModel -> SettingsWorkloadPanel(panel)
         is SettingsRetentionPanelModel -> SettingsRetentionPanel(panel)
         is SettingsLearningStepsPanelModel -> SettingsLearningStepsPanel(panel)

@@ -41,6 +41,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
             browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
             browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
+            browserQueryHelperText = SettingsTextCopy.ankiBrowserQueryHelperText(),
             tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
             tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
             difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),

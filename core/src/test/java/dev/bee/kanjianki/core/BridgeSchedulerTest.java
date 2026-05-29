@@ -11,6 +11,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -340,6 +341,75 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void randomizedSessionTaskKeysUseDeterministicSeedAcrossTaskTypes() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<RecordsStudyModels.StudyItem> items = Arrays.asList(
+                reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L),
+                reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L),
+                reviewItem("示", RecordsBase.LadderRung.WORD_READING, 0L)
+        );
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("謎", 10), row("裂", 80), row("示", 50));
+
+        List<String> first = scheduler.randomizedSessionTaskKeys(items, rows, 1000L, 0L, null, RecordsSyncModels.Settings.kikuDefaults(), RecordsBase.StudyLadderSettings.defaults(), 42L);
+        List<String> second = scheduler.randomizedSessionTaskKeys(items, rows, 1000L, 0L, null, RecordsSyncModels.Settings.kikuDefaults(), RecordsBase.StudyLadderSettings.defaults(), 42L);
+        List<String> dueSorted = Arrays.asList(
+                BridgeScheduler.sessionTaskKeyForItem(items.get(1)),
+                BridgeScheduler.sessionTaskKeyForItem(items.get(0)),
+                BridgeScheduler.sessionTaskKeyForItem(items.get(2))
+        );
+
+        assertEquals(first, second);
+        assertEquals(3, first.size());
+        assertTrue(first.containsAll(dueSorted));
+        assertNotEquals(dueSorted, first);
+    }
+
+    @Test
+    public void plannedSessionSkipsWrongAnswerRelearningRepeatUntilNextSession() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem failedReview = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("review-token");
+        RecordsStudyModels.StudyItem nextReview = reviewItem("謎", RecordsBase.LadderRung.WORD_READING, 0L);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 80), row("謎", 10));
+        List<String> initialPlan = Arrays.asList(
+                BridgeScheduler.sessionTaskKeyForItem(failedReview),
+                BridgeScheduler.sessionTaskKeyForItem(nextReview)
+        );
+
+        RecordsSchedulerModels.ReviewResult wrong = scheduler.applyReview(
+                failedReview,
+                new RecordsSchedulerModels.ReviewRequest("裂", "review-token", "again", false, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+        RecordsSchedulerModels.StudySession currentSessionNext = scheduler.nextSessionForTaskKeys(
+                Arrays.asList(wrong.item, nextReview),
+                rows,
+                1000L,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults(),
+                initialPlan.subList(1, initialPlan.size())
+        );
+        List<String> nextSessionPlan = scheduler.randomizedSessionTaskKeys(
+                Arrays.asList(wrong.item, nextReview),
+                rows,
+                wrong.item.dueAtMillis,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults(),
+                7L
+        );
+
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, wrong.item.phase);
+        assertTrue(wrong.item.dueAtMillis > 1000L);
+        assertNotNull(currentSessionNext);
+        assertEquals("謎", currentSessionNext.item.kanji);
+        assertTrue(nextSessionPlan.contains(BridgeScheduler.sessionTaskKeyForItem(wrong.item)));
+    }
+
+    @Test
     public void nextSessionUsesWeaknessAndKanjiTieBreakersForSamePriorityDueItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem lowerWeakness = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L);
@@ -655,6 +725,42 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void writingRemediationSuppressesLowerRungsButNotWritingSiblings() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem writing = reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder()
+                .writingRemediationPending(true)
+                .build();
+        RecordsStudyModels.StudyItem typeMeaning = reviewItem("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L);
+        RecordsStudyModels.StudyItem otherWriting = reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder()
+                .activeToken("other-writing")
+                .build();
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(typeMeaning, writing, otherWriting));
+
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI.wireName(), findItemAtRung(result, RecordsBase.LadderRung.TYPE_MEANING).suppressedByTaskType);
+        assertTrue(result.get(2).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void matureSiblingMemoryWithPassingRatingSuppressesLowerSibling() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.TaskMemory passingWordMemory = new RecordsStudyModels.TaskMemory("review", 0L, 5.0, 5.0, 12, 1, 0, "good", 21, 0, 0L);
+        RecordsStudyModels.StudyItem word = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
+                .copyBuilder()
+                .wordReadingMemory(passingWordMemory)
+                .matureIntervalDays(0)
+                .totalReviews(0)
+                .build();
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(word, kanji));
+
+        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType);
+    }
+
+    @Test
     public void suppressionClearsWhenDominatingSiblingIsNoLongerMature() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem staleSuppressed = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
@@ -701,6 +807,112 @@ public class BridgeSchedulerTest {
         assertSame(suppressed, updated);
         assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), updated.suppressedByTaskType);
         assertEquals(456L, updated.suppressedAtMillis);
+    }
+
+
+    @Test
+    public void matureSiblingSuppressionUsesAnswerSignatureNotOnlyKanji() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem word = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        RecordsStudyModels.StudyItem differentMeaning = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withAnswerSignature("裂|破裂|はれつ|burst");
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(word, differentMeaning));
+
+        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void matureSiblingSuppressionRequiresLastRatingNotAgain() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.TaskMemory lapsedWordMemory = new RecordsStudyModels.TaskMemory("review", 0L, 5.0, 5.0, 12, 1, 0, "again", 21, 0, 0L);
+        RecordsStudyModels.StudyItem lapsedWord = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
+                .copyBuilder()
+                .wordReadingMemory(lapsedWordMemory)
+                .build();
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(lapsedWord, kanji));
+
+        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void seededSiblingSuppressionRespectsSettingsMatureDays() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem wordBelowCustomMaturity = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
+                .copyBuilder()
+                .matureIntervalDays(21)
+                .build()
+                .withAnswerSignature("裂|裂ける|さける|split");
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(rowWithExamples(
+                "裂",
+                30,
+                new RecordsImportModels.Example("active", 1L, 1L, "裂ける", "さける", "split", "", false, 0)
+        ));
+
+        List<RecordsStudyModels.StudyItem> result = scheduler.seedQueue(
+                rows,
+                Arrays.asList(wordBelowCustomMaturity, kanji),
+                settingsWithMatureDays(30),
+                1000L,
+                0L,
+                (RecordsBase.StudyLadderSettings) null
+        );
+
+        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void coreSessionSelectionHidesSameFamilyWithoutPermanentSuppression() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem word = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        List<RecordsStudyModels.StudyItem> items = Arrays.asList(kanji, word);
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(rowWithExamples(
+                "裂",
+                30,
+                new RecordsImportModels.Example("active", 1L, 1L, "裂ける", "さける", "split", "", false, 0)
+        ));
+
+        List<RecordsStudyModels.StudyItem> active = scheduler.activeQueueItems(items, rows, 1000L, null);
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(items, rows, 1000L);
+
+        assertEquals(1, active.size());
+        assertEquals(RecordsBase.LadderRung.WORD_READING, active.get(0).rung);
+        assertEquals(1, scheduler.dueCount(items, rows, 1000L));
+        assertNotNull(session);
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item.rung);
+    }
+
+    @Test
+    public void immaturePromotedSiblingHidesLowerFamilyWithoutPermanentSuppression() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem immatureWord = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
+                .copyBuilder()
+                .matureIntervalDays(7)
+                .totalReviews(2)
+                .build()
+                .withAnswerSignature("裂|裂ける|さける|split");
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withAnswerSignature("裂|裂ける|さける|split");
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(rowWithExamples(
+                "裂",
+                30,
+                new RecordsImportModels.Example("active", 1L, 1L, "裂ける", "さける", "split", "", false, 0)
+        ));
+
+        List<RecordsStudyModels.StudyItem> active = scheduler.activeQueueItems(Arrays.asList(kanji, immatureWord), rows, 1000L, null);
+        List<RecordsStudyModels.StudyItem> suppressed = scheduler.applySuppression(Arrays.asList(kanji, immatureWord));
+
+        assertEquals(1, active.size());
+        assertEquals(RecordsBase.LadderRung.WORD_READING, active.get(0).rung);
+        assertTrue(findItemAtRung(suppressed, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty());
     }
 
     @Test
@@ -2062,6 +2274,29 @@ public class BridgeSchedulerTest {
                 defaults.suspendedRankMax,
                 activeQueueCap,
                 newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove
+        );
+    }
+
+    private RecordsSyncModels.Settings settingsWithMatureDays(int matureDays) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
                 defaults.writingTriggerMissDays,
                 defaults.recognitionPromotionPasses,
                 defaults.realDueReviewsToMove

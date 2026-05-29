@@ -7,13 +7,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,24 +18,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val LadderThresholdInk = Color(0xFF2D1635)
-private val LadderThresholdMuted = Color(0xFF6C5674)
-private val LadderThresholdPinkDark = Color(0xFFDA3A7A)
-private val LadderThresholdPanelBorder = Color(0xFFFFC7DE)
-private val LadderThresholdButtonBorder = Color(0xFFEEBDDA)
-private val LadderThresholdWhite = Color(0xFFFFFFFF)
-private val LadderThresholdPanelShape = RoundedCornerShape(24.dp)
-private val LadderThresholdButtonShape = RoundedCornerShape(12.dp)
+private val LadderThresholdInk = KaniUiTokens.Ink
+private val LadderThresholdMuted = KaniUiTokens.Muted
+private val LadderThresholdPanelBorder = KaniUiTokens.PanelBorder
+private val LadderThresholdWhite = KaniUiTokens.White
+private val LadderThresholdPanelShape = KaniUiTokens.PanelShape
 
 object SettingsLadderThresholdTestTags {
     const val PROMOTION_DAYS_INPUT = "settings-ladder-threshold-promotion-days-input"
@@ -85,48 +75,14 @@ fun SettingsLadderThresholdPanel(model: SettingsLadderThresholdPanelModel) {
                 testTag = SettingsLadderThresholdTestTags.FAIL_STREAK_INPUT,
                 onValueChange = { failStreakText = it }
             )
-            OutlinedButton(
+            KaniOutlinedButton(
+                label = model.defaultsLabel,
                 onClick = {
                     promotionDaysText = model.defaultPromotionDaysText
                     failStreakText = model.defaultFailStreakText
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 50.dp),
-                shape = LadderThresholdButtonShape,
-                border = BorderStroke(1.dp, LadderThresholdButtonBorder),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = LadderThresholdWhite,
-                    contentColor = LadderThresholdInk
-                )
-            ) {
-                Text(
-                    text = model.defaultsLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Button(
-                onClick = { model.onSave.save(promotionDaysText, failStreakText) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = LadderThresholdButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LadderThresholdPinkDark,
-                    contentColor = LadderThresholdWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                }
+            )
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.save(promotionDaysText, failStreakText) }
         }
     }
 }

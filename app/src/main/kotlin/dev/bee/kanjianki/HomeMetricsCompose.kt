@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -110,13 +111,13 @@ fun HomeMetricCard(
             if (model.onClick == null) {
                 Modifier
             } else {
-                Modifier.clickable(onClick = model.onClick)
+                Modifier.clickable(role = Role.Button, onClick = model.onClick)
             }
         )
     Box(
         modifier = cardModifier
             .fillMaxWidth()
-            .heightIn(min = 136.dp)
+            .heightIn(min = 118.dp)
             .clip(shape)
             .background(Color.White)
             .border(1.dp, borderColor, shape)
@@ -155,7 +156,7 @@ fun HomeMetricCard(
             )
             if (!model.body.isNullOrEmpty()) {
                 Text(
-                    text = StudyTextCopy.compact(model.body, 18),
+                    text = StudyTextCopy.compact(model.body, 22),
                     color = HomeMetricMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Normal,

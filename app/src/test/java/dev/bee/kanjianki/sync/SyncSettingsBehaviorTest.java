@@ -1,9 +1,16 @@
 package dev.bee.kanjianki.sync;
 
+import android.content.Context;
+
+import androidx.test.core.app.ApplicationProvider;
+
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 import java.util.Calendar;
 
@@ -11,6 +18,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public final class SyncSettingsBehaviorTest {
     @Test
     public void fromStoreWithNullUsesKikuDefaultsAndSuspendedOnlyImports() {
@@ -20,6 +29,76 @@ public final class SyncSettingsBehaviorTest {
         assertDefaultFieldSettings(defaults, settings);
         assertDefaultLearningSettings(defaults, settings);
         assertDefaultImportSettings(defaults, settings);
+    }
+
+    @Test
+    public void freshLocalStoreUsesSuspendedOnlyDefaultsWithBrowserQueryOff() {
+        LocalStore store = freshStore();
+        try {
+            RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+
+            assertFalse(settings.importActiveCards);
+            assertTrue(settings.importSuspendedCards);
+            assertFalse(settings.importBrowserQueryCards);
+            assertEquals("", settings.importBrowserQuery);
+            assertFalse(settings.browserQueryImportEnabled());
+            assertTrue(settings.hasImportSourceEnabled());
+        } finally {
+            store.close();
+        }
+    }
+
+    @Test
+    public void customizedImportFiltersRoundTripThroughLocalStoreIncludingBrowserQuery() {
+        LocalStore store = freshStore();
+        try {
+            store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1);
+            store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 0);
+            store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, 1);
+            store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, "kani leech");
+            store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, 1);
+            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, 8.5);
+            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, 4);
+            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 2);
+            store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, 1);
+            store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, " rated:30:1 ");
+
+            RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+
+            assertTrue(settings.importActiveCards);
+            assertFalse(settings.importSuspendedCards);
+            assertTrue(settings.importTaggedCardsEnabled());
+            assertEquals("kani leech", settings.importTagsText());
+            assertTrue(settings.importWeakCards);
+            assertEquals(8.5, settings.importWeakFsrsDifficultyThreshold, 0.001);
+            assertEquals(4, settings.importWeakLapsesThreshold);
+            assertEquals(2, settings.importMinMatchingCardsPerKanji);
+            assertTrue(settings.importBrowserQueryCards);
+            assertEquals("rated:30:1", settings.normalizedBrowserQuery());
+            assertTrue(settings.browserQueryImportEnabled());
+        } finally {
+            store.close();
+        }
+    }
+
+    @Test
+    public void oldDefaultRepairDoesNotEnableBrowserQueryImport() {
+        LocalStore store = freshStore();
+        try {
+            store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1);
+            store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1);
+
+            RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+
+            assertFalse(settings.importActiveCards);
+            assertTrue(settings.importSuspendedCards);
+            assertFalse(settings.importBrowserQueryCards);
+            assertEquals("", settings.importBrowserQuery);
+            assertFalse(settings.browserQueryImportEnabled());
+            assertTrue(settings.hasImportSourceEnabled());
+        } finally {
+            store.close();
+        }
     }
 
     private static void assertDefaultFieldSettings(
@@ -200,6 +279,12 @@ public final class SyncSettingsBehaviorTest {
         java.lang.reflect.Method method = LocalStore.AutoSyncSettings.class.getDeclaredMethod("normalized");
         method.setAccessible(true);
         return (LocalStore.AutoSyncSettings) method.invoke(settings);
+    }
+
+    private static LocalStore freshStore() {
+        Context context = ApplicationProvider.getApplicationContext();
+        context.deleteDatabase("kanji_anki_simple.db");
+        return new LocalStore(context);
     }
 
     private static String invokeStringHelper(String name, String value, String fallback) throws Exception {

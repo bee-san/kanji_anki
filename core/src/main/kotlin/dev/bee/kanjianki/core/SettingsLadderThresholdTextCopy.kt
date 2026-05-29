@@ -8,7 +8,7 @@ object SettingsLadderThresholdTextCopy {
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only."
+        return "Cards climb after strong due reviews; learning repeats stay practice-only."
     }
 
     @JvmStatic

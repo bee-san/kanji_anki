@@ -150,7 +150,8 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
                 if (
                     NEW_CARD_SORT_FSRS_DIFFICULTY == value ||
                     NEW_CARD_SORT_RETRIEVABILITY_RISK == value ||
-                    NEW_CARD_SORT_KANI_WEAKNESS == value
+                    NEW_CARD_SORT_KANI_WEAKNESS == value ||
+                    NEW_CARD_SORT_BALANCED_PRIORITY == value
                 ) {
                     return value
                 }

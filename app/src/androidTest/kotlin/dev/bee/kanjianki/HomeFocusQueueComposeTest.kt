@@ -1,7 +1,13 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -50,12 +56,19 @@ class HomeFocusQueueComposeTest {
         composeRule.onNodeWithText("kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("learning").assertIsDisplayed()
         composeRule.onNodeWithText(">").assertIsDisplayed()
-        composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performClick()
+        composeRule.onNodeWithContentDescription("Focus queue card 裂, split; tear")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂"))
+            .performClick()
         assertTrue(clicked)
     }
 
     @Test
     fun rendersEmptyStateAndSyncButtonWhenNothingIsQueued() {
+        var synced = false
+
         composeRule.setContent {
             HomeFocusQueuePanel(
                 model = HomeFocusQueuePanelModel(
@@ -65,12 +78,17 @@ class HomeFocusQueueComposeTest {
                     showSyncButton = true,
                     cards = emptyList()
                 ),
-                onSync = {}
+                onSync = { synced = true }
             )
         }
 
         composeRule.onNodeWithText("No active practice yet").assertIsDisplayed()
         composeRule.onNodeWithText("Study now will admit the next problem kanji through your adaptive focus.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync AnkiDroid")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        assertTrue(synced)
     }
 }

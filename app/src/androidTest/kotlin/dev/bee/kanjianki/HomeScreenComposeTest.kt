@@ -1,10 +1,16 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,9 +40,12 @@ class HomeScreenComposeTest {
         composeRule.onNodeWithText("Kani").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
-        composeRule.onAllNodesWithText("View all >").assertCountEquals(0)
+        composeRule.onAllNodesWithText("View all").assertCountEquals(0)
         composeRule.onNodeWithText("No kanji queued yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid").performClick()
+        composeRule.onNodeWithContentDescription("Sync AnkiDroid")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         assertTrue(syncClicked)
     }
 
@@ -45,6 +54,7 @@ class HomeScreenComposeTest {
         var studyClicked = false
         var focusClicked = false
         var cardClicked = false
+        var actionClicked = false
 
         composeRule.setContent {
             HomeScreen(
@@ -53,6 +63,7 @@ class HomeScreenComposeTest {
                     onStudy = { studyClicked = true },
                     focusActionLabel = "View all",
                     onFocusAction = { focusClicked = true },
+                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) { actionClicked = true }),
                     previewCards = listOf(
                         HomeFocusQueueCardModel(
                             kanji = "裂",
@@ -69,10 +80,18 @@ class HomeScreenComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Study now").performClick()
-        composeRule.onNodeWithText("View all >").performClick()
+        composeRule.onNodeWithContentDescription("Study now")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        composeRule.onNodeWithText("Stats")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        composeRule.onNodeWithText("View all").performClick()
         composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performClick()
         assertTrue(studyClicked)
+        assertTrue(actionClicked)
         assertTrue(focusClicked)
         assertTrue(cardClicked)
     }
@@ -85,6 +104,7 @@ class HomeScreenComposeTest {
         onFocusAction: (() -> Unit)? = null,
         emptyTitle: String? = null,
         emptyBody: String? = null,
+        actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) {}),
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
     ): HomeScreenModel {
         return HomeScreenModel(
@@ -101,7 +121,7 @@ class HomeScreenComposeTest {
             studySubtitle = "Repair the next weak kanji.",
             onSync = onSync,
             onStudy = onStudy,
-            actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) {}),
+            actions = actions,
             focusTitle = "Focus queue",
             focusActionLabel = focusActionLabel,
             onFocusAction = onFocusAction,

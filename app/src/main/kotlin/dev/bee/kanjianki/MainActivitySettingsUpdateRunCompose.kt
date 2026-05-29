@@ -7,14 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,31 +88,17 @@ private fun SettingsUpdateRunHomeButton(onClick: () -> Unit) {
 
 @Composable
 private fun SettingsUpdateRunBackButton(onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 54.dp),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, UpdateRunButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = UpdateRunWhite,
-            contentColor = UpdateRunInk
-        )
-    ) {
-        Text(
-            text = SettingsTextCopy.backToSettingsLabel(),
-            color = UpdateRunInk,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    KaniOutlinedButton(
+        label = SettingsTextCopy.backToSettingsLabel(),
+        minHeightDp = 54,
+        onClick = onClick
+    )
 }
 
-private val UpdateRunInk = ComposeColor(0xFF2D1635)
-private val UpdateRunMuted = ComposeColor(0xFF6C5674)
+private val UpdateRunInk = KaniUiTokens.Ink
+private val UpdateRunMuted = KaniUiTokens.Muted
 private val UpdateRunPlum = ComposeColor(0xFF4B2552)
-private val UpdateRunPink = ComposeColor(0xFFDA3A7A)
-private val UpdateRunWhite = ComposeColor(0xFFFFFFFF)
+private val UpdateRunPink = KaniUiTokens.Primary
+private val UpdateRunWhite = KaniUiTokens.White
 private val UpdateRunPanelBorder = ComposeColor(0xFFF6CAE1)
-private val UpdateRunButtonBorder = ComposeColor(0xFFEEBDDA)
 private val UpdateRunPanelShape = RoundedCornerShape(18.dp)

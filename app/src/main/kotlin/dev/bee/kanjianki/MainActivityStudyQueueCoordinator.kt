@@ -27,14 +27,29 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
             return
         }
-        study.activeSession = BridgeScheduler().nextSession(
+        val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
+        val scheduler = BridgeScheduler()
+        study.studySessionTracker.initializeSessionPlan(
+            scheduler.randomizedSessionTaskKeys(
+                seeded,
+                rows,
+                now,
+                study.studyAheadMillis(),
+                allowedKanji,
+                study.settings(),
+                study.studyLadderSettings(),
+                null,
+            )
+        )
+        study.activeSession = scheduler.nextSessionForTaskKeys(
             seeded,
             rows,
             now,
             study.studyAheadMillis(),
-            StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession),
+            allowedKanji,
             study.settings(),
-            study.studyLadderSettings()
+            study.studyLadderSettings(),
+            study.studySessionTracker.pendingPlannedSessionTaskKeys(),
         )
         study.activeSimilarWritingRepair = null
         val session = study.activeSession

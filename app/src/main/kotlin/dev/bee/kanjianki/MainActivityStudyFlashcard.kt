@@ -138,8 +138,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             model = route.cardModel,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 420.dp)
-                .padding(top = 10.dp, bottom = 14.dp)
+                .heightIn(min = 360.dp)
+                .padding(top = 8.dp, bottom = 8.dp)
                 .onGloballyPositioned { coordinates ->
                     val position = coordinates.positionInWindow()
                     val size = coordinates.size

@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included."
+        return "Suspended cards are the default. Add active, tagged, or weak cards only when needed."
     }
 
     @JvmStatic
@@ -29,6 +29,11 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryLabel(): String = "Anki browser query"
+
+    @JvmStatic
+    fun ankiBrowserQueryHelperText(): String {
+        return "Import cards matched by this query; Kani still applies note type, rank range, and matching-card threshold."
+    }
 
     @JvmStatic
     fun ankiNoteTagsHint(): String = "tag1, tag2"

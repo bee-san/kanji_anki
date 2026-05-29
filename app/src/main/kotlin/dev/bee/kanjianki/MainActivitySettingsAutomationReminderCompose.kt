@@ -7,13 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,20 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val ReminderInk = Color(0xFF2D1635)
-private val ReminderMuted = Color(0xFF6C5674)
-private val ReminderPinkDark = Color(0xFFDA3A7A)
-private val ReminderCoral = Color(MainActivityUiSupport.CORAL)
-private val ReminderPanelBorder = Color(0xFFFFC7DE)
-private val ReminderButtonBorder = Color(0xFFEEBDDA)
-private val ReminderWhite = Color(0xFFFFFFFF)
-private val ReminderPanelShape = RoundedCornerShape(24.dp)
-private val ReminderButtonShape = RoundedCornerShape(12.dp)
+private val ReminderInk = KaniUiTokens.Ink
+private val ReminderMuted = KaniUiTokens.Muted
+private val ReminderCoral = KaniUiTokens.Coral
+private val ReminderPanelBorder = KaniUiTokens.PanelBorder
+private val ReminderWhite = KaniUiTokens.White
+private val ReminderPanelShape = KaniUiTokens.PanelShape
 
 internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
 
@@ -136,19 +126,7 @@ private fun ReminderWarning(warning: String?) {
 
 @Composable
 private fun ReminderPrimaryButton(label: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp),
-        shape = ReminderButtonShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = ReminderPinkDark,
-            contentColor = ReminderWhite
-        )
-    ) {
-        ReminderButtonText(label, 17)
-    }
+    KaniPrimaryButton(label = label, onClick = onClick)
 }
 
 @Composable
@@ -165,29 +143,5 @@ private fun ReminderOutlinedButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 50.dp),
-        shape = ReminderButtonShape,
-        border = BorderStroke(1.dp, ReminderButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = ReminderWhite,
-            contentColor = ReminderInk
-        )
-    ) {
-        ReminderButtonText(label, 15)
-    }
-}
-
-@Composable
-private fun ReminderButtonText(label: String, sizeSp: Int) {
-    Text(
-        text = label,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-        fontSize = sizeSp.sp,
-        fontWeight = FontWeight.Bold
-    )
+    KaniOutlinedButton(label = label, modifier = modifier, textSizeSp = 15, onClick = onClick)
 }

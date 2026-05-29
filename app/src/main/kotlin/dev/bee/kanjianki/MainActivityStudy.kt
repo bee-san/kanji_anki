@@ -96,6 +96,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return moreNewCards.requestedStudyMoreNewCards(countInput)
     }
 
+    fun requestedStudyMoreNewCards(requestText: String): Int {
+        return moreNewCards.requestedStudyMoreNewCards(requestText)
+    }
+
     fun startStudyMoreNewCards(requestedCount: Int): Boolean {
         return moreNewCards.startStudyMoreNewCards(requestedCount)
     }
