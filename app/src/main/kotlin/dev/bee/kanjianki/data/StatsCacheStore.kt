@@ -38,6 +38,16 @@ internal class StatsCacheStore(private val store: LocalStore) {
         return if (snapshot.sourceVersion == currentSourceVersion(db)) snapshot else null
     }
 
+    fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase): Boolean {
+        val snapshotSourceVersion = db.rawQuery(
+            "SELECT source_version FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+            null,
+        ).use { cursor ->
+            if (cursor.moveToFirst()) cursor.getLong(0) else return false
+        }
+        return snapshotSourceVersion == currentSourceVersion(db)
+    }
+
     fun readLatest(db: SQLiteDatabase = store.readableDatabase): Snapshot? {
         return db.rawQuery(
             "SELECT source_version, generated_at, outcome_json, impact_report_json " +

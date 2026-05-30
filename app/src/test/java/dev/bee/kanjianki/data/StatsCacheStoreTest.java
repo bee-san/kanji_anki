@@ -73,6 +73,21 @@ public final class StatsCacheStoreTest {
     }
 
     @Test
+    public void hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
+        setSourceVersion(11L);
+        db.execSQL(
+                "INSERT OR REPLACE INTO stats_screen_cache " +
+                        "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, 333, 'not-json', '{}')"
+        );
+
+        assertEquals(true, cacheStore.hasFreshSnapshot(db));
+
+        cacheStore.markDirty(db);
+
+        assertEquals(false, cacheStore.hasFreshSnapshot(db));
+    }
+
+    @Test
     public void markDirtyIncrementsSourceVersion() {
         long initial = cacheStore.currentSourceVersion(db);
 

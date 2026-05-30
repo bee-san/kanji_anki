@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
+import dev.bee.kanjianki.sync.SyncSettings
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
@@ -21,6 +22,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
 
     fun putIntSetting(key: String, value: Int) {
         store.settingsRepository().putInt(key, value)
+        markStatsDirtyIfNeeded(key)
     }
 
     fun putLongSetting(key: String, value: Long) {
@@ -76,6 +78,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         inTransaction {
             putStringSetting(KEY_STUDY_LADDER_ORDER, normalized.orderText())
             putStringSetting(KEY_STUDY_LADDER_ENABLED, normalized.enabledText())
+            markStatsDirty()
         }
     }
 
@@ -302,8 +305,23 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    private fun markStatsDirtyIfNeeded(key: String) {
+        if (key in STATS_SETTING_KEYS) {
+            markStatsDirty()
+        }
+    }
+
+    private fun markStatsDirty() {
+        StatsCacheStore(store as LocalStore).markDirty(store.writableDatabase)
+    }
+
     private companion object {
         const val KEY_STUDY_LADDER_ORDER = "study_ladder_order"
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
+        val STATS_SETTING_KEYS = setOf(
+            SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
+            SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
+            SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY,
+        )
     }
 }

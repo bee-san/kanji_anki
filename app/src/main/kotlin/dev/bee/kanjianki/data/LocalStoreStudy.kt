@@ -39,6 +39,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             if (syncId != null) {
                 appendStudyStateTimelineEvents(this, previous, items, syncId, occurredAt, settings)
             }
+            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
         }
     }
 
@@ -57,6 +58,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
         writableDatabase.transaction {
             upsertStudyItem(this, item)
+            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
         }
     }
 
@@ -75,6 +77,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, afterReview)
             if (inserted != -1L) {
                 appendReviewTimelineEvent(this, request, appliedRating, reviewedAt, "review:" + request.token)
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
             }
         }
     }
