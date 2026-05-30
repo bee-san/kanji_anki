@@ -6,7 +6,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
 public final class SettingsDeckLimitsPanelModelsTest {
     @Test
@@ -19,6 +19,6 @@ public final class SettingsDeckLimitsPanelModelsTest {
         assertEquals(SettingsTextCopy.newCardsPerDayLabel(), model.getNewPerDayLabel());
         assertEquals(Integer.toString(settings.newPerDay), model.getInitialNewPerDayText());
         assertEquals(SettingsTextCopy.saveDeckLimitsLabel(), model.getSaveLabel());
-        assertTrue(model.getOnSave() != null);
+        assertNotNull(model.getOnSave());
     }
 }
