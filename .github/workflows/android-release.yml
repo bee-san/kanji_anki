@@ -10,6 +10,11 @@ on:
         description: 'Release tag, for example v0.4.34'
         required: true
         type: string
+      allow_asset_overwrite:
+        description: 'Overwrite existing release assets. Defaults to false so accidental reruns fail closed.'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
@@ -349,6 +354,7 @@ jobs:
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
+          ALLOW_ASSET_OVERWRITE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_asset_overwrite || false }}
         run: |
           set -euo pipefail
           release_tag='${{ needs.metadata.outputs.release_tag }}'
@@ -361,7 +367,11 @@ jobs:
           fi
 
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload "${release_tag}" "${apk_path}" "${sha_path}" --clobber --repo "${GITHUB_REPOSITORY}"
+            upload_args=("${release_tag}" "${apk_path}" "${sha_path}" --repo "${GITHUB_REPOSITORY}")
+            if [[ "${ALLOW_ASSET_OVERWRITE}" == "true" ]]; then
+              upload_args+=(--clobber)
+            fi
+            gh release upload "${upload_args[@]}"
           else
             gh release create "${release_tag}" "${apk_path}" "${sha_path}" \
               --title "${release_tag}" \
