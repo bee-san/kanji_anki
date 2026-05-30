@@ -126,6 +126,75 @@ public final class StudyCuePolicyTest {
     }
 
     @Test
+    public void meaningChoiceAnswerLinesFallsBackWhenCompoundPromptIsUnavailable() {
+        RecordsSchedulerModels.StudySession regular = session("脱", false, BridgeScheduler.TASK_MEANING_KANJI);
+
+        assertEquals(
+                Arrays.asList("Collection meaning", "Reading: ご", "From: 脱"),
+                StudyCuePolicy.meaningChoiceAnswerLines(DictionaryLookup.empty(), regular, example("脱", null, null))
+        );
+        assertEquals(
+                Arrays.asList("Collection meaning", "Reading: ご", "From: 外"),
+                StudyCuePolicy.meaningChoiceAnswerLines(DictionaryLookup.empty(), regular, example("外", null, null))
+        );
+        assertEquals(
+                Arrays.asList("Collection meaning", "Reading: ご"),
+                StudyCuePolicy.meaningChoiceAnswerLines(DictionaryLookup.empty(), regular, null)
+        );
+        assertEquals(
+                Collections.singletonList("Collection clue"),
+                StudyCuePolicy.meaningChoiceAnswerLines(DictionaryLookup.empty(), withRow(null, regular.item), example("脱力", "だつりょく", "loss"))
+        );
+        assertEquals(
+                Collections.singletonList("Collection clue"),
+                StudyCuePolicy.meaningChoiceAnswerLines(DictionaryLookup.empty(), withRow(regular.row, null), example("脱力", "だつりょく", "loss"))
+        );
+    }
+
+    @Test
+    public void meaningChoiceAnswerLinesOmitsDuplicateOrMissingIndividualGlosses() {
+        DictionaryLookup.KanjiEntryFields duplicateFields = new DictionaryLookup.KanjiEntryFields(
+                "脱",
+                Collections.singletonList("Loss of strength exhaustion weakness"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                11,
+                0,
+                47,
+                1500,
+                2200
+        );
+        DictionaryLookup duplicateLookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(duplicateFields))
+        );
+        RecordsSchedulerModels.StudySession session = session(
+                "脱",
+                false,
+                BridgeScheduler.TASK_MEANING_KANJI,
+                "Loss of strength exhaustion weakness",
+                "だつりょく"
+        );
+
+        assertEquals(
+                Arrays.asList(
+                        "Loss of strength exhaustion weakness",
+                        "Reading: だつりょく",
+                        "From: 脱力"
+                ),
+                StudyCuePolicy.meaningChoiceAnswerLines(duplicateLookup, session, example("脱力", null, null))
+        );
+        assertEquals(
+                Arrays.asList(
+                        "Loss of strength exhaustion weakness",
+                        "Reading: だつりょく",
+                        "From: 脱力"
+                ),
+                StudyCuePolicy.meaningChoiceAnswerLines(null, session, example("脱力", null, null))
+        );
+    }
+
+    @Test
     public void wordReadingCueUsesExampleReadingAndExpression() {
         RecordsSchedulerModels.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING);
         RecordsImportModels.Example example = example("読書", "ドクショ", "");
@@ -281,6 +350,20 @@ public final class StudyCuePolicyTest {
                 Collections.emptyList()
         );
         return new RecordsSchedulerModels.StudySession(item, row, "session-token", taskType, writingRequired, "prompt text");
+    }
+
+    private static RecordsSchedulerModels.StudySession withRow(
+            RecordsImportModels.DashboardRow row,
+            RecordsStudyModels.StudyItem item
+    ) {
+        return new RecordsSchedulerModels.StudySession(
+                item,
+                row,
+                "session-token",
+                BridgeScheduler.TASK_MEANING_KANJI,
+                false,
+                "prompt text"
+        );
     }
 
     private static RecordsImportModels.Example example(String expression, String reading, String meaning) {

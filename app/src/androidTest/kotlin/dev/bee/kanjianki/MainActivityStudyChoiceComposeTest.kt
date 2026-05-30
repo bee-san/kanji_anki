@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -98,7 +99,7 @@ class MainActivityStudyChoiceComposeTest {
                 model = MeaningChoiceSessionModel(
                     modeLabel = "Recall",
                     title = "Choose the kanji",
-                    taskLabel = "meaning -> kanji",
+                    taskLabel = "Meaning -> kanji",
                     body = "Pick the kanji that matches the meaning.",
                     reasonLine = "",
                     question = "Which kanji means split?",
@@ -155,7 +156,7 @@ class MainActivityStudyChoiceComposeTest {
         }
 
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("meaning -> kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("Meaning -> kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
     }
@@ -290,6 +291,65 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun meaningChoiceRouteKeepsResultActionVisibleOnPhoneViewport() {
+        var selected = ""
+
+        composeRule.setContent {
+            val model = meaningChoiceModel(
+                question = "Which kanji means loss of strength exhaustion weakness?",
+                choices = listOf("裂", "列", "烈", "劣"),
+                answerGlyph = "劣",
+                answerDetail = "Loss of strength exhaustion weakness",
+                onChoice = { selected = it },
+                resultResolver = MeaningChoiceResultResolver { glyph ->
+                    MeaningChoiceResultModel(
+                        status = "Selected: $glyph",
+                        statusColor = MainActivityBase.CORAL,
+                        actionLabel = MainActivityBase.LABEL_FAIL,
+                    )
+                },
+            )
+            val state = remember { MeaningChoiceSessionState() }
+            Box(
+                modifier = Modifier
+                    .width(360.dp)
+                    .height(640.dp)
+                    .testTag(PHONE_VIEWPORT_TAG)
+            ) {
+                MainActivityComposeRouteWithActionBar(
+                    model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_STUDY),
+                    content = {
+                        MeaningChoiceSessionCard(
+                            model = model,
+                            state = state,
+                            showInlineResultAction = false,
+                        )
+                    },
+                    actionBar = {
+                        MeaningChoiceResultActionBar(model = model, state = state)
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("劣").performClick()
+
+        composeRule.onNodeWithText("Loss of strength exhaustion weakness").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
+
+        val viewportBounds = composeRule.onNodeWithTag(PHONE_VIEWPORT_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val failBounds = composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue(failBounds.bottom <= viewportBounds.bottom)
+
+        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).performClick()
+        assertEquals("劣", selected)
+    }
+
+    @Test
     fun meaningChoiceSessionClearsRevealedAnswerWhenModelChanges() {
         var selected = ""
         val first = meaningChoiceModel(
@@ -388,6 +448,7 @@ class MainActivityStudyChoiceComposeTest {
     private companion object {
         private const val POSITION_TOLERANCE_PX = 1.0f
         private const val SIZE_TOLERANCE_PX = 1.0f
+        private const val PHONE_VIEWPORT_TAG = "phone-viewport"
 
         private fun meaningChoiceModel(
             question: String,
@@ -401,7 +462,7 @@ class MainActivityStudyChoiceComposeTest {
             return MeaningChoiceSessionModel(
                 modeLabel = "Recall",
                 title = "Choose the kanji",
-                taskLabel = "meaning -> kanji",
+                taskLabel = "Meaning -> kanji",
                 body = "Pick the kanji that matches the meaning.",
                 reasonLine = reasonLine,
                 question = question,

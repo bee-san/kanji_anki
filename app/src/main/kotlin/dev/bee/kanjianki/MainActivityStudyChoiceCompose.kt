@@ -63,7 +63,6 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
         title = model.title,
         taskLabel = model.taskLabel,
         body = model.body,
-        reasonLine = model.reasonLine,
         modifier = modifier,
     ) {
         SimilarChoiceInsetPanel(model)
@@ -83,7 +82,6 @@ fun MeaningChoiceSessionCard(
         title = model.title,
         taskLabel = model.taskLabel,
         body = model.body,
-        reasonLine = model.reasonLine
     ) {
         MeaningChoiceInsetPanel(
             model = model,
@@ -108,7 +106,6 @@ private fun StudyChoiceSessionSurface(
     title: String,
     taskLabel: String,
     body: String,
-    reasonLine: String,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -183,12 +180,6 @@ private fun MeaningChoiceInsetPanel(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             StudyChoiceText(model.question, sizeSp = 22, color = StudyChoicePlum, bold = true)
-            KanjiChoiceGrid(
-                choices = model.choices,
-                balanceLastRow = false,
-                enabled = !answered,
-                onChoice = onAnswered
-            )
             if (answered) {
                 StudyAnswerPanel(
                     model = model.answerPanel,
@@ -206,6 +197,12 @@ private fun MeaningChoiceInsetPanel(
                     )
                 }
             }
+            KanjiChoiceGrid(
+                choices = model.choices,
+                balanceLastRow = false,
+                enabled = !answered,
+                onChoice = onAnswered
+            )
         }
     }
 }

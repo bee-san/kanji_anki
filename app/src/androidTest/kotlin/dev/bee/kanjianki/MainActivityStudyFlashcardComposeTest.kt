@@ -73,7 +73,7 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersFlashcardPromptHeaderWithReason() {
+    fun hidesFlashcardPromptHeaderReason() {
         composeRule.setContent {
             FlashcardPromptHeader(
                 model = FlashcardPromptHeaderModel(
@@ -90,11 +90,11 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
         composeRule.onNodeWithText("Recall the meaning").assertIsDisplayed()
         composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
-        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
     }
 
     @Test
-    fun omitsFlashcardPromptHeaderReasonWhenEmpty() {
+    fun keepsFlashcardPromptHeaderCleanWhenReasonEmpty() {
         composeRule.setContent {
             FlashcardPromptHeader(
                 model = FlashcardPromptHeaderModel(
