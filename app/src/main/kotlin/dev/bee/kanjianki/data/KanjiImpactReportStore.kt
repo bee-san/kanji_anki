@@ -8,8 +8,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class KanjiImpactReportStore(private val store: LocalStore) {
-    fun report(): KanjiImpactAnalyzer.Report {
-        val db = store.readableDatabase
+    fun report(db: SQLiteDatabase = store.readableDatabase): KanjiImpactAnalyzer.Report {
         val latestSyncId = latestSuccessfulSyncId(db)
         if (latestSyncId == 0L) {
             return KanjiImpactAnalyzer.Report(0, 0, 0, emptyList())
