@@ -104,7 +104,7 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "2")
+        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "3")
 
     def test_fixture_fails_when_instrumentation_output_contains_failures(self):
         fake_adb = base_fake_adb(
@@ -151,6 +151,25 @@ OUT
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertIn("shell monkey -p com.ichi2.anki 1", adb_calls)
         self.assertIn("shell am start -W -n com.ichi2.anki/.IntentHandler", adb_calls)
+
+    def test_fixture_recreates_ankidroid_dir_before_permission_repair(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ *chmod*)
+    case "$*" in
+      *"mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media"*) exit 0 ;;
+      *) echo 'chmod: /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid: No such file or directory' >&2; exit 1 ;;
+    esac ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn(
+            "mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media",
+            adb_calls,
+        )
 
     def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
         result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
