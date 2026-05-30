@@ -84,6 +84,18 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun kanjiImpactReport(): KanjiImpactAnalyzer.Report = KanjiImpactReportStore(this as LocalStore).report()
 
+    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+        return StatsCacheStore(this as LocalStore).readFresh()
+    }
+
+    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+        return StatsCacheStore(this as LocalStore).readLatest()
+    }
+
+    fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+        return StatsPrecomputeStore(this as LocalStore).refresh(generatedAtMillis = nowMillis)
+    }
+
     fun insertReview(
         db: SQLiteDatabase,
         request: RecordsSchedulerModels.ReviewRequest,
