@@ -124,7 +124,29 @@ OUT
         self.assertIn("FAILURES!!!", result.stdout)
         self.assertIn("Instrumentation reported a failure", result.stdout)
 
-    def test_fixture_fails_when_instrumentation_process_crashes(self):
+    def test_fixture_retries_transient_instrumentation_process_crash(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+      exit 0
+    fi
+    echo 'OK (45 tests)'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "2")
+        self.assertIn("transient runner/process failure", result.stdout)
+
+    def test_fixture_fails_after_repeated_instrumentation_process_crashes(self):
         fake_adb = base_fake_adb(
             """  shell\\ am\\ instrument*)
     echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
@@ -136,6 +158,29 @@ OUT
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Process crashed", result.stdout)
+        self.assertIn("Instrumentation reported a failure", result.stdout)
+        self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+
+    def test_fixture_does_not_retry_assertion_failures(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    cat <<'OUT'
+INSTRUMENTATION_STATUS: numtests=45
+FAILURES!!!
+Tests run: 45,  Failures: 2
+OUT
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
         self.assertIn("Instrumentation reported a failure", result.stdout)
 
     def test_fixture_falls_back_to_explicit_ankidroid_activity_start(self):
