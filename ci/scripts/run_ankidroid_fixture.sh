@@ -50,13 +50,21 @@ repair_ankidroid_dir_permissions() {
 }
 
 launch_ankidroid() {
-  if adb shell monkey -p com.ichi2.anki 1; then
+  local monkey_output
+  set +e
+  monkey_output="$(adb shell monkey -p com.ichi2.anki 1 2>&1)"
+  local monkey_status=$?
+  set -e
+  printf '%s\n' "${monkey_output}"
+
+  if [ "${monkey_status}" -eq 0 ] && ! grep -Fq 'no activities found' <<< "${monkey_output}"; then
     return 0
   fi
 
-  # Some local ATD images do not expose a MONKEY category launcher even though
-  # the normal launcher activity is resolvable. Start AnkiDroid explicitly so
-  # first-run preferences are still created.
+  # Some ATD images / AnkiDroid APK variants return success from monkey while
+  # only printing "no activities found" for the MONKEY category. Start
+  # AnkiDroid explicitly so first-run preferences and provider state are
+  # initialized before probing the flashcards provider.
   adb shell am start -W -n com.ichi2.anki/.IntentHandler
 }
 
