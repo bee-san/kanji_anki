@@ -93,8 +93,46 @@ public final class StudySessionActionsTest {
         assertEquals(2, tracker.pendingPlannedSessionTaskKeys().size());
     }
 
+    @Test
+    public void plannedStudySessionRequeuesDueLearningRepeatBeforeRemainingPlan() {
+        StudySessionTracker tracker = new StudySessionTracker();
+        tracker.initializeSessionPlan(List.of("kanji_meaning:裂", "word_reading:謎"));
+        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂");
+        RecordsStudyModels.StudyItem dueRepeat = item("裂")
+                .copyBuilder()
+                .state("learning")
+                .dueAtMillis(2_000L)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build();
+        RecordsStudyModels.StudyItem pendingReview = item("謎")
+                .copyBuilder()
+                .rung(RecordsBase.LadderRung.WORD_READING)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
+                .build();
+
+        RecordsSchedulerModels.StudySession session = StudySessionActions.plannedStudySession(
+                new BridgeScheduler(),
+                tracker,
+                List.of(dueRepeat, pendingReview),
+                List.of(row("裂"), row("謎")),
+                2_000L,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults()
+        );
+
+        assertNotNull(session);
+        assertEquals("裂", session.item.kanji);
+        assertEquals("kanji_meaning", session.taskType);
+    }
+
     private static RecordsStudyModels.StudyItem item(String kanji) {
-        return new RecordsStudyModels.StudyItem(kanji, "review", 1000L, 1.0, 2.0, 1, 0, 0, 0, "", 1000L);
+        return new RecordsStudyModels.StudyItem(kanji, "review", 1000L, 1.0, 2.0, 1, 0, 0, 0, "", 1000L)
+                .copyBuilder()
+                .rung(RecordsBase.LadderRung.KANJI_MEANING)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
+                .build();
     }
 
     private static RecordsImportModels.DashboardRow row(String kanji) {

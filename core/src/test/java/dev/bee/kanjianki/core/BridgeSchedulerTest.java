@@ -410,6 +410,35 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void applyReviewAcceptsCustomLearningStepsTogetherWithCustomLadder() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem failedReview = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L).withToken("review-token");
+        RecordsSchedulerModels.LearningStepSettings learningSteps = new RecordsSchedulerModels.LearningStepSettings(
+                Arrays.asList(2, 9),
+                Arrays.asList(3)
+        );
+        RecordsBase.StudyLadderSettings ladder = new RecordsBase.StudyLadderSettings(
+                Arrays.asList(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.LadderRung.WORD_READING),
+                Arrays.asList(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.LadderRung.WORD_READING)
+        );
+
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+                failedReview,
+                new RecordsSchedulerModels.ReviewRequest("裂", "review-token", "again", false, false, false, 0),
+                new HashSet<>(),
+                1_000L,
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                learningSteps,
+                ladder
+        );
+
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, result.item.phase);
+        assertEquals(1_000L + (3L * 60L * 1000L), result.item.dueAtMillis);
+        assertEquals(RecordsBase.LadderRung.WORD_READING, result.item.rung);
+    }
+
+    @Test
     public void nextSessionUsesWeaknessAndKanjiTieBreakersForSamePriorityDueItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem lowerWeakness = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L);

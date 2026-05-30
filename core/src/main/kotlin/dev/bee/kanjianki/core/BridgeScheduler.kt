@@ -256,6 +256,26 @@ class BridgeScheduler {
         )
     }
 
+    fun applyReview(
+        item: RecordsStudyModels.StudyItem,
+        request: RecordsSchedulerModels.ReviewRequest,
+        consumedTokens: MutableSet<String>,
+        nowMillis: Long,
+        parameters: RecordsSchedulerModels.SchedulerParameters?,
+        settings: RecordsSyncModels.Settings?,
+        learningSettings: RecordsSchedulerModels.LearningStepSettings?,
+        ladder: RecordsBase.StudyLadderSettings?
+    ): RecordsSchedulerModels.ReviewResult {
+        return applyReview(
+            ReviewApplication.builder(item, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .settings(settings)
+                .learningSettings(learningSettings)
+                .ladder(ladder)
+                .build()
+        )
+    }
+
     fun applyReview(application: ReviewApplication): RecordsSchedulerModels.ReviewResult {
         return transitionEngine.applyReview(application)
     }
