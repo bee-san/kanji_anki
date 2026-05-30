@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.RecordsBase;
 
 import org.junit.Test;
@@ -88,5 +89,83 @@ public final class StatsCacheCodecTest {
         assertEquals(0, decoded.matureSupportGained.matureSupportGained);
         assertEquals(0, decoded.matureSupportGained.examples.size());
         assertEquals(0, decoded.ladderHealth.totalActiveItems);
+    }
+
+    @Test
+    public void impactReportRoundTripPreservesCountsAndRows() {
+        KanjiImpactAnalyzer.Row first = KanjiImpactAnalyzer.Row.Companion.create(
+                "弱",
+                KanjiImpactAnalyzer.BUCKET_NOT_HELPING,
+                6.5,
+                8.0,
+                0.82,
+                0.61,
+                2,
+                3,
+                4,
+                1,
+                5,
+                12,
+                "Add clearer Anki support."
+        );
+        KanjiImpactAnalyzer.Row second = KanjiImpactAnalyzer.Row.Companion.create(
+                "漢",
+                KanjiImpactAnalyzer.BUCKET_NEEDS_MORE_CARDS,
+                5.0,
+                5.5,
+                0.50,
+                0.55,
+                0,
+                1,
+                0,
+                2,
+                3,
+                4,
+                "Review more before judging."
+        );
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer.Report(
+                1,
+                2,
+                3,
+                Arrays.asList(first, second)
+        );
+
+        String json = StatsCacheCodec.impactReportToJson(report);
+        KanjiImpactAnalyzer.Report decoded = StatsCacheCodec.impactReportFromJson(json);
+
+        assertEquals(1, decoded.helpedCount);
+        assertEquals(2, decoded.notHelpingCount);
+        assertEquals(3, decoded.needsMoreCardsCount);
+        assertEquals(2, decoded.rows.size());
+        assertImpactRowEquals(first, decoded.rows.get(0));
+        assertImpactRowEquals(second, decoded.rows.get(1));
+    }
+
+    @Test
+    public void impactReportInvalidJsonReturnsEmptyReport() {
+        KanjiImpactAnalyzer.Report decoded = StatsCacheCodec.impactReportFromJson("not-json");
+
+        assertEquals(0, decoded.helpedCount);
+        assertEquals(0, decoded.notHelpingCount);
+        assertEquals(0, decoded.needsMoreCardsCount);
+        assertEquals(0, decoded.rows.size());
+    }
+
+    private static void assertImpactRowEquals(KanjiImpactAnalyzer.Row expected, KanjiImpactAnalyzer.Row actual) {
+        assertEquals(expected.kanji, actual.kanji);
+        assertEquals(expected.bucket, actual.bucket);
+        assertEquals(expected.baselineDifficulty, actual.baselineDifficulty, 0.001);
+        assertEquals(expected.currentDifficulty, actual.currentDifficulty, 0.001);
+        assertEquals(expected.baselineRetention, actual.baselineRetention, 0.001);
+        assertEquals(expected.currentRetention, actual.currentRetention, 0.001);
+        assertEquals(expected.retentionDelta, actual.retentionDelta, 0.001);
+        assertEquals(expected.difficultyDelta, actual.difficultyDelta, 0.001);
+        assertEquals(expected.baselineMatureCards, actual.baselineMatureCards);
+        assertEquals(expected.currentMatureCards, actual.currentMatureCards);
+        assertEquals(expected.sameCardCount, actual.sameCardCount);
+        assertEquals(expected.newCardCount, actual.newCardCount);
+        assertEquals(expected.currentCardCount, actual.currentCardCount);
+        assertEquals(expected.reviewCount, actual.reviewCount);
+        assertEquals(expected.advice, actual.advice);
     }
 }

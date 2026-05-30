@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data
 
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,6 +27,37 @@ object StatsCacheCodec {
             )
         } catch (_: Exception) {
             StudyStatsStore.KaniOutcomeStats.empty()
+        }
+    }
+
+    @JvmStatic
+    fun impactReportToJson(report: KanjiImpactAnalyzer.Report?): String {
+        val safe = report ?: emptyImpactReport()
+        return JSONObject()
+            .put("helpedCount", safe.helpedCount)
+            .put("notHelpingCount", safe.notHelpingCount)
+            .put("needsMoreCardsCount", safe.needsMoreCardsCount)
+            .put(
+                "rows",
+                JSONArray().also { array ->
+                    safe.rows.forEach { row -> array.put(impactRowToJson(row)) }
+                }
+            )
+            .toString()
+    }
+
+    @JvmStatic
+    fun impactReportFromJson(json: String?): KanjiImpactAnalyzer.Report {
+        return try {
+            val root = JSONObject(json ?: return emptyImpactReport())
+            KanjiImpactAnalyzer.Report(
+                root.optInt("helpedCount", 0),
+                root.optInt("notHelpingCount", 0),
+                root.optInt("needsMoreCardsCount", 0),
+                impactRowsFromJson(root.optJSONArray("rows"))
+            )
+        } catch (_: Exception) {
+            emptyImpactReport()
         }
     }
 
@@ -170,5 +202,54 @@ object StatsCacheCodec {
             out[RecordsBase.LadderRung.fromWireName(name)] = json.optInt(name, 0)
         }
         return out
+    }
+
+    private fun impactRowToJson(row: KanjiImpactAnalyzer.Row): JSONObject {
+        return JSONObject()
+            .put("kanji", row.kanji)
+            .put("bucket", row.bucket)
+            .put("baselineDifficulty", row.baselineDifficulty)
+            .put("currentDifficulty", row.currentDifficulty)
+            .put("baselineRetention", row.baselineRetention)
+            .put("currentRetention", row.currentRetention)
+            .put("baselineMatureCards", row.baselineMatureCards)
+            .put("currentMatureCards", row.currentMatureCards)
+            .put("sameCardCount", row.sameCardCount)
+            .put("newCardCount", row.newCardCount)
+            .put("currentCardCount", row.currentCardCount)
+            .put("reviewCount", row.reviewCount)
+            .put("advice", row.advice)
+    }
+
+    private fun impactRowsFromJson(array: JSONArray?): List<KanjiImpactAnalyzer.Row> {
+        if (array == null) {
+            return emptyList()
+        }
+        val out = ArrayList<KanjiImpactAnalyzer.Row>()
+        for (index in 0 until array.length()) {
+            val json = array.optJSONObject(index) ?: continue
+            out.add(
+                KanjiImpactAnalyzer.Row.create(
+                    kanji = json.optString("kanji", ""),
+                    bucket = json.optString("bucket", KanjiImpactAnalyzer.BUCKET_NEEDS_MORE_CARDS),
+                    baselineDifficulty = json.optDouble("baselineDifficulty", 0.0),
+                    currentDifficulty = json.optDouble("currentDifficulty", 0.0),
+                    baselineRetention = json.optDouble("baselineRetention", 0.0),
+                    currentRetention = json.optDouble("currentRetention", 0.0),
+                    baselineMatureCards = json.optInt("baselineMatureCards", 0),
+                    currentMatureCards = json.optInt("currentMatureCards", 0),
+                    sameCardCount = json.optInt("sameCardCount", 0),
+                    newCardCount = json.optInt("newCardCount", 0),
+                    currentCardCount = json.optInt("currentCardCount", 0),
+                    reviewCount = json.optInt("reviewCount", 0),
+                    advice = json.optString("advice", "")
+                )
+            )
+        }
+        return out
+    }
+
+    private fun emptyImpactReport(): KanjiImpactAnalyzer.Report {
+        return KanjiImpactAnalyzer.Report(0, 0, 0, emptyList())
     }
 }
