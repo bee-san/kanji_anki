@@ -19,7 +19,7 @@ class MainActivityStudyWritingPromptComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun rendersRecallWritingPromptHeader() {
+    fun rendersRecallWritingPromptHeaderWithoutSchedulerReason() {
         composeRule.setContent {
             WritingPromptHeader(
                 model = WritingPromptHeaderModel(
@@ -54,14 +54,14 @@ class MainActivityStudyWritingPromptComposeTest {
         composeRule.onNodeWithText("Practice").assertIsDisplayed()
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Write kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
         composeRule.onNodeWithText("Prompt: split, rend").assertIsDisplayed()
         composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
         composeRule.onNodeWithText("Write the kanji from this prompt. The answer stays hidden until you check.").assertIsDisplayed()
     }
 
     @Test
-    fun omitsReasonWhenEmpty() {
+    fun keepsWritingPromptHeaderCleanWhenReasonEmpty() {
         composeRule.setContent {
             WritingPromptHeader(
                 model = WritingPromptHeaderModel(

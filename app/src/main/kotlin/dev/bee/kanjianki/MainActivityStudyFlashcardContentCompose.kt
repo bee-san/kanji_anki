@@ -39,7 +39,6 @@ private val HeroMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
 private val HeroPlum = Color(MainActivityUiSupport.STUDY_HERO_PLUM)
 private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
 private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
-private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
 
 @Composable
 fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
@@ -100,16 +99,6 @@ fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel) {
             bold = false,
             includeFontPadding = false
         )
-        if (model.reasonLine.isNotEmpty()) {
-            FlashcardHeaderText(
-                text = model.reasonLine,
-                sizeSp = 14,
-                color = StudyMuted,
-                bold = false,
-                includeFontPadding = true,
-                textAlign = TextAlign.Start
-            )
-        }
     }
 }
 

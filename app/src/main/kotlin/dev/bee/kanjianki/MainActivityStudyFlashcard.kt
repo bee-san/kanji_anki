@@ -94,6 +94,10 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         return flashcardAnswerPanelModel(activity, session)
     }
 
+    fun meaningChoiceAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
+        return meaningChoiceAnswerPanelModel(activity, session)
+    }
+
     fun typingAnswerField(): TypingAnswerState {
         val state = TypingAnswerState()
         activity.typingAnswerState = state

@@ -24,6 +24,43 @@ object StudyCuePolicy {
     }
 
     @JvmStatic
+    fun meaningChoiceAnswerLines(
+        dictionaryLookup: DictionaryLookup?,
+        session: RecordsSchedulerModels.StudySession?,
+        example: RecordsImportModels.Example?,
+    ): List<String> {
+        if (!usesCompoundMeaningPrompt(session, example)) {
+            return answerLines(dictionaryLookup, session, example, false)
+        }
+        val row = session?.row ?: return answerLines(dictionaryLookup, session, example, false)
+        val item = session.item ?: return answerLines(dictionaryLookup, session, example, false)
+        val sourceExpression = DictionaryLookup.normalize(example?.expression)
+        val compoundMeaning = StudyCueFormatter.cleanFallbackMeaning(
+            if (example != null && !example.meaning.isNullOrEmpty()) example.meaning else row.primaryMeaning,
+            row.primaryMeaning,
+            96,
+        )
+        val lines = ArrayList(
+            StudyCueFormatter.answerLines(
+                StudyCue(
+                    compoundMeaning,
+                    firstNonEmpty(example?.reading, row.reading),
+                    sourceExpression,
+                    DictionaryLookup.SOURCE_ANKI,
+                ),
+            ),
+        )
+        val individualMeanings = StudyCueFormatter.displayGlosses(
+            dictionaryLookup?.lookupKanji(DictionaryLookup.normalize(item.kanji))?.meanings,
+            2,
+        )
+        if (individualMeanings.isNotEmpty() && !individualMeanings.equals(compoundMeaning, ignoreCase = true)) {
+            lines.add("Individual kanji meanings: $individualMeanings")
+        }
+        return lines
+    }
+
+    @JvmStatic
     fun studyCue(
         dictionaryLookup: DictionaryLookup?,
         session: RecordsSchedulerModels.StudySession?,
@@ -49,6 +86,20 @@ object StudyCuePolicy {
             sourceExpression,
             sourceReading,
         )
+    }
+
+    private fun usesCompoundMeaningPrompt(
+        session: RecordsSchedulerModels.StudySession?,
+        example: RecordsImportModels.Example?,
+    ): Boolean {
+        if (session?.taskType != BridgeScheduler.TASK_MEANING_KANJI) {
+            return false
+        }
+        val kanji = DictionaryLookup.normalize(session.item?.kanji)
+        val expression = DictionaryLookup.normalize(example?.expression)
+        return kanji.isNotEmpty() &&
+            expression.contains(kanji) &&
+            expression.codePointCount(0, expression.length) > kanji.codePointCount(0, kanji.length)
     }
 
     private fun wordReadingCue(
