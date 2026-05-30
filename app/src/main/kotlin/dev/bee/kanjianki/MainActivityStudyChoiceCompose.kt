@@ -82,6 +82,7 @@ fun MeaningChoiceSessionCard(
         title = model.title,
         taskLabel = model.taskLabel,
         body = model.body,
+        showTaskCopy = false,
     ) {
         MeaningChoiceInsetPanel(
             model = model,
@@ -107,6 +108,7 @@ private fun StudyChoiceSessionSurface(
     taskLabel: String,
     body: String,
     modifier: Modifier = Modifier,
+    showTaskCopy: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Surface(
@@ -119,8 +121,10 @@ private fun StudyChoiceSessionSurface(
         Column(modifier = Modifier.padding(22.dp)) {
             SimilarChoiceModePill(modeLabel)
             StudyChoiceText(title, sizeSp = 30, color = StudyChoicePlum, bold = true)
-            StudyChoiceText(taskLabel, sizeSp = 16, color = StudyPinkDark, bold = true)
-            StudyChoiceText(body, sizeSp = 15, color = StudyMuted, bold = false)
+            if (showTaskCopy) {
+                StudyChoiceText(taskLabel, sizeSp = 16, color = StudyPinkDark, bold = true)
+                StudyChoiceText(body, sizeSp = 15, color = StudyMuted, bold = false)
+            }
             content()
         }
     }
