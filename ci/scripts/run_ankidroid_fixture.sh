@@ -36,7 +36,7 @@ dump_logcat() {
 }
 
 wait_for_external_storage() {
-  adb shell "mkdir -p ${ankidroid_dir}/collection.media"
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media && test -d ${ankidroid_dir}"
 }
 
 probe_ankidroid_provider() {
@@ -46,7 +46,7 @@ probe_ankidroid_provider() {
 }
 
 repair_ankidroid_dir_permissions() {
-  adb shell "owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; test -w ${ankidroid_dir}"
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; test -w ${ankidroid_dir}"
 }
 
 launch_ankidroid() {
