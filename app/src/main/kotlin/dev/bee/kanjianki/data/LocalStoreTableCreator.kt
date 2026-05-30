@@ -27,6 +27,26 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_finished ON ${LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS}(kanji, finished_at)")
     }
 
+    fun createStatsCacheTables(db: SQLiteDatabase) {
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_STATS_CACHE_STATE,
+            "key TEXT PRIMARY KEY",
+            "value INTEGER NOT NULL",
+        )
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_STATS_SCREEN_CACHE,
+            "id INTEGER PRIMARY KEY CHECK (id = 1)",
+            "source_version INTEGER NOT NULL",
+            "generated_at INTEGER NOT NULL",
+            "outcome_json TEXT NOT NULL",
+            "impact_report_json TEXT NOT NULL",
+        )
+        db.execSQL(
+            "INSERT OR IGNORE INTO ${LocalStoreBase.TABLE_STATS_CACHE_STATE} (key, value) VALUES (?, 1)",
+            arrayOf(LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY),
+        )
+    }
+
     fun createKanjiInventoryTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_KANJI_INVENTORY,

@@ -10,6 +10,7 @@ internal object LocalStoreMigrations {
         upgradeThroughEight(db, oldVersion, targetVersion, hooks)
         upgradeThroughFifteen(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyOne(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentyTwo(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -117,6 +118,17 @@ internal object LocalStoreMigrations {
         }
         if (shouldRun(oldVersion, targetVersion, 21)) {
             hooks.addRichReviewColumns(db)
+        }
+    }
+
+    private fun upgradeThroughTwentyTwo(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 22)) {
+            hooks.createStatsCacheTables(db)
         }
     }
 
