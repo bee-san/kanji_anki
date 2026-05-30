@@ -78,6 +78,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             now,
             effectiveParameters,
             activity.settings(),
+            activity.store.learningStepSettings(),
             activity.studyLadderSettings()
         )
         activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)

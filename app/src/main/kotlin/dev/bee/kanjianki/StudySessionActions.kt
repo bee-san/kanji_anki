@@ -48,6 +48,10 @@ internal object StudySessionActions {
                 null,
             )
         )
+        val taskKeys = dueLearningRepeatFirst(
+            tracker.dueCompletedLearningRepeatTaskKeys(items, nowMillis),
+            tracker.pendingPlannedSessionTaskKeys(),
+        )
         return scheduler.nextSessionForTaskKeys(
             items,
             rows,
@@ -56,8 +60,29 @@ internal object StudySessionActions {
             allowedKanji,
             settings,
             ladder,
-            tracker.pendingPlannedSessionTaskKeys(),
+            taskKeys,
         )
+    }
+
+    private fun dueLearningRepeatFirst(
+        dueRepeatKeys: List<String>,
+        pendingKeys: List<String>,
+    ): List<String> {
+        if (dueRepeatKeys.isEmpty()) {
+            return pendingKeys
+        }
+        val out = ArrayList<String>()
+        for (key in dueRepeatKeys) {
+            if (key.isNotEmpty() && !out.contains(key)) {
+                out.add(key)
+            }
+        }
+        for (key in pendingKeys) {
+            if (key.isNotEmpty() && !out.contains(key)) {
+                out.add(key)
+            }
+        }
+        return out
     }
 
     fun interface StudyItemWriter {

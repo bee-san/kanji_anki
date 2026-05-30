@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.os.SystemClock
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -60,6 +61,26 @@ internal class StudySessionTracker {
         return out
     }
 
+    fun dueCompletedLearningRepeatTaskKeys(
+        items: List<RecordsStudyModels.StudyItem>?,
+        nowMillis: Long,
+    ): List<String> {
+        if (items.isNullOrEmpty() || completedPlannedSessionTaskKeys.isEmpty()) {
+            return emptyList()
+        }
+        val out = ArrayList<String>()
+        for (item in items) {
+            if (item.dueAtMillis > nowMillis || !isLearningRepeatPhase(item.phase)) {
+                continue
+            }
+            val key = plannedSessionTaskKey(item.rung.wireName(), item.kanji)
+            if (completedPlannedSessionTaskKeys.contains(key) && !out.contains(key)) {
+                out.add(key)
+            }
+        }
+        return out
+    }
+
     fun markPlannedSessionTaskCompleted(taskType: String?, kanji: String?) {
         val key = plannedSessionTaskKey(taskType, kanji)
         if (key.isNotEmpty()) {
@@ -69,6 +90,11 @@ internal class StudySessionTracker {
 
     private fun hasPendingPlannedSessionTask(): Boolean {
         return nextPlannedSessionTaskKey().isNotEmpty()
+    }
+
+    private fun isLearningRepeatPhase(phase: RecordsBase.SchedulerPhase): Boolean {
+        return phase == RecordsBase.SchedulerPhase.NEW_LEARNING ||
+            phase == RecordsBase.SchedulerPhase.RELEARNING
     }
 
     private fun plannedSessionTaskKey(taskType: String?, kanji: String?): String {
