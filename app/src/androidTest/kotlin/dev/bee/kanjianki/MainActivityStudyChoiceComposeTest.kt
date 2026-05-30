@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -233,6 +236,8 @@ class MainActivityStudyChoiceComposeTest {
                             status = "Selected: $glyph",
                             statusColor = MainActivityBase.CORAL,
                             actionLabel = MainActivityBase.LABEL_FAIL,
+                            correctChoice = "裂",
+                            selectedChoiceCorrect = false,
                         )
                     },
                 )
@@ -243,7 +248,43 @@ class MainActivityStudyChoiceComposeTest {
 
         composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
+        composeRule.onNodeWithTag(similarChoiceTestTag("列"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Incorrect answer"))
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
         composeRule.onAllNodesWithText("Next").assertCountEquals(0)
+    }
+
+    @Test
+    fun meaningChoiceResultActionHighlightsCorrectSelection() {
+        composeRule.setContent {
+            MeaningChoiceSessionCard(
+                model = meaningChoiceModel(
+                    question = "Which kanji means split?",
+                    choices = listOf("裂", "列", "烈", "劣"),
+                    answerGlyph = "裂",
+                    answerDetail = "Answer detail",
+                    onChoice = {},
+                    resultResolver = MeaningChoiceResultResolver { glyph ->
+                        MeaningChoiceResultModel(
+                            status = "Selected: $glyph",
+                            statusColor = MainActivityBase.TEAL,
+                            actionLabel = MainActivityBase.LABEL_PASS,
+                            correctChoice = "裂",
+                            selectedChoiceCorrect = true,
+                        )
+                    },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("裂").performClick()
+
+        composeRule.onNodeWithText("Selected: 裂").assertIsDisplayed()
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
+        composeRule.onNodeWithTag(similarChoiceTestTag("列"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
     }
 
     @Test

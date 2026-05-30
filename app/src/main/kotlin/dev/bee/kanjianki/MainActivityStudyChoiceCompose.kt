@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.sp
 internal val StudyChoicePlum = Color(MainActivityUiSupport.STUDY_PLUM)
 internal val StudyChoiceButtonFill = Color(MainActivityUiSupport.STUDY_BG)
 internal val StudyChoiceBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+internal val StudyChoiceCorrectFill = Color(MainActivityUiSupport.TEAL)
+internal val StudyChoiceIncorrectFill = Color(MainActivityUiSupport.CORAL)
+internal val StudyChoiceFeedbackContent = Color.White
 private val StudyCardFill = Color(MainActivityUiSupport.STUDY_CARD)
 private val StudyPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
 private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
@@ -180,6 +183,11 @@ private fun MeaningChoiceInsetPanel(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             StudyChoiceText(model.question, sizeSp = 22, color = StudyChoicePlum, bold = true)
+            val result = if (answered) {
+                selectedChoice?.let { model.resultResolver?.resultForChoice(it) }
+            } else {
+                null
+            }
             if (answered) {
                 StudyAnswerPanel(
                     model = model.answerPanel,
@@ -187,13 +195,12 @@ private fun MeaningChoiceInsetPanel(
                         .fillMaxWidth()
                         .padding(top = 10.dp)
                 )
-                val result = selectedChoice?.let { model.resultResolver?.resultForChoice(it) }
                 if (showInlineResultAction && result != null) {
                     MeaningChoiceResultActionBar(
                         status = result.status,
                         statusColor = result.statusColor,
                         actionLabel = result.actionLabel,
-                        onNext = { model.onChoice.onChoice(selectedChoice) },
+                        onNext = { model.onChoice.onChoice(selectedChoice ?: return@MeaningChoiceResultActionBar) },
                     )
                 }
             }
@@ -201,7 +208,8 @@ private fun MeaningChoiceInsetPanel(
                 choices = model.choices,
                 balanceLastRow = false,
                 enabled = !answered,
-                onChoice = onAnswered
+                onChoice = onAnswered,
+                feedbackForChoice = { glyph -> feedbackForMeaningChoice(glyph, selectedChoice, result) },
             )
         }
     }

@@ -1369,6 +1369,25 @@ class ComposeScreenModelsTest {
         assertEquals(listOf("裂", "列", "烈", "劣"), meaning.choices)
         assertSame(answer, meaning.answerPanel)
         assertSame(handler, meaning.onChoice)
+        val correctResult = MeaningChoiceResultModel(
+            status = "Correct",
+            statusColor = 0xFF00AEB5.toInt(),
+            actionLabel = "Good",
+            correctChoice = "裂",
+            selectedChoiceCorrect = true,
+        )
+        val wrongResult = MeaningChoiceResultModel(
+            status = "Wrong",
+            statusColor = 0xFFFF4C76.toInt(),
+            actionLabel = "Fail",
+            correctChoice = "裂",
+            selectedChoiceCorrect = false,
+        )
+        assertEquals(KanjiChoiceFeedback.CORRECT, feedbackForMeaningChoice("裂", "裂", correctResult))
+        assertEquals(KanjiChoiceFeedback.CORRECT, feedbackForMeaningChoice("裂", "列", wrongResult))
+        assertEquals(KanjiChoiceFeedback.INCORRECT, feedbackForMeaningChoice("列", "列", wrongResult))
+        assertEquals(null, feedbackForMeaningChoice("烈", "列", wrongResult))
+        assertEquals(null, feedbackForMeaningChoice("烈", null, wrongResult))
         grid.onChoice.onChoice("列")
         meaning.onChoice.onChoice("裂")
         assertEquals(listOf("列", "裂"), calls)

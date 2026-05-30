@@ -15,7 +15,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +46,7 @@ internal fun KanjiChoiceGrid(
     balanceLastRow: Boolean,
     enabled: Boolean,
     onChoice: (String) -> Unit,
+    feedbackForChoice: (String) -> KanjiChoiceFeedback? = { null },
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         choices.chunked(2).forEach { rowChoices ->
@@ -51,6 +55,7 @@ internal fun KanjiChoiceGrid(
                     SimilarChoiceButton(
                         glyph = glyph,
                         enabled = enabled,
+                        feedback = feedbackForChoice(glyph),
                         onClick = { onChoice(glyph) },
                         modifier = Modifier
                             .weight(1f)
@@ -82,31 +87,56 @@ private fun Modifier.choiceCellSpacing(): Modifier {
 private fun SimilarChoiceButton(
     glyph: String,
     enabled: Boolean,
+    feedback: KanjiChoiceFeedback?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val feedbackColor = feedback?.choiceFeedbackColor()
+    val contentColor = if (feedback == null) StudyChoicePlum else StudyChoiceFeedbackContent
     OutlinedButton(
         enabled = enabled,
         onClick = onClick,
         modifier = modifier
             .height(SimilarChoiceButtonHeight)
-            .testTag(similarChoiceTestTag(glyph)),
+            .testTag(similarChoiceTestTag(glyph))
+            .choiceFeedbackSemantics(feedback),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, StudyChoiceBorder),
+        border = BorderStroke(1.dp, feedbackColor ?: StudyChoiceBorder),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = StudyChoiceButtonFill,
-            contentColor = StudyChoicePlum
+            containerColor = feedbackColor ?: StudyChoiceButtonFill,
+            contentColor = contentColor,
+            disabledContainerColor = feedbackColor ?: StudyChoiceButtonFill,
+            disabledContentColor = contentColor,
         )
     ) {
         Text(
             text = glyph,
             modifier = Modifier.fillMaxWidth(),
-            color = StudyChoicePlum,
+            color = contentColor,
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
         )
+    }
+}
+
+private fun KanjiChoiceFeedback.choiceFeedbackColor(): Color {
+    return when (this) {
+        KanjiChoiceFeedback.CORRECT -> StudyChoiceCorrectFill
+        KanjiChoiceFeedback.INCORRECT -> StudyChoiceIncorrectFill
+    }
+}
+
+private fun Modifier.choiceFeedbackSemantics(feedback: KanjiChoiceFeedback?): Modifier {
+    if (feedback == null) {
+        return this
+    }
+    return semantics {
+        stateDescription = when (feedback) {
+            KanjiChoiceFeedback.CORRECT -> "Correct answer"
+            KanjiChoiceFeedback.INCORRECT -> "Incorrect answer"
+        }
     }
 }
 
