@@ -1,0 +1,96 @@
+package dev.bee.kanjianki.data
+
+import android.content.ContentValues
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import org.json.JSONObject
+
+internal class StatsCacheStore(private val store: LocalStore) {
+    data class Snapshot(
+        val outcomeStats: StudyStatsStore.KaniOutcomeStats,
+        val impactReport: KanjiImpactAnalyzer.Report,
+        val generatedAtMillis: Long,
+        val sourceVersion: Long,
+    )
+
+    fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
+        ensureSourceVersionRow(db)
+        return db.rawQuery(
+            "SELECT value FROM ${LocalStoreBase.TABLE_STATS_CACHE_STATE} WHERE key=?",
+            arrayOf(LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY),
+        ).use { cursor ->
+            if (cursor.moveToFirst()) cursor.getLong(0) else 1L
+        }
+    }
+
+    fun markDirty(db: SQLiteDatabase = store.writableDatabase): Long {
+        val next = currentSourceVersion(db) + 1L
+        db.execSQL(
+            "UPDATE ${LocalStoreBase.TABLE_STATS_CACHE_STATE} SET value=? WHERE key=?",
+            arrayOf<Any>(next, LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY),
+        )
+        return next
+    }
+
+    fun readFresh(db: SQLiteDatabase = store.readableDatabase): Snapshot? {
+        val snapshot = readLatest(db) ?: return null
+        return if (snapshot.sourceVersion == currentSourceVersion(db)) snapshot else null
+    }
+
+    fun readLatest(db: SQLiteDatabase = store.readableDatabase): Snapshot? {
+        return db.rawQuery(
+            "SELECT source_version, generated_at, outcome_json, impact_report_json " +
+                "FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+            null,
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                null
+            } else {
+                snapshotFromCursor(cursor)
+            }
+        }
+    }
+
+    fun write(db: SQLiteDatabase, snapshot: Snapshot) {
+        val values = ContentValues().apply {
+            put("id", 1)
+            put("source_version", snapshot.sourceVersion)
+            put("generated_at", snapshot.generatedAtMillis)
+            put("outcome_json", StatsCacheCodec.outcomeToJson(snapshot.outcomeStats))
+            put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
+        }
+        db.insertWithOnConflict(
+            LocalStoreBase.TABLE_STATS_SCREEN_CACHE,
+            null,
+            values,
+            SQLiteDatabase.CONFLICT_REPLACE,
+        )
+    }
+
+    private fun snapshotFromCursor(cursor: Cursor): Snapshot? {
+        val sourceVersion = cursor.getLong(0)
+        val generatedAtMillis = cursor.getLong(1)
+        val outcomeJson = cursor.getString(2)
+        val impactJson = cursor.getString(3)
+        return try {
+            JSONObject(outcomeJson)
+            JSONObject(impactJson)
+            Snapshot(
+                StatsCacheCodec.outcomeFromJson(outcomeJson),
+                StatsCacheCodec.impactReportFromJson(impactJson),
+                generatedAtMillis,
+                sourceVersion,
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun ensureSourceVersionRow(db: SQLiteDatabase) {
+        db.execSQL(
+            "INSERT OR IGNORE INTO ${LocalStoreBase.TABLE_STATS_CACHE_STATE} (key, value) VALUES (?, 1)",
+            arrayOf(LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY),
+        )
+    }
+}
