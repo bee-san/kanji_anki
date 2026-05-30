@@ -154,14 +154,10 @@ object StudyTextCopy {
     @JvmStatic
     fun similarRepairPrompt(repair: RecordsImportModels.SimilarKanjiWritingRepair): String {
         return buildString {
-            append("Repair the shape mix-up")
-            if (repair.promptMeaning.isNotEmpty()) {
-                append(" for ").append(repair.promptMeaning)
-            }
             if (repair.wrongSelection.isNotEmpty()) {
-                append(". You picked ").append(repair.wrongSelection).append("; write ").append(repair.repairKanji).append(".")
+                append("You picked ").append(repair.wrongSelection).append(" — write ").append(repair.repairKanji).append(".")
             } else {
-                append(". Write ").append(repair.repairKanji).append(".")
+                append("Write ").append(repair.repairKanji).append(".")
             }
         }
     }

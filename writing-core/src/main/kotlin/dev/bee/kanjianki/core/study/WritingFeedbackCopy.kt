@@ -15,12 +15,12 @@ class WritingFeedbackCopy private constructor() {
             val hasGuide = guide != null && !guide.isEmpty()
             if (!hasGuide) {
                 if (level == HintLevel.BLIND) {
-                    return "Write from memory, then check. No numbered stroke guide is bundled for this kanji yet."
+                    return "Write from memory, then check. No stroke guide is bundled yet."
                 }
-                return "No numbered stroke guide is bundled for this kanji yet. Use the reference, draw it, then check. Stroke-order feedback will be limited."
+                return "Draw it, then check. Stroke-order feedback will be limited."
             }
             return when (level) {
-                HintLevel.TRACE -> "Trace the numbered strokes, then check. This is a learning attempt."
+                HintLevel.TRACE -> "Trace the strokes, then check."
                 HintLevel.OUTLINE -> "Copy the faint outline; the current stroke is emphasized."
                 HintLevel.MINIMAL -> "Write with only the current stroke hinted, then check."
                 HintLevel.BLIND -> "Write from memory, then check. Use Hint if you are stuck."

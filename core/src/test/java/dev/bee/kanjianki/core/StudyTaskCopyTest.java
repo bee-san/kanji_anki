@@ -21,7 +21,7 @@ public final class StudyTaskCopyTest {
         assertEquals("Similar kanji", StudyTaskCopy.labelForTask(StudyTaskTypes.SIMILAR_KANJI));
         assertEquals("Quick recall", StudyTaskCopy.labelForTask("meaning_flashcard"));
         assertEquals("Font check", StudyTaskCopy.labelForTask("font_recognition"));
-        assertEquals("Write to repair", StudyTaskCopy.labelForTask("repair_writing"));
+        assertEquals("Repair", StudyTaskCopy.labelForTask("repair_writing"));
         assertEquals("Focused practice", StudyTaskCopy.labelForTask("targeted_writing"));
         assertEquals("New problem kanji", StudyTaskCopy.labelForTask("context_writing"));
         assertEquals("Guided review", StudyTaskCopy.labelForTask("guided_writing"));
@@ -70,6 +70,10 @@ public final class StudyTaskCopyTest {
         assertTrue(StudyTaskCopy.isRecallTask(session("blind_writing", true)));
         assertTrue(StudyTaskCopy.isRecallTask(session("sampled_handwriting", true)));
         assertFalse(StudyTaskCopy.isRecallTask(session("guided_writing", true)));
+
+        assertTrue(StudyTaskCopy.isRepairWritingTask(session("repair_writing", true)));
+        assertFalse(StudyTaskCopy.isRepairWritingTask(session(StudyTaskTypes.WRITE_KANJI, true)));
+        assertFalse(StudyTaskCopy.isRepairWritingTask(null));
 
         assertTrue(StudyTaskCopy.isFontRecognitionTask(session(StudyTaskTypes.FONT_MEANING, false)));
         assertTrue(StudyTaskCopy.isFontRecognitionTask(session("font_recognition", false)));

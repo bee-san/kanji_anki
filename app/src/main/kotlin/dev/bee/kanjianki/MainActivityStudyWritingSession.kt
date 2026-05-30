@@ -73,7 +73,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                 writingPromptHeaderModel(session),
                 answerPanel,
                 answerPanelState,
-                "Writing",
+                writingSectionTitle(session),
                 MainActivityUiSupport.STUDY_PLUM,
                 status,
                 drawingPad,
@@ -91,6 +91,10 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
             home.studyReasonLine(session),
             writingPromptLines(session)
         )
+    }
+
+    private fun writingSectionTitle(session: RecordsSchedulerModels.StudySession): String {
+        return if (StudyTaskCopy.isRepairWritingTask(session)) "" else "Writing"
     }
 
     private fun writingPromptLines(session: RecordsSchedulerModels.StudySession): List<WritingPromptLineModel> {

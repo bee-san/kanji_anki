@@ -33,7 +33,9 @@ fun WritingSessionCard(
             if (model.answerPanelState.visible) {
                 StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
             }
-            WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)
+            if (model.writingTitle.isNotEmpty()) {
+                WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)
+            }
             WritingStatusText(model.status)
             WritingPadPanel(
                 drawingPad = model.drawingPad,

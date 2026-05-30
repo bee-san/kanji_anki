@@ -30,7 +30,7 @@ object StudyTaskCopy {
         StudyTaskTypes.SIMILAR_KANJI -> LABEL_SIMILAR_KANJI
         TASK_MEANING_FLASHCARD -> "Quick recall"
         TASK_FONT_RECOGNITION -> "Font check"
-        TASK_REPAIR_WRITING -> "Write to repair"
+        TASK_REPAIR_WRITING -> "Repair"
         TASK_TARGETED_WRITING -> "Focused practice"
         TASK_CONTEXT_WRITING -> "New problem kanji"
         TASK_GUIDED_WRITING -> "Guided review"
@@ -76,6 +76,10 @@ object StudyTaskCopy {
         }
         return TASK_BLIND_WRITING == session.taskType || TASK_SAMPLED_HANDWRITING == session.taskType
     }
+
+    @JvmStatic
+    fun isRepairWritingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
+        session != null && TASK_REPAIR_WRITING == session.taskType
 
     @JvmStatic
     fun isFontRecognitionTask(session: RecordsSchedulerModels.StudySession?): Boolean =

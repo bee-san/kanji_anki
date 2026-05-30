@@ -140,11 +140,11 @@ public final class StudyTextCopyTest {
     @Test
     public void similarRepairPromptPreservesRepairCopyBranches() {
         assertEquals(
-                "Repair the shape mix-up for pull. You picked 提; write 拉.",
+                "You picked 提 — write 拉.",
                 StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull"))
         );
         assertEquals(
-                "Repair the shape mix-up. Write 拉.",
+                "Write 拉.",
                 StudyTextCopy.similarRepairPrompt(repair("拉", "", ""))
         );
         assertEquals("Repair saved.", StudyTextCopy.similarWritingRepairSavedToast(true));

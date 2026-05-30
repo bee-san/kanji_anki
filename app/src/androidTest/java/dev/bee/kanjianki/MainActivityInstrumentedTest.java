@@ -1267,9 +1267,9 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> {
-                assertHasText(activity, "No numbered stroke guide is bundled");
+                assertHasText(activity, "Draw it, then check");
                 assertHasText(activity, "Stroke-order feedback will be limited");
-                assertNoText(activity, "Trace the numbered strokes");
+                assertNoText(activity, "Trace the strokes");
             });
         }
     }
@@ -1564,7 +1564,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "提");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "1 / 3");
-                assertHasText(activity, "Write to repair");
+                assertHasText(activity, "Repair");
+                assertHasText(activity, "You picked 提 — write 拉.");
+                assertNoText(activity, "Write to repair");
+                assertNoText(activity, "Repair the shape mix-up");
                 assertNoText(activity, "similar-kanji miss · writing repair · practice-only");
             });
 

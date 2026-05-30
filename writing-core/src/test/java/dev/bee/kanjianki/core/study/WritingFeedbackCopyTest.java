@@ -17,12 +17,12 @@ public final class WritingFeedbackCopyTest {
 
         assertTrue(WritingFeedbackCopy.guideLabel(3, emptyGuide).startsWith("Write from memory"));
         assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
-        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
-        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide));
+        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("Draw it"));
+        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide));
         assertEquals("Copy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide));
         assertEquals("Write with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide));
         assertEquals("Write from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide));
-        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", WritingFeedbackCopy.guideLabel(null, guide));
+        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(null, guide));
     }
 
     @Test
