@@ -49,7 +49,7 @@ public final class AppValueBehaviorTest {
     }
 
     @Test
-    public void meaningKanjiChoiceCopyUsesDictionaryMeaningWhenAvailable() {
+    public void meaningKanjiChoiceCopyUsesTestedCompoundMeaningOverDictionaryGloss() {
         DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
                 Collections.singletonList(new DictionaryLookup.KanjiEntry(new DictionaryLookup.KanjiEntryFields(
                         "脱",
@@ -66,21 +66,21 @@ public final class AppValueBehaviorTest {
         );
         RecordsImportModels.MeaningKanjiChoiceCard card = new RecordsImportModels.MeaningKanjiChoiceCard(
                 "脱",
-                "undress, removing",
-                "ダツ",
+                "Loss of strength exhaustion weakness",
+                "だつりょく",
                 Arrays.asList("脱", "説", "税", "悦")
         );
 
         assertEquals(
-                "Which kanji means Undress, remove?",
+                "Which kanji means Loss of strength exhaustion weakness?",
                 StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "undress, removing")
         );
         assertEquals(
-                "Correct. 脱 means Undress, remove.",
+                "Correct. 脱 means Loss of strength exhaustion weakness.",
                 StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", true)
         );
         assertEquals(
-                "Answer: 脱 · Undress, remove",
+                "Answer: 脱 · Loss of strength exhaustion weakness",
                 StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", false)
         );
     }

@@ -152,6 +152,41 @@ public final class StudyCuePolicyTest {
     }
 
     @Test
+    public void meaningChoiceAnswerLinesUsesTestedMeaningWhenSourceCompoundIsMissing() {
+        DictionaryLookup.KanjiEntryFields fields = new DictionaryLookup.KanjiEntryFields(
+                "脱",
+                Arrays.asList("undress", "removing"),
+                Collections.singletonList("ダツ"),
+                Collections.singletonList("ぬ.ぐ"),
+                Collections.emptyList(),
+                11,
+                0,
+                47,
+                1500,
+                2200
+        );
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(fields))
+        );
+        RecordsSchedulerModels.StudySession session = session(
+                "脱",
+                false,
+                BridgeScheduler.TASK_MEANING_KANJI,
+                "Loss of strength exhaustion weakness",
+                "だつりょく"
+        );
+
+        assertEquals(
+                Arrays.asList(
+                        "Loss of strength exhaustion weakness",
+                        "Reading: だつりょく",
+                        "Individual kanji meanings: Undress, removing"
+                ),
+                StudyCuePolicy.meaningChoiceAnswerLines(lookup, session, null)
+        );
+    }
+
+    @Test
     public void meaningChoiceAnswerLinesOmitsDuplicateOrMissingIndividualGlosses() {
         DictionaryLookup.KanjiEntryFields duplicateFields = new DictionaryLookup.KanjiEntryFields(
                 "脱",
