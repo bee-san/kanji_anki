@@ -69,8 +69,9 @@ class WritingRecognizerTest {
             )
         )
 
-        val candidates = WritingRecognizer.recognitionCandidates(result)
-        val nullResult = WritingRecognizer.recognitionCandidates(null)
+        val bridge = WritingRecognizer::class.java.declaredMethods.single { it.name == "recognitionCandidates" }
+        val candidates = bridge.invoke(null, result) as List<RecognitionCandidate>
+        val nullResult = bridge.invoke(null, null) as List<RecognitionCandidate>
 
         assertEquals(2, candidates.size)
         assertEquals("校", candidates[0].text)
