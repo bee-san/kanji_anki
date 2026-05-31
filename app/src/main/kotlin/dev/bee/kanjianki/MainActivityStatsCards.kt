@@ -1,14 +1,60 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
+internal interface StatsScreenStatsSource {
+    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
+    fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats
+}
+
 internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
-    val stats = store.kaniOutcomeStats()
-    val report = store.kanjiImpactReport()
-    val studyTime = store.studyTaskTimeStats(System.currentTimeMillis())
+    return buildStatsScreenModel(
+        object : StatsScreenStatsSource {
+            override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                return store.cachedStatsSnapshotOrNull()
+            }
+
+            override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                return store.latestStatsSnapshotOrNull()
+            }
+
+            override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+                return store.recomputeStatsSnapshotSynchronously(nowMillis)
+            }
+
+            override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
+                return store.studyTaskTimeStats(nowMillis)
+            }
+        }
+    )
+}
+
+internal fun buildStatsScreenModel(
+    source: StatsScreenStatsSource,
+    nowMillis: Long = System.currentTimeMillis(),
+): StatsScreenModel {
+    val snapshot = source.cachedStatsSnapshotOrNull()
+        ?: source.latestStatsSnapshotOrNull()
+        ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    return statsScreenModel(
+        snapshot.outcomeStats,
+        snapshot.impactReport,
+        source.studyTaskTimeStats(nowMillis),
+    )
+}
+
+internal fun statsScreenModel(
+    stats: StudyStatsStore.KaniOutcomeStats,
+    report: KanjiImpactAnalyzer.Report?,
+    studyTime: StudyStatsStore.StudyTaskTimeStats,
+): StatsScreenModel {
     return StatsScreenModel(
         title = "Stats",
         intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
@@ -23,7 +69,7 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
     )
 }
 
-private fun MainActivityStats.statsVerdictCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
+private fun statsVerdictCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     val working = StatsTextCopy.verdictWorking(
         stats.weakKanjiImproved.improvedCount,
         stats.matureSupportGained.matureSupportGained
@@ -85,7 +131,7 @@ private fun outcomeCard(
     )
 }
 
-private fun MainActivityStats.weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
+private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
         title = "Weak kanji trend",
         summary = StudyTextCopy.countText(
@@ -110,7 +156,7 @@ private fun MainActivityStats.weaknessBurnDownCard(stats: StudyStatsStore.KaniOu
     )
 }
 
-private fun MainActivityStats.supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
+private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
         title = "Anki support",
         summary = StudyTextCopy.countText(
@@ -135,7 +181,7 @@ private fun MainActivityStats.supportConversionCard(stats: StudyStatsStore.KaniO
     )
 }
 
-private fun MainActivityStats.notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel {
+private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel {
     val rows = if (report == null) emptyList() else notHelpingRows(report)
     val details = buildList {
         rows.take(5).forEach { row ->
@@ -181,7 +227,7 @@ private fun MainActivityStats.notHelpingCard(report: KanjiImpactAnalyzer.Report?
     )
 }
 
-private fun MainActivityStats.ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsCardModel {
+private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsCardModel {
     return outcomeCard(
         title = "Ladder status",
         summary = StudyTextCopy.countText(
@@ -207,6 +253,36 @@ private fun MainActivityStats.ladderHealthCard(metric: StudyStatsStore.LadderHea
         },
         strokeColor = STATS_GOLD_COLOR
     )
+}
+
+private fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {
+    return KanjiImpactAnalyzer.notHelpingRows(report)
+}
+
+private fun ladderDistributionRows(metric: StudyStatsStore.LadderHealthMetric): List<String> {
+    return RecordsBase.LadderRung.values().map { rung ->
+        StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung))
+    }
+}
+
+private fun weaknessImprovementExamples(metric: StudyStatsStore.WeakKanjiImprovedMetric): List<String> {
+    return metric.examples.take(3).map { example ->
+        StatsTextCopy.weaknessImprovementExample(
+            example.kanji,
+            example.beforeWeakness,
+            example.afterWeakness
+        )
+    }
+}
+
+private fun supportGainExamples(metric: StudyStatsStore.MatureSupportGainedMetric): List<String> {
+    return metric.examples.map { example ->
+        StatsTextCopy.supportGainExample(
+            example.kanji,
+            example.beforeMatureSupport,
+            example.afterMatureSupport
+        )
+    }
 }
 
 private fun studyTimeCard(stats: StudyStatsStore.StudyTaskTimeStats): StatsCardModel {

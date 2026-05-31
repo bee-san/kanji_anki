@@ -13,7 +13,10 @@ import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import dev.bee.kanjianki.sync.SyncSettings
 import kotlin.math.max
 
-internal class StudyStatsQueries(private val store: LocalStore) {
+internal class StudyStatsQueries(
+    private val store: LocalStore,
+    private val database: SQLiteDatabase? = null,
+) {
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
         val window = StudyTaskTimingPolicy.windowFor(nowMillis)
         val cursor = db().rawQuery(
@@ -166,7 +169,7 @@ internal class StudyStatsQueries(private val store: LocalStore) {
         return kanji
     }
 
-    private fun db(): SQLiteDatabase = store.readableDatabase
+    private fun db(): SQLiteDatabase = database ?: store.readableDatabase
 
     private fun outcomeEvidence(db: SQLiteDatabase): List<StudyStatsStore.OutcomeEvidence> {
         val cursor = db.rawQuery(

@@ -46,6 +46,10 @@ internal class LocalStoreMigrationHooks(
         store.createStatsIndexes(db)
     }
 
+    fun createStatsCacheTables(db: SQLiteDatabase) {
+        store.createStatsCacheTables(db)
+    }
+
     fun ensureStatsAggregateStorage(db: SQLiteDatabase) {
         store.ensureStatsAggregateStorage(db)
     }

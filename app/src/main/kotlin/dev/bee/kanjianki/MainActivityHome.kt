@@ -9,6 +9,8 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.data.StatsCacheStore
+import dev.bee.kanjianki.data.StatsPrecomputeStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
@@ -22,6 +24,13 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val asyncHomeRouteLoader by lazy {
         AsyncHomeRouteLoader(io) { task -> main.post(task) }
     }
+    private val statsPrecomputeScheduler by lazy {
+        StatsPrecomputeScheduler(
+            background = io,
+            isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
+            refresh = { generatedAt -> StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt) },
+        )
+    }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
 
@@ -31,6 +40,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
+        scheduleStatsPrecomputeIfStale()
 
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
@@ -208,6 +218,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
+        scheduleStatsPrecomputeIfStale()
         val now = System.currentTimeMillis()
         val rows = store.activeDashboardRows()
         val items = store.studyItems()
@@ -330,6 +341,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun cancelPendingHomeRouteLoads() {
         asyncHomeRouteLoader.cancelPending()
+    }
+
+    fun scheduleStatsPrecomputeIfStale(): Boolean {
+        return statsPrecomputeScheduler.scheduleIfStale()
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {

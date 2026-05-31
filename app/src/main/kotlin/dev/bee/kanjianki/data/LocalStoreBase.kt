@@ -61,6 +61,10 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreTableCreator.createStatsIndexes(db)
     }
 
+    fun createStatsCacheTables(db: SQLiteDatabase) {
+        LocalStoreTableCreator.createStatsCacheTables(db)
+    }
+
     fun ensureStatsAggregateStorage(db: SQLiteDatabase) {
         db.execSQL(REVIEW_LOG_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED))
         addRichReviewColumns(db)
@@ -437,6 +441,9 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val TABLE_SYNC_CARD_SNAPSHOTS: String = "sync_card_snapshots"
         const val TABLE_SYNC_NOTE_SNAPSHOTS: String = "sync_note_snapshots"
         const val TABLE_SYNC_KANJI_SNAPSHOTS: String = "sync_kanji_snapshots"
+        const val TABLE_STATS_CACHE_STATE: String = "stats_cache_state"
+        const val TABLE_STATS_SCREEN_CACHE: String = "stats_screen_cache"
+        const val STATS_CACHE_SOURCE_VERSION_KEY: String = "stats_source_version"
         const val SQL_CREATE_TABLE: String = "CREATE TABLE "
         const val SQL_CREATE_TABLE_IF_NEEDED: String = "CREATE TABLE IF NOT EXISTS "
         const val SQL_TEXT_NOT_NULL_DEFAULT_EMPTY: String = "TEXT NOT NULL DEFAULT ''"

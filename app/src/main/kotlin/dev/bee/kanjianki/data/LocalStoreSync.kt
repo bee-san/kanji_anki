@@ -123,6 +123,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
             }
             rebuildSimilarKanjiChoiceStates(db, timing.finishedAt)
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings)
+            StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(db)
             syncId
         }
     }

@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data
 
+import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KaniOutcomePolicy
 import dev.bee.kanjianki.core.LadderHealthPolicy
 import dev.bee.kanjianki.core.RecentMistakePolicy
@@ -10,8 +11,10 @@ import dev.bee.kanjianki.core.StudyImpactPolicy
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import java.util.Collections
 
-class StudyStatsStore internal constructor(store: LocalStore) {
-    private val queries = StudyStatsQueries(store)
+class StudyStatsStore private constructor(private val queries: StudyStatsQueries) {
+    internal constructor(store: LocalStore) : this(StudyStatsQueries(store))
+
+    internal constructor(store: LocalStore, db: SQLiteDatabase) : this(StudyStatsQueries(store, db))
 
     fun studyTaskTimeStats(nowMillis: Long): StudyTaskTimeStats {
         return queries.studyTaskTimeStats(nowMillis)
