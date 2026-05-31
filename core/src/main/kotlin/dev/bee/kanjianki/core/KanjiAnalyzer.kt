@@ -244,6 +244,10 @@ class KanjiAnalyzer {
             val source = sources?.get(cardId)
             return source != null && source.forcePractice
         }
+
+        fun sourceFor(kanji: String, cardId: Long): RecordsImportModels.SuspendedSource? {
+            return sourcesByKanji[kanji]?.get(cardId)
+        }
     }
 
     companion object {
@@ -289,7 +293,7 @@ class KanjiAnalyzer {
                     continue
                 }
                 val row = rows.computeIfAbsent(kanji) { MutableRow(it) }
-                row.addExample(example)
+                row.addExample(importIndex.sourceFor(kanji, card.cardId)?.let { exampleFromImportedSource(it) } ?: example)
                 row.markForcePractice(importIndex.forcePractice(kanji, card.cardId))
             }
         }

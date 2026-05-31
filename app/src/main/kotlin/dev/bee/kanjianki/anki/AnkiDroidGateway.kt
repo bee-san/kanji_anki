@@ -243,7 +243,9 @@ class AnkiDroidGateway private constructor(
         settings: RecordsSyncModels.Settings,
     ): MutableMap<Long, RecordsSyncModels.Note> {
         val searchFailure = try {
-            return queryNotesBySearch(target, mapping, settings, ProviderNotePolicy.modelSearch(settings.modelName))
+            val notes = queryNotesBySearch(target, mapping, settings, ProviderNotePolicy.modelSearch(settings.modelName))
+            mergeSuspendedSearchNotes(target, mapping, settings, notes)
+            return notes
         } catch (error: Exception) {
             error
         }
@@ -252,6 +254,27 @@ class AnkiDroidGateway private constructor(
         } catch (sqlFailure: SyncFailure) {
             sqlFailure.addSuppressed(searchFailure)
             throw sqlFailure
+        }
+    }
+
+    @Throws(SyncFailure::class)
+    private fun mergeSuspendedSearchNotes(
+        target: ProviderTarget,
+        mapping: ModelMapping,
+        settings: RecordsSyncModels.Settings,
+        notes: MutableMap<Long, RecordsSyncModels.Note>,
+    ) {
+        if (!settings.importSuspendedCards) {
+            return
+        }
+        val suspendedNotes = queryNotesBySearch(
+            target,
+            mapping,
+            settings,
+            ProviderNotePolicy.modelSearch(settings.modelName) + " is:suspended",
+        )
+        for ((key, value) in suspendedNotes) {
+            notes.putIfAbsent(key, value)
         }
     }
 
