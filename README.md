@@ -136,3 +136,13 @@ Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that
 - Targeted copy regression: `./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest`.
 - Full local smoke check: `./gradlew :core:test :app:assembleDebug`.
 - Release verification: confirm the GitHub Release contains both the signed APK and matching `.sha256` artifact.
+
+## Cheap Ralph queue
+
+Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. If no unchecked items remain, the loop stops creating new cards.
+
+<!-- cheap-ralph-queue:start -->
+- [ ] Finish remaining safe production Kotlin conversion slices.
+- [ ] Reduce excessive Settings copy, starting with Settings copy files and preserving warnings, accessibility labels, test tags, and behavior.
+- [ ] Slim and compact Settings one section at a time without broad redesigns, navigation rewrites, or scheduler/storage semantic changes.
+<!-- cheap-ralph-queue:end -->
