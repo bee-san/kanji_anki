@@ -267,7 +267,7 @@ class AnkiDroidGateway private constructor(
         if (!settings.importSuspendedCards) {
             return
         }
-        val suspendedNotes = queryNotesBySearch(
+        val suspendedNotes: Map<Long, RecordsSyncModels.Note> = queryNotesBySearch(
             target,
             mapping,
             settings,

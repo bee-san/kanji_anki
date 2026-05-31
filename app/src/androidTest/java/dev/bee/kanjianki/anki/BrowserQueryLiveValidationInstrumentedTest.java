@@ -56,32 +56,52 @@ public final class BrowserQueryLiveValidationInstrumentedTest {
         RecordsSyncModels.Settings settings = liveSettings();
         AnkiDroidGateway gateway = new AnkiDroidGateway(context);
 
-        AnkiDroidGateway.ProviderStatus status = gateway.status();
+        assertProviderReady(gateway.status());
+
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(settings);
+        assertLiveFixtureSnapshot(snapshot);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+        assertManualSyncSucceeded(result);
+        assertSuspendedArchiveCleanup();
+        assertBrowserQueryDashboardRow();
+        assertBrowserQueryAuditPrivacy();
+    }
+
+    private static void assertProviderReady(AnkiDroidGateway.ProviderStatus status) {
         assertTrue(status.message, status.installed);
         assertTrue(status.message, status.permissionGranted);
         assertEquals("com.ichi2.anki.flashcards", status.authority);
+    }
 
-        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(settings);
+    private static void assertLiveFixtureSnapshot(RecordsSyncModels.CollectionSnapshot snapshot) {
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
         assertTrue("active query card should be marked by the real Browser query", cardForNote(snapshot, 1700000000002L).browserQueryMatched);
         assertFalse("suspended card must not match the Browser query", cardForNote(snapshot, 1700000000001L).browserQueryMatched);
+    }
 
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+    private void assertManualSyncSucceeded(ManualSyncEngine.SyncResult result) {
         assertTrue(result.message, result.success);
         assertEquals("success", store.latestSync().status);
+    }
 
+    private void assertSuspendedArchiveCleanup() {
         List<RecordsImportModels.SuspendedImport> suspendedImports = store.suspendedImports();
         assertEquals("The unrelated suspended card should still be archived safely.", 1, suspendedImports.size());
         assertEquals("箱", suspendedImports.get(0).kanji);
         assertEquals("suspended", suspendedImports.get(0).sources.get(0).sourceType);
+    }
 
+    private void assertBrowserQueryDashboardRow() {
         RecordsImportModels.DashboardRow activeRow = rowFor(store.dashboardRows(), "橋");
         assertNotNull("Active card should import because Browser query is enabled.", activeRow);
         assertEquals(1, activeRow.activeExampleCount);
         assertEquals(0, activeRow.suspendedExampleCount);
         assertEquals("browser_query", activeRow.examples.get(0).sourceType);
+    }
 
+    private void assertBrowserQueryAuditPrivacy() {
         assertEquals("suspended browser_query", scalar("import_rule_audits", "enabled_sources", "sync_id=?", new String[]{"1"}));
         assertEquals("[redacted]", scalar("import_rule_audits", "browser_query", "sync_id=?", new String[]{"1"}));
         String settingsJson = scalar("import_rule_audits", "settings_json", "sync_id=?", new String[]{"1"});
