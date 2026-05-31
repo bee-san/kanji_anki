@@ -46,4 +46,34 @@ class SyncModelValidatorTest {
         assertEquals("retryable_provider", SyncModelValidator.classifyProviderFailure(RuntimeException()))
         assertEquals("retryable_provider", SyncModelValidator.classifyProviderFailure(RuntimeException("cursor timed out")))
     }
+
+    @Test
+    fun staticWrappersStayAvailableForJavaInterop() {
+        val validateModelFields = SyncModelValidator::class.java.getMethod(
+            "validateModelFields",
+            String::class.java,
+            List::class.java,
+            String::class.java,
+            List::class.java,
+        )
+        val classifyProviderFailure = SyncModelValidator::class.java.getMethod(
+            "classifyProviderFailure",
+            Throwable::class.java,
+        )
+
+        assertEquals(
+            emptyList<String>(),
+            validateModelFields.invoke(
+                null,
+                "Kiku",
+                listOf("Expression"),
+                "Kiku",
+                listOf("Expression"),
+            ),
+        )
+        assertEquals(
+            "permanent_permission",
+            classifyProviderFailure.invoke(null, SecurityException("denied")),
+        )
+    }
 }

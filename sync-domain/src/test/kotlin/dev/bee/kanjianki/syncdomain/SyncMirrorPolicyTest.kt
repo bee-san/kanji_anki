@@ -44,6 +44,26 @@ class SyncMirrorPolicyTest {
         cardIds.add(20L)
     }
 
+    @Test
+    fun staticWrappersStayAvailableForJavaInterop() {
+        val activeCardIndex = SyncMirrorPolicy::class.java.getMethod(
+            "activeCardIndex",
+            List::class.java,
+        )
+        val selectedSuspendedCardIds = SyncMirrorPolicy::class.java.getMethod(
+            "selectedSuspendedCardIds",
+            List::class.java,
+        )
+
+        val index = activeCardIndex.invoke(null, listOf(card(10L, 1L, false))) as SyncMirrorPolicy.ActiveCardIndex
+
+        assertEquals(1, index.activeCardCount)
+        assertEquals(
+            setOf(10L),
+            selectedSuspendedCardIds.invoke(null, listOf(source(10L, true))),
+        )
+    }
+
     private fun card(cardId: Long, noteId: Long, suspended: Boolean): SyncMirrorPolicy.Card {
         return SyncMirrorPolicy.Card(cardId, noteId, suspended)
     }
