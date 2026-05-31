@@ -71,15 +71,15 @@ class AppValueBehaviorTest {
         )
 
         assertEquals(
-            "Which kanji means Undress, removing?",
+            "Which kanji means Undress, remove?",
             StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "undress, removing")
         )
         assertEquals(
-            "Correct. 脱 means Undress, removing.",
+            "Correct. 脱 means Undress, remove.",
             StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", true)
         )
         assertEquals(
-            "Answer: 脱 · Undress, removing",
+            "Answer: 脱 · Undress, remove",
             StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", false)
         )
     }
