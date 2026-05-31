@@ -1,8 +1,8 @@
 package dev.bee.kanjianki
 
+import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicBoolean
 
 class RunnableClickListenerTest {
     @Test
