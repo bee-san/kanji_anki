@@ -114,6 +114,46 @@ public final class StudyTextCopyTest {
                 "Which kanji means Fallback clue?",
                 StudyTextCopy.meaningKanjiChoiceQuestion(null, "fallback clue")
         );
+
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(new DictionaryLookup.KanjiEntry(new DictionaryLookup.KanjiEntryFields(
+                        "脱",
+                        Arrays.asList("undress", "remove"),
+                        Collections.singletonList("ダツ"),
+                        Collections.singletonList("ぬ.ぐ"),
+                        Collections.emptyList(),
+                        11,
+                        3,
+                        40,
+                        500,
+                        1200
+                )))
+        );
+        RecordsImportModels.MeaningKanjiChoiceCard compoundCard = new RecordsImportModels.MeaningKanjiChoiceCard(
+                "脱",
+                "Loss of strength exhaustion weakness",
+                "ダツ",
+                Arrays.asList("脱", "説", "税", "悦")
+        );
+        RecordsImportModels.MeaningKanjiChoiceCard blankCard = new RecordsImportModels.MeaningKanjiChoiceCard(
+                "脱",
+                "",
+                "ダツ",
+                Arrays.asList("脱", "説", "税", "悦")
+        );
+        assertEquals(
+                "Which kanji means Loss of strength exhaustion weakness?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(lookup, compoundCard, "Loss of strength exhaustion weakness")
+        );
+        assertEquals(
+                "Correct. 脱 means Loss of strength exhaustion weakness.",
+                StudyTextCopy.meaningKanjiChoiceResult(lookup, compoundCard, "Loss of strength exhaustion weakness", true)
+        );
+        assertEquals(
+                "Which kanji means Undress, remove?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(lookup, blankCard, "")
+        );
+
         assertEquals("Typing answer accepted.", StudyTextCopy.typingAnswerAcceptedToast());
     }
 
