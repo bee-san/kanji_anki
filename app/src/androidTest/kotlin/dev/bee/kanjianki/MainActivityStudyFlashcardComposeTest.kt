@@ -11,6 +11,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -61,6 +64,57 @@ class MainActivityStudyFlashcardComposeTest {
 
         assertTrue(failed)
         assertTrue(passed)
+    }
+
+    @Test
+    fun revealedActionBarSwipesGradeEvenWhenStartedOnButtons() {
+        var failCount = 0
+        var passCount = 0
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = { failCount++ },
+                onPass = { passCount++ }
+            )
+        }
+
+        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performTouchInput { swipeLeft() }
+        composeRule.runOnIdle {
+            assertEquals(1, failCount)
+            assertEquals(0, passCount)
+        }
+
+        composeRule.onNodeWithText("Fail").performTouchInput { swipeRight() }
+        composeRule.runOnIdle {
+            assertEquals(1, failCount)
+            assertEquals(1, passCount)
+        }
+    }
+
+    @Test
+    fun unrevealedActionBarKeepsRevealTapAndNoGradingActions() {
+        var revealed = false
+        var failed = false
+        var passed = false
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = false,
+                onReveal = { revealed = true },
+                onFail = { failed = true },
+                onPass = { passed = true }
+            )
+        }
+
+        composeRule.onNodeWithText("Reveal").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(true, revealed)
+            assertEquals(false, failed)
+            assertEquals(false, passed)
+        }
     }
 
     @Test
