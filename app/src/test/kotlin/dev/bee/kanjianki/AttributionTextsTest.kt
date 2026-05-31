@@ -5,13 +5,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.ArrayList
+import java.util.Arrays
+import java.util.LinkedHashMap
 
 class AttributionTextsTest {
     @Test
     fun dictionarySourcesUsesSafeFallbackWithoutAndroidResources() {
         assertEquals(
             "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
-            AttributionTexts.dictionarySources(null)
+            AttributionTexts.dictionarySources(null),
         )
         assertEquals("KanjiVG stroke data, CC BY-SA 3.0.", AttributionTexts.kanjiVg(null))
         assertEquals("", AttributionTexts.rawResourceText(null, 0))
@@ -21,7 +24,7 @@ class AttributionTextsTest {
     fun dictionaryManifestTextFallsBackForInvalidJsonInJvmUnitTests() {
         assertEquals(
             "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
-            AttributionTexts.dictionarySourcesFromManifestText("not json")
+            AttributionTexts.dictionarySourcesFromManifestText("not json"),
         )
     }
 
@@ -29,37 +32,37 @@ class AttributionTextsTest {
     fun parsedDictionaryManifestDistinguishesMissingSourcesFromEmptySources() {
         assertEquals(
             "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
-            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", null, null))
+            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", null, null)),
         )
         assertEquals(
             "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
-            AttributionTexts.dictionarySourcesFromManifest(FakeNonArraySourcesManifest("2026-05-15"))
+            AttributionTexts.dictionarySourcesFromManifest(FakeNonArraySourcesManifest("2026-05-15")),
         )
         assertEquals(
             "Dictionary manifest is empty.",
-            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sourceArray(), null))
+            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sourceArray(), null)),
         )
     }
 
     @Test
     fun parsedDictionaryManifestDelegatesSourcesAndNotesToCoreFormatter() {
-        val sources = array(jsonObject(
-            "name", "KANJIDIC2",
-            "license", "CC BY-SA",
-            "source_path", "kanjidic2.xml",
-            "database_version", "2026-05-01"
+        val sources = array(objectOf(
+            "name" to "KANJIDIC2",
+            "license" to "CC BY-SA",
+            "source_path" to "kanjidic2.xml",
+            "database_version" to "2026-05-01",
         ))
         val notes = array("note one", "note two")
 
         assertEquals(
             "Generated: 2026-05-15\n\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
-            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sources, notes))
+            AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sources, notes)),
         )
     }
 
     @Test
     fun sourceAndNoteAdaptersDelegateToCoreFormatter() {
-        val lines = arrayListOf<String>()
+        val lines = ArrayList<String>()
 
         AttributionCopy.appendSource(
             lines,
@@ -73,23 +76,21 @@ class AttributionTextsTest {
                 "2026-05-01",
                 null,
                 null,
-                null
-            )
+                null,
+            ),
         )
-        AttributionCopy.appendNotes(lines, listOf("note one", "note two"))
+        AttributionCopy.appendNotes(lines, Arrays.asList("note one", "note two"))
 
         assertEquals(
             "\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
-            lines.joinToString("\n")
+            lines.joinToString("\n"),
         )
     }
 
-    private fun jsonObject(vararg entries: String): JSONObject {
-        val values = linkedMapOf<String, String>()
-        var i = 0
-        while (i < entries.size) {
-            values[entries[i]] = entries[i + 1]
-            i += 2
+    private fun objectOf(vararg entries: Pair<String, String>): JSONObject {
+        val values = LinkedHashMap<String, String>()
+        for ((key, value) in entries) {
+            values[key] = value
         }
         return FakeJsonObject(values)
     }
@@ -106,7 +107,7 @@ class AttributionTextsTest {
     private class FakeManifest(
         private val generatedAt: String,
         private val sources: JSONArray?,
-        private val notes: JSONArray?
+        private val notes: JSONArray?,
     ) : JSONObject() {
         override fun optString(name: String?): String = when (name) {
             "generated_at" -> generatedAt
@@ -126,13 +127,13 @@ class AttributionTextsTest {
     }
 
     private class FakeNonArraySourcesManifest(private val generatedAt: String) : JSONObject() {
-        override fun optString(name: String): String = when (name) {
+        override fun optString(name: String?): String = when (name) {
             "generated_at" -> generatedAt
             "sources" -> "not an array"
             else -> ""
         }
 
-        override fun optJSONArray(name: String): JSONArray? = null
+        override fun optJSONArray(name: String?): JSONArray? = null
     }
 
     private class FakeObjectArray(private val values: List<JSONObject>) : JSONArray() {

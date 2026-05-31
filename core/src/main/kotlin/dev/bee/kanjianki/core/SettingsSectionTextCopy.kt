@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck behavior, automation, and reference data. Each setting appears once."
+        return "Grouped by import, deck behavior, automation, and data."
     }
 
     @JvmStatic

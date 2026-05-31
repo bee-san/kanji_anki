@@ -189,9 +189,9 @@ object StudyTextCopy {
         prompt: String?,
         maxChars: Int,
     ): String {
-        val testedMeaning = StudyCueFormatter.cleanMeaningText(card?.primaryMeaning ?: prompt)
-        if (testedMeaning.isNotEmpty()) {
-            return cleanLearnerText(testedMeaning, "", maxChars)
+        val testedMeaning = cleanLearnerText(card?.primaryMeaning ?: prompt, "", maxChars)
+        if (testedMeaning.isNotEmpty() && testedMeaning != "Collection clue") {
+            return testedMeaning
         }
         return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, prompt, maxChars)
     }
