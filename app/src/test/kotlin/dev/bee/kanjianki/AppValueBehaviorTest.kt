@@ -63,22 +63,22 @@ class AppValueBehaviorTest {
         )
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "脱",
-            "undress, removing",
+            "Loss of strength exhaustion weakness",
             "ダツ",
             listOf("脱", "説", "税", "悦")
         )
 
         assertEquals(
-            "Which kanji means Undress, remove?",
-            StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "undress, removing")
+            "Which kanji means Loss of strength exhaustion weakness?",
+            StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "Loss of strength exhaustion weakness")
         )
         assertEquals(
-            "Correct. 脱 means Undress, remove.",
-            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", true)
+            "Correct. 脱 means Loss of strength exhaustion weakness.",
+            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", true)
         )
         assertEquals(
-            "Answer: 脱 · Undress, remove",
-            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", false)
+            "Answer: 脱 · Loss of strength exhaustion weakness",
+            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", false)
         )
     }
 
