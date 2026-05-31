@@ -1,0 +1,67 @@
+package dev.bee.kanjianki.core
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class RetentionSettingsPolicyTest {
+    @Test
+    fun saveRequestPreservesLatestMultipliersAndStoresRetentionPercent() {
+        val latest = parameters()
+
+        val result = RetentionSettingsPolicy.saveRequest(95, false, " 1-500=95% ", latest)
+        val parameters = requireNotNull(result.parameters)
+
+        assertTrue(result.valid)
+        assertEquals(0.95, parameters.targetRetention, 0.001)
+        assertEquals(latest.againMultiplier, parameters.againMultiplier, 0.001)
+        assertEquals(latest.hardMultiplier, parameters.hardMultiplier, 0.001)
+        assertEquals(latest.goodMultiplier, parameters.goodMultiplier, 0.001)
+        assertEquals(latest.easyMultiplier, parameters.easyMultiplier, 0.001)
+        assertEquals(latest.lastAdjustedAtMillis, parameters.lastAdjustedAtMillis)
+        assertEquals(latest.lastAdjustmentReviewCount, parameters.lastAdjustmentReviewCount)
+        assertFalse(parameters.frequencyRetentionEnabled)
+        assertEquals("1-500=95%", parameters.frequencyRetentionRanges)
+        assertEquals("FSRS retention saved.", result.message)
+    }
+
+    @Test
+    fun saveRequestValidatesEnabledFrequencyRanges() {
+        val result = RetentionSettingsPolicy.saveRequest(
+            90,
+            true,
+            "1-500=95%\n501-20000=85%",
+            parameters(),
+        )
+        val parameters = requireNotNull(result.parameters)
+
+        assertTrue(result.valid)
+        assertTrue(parameters.frequencyRetentionEnabled)
+        assertEquals("1-500=95%\n501-20000=85%", parameters.frequencyRetentionRanges)
+    }
+
+    @Test
+    fun saveRequestRejectsInvalidEnabledFrequencyRanges() {
+        val result = RetentionSettingsPolicy.saveRequest(90, true, "500-1=90%", parameters())
+
+        assertFalse(result.valid)
+        assertNull(result.parameters)
+        assertEquals("Line 1: Use ranks 1-20000 in ascending order.", result.message)
+    }
+
+    @Test
+    fun saveRequestIgnoresInvalidDisabledFrequencyRangesLikePreviousUi() {
+        val result = RetentionSettingsPolicy.saveRequest(90, false, "500-1=90%", parameters())
+        val parameters = requireNotNull(result.parameters)
+
+        assertTrue(result.valid)
+        assertFalse(parameters.frequencyRetentionEnabled)
+        assertEquals("500-1=90%", parameters.frequencyRetentionRanges)
+    }
+
+    private fun parameters(): RecordsSchedulerModels.SchedulerParameters {
+        return RecordsSchedulerModels.SchedulerParameters(0.88, 0.4, 1.1, 2.2, 3.3, 123L, 45)
+    }
+}
