@@ -2,9 +2,9 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
-import org.junit.Test
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Test
 
 class SettingsDeckLimitsPanelModelsTest {
     @Test
