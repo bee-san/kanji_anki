@@ -189,7 +189,11 @@ object StudyTextCopy {
         prompt: String?,
         maxChars: Int,
     ): String {
-        return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, card?.primaryMeaning ?: prompt, maxChars)
+        val testedMeaning = cleanLearnerText(card?.primaryMeaning ?: prompt, "", maxChars)
+        if (testedMeaning.isNotEmpty() && testedMeaning != "Collection clue") {
+            return testedMeaning
+        }
+        return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, prompt, maxChars)
     }
 
     private fun sessionClueRawText(session: RecordsSchedulerModels.StudySession?): String? {

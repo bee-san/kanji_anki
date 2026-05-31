@@ -118,6 +118,30 @@ public final class StudyTextCopyTest {
     }
 
     @Test
+    public void meaningKanjiChoiceCopyUsesTestedCompoundMeaningOverIndividualKanjiGloss() {
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(Collections.singletonList(kanjiEntry("脱", "undress", "removing")));
+        RecordsImportModels.MeaningKanjiChoiceCard card = new RecordsImportModels.MeaningKanjiChoiceCard(
+                "脱",
+                "Loss of strength exhaustion weakness",
+                "だつりょく",
+                Arrays.asList("脱", "弱", "欠", "疲")
+        );
+
+        assertEquals(
+                "Which kanji means Loss of strength exhaustion weakness?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "fallback")
+        );
+        assertEquals(
+                "Correct. 脱 means Loss of strength exhaustion weakness.",
+                StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", true)
+        );
+        assertEquals(
+                "Answer: 脱 \u00b7 Loss of strength exhaustion weakness",
+                StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", false)
+        );
+    }
+
+    @Test
     public void studyDoneCopyPreservesFocusAndRunSummaryText() {
         assertEquals("Today's focus done", StudyTextCopy.studyDoneTitle());
         assertEquals(
