@@ -8,7 +8,7 @@ public final class SettingsSectionTextCopyTest {
     @Test
     public void sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle());
-        assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody());
+        assertEquals("AnkiDroid note fields, import filters, frequency range, and sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody());
         assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle());
         assertEquals("Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody());
         assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle());
