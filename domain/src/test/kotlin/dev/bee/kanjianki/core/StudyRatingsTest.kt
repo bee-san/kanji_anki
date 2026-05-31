@@ -13,6 +13,10 @@ class StudyRatingsTest {
         assertEquals("easy", StudyRatings.normalize(StudyRatings.EASY))
         assertEquals("again", StudyRatings.normalize(null))
         assertEquals("again", StudyRatings.normalize("pass"))
+        assertEquals("again", StudyRatings.Companion.normalize("pass"))
+
+        val normalize = StudyRatings::class.java.getDeclaredMethod("normalize", String::class.java)
+        assertEquals("again", normalize.invoke(null, "pass"))
 
         val constructor = StudyRatings::class.java.getDeclaredConstructor()
         constructor.isAccessible = true
