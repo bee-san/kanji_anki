@@ -13,6 +13,23 @@ class HintPolicyTest {
     }
 
     @Test
+    fun jvmStaticBridgeRemainsCovered() {
+        val bridge = HintPolicy::class.java.getMethod(
+            "hintsFor",
+            StrokeGuide::class.java,
+            Integer.TYPE,
+            Integer.TYPE,
+            java.lang.Boolean.TYPE,
+        )
+
+        @Suppress("UNCHECKED_CAST")
+        val hints = bridge.invoke(null, StrokeGuide("拉", listOf(stroke(), stroke(), stroke())), 0, 0, false) as List<HintPolicy.StrokeHint>
+
+        assertEquals(3, hints.size)
+        assertTrue(hints[0].visible)
+    }
+
+    @Test
     fun minimalStageShowsOnlyCurrentStrokeCue() {
         val guide = StrokeGuide(
             "拉",

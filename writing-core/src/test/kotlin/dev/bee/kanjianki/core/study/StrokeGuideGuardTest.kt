@@ -21,6 +21,23 @@ class StrokeGuideGuardTest {
     }
 
     @Test
+    fun jvmStaticBridgeRemainsCovered() {
+        val bridge = StrokeGuideGuard::class.java.getMethod(
+            "evaluatePoint",
+            StrokeGuide::class.java,
+            Integer.TYPE,
+            java.lang.Float.TYPE,
+            java.lang.Float.TYPE,
+            java.lang.Float.TYPE,
+            java.lang.Float.TYPE,
+        )
+
+        val decision = bridge.invoke(null, twoStrokeGuide(), 0, 1000f, 1000f, 210f, 500f) as StrokeGuideGuard.Decision
+
+        assertTrue(decision.allowed)
+    }
+
+    @Test
     fun rejectsPointsClearlyFarFromExpectedStroke() {
         val decision = StrokeGuideGuard.evaluatePoint(
             twoStrokeGuide(),

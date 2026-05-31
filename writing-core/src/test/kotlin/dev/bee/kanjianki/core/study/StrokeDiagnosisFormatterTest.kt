@@ -127,6 +127,22 @@ class StrokeDiagnosisFormatterTest {
         assertEquals("", StrokeDiagnosisFormatter.strokeLine(null, "ignored"))
     }
 
+    @Test
+    fun jvmStaticBridgeRemainsCovered() {
+        val bridge = StrokeDiagnosisFormatter::class.java.getMethod(
+            "text",
+            WritingAnalysis::class.java,
+        )
+
+        val diagnosis = StrokeDiagnosis.builder()
+            .add(StrokeDiagnosis.Label.WRONG_ORDER, 1)
+            .build()
+
+        val text = bridge.invoke(null, analysisWith(diagnosis, WritingAnalysis.Status.CLOSE)) as String
+
+        assertEquals("Stroke 1: likely wrong order", text)
+    }
+
     private fun analysisWith(diagnosis: StrokeDiagnosis, status: WritingAnalysis.Status): WritingAnalysis {
         return WritingAnalysis(
             status,
