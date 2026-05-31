@@ -12,8 +12,8 @@ class HomeSyncConfirmDialogModelTest {
 
         val model = HomeSyncConfirmDialogModels.create(
             "Kani imports suspended Kiku cards by default.",
-            { confirmed.incrementAndGet() },
-            { dismissed.incrementAndGet() }
+            confirmed::incrementAndGet,
+            dismissed::incrementAndGet,
         )
 
         assertEquals("Sync AnkiDroid?", model.title)
@@ -33,8 +33,8 @@ class HomeSyncConfirmDialogModelTest {
         val model = HomeSyncConfirmDialogModels.create(
             "Install AnkiDroid first.",
             "Install AnkiDroid",
-            {},
-            {}
+            Runnable {},
+            Runnable {},
         )
 
         assertEquals("Install AnkiDroid", model.confirmLabel)

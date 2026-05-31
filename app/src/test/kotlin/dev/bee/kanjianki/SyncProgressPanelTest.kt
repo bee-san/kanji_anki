@@ -2,9 +2,9 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
-import org.junit.Test
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Test
 
 class SyncProgressPanelTest {
     @Test

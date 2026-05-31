@@ -97,7 +97,7 @@ public final class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings cockpit",
-                        "Grouped by import, deck behavior, automation, and reference data. Each setting appears once.",
+                        "Grouped by import, deck behavior, automation, and data.",
                         "Note type",
                         "Import filters",
                         "Import ranks",
