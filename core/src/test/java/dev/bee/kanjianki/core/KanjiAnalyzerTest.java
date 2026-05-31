@@ -297,6 +297,42 @@ public class KanjiAnalyzerTest {
     }
 
     @Test
+    public void selectedSourcesPreserveBrowserQuerySourceTypeForMatchedActiveCards() throws Exception {
+        RecordsSyncModels.Settings settings = settingsWithMatureSupport(1);
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("橋,1600\n"));
+        RecordsImportModels.SuspendedSource source = new RecordsImportModels.SuspendedSource(
+                "橋",
+                10,
+                1,
+                "橋",
+                "はし",
+                "bridge",
+                RecordsImportModels.SuspendedSourceDetails.builder("橋を渡る。")
+                        .sourceType(RecordsBase.SOURCE_BROWSER_QUERY)
+                        .suspended(false)
+                        .forcePractice(true)
+                        .mature(true)
+                        .reviewStats(0, 45, 12)
+                        .fsrs(60.0, 3.0, 0.95)
+                        .build()
+        );
+
+        List<RecordsImportModels.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(
+                new RecordsSyncModels.CollectionSnapshot(
+                        Collections.singletonList(note(1, "橋", "はし", "bridge", "橋を渡る。")),
+                        Collections.singletonList(card(10, 1, 45, 12, 0, 60.0, 3.0, 0.95))
+                ),
+                Collections.singletonList(new RecordsImportModels.SuspendedImport("橋", 1600, true, 3000, Collections.singletonList(source))),
+                ranks,
+                settings
+        );
+
+        assertEquals(1, rows.size());
+        assertEquals(RecordsBase.SOURCE_BROWSER_QUERY, rows.get(0).examples.get(0).sourceType);
+        assertEquals(1, rows.get(0).activeExampleCount);
+    }
+
+    @Test
     public void selectedSourcesSkipUnselectedCardsAndUnimportedKanji() throws Exception {
         RecordsSyncModels.Settings settings = settingsWithMatureSupport(0);
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("深,1500\n外,1600\n"));
