@@ -16,7 +16,7 @@ public final class SettingsSectionTextCopyTest {
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle());
         assertEquals("Offline dictionaries, stroke data, fonts, and attribution shown by the app.", SettingsSectionTextCopy.settingsReferenceDataBody());
         assertEquals("Settings cockpit", SettingsSectionTextCopy.settingsCockpitLabel());
-        assertEquals("Grouped by import, deck behavior, automation, and reference data. Each setting appears once.", SettingsSectionTextCopy.settingsHeroBody());
+        assertEquals("Grouped by import, deck behavior, automation, and data.", SettingsSectionTextCopy.settingsHeroBody());
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel());
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel());
         assertEquals("Import ranks", SettingsSectionTextCopy.importRanksStatusLabel());
