@@ -177,9 +177,8 @@ class StudyCuePolicyTest {
 
         assertEquals(
             listOf(
-                "Loss of strength exhaustion weakness",
-                "Reading: だつりょく",
-                "Individual kanji meanings: Undress, removing"
+                "Undress, removing",
+                "Reading: だつりょく"
             ),
             StudyCuePolicy.meaningChoiceAnswerLines(lookup, session, null)
         )
