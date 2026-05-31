@@ -131,6 +131,26 @@ class StrokeOrderEvaluatorTest {
     }
 
     @Test
+    fun jvmStaticBridgeMethodsRemainCallableFromJavaReflection() {
+        val sample = sample(
+            stroke(10f, 10f, 90f, 10f),
+            stroke(10f, 30f, 90f, 30f),
+        )
+        val guide = guide()
+        val candidates = listOf(RecognitionCandidate("拉", 0.99f))
+
+        val evaluate = StrokeOrderEvaluator::class.java
+            .getMethod("evaluate", StrokeGuide::class.java, WritingSample::class.java)
+            .invoke(null, guide, sample) as StrokeOrderEvaluator.StrokeOrderResult
+        val analyze = WritingAnalysisEngine::class.java
+            .getMethod("analyze", String::class.java, WritingSample::class.java, StrokeGuide::class.java, List::class.java)
+            .invoke(null, "拉", sample, guide, candidates) as WritingAnalysis
+
+        assertTrue(evaluate.clean)
+        assertTrue(analyze.writingPassed)
+    }
+
+    @Test
     fun missingGuideDoesNotSilentlyPass() {
         val result = StrokeOrderEvaluator.evaluate(null, sample(stroke(0f, 0f, 1f, 1f)))
 
