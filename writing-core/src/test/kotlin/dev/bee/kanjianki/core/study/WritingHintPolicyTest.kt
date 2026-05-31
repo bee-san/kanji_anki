@@ -11,6 +11,12 @@ class WritingHintPolicyTest {
     }
 
     @Test
+    fun jvmStaticBridgeRemainsCovered() {
+        val bridge = WritingHintPolicy::class.java.declaredMethods.single { it.name == "initialHintState" }
+        assertEquals(HintLevel.OUTLINE, (bridge.invoke(null, 3, 12, 4, true) as HintState).level())
+    }
+
+    @Test
     fun firstReviewStartsNoHigherThanOutline() {
         assertEquals(HintLevel.OUTLINE, WritingHintPolicy.initialHintState(3, 0, 4, false).level())
     }
