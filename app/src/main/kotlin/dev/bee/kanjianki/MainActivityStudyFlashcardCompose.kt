@@ -2,6 +2,8 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,9 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.FlashcardGesturePolicy
+import dev.bee.kanjianki.core.StudyRatings
+import kotlin.math.roundToInt
 
 internal class FlashcardActionBarState(
     revealed: Boolean,
@@ -53,7 +62,8 @@ fun StudyFlashcardActionBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 3.dp, vertical = 8.dp),
+                .padding(horizontal = 3.dp, vertical = 8.dp)
+                .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             StudyFailButton(
@@ -64,6 +74,48 @@ fun StudyFlashcardActionBar(
                 onClick = onPass,
                 modifier = Modifier.weight(1f)
             )
+        }
+    }
+}
+
+@Composable
+private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () -> Unit): Modifier {
+    val touchSlop = LocalViewConfiguration.current.touchSlop.roundToInt()
+    val minimumSwipeDistance = with(LocalDensity.current) { 72.dp.toPx().roundToInt() }
+    return pointerInput(onFail, onPass, touchSlop, minimumSwipeDistance) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            var endPosition = down.position
+            var consumingReviewSwipe = false
+            do {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                event.changes.firstOrNull { it.id == down.id }?.let { change ->
+                    endPosition = change.position
+                    val dx = endPosition.x - down.position.x
+                    val dy = endPosition.y - down.position.y
+                    if (!consumingReviewSwipe && kotlin.math.abs(dx) > touchSlop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                        consumingReviewSwipe = true
+                    }
+                    if (consumingReviewSwipe) {
+                        change.consume()
+                    }
+                }
+            } while (event.changes.any { it.pressed })
+
+            when (
+                FlashcardGesturePolicy.release(
+                    down.position.x,
+                    down.position.y,
+                    endPosition.x,
+                    endPosition.y,
+                    touchSlop,
+                    minimumSwipeDistance,
+                    true,
+                ).rating
+            ) {
+                StudyRatings.AGAIN -> onFail()
+                StudyRatings.GOOD -> onPass()
+            }
         }
     }
 }
