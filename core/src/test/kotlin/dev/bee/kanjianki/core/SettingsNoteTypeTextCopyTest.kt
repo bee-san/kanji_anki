@@ -8,9 +8,9 @@ class SettingsNoteTypeTextCopyTest {
     fun noteTypeHelpersPreserveFormatting() {
         assertEquals("Note type & clue fields", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
-        assertEquals("Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
+        assertEquals("Default: Kiku. One card owns the note type and all clue mapping.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
         assertEquals("Required fields", SettingsNoteTypeTextCopy.requiredFieldsTitle())
-        assertEquals("Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.", SettingsNoteTypeTextCopy.requiredFieldsBody())
+        assertEquals("Expression source, Reading=reading, Meaning=meaning, Sentence=context, Frequency/FreqSort=metadata.", SettingsNoteTypeTextCopy.requiredFieldsBody())
         assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
         assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())
