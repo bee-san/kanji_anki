@@ -123,7 +123,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun studyRunDoneBody(): String {
-        return "Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji."
+        return "Kani finished the Study now set. You can stop here, or keep going through all current problem kanji."
     }
 
     @JvmStatic

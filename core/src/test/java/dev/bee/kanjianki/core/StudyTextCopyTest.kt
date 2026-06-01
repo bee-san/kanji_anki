@@ -126,7 +126,7 @@ class StudyTextCopyTest {
             StudyTextCopy.adaptiveFocusDoneBody(),
         )
         assertEquals(
-            "Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.",
+            "Kani finished the Study now set. You can stop here, or keep going through all current problem kanji.",
             StudyTextCopy.studyRunDoneBody(),
         )
         assertEquals("Today's focus: 0 items left / 7", StudyTextCopy.adaptiveFocusDoneSummary(7))
