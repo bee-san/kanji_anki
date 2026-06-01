@@ -5,32 +5,32 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, import filters, frequency, and daily sync."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Study steps, FSRS, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Advanced controls"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and app update checks that change how Kani runs in the background."
+    fun settingsAutomationBody(): String = "Reminders and update checks that run Kani in the background."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Display & data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings cockpit"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck behavior, automation, and reference data. Each setting appears once."
+        return "Grouped by import, deck, automation, and data. Each setting appears once."
     }
 
     @JvmStatic
