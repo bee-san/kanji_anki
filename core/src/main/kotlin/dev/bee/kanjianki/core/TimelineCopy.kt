@@ -83,7 +83,7 @@ object TimelineCopy {
             title = "Manual override"
         } else if (RATING_AGAIN == safeRating || (request.writingRequired && !request.writingPassed)) {
             eventType = EVENT_REVIEW_FAILED
-            title = "Review failed"
+            title = "Review missed"
         } else {
             eventType = EVENT_REVIEW_PASSED
             title = "Review passed"
@@ -99,9 +99,9 @@ object TimelineCopy {
         }
         if (RATING_AGAIN == safeRating) {
             return if (request.writingRequired) {
-                "Writing missed; Kani scheduled another try."
+                "Writing missed; Kani will show it again."
             } else {
-                "Recall missed; Kani scheduled another try."
+                "Recall missed; Kani will show it again."
             }
         }
         if (request.writingRequired) {
