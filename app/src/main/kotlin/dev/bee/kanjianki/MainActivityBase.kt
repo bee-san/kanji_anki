@@ -298,7 +298,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return MainActivityRuntimeOverrides.notificationsAllowed ?: ReminderScheduler.notificationsAllowed(this)
     }
 
-    fun candidates(result: WritingRecognizer.RecognitionResult): List<RecognitionCandidate> {
+    fun candidates(result: WritingRecognizer.RecognitionResult?): List<RecognitionCandidate> {
         return WritingRecognizer.recognitionCandidates(result)
     }
 
