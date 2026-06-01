@@ -33,7 +33,7 @@ object HomeTextCopy {
     @JvmStatic
     fun recentMistakeTitle(rowMeaning: String?): String {
         if (rowMeaning.isNullOrEmpty()) {
-            return "Recent review miss"
+            return "Recent mistake"
         }
         return rowMeaning
     }
