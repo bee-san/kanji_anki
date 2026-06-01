@@ -77,7 +77,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "GitHub updater",
-                        "Current version 1.2.3. Checks GitHub Releases and verifies the APK before install.",
+                        "Version 1.2.3. Checks GitHub Releases, then verifies the APK.",
                         "Automatic updates",
                         "Check for update",
                         "On: checks about once a day",
@@ -499,7 +499,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Daily nudge for active problem kanji. Android may batch the time.",
+                "Daily nudge for active problem kanji; Android may batch it.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -513,12 +513,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Android notifications are off for Kani, so this reminder cannot appear yet.",
+                "Android notifications are off, so this reminder cannot appear yet.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Android will ask for notification permission before turning this on.",
+                "Android asks for notification permission before turning this on.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))

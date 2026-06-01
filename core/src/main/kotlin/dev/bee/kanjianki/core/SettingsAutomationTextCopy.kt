@@ -38,8 +38,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Current version " + versionName.toString() +
-            ". Checks GitHub Releases and verifies the APK before install."
+        return "Version " + versionName.toString() + ". Checks GitHub Releases, then verifies the APK."
     }
 
     @JvmStatic
@@ -161,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Daily nudge for active problem kanji. Android may batch the time."
+        return "Daily nudge for active problem kanji; Android may batch it."
     }
 
     @JvmStatic
@@ -187,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Android notifications are off for Kani, so this reminder cannot appear yet."
+        return "Android notifications are off, so this reminder cannot appear yet."
     }
 
     @JvmStatic
@@ -195,7 +194,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Android will ask for notification permission before turning this on."
+        return "Android asks for notification permission before turning this on."
     }
 
     @JvmStatic
