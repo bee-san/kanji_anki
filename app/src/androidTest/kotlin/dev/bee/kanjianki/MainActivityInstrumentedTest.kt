@@ -360,8 +360,8 @@ private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
             assertHasText(activity, "FSRS retention");
             assertHasText(activity, "Desired retention: 90%");
             assertHasText(activity, "Ladder thresholds");
-            assertHasText(activity, "FSRS days to go up");
-            assertHasText(activity, "Fails to go down");
+            assertHasText(activity, "Promotion interval days");
+            assertHasText(activity, "Demotion fail streak");
         }
     }
 

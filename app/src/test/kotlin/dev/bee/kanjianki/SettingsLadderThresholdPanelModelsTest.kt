@@ -16,7 +16,7 @@ class SettingsLadderThresholdPanelModelsTest {
         }
 
         assertEquals("Ladder thresholds", model.title)
-        assertEquals("FSRS days to go up", model.promotionDaysLabel)
+        assertEquals("Promotion interval days", model.promotionDaysLabel)
         assertEquals("42", model.initialPromotionDaysText)
         assertEquals("1", model.initialFailStreakText)
         assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(), model.defaultPromotionDaysText)

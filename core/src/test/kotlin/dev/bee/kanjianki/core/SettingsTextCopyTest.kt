@@ -5,7 +5,6 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-import java.util.Locale
 
 class SettingsTextCopyTest {
     @Test
@@ -462,14 +461,9 @@ class SettingsTextCopyTest {
                         "Write kanji on.",
                         "Ladder thresholds",
                         "Only due-review passes can move the ladder; learning repeats are practice-only.",
-                        "FSRS days to go up",
-                        "Fails to go down",
-                        String.format(
-                                Locale.ROOT,
-                                "Use %d and %d",
-                                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
-                                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
-                        ),
+                        "Promotion interval days",
+                        "Demotion fail streak",
+                        "Use default ladder thresholds",
                         "Save ladder thresholds",
                         "Ladder thresholds saved."
                 ),
