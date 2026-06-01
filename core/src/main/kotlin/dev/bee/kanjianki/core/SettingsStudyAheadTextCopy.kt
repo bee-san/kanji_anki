@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Pull soon-due cards ahead. 0 disables it; learning delays still apply."
+        return "Pull soon-due cards ahead. 0 disables it; learning/relearning delays still apply."
     }
 
     @JvmStatic

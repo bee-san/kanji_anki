@@ -41,7 +41,7 @@ class SettingsTextCopyTest {
                         "Import & sync",
                         "AnkiDroid fields, import filters, frequency, and daily sync.",
                         "Deck options",
-                        "Study steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
                         "Advanced controls",
                         "Reminders and update checks that run Kani in the background.",
                         "Display & data",
@@ -357,7 +357,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and review misses can come back fast. First-answer repeats don't change Kani SRS.",
+                "New cards and review misses can come back fast. First-answer repeats are practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
@@ -367,7 +367,7 @@ class SettingsTextCopyTest {
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Pull soon-due cards ahead. 0 disables it; learning delays still apply.",
+                "Pull soon-due cards ahead. 0 disables it; learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -393,7 +393,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose how unseen cards enter study; due reviews and repeats stay first.",
+                "Choose how unseen cards enter study; due reviews and learning repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -424,7 +424,7 @@ class SettingsTextCopyTest {
                         "Enabled always available rung",
                         "Enabled conditional rung",
                         "Study ladder",
-                        "Turn rungs off or move them up and down. At least one always-available rung stays on."
+                        "Turn rungs on/off or move them. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -461,7 +461,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Cards climb after strong due reviews; learning repeats stay practice-only.",
+                        "Only due-review passes can move the ladder; learning repeats are practice-only.",
                         "FSRS days to go up",
                         "Fails to go down",
                         String.format(

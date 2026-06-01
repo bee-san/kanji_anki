@@ -111,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how unseen cards enter study; due reviews and repeats stay first."
+        return "Choose how unseen cards enter study; due reviews and learning repeats stay first."
     }
 
     @JvmStatic
@@ -155,7 +155,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs off or move them up and down. At least one always-available rung stays on."
+        return "Turn rungs on/off or move them. Keep one always-available rung on."
     }
 
     @JvmStatic
