@@ -16,7 +16,7 @@ class SettingValuePolicyTest {
 
     @Test
     fun parseLongUsesValueWhenValid() {
-        assertEquals(42_000_000_000L, SettingValuePolicy.parseLong("42000000000", 7L))
+        assertEquals(42000000000L, SettingValuePolicy.parseLong("42000000000", 7L))
     }
 
     @Test

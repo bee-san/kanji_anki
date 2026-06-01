@@ -35,11 +35,8 @@ class HomeActionsTest {
 
     private class RecordingSuspensionWriter {
         var kanji: String? = null
-            private set
         var suspended: Boolean = false
-            private set
         var changedAtMillis: Long = 0
-            private set
 
         fun setKanjiLocallySuspended(kanji: String, suspended: Boolean, changedAtMillis: Long) {
             this.kanji = kanji

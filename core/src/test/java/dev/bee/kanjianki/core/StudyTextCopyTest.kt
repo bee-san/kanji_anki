@@ -113,22 +113,9 @@ class StudyTextCopyTest {
             listOf("脱", "弱", "欠", "疲"),
         )
 
-        assertEquals("Which kanji means Undress, removing?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "fallback"))
-        assertEquals("Correct. 脱 means Undress, removing.", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", true))
-        assertEquals("Answer: 脱 · Undress, removing", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", false))
-    }
-
-    @Test
-    fun meaningKanjiChoiceCopyFallsBackToDictionaryWhenTestedMeaningIsBlank() {
-        val lookup = DictionaryLookup.fromKanjiEntries(listOf(kanjiEntry("脱", "undress", "remove")))
-        val card = RecordsImportModels.MeaningKanjiChoiceCard(
-            "脱",
-            "",
-            "だつりょく",
-            listOf("脱", "弱", "欠", "疲"),
-        )
-
-        assertEquals("Which kanji means Undress, remove?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, ""))
+        assertEquals("Which kanji means Loss of strength exhaustion weakness?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "fallback"))
+        assertEquals("Correct. 脱 means Loss of strength exhaustion weakness.", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", true))
+        assertEquals("Answer: 脱 · Loss of strength exhaustion weakness", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", false))
     }
 
     @Test

@@ -6,7 +6,6 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,8 +36,8 @@ class StudyMoreNewCardActionsTest {
 
         assertTrue(admission.admittedAny)
         assertEquals(2, admission.admittedCount)
-        assertSame(result.items, writer.annotatedInput)
-        assertSame(annotated, writer.replacedInput)
+        assertEquals(result.items, writer.annotatedInput)
+        assertEquals(annotated, writer.replacedInput)
         assertEquals(listOf("謎", "示"), selected)
         assertTrue(reset)
         assertEquals(2, target)

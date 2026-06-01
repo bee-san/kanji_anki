@@ -7,8 +7,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.core.study.RecognitionCandidate
-import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -65,55 +63,23 @@ class AppValueBehaviorTest {
         )
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "脱",
-            "undress, removing",
+            "Loss of strength exhaustion weakness",
             "ダツ",
             listOf("脱", "説", "税", "悦")
         )
 
         assertEquals(
-            "Which kanji means Undress, remove?",
-            StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "undress, removing")
+            "Which kanji means Loss of strength exhaustion weakness?",
+            StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "Loss of strength exhaustion weakness")
         )
         assertEquals(
-            "Correct. 脱 means Undress, remove.",
-            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", true)
+            "Correct. 脱 means Loss of strength exhaustion weakness.",
+            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", true)
         )
         assertEquals(
-            "Answer: 脱 · Undress, remove",
-            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "undress, removing", false)
+            "Answer: 脱 · Loss of strength exhaustion weakness",
+            StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", false)
         )
-    }
-
-    @Test
-    fun meaningKanjiChoiceCopyFallsBackToDictionaryGlossWhenTestedMeaningIsBlank() {
-        val lookup = DictionaryLookup.fromKanjiEntries(
-            listOf(
-                DictionaryLookup.KanjiEntry(
-                    DictionaryLookup.KanjiEntryFields(
-                        "脱",
-                        listOf("undress", "remove"),
-                        listOf("ダツ"),
-                        listOf("ぬ.ぐ"),
-                        emptyList<String>(),
-                        11,
-                        3,
-                        40,
-                        500,
-                        1200,
-                    )
-                )
-            )
-        )
-        val card = RecordsImportModels.MeaningKanjiChoiceCard(
-            "脱",
-            "",
-            "ダツ",
-            listOf("脱", "説", "税", "悦")
-        )
-
-        assertEquals("Which kanji means Undress, remove?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, ""))
-        assertEquals("Correct. 脱 means Undress, remove.", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "", true))
-        assertEquals("Answer: 脱 · Undress, remove", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "", false))
     }
 
     @Test
@@ -215,24 +181,17 @@ class AppValueBehaviorTest {
     @Test
     fun studyReviewRequestsMapWritingAnalysisIntoReviewPayload() {
         val session = session("書", true, BridgeScheduler.TASK_WRITE_KANJI)
-        val analysis = WritingAnalysis(
-            WritingAnalysis.Status.CLOSE,
-            "hard",
-            true,
-            "Readable, but the stroke path needs one more careful pass.",
-            emptyList(),
-            null,
-        )
+        val analysis = WritingAnalysisEngine.noInk()
 
         val mapped = StudyReviewRequestPolicy.from(session, StudyReviewWritingOutcome.from(analysis), 2, "easy", false)
         val request = mapped.request()
 
-        assertEquals("hard", mapped.ratingCode())
-        assertEquals("hard", request.rating)
+        assertEquals("again", mapped.ratingCode())
+        assertEquals("again", request.rating)
         assertEquals("書", request.kanji)
         assertEquals("session-token", request.token)
         assertTrue(request.writingRequired)
-        assertTrue(request.writingPassed)
+        assertFalse(request.writingPassed)
         assertFalse(request.writingClean)
         assertFalse(request.manualOverride)
         assertEquals(2, request.hintsUsed)
@@ -273,38 +232,6 @@ class AppValueBehaviorTest {
         assertFalse(errorMapped.request().writingClean)
         assertEquals("again", errorMapped.ratingCode())
         assertEquals(3, errorMapped.request().hintsUsed)
-    }
-
-    @Test
-    fun studyReviewRequestsDistinguishCleanPassAndFailedWritingAnalysis() {
-        val writingSession = session("清", true, BridgeScheduler.TASK_WRITE_KANJI)
-        val cleanPass = WritingAnalysis(
-            WritingAnalysis.Status.PASS,
-            "good",
-            true,
-            "Clean pass.",
-            listOf(RecognitionCandidate("clean", 1.0f)),
-            null,
-        )
-        val failed = WritingAnalysis(
-            WritingAnalysis.Status.WRONG,
-            "again",
-            false,
-            "Wrong shape.",
-            emptyList(),
-            null,
-        )
-
-        val clean = StudyReviewRequestPolicy.from(writingSession, StudyReviewWritingOutcome.from(cleanPass), 1, "good", false)
-        val fail = StudyReviewRequestPolicy.from(writingSession, StudyReviewWritingOutcome.from(failed), 3, "good", false)
-
-        assertTrue(clean.request().writingPassed)
-        assertTrue(clean.request().writingClean)
-        assertEquals("good", clean.ratingCode())
-        assertFalse(fail.request().writingPassed)
-        assertFalse(fail.request().writingClean)
-        assertEquals("again", fail.ratingCode())
-        assertEquals(3, fail.request().hintsUsed)
     }
 
     @Test

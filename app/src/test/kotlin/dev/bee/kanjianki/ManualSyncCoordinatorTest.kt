@@ -7,6 +7,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.lang.reflect.Constructor
+import java.util.ArrayList
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -15,28 +17,26 @@ class ManualSyncCoordinatorTest {
     @Test
     fun successfulSyncRunsSuccessActionBeforeRenderingResult() {
         val result = syncResult(true, false, "ok")
-        val events = mutableListOf<String>()
+        val events = ArrayList<String>()
         val rendered = AtomicReference<ManualSyncEngine.SyncResult>()
 
         val coordinator = ManualSyncCoordinator(
-            Executor { runnable -> runnable.run() },
-            ManualSyncCoordinator.UiPoster { runnable -> runnable.run() },
-            ManualSyncCoordinator.SyncRunner { progress ->
+            directExecutor(),
+            Runnable::run,
+            { progress ->
                 events.add("run")
                 progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES))
                 result
             },
-            ManualSyncCoordinator.SuccessAction {
-                events.add("success")
-            },
-            ManualSyncCoordinator.ResultRenderer { syncResult ->
+            ManualSyncCoordinator.SuccessAction { events.add("success") },
+            { syncResult ->
                 events.add("render")
                 rendered.set(syncResult)
             },
         )
 
         val progressCalled = AtomicBoolean(false)
-        coordinator.start(SyncProgress.Listener { progressCalled.set(true) })
+        coordinator.start { progressCalled.set(true) }
 
         assertEquals(listOf("run", "success", "render"), events)
         assertTrue(progressCalled.get())
@@ -50,11 +50,11 @@ class ManualSyncCoordinatorTest {
         val rendered = AtomicReference<ManualSyncEngine.SyncResult>()
 
         val coordinator = ManualSyncCoordinator(
-            Executor { runnable -> runnable.run() },
-            ManualSyncCoordinator.UiPoster { runnable -> runnable.run() },
-            ManualSyncCoordinator.SyncRunner { result },
+            directExecutor(),
+            Runnable::run,
+            { result },
             ManualSyncCoordinator.SuccessAction { success.set(true) },
-            ManualSyncCoordinator.ResultRenderer { syncResult -> rendered.set(syncResult) },
+            rendered::set,
         )
 
         coordinator.start(null)
@@ -63,15 +63,18 @@ class ManualSyncCoordinatorTest {
         assertSame(result, rendered.get())
     }
 
+    private fun directExecutor(): Executor = Executor(Runnable::run)
+
     private fun syncResult(success: Boolean, skipped: Boolean, message: String): ManualSyncEngine.SyncResult {
-        val constructor = ManualSyncEngine.SyncResult::class.java.getDeclaredConstructor(
-            Boolean::class.javaPrimitiveType!!,
-            Boolean::class.javaPrimitiveType!!,
-            Int::class.javaPrimitiveType!!,
-            Int::class.javaPrimitiveType!!,
-            String::class.java,
-            String::class.java,
-        )
+        val constructor: Constructor<ManualSyncEngine.SyncResult> =
+            ManualSyncEngine.SyncResult::class.java.getDeclaredConstructor(
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                String::class.java,
+            )
         constructor.isAccessible = true
         return constructor.newInstance(success, skipped, 0, 0, message, "")
     }

@@ -1,15 +1,15 @@
 package dev.bee.kanjianki
 
+import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicBoolean
 
 class RunnableClickListenerTest {
     @Test
     fun onClickRunsActionWhenViewIsNull() {
         val clicked = AtomicBoolean(false)
 
-        RunnableClickListener(Runnable { clicked.set(true) }).onClick(null)
+        RunnableClickListener { clicked.set(true) }.onClick(null)
 
         assertTrue(clicked.get())
     }
