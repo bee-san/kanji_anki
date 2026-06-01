@@ -138,7 +138,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun missedSummary(count: Int): String {
-        return countText(count, "missed and will come back", "missed and will come back")
+        return countText(count, "missed and will come back soon", "missed and will come back soon")
     }
 
     @JvmStatic

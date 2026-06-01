@@ -132,8 +132,8 @@ class StudyTextCopyTest {
         assertEquals("Today's focus: 0 items left / 7", StudyTextCopy.adaptiveFocusDoneSummary(7))
         assertEquals("1 kanji moved forward this session", StudyTextCopy.movedForwardSummary(1))
         assertEquals("3 kanji moved forward this session", StudyTextCopy.movedForwardSummary(3))
-        assertEquals("1 missed and will come back", StudyTextCopy.missedSummary(1))
-        assertEquals("2 missed and will come back", StudyTextCopy.missedSummary(2))
+        assertEquals("1 missed and will come back soon", StudyTextCopy.missedSummary(1))
+        assertEquals("2 missed and will come back soon", StudyTextCopy.missedSummary(2))
         assertEquals("1 task completed", StudyTextCopy.completedTaskSummary(1))
         assertEquals("4 tasks completed", StudyTextCopy.completedTaskSummary(4))
     }
