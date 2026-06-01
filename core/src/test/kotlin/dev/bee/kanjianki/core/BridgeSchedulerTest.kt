@@ -1735,6 +1735,58 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun dueLearningRepeatIsNotHiddenByFutureHigherRungInSameFamily() {
+        // Regression guard for the learning-repeat session pitfall: a future higher-rung task
+        // for the same kanji must not hide the repeat that is due now.
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var practicedLearning: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+        var futureHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "学",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now + 60_000L
+        )
+        var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
+                listOf(futureHigherRung, practicedLearning),
+                listOf(row("学", 1)),
+                now
+        )!!
+        assertNotNull(session)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+    }
+
+    @Test
+    public fun dueRelearningRepeatIsNotHiddenByFutureHigherRungInSameFamily() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(5)
+                .lapses(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build()
+        var futureHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "復",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now + 60_000L
+        )
+        var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
+                listOf(futureHigherRung, relearning),
+                listOf(row("復", 1)),
+                now
+        )!!
+        assertNotNull(session)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+    }
+
+    @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()
