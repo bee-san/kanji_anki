@@ -139,10 +139,11 @@ Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that
 
 ## Cheap Ralph queue
 
-Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. If no unchecked items remain, the loop stops creating new cards.
+Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. If no unchecked items remain, the loop stops creating new cards. Learning-experience and scheduler-correctness items belong above cosmetic polish because Kani is a learning app first.
 
 <!-- cheap-ralph-queue:start -->
 - [x] Continue Kotlin conversion across Java/Kotlin source; do not tick complete until Bee accepts it or inventory shows only documented exceptions remain.
+- [ ] Prioritize the learning experience: audit every FSRS, learning-step, relearning-step, review-button, custom-setting, session-selection, due-repeat, graduation/lapse, ladder-movement, and study-copy path against Anki/AnkiDroid behavior; fix discrepancies so Kani's scheduler feels predictably Anki-like and pleasant before continuing non-learning polish. Do not tick complete until core/app tests and manual-use evidence cover custom steps, due learning repeats, lapses, graduation, and Settings defaults.
 - [ ] Reduce excessive Settings copy, starting with Settings copy files and preserving warnings, accessibility labels, test tags, and behavior.
 - [ ] Slim and compact Settings one section at a time without broad redesigns, navigation rewrites, or scheduler/storage semantic changes.
 - [ ] Go through each view in the app and analyse the copy on the page. Make sure it is absolutely essential for that page, if it isn't remove it.
