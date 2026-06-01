@@ -2,6 +2,7 @@ package dev.bee.kanjianki.syncdomain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -42,6 +43,18 @@ class SyncMirrorPolicyTest {
         assertThrows(UnsupportedOperationException::class.java) {
             (SyncMirrorPolicy.activeCardIndex(listOf(card(10L, 1L, false))).cardIds as MutableSet<Long>).add(20L)
         }
+    }
+
+    @Test
+    fun jvmStaticBridgeIsInvocableFromJavaReflection() {
+        val method = SyncMirrorPolicy::class.java.getDeclaredMethod(
+            "activeCardIndex",
+            List::class.java,
+        )
+        val index = method.invoke(null, listOf(card(10L, 1L, false))) as SyncMirrorPolicy.ActiveCardIndex
+
+        assertNotNull(index)
+        assertEquals(1, index.activeCardCount)
     }
 }
 
