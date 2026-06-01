@@ -1,12 +1,10 @@
-package dev.bee.kanjianki.core;
+package dev.bee.kanjianki.core
 
-import org.junit.Test;
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
-import java.util.Collections;
-import java.util.HashSet;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import java.util.HashSet
 
 /**
  * Tests for the Anki-exact ladder scheduler. Covers:
@@ -16,22 +14,22 @@ import static org.junit.Assert.assertTrue;
  *   - Similar-kanji rung skipping based on {@link RecordsStudyModels.StudyItem#hasSimilarKanji}.
  *   - Ladder floor and ceiling behavior.
  */
-public class LadderSchedulerTest {
+class LadderSchedulerTest {
 
-    private static final int DEFAULT_THRESHOLD = RecordsBase.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE;
+    private val DEFAULT_THRESHOLD = RecordsBase.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE
 
     // ---- New learning phase (Anki-exact semantics) ----
 
     @Test
-    public void newCardAgainLoopsInLearningForever() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = newCard("裂");
-        HashSet<String> consumed = new HashSet<>();
+    fun newCardAgainLoopsInLearningForever() {
+        val scheduler = BridgeScheduler();
+        var item = newCard("裂")
+        val consumed = HashSet<String>();
 
-        for (int i = 0; i < 10; i++) {
-            RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        for (i in 0 until 10) {
+            val result = scheduler.applyReview(
                     item.withToken("t" + i),
-                    new RecordsSchedulerModels.ReviewRequest("裂", "t" + i, "again", false, false, false, 0),
+                    RecordsSchedulerModels.ReviewRequest("裂", "t" + i, "again", false, false, false, 0),
                     consumed,
                     1000L + i
             );
@@ -49,16 +47,16 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newCardGoodAdvancesThroughLearningSteps() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = newCard("裂");
+    fun newCardGoodAdvancesThroughLearningSteps() {
+        val scheduler = BridgeScheduler();
+        var item = newCard("裂")
         // Default new steps: [1, 10]
         assertEquals(0, item.learningStep);
 
-        RecordsSchedulerModels.ReviewResult first = scheduler.applyReview(
+        val first = scheduler.applyReview(
                 item.withToken("t1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "t1", "good", false, false, false, 0),
-                new HashSet<>(),
+                RecordsSchedulerModels.ReviewRequest("裂", "t1", "good", false, false, false, 0),
+                HashSet<String>(),
                 1000L
         );
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, first.item.phase);
@@ -67,19 +65,19 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newCardGoodPastLastStepGraduatesToReview() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
+    fun newCardGoodPastLastStepGraduatesToReview() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
         // Default new steps: [1, 10]. Two Goods should graduate.
-        RecordsSchedulerModels.ReviewResult afterFirst = scheduler.applyReview(
+        val afterFirst = scheduler.applyReview(
                 newCard("裂").withToken("g1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "g1", "good", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "g1", "good", false, false, false, 0),
                 consumed,
                 1000L
         );
-        RecordsSchedulerModels.ReviewResult afterSecond = scheduler.applyReview(
+        val afterSecond = scheduler.applyReview(
                 afterFirst.item.withToken("g2"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "g2", "good", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "g2", "good", false, false, false, 0),
                 consumed,
                 2000L
         );
@@ -91,13 +89,13 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newCardEasyGraduatesImmediately() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun newCardEasyGraduatesImmediately() {
+        val scheduler = BridgeScheduler();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 newCard("裂").withToken("e"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "e", "easy", false, false, false, 0),
-                new HashSet<>(),
+                RecordsSchedulerModels.ReviewRequest("裂", "e", "easy", false, false, false, 0),
+                HashSet<String>(),
                 1000L
         );
 
@@ -106,19 +104,19 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newCardHardOnFirstStepUsesDelayBetweenAgainAndGood() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun newCardHardOnFirstStepUsesDelayBetweenAgainAndGood() {
+        val scheduler = BridgeScheduler();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 newCard("裂").withToken("h"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "h", "hard", false, false, false, 0),
-                new HashSet<>(),
+                RecordsSchedulerModels.ReviewRequest("裂", "h", "hard", false, false, false, 0),
+                HashSet<String>(),
                 1000L
         );
 
         // Default new steps [1m, 10m]: Hard on first step schedules max(1m, 5.5m) = 5.5m.
-        long expectedMin = 1000L + 3L * 60_000L;
-        long expectedMax = 1000L + 11L * 60_000L;
+        val expectedMin = 1000L + 3L * 60_000L;
+        val expectedMax = 1000L + 11L * 60_000L;
         assertTrue("Hard on first step delay should sit between Again and Good",
                 result.item.dueAtMillis >= expectedMin && result.item.dueAtMillis <= expectedMax);
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, result.item.phase);
@@ -126,26 +124,26 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newCardHardOnLaterStepRepeatsStep() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
+    fun newCardHardOnLaterStepRepeatsStep() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult advanced = scheduler.applyReview(
+        val advanced = scheduler.applyReview(
                 newCard("裂").withToken("g"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "g", "good", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "g", "good", false, false, false, 0),
                 consumed,
                 1000L
         );
-        RecordsSchedulerModels.ReviewResult hard = scheduler.applyReview(
+        val hard = scheduler.applyReview(
                 advanced.item.withToken("h2"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "h2", "hard", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "h2", "hard", false, false, false, 0),
                 consumed,
                 2000L
         );
 
         // We were at step 1 (10m). Hard should repeat the same step => due at 10m from now.
-        long expected = 2000L + 10L * 60_000L;
-        long delta = Math.abs(hard.item.dueAtMillis - expected);
+        val expected = 2000L + 10L * 60_000L;
+        val delta = Math.abs(hard.item.dueAtMillis - expected);
         assertTrue("Hard on later step repeats current step delay; delta=" + delta,
                 delta < 60_000L);
         assertEquals(1, hard.item.learningStep);
@@ -155,12 +153,12 @@ public class LadderSchedulerTest {
     // ---- Review phase and ladder streaks ----
 
     @Test
-    public void realDuePassPromotesWhenFsrsIntervalExceedsThreshold() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun realDuePassPromotesWhenFsrsIntervalExceedsThreshold() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        RecordsSchedulerModels.ReviewResult promoting = scheduler.applyReview(
+        val promoting = scheduler.applyReview(
                 item.withToken("final"),
                 passRequest("裂", "final"),
                 consumed,
@@ -172,16 +170,16 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void dueReviewPromotionSkipsDisabledRung() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+    fun dueReviewPromotionSkipsDisabledRung() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.FONT_MEANING, false);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("skip-font"),
                 passRequest("裂", "skip-font"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L,
                 null,
                 RecordsSyncModels.Settings.kikuDefaults(),
@@ -195,14 +193,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void realDuePassDoesNotPromoteAtOrBelowFsrsIntervalThreshold() {
-        for (long intervalDays : new long[]{20L, 21L}) {
-            BridgeScheduler scheduler = schedulerWithReviewIntervalDays(intervalDays);
-            RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-            RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+    fun realDuePassDoesNotPromoteAtOrBelowFsrsIntervalThreshold() {
+        for (intervalDays in longArrayOf(20L, 21L)) {
+            val scheduler = schedulerWithReviewIntervalDays(intervalDays);
+            var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+            val result = scheduler.applyReview(
                     item.withToken("p" + intervalDays),
                     passRequest("裂", "p" + intervalDays),
-                    new HashSet<>(),
+                    HashSet<String>(),
                     1000L
             );
 
@@ -212,14 +210,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void hardGoodAndEasyUseFsrsIntervalPromotionRule() {
-        for (String rating : new String[]{"hard", "good", "easy"}) {
-            BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
-            RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-            RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+    fun hardGoodAndEasyUseFsrsIntervalPromotionRule() {
+        for (rating in arrayOf("hard", "good", "easy")) {
+            val scheduler = schedulerWithReviewIntervalDays(22);
+            var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+            val result = scheduler.applyReview(
                     item.withToken(rating),
-                    new RecordsSchedulerModels.ReviewRequest("裂", rating, rating, false, false, false, 0),
-                    new HashSet<>(),
+                    RecordsSchedulerModels.ReviewRequest("裂", rating, rating, false, false, false, 0),
+                    HashSet<String>(),
                     1000L
             );
 
@@ -229,14 +227,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void threeRealDueAgainsDemoteOneRung() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun threeRealDueAgainsDemoteOneRung() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
 
-        long now = 1000L;
-        for (int i = 0; i < DEFAULT_THRESHOLD - 1; i++) {
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        var now = 1000L
+        for (i in 0 until DEFAULT_THRESHOLD - 1) {
+            val r = scheduler.applyReview(
                     item.withToken("a" + i),
                     failRequest("裂", "a" + i),
                     consumed,
@@ -249,7 +247,7 @@ public class LadderSchedulerTest {
             now = Math.max(item.dueAtMillis, now + RecordsBase.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE * 86_400_000L);
             item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
         }
-        RecordsSchedulerModels.ReviewResult demoting = scheduler.applyReview(
+        val demoting = scheduler.applyReview(
                 item.withToken("final"),
                 failRequest("裂", "final"),
                 consumed,
@@ -262,14 +260,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void learningRepeatsDoNotAdvanceRealPassStreak() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = newCard("裂");
+    fun learningRepeatsDoNotAdvanceRealPassStreak() {
+        val scheduler = BridgeScheduler();
+        var item = newCard("裂")
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("g"),
                 passRequest("裂", "g"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L
         );
 
@@ -278,23 +276,23 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void relearningRepeatsDoNotAdvanceRealAgainStreak() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
+    fun relearningRepeatsDoNotAdvanceRealAgainStreak() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
 
         // Force a relearning state by failing a due review first.
-        RecordsStudyModels.StudyItem review = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsSchedulerModels.ReviewResult lapsed = scheduler.applyReview(
+        val review = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val lapsed = scheduler.applyReview(
                 review.withToken("fail"),
                 failRequest("裂", "fail"),
                 consumed,
                 1000L
         );
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, lapsed.item.phase);
-        int streakAfterLapse = lapsed.item.realAgainStreak;
+        val streakAfterLapse = lapsed.item.realAgainStreak;
 
         // Now issue another Again while in relearning. Should not increment streak further.
-        RecordsSchedulerModels.ReviewResult relearningAgain = scheduler.applyReview(
+        val relearningAgain = scheduler.applyReview(
                 lapsed.item.withToken("a2"),
                 failRequest("裂", "a2"),
                 consumed,
@@ -306,14 +304,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void reviewAgainEntersRelearningWhenStepsExist() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun reviewAgainEntersRelearningWhenStepsExist() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("x"),
                 failRequest("裂", "x"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L
         );
 
@@ -323,16 +321,16 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsSchedulerModels.LearningStepSettings noRelearningSteps =
-                new RecordsSchedulerModels.LearningStepSettings(null, Collections.emptyList());
+    fun reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val noRelearningSteps =
+                RecordsSchedulerModels.LearningStepSettings(null, emptyList<Int?>())
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("x"),
                 failRequest("裂", "x"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L,
                 null,
                 null,
@@ -350,14 +348,14 @@ public class LadderSchedulerTest {
     // ---- Ladder floor and ceiling ----
 
     @Test
-    public void ladderCeilingAtWordReadingStaysOnWordReading() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, 0L);
+    fun ladderCeilingAtWordReadingStaysOnWordReading() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, 0L)
 
-        long now = 1000L;
-        for (int i = 0; i < DEFAULT_THRESHOLD * 2; i++) {
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        var now = 1000L
+        for (i in 0 until DEFAULT_THRESHOLD * 2) {
+            val r = scheduler.applyReview(
                     item.withToken("p" + i),
                     passRequest("裂", "p" + i),
                     consumed,
@@ -371,20 +369,20 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void ladderFloorAtWriteKanjiStaysOnWriteKanji() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder().writingRemediationPending(true).build();
+    fun ladderFloorAtWriteKanjiStaysOnWriteKanji() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder().writingRemediationPending(true).build()
 
-        long now = 1000L;
-        for (int i = 0; i < DEFAULT_THRESHOLD * 2; i++) {
+        var now = 1000L
+        for (i in 0 until DEFAULT_THRESHOLD * 2) {
             // Use manualOverride for write rung so each fail counts as a real
             // due review failure (writing failures default to 'again' already,
             // but the manual path here is clearer for test control).
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+            val r = scheduler.applyReview(
                     item.withToken("f" + i),
-                    new RecordsSchedulerModels.ReviewRequest("裂", "f" + i, "again", false, false, false, 0),
+                    RecordsSchedulerModels.ReviewRequest("裂", "f" + i, "again", false, false, false, 0),
                     consumed,
                     now
             );
@@ -401,15 +399,15 @@ public class LadderSchedulerTest {
     // ---- Similar-kanji rung inclusion / skipping ----
 
     @Test
-    public void similarRungSkippedWhenUnavailable() {
+    fun similarRungSkippedWhenUnavailable() {
         // hasSimilarKanji=false, so movement skips SIMILAR_KANJI but still lands on MEANING_KANJI.
-        RecordsBase.LadderRung demoted = BridgeScheduler.demoteRung(
+        val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.KANJI_MEANING,
                 false
         );
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, demoted);
 
-        RecordsBase.LadderRung promoted = BridgeScheduler.promoteRung(
+        val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.TYPE_MEANING,
                 false
         );
@@ -417,14 +415,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void similarRungIncludedWhenAvailable() {
-        RecordsBase.LadderRung demoted = BridgeScheduler.demoteRung(
+    fun similarRungIncludedWhenAvailable() {
+        val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.TYPE_MEANING,
                 true
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, demoted);
 
-        RecordsBase.LadderRung promoted = BridgeScheduler.promoteRung(
+        val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.WRITE_KANJI,
                 true
         );
@@ -434,47 +432,47 @@ public class LadderSchedulerTest {
     // ---- Streak mechanics ----
 
     @Test
-    public void realAgainResetsPassStreakAndViceVersa() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun realAgainResetsPassStreakAndViceVersa() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        RecordsSchedulerModels.ReviewResult pass1 = scheduler.applyReview(
+        val pass1 = scheduler.applyReview(
                 item.withToken("p1"), passRequest("裂", "p1"), consumed, 1000L);
         assertEquals(1, pass1.item.realPassStreak);
         assertEquals(0, pass1.item.realAgainStreak);
 
-        RecordsStudyModels.StudyItem forFail = pass1.item.copyBuilder()
+        val forFail = pass1.item.copyBuilder()
                 .dueAtMillis(pass1.item.dueAtMillis)
                 .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .state("review")
                 .build();
-        long failTime = pass1.item.dueAtMillis + 1000L;
-        RecordsSchedulerModels.ReviewResult fail = scheduler.applyReview(
+        val failTime = pass1.item.dueAtMillis + 1000L;
+        val fail = scheduler.applyReview(
                 forFail.withToken("f1"), failRequest("裂", "f1"), consumed, failTime);
         assertEquals("Fail in review resets pass streak", 0, fail.item.realPassStreak);
         assertEquals(1, fail.item.realAgainStreak);
     }
 
     @Test
-    public void passInLearningDoesNotBumpPassStreak() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun passInLearningDoesNotBumpPassStreak() {
+        val scheduler = BridgeScheduler();
 
         // Force a relearning (practice) attempt to show the streak is not bumped.
-        RecordsStudyModels.StudyItem relearningItem = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsSchedulerModels.ReviewResult lapsed = scheduler.applyReview(
+        val relearningItem = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val lapsed = scheduler.applyReview(
                 relearningItem.withToken("f"),
                 failRequest("裂", "f"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L
         );
-        int againStreak = lapsed.item.realAgainStreak;
+        val againStreak = lapsed.item.realAgainStreak;
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, lapsed.item.phase);
 
-        RecordsSchedulerModels.ReviewResult practicePass = scheduler.applyReview(
+        val practicePass = scheduler.applyReview(
                 lapsed.item.withToken("g"),
                 passRequest("裂", "g"),
-                new HashSet<>(),
+                HashSet<String>(),
                 lapsed.item.dueAtMillis + 1
         );
 
@@ -487,7 +485,7 @@ public class LadderSchedulerTest {
     // ---- Rung-to-task-type wiring ----
 
     @Test
-    public void rungWireNamesMatchTaskTypeConstants() {
+    fun rungWireNamesMatchTaskTypeConstants() {
         assertEquals(BridgeScheduler.TASK_WRITE_KANJI, RecordsBase.LadderRung.WRITE_KANJI.wireName());
         assertEquals(BridgeScheduler.TASK_TYPE_MEANING, RecordsBase.LadderRung.TYPE_MEANING.wireName());
         assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, RecordsBase.LadderRung.SIMILAR_KANJI.wireName());
@@ -498,8 +496,8 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void ladderRungFromWireNameRoundTripsAllValues() {
-        for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
+    fun ladderRungFromWireNameRoundTripsAllValues() {
+        for (rung in RecordsBase.LadderRung.values()) {
             assertEquals(rung, RecordsBase.LadderRung.fromWireName(rung.wireName()));
         }
         // Unknown or null defaults to KANJI_MEANING
@@ -508,8 +506,8 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void schedulerPhaseFromWireNameRoundTripsAllValues() {
-        for (RecordsBase.SchedulerPhase phase : RecordsBase.SchedulerPhase.values()) {
+    fun schedulerPhaseFromWireNameRoundTripsAllValues() {
+        for (phase in RecordsBase.SchedulerPhase.values()) {
             assertEquals(phase, RecordsBase.SchedulerPhase.fromWireName(phase.wireName()));
         }
         // Unknown or null defaults to NEW_LEARNING
@@ -520,17 +518,17 @@ public class LadderSchedulerTest {
     // ---- Edge cases for countsAsRealDue and null guards ----
 
     @Test
-    public void reviewOnNotYetDueCardDoesNotCountForStreak() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun reviewOnNotYetDueCardDoesNotCountForStreak() {
+        val scheduler = BridgeScheduler();
         // Card due in the far future: nowMillis < dueAtMillis
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 999_999_999L);
-        HashSet<String> consumed = new HashSet<>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 999_999_999L);
+        val consumed = HashSet<String>();
 
         // Apply 5 reviews at nowMillis=1000 (before due). None should count for streak.
-        RecordsStudyModels.StudyItem current = item;
-        for (int i = 0; i < 5; i++) {
+        var current = item
+        for (i in 0 until 5) {
             current = current.withToken("nd" + i);
-            RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+            val result = scheduler.applyReview(
                     current, passRequest("裂", "nd" + i), consumed, 1000L + i);
             current = result.item;
         }
@@ -540,14 +538,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void sameDueSlotReviewDoesNotCountTwiceForStreak() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun sameDueSlotReviewDoesNotCountTwiceForStreak() {
+        val scheduler = BridgeScheduler();
         // Item due at 500, first review at 1000 counts, second at 1001 with same dueSlot shouldn't
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
+        val consumed = HashSet<String>();
 
         // First review: counts (nowMillis > dueAt, first time this due slot is seen)
-        RecordsSchedulerModels.ReviewResult r1 = scheduler.applyReview(
+        val r1 = scheduler.applyReview(
                 item.withToken("s1"), passRequest("裂", "s1"), consumed, 1000L);
         assertEquals(1, r1.item.realPassStreak);
 
@@ -555,22 +553,22 @@ public class LadderSchedulerTest {
         // The dueAtMillis has now been updated to a far-future value by the scheduler.
         // If we manually set dueAtMillis back to the original 500 (simulating same slot),
         // the lastRealReviewDueAtMillis will already be 500, so it should be a no-op for streak.
-        RecordsStudyModels.StudyItem sameSlot = r1.item.copyBuilder().dueAtMillis(500L).build();
-        RecordsSchedulerModels.ReviewResult r2 = scheduler.applyReview(
+        val sameSlot = r1.item.copyBuilder().dueAtMillis(500L).build();
+        val r2 = scheduler.applyReview(
                 sameSlot.withToken("s2"), passRequest("裂", "s2"), consumed, 1001L);
         // Streak should not advance further because same due slot
         assertEquals(1, r2.item.realPassStreak);
     }
 
     @Test
-    public void hardCountsAsPassForStreakAdvancement() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+    fun hardCountsAsPassForStreakAdvancement() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("h1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
                 consumed,
                 1000L
         );
@@ -579,14 +577,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void easyCountsAsPassForStreakAdvancement() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+    fun easyCountsAsPassForStreakAdvancement() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("e1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "e1", "easy", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "e1", "easy", false, false, false, 0),
                 consumed,
                 1000L
         );
@@ -595,8 +593,8 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void memoryForTaskTypeReturnsCorrectMemoryPerRung() {
-        RecordsStudyModels.StudyItem item = newCard("裂");
+    fun memoryForTaskTypeReturnsCorrectMemoryPerRung() {
+        var item = newCard("裂")
         // These exercise the switch branches in memoryForTaskType
         assertEquals(item.writingRemediationMemory, item.memoryForTaskType("write_kanji"));
         assertEquals(item.writingRemediationMemory, item.memoryForTaskType("writing_remediation"));
@@ -611,9 +609,9 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void withTaskMemoryUpdatesCorrectFieldPerType() {
-        RecordsStudyModels.StudyItem item = newCard("裂");
-        RecordsStudyModels.TaskMemory custom = RecordsStudyModels.TaskMemory.fromStudyFields("review", 5000L, 2.0, 4.5, 3, 1, 2, 10);
+    fun withTaskMemoryUpdatesCorrectFieldPerType() {
+        var item = newCard("裂")
+        val custom = RecordsStudyModels.TaskMemory.fromStudyFields("review", 5000L, 2.0, 4.5, 3, 1, 2, 10);
 
         assertEquals(custom, item.withTaskMemory("write_kanji", custom).writingRemediationMemory);
         assertEquals(custom, item.withTaskMemory("writing_remediation", custom).writingRemediationMemory);
@@ -628,15 +626,15 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void writingFailureOnNonWriteKanjiRungResolvesAsAgain() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun writingFailureOnNonWriteKanjiRungResolvesAsAgain() {
+        val scheduler = BridgeScheduler();
         // Item on FONT_MEANING rung with a writing failure (writingRequired=true, writingPassed=false)
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("wf1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "wf1", "good", true, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "wf1", "good", true, false, false, 0),
                 consumed,
                 1000L
         );
@@ -645,14 +643,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void writingPassOnNonWriteKanjiRungKeepsOriginalRating() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+    fun writingPassOnNonWriteKanjiRungKeepsOriginalRating() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("wp1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "wp1", "good", true, true, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "wp1", "good", true, true, false, 0),
                 consumed,
                 1000L
         );
@@ -661,14 +659,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void manualOverrideOnNonWriteKanjiDoesNotForceAgain() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
-        HashSet<String> consumed = new HashSet<>();
+    fun manualOverrideOnNonWriteKanjiDoesNotForceAgain() {
+        val scheduler = BridgeScheduler();
+        var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("mo1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "mo1", "good", true, false, true, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "mo1", "good", true, false, true, 0),
                 consumed,
                 1000L
         );
@@ -677,14 +675,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void newLearningWithHardOnFirstStepUsesShortDelay() {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsStudyModels.StudyItem item = newCard("裂");
-        HashSet<String> consumed = new HashSet<>();
+    fun newLearningWithHardOnFirstStepUsesShortDelay() {
+        val scheduler = BridgeScheduler();
+        var item = newCard("裂")
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("h1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
                 consumed,
                 1000L
         );
@@ -695,16 +693,16 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void hardInRelearningRepeatsCurrentStep() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun hardInRelearningRepeatsCurrentStep() {
+        val scheduler = BridgeScheduler();
         // Create a card in relearning phase
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
                 .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
-        HashSet<String> consumed = new HashSet<>();
+        val consumed = HashSet<String>();
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("rh1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "rh1", "hard", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "rh1", "hard", false, false, false, 0),
                 consumed,
                 1000L
         );
@@ -713,17 +711,17 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void goodInRelearningAdvancesThroughSteps() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+    fun goodInRelearningAdvancesThroughSteps() {
+        val scheduler = BridgeScheduler();
         // Create a card in relearning at step 0
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
                 .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
-        HashSet<String> consumed = new HashSet<>();
+        val consumed = HashSet<String>();
 
         // Default relearning steps: [10]. One good should graduate.
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("rg1"),
-                new RecordsSchedulerModels.ReviewRequest("裂", "rg1", "good", false, false, false, 0),
+                RecordsSchedulerModels.ReviewRequest("裂", "rg1", "good", false, false, false, 0),
                 consumed,
                 1000L
         );
@@ -733,8 +731,8 @@ public class LadderSchedulerTest {
 
     // ---- Helpers ----
 
-    private static RecordsStudyModels.StudyItem newCard(String kanji) {
-        return new RecordsStudyModels.StudyItem(
+    private fun newCard(kanji: String): RecordsStudyModels.StudyItem {
+        return RecordsStudyModels.StudyItem(
                 kanji,
                 "new",
                 0L,
@@ -753,8 +751,8 @@ public class LadderSchedulerTest {
         ).withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.NEW_LEARNING);
     }
 
-    private static RecordsStudyModels.StudyItem reviewCard(String kanji, RecordsBase.LadderRung rung, long dueAtMillis) {
-        return new RecordsStudyModels.StudyItem(
+    private fun reviewCard(kanji: String, rung: RecordsBase.LadderRung, dueAtMillis: Long): RecordsStudyModels.StudyItem {
+        return RecordsStudyModels.StudyItem(
                 kanji,
                 "review",
                 dueAtMillis,
@@ -773,25 +771,25 @@ public class LadderSchedulerTest {
         ).withRungAndPhase(rung, RecordsBase.SchedulerPhase.REVIEW);
     }
 
-    private static RecordsSchedulerModels.ReviewRequest passRequest(String kanji, String token) {
-        return new RecordsSchedulerModels.ReviewRequest(kanji, token, "good", false, false, false, 0);
+    private fun passRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
+        return RecordsSchedulerModels.ReviewRequest(kanji, token, "good", false, false, false, 0);
     }
 
-    private static RecordsSchedulerModels.ReviewRequest failRequest(String kanji, String token) {
-        return new RecordsSchedulerModels.ReviewRequest(kanji, token, "again", false, false, false, 0);
+    private fun failRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
+        return RecordsSchedulerModels.ReviewRequest(kanji, token, "again", false, false, false, 0);
     }
 
     // ---- Mixed pass/fail streak-breaking tests ----
 
     @Test
-    public void mixedPassFailSequenceResetsStreakAndPromotesOnlyByInterval() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(10);
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        long now = 1000L;
+    fun mixedPassFailSequenceResetsStreakAndPromotesOnlyByInterval() {
+        val scheduler = schedulerWithReviewIntervalDays(10);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+        var now = 1000L
 
-        for (int i = 0; i < 2; i++) {
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        for (i in 0 until 2) {
+            val r = scheduler.applyReview(
                     item.withToken("p" + i), passRequest("裂", "p" + i), consumed, now);
             item = r.item;
             now = item.dueAtMillis;
@@ -800,7 +798,7 @@ public class LadderSchedulerTest {
         assertEquals("Pass streak is 2 before fail", 2, item.realPassStreak);
         assertEquals("Still on KANJI_MEANING", RecordsBase.LadderRung.KANJI_MEANING, item.rung);
 
-        RecordsSchedulerModels.ReviewResult failResult = scheduler.applyReview(
+        val failResult = scheduler.applyReview(
                 item.withToken("f0"), failRequest("裂", "f0"), consumed, now);
         item = failResult.item;
         assertEquals("Pass streak reset to 0 after fail", 0, item.realPassStreak);
@@ -809,8 +807,8 @@ public class LadderSchedulerTest {
 
         now = Math.max(item.dueAtMillis, now + 86_400_000L);
         item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
-        for (int i = 0; i < 2; i++) {
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        for (i in 0 until 2) {
+            val r = scheduler.applyReview(
                     item.withToken("q" + i), passRequest("裂", "q" + i), consumed, now);
             item = r.item;
             now = item.dueAtMillis;
@@ -819,27 +817,27 @@ public class LadderSchedulerTest {
         assertEquals("Below-threshold FSRS intervals do not promote",
                 RecordsBase.LadderRung.KANJI_MEANING, item.rung);
 
-        BridgeScheduler matureScheduler = schedulerWithReviewIntervalDays(22);
-        RecordsSchedulerModels.ReviewResult promoteResult = scheduler.applyReview(
+        val matureScheduler = schedulerWithReviewIntervalDays(22);
+        val promoteResult = scheduler.applyReview(
                 item.withToken("q2"), passRequest("裂", "q2"), consumed, now);
         assertEquals("Still below threshold with the original scheduler",
                 RecordsBase.LadderRung.KANJI_MEANING, promoteResult.item.rung);
 
-        RecordsSchedulerModels.ReviewResult intervalPromote = matureScheduler.applyReview(
+        val intervalPromote = matureScheduler.applyReview(
                 item.withToken("mature"), passRequest("裂", "mature"), consumed, now);
         assertEquals("Promoted to FONT_MEANING once FSRS interval crosses threshold",
                 RecordsBase.LadderRung.FONT_MEANING, intervalPromote.item.rung);
     }
 
     @Test
-    public void exactPromotionThresholdDoesNotPromote() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY);
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun exactPromotionThresholdDoesNotPromote() {
+        val scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY);
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("exact"),
                 passRequest("裂", "exact"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L
         );
 
@@ -848,14 +846,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void justOverPromotionThresholdPromotes() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY + 1L);
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+    fun justOverPromotionThresholdPromotes() {
+        val scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY + 1L);
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("over"),
                 passRequest("裂", "over"),
-                new HashSet<>(),
+                HashSet<String>(),
                 1000L
         );
 
@@ -866,14 +864,14 @@ public class LadderSchedulerTest {
     // ---- hasSimilarKanji=true promotion via full applyReview path ----
 
     @Test
-    public void promotionLandsOnSimilarKanjiWhenAvailable() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+    fun promotionLandsOnSimilarKanjiWhenAvailable() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
                 .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
                 .withHasSimilarKanji(true);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("s"), passRequest("裂", "s"), consumed, 1000L);
 
         assertEquals("Promoted to SIMILAR_KANJI when hasSimilarKanji is true",
@@ -881,14 +879,14 @@ public class LadderSchedulerTest {
     }
 
     @Test
-    public void promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
+    fun promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
                 .copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).build()
                 .withHasSimilarKanji(false);
 
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+        val result = scheduler.applyReview(
                 item.withToken("ns"), passRequest("裂", "ns"), consumed, 1000L);
 
         assertEquals("Promoted to MEANING_KANJI, skipping SIMILAR_KANJI",
@@ -898,40 +896,40 @@ public class LadderSchedulerTest {
     // ---- Custom ladder thresholds ----
 
     @Test
-    public void customPromotionIntervalDaysControlsPromotion() {
-        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(30);
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsSyncModels.Settings thirtyDayThreshold = settingsWithLadderThresholds(30, 3);
-        RecordsSyncModels.Settings twentyNineDayThreshold = settingsWithLadderThresholds(29, 3);
+    fun customPromotionIntervalDaysControlsPromotion() {
+        val scheduler = schedulerWithReviewIntervalDays(30);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val thirtyDayThreshold = settingsWithLadderThresholds(30, 3);
+        val twentyNineDayThreshold = settingsWithLadderThresholds(29, 3);
 
-        RecordsSchedulerModels.ReviewResult held = scheduler.applyReview(
+        val held = scheduler.applyReview(
                 item.withToken("held"), passRequest("裂", "held"), consumed, 1000L,
-                null, thirtyDayThreshold, (RecordsSchedulerModels.LearningStepSettings) null);
+                parameters = null, settings = thirtyDayThreshold, learningSettings = null);
         assertEquals("Exactly the custom threshold does not promote",
                 RecordsBase.LadderRung.KANJI_MEANING, held.item.rung);
 
-        RecordsSchedulerModels.ReviewResult promoted = scheduler.applyReview(
-                item.withToken("promoted"), passRequest("裂", "promoted"), new HashSet<>(), 1000L,
-                null, twentyNineDayThreshold, (RecordsSchedulerModels.LearningStepSettings) null);
+        val promoted = scheduler.applyReview(
+                item.withToken("promoted"), passRequest("裂", "promoted"), HashSet<String>(), 1000L,
+                parameters = null, settings = twentyNineDayThreshold, learningSettings = null);
         assertEquals("Strictly above the custom threshold promotes",
                 RecordsBase.LadderRung.FONT_MEANING, promoted.item.rung);
     }
 
     @Test
-    public void customThresholdRequiresMoreFailsToDemote() {
+    fun customThresholdRequiresMoreFailsToDemote() {
         // Use a threshold of 5: need 5 consecutive Again to demote.
-        BridgeScheduler scheduler = new BridgeScheduler();
-        HashSet<String> consumed = new HashSet<>();
-        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-        RecordsSyncModels.Settings customSettings = settingsWithLadderThresholds(21, 5);
-        long now = 1000L;
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+        val customSettings = settingsWithLadderThresholds(21, 5)
+        var now = 1000L
 
         // After 4 fails (less than threshold 5), should NOT demote
-        for (int i = 0; i < 4; i++) {
-            RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        for (i in 0 until 4) {
+            val r = scheduler.applyReview(
                     item.withToken("df" + i), failRequest("裂", "df" + i), consumed, now,
-                    null, customSettings, (RecordsSchedulerModels.LearningStepSettings) null);
+                    parameters = null, settings = customSettings, learningSettings = null);
             item = r.item;
             now = Math.max(item.dueAtMillis, now + 86_400_000L);
             item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
@@ -940,23 +938,23 @@ public class LadderSchedulerTest {
                 RecordsBase.LadderRung.KANJI_MEANING, item.rung);
 
         // 5th fail demotes
-        RecordsSchedulerModels.ReviewResult r = scheduler.applyReview(
+        val r = scheduler.applyReview(
                 item.withToken("df4"), failRequest("裂", "df4"), consumed, now,
-                null, customSettings, (RecordsSchedulerModels.LearningStepSettings) null);
+                parameters = null, settings = customSettings, learningSettings = null);
         assertEquals("Demoted to MEANING_KANJI after 5 fails with custom threshold",
                 RecordsBase.LadderRung.MEANING_KANJI, r.item.rung);
     }
 
-    private static BridgeScheduler schedulerWithReviewIntervalDays(long intervalDays) {
+    private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
         return schedulerWithReviewIntervalMillis(intervalDays * BridgeScheduler.DAY);
     }
 
-    private static BridgeScheduler schedulerWithReviewIntervalMillis(long intervalMillis) {
-        return new BridgeScheduler(new FixedIntervalFsrsAdapter(intervalMillis));
+    private fun schedulerWithReviewIntervalMillis(intervalMillis: Long): BridgeScheduler {
+        return BridgeScheduler(FixedIntervalFsrsAdapter(intervalMillis));
     }
 
-    private static RecordsSyncModels.Settings settingsWithLadderThresholds(int promotionDays, int failStreak) {
-        return new RecordsSyncModels.Settings(
+    private fun settingsWithLadderThresholds(promotionDays: Int, failStreak: Int): RecordsSyncModels.Settings {
+        return RecordsSyncModels.Settings(
                 "Kiku",
                 "Mining",
                 "Expression",
@@ -977,7 +975,7 @@ public class LadderSchedulerTest {
                 true,
                 true,
                 false,
-                Collections.emptyList(),
+                emptyList<String>(),
                 false,
                 RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY,
                 RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES,
@@ -990,33 +988,25 @@ public class LadderSchedulerTest {
         );
     }
 
-    private static final class FixedIntervalFsrsAdapter implements KaniFsrsAdapter {
-        private final long reviewIntervalMillis;
-
-        FixedIntervalFsrsAdapter(long reviewIntervalMillis) {
-            this.reviewIntervalMillis = reviewIntervalMillis;
+    private class FixedIntervalFsrsAdapter(private val reviewIntervalMillis: Long) : KaniFsrsAdapter {
+        override fun initialReview(
+                rating: String?,
+                currentStability: Double,
+                currentDifficulty: Double,
+                targetRetention: Double,
+                isNewLearning: Boolean
+        ): KaniFsrsReviewResult {
+            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
         }
 
-        @Override
-        public KaniFsrsReviewResult initialReview(
-                String rating,
-                double currentStability,
-                double currentDifficulty,
-                double targetRetention,
-                boolean isNewLearning
-        ) {
-            return new KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY);
-        }
-
-        @Override
-        public KaniFsrsReviewResult review(
-                double stability,
-                double difficulty,
-                String rating,
-                int elapsedDays,
-                double targetRetention
-        ) {
-            return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
+        override fun review(
+                stability: Double,
+                difficulty: Double,
+                rating: String?,
+                elapsedDays: Int,
+                targetRetention: Double
+        ): KaniFsrsReviewResult {
+            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }
     }
 }
