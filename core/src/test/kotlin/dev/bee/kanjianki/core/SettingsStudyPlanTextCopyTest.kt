@@ -35,7 +35,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Deck limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Set the maximum new cards Kani admits each day, matching Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Set the daily new-card cap from Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save deck limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
@@ -43,7 +43,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals("Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.", SettingsStudyPlanTextCopy.fsrsRetentionBody())
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))

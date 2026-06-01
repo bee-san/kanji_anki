@@ -357,7 +357,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.",
+                "New cards and review misses can come back fast. Repeats after first answer don't change Kani SRS.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
@@ -410,7 +410,7 @@ class SettingsTextCopyTest {
                         "FSRS retention",
                         "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.",
                         "Use Jiten-rank retention ranges",
-                        "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
+                        "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",

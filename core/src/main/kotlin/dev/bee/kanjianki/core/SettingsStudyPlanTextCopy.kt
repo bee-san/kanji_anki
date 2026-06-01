@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Deck limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Set the maximum new cards Kani admits each day, matching Anki deck options."
+    fun deckLimitsBody(): String = "Set the daily new-card cap from Anki deck options."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Maximum new cards/day"
@@ -136,7 +136,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above."
+        return "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention."
     }
 
     @JvmStatic
