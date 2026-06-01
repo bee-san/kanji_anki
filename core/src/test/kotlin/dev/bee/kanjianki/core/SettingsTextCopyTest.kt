@@ -461,7 +461,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Cards climb after strong due reviews; learning repeats stay practice-only.",
+                        "Only due-review passes can move the ladder; learning repeats are practice-only.",
                         "FSRS days to go up",
                         "Fails to go down",
                         String.format(
