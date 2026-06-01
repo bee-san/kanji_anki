@@ -39,13 +39,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+                        "AnkiDroid fields, import filters, frequency, and daily sync.",
                         "Deck options",
-                        "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Study steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
                         "Advanced controls",
-                        "Reminders and app update checks that change how Kani runs in the background.",
+                        "Reminders and update checks that run Kani in the background.",
                         "Display & data",
-                        "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+                        "Offline dictionaries, stroke data, fonts, and attribution."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -94,7 +94,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings cockpit",
-                        "Grouped by import, deck behavior, automation, and reference data. Each setting appears once.",
+                        "Grouped by import, deck, automation, and data. Each setting appears once.",
                         "Note type",
                         "Import filters",
                         "Import ranks",
