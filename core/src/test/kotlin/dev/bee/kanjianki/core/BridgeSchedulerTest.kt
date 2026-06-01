@@ -408,6 +408,74 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun dueRelearningRepeatWithEmptyReviewStepsReturnsToReviewWithoutCrashing() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var relearning: RecordsStudyModels.StudyItem = reviewItem("習", RecordsBase.LadderRung.KANJI_MEANING, 1_000L)
+                .copyBuilder()
+                .state("learning")
+                .lapses(1)
+                .learningStep(0)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .activeToken("relearn-token")
+                .build()
+        var learningSteps: RecordsSchedulerModels.LearningStepSettings = RecordsSchedulerModels.LearningStepSettings(
+                listOf(1, 10),
+                emptyList()
+        )
+
+        var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
+                relearning,
+                RecordsSchedulerModels.ReviewRequest("習", "relearn-token", "again", false, false, false, 0),
+                HashSet(),
+                2_000L,
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                learningSteps,
+                RecordsBase.StudyLadderSettings.defaults()
+        )
+
+        assertEquals("again", result.appliedRating)
+        assertEquals("review", result.item.state)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase)
+        assertEquals(0, result.item.learningStep)
+        assertEquals(2_000L + BridgeScheduler.DAY, result.item.dueAtMillis)
+        assertEquals(1, result.item.matureIntervalDays)
+    }
+
+    @Test
+    public fun dueRelearningRepeatWithEmptyReviewStepsCanGraduateOnPass() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var relearning: RecordsStudyModels.StudyItem = reviewItem("習", RecordsBase.LadderRung.KANJI_MEANING, 1_000L)
+                .copyBuilder()
+                .state("learning")
+                .learningStep(0)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .activeToken("relearn-token")
+                .build()
+        var learningSteps: RecordsSchedulerModels.LearningStepSettings = RecordsSchedulerModels.LearningStepSettings(
+                listOf(1, 10),
+                emptyList()
+        )
+
+        var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
+                relearning,
+                RecordsSchedulerModels.ReviewRequest("習", "relearn-token", "good", false, false, false, 0),
+                HashSet(),
+                2_000L,
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                learningSteps,
+                RecordsBase.StudyLadderSettings.defaults()
+        )
+
+        assertEquals("good", result.appliedRating)
+        assertEquals("review", result.item.state)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase)
+        assertEquals(0, result.item.learningStep)
+        assertTrue(result.item.dueAtMillis > 2_000L)
+    }
+
+    @Test
     public fun nextSessionUsesWeaknessAndKanjiTieBreakersForSamePriorityDueItems() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var lowerWeakness: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L)
