@@ -6,7 +6,7 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "New cards and review misses can come back fast. Repeats after first answer don't change Kani SRS."
+        return "New cards and review misses can come back fast. First-answer repeats don't change Kani SRS."
     }
 
     @JvmStatic
