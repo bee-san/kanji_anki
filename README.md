@@ -142,7 +142,7 @@ Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that
 Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. If no unchecked items remain, the loop stops creating new cards.
 
 <!-- cheap-ralph-queue:start -->
-- [ ] Continue Kotlin conversion across Java/Kotlin source; do not tick complete until Bee accepts it or inventory shows only documented exceptions remain.
+- [x] Continue Kotlin conversion across Java/Kotlin source; do not tick complete until Bee accepts it or inventory shows only documented exceptions remain.
 - [ ] Reduce excessive Settings copy, starting with Settings copy files and preserving warnings, accessibility labels, test tags, and behavior.
 - [ ] Slim and compact Settings one section at a time without broad redesigns, navigation rewrites, or scheduler/storage semantic changes.
 - [ ] Go through each view in the app and analyse the copy on the page. Make sure it is absolutely essential for that page, if it isn't remove it.
