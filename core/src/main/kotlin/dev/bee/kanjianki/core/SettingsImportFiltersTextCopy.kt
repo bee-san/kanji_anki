@@ -32,8 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Opt in to cards matched by this local Anki search; Kani redacts the query from audits " +
-            "and still applies note type, rank range, and matching-card threshold."
+        return "Kani redacts the query and still applies note type, rank range, and matching-card threshold."
     }
 
     @JvmStatic
@@ -55,7 +54,7 @@ object SettingsImportFiltersTextCopy {
     fun saveImportFiltersLabel(): String = "Save import filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Enter an Anki browser query or turn off Browser query."
+    fun browserQueryRequiredToast(): String = "Enter a query or turn off Browser query."
 
     @JvmStatic
     fun importSourceRequiredToast(): String = "Turn on at least one import source."

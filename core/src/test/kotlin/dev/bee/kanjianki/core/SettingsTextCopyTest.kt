@@ -213,7 +213,7 @@ class SettingsTextCopyTest {
                         "Lapses",
                         "Minimum matching cards per kanji",
                         "Save import filters",
-                        "Enter an Anki browser query or turn off Browser query.",
+                        "Enter a query or turn off Browser query.",
                         "Turn on at least one import source.",
                         "Import filters saved. Sync again to rebuild practice.",
                         "Presets",
