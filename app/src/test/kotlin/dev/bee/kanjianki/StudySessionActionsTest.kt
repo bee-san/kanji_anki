@@ -123,6 +123,42 @@ class StudySessionActionsTest {
         assertEquals("kanji_meaning", nonNullSession.taskType)
     }
 
+    @Test
+    fun plannedStudySessionRequeuesDueLearningRepeatAfterLapseDemotesRung() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("word_reading:裂", "kanji_meaning:謎"))
+        tracker.markPlannedSessionTaskCompleted("word_reading", "裂")
+        val dueRepeat = item("裂")
+            .copyBuilder()
+            .state("learning")
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .dueAtMillis(2_000L)
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .build()
+        val pendingReview = item("謎")
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .build()
+
+        val session = StudySessionActions.plannedStudySession(
+            BridgeScheduler(),
+            tracker,
+            listOf(dueRepeat, pendingReview),
+            listOf(row("裂"), row("謎")),
+            2_000L,
+            0L,
+            null,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertNotNull(session)
+        val nonNullSession = session!!
+        assertEquals("裂", nonNullSession.item!!.kanji)
+        assertEquals("kanji_meaning", nonNullSession.taskType)
+    }
+
     private fun item(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "review", 1000L, 1.0, 2.0, 1, 0, 0, 0, "", 1000L)
             .copyBuilder()

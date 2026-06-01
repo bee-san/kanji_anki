@@ -74,7 +74,7 @@ internal class StudySessionTracker {
                 continue
             }
             val key = plannedSessionTaskKey(item.rung.wireName(), item.kanji)
-            if (completedPlannedSessionTaskKeys.contains(key) && !out.contains(key)) {
+            if (isCompletedPlannedSessionTask(key, item.kanji) && !out.contains(key)) {
                 out.add(key)
             }
         }
@@ -95,6 +95,15 @@ internal class StudySessionTracker {
     private fun isLearningRepeatPhase(phase: RecordsBase.SchedulerPhase): Boolean {
         return phase == RecordsBase.SchedulerPhase.NEW_LEARNING ||
             phase == RecordsBase.SchedulerPhase.RELEARNING
+    }
+
+    private fun isCompletedPlannedSessionTask(key: String, kanji: String): Boolean {
+        if (completedPlannedSessionTaskKeys.contains(key)) {
+            return true
+        }
+        return completedPlannedSessionTaskKeys.any { completedKey ->
+            completedKey.substringAfter(':', "") == kanji
+        }
     }
 
     private fun plannedSessionTaskKey(taskType: String?, kanji: String?): String {
