@@ -943,26 +943,26 @@ class ComposeScreenModelsTest {
         val model = SettingsLadderThresholdPanelModel(
             title = "Ladder thresholds",
             body = "Tune rung movement.",
-            promotionDaysLabel = "FSRS days to go up",
+            promotionDaysLabel = "Promotion interval days",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Fails to go down",
+            failStreakLabel = "Demotion fail streak",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use 21 and 3",
+            defaultsLabel = "Use default ladder thresholds",
             saveLabel = "Save ladder thresholds",
             onSave = save,
         )
 
         assertEquals("Ladder thresholds", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("FSRS days to go up", model.promotionDaysLabel)
+        assertEquals("Promotion interval days", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Fails to go down", model.failStreakLabel)
+        assertEquals("Demotion fail streak", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use 21 and 3", model.defaultsLabel)
+        assertEquals("Use default ladder thresholds", model.defaultsLabel)
         assertEquals("Save ladder thresholds", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
