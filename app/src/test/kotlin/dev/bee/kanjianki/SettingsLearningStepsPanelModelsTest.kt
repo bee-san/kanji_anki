@@ -30,4 +30,26 @@ class SettingsLearningStepsPanelModelsTest {
         assertEquals("3m", newStepsText)
         assertEquals("8m", reviewStepsText)
     }
+
+    @Test
+    fun createKeepsBlankReviewStepsVisibleAndSavable() {
+        val current = RecordsSchedulerModels.LearningStepSettings(
+            listOf(1, 10),
+            emptyList(),
+        )
+        var newStepsText: String? = null
+        var reviewStepsText: String? = null
+
+        val model = SettingsLearningStepsPanelModels.create(current) { newStepsTextArg, reviewStepsTextArg ->
+            newStepsText = newStepsTextArg
+            reviewStepsText = reviewStepsTextArg
+        }
+
+        assertEquals("1m, 10m", model.initialNewStepsText)
+        assertEquals("", model.initialReviewStepsText)
+
+        model.onSave.save("1m, 10m", "")
+        assertEquals("1m, 10m", newStepsText)
+        assertEquals("", reviewStepsText)
+    }
 }
