@@ -21,7 +21,7 @@ class StudySessionSelector {
             rowByKanji[row.kanji] = row
         }
         var best: RecordsStudyModels.StudyItem? = null
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
             if (item.dueAtMillis > horizon) {
                 continue
             }
@@ -54,7 +54,7 @@ class StudySessionSelector {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         val rowByKanji = rowByKanji(rows)
-        val dueItems = activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+        val dueItems = dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
@@ -106,7 +106,7 @@ class StudySessionSelector {
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         val rowByKanji = rowByKanji(rows)
         val out = LinkedHashMap<String, RecordsStudyModels.StudyItem>()
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }) {
             out.putIfAbsent(sessionTaskKeyForItem(item), item)
@@ -157,7 +157,7 @@ class StudySessionSelector {
     ): Int {
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         var count = 0
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
             if (item.dueAtMillis <= horizon) {
                 count++
             }
@@ -172,6 +172,29 @@ class StudySessionSelector {
         studyAheadMillis: Long,
         allowedKanji: Set<String>?,
         ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, false)
+    }
+
+    private fun dueQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, true)
+    }
+
+    private fun familyQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+        preferDueEligible: Boolean,
     ): List<RecordsStudyModels.StudyItem> {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
@@ -190,7 +213,7 @@ class StudySessionSelector {
         }
         val out = ArrayList<RecordsStudyModels.StudyItem>()
         for (family in byFamily.values) {
-            out.add(activeFamilyItem(family, horizon, safeLadder))
+            out.add(activeFamilyItem(family, nowMillis, horizon, safeLadder, preferDueEligible))
         }
         return out
     }
@@ -234,11 +257,13 @@ class StudySessionSelector {
     private fun activeFamilyItem(
         family: List<RecordsStudyModels.StudyItem>,
         nowMillis: Long,
+        horizonMillis: Long,
         ladder: RecordsBase.StudyLadderSettings,
+        preferDueEligible: Boolean,
     ): RecordsStudyModels.StudyItem {
         var best: RecordsStudyModels.StudyItem? = null
         for (item in family) {
-            if (best == null || compareFamilyActivity(item, best, nowMillis, ladder) < 0) {
+            if (best == null || compareFamilyActivity(item, best, nowMillis, horizonMillis, ladder, preferDueEligible) < 0) {
                 best = item
             }
         }
@@ -302,17 +327,33 @@ class StudySessionSelector {
             left: RecordsStudyModels.StudyItem,
             right: RecordsStudyModels.StudyItem,
             nowMillis: Long,
+            horizonMillis: Long,
             ladder: RecordsBase.StudyLadderSettings?,
+            preferDueEligible: Boolean,
         ): Int {
             val safeLadder = StudyLadderRules.safeLadder(ladder)
+            if (preferDueEligible) {
+                val eligible = (if (left.dueAtMillis <= horizonMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= horizonMillis) 0 else 1)
+                if (eligible != 0) {
+                    return eligible
+                }
+                val due = (if (left.dueAtMillis <= nowMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= nowMillis) 0 else 1)
+                if (due != 0) {
+                    return due
+                }
+            }
             val rank = (-safeLadder.rankForRung(left.rung)).compareTo(-safeLadder.rankForRung(right.rung))
             if (rank != 0) {
                 return rank
             }
-            val due = (if (left.dueAtMillis <= nowMillis) 0 else 1)
-                .compareTo(if (right.dueAtMillis <= nowMillis) 0 else 1)
-            if (due != 0) {
-                return due
+            if (!preferDueEligible) {
+                val due = (if (left.dueAtMillis <= horizonMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= horizonMillis) 0 else 1)
+                if (due != 0) {
+                    return due
+                }
             }
             return left.dueAtMillis.compareTo(right.dueAtMillis)
         }
