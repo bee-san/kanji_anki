@@ -199,7 +199,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
+                        "Suspended cards are default. Add active, tagged, or weak cards only if needed.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",

@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended cards are the default. Add active, tagged, or weak cards only when needed."
+        return "Suspended cards are default. Add active, tagged, or weak cards only if needed."
     }
 
     @JvmStatic
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Kani redacts the query and still applies note type, rank range, and matching-card threshold."
+        return "Kani redacts the query and still uses note type, rank, and threshold."
     }
 
     @JvmStatic
