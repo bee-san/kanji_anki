@@ -54,6 +54,46 @@ class StudyTaskCopyTest {
     }
 
     @Test
+    fun studyModeLabelNamesLearningAndRelearningRepeats() {
+        assertEquals(
+            "Learn",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.NEW_LEARNING)
+            )
+        )
+        assertEquals(
+            "Recognise",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.NEW_LEARNING, 0)
+            )
+        )
+        assertEquals(
+            "Learn",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.NEW_LEARNING)
+            )
+        )
+        assertEquals(
+            "Relearn",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.RELEARNING)
+            )
+        )
+        assertEquals(
+            "Relearn",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.RELEARNING)
+            )
+        )
+        assertEquals(
+            "Practice",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.REVIEW)
+            )
+        )
+    }
+
+    @Test
     fun taskPredicatesPreserveStudyUiClassificationRules() {
         assertFalse(StudyTaskCopy.isTeachingTask(null))
         assertTrue(StudyTaskCopy.isTeachingTask(session("context_writing", false)))
@@ -122,6 +162,29 @@ class StudyTaskCopyTest {
             taskType,
             writingRequired,
             "prompt"
+        )
+    }
+
+    private fun sessionWithPhase(
+        taskType: String?,
+        writingRequired: Boolean,
+        phase: RecordsBase.SchedulerPhase
+    ): RecordsSchedulerModels.StudySession = sessionWithPhase(taskType, writingRequired, phase, 1)
+
+    private fun sessionWithPhase(
+        taskType: String?,
+        writingRequired: Boolean,
+        phase: RecordsBase.SchedulerPhase,
+        totalReviews: Int
+    ): RecordsSchedulerModels.StudySession {
+        val session = sessionWithLearningStep(taskType, writingRequired, 1)
+        return RecordsSchedulerModels.StudySession(
+            session.item!!.copyBuilder().phase(phase).totalReviews(totalReviews).build(),
+            session.row,
+            session.token,
+            session.taskType,
+            session.writingRequired,
+            session.prompt
         )
     }
 

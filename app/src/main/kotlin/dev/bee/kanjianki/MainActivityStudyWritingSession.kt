@@ -85,7 +85,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
 
     private fun writingPromptHeaderModel(session: RecordsSchedulerModels.StudySession): WritingPromptHeaderModel {
         return WritingPromptHeaderModel(
-            MainActivityBase.LABEL_PRACTICE,
+            StudyTaskCopy.studyModeLabel(session),
             "Draw this kanji",
             StudyTaskCopy.labelForTask(session.taskType),
             home.studyReasonLine(session),
