@@ -52,12 +52,22 @@ object StudyTaskCopy {
 
     @JvmStatic
     fun studyModeLabel(session: RecordsSchedulerModels.StudySession?): String = when {
+        isNewLearningRepeat(session) -> "Learn"
+        isRelearning(session) -> "Relearn"
         session != null && session.writingRequired -> "Practice"
         isWordReadingTask(session) -> "Read"
         isTypingMeaningTask(session) -> "Type"
         isMeaningKanjiTask(session) -> "Recall"
         else -> "Recognise"
     }
+
+    private fun isNewLearningRepeat(session: RecordsSchedulerModels.StudySession?): Boolean {
+        val item = session?.item ?: return false
+        return item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0
+    }
+
+    private fun isRelearning(session: RecordsSchedulerModels.StudySession?): Boolean =
+        session?.item?.phase == RecordsBase.SchedulerPhase.RELEARNING
 
     @JvmStatic
     fun isTeachingTask(session: RecordsSchedulerModels.StudySession?): Boolean {
