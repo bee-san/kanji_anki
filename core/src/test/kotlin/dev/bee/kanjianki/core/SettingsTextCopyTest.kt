@@ -77,7 +77,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "GitHub updater",
-                        "Current version 1.2.3. Checks GitHub Releases and verifies the APK before install.",
+                        "Version 1.2.3. Checks GitHub Releases, then verifies the APK.",
                         "Automatic updates",
                         "Check for update",
                         "On: checks about once a day",
@@ -199,7 +199,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
+                        "Suspended cards are default. Add active, tagged, or weak cards only if needed.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -213,7 +213,7 @@ class SettingsTextCopyTest {
                         "Lapses",
                         "Minimum matching cards per kanji",
                         "Save import filters",
-                        "Enter an Anki browser query or turn off Browser query.",
+                        "Enter a query or turn off Browser query.",
                         "Turn on at least one import source.",
                         "Import filters saved. Sync again to rebuild practice.",
                         "Presets",
@@ -270,7 +270,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type & clue fields",
                         "Using Kiku",
-                        "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.",
+                        "Default: Kiku. One card owns the note type and all clue mapping.",
                         "Required fields"
                 ),
                 listOf(
@@ -298,7 +298,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.",
+                        "Expression source, Reading=reading, Meaning=meaning, Sentence=context, Frequency/FreqSort=metadata.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -357,7 +357,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.",
+                "New cards and review misses can come back fast. First-answer repeats don't change Kani SRS.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
@@ -367,7 +367,7 @@ class SettingsTextCopyTest {
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Pull soon-due cards into the queue. 0 disables it; learning delays still apply.",
+                "Pull soon-due cards ahead. 0 disables it; learning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -410,7 +410,7 @@ class SettingsTextCopyTest {
                         "FSRS retention",
                         "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.",
                         "Use Jiten-rank retention ranges",
-                        "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
+                        "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -499,7 +499,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Daily nudge for active problem kanji. Android may batch the time.",
+                "Daily nudge for active problem kanji; Android may batch it.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -513,12 +513,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Android notifications are off for Kani, so this reminder cannot appear yet.",
+                "Android notifications are off, so this reminder cannot appear yet.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Android will ask for notification permission before turning this on.",
+                "Android asks for notification permission before turning this on.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))

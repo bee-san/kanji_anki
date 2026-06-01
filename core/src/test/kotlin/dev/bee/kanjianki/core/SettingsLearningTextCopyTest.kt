@@ -8,7 +8,7 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.",
+            "New cards and review misses can come back fast. First-answer repeats don't change Kani SRS.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
         assertEquals("Review misses", SettingsLearningTextCopy.reviewMissesLabel())

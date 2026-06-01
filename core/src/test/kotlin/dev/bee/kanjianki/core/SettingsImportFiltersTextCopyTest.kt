@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
+            "Suspended cards are default. Add active, tagged, or weak cards only if needed.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
@@ -19,8 +19,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Anki browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Opt in to cards matched by this local Anki search; Kani redacts the query from audits " +
-                "and still applies note type, rank range, and matching-card threshold.",
+            "Kani redacts the query and still uses note type, rank, and threshold.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
@@ -29,7 +28,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Lapses", SettingsImportFiltersTextCopy.lapsesLabel())
         assertEquals("Minimum matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
-        assertEquals("Enter an Anki browser query or turn off Browser query.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
+        assertEquals("Enter a query or turn off Browser query.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Turn on at least one import source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
         assertEquals("Import filters saved. Sync again to rebuild practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
