@@ -18,7 +18,7 @@ class FrequencyRetentionRangesTest {
         assertEquals(1, rules[0].minRank)
         assertEquals(500, rules[0].maxRank)
         assertEquals(0.95, rules[0].retention, 0.001)
-        assertEquals(0.90, FrequencyRetentionRanges.retentionForRank("1-500=95%\n501-2000=90%", 1000), 0.001)
+        assertEquals(0.90, requireNotNull(FrequencyRetentionRanges.retentionForRank("1-500=95%\n501-2000=90%", 1000)), 0.001)
         assertNull(FrequencyRetentionRanges.retentionForRank("1-500=95%", 900))
         assertNull(FrequencyRetentionRanges.retentionForRank("1-500=95%", null))
     }

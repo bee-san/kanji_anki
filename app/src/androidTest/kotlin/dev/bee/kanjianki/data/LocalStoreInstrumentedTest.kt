@@ -1,94 +1,95 @@
-package dev.bee.kanjianki.data;
+package dev.bee.kanjianki.data
 
-import dev.bee.kanjianki.core.RecordsBase;
-import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
-import dev.bee.kanjianki.core.RecordsImportModels;
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RecordsStudyModels;
-import dev.bee.kanjianki.core.RecordsSyncModels;
-import android.content.Context;
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.MatrixCursor;
-import android.database.sqlite.SQLiteDatabase;
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import android.content.Context
+import android.content.ContentValues
+import android.database.Cursor
+import android.database.MatrixCursor
+import android.database.sqlite.SQLiteDatabase
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.KanjiInventoryBuilder;
-import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
-import dev.bee.kanjianki.core.SettingsInputRules;
-import dev.bee.kanjianki.core.SimilarKanjiIndex;
-import dev.bee.kanjianki.core.SettingsTextCopy;
-import dev.bee.kanjianki.core.TimelineCopy;
-import dev.bee.kanjianki.sync.SyncSettings;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.KanjiInventoryBuilder
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.SettingsInputRules
+import dev.bee.kanjianki.core.SimilarKanjiIndex
+import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.TimelineCopy
+import dev.bee.kanjianki.sync.SyncSettings
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
 
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.StringReader
+import java.util.Arrays
+import java.util.Collections
+import java.util.LinkedHashMap
 
-import static dev.bee.kanjianki.TestDates.localDayStart;
-import static dev.bee.kanjianki.TestDates.moveLocalDays;
-import static dev.bee.kanjianki.TestRecords.card;
-import static dev.bee.kanjianki.TestRecords.customMiningNote;
-import static dev.bee.kanjianki.TestRecords.kikuCard;
-import static dev.bee.kanjianki.TestRecords.review;
-import static dev.bee.kanjianki.TestRecords.sourceKikuNote;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
-@RunWith(AndroidJUnit4.class)
-public final class LocalStoreInstrumentedTest {
-    private Context context;
-    private LocalStore store;
+import dev.bee.kanjianki.TestDates.localDayStart
+import dev.bee.kanjianki.TestDates.moveLocalDays
+import dev.bee.kanjianki.TestRecords.card
+import dev.bee.kanjianki.TestRecords.customMiningNote
+import dev.bee.kanjianki.TestRecords.kikuCard
+import dev.bee.kanjianki.TestRecords.review
+import dev.bee.kanjianki.TestRecords.sourceKikuNote
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+
+@RunWith(AndroidJUnit4::class)
+class LocalStoreInstrumentedTest {
+    private lateinit var context: Context
+    private lateinit var store: LocalStore
 
     @Before
-    public void setUp() {
+    fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
-        store = new LocalStore(context);
+        store = LocalStore(context);
     }
 
     @After
-    public void tearDown() {
-        if (store != null) {
-            store.close();
+    fun tearDown() {
+        if (::store.isInitialized) {
+            store.close()
         }
-        context.deleteDatabase("kanji_anki_simple.db");
+        if (::context.isInitialized) {
+            context.deleteDatabase("kanji_anki_simple.db")
+        }
     }
 
     @Test
-    public void testSyncPersistsActiveMirrorSuspendedArchiveAndDerivedRows() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note active = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
-        RecordsSyncModels.Note suspended = sourceKikuNote(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        RecordsSyncModels.Card activeCard = card(10L, 1L, "101", "例文マイニング")
+    fun testSyncPersistsActiveMirrorSuspendedArchiveAndDerivedRows() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val active = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。")
+        val suspended = sourceKikuNote(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")
+        val activeCard = card(10L, 1L, "101", "例文マイニング")
                 .history(45, 12, 1)
                 .fsrs(18.5, 7.0, 0.48)
-                .build();
-        RecordsSyncModels.Card suspendedCard = card(20L, 2L, "101", "例文マイニング").suspended().build();
-        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
-                Arrays.asList(active, suspended),
-                Arrays.asList(activeCard, suspendedCard)
-        );
-        RecordsImportModels.SuspendedSource source = new RecordsImportModels.SuspendedSource("拉", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        RecordsImportModels.SuspendedImport imported = new RecordsImportModels.SuspendedImport("拉", 3401, true, 3000, Collections.singletonList(source));
-        RecordsImportModels.Example example = new RecordsImportModels.Example("suspended", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。", false, 0, 10, 5, 18.5, 7.0, 0.48);
-        RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
+                .build()
+        val suspendedCard = card(20L, 2L, "101", "例文マイニング").suspended().build()
+        val snapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(active, suspended),
+                listOf(activeCard, suspendedCard)
+        )
+        val source = RecordsImportModels.SuspendedSource("拉", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")
+        val imported = RecordsImportModels.SuspendedImport("拉", 3401, true, 3000, listOf(source))
+        val example = RecordsImportModels.Example("suspended", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。", false, 0, 10, 5, 18.5, 7.0, 0.48)
+        val row = RecordsImportModels.DashboardRow(
                 "拉",
                 3401,
                 "ramen",
@@ -100,18 +101,18 @@ public final class LocalStoreInstrumentedTest {
                 0,
                 1,
                 0,
-                Collections.singletonList(example)
-        );
+                listOf(example)
+        )
 
-        long syncId = store.saveSuccessfulSync(
+        val syncId = store.saveSuccessfulSync(
                 snapshot,
-                Collections.singletonList(imported),
-                Collections.singletonList(row),
+                listOf(imported),
+                listOf(row),
                 settings,
                 1000L,
                 2000L,
                 null
-        );
+        )
         store.updateSyncRemovalMessage(syncId, "Archived locally before provider cleanup.");
 
         assertLatestSyncArchivedSuspendedCard();
@@ -128,8 +129,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testInventoryMaintenanceSaveRowsPersistsDashboardRowsAndExamples() {
-        RecordsImportModels.Example example = new RecordsImportModels.Example(
+    fun testInventoryMaintenanceSaveRowsPersistsDashboardRowsAndExamples() {
+        val example = RecordsImportModels.Example(
                 "suspended",
                 20L,
                 2L,
@@ -144,8 +145,8 @@ public final class LocalStoreInstrumentedTest {
                 18.5,
                 7.0,
                 0.48
-        );
-        RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
+        )
+        val row = RecordsImportModels.DashboardRow(
                 "拉",
                 3401,
                 "ramen radical gap",
@@ -157,97 +158,97 @@ public final class LocalStoreInstrumentedTest {
                 0,
                 1,
                 0,
-                Collections.singletonList(example)
-        );
+                listOf(example)
+        )
 
-        SQLiteDatabase db = store.getWritableDatabase();
-        new LocalStoreInventoryMaintenance(store).saveRows(db, Collections.singletonList(row), 4242L);
+        val db = store.getWritableDatabase()
+        LocalStoreInventoryMaintenance(store).saveRows(db, listOf(row), 4242L);
 
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("kanji_examples"));
-        assertEquals(1, store.dashboardRows().size());
-        RecordsImportModels.DashboardRow stored = store.dashboardRows().get(0);
+        assertEquals(1, store.dashboardRows().size);
+        val stored = store.dashboardRows().get(0)
         assertEquals("拉", stored.kanji);
         assertEquals("ramen radical gap", stored.primaryMeaning);
-        assertEquals(1, stored.examples.size());
+        assertEquals(1, stored.examples.size);
         assertEquals("suspended", stored.examples.get(0).sourceType);
         assertEquals("拉麺", stored.examples.get(0).expression);
         assertEquals("ramen", stored.examples.get(0).meaning);
-        assertScalarLong("dashboard_rows", "rebuilt_at", "kanji=?", new String[]{"拉"}, 4242L);
-        assertScalarString("kanji_examples", "source_type", "kanji=?", new String[]{"拉"}, "suspended");
-        assertScalarString("kanji_examples", "expression", "kanji=?", new String[]{"拉"}, "拉麺");
-        assertScalarString("kanji_examples", "meaning", "kanji=?", new String[]{"拉"}, "ramen");
+        assertScalarLong("dashboard_rows", "rebuilt_at", "kanji=?", arrayOf("拉"), 4242L);
+        assertScalarString("kanji_examples", "source_type", "kanji=?", arrayOf("拉"), "suspended");
+        assertScalarString("kanji_examples", "expression", "kanji=?", arrayOf("拉"), "拉麺");
+        assertScalarString("kanji_examples", "meaning", "kanji=?", arrayOf("拉"), "ramen");
     }
 
     @Test
-    public void testSyncPersistsNormalizedNoteArchiveAndHistoricalText() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        Map<String, String> activeFields = new LinkedHashMap<>();
+    fun testSyncPersistsNormalizedNoteArchiveAndHistoricalText() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val activeFields = LinkedHashMap<String, String>()
         activeFields.put("Expression", "<ruby>提<rt>てい</rt></ruby>　ＡＢＣ&nbsp;");
         activeFields.put("ExpressionReading", "  てい　  ");
         activeFields.put("MainDefinition", "<b>first</b> &amp; foremost|second");
         activeFields.put("Sentence", "<script>ignore()</script>　提示した。");
         activeFields.put("Frequency", "1000");
         activeFields.put("FreqSort", "1000");
-        RecordsSyncModels.Note active = new RecordsSyncModels.Note(11L, 1011L, "Kiku", activeFields, Collections.singletonList("focus"));
+        val active = RecordsSyncModels.Note(11L, 1011L, "Kiku", activeFields, listOf("focus"))
 
-        Map<String, String> suspendedFields = new LinkedHashMap<>();
+        val suspendedFields = LinkedHashMap<String, String>()
         suspendedFields.put("Expression", "  ＡＢＣ　拉麺  ");
         suspendedFields.put("ExpressionReading", "  らーめん  ");
         suspendedFields.put("MainDefinition", "ramen;noodles");
         suspendedFields.put("Sentence", "<style>.x{}</style>　拉麺を食べた。");
         suspendedFields.put("Frequency", "1000");
         suspendedFields.put("FreqSort", "1000");
-        RecordsSyncModels.Note suspended = new RecordsSyncModels.Note(12L, 1012L, "Kiku", suspendedFields, Collections.emptyList());
+        val suspended = RecordsSyncModels.Note(12L, 1012L, "Kiku", suspendedFields, emptyList())
 
-        RecordsSyncModels.Card activeCard = kikuCard(111L, 11L).history(30, 4, 0).build();
-        RecordsSyncModels.Card suspendedCard = kikuCard(112L, 12L).suspended().build();
-        RecordsImportModels.SuspendedImport imported = new RecordsImportModels.SuspendedImport(
+        val activeCard = kikuCard(111L, 11L).history(30, 4, 0).build()
+        val suspendedCard = kikuCard(112L, 12L).suspended().build()
+        val imported = RecordsImportModels.SuspendedImport(
                 "拉",
                 3401,
                 true,
                 3000,
-                Collections.singletonList(new RecordsImportModels.SuspendedSource("拉", 112L, 12L, "拉麺", "らーめん", "ramen", "拉麺を食べた。"))
-        );
+                listOf(RecordsImportModels.SuspendedSource("拉", 112L, 12L, "拉麺", "らーめん", "ramen", "拉麺を食べた。"))
+        )
 
-        long syncId = store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard)),
-                Collections.singletonList(imported),
-                Collections.singletonList(row("提", 0)),
+        val syncId = store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(listOf(active, suspended), listOf(activeCard, suspendedCard)),
+                listOf(imported),
+                listOf(row("提", 0)),
                 settings,
                 1000L,
                 2000L,
                 null
-        );
+        )
 
-        assertScalarString("source_notes", "expression", "note_id=?", new String[]{"11"}, "提 ABC");
-        assertScalarString("source_notes", "reading", "note_id=?", new String[]{"11"}, "てい");
-        assertScalarString("source_notes", "meaning", "note_id=?", new String[]{"11"}, "first & foremost");
-        assertScalarString("source_notes", "sentence", "note_id=?", new String[]{"11"}, "提示した。");
-        assertScalarString("suspended_archive", "expression", "card_id=?", new String[]{"112"}, "ABC 拉麺");
-        assertScalarString("suspended_archive", "meaning", "card_id=?", new String[]{"112"}, "ramen");
+        assertScalarString("source_notes", "expression", "note_id=?", arrayOf("11"), "提 ABC");
+        assertScalarString("source_notes", "reading", "note_id=?", arrayOf("11"), "てい");
+        assertScalarString("source_notes", "meaning", "note_id=?", arrayOf("11"), "first & foremost");
+        assertScalarString("source_notes", "sentence", "note_id=?", arrayOf("11"), "提示した。");
+        assertScalarString("suspended_archive", "expression", "card_id=?", arrayOf("112"), "ABC 拉麺");
+        assertScalarString("suspended_archive", "meaning", "card_id=?", arrayOf("112"), "ramen");
         assertScalarString(
                 "sync_note_snapshots",
                 "expression",
                 "sync_id=? AND note_id=?",
-                new String[]{Long.toString(syncId), "11"},
+                arrayOf(syncId.toString(), "11"),
                 "提 ABC"
         );
         assertScalarString(
                 "sync_note_snapshots",
                 "sentence",
                 "sync_id=? AND note_id=?",
-                new String[]{Long.toString(syncId), "12"},
+                arrayOf(syncId.toString(), "12"),
                 "拉麺を食べた。"
         );
     }
 
     @Test
-    public void testFailedImportSyncRollsBackAllDurableRows() {
-        saveSingleRowSync(row("拉", 0), Collections.singletonList(suspendedImport("拉")), 2000L);
+    fun testFailedImportSyncRollsBackAllDurableRows() {
+        saveSingleRowSync(row("拉", 0), listOf(suspendedImport("拉")), 2000L);
         verifyBaselineImportRows();
 
-        RecordsImportModels.DashboardRow malformedRow = new RecordsImportModels.DashboardRow(
+        val malformedRow = RecordsImportModels.DashboardRow(
                 "壊",
                 3300,
                 "broken import",
@@ -259,31 +260,31 @@ public final class LocalStoreInstrumentedTest {
                 1,
                 0,
                 0,
-                Collections.singletonList(null)
-        );
+                listOf(null)
+        )
 
         try {
             store.saveSuccessfulSync(
-                    new RecordsSyncModels.CollectionSnapshot(
-                            Collections.singletonList(sourceKikuNote(30L, "壊語", "こわ", "broken", "壊を見た。")),
-                            Collections.singletonList(kikuCard(300L, 30L).build())
+                    RecordsSyncModels.CollectionSnapshot(
+                            listOf(sourceKikuNote(30L, "壊語", "こわ", "broken", "壊を見た。")),
+                            listOf(kikuCard(300L, 30L).build())
                     ),
-                    Collections.singletonList(suspendedImport("壊")),
-                    Collections.singletonList(malformedRow),
+                    listOf(suspendedImport("壊")),
+                    listOf(malformedRow),
                     RecordsSyncModels.Settings.kikuDefaults(),
                     2500L,
                     3000L,
                     null
             );
-            throw new AssertionError("Malformed import row should fail before committing sync data");
-        } catch (NullPointerException expected) {
+            throw AssertionError("Malformed import row should fail before committing sync data");
+        } catch (expected: NullPointerException) {
             // Expected: the important assertion is that the surrounding DB transaction rolled back.
         }
 
         verifyRolledBackImportRows();
     }
 
-    private void verifyBaselineImportRows() {
+    private fun verifyBaselineImportRows() {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
@@ -292,7 +293,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("sync_card_snapshots"));
     }
 
-    private void verifyRolledBackImportRows() {
+    private fun verifyRolledBackImportRows() {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
@@ -307,62 +308,61 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiInventorySearchAndLocalSuspensionSurviveSyncRebuild() {
-        RecordsImportModels.DashboardRow row = row("拉", 0);
-        saveSingleRowSync(row, Collections.singletonList(suspendedImport("拉")), 2000L);
+    fun testKanjiInventorySearchAndLocalSuspensionSurviveSyncRebuild() {
+        val row = row("拉", 0)
+        saveSingleRowSync(row, listOf(suspendedImport("拉")), 2000L);
 
-        List<RecordsImportModels.KanjiInventoryItem> ramenMatches = store.searchKanjiInventory("ramen");
+        val ramenMatches = store.searchKanjiInventory("ramen")
         assertFalse(ramenMatches.isEmpty());
         assertEquals("拉", ramenMatches.get(0).kanji);
         assertFalse(ramenMatches.get(0).suspended);
-        assertEquals(1, store.activeDashboardRows().size());
+        assertEquals(1, store.activeDashboardRows().size);
 
         store.setKanjiLocallySuspended("拉", true, 2500L);
-        RecordsImportModels.KanjiInventoryItem suspended = store.inventoryItemForKanji("拉");
+        val suspended = store.inventoryItemForKanji("拉")
         assertNotNull(suspended);
-        assertTrue(suspended.suspended);
-        assertEquals(0, store.activeDashboardRows().size());
+        assertTrue(requireNotNull(suspended).suspended);
+        assertEquals(0, store.activeDashboardRows().size);
         assertEquals("拉", store.searchKanjiInventory("拉").get(0).kanji);
         assertTrue(store.searchKanjiInventory("拉").get(0).suspended);
 
-        saveSingleRowSync(row, Collections.emptyList(), 3000L);
-        assertTrue(store.inventoryItemForKanji("拉").suspended);
-        assertEquals(0, store.activeDashboardRows().size());
+        saveSingleRowSync(row, emptyList(), 3000L);
+        assertTrue(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
+        assertEquals(0, store.activeDashboardRows().size);
 
         store.setKanjiLocallySuspended("拉", false, 3500L);
-        assertFalse(store.inventoryItemForKanji("拉").suspended);
-        assertEquals(1, store.activeDashboardRows().size());
+        assertFalse(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
+        assertEquals(1, store.activeDashboardRows().size);
     }
 
     @Test
-    public void testKanjiInventoryShortensLongReadingListsButKeepsSearchText() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
-                Arrays.asList(
+    fun testKanjiInventoryShortensLongReadingListsButKeepsSearchText() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val snapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(
                         sourceKikuNote(1L, "読一", "あ", "read one", "読んだ。"),
                         sourceKikuNote(2L, "読二", "い", "read two", "読んだ。"),
                         sourceKikuNote(3L, "読三", "う", "read three", "読んだ。"),
                         sourceKikuNote(4L, "読四", "え", "read four", "読んだ。")
                 ),
-                Arrays.asList(
+                listOf(
                         kikuCard(10L, 1L).build(),
                         kikuCard(20L, 2L).build(),
                         kikuCard(30L, 3L).build(),
                         kikuCard(40L, 4L).build()
                 )
-        );
+        )
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null);
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, 1000L, 2000L, null);
 
-        RecordsImportModels.KanjiInventoryItem item = store.inventoryItemForKanji("読");
-        assertNotNull(item);
+        val item = requireNotNull(store.inventoryItemForKanji("読"))
         assertEquals("あ / い / う +1 more", item.readings);
         assertContainsKanji(store.searchKanjiInventory("え"), "読");
     }
 
     @Test
-    public void testSimilarPairsUseConfiguredInventoryFieldsAndPreserveFirstSeen() throws Exception {
-        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
+    fun testSimilarPairsUseConfiguredInventoryFieldsAndPreserveFirstSeen() {
+        val settings = RecordsSyncModels.Settings(
                 "Custom Mining",
                 "Mining",
                 "Word",
@@ -376,122 +376,122 @@ public final class LocalStoreInstrumentedTest {
                 3000,
                 24,
                 3
-        );
-        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
-                Collections.singletonList(customMiningNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
-                Collections.singletonList(card(10L, 1L, "Custom").build())
-        );
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
+        )
+        val snapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(customMiningNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
+                listOf(card(10L, 1L, "Custom").build())
+        )
+        val index = SimilarKanjiIndex.parseTsv(StringReader("""
                 拉\t麺\tfixture
                 拉\t謎\tfixture
-                """));
+                """))
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(1000L, 2000L), null, index);
 
         assertNotNull(store.inventoryItemForKanji("拉"));
         assertNotNull(store.inventoryItemForKanji("麺"));
         assertTrue(store.hasSimilarLocalPair("拉", "麺"));
         assertTrue(store.hasSimilarLocalPair("麺", "拉"));
         assertFalse(store.hasSimilarLocalPair("拉", "謎"));
-        assertEquals(1, store.similarPairsForKanji("拉").size());
-        RecordsImportModels.SimilarKanjiPair first = store.allLocalSimilarPairs().get(0);
+        assertEquals(1, store.similarPairsForKanji("拉").size);
+        val first = store.allLocalSimilarPairs().get(0)
         assertEquals("拉", first.kanjiA);
         assertEquals("麺", first.kanjiB);
         assertEquals("fixture", first.source);
         assertEquals(2000L, first.firstSeenAtMillis);
         assertEquals(2000L, first.lastSeenAtMillis);
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(2500L, 3000L), null, index);
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(2500L, 3000L), null, index);
 
-        RecordsImportModels.SimilarKanjiPair updated = store.allLocalSimilarPairs().get(0);
+        val updated = store.allLocalSimilarPairs().get(0)
         assertEquals(2000L, updated.firstSeenAtMillis);
         assertEquals(3000L, updated.lastSeenAtMillis);
     }
 
     @Test
-    public void testSimilarChoiceStateSelectionRepairQueueAndNormalReviewIsolation() throws Exception {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
-                Arrays.asList(
+    fun testSimilarChoiceStateSelectionRepairQueueAndNormalReviewIsolation() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val snapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(
                         sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
                         sourceKikuNote(2L, "提", "てい", "carry", "提を見た。"),
                         sourceKikuNote(3L, "謎", "なぞ", "riddle", "謎を見た。")
                 ),
-                Arrays.asList(
+                listOf(
                         kikuCard(10L, 1L).history(30, 4, 0).build(),
                         kikuCard(20L, 2L).history(30, 4, 0).build(),
                         kikuCard(30L, 3L).history(30, 4, 0).build()
                 )
-        );
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
+        )
+        val index = SimilarKanjiIndex.parseTsv(StringReader("""
                 拉\t提\tfixture
                 拉\t謎\tfixture
                 提\t外\tfixture
-                """));
+                """))
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(1000L, 2000L), null, index);
 
-        RecordsImportModels.SimilarKanjiChoiceCard pull = findSimilarChoice("拉");
+        val pull = findSimilarChoice("拉")
         assertInitialSimilarChoiceDue(pull);
 
-        RecordsImportModels.SimilarKanjiChoiceResult wrong = store.submitSimilarChoice(pull, "提", 2500L);
+        val wrong = store.submitSimilarChoice(pull, "提", 2500L)
         assertWrongSimilarChoiceCreatesRepair(wrong);
 
-        RecordsImportModels.SimilarKanjiWritingRepair targetRepair = store.nextDueSimilarWritingRepair(2600L).withToken("repair-target", 2600L);
+        val targetRepair = requireNotNull(store.nextDueSimilarWritingRepair(2600L)).withToken("repair-target", 2600L)
         store.saveSimilarWritingRepair(targetRepair);
         assertTrue(store.finishSimilarWritingRepair(targetRepair.id, "repair-target", true, 2700L));
         assertEquals(1, store.dueSimilarWritingRepairTaskCount(2800L));
-        RecordsImportModels.SimilarKanjiWritingRepair selectedRepair = store.nextDueSimilarWritingRepair(2800L).withToken("repair-selected", 2800L);
+        val selectedRepair = requireNotNull(store.nextDueSimilarWritingRepair(2800L)).withToken("repair-selected", 2800L)
         assertEquals("提", selectedRepair.repairKanji);
         store.saveSimilarWritingRepair(selectedRepair);
         assertTrue(store.finishSimilarWritingRepair(selectedRepair.id, "repair-selected", true, 2900L));
 
-        RecordsImportModels.SimilarKanjiChoiceCard retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L);
+        val retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L)
         assertNotNull(retry);
         assertSimilarChoiceRetryDue();
-        RecordsImportModels.SimilarKanjiChoiceResult correct = store.submitSimilarChoice(retry, "拉", 3100L);
+        val correct = store.submitSimilarChoice(retry, "拉", 3100L)
         assertCorrectSimilarChoicePasses(correct);
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(4000L, 5000L), null, index);
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(4000L, 5000L), null, index);
         assertNull("passed state should survive identical sync rebuild", store.dueSimilarChoiceForActiveTarget("拉", 5000L));
         assertTrue(findSimilarChoice("拉").passed());
     }
 
     @Test
-    public void testSimilarChoiceRebuildDeletesStaleChoicesAndPendingRepairs() throws Exception {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.CollectionSnapshot fullSnapshot = new RecordsSyncModels.CollectionSnapshot(
-                Arrays.asList(
+    fun testSimilarChoiceRebuildDeletesStaleChoicesAndPendingRepairs() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val fullSnapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(
                         sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
                         sourceKikuNote(2L, "提", "てい", "carry", "提を見た。"),
                         sourceKikuNote(3L, "謎", "なぞ", "riddle", "謎を見た。")
                 ),
-                Arrays.asList(
+                listOf(
                         kikuCard(10L, 1L).history(30, 4, 0).build(),
                         kikuCard(20L, 2L).history(30, 4, 0).build(),
                         kikuCard(30L, 3L).history(30, 4, 0).build()
                 )
-        );
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"));
-        store.saveSuccessfulSync(fullSnapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
-        RecordsImportModels.SimilarKanjiChoiceCard pull = findSimilarChoice("拉");
+        )
+        val index = SimilarKanjiIndex.parseTsv(StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"))
+        store.saveSuccessfulSync(fullSnapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(1000L, 2000L), null, index);
+        val pull = findSimilarChoice("拉")
 
         store.submitSimilarChoice(pull, "提", 2500L);
         assertEquals(2, count("similar_kanji_repair_queue"));
         assertNull(store.dueSimilarChoiceForActiveTarget("拉", 2600L));
 
-        RecordsSyncModels.CollectionSnapshot reducedSnapshot = new RecordsSyncModels.CollectionSnapshot(
-                Arrays.asList(
+        val reducedSnapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(
                         sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
                         sourceKikuNote(2L, "提", "てい", "carry", "提を見た。")
                 ),
-                Arrays.asList(
+                listOf(
                         kikuCard(10L, 1L).history(30, 4, 0).build(),
                         kikuCard(20L, 2L).history(30, 4, 0).build()
                 )
-        );
-        SimilarKanjiIndex emptyIndex = SimilarKanjiIndex.parseTsv(new StringReader(""));
-        store.saveSuccessfulSync(reducedSnapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(3000L, 4000L), null, emptyIndex);
+        )
+        val emptyIndex = SimilarKanjiIndex.parseTsv(StringReader(""))
+        store.saveSuccessfulSync(reducedSnapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(3000L, 4000L), null, emptyIndex);
 
         assertTrue(store.allSimilarChoiceCards().isEmpty());
         assertEquals(0, count("similar_kanji_repair_queue"));
@@ -499,41 +499,41 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
-        RecordsImportModels.DashboardRow row = row("拉", 0);
-        RecordsImportModels.SuspendedImport imported = suspendedImport("拉");
+    fun testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
+        val row = row("拉", 0)
+        val imported = suspendedImport("拉")
 
-        saveSingleRowSync(row, Collections.singletonList(imported), 2000L);
+        saveSingleRowSync(row, listOf(imported), 2000L);
         assertEquals(1, countTimelineType("拉", "first_seen"));
         assertEquals(1, countTimelineType("拉", "suspended_imported"));
         assertEquals(1, countTimelineType("拉", "weak_support_seen"));
 
-        saveSingleRowSync(row, Collections.singletonList(imported), 3000L);
+        saveSingleRowSync(row, listOf(imported), 3000L);
         assertEquals(1, countTimelineType("拉", "first_seen"));
         assertEquals(1, countTimelineType("拉", "suspended_imported"));
         assertEquals(1, countTimelineType("拉", "weak_support_seen"));
     }
 
     @Test
-    public void testTimelineRecordsSupportRetirementAndReopen() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        long firstSync = saveSingleRowSync(row("拉", 0), Collections.emptyList(), 2000L);
+    fun testTimelineRecordsSupportRetirementAndReopen() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val firstSync = saveSingleRowSync(row("拉", 0), emptyList(), 2000L)
         assertTrue(firstSync > 0L);
-        RecordsStudyModels.StudyItem active = new RecordsStudyModels.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
-        store.replaceStudyItems(Collections.singletonList(active));
+        val active = RecordsStudyModels.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L)
+        store.replaceStudyItems(listOf(active));
 
-        long retireSync = saveSingleRowSync(row("拉", settings.matureSupportThreshold), Collections.emptyList(), 3000L);
-        RecordsStudyModels.StudyItem retired = new RecordsStudyModels.StudyItem("拉", "retired", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
-        store.replaceStudyItems(Collections.singletonList(retired), retireSync, 3000L, settings);
+        val retireSync = saveSingleRowSync(row("拉", settings.matureSupportThreshold), emptyList(), 3000L)
+        val retired = RecordsStudyModels.StudyItem("拉", "retired", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L)
+        store.replaceStudyItems(listOf(retired), retireSync, 3000L, settings);
 
-        long reopenSync = saveSingleRowSync(row("拉", 0), Collections.emptyList(), 4000L);
-        RecordsStudyModels.StudyItem reopened = new RecordsStudyModels.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
-        store.replaceStudyItems(Collections.singletonList(reopened), reopenSync, 4000L, settings);
+        val reopenSync = saveSingleRowSync(row("拉", 0), emptyList(), 4000L)
+        val reopened = RecordsStudyModels.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L)
+        store.replaceStudyItems(listOf(reopened), reopenSync, 4000L, settings);
 
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        val timeline = store.timelineForKanji("拉")
         assertNotNull(timeline.currentRow);
         assertNotNull(timeline.currentStudyItem);
-        assertEquals("review", timeline.currentStudyItem.state);
+        assertEquals("review", requireNotNull(timeline.currentStudyItem).state);
         assertTrue(hasTimelineType(timeline, "support_improved"));
         assertTrue(hasTimelineType(timeline, "retired"));
         assertTrue(hasTimelineType(timeline, "support_dropped"));
@@ -541,28 +541,28 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testTimelineRecordsOrphanStudyRetireAndReopenDetailsWithoutDashboardRow() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsStudyModels.StudyItem active = new RecordsStudyModels.StudyItem("孤", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
-        RecordsStudyModels.StudyItem retired = new RecordsStudyModels.StudyItem("孤", "retired", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
-        store.replaceStudyItems(Collections.singletonList(active));
+    fun testTimelineRecordsOrphanStudyRetireAndReopenDetailsWithoutDashboardRow() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val active = RecordsStudyModels.StudyItem("孤", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L)
+        val retired = RecordsStudyModels.StudyItem("孤", "retired", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L)
+        store.replaceStudyItems(listOf(active));
 
-        long retireSync = saveSingleRowSync(row("別", 0), Collections.emptyList(), 2000L);
-        store.replaceStudyItems(Collections.singletonList(retired), retireSync, 2500L, settings);
-        long reopenSync = saveSingleRowSync(row("他", 0), Collections.emptyList(), 3000L);
-        store.replaceStudyItems(Collections.singletonList(active), reopenSync, 3500L, settings);
+        val retireSync = saveSingleRowSync(row("別", 0), emptyList(), 2000L)
+        store.replaceStudyItems(listOf(retired), retireSync, 2500L, settings);
+        val reopenSync = saveSingleRowSync(row("他", 0), emptyList(), 3000L)
+        store.replaceStudyItems(listOf(active), reopenSync, 3500L, settings);
 
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji("孤");
+        val timeline = store.timelineForKanji("孤")
         assertNull(timeline.currentRow);
         assertNotNull(timeline.currentStudyItem);
-        assertEquals("review", timeline.currentStudyItem.state);
+        assertEquals("review", requireNotNull(timeline.currentStudyItem).state);
         assertTimelineEventDetailContains(timeline, "retired", "No weak Anki evidence remained");
         assertTimelineEventDetailContains(timeline, "reopened", "found weak evidence again");
     }
 
     @Test
-    public void testTimelineForNullKanjiReturnsEmptyTimeline() {
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji(null);
+    fun testTimelineForNullKanjiReturnsEmptyTimeline() {
+        val timeline = store.timelineForKanji("")
 
         assertNull(timeline.inventoryItem);
         assertNull(timeline.currentRow);
@@ -571,46 +571,46 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testTimelineReviewEventsMapPassFailAndManualOverride() {
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "pass-token", "good", true, true, false, 0), "good", 1000L);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "fail-token", "good", true, false, false, 0), "again", 2000L);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "override-token", "good", true, false, true, 0), "good", 3000L);
+    fun testTimelineReviewEventsMapPassFailAndManualOverride() {
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "pass-token", "good", true, true, false, 0), "good", 1000L);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "fail-token", "good", true, false, false, 0), "again", 2000L);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "override-token", "good", true, false, true, 0), "good", 3000L);
 
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        val timeline = store.timelineForKanji("拉")
         assertEquals(1, countTimelineType(timeline, "review_passed"));
         assertEquals(1, countTimelineType(timeline, "review_failed"));
         assertEquals(1, countTimelineType(timeline, "manual_override"));
     }
 
     @Test
-    public void testEmptyStatsAndImpactReportUseRealEmptyStates() {
-        StudyStatsStore.StudyStreak streak = store.studyStreak(System.currentTimeMillis());
+    fun testEmptyStatsAndImpactReportUseRealEmptyStates() {
+        val streak = store.studyStreak(System.currentTimeMillis())
         assertEquals(0, streak.currentDays);
         assertEquals(0, streak.bestDays);
         assertFalse(streak.studiedToday);
         assertEquals(0, streak.reviewsToday);
         assertTrue(store.recentMistakes(0).isEmpty());
-        assertTrue(new KanjiImpactReportStore(store).report().empty());
+        assertTrue(KanjiImpactReportStore(store).report().empty());
         assertEquals(0L, store.studyTaskTimeStats(System.currentTimeMillis()).averageMillisPerTask());
     }
 
     @Test
-    public void testRecentMistakesClampLimitAndKeepNewestHardAgainOnly() {
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("古", "old-good", "good", false, false, false, 0), "good", 1000L);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "old-again", "again", false, false, false, 0), "again", 2000L);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("提", "new-hard", "hard", false, false, false, 0), "hard", 3000L);
+    fun testRecentMistakesClampLimitAndKeepNewestHardAgainOnly() {
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("古", "old-good", "good", false, false, false, 0), "good", 1000L);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "old-again", "again", false, false, false, 0), "again", 2000L);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("提", "new-hard", "hard", false, false, false, 0), "hard", 3000L);
 
-        List<StudyStatsStore.RecentMistake> oneMistake = store.recentMistakes(0);
-        assertEquals(1, oneMistake.size());
+        val oneMistake = store.recentMistakes(0)
+        assertEquals(1, oneMistake.size);
         assertEquals("提", oneMistake.get(0).kanji);
         assertEquals("hard", oneMistake.get(0).rating);
     }
 
     @Test
-    public void testVersionEighteenMigrationPreservesLegacyTimelineHistory() {
+    fun testVersionEighteenMigrationPreservesLegacyTimelineHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
-        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);
             ContentValuesBuilder.insert(db, "suspended_imports")
@@ -649,10 +649,10 @@ public final class LocalStoreInstrumentedTest {
             db.close();
         }
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
-        RecordsStudyModels.KanjiRecoveryTimeline imported = store.timelineForKanji("拉");
-        RecordsStudyModels.KanjiRecoveryTimeline orphan = store.timelineForKanji("孤");
+        val imported = store.timelineForKanji("拉")
+        val orphan = store.timelineForKanji("孤")
         assertEquals(3, count("kanji_timeline_events"));
         assertEquals(1, countTimelineType(imported, "suspended_imported"));
         assertNull(orphan.currentRow);
@@ -662,10 +662,10 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionEighteenMigrationPreservesProviderMirrorAndLocalStatsHistory() {
+    fun testVersionEighteenMigrationPreservesProviderMirrorAndLocalStatsHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
-        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);
             ContentValuesBuilder.insert(db, "dashboard_rows")
@@ -721,13 +721,13 @@ public final class LocalStoreInstrumentedTest {
             db.close();
         }
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("review_log"));
-        assertScalarString("review_log", "rating", "token=?", new String[]{"legacy-token"}, "good");
-        assertScalarLong("review_log", "review_day_start", "token=?", new String[]{"legacy-token"}, 0L);
+        assertScalarString("review_log", "rating", "token=?", arrayOf("legacy-token"), "good");
+        assertScalarLong("review_log", "review_day_start", "token=?", arrayOf("legacy-token"), 0L);
         assertEquals(3, count("kanji_timeline_events"));
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        val timeline = store.timelineForKanji("拉")
         assertEquals(1, countTimelineType(timeline, "first_seen"));
         assertEquals(1, countTimelineType(timeline, "weak_support_seen"));
         assertEquals(1, countTimelineType(timeline, "review_passed"));
@@ -736,30 +736,30 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionEighteenMigrationBackfillsMissingHistoricalSyncSnapshotsAndKeepsMirrorRows() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note note = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
-        RecordsSyncModels.Card card = card(400L, 1L, "9001", "Kiku Deck")
+    fun testVersionEighteenMigrationBackfillsMissingHistoricalSyncSnapshotsAndKeepsMirrorRows() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val note = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。")
+        val card = card(400L, 1L, "9001", "Kiku Deck")
                 .history(25, 9, 1)
                 .fsrs(6.5, 4.5, 0.82)
-                .build();
+                .build()
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
-                Collections.emptyList(),
-                Collections.singletonList(row("確", 2)),
+                RecordsSyncModels.CollectionSnapshot(listOf(note), listOf(card)),
+                emptyList(),
+                listOf(row("確", 2)),
                 settings,
                 1000L,
                 2000L,
                 null
         );
-        SQLiteDatabase db = store.getWritableDatabase();
+        val db = store.getWritableDatabase()
         db.delete("sync_card_snapshots", null, null);
         db.delete("sync_note_snapshots", null, null);
         db.delete("sync_kanji_snapshots", null, null);
         db.setVersion(11);
         store.close();
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
@@ -771,37 +771,30 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionEighteenMigrationKeepsExistingStatsAndSnapshotsIdempotent() {
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "migration-token", "good", true, true, false, 0), "good", 3000L);
+    fun testVersionEighteenMigrationKeepsExistingStatsAndSnapshotsIdempotent() {
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "migration-token", "good", true, true, false, 0), "good", 3000L);
         assertTrue(store.recordStudyTaskAnswered("migration-task", "拉", "kanji_meaning", 1000L, 2000L, 60_000L, "good"));
-        saveSingleRowSync(row("拉", 0), Collections.emptyList(), 4000L);
-        int reviewRows = count("review_log");
-        int taskRows = count("study_task_log");
-        int timelineRows = count("kanji_timeline_events");
-        int cardSnapshots = count("sync_card_snapshots");
-        int noteSnapshots = count("sync_note_snapshots");
-        int kanjiSnapshots = count("sync_kanji_snapshots");
+        saveSingleRowSync(row("拉", 0), emptyList(), 4000L);
+        val reviewRows = count("review_log")
+        val taskRows = count("study_task_log")
+        val timelineRows = count("kanji_timeline_events")
+        val cardSnapshots = count("sync_card_snapshots")
+        val noteSnapshots = count("sync_note_snapshots")
+        val kanjiSnapshots = count("sync_kanji_snapshots")
 
-        SQLiteDatabase db = store.getWritableDatabase();
+        val db = store.getWritableDatabase()
         db.setVersion(17);
         store.close();
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
         verifyVersionEighteenMigrationCounts(reviewRows, taskRows, timelineRows, cardSnapshots, noteSnapshots, kanjiSnapshots);
 
         store.close();
-        store = new LocalStore(context);
+        store = LocalStore(context);
         verifyVersionEighteenMigrationCounts(reviewRows, taskRows, timelineRows, cardSnapshots, noteSnapshots, kanjiSnapshots);
     }
 
-    private void verifyVersionEighteenMigrationCounts(
-            int reviewRows,
-            int taskRows,
-            int timelineRows,
-            int cardSnapshots,
-            int noteSnapshots,
-            int kanjiSnapshots
-    ) {
+    private fun verifyVersionEighteenMigrationCounts(reviewRows: Int, taskRows: Int, timelineRows: Int, cardSnapshots: Int, noteSnapshots: Int, kanjiSnapshots: Int) {
         assertEquals(reviewRows, count("review_log"));
         assertEquals(taskRows, count("study_task_log"));
         assertEquals(timelineRows, count("kanji_timeline_events"));
@@ -811,10 +804,10 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionSixteenMigrationPreservesLegacySchedulerStateAndClearsSideQueues() {
+    fun testVersionSixteenMigrationPreservesLegacySchedulerStateAndClearsSideQueues() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
-        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV15SchedulerSchema(db);
             insertLegacyV15StudyItem(db, "書", "review", 2, 1, "word_reading", 950L, "書|書く|かく|write");
@@ -867,44 +860,35 @@ public final class LocalStoreInstrumentedTest {
             db.close();
         }
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
         assertEquals(6, count("study_items"));
         assertEquals(0, count("learning_repeats"));
         assertEquals(0, count("similar_kanji_choice_state"));
         assertEquals(0, count("similar_kanji_repair_queue"));
         assertMigratedStudyColumns();
-        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "word_reading");
-        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 950L);
-        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, 30L);
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "write_kanji");
-        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"書", "書|書く|かく|write"}, "review");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"型", "型|かた|type"}, "type_meaning");
-        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"型", "型|かた|type"}, "new_learning");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"水", "水|みず|water"}, "kanji_meaning");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"字", "字|じ|character"}, "font_meaning");
-        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"字", "字|じ|character"}, "review");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"読", "読|よむ|read"}, "word_reading");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"語", "語|ご|word"}, "word_reading");
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", arrayOf("書", "書|書く|かく|write"), "word_reading");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", arrayOf("書", "書|書く|かく|write"), 950L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", arrayOf("書", "書|書く|かく|write"), 30L);
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("書", "書|書く|かく|write"), "write_kanji");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", arrayOf("書", "書|書く|かく|write"), "review");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("型", "型|かた|type"), "type_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", arrayOf("型", "型|かた|type"), "new_learning");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("水", "水|みず|water"), "kanji_meaning");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("字", "字|じ|character"), "font_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", arrayOf("字", "字|じ|character"), "review");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("読", "読|よむ|read"), "word_reading");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("語", "語|ご|word"), "word_reading");
     }
 
-    private void insertLegacyV15StudyItem(
-            SQLiteDatabase db,
-            String kanji,
-            String state,
-            int recognitionStage,
-            int writingRemediationPending,
-            String suppressedByTaskType,
-            long suppressedAt,
-            String answerSignature
-    ) {
+    private fun insertLegacyV15StudyItem(db: SQLiteDatabase, kanji: String, state: String, recognitionStage: Int, writingRemediationPending: Int, suppressedByTaskType: String, suppressedAt: Long, answerSignature: String) {
         ContentValuesBuilder.insert(db, "study_items")
                 .put("kanji", kanji)
                 .put("state", state)
                 .put("due_at", 1000L)
                 .put("stability", 2.0)
                 .put("difficulty", 4.0)
-                .put("total_reviews", "review".equals(state) ? 4 : 0)
+                .put("total_reviews", if ("review" == state) 4 else 0)
                 .put("lapses", 1)
                 .put("learning_step", 0)
                 .put("writing_level", 0)
@@ -927,10 +911,10 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testOldStudyRowsInitializeSiblingSuppressionFieldsAsUnsuppressed() {
+    fun testOldStudyRowsInitializeSiblingSuppressionFieldsAsUnsuppressed() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
-        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);
             ContentValuesBuilder.insert(db, "study_items")
@@ -951,35 +935,35 @@ public final class LocalStoreInstrumentedTest {
             db.close();
         }
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
         assertEquals(1, count("study_items"));
-        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
-        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
-        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", new String[]{"水", ""}, 0L);
-        assertScalarString("study_items", "kanji_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
-        assertScalarString("study_items", "font_meaning_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
-        assertScalarString("study_items", "word_reading_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
-        assertScalarString("study_items", "writing_remediation_memory", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "");
-        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "kanji_meaning");
-        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", new String[]{"水", ""}, "new_learning");
+        assertScalarString("study_items", "suppressed_by_task_type", "kanji=? AND answer_signature=?", arrayOf("水", ""), "");
+        assertScalarLong("study_items", "suppressed_at", "kanji=? AND answer_signature=?", arrayOf("水", ""), 0L);
+        assertScalarLong("study_items", "mature_interval_days", "kanji=? AND answer_signature=?", arrayOf("水", ""), 0L);
+        assertScalarString("study_items", "kanji_meaning_memory", "kanji=? AND answer_signature=?", arrayOf("水", ""), "");
+        assertScalarString("study_items", "font_meaning_memory", "kanji=? AND answer_signature=?", arrayOf("水", ""), "");
+        assertScalarString("study_items", "word_reading_memory", "kanji=? AND answer_signature=?", arrayOf("水", ""), "");
+        assertScalarString("study_items", "writing_remediation_memory", "kanji=? AND answer_signature=?", arrayOf("水", ""), "");
+        assertScalarString("study_items", "rung", "kanji=? AND answer_signature=?", arrayOf("水", ""), "kanji_meaning");
+        assertScalarString("study_items", "phase", "kanji=? AND answer_signature=?", arrayOf("水", ""), "new_learning");
     }
 
-    private void assertMigratedColumnsExist() {
+    private fun assertMigratedColumnsExist() {
         assertMigratedCardAndExampleColumns();
         assertMigratedStudyColumns();
         assertMigratedPracticeAndReviewColumns();
         assertMigratedHistoricalSyncColumns();
     }
 
-    private void assertMigratedCardAndExampleColumns() {
+    private fun assertMigratedCardAndExampleColumns() {
         assertTrue(hasColumn("source_cards", "fsrs_stability"));
         assertTrue(hasColumn("source_cards", "fsrs_difficulty"));
         assertTrue(hasColumn("source_cards", "fsrs_retrievability"));
         assertTrue(hasColumn("kanji_examples", "fsrs_stability"));
     }
 
-    private void assertMigratedStudyColumns() {
+    private fun assertMigratedStudyColumns() {
         assertTrue(hasColumn("study_items", "recognition_stage"));
         assertTrue(hasColumn("study_items", "consecutive_failed_recognition_days"));
         assertTrue(hasColumn("study_items", "last_failed_recognition_day"));
@@ -1005,7 +989,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "similar_kanji_memory"));
     }
 
-    private void assertMigratedPracticeAndReviewColumns() {
+    private fun assertMigratedPracticeAndReviewColumns() {
         assertTrue(hasColumn("similar_kanji_pairs", "source"));
         assertTrue(hasColumn("similar_kanji_choice_state", "choice_signature"));
         assertTrue(hasColumn("similar_kanji_repair_queue", "repair_kanji"));
@@ -1025,7 +1009,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasIndex("sync_kanji_snapshots", "idx_sync_kanji_snapshots_kanji_finished"));
     }
 
-    private void assertMigratedHistoricalSyncColumns() {
+    private fun assertMigratedHistoricalSyncColumns() {
         assertTrue(hasColumn("sync_card_snapshots", "deck_id"));
         assertTrue(hasColumn("sync_card_snapshots", "model_id"));
         assertTrue(hasColumn("sync_card_snapshots", "fsrs_difficulty"));
@@ -1039,22 +1023,22 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testSettingsAndReviewTokensPersistAcrossStoreInstances() {
+    fun testSettingsAndReviewTokensPersistAcrossStoreInstances() {
         store.putIntSetting("suspended_rank_cutoff", 4000);
-        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("拉", "token-1", "good", true, true, false, 0);
+        val request = RecordsSchedulerModels.ReviewRequest("拉", "token-1", "good", true, true, false, 0)
         store.saveReview(request, "good", 3000L);
         store.close();
 
-        store = new LocalStore(context);
+        store = LocalStore(context);
         assertSyncSettingsPersistAndNormalize();
         assertReminderAndAdaptiveLoadSettingsPersist();
         assertAutoSyncSettingsPersist();
         assertReviewTokensPersist(request);
     }
 
-    private void assertSyncSettingsPersistAndNormalize() {
+    private fun assertSyncSettingsPersistAndNormalize() {
         assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 1000));
-        RecordsSyncModels.Settings legacyFrequency = SyncSettings.fromStore(store);
+        val legacyFrequency = SyncSettings.fromStore(store)
         assertEquals("Kiku", legacyFrequency.modelName);
         assertEquals(100, legacyFrequency.suspendedRankMin);
         assertEquals(4000, legacyFrequency.suspendedRankMax);
@@ -1070,7 +1054,7 @@ public final class LocalStoreInstrumentedTest {
         store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, "");
         store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, "");
         store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, "");
-        RecordsSyncModels.Settings customNoteType = SyncSettings.fromStore(store);
+        val customNoteType = SyncSettings.fromStore(store)
         assertEquals("Custom Japanese", customNoteType.modelName);
         assertEquals("Front", customNoteType.expressionField);
         assertEquals("", customNoteType.readingField);
@@ -1082,7 +1066,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals("Kiku", SyncSettings.fromStore(store).modelName);
         store.putIntSetting("suspended_rank_min", 250);
         store.putIntSetting("suspended_rank_max", 3000);
-        RecordsSyncModels.Settings rangeFrequency = SyncSettings.fromStore(store);
+        val rangeFrequency = SyncSettings.fromStore(store)
         assertEquals(250, rangeFrequency.suspendedRankMin);
         assertEquals(3000, rangeFrequency.suspendedRankMax);
         assertEquals(RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
@@ -1090,7 +1074,7 @@ public final class LocalStoreInstrumentedTest {
         store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, 5);
         store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 30);
         store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 6);
-        RecordsSyncModels.Settings ladderSettings = SyncSettings.fromStore(store);
+        val ladderSettings = SyncSettings.fromStore(store)
         assertEquals(4, ladderSettings.writingTriggerMissDays);
         assertEquals(5, ladderSettings.recognitionPromotionPasses);
         assertEquals(30, ladderSettings.ladderPromotionIntervalDays);
@@ -1103,13 +1087,13 @@ public final class LocalStoreInstrumentedTest {
         store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY);
         store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES);
         store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI);
-        RecordsSyncModels.Settings migratedOldDefaults = SyncSettings.fromStore(store);
+        val migratedOldDefaults = SyncSettings.fromStore(store)
         assertFalse(migratedOldDefaults.importActiveCards);
         assertTrue(migratedOldDefaults.importSuspendedCards);
         assertEquals(0, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1));
         store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1);
         store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 2);
-        RecordsSyncModels.Settings customizedImportDefaults = SyncSettings.fromStore(store);
+        val customizedImportDefaults = SyncSettings.fromStore(store)
         assertTrue(customizedImportDefaults.importActiveCards);
         assertEquals(2, customizedImportDefaults.importMinMatchingCardsPerKanji);
         store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 0);
@@ -1120,19 +1104,19 @@ public final class LocalStoreInstrumentedTest {
         store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, 99.0);
         store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, -5);
         store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 0);
-        RecordsSyncModels.Settings importSettings = SyncSettings.fromStore(store);
+        val importSettings = SyncSettings.fromStore(store)
         assertFalse(importSettings.importActiveCards);
         assertTrue(importSettings.importSuspendedCards);
         assertTrue(importSettings.importTaggedCardsEnabled());
-        assertEquals(Arrays.asList("focus", "weak"), importSettings.importTags);
+        assertEquals(listOf("focus", "weak"), importSettings.importTags);
         assertTrue(importSettings.importWeakCards);
         assertClose(10.0, importSettings.importWeakFsrsDifficultyThreshold);
         assertEquals(1, importSettings.importWeakLapsesThreshold);
         assertEquals(1, importSettings.importMinMatchingCardsPerKanji);
     }
 
-    private void assertReminderAndAdaptiveLoadSettingsPersist() {
-        LocalStore.ReminderSettings defaults = store.reminderSettings();
+    private fun assertReminderAndAdaptiveLoadSettingsPersist() {
+        val defaults = store.reminderSettings()
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);
         assertEquals(0, defaults.minute);
@@ -1155,46 +1139,46 @@ public final class LocalStoreInstrumentedTest {
         store.saveStudyAheadMinutes(0);
         assertEquals(0, store.studyAheadMinutes());
 
-        store.saveReminderSettings(new LocalStore.ReminderSettings(true, 8, 30));
-        LocalStore.ReminderSettings reminder = store.reminderSettings();
+        store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 8, 30));
+        val reminder = store.reminderSettings()
         assertTrue(reminder.enabled);
         assertEquals(8, reminder.hour);
         assertEquals(30, reminder.minute);
         assertEquals("08:30", reminder.displayTime());
-        store.saveReminderSettings(new LocalStore.ReminderSettings(true, 99, -4));
-        LocalStore.ReminderSettings clampedReminder = store.reminderSettings();
+        store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 99, -4));
+        val clampedReminder = store.reminderSettings()
         assertEquals(23, clampedReminder.hour);
         assertEquals(0, clampedReminder.minute);
     }
 
-    private void assertAutoSyncSettingsPersist() {
-        LocalStore.AutoSyncSettings autoDefaults = store.autoSyncSettings();
+    private fun assertAutoSyncSettingsPersist() {
+        val autoDefaults = store.autoSyncSettings()
         assertFalse(autoDefaults.configured);
         assertFalse(autoDefaults.enabled);
         assertEquals(19, autoDefaults.hour);
         assertEquals(0, autoDefaults.minute);
         assertTrue(store.activateAutoSyncAfterFirstSuccess());
         assertFalse(store.activateAutoSyncAfterFirstSuccess());
-        LocalStore.AutoSyncSettings activeAuto = store.autoSyncSettings();
+        val activeAuto = store.autoSyncSettings()
         assertTrue(activeAuto.configured);
         assertTrue(activeAuto.enabled);
         assertEquals("19:00", activeAuto.displayTime());
         store.recordAutoSyncAttempt(5000L, false);
-        LocalStore.AutoSyncSettings failedAuto = store.autoSyncSettings();
+        val failedAuto = store.autoSyncSettings()
         assertEquals(5000L, failedAuto.lastAttemptAt);
         assertEquals(0L, failedAuto.lastSuccessAt);
         store.recordAutoSyncAttempt(6000L, true);
         store.markAutoSyncScheduled(9000L);
-        LocalStore.AutoSyncSettings successfulAuto = store.autoSyncSettings();
+        val successfulAuto = store.autoSyncSettings()
         assertEquals(6000L, successfulAuto.lastAttemptAt);
         assertEquals(6000L, successfulAuto.lastSuccessAt);
         assertEquals(9000L, successfulAuto.nextRunAt);
         store.setAutoSyncEnabled(false);
-        LocalStore.AutoSyncSettings disabledAuto = store.autoSyncSettings();
+        val disabledAuto = store.autoSyncSettings()
         assertTrue(disabledAuto.configured);
         assertFalse(disabledAuto.enabled);
-        store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(false, true, 99, -4, -1L, -2L, -3L));
-        LocalStore.AutoSyncSettings clampedAuto = store.autoSyncSettings();
+        store.saveAutoSyncSettings(LocalStoreBase.AutoSyncSettings(false, true, 99, -4, -1L, -2L, -3L));
+        val clampedAuto = store.autoSyncSettings()
         assertFalse(clampedAuto.configured);
         assertFalse(clampedAuto.enabled);
         assertEquals(23, clampedAuto.hour);
@@ -1204,19 +1188,19 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(0L, clampedAuto.nextRunAt);
     }
 
-    private void assertReviewTokensPersist(RecordsSchedulerModels.ReviewRequest request) {
-        List<String> tokens = store.consumedTokens();
-        assertEquals(1, tokens.size());
+    private fun assertReviewTokensPersist(request: RecordsSchedulerModels.ReviewRequest) {
+        val tokens = store.consumedTokens()
+        assertEquals(1, tokens.size);
         assertEquals("token-1", tokens.get(0));
 
         store.saveReview(request, "easy", 4000L);
-        assertEquals(1, store.consumedTokens().size());
-        assertEquals(1, store.studiedKanjiSince(0L).size());
+        assertEquals(1, store.consumedTokens().size);
+        assertEquals(1, store.studiedKanjiSince(0L).size);
     }
 
     @Test
-    public void testRichReviewHistoryStoresTaskContextAndSchedulerState() {
-        RecordsStudyModels.StudyItem before = new RecordsStudyModels.StudyItem(
+    fun testRichReviewHistoryStoresTaskContextAndSchedulerState() {
+        val before = RecordsStudyModels.StudyItem(
                 "裂",
                 "review",
                 1000L,
@@ -1228,8 +1212,8 @@ public final class LocalStoreInstrumentedTest {
                 1,
                 "review-token",
                 500L
-        ).withAnswerSignature("裂|分裂|ぶんれつ|split");
-        RecordsStudyModels.StudyItem after = new RecordsStudyModels.StudyItem(
+        ).withAnswerSignature("裂|分裂|ぶんれつ|split")
+        val after = RecordsStudyModels.StudyItem(
                 "裂",
                 "review",
                 90_000_000L,
@@ -1241,8 +1225,8 @@ public final class LocalStoreInstrumentedTest {
                 2,
                 null,
                 500L
-        ).withAnswerSignature("裂|分裂|ぶんれつ|split");
-        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest(
+        ).withAnswerSignature("裂|分裂|ぶんれつ|split")
+        val request = RecordsSchedulerModels.ReviewRequest(
                 "裂",
                 "review-token",
                 "good",
@@ -1254,14 +1238,14 @@ public final class LocalStoreInstrumentedTest {
                 "kanji_meaning",
                 "裂|分裂|ぶんれつ|split",
                 "Imported from suspended cards"
-        );
+        )
 
         store.saveReview(request, "good", 4000L, before, after);
 
-        Cursor cursor = store.getReadableDatabase().rawQuery(
+        val cursor = store.getReadableDatabase().rawQuery(
                 "SELECT task_type, answer_signature, prompt, hints_used, writing_clean, memory_before, memory_after, scheduler_state_after_json FROM review_log WHERE token=?",
-                new String[]{"review-token"}
-        );
+                arrayOf("review-token")
+        )
         try {
             assertTrue(cursor.moveToFirst());
             assertEquals("kanji_meaning", cursor.getString(0));
@@ -1279,21 +1263,21 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactBaselineStartsWhenKaniStartsTracking() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note firstNote = sourceKikuNote(101L, "裂語", "れつご", "split word", "裂語を見た。");
-        RecordsSyncModels.Note secondNote = sourceKikuNote(102L, "裂文", "れつぶん", "split sentence", "裂文を見た。");
+    fun testKanjiImpactBaselineStartsWhenKaniStartsTracking() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val firstNote = sourceKikuNote(101L, "裂語", "れつご", "split word", "裂語を見た。")
+        val secondNote = sourceKikuNote(102L, "裂文", "れつぶん", "split sentence", "裂文を見た。")
 
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(firstNote, secondNote),
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(firstNote, secondNote),
+                        listOf(
                                 kikuCard(1001L, 101L).history(80, 50, 0).fsrs(null, 4.0, 0.95).build(),
                                 kikuCard(1002L, 102L).history(80, 50, 0).fsrs(null, 4.0, 0.95).build()
                         )
                 ),
-                Collections.emptyList(),
-                Collections.emptyList(),
+                emptyList(),
+                emptyList(),
                 settings,
                 1000L,
                 2000L,
@@ -1301,15 +1285,15 @@ public final class LocalStoreInstrumentedTest {
         );
 
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(firstNote, secondNote),
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(firstNote, secondNote),
+                        listOf(
                                 kikuCard(1001L, 101L).history(5, 20, 8).fsrs(null, 7.2, 0.62).build(),
                                 kikuCard(1002L, 102L).history(5, 20, 8).fsrs(null, 7.2, 0.62).build()
                         )
                 ),
-                Collections.emptyList(),
-                Collections.singletonList(row("裂", 0)),
+                emptyList(),
+                listOf(row("裂", 0)),
                 settings,
                 3000L,
                 4000L,
@@ -1319,27 +1303,27 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(review("裂", "impact-baseline"), "good", 4500L);
 
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(firstNote, secondNote),
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(firstNote, secondNote),
+                        listOf(
                                 kikuCard(1001L, 101L).history(40, 30, 2).fsrs(null, 5.8, 0.84).build(),
                                 kikuCard(1002L, 102L).history(40, 30, 2).fsrs(null, 5.8, 0.84).build()
                         )
                 ),
-                Collections.emptyList(),
-                Collections.singletonList(row("裂", 2)),
+                emptyList(),
+                listOf(row("裂", 2)),
                 settings,
                 5000L,
                 6000L,
                 null
         );
 
-        KanjiImpactAnalyzer.Report report = new KanjiImpactReportStore(store).report();
+        val report = KanjiImpactReportStore(store).report()
 
         assertEquals(1, report.helpedCount);
         assertEquals(0, report.notHelpingCount);
-        assertEquals(1, report.rows.size());
-        KanjiImpactAnalyzer.Row impact = report.rows.get(0);
+        assertEquals(1, report.rows.size);
+        val impact = report.rows.get(0)
         assertEquals("裂", impact.kanji);
         assertEquals(KanjiImpactAnalyzer.BUCKET_HELPED, impact.bucket);
         assertClose(7.2, impact.baselineDifficulty);
@@ -1349,24 +1333,24 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyOutcomeStatsRankWeaknessSupportAndLadderEvidence() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        saveSingleRowSync(rowWithStats("拉", 90, 0), Collections.emptyList(), 1000L);
+    fun testStudyOutcomeStatsRankWeaknessSupportAndLadderEvidence() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        saveSingleRowSync(rowWithStats("拉", 90, 0), emptyList(), 1000L);
         store.saveReview(review("拉", "outcome-lower-weakness"), "good", 1500L);
-        saveSingleRowSync(rowWithStats("拉", 40, 2), Collections.emptyList(), 2500L);
-        saveSingleRowSync(rowWithStats("提", 60, 1), Collections.emptyList(), 3000L);
+        saveSingleRowSync(rowWithStats("拉", 40, 2), emptyList(), 2500L);
+        saveSingleRowSync(rowWithStats("提", 60, 1), emptyList(), 3000L);
         store.saveReview(review("提", "outcome-missing-after"), "again", 3500L);
-        RecordsStudyModels.StudyItem promotionReady = new RecordsStudyModels.StudyItem("拉", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
+        val promotionReady = RecordsStudyModels.StudyItem("拉", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
                 .withLadderProgress(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 3, 0, 1000L)
-                .copyBuilder().matureIntervalDays(22).build();
-        RecordsStudyModels.StudyItem demotionReady = new RecordsStudyModels.StudyItem("提", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
-                .withLadderProgress(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0, 3, 1000L);
-        RecordsStudyModels.StudyItem retired = new RecordsStudyModels.StudyItem("謎", "retired", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
-                .withLadderProgress(RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 3, 3, 1000L);
+                .copyBuilder().matureIntervalDays(22).build()
+        val demotionReady = RecordsStudyModels.StudyItem("提", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
+                .withLadderProgress(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0, 3, 1000L)
+        val retired = RecordsStudyModels.StudyItem("謎", "retired", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
+                .withLadderProgress(RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 3, 3, 1000L)
         store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 3);
-        store.replaceStudyItems(Arrays.asList(promotionReady, demotionReady, retired), 4L, 4000L, settings);
+        store.replaceStudyItems(listOf(promotionReady, demotionReady, retired), 4L, 4000L, settings);
 
-        StudyStatsStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
+        val stats = store.kaniOutcomeStats()
 
         assertEquals(1, stats.weakKanjiImproved.improvedCount);
         assertEquals("拉", stats.weakKanjiImproved.examples.get(0).kanji);
@@ -1384,22 +1368,22 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportUsesSameCardMetricsAndCountsNewCards() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note baselineOne = sourceKikuNote(201L, "鈍語", "どんご", "dull word", "鈍語を見た。");
-        RecordsSyncModels.Note baselineTwo = sourceKikuNote(202L, "鈍文", "どんぶん", "dull sentence", "鈍文を見た。");
-        RecordsSyncModels.Note newCard = sourceKikuNote(203L, "鈍例", "どんれい", "dull example", "鈍例を見た。");
+    fun testKanjiImpactReportUsesSameCardMetricsAndCountsNewCards() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val baselineOne = sourceKikuNote(201L, "鈍語", "どんご", "dull word", "鈍語を見た。")
+        val baselineTwo = sourceKikuNote(202L, "鈍文", "どんぶん", "dull sentence", "鈍文を見た。")
+        val newCard = sourceKikuNote(203L, "鈍例", "どんれい", "dull example", "鈍例を見た。")
 
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(baselineOne, baselineTwo),
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(baselineOne, baselineTwo),
+                        listOf(
                                 kikuCard(2001L, 201L).history(3, 10, 2).fsrs(null, 6.0, 0.70).build(),
                                 kikuCard(2002L, 202L).history(3, 10, 2).fsrs(null, 6.0, 0.70).build()
                         )
                 ),
-                Collections.emptyList(),
-                Collections.singletonList(rowWithStats("鈍", 70, 0)),
+                emptyList(),
+                listOf(rowWithStats("鈍", 70, 0)),
                 settings,
                 1000L,
                 2000L,
@@ -1407,23 +1391,23 @@ public final class LocalStoreInstrumentedTest {
         );
         store.saveReview(review("鈍", "impact-not-helping"), "again", 2500L);
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(baselineOne, baselineTwo, newCard),
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(baselineOne, baselineTwo, newCard),
+                        listOf(
                                 kikuCard(2001L, 201L).history(3, 20, 4).fsrs(null, 6.1, 0.71).build(),
                                 kikuCard(2002L, 202L).history(3, 20, 4).fsrs(null, 6.1, 0.71).build(),
                                 kikuCard(2003L, 203L).history(1, 1, 0).fsrs(null, 4.0, 0.90).build()
                         )
                 ),
-                Collections.emptyList(),
-                Collections.singletonList(rowWithStats("鈍", 65, 0)),
+                emptyList(),
+                listOf(rowWithStats("鈍", 65, 0)),
                 settings,
                 3000L,
                 4000L,
                 null
         );
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "鈍");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "鈍")
 
         assertEquals(KanjiImpactAnalyzer.BUCKET_NOT_HELPING, impact.bucket);
         assertEquals(2, impact.sameCardCount);
@@ -1435,11 +1419,11 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportKeepsReviewOnlyKanjiAsNeedsMoreCards() {
+    fun testKanjiImpactReportKeepsReviewOnlyKanjiAsNeedsMoreCards() {
         store.saveReview(review("孤", "impact-review-only"), "good", 1000L);
-        saveSingleRowSync(row("別", 0), Collections.singletonList(suspendedImport("別")), 2000L);
+        saveSingleRowSync(row("別", 0), listOf(suspendedImport("別")), 2000L);
 
-        KanjiImpactAnalyzer.Report report = new KanjiImpactReportStore(store).report();
+        val report = KanjiImpactReportStore(store).report()
 
         assertEquals(0, report.helpedCount);
         assertEquals(0, report.notHelpingCount);
@@ -1450,13 +1434,13 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportUsesFirstSnapshotWhenNoKaniSignalExists() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testKanjiImpactReportUsesFirstSnapshotWhenNoKaniSignalExists() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertKanjiSnapshot(db, 1L, 2000L, "泳", 2, 0, 0, 80, "active", 2, 0, null, null, null);
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "泳");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "泳")
 
         assertEquals(0, impact.reviewCount);
         assertEquals(2, impact.currentCardCount);
@@ -1464,8 +1448,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportSameCardMetricsIncludeSuspendedFsrsCards() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testKanjiImpactReportSameCardMetricsIncludeSuspendedFsrsCards() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertSyncRun(db, 2L, 3000L, 4000L);
@@ -1478,7 +1462,7 @@ public final class LocalStoreInstrumentedTest {
         insertCardSnapshot(db, 2L, 4000L, 11L, 100L, false, false, 1, 0, 0, null, null, null);
         store.saveReview(review("泳", "impact-direct-review"), "good", 1500L);
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "泳");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "泳")
 
         assertEquals(1, impact.sameCardCount);
         assertEquals(1, impact.newCardCount);
@@ -1490,14 +1474,14 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportFallsBackToSnapshotBeforeFirstReview() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testKanjiImpactReportFallsBackToSnapshotBeforeFirstReview() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertKanjiSnapshot(db, 1L, 2000L, "遅", 1, 0, 0, 72, "active", 1, 0, 2.5, 5.5, 0.60);
         store.saveReview(review("遅", "impact-after-only-sync"), "good", 3000L);
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "遅");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "遅")
 
         assertEquals(1, impact.reviewCount);
         assertEquals(1, impact.currentCardCount);
@@ -1506,8 +1490,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportTreatsMismatchedHistoricalCardsAsNewCurrentCards() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testKanjiImpactReportTreatsMismatchedHistoricalCardsAsNewCurrentCards() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertSyncRun(db, 2L, 3000L, 4000L);
@@ -1520,7 +1504,7 @@ public final class LocalStoreInstrumentedTest {
         insertCardSnapshot(db, 2L, 4000L, 41L, 400L, false, false, 1, 0, 0, null, 5.0, null);
         store.saveReview(review("替", "impact-no-common-cards"), "again", 1500L);
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "替");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "替")
 
         assertEquals(0, impact.sameCardCount);
         assertEquals(2, impact.newCardCount);
@@ -1529,8 +1513,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testKanjiImpactReportKeepsImportWithoutHistoricalSnapshotAsNeedsMoreCards() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testKanjiImpactReportKeepsImportWithoutHistoricalSnapshotAsNeedsMoreCards() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertKanjiSnapshot(db, 1L, 2000L, "別", 1, 0, 0, 80, "active", 1, 0, null, null, null);
@@ -1542,7 +1526,7 @@ public final class LocalStoreInstrumentedTest {
                 .put("last_seen_sync_id", 1L)
                 .commit();
 
-        KanjiImpactAnalyzer.Row impact = impactRow(new KanjiImpactReportStore(store).report(), "零");
+        val impact = impactRow(KanjiImpactReportStore(store).report(), "零")
 
         assertEquals(KanjiImpactAnalyzer.BUCKET_NEEDS_MORE_CARDS, impact.bucket);
         assertEquals(0, impact.currentCardCount);
@@ -1550,40 +1534,40 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyItemsPersistSeparateAnswerSignaturesForSameKanji() {
-        RecordsStudyModels.StudyItem oldWord = new RecordsStudyModels.StudyItem("拉", "review", 1000L, 2.0, 4.0, 2, 0, 2, 1, null, 1000L)
-                .withAnswerSignature("拉|拉麺|らーめん|ramen");
-        RecordsStudyModels.StudyItem newWord = new RecordsStudyModels.StudyItem("拉", "new", 2000L, 0.4, 5.0, 0, 0, 0, 0, null, 2000L)
-                .withAnswerSignature("拉|拉致|らち|abduction");
+    fun testStudyItemsPersistSeparateAnswerSignaturesForSameKanji() {
+        val oldWord = RecordsStudyModels.StudyItem("拉", "review", 1000L, 2.0, 4.0, 2, 0, 2, 1, null, 1000L)
+                .withAnswerSignature("拉|拉麺|らーめん|ramen")
+        val newWord = RecordsStudyModels.StudyItem("拉", "new", 2000L, 0.4, 5.0, 0, 0, 0, 0, null, 2000L)
+                .withAnswerSignature("拉|拉致|らち|abduction")
 
-        store.replaceStudyItems(Arrays.asList(oldWord, newWord));
-        List<RecordsStudyModels.StudyItem> items = store.studyItems();
+        store.replaceStudyItems(listOf(oldWord, newWord));
+        var items = store.studyItems()
 
-        assertEquals(2, items.size());
+        assertEquals(2, items.size);
         assertEquals("拉|拉麺|らーめん|ramen", items.get(0).answerSignature);
         assertEquals("拉|拉致|らち|abduction", items.get(1).answerSignature);
 
         store.saveStudyItem(oldWord.withSuppression("word_reading", 3000L, 31));
         items = store.studyItems();
-        assertEquals(2, items.size());
+        assertEquals(2, items.size);
         assertEquals("word_reading", items.get(0).suppressedByTaskType);
         assertEquals("", items.get(1).suppressedByTaskType);
     }
 
     @Test
-    public void testReviewStatsAndSchedulerParametersPersist() {
-        long firstReviewAt = 86_400_000L;
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "token-a", "again", true, false, false, 0), "again", firstReviewAt);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("麺", "token-b", "good", true, true, false, 0), "good", firstReviewAt + 1000L);
-        store.saveReview(new RecordsSchedulerModels.ReviewRequest("泳", "token-c", "easy", false, false, true, 0), "easy", firstReviewAt + 2000L);
-        RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
+    fun testReviewStatsAndSchedulerParametersPersist() {
+        val firstReviewAt = 86_400_000L
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "token-a", "again", true, false, false, 0), "again", firstReviewAt);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("麺", "token-b", "good", true, true, false, 0), "good", firstReviewAt + 1000L);
+        store.saveReview(RecordsSchedulerModels.ReviewRequest("泳", "token-c", "easy", false, false, true, 0), "easy", firstReviewAt + 2000L);
+        val stats = store.reviewStatsSince(0L)
         assertEquals(3, stats.total);
         assertEquals(1, stats.again);
         assertEquals(1, stats.easy);
         assertEquals(1, stats.good);
         assertEquals(2, stats.writingRequired);
         assertEquals(1, stats.writingFailed);
-        StudyStatsStore.StudyImpactStats impact = store.studyImpactStats();
+        val impact = store.studyImpactStats()
         assertEquals(3, impact.totalReviews);
         assertEquals(3, impact.distinctReviewedKanji);
         assertEquals(2, impact.writingRequired);
@@ -1594,16 +1578,16 @@ public final class LocalStoreInstrumentedTest {
                 "review_log",
                 "review_day_start",
                 "token=?",
-                new String[]{"token-a"},
+                arrayOf("token-a"),
                 localDayStart(firstReviewAt)
         );
 
-        RecordsSchedulerModels.SchedulerParameters tuned = RecordsSchedulerModels.SchedulerParameters.defaults()
+        val tuned = RecordsSchedulerModels.SchedulerParameters.defaults()
                 .withTargetRetention(0.92)
                 .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30)
-                .withFrequencyRetention(true, "1-500=95%");
+                .withFrequencyRetention(true, "1-500=95%")
         store.saveSchedulerParameters(tuned);
-        RecordsSchedulerModels.SchedulerParameters loaded = store.schedulerParameters();
+        val loaded = store.schedulerParameters()
         assertClose(0.92, loaded.targetRetention);
         assertClose(0.40, loaded.againMultiplier);
         assertClose(1.80, loaded.goodMultiplier);
@@ -1614,13 +1598,13 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyLadderSettingsPersist() {
-        RecordsBase.StudyLadderSettings settings = RecordsBase.StudyLadderSettings.defaults()
+    fun testStudyLadderSettingsPersist() {
+        val settings = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
-                .moveRung(RecordsBase.LadderRung.WORD_READING, -6);
+                .moveRung(RecordsBase.LadderRung.WORD_READING, -6)
 
         store.saveStudyLadderSettings(settings);
-        RecordsBase.StudyLadderSettings loaded = store.studyLadderSettings();
+        val loaded = store.studyLadderSettings()
 
         assertEquals(RecordsBase.LadderRung.WORD_READING, loaded.orderedRungs.get(0));
         assertFalse(loaded.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI));
@@ -1630,7 +1614,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testAdaptiveLoadMaxItemsDefaultsAndClamps() {
+    fun testAdaptiveLoadMaxItemsDefaultsAndClamps() {
         assertEquals(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS, store.adaptiveLoadMaxItems());
 
         store.saveAdaptiveLoadMaxItems(0);
@@ -1644,14 +1628,14 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyTaskAnsweredLogSuppressesDuplicateTaskKeys() {
+    fun testStudyTaskAnsweredLogSuppressesDuplicateTaskKeys() {
         assertFalse(store.recordStudyTaskAnswered("", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
         assertFalse(store.recordStudyTaskAnswered(null, "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
         assertTrue(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
         assertFalse(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 3000L, 24_000L, "easy"));
         assertTrue(store.recordStudyTaskAnswered("task-2", null, null, 1000L, 2000L, -1L, null));
 
-        StudyStatsStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(2500L);
+        val stats = store.studyTaskTimeStats(2500L)
         assertEquals(12_000L, stats.todayMillis);
         assertEquals(12_000L, stats.lastSevenDaysMillis);
         assertEquals(2, stats.answeredTasks);
@@ -1660,12 +1644,12 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyTaskTimeStatsUseLocalDayBoundariesAndClampOutliers() {
-        long today = localDayStart(System.currentTimeMillis());
-        long tomorrow = moveLocalDays(today, 1);
-        long yesterday = moveLocalDays(today, -1);
-        long sixDaysAgo = moveLocalDays(today, -6);
-        long sevenDaysAgo = moveLocalDays(today, -7);
+    fun testStudyTaskTimeStatsUseLocalDayBoundariesAndClampOutliers() {
+        val today = localDayStart(System.currentTimeMillis())
+        val tomorrow = moveLocalDays(today, 1)
+        val yesterday = moveLocalDays(today, -1)
+        val sixDaysAgo = moveLocalDays(today, -6)
+        val sevenDaysAgo = moveLocalDays(today, -7)
 
         store.recordStudyTaskAnswered("today-start", "拉", "kanji_meaning", today - 500L, today, 30_000L, "good");
         store.recordStudyTaskAnswered("today-end", "提", BridgeScheduler.TASK_TYPE_MEANING, today, tomorrow - 1L, 90_000L, "good");
@@ -1674,7 +1658,7 @@ public final class LocalStoreInstrumentedTest {
         store.recordStudyTaskAnswered("seven-days", "確", "kanji_meaning", sevenDaysAgo, sevenDaysAgo + 60_000L, 240_000L, "good");
         store.recordStudyTaskAnswered("clamped", "曜", "word_reading", today, today + 60_000L, 31L * 60L * 1000L, "easy");
 
-        StudyStatsStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(today + 12 * 60_000L);
+        val stats = store.studyTaskTimeStats(today + 12 * 60_000L)
 
         assertEquals(30_000L + 90_000L + 30L * 60L * 1000L, stats.todayMillis);
         assertEquals(30_000L + 90_000L + 120_000L + 180_000L + 30L * 60L * 1000L, stats.lastSevenDaysMillis);
@@ -1683,40 +1667,40 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testNewPerDayDeckLimitPersistsIntoSyncSettings() {
+    fun testNewPerDayDeckLimitPersistsIntoSyncSettings() {
         store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, 37);
         store.close();
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
-        RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+        val settings = SyncSettings.fromStore(store)
 
         assertEquals(37, settings.newPerDay);
     }
 
     @Test
-    public void testNewPerDayDeckLimitIsBoundedInSyncSettings() {
+    fun testNewPerDayDeckLimitIsBoundedInSyncSettings() {
         store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, 2000);
 
-        RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
+        val settings = SyncSettings.fromStore(store)
 
         assertEquals(999, settings.newPerDay);
     }
 
     @Test
-    public void testLearningStepSettingsAndRepeatsPersist() {
-        store.saveLearningStepSettings(new RecordsSchedulerModels.LearningStepSettings(
-                Arrays.asList(2, 15),
-                Collections.singletonList(20)
+    fun testLearningStepSettingsAndRepeatsPersist() {
+        store.saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings(
+                listOf(2, 15),
+                listOf(20)
         ));
-        RecordsSchedulerModels.LearningStepSettings settings = store.learningStepSettings();
-        assertEquals(Arrays.asList(2, 15), settings.newStepsMinutes);
-        assertEquals(Collections.singletonList(20), settings.reviewStepsMinutes);
+        val settings = store.learningStepSettings()
+        assertEquals(listOf(2, 15), settings.newStepsMinutes);
+        assertEquals(listOf(20), settings.reviewStepsMinutes);
 
-        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
-                .withAnswerSignature("拉|拉麺|らーめん|ramen");
+        val item = RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
+                .withAnswerSignature("拉|拉麺|らーめん|ramen")
         store.enqueueLearningRepeat(item, "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 2000L, 1000L);
-        List<RecordsSchedulerModels.LearningRepeat> due = store.dueLearningRepeats(2500L);
-        assertEquals(1, due.size());
+        var due = store.dueLearningRepeats(2500L)
+        assertEquals(1, due.size);
         assertEquals("拉", due.get(0).kanji);
         assertEquals("kanji_meaning", due.get(0).taskType);
         assertEquals(0, due.get(0).stepIndex);
@@ -1724,7 +1708,7 @@ public final class LocalStoreInstrumentedTest {
         store.saveLearningRepeat(due.get(0).withStep(1, 4000L, 3000L));
         assertTrue(store.dueLearningRepeats(3500L).isEmpty());
         due = store.dueLearningRepeats(4500L);
-        assertEquals(1, due.size());
+        assertEquals(1, due.size);
         assertEquals(1, due.get(0).stepIndex);
 
         store.clearLearningRepeat(due.get(0));
@@ -1732,8 +1716,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testAutoUpdateStatusPersistsAndClearPendingNormalizesNulls() {
-        LocalStore.AutoUpdateStatus defaults = store.autoUpdateStatus();
+    fun testAutoUpdateStatusPersistsAndClearPendingNormalizesNulls() {
+        val defaults = store.autoUpdateStatus()
         assertTrue(defaults.enabled);
         assertEquals(0L, defaults.lastCheckAtMillis);
         assertEquals("No automatic update check has run yet.", defaults.lastResult);
@@ -1742,9 +1726,9 @@ public final class LocalStoreInstrumentedTest {
         store.saveAutoUpdateEnabled(false);
         store.recordAutoUpdateResult(1234L, null, null, "kani-v9.apk", null);
         store.close();
-        store = new LocalStore(context);
+        store = LocalStore(context);
 
-        LocalStore.AutoUpdateStatus pending = store.autoUpdateStatus();
+        val pending = store.autoUpdateStatus()
         assertFalse(pending.enabled);
         assertEquals(1234L, pending.lastCheckAtMillis);
         assertEquals("", pending.lastResult);
@@ -1754,7 +1738,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(pending.hasPendingUpdate());
 
         store.clearPendingAutoUpdate(null);
-        LocalStore.AutoUpdateStatus cleared = store.autoUpdateStatus();
+        val cleared = store.autoUpdateStatus()
         assertEquals("", cleared.lastResult);
         assertEquals("", cleared.pendingApkName);
         assertEquals("", cleared.pendingMessage);
@@ -1762,7 +1746,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testGuardInputsDoNotMutateDurableState() {
+    fun testGuardInputsDoNotMutateDurableState() {
         assertEquals(0, count("similar_kanji_pairs"));
         store.rebuildSimilarKanjiPairs(null, 1000L);
         assertEquals(0, count("similar_kanji_pairs"));
@@ -1770,7 +1754,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(store.similarPairsForKanji(null).isEmpty());
         assertTrue(store.similarPairsForKanji("").isEmpty());
 
-        RecordsImportModels.SimilarKanjiChoiceResult noChoice = store.submitSimilarChoice(null, "拉", 1100L);
+        val noChoice = store.submitSimilarChoice(null, "拉", 1100L)
         assertFalse(noChoice.correct);
         assertEquals("拉", noChoice.selectedKanji);
         assertTrue(noChoice.repairKanji.isEmpty());
@@ -1781,34 +1765,35 @@ public final class LocalStoreInstrumentedTest {
         store.setKanjiLocallySuspended("", true, 1300L);
         assertTrue(store.locallySuspendedKanji().isEmpty());
 
-        store.saveLearningRepeat(null);
-        store.saveLearningRepeat(new RecordsSchedulerModels.LearningRepeat("", "", "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
-        store.saveLearningRepeat(new RecordsSchedulerModels.LearningRepeat("拉", "", "", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
-        store.enqueueLearningRepeat(null, "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L);
-        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L);
+        val studyLog = LocalStoreStudyLog(store)
+        studyLog.saveLearningRepeat(null)
+        store.saveLearningRepeat(RecordsSchedulerModels.LearningRepeat("", "", "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
+        store.saveLearningRepeat(RecordsSchedulerModels.LearningRepeat("拉", "", "", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
+        studyLog.enqueueLearningRepeat(null, "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L)
+        val item = RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
         store.enqueueLearningRepeat(item, "", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L);
-        store.enqueueLearningRepeat(item, null, RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L);
-        store.clearLearningRepeat(null);
+        studyLog.enqueueLearningRepeat(item, null, RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L)
+        studyLog.clearLearningRepeat(null)
         assertTrue(store.dueLearningRepeats(10_000L).isEmpty());
         assertEquals(0, count("learning_repeats"));
     }
 
     @Test
-    public void testInventoryFilteringSearchAndOrphanSuspendedSources() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+    fun testInventoryFilteringSearchAndOrphanSuspendedSources() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(
                                 sourceKikuNote(1L, "拉語", "ら", "ramen radical gap", "拉を見た。"),
                                 sourceKikuNote(2L, "提語", "てい", "carry", "提を見た。")
                         ),
-                        Arrays.asList(
+                        listOf(
                                 kikuCard(10L, 1L).build(),
                                 kikuCard(20L, 2L).build()
                         )
                 ),
-                Collections.singletonList(suspendedImport("拉")),
-                Arrays.asList(row("拉", 0), row("提", 0)),
+                listOf(suspendedImport("拉")),
+                listOf(row("拉", 0), row("提", 0)),
                 settings,
                 1000L,
                 2000L,
@@ -1822,7 +1807,7 @@ public final class LocalStoreInstrumentedTest {
         assertFalse(store.isKanjiLocallySuspended("拉"));
         store.setKanjiLocallySuspended("拉", true, 3500L);
         assertTrue(store.isKanjiLocallySuspended("拉"));
-        assertEquals(1, store.activeDashboardRows().size());
+        assertEquals(1, store.activeDashboardRows().size);
         assertEquals("提", store.activeDashboardRows().get(0).kanji);
         assertContainsKanji(store.searchKanjiInventory(null), "拉");
         assertContainsKanji(store.searchKanjiInventory("ramen"), "拉");
@@ -1838,54 +1823,52 @@ public final class LocalStoreInstrumentedTest {
                 .put("sync_id", 99L)
                 .commit();
 
-        List<RecordsImportModels.SuspendedImport> imports = store.suspendedImports();
-        assertEquals(1, imports.size());
+        val imports = store.suspendedImports()
+        assertEquals(1, imports.size);
         assertEquals("拉", imports.get(0).kanji);
-        assertEquals(1, imports.get(0).sources.size());
+        assertEquals(1, imports.get(0).sources.size);
     }
 
     @Test
-    public void testSimilarChoiceFallbackAndRepairEdgeStates() {
-        RecordsImportModels.SimilarKanjiChoiceCard submittedOnly = new RecordsImportModels.SimilarKanjiChoiceCard(
+    fun testSimilarChoiceFallbackAndRepairEdgeStates() {
+        val submittedOnly = RecordsImportModels.SimilarKanjiChoiceCard(
                 "拉",
                 "pull",
-                Arrays.asList("拉", "提", "謎"),
+                listOf("拉", "提", "謎"),
                 "拉|提|謎",
                 0L,
                 0L,
                 0L,
                 0,
                 0
-        );
+        )
 
-        RecordsImportModels.SimilarKanjiChoiceResult wrong = store.submitSimilarChoice(submittedOnly, "提", 1000L);
+        val wrong = store.submitSimilarChoice(submittedOnly, "提", 1000L)
 
         assertFalse(wrong.correct);
-        assertEquals(Arrays.asList("拉", "提"), wrong.repairKanji);
+        assertEquals(listOf("拉", "提"), wrong.repairKanji);
         assertEquals(1, count("similar_kanji_review_log"));
         assertEquals(2, count("similar_kanji_repair_queue"));
-        assertNull(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 1000L));
+        assertNull(store.nextDueInventorySimilarChoice(setOf("拉"), 1000L));
         assertNull(store.dueSimilarChoiceForActiveTarget("", 1000L));
         assertNull(store.nextDueSimilarWritingRepair(999L));
         store.saveSimilarWritingRepair(null);
-        store.saveSimilarWritingRepair(new RecordsImportModels.SimilarKanjiWritingRepair(0L, "拉", "拉", "拉|提|謎", "提", "pull", "pending", 1000L, "", 0, 1000L, 1000L, 0L));
+        store.saveSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair(0L, "拉", "拉", "拉|提|謎", "提", "pull", "pending", 1000L, "", 0, 1000L, 1000L, 0L));
 
-        RecordsImportModels.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(1000L);
-        assertNotNull(repair);
+        val repair = requireNotNull(store.nextDueSimilarWritingRepair(1000L))
         assertFalse(store.finishSimilarWritingRepair(99_999L, "", true, 1100L));
         store.saveSimilarWritingRepair(repair.withToken("expected-token", 1200L));
         assertFalse(store.finishSimilarWritingRepair(repair.id, "wrong-token", true, 1300L));
         assertTrue(store.finishSimilarWritingRepair(repair.id, "expected-token", false, 1400L));
 
-        RecordsImportModels.SimilarKanjiWritingRepair retry = store.nextDueSimilarWritingRepair(1400L);
-        assertNotNull(retry);
+        val retry = requireNotNull(store.nextDueSimilarWritingRepair(1400L))
         assertEquals(1, retry.attempts);
         assertTrue(store.finishSimilarWritingRepair(retry.id, "", true, 1500L));
     }
 
     @Test
-    public void testInventorySimilarChoiceReturnsNullWhenAllDueCandidatesAreUnavailable() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testInventorySimilarChoiceReturnsNullWhenAllDueCandidatesAreUnavailable() {
+        val db = store.getWritableDatabase()
         ContentValuesBuilder.insert(db, "similar_kanji_choice_state")
                 .put("target_kanji", "拉")
                 .put("choice_signature", "拉|提|謎")
@@ -1929,141 +1912,143 @@ public final class LocalStoreInstrumentedTest {
                 .put("completed_at", 0L)
                 .commit();
 
-        assertNull(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 1000L));
+        assertNull(store.nextDueInventorySimilarChoice(setOf("拉"), 1000L));
     }
 
     @Test
-    public void testPublicSimilarPairRebuildKeepsOnlyLocalInventoryPairs() throws Exception {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+    fun testPublicSimilarPairRebuildKeepsOnlyLocalInventoryPairs() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Arrays.asList(
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(
                                 sourceKikuNote(1L, "拉語", "ら", "pull", "拉語を見た。"),
                                 sourceKikuNote(2L, "提語", "てい", "carry", "提語を見た。")
                         ),
-                        Arrays.asList(
+                        listOf(
                                 kikuCard(10L, 1L).build(),
                                 kikuCard(20L, 2L).build()
                         )
                 ),
-                Collections.emptyList(),
-                Arrays.asList(row("拉", 0), row("提", 0)),
+                emptyList(),
+                listOf(row("拉", 0), row("提", 0)),
                 settings,
                 1000L,
                 2000L,
                 null
         );
 
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"));
+        val index = SimilarKanjiIndex.parseTsv(StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"))
         store.rebuildSimilarKanjiPairs(index, 2500L);
 
-        assertEquals(1, store.allLocalSimilarPairs().size());
+        assertEquals(1, store.allLocalSimilarPairs().size);
         assertTrue(store.hasSimilarLocalPair("拉", "提"));
         assertFalse(store.hasSimilarLocalPair("", "提"));
         assertFalse(store.hasSimilarLocalPair("拉", ""));
         assertFalse(store.hasSimilarLocalPair("拉", "拉"));
-        assertNotEquals("拉", store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2500L).targetKanji);
-        assertNull(store.nextDueInventorySimilarChoice(new java.util.HashSet<>(Arrays.asList("拉", "提")), 2500L));
+        assertNotEquals("拉", requireNotNull(store.nextDueInventorySimilarChoice(setOf("拉"), 2500L)).targetKanji);
+        assertNull(store.nextDueInventorySimilarChoice(hashSetOf("拉", "提"), 2500L));
     }
 
     @Test
-    public void testTimelineHelperBranchesAndSyncStatusHeadlines() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testTimelineHelperBranchesAndSyncStatusHeadlines() {
+        val db = store.getWritableDatabase()
         store.addNullableColumn(db, "settings", "optional_sync_note", "TEXT");
         store.addNullableColumn(db, "settings", "optional_sync_note", "TEXT");
         try {
             store.addNullableColumn(db, "missing_table", "optional_sync_note", "TEXT");
-            throw new AssertionError("Expected invalid ALTER TABLE to throw");
-        } catch (RuntimeException expected) {
+            throw AssertionError("Expected invalid ALTER TABLE to throw");
+        } catch (expected: RuntimeException) {
             assertNotNull(expected);
         }
 
         assertTrue(store.defaultTimelineTime(0L) > 0L);
         assertEquals(123L, store.defaultTimelineTime(123L));
         assertTrue(LocalStoreHistory.deserializeChoices(null).isEmpty());
-        assertEquals(Arrays.asList("拉", "提"), LocalStoreHistory.deserializeChoices("拉\t\t提"));
+        assertEquals(listOf("拉", "提"), LocalStoreHistory.deserializeChoices("拉\t\t提"));
         assertEquals("", LocalStoreHistory.serializeChoices(null));
         assertTrue(TimelineCopy.studyStateDetail(true, null, 3).contains("retired"));
         assertTrue(TimelineCopy.studyStateDetail(false, null, 3).contains("reopened"));
         assertTrue(TimelineCopy.studyStateDetail(false, 1, 3).contains("1 / target 3"));
-        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "manual", "good", false, false, true, 0), "good").contains("manual"));
-        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "recall", "again", false, false, false, 0), "again").contains("Recall missed"));
-        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "writing", "hard", true, false, false, 0), "hard").contains("not passed"));
+        assertTrue(TimelineCopy.reviewDetail(RecordsSchedulerModels.ReviewRequest("拉", "manual", "good", false, false, true, 0), "good").contains("manual"));
+        assertTrue(TimelineCopy.reviewDetail(RecordsSchedulerModels.ReviewRequest("拉", "recall", "again", false, false, false, 0), "again").contains("Recall missed"));
+        assertTrue(TimelineCopy.reviewDetail(RecordsSchedulerModels.ReviewRequest("拉", "writing", "hard", true, false, false, 0), "hard").contains("not passed"));
 
-        store.saveFailedSync(1000L, 2000L, "failed", "provider", "No provider");
+        store.saveFailedSync(1000L, 2000L, "failed", "provider", "No provider")
+        val failedSync = requireNotNull(store.latestSync())
         assertTrue(SettingsTextCopy.syncStatusHeadline(
-                LocalStoreBase.STATUS_SUCCESS.equals(store.latestSync().status),
-                store.latestSync().errorMessage,
-                store.latestSync().suspendedCards,
-                store.latestSync().importedKanji
+                LocalStoreBase.STATUS_SUCCESS.equals(failedSync.status),
+                failedSync.errorMessage,
+                failedSync.suspendedCards,
+                failedSync.importedKanji
         ).contains("Sync blocked: No provider"));
-        saveSingleRowSync(row("確", 0), Collections.emptyList(), 3000L);
+        saveSingleRowSync(row("確", 0), emptyList(), 3000L);
+        val latestSync = requireNotNull(store.latestSync())
         assertTrue(SettingsTextCopy.syncStatusHeadline(
-                LocalStoreBase.STATUS_SUCCESS.equals(store.latestSync().status),
-                store.latestSync().errorMessage,
-                store.latestSync().suspendedCards,
-                store.latestSync().importedKanji
+                LocalStoreBase.STATUS_SUCCESS.equals(latestSync.status),
+                latestSync.errorMessage,
+                latestSync.suspendedCards,
+                latestSync.importedKanji
         ).contains("rare kanji added"));
     }
 
     @Test
-    public void testHistoryHelpersSkipMissingSourcesDuplicatesAndEmptyAggregates() {
-        SQLiteDatabase db = store.getWritableDatabase();
-        RecordsImportModels.SimilarKanjiChoiceCard card = new RecordsImportModels.SimilarKanjiChoiceCard(
+    fun testHistoryHelpersSkipMissingSourcesDuplicatesAndEmptyAggregates() {
+        val db = store.getWritableDatabase()
+        val card = RecordsImportModels.SimilarKanjiChoiceCard(
                 "拉",
                 "pull",
-                Arrays.asList("拉", "提"),
+                listOf("拉", "提"),
                 "拉|提",
                 0L,
                 0L,
                 0L,
                 0,
                 0
-        );
+        )
 
-        store.enqueueSimilarWritingRepair(db, card, "", null, 1000L);
+        store.enqueueSimilarWritingRepair(db, card, "", "", 1000L);
         assertEquals(0, count("similar_kanji_repair_queue"));
 
-        store.enqueueSimilarWritingRepair(db, card, "提", null, 1100L);
+        store.enqueueSimilarWritingRepair(db, card, "提", "", 1100L);
         store.enqueueSimilarWritingRepair(db, card, "提", "拉", 1200L);
         assertEquals(1, count("similar_kanji_repair_queue"));
         assertScalarString(
                 "similar_kanji_repair_queue",
                 "wrong_selection",
                 "target_kanji=? AND repair_kanji=?",
-                new String[]{"拉", "提"},
+                arrayOf("拉", "提"),
                 ""
         );
 
-        LocalStoreBase.SourceSnapshot missingSuspended = store.firstSuspendedSourceForKanji(db, "孤");
+        val missingSuspended = store.firstSuspendedSourceForKanji(db, "孤")
         assertEquals("", missingSuspended.expression);
         assertEquals("", missingSuspended.reading);
-        LocalStoreBase.SourceSnapshot emptyImport = store.sourceFromImport(
-                new RecordsImportModels.SuspendedImport("孤", null, false, 0, Collections.emptyList())
-        );
+        val emptyImport = store.sourceFromImport(
+                RecordsImportModels.SuspendedImport("孤", null, false, 0, emptyList())
+        )
         assertEquals("", emptyImport.expression);
         assertEquals("", emptyImport.reading);
 
-        KanjiInventoryBuilder inventory = new KanjiInventoryBuilder(1250L, RecordsSyncModels.Settings.kikuDefaults());
+        val inventory = KanjiInventoryBuilder(1250L, RecordsSyncModels.Settings.kikuDefaults())
         inventory.addKnownKanji("");
         store.writeKanjiInventory(db, inventory);
         assertEquals(0, count("kanji_inventory"));
 
-        RecordsStudyModels.StudyItem unchanged = new RecordsStudyModels.StudyItem("拉", "review", 0L, 2.0, 4.0, 1, 0, 0, 0, null, 1000L);
-        store.appendStudyStateTimelineEvent(db, unchanged, new LocalStoreBase.StudySnapshot("review"), 7L, 1300L, 3);
+        val unchanged = RecordsStudyModels.StudyItem("拉", "review", 0L, 2.0, 4.0, 1, 0, 0, 0, null, 1000L)
+        store.appendStudyStateTimelineEvent(db, unchanged, LocalStoreBase.StudySnapshot("review"), 7L, 1300L, 3);
         assertEquals(0, countTimelineType("拉", "retired"));
         assertEquals(0, countTimelineType("拉", "reopened"));
 
         store.createHistoricalSyncTables(db);
-        Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
-        aggregates.put("", new HistoricalKanjiAggregate(""));
+        val aggregates = LinkedHashMap<String, HistoricalKanjiAggregate>()
+        aggregates.put("", HistoricalKanjiAggregate(""));
         store.insertHistoricalKanjiAggregates(db, 7L, 1400L, aggregates);
         assertEquals(0, count("sync_kanji_snapshots"));
     }
 
     @Test
-    public void testHistoricalBackfillReturnsWhenSnapshotsOrNotesAlreadyExist() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testHistoricalBackfillReturnsWhenSnapshotsOrNotesAlreadyExist() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertKanjiSnapshot(db, 1L, 2000L, "既", 1, 0, 0, 10, "existing", 1, 0, null, null, null);
@@ -2079,8 +2064,8 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testHistoricalBackfillSkipsCardsWithoutNotesAndNotesWithoutDecks() {
-        SQLiteDatabase db = store.getWritableDatabase();
+    fun testHistoricalBackfillSkipsCardsWithoutNotesAndNotesWithoutDecks() {
+        val db = store.getWritableDatabase()
         store.createHistoricalSyncTables(db);
         insertSyncRun(db, 1L, 1000L, 2000L);
         insertSourceNote(db, 10L, "孤語", "孤語を見た。");
@@ -2094,18 +2079,18 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testHistoricalSyncSkipsOrphanCardsAndUndeckedNotes() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note noteWithoutCards = sourceKikuNote(1L, "孤語", "こ", "orphan note", "孤語を見た。");
-        RecordsSyncModels.Card cardWithoutNote = kikuCard(900L, 99L).history(15, 4, 0).build();
+    fun testHistoricalSyncSkipsOrphanCardsAndUndeckedNotes() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val noteWithoutCards = sourceKikuNote(1L, "孤語", "こ", "orphan note", "孤語を見た。")
+        val cardWithoutNote = kikuCard(900L, 99L).history(15, 4, 0).build()
 
         store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(
-                        Collections.singletonList(noteWithoutCards),
-                        Collections.singletonList(cardWithoutNote)
+                RecordsSyncModels.CollectionSnapshot(
+                        listOf(noteWithoutCards),
+                        listOf(cardWithoutNote)
                 ),
-                Collections.emptyList(),
-                Collections.emptyList(),
+                emptyList(),
+                emptyList(),
                 settings,
                 1000L,
                 2000L,
@@ -2120,11 +2105,11 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testStudyStreakCountsConsecutiveLocalReviewDays() {
-        long today = localDayStart(System.currentTimeMillis());
-        long yesterday = moveLocalDays(today, -1);
-        long twoDaysAgo = moveLocalDays(today, -2);
-        long fiveDaysAgo = moveLocalDays(today, -5);
+    fun testStudyStreakCountsConsecutiveLocalReviewDays() {
+        val today = localDayStart(System.currentTimeMillis())
+        val yesterday = moveLocalDays(today, -1)
+        val twoDaysAgo = moveLocalDays(today, -2)
+        val fiveDaysAgo = moveLocalDays(today, -5)
 
         store.saveReview(review("拉", "token-five"), "good", fiveDaysAgo + 60_000L);
         store.saveReview(review("提", "token-two"), "good", twoDaysAgo + 60_000L);
@@ -2133,48 +2118,47 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(review("確", "token-today-b"), "easy", today + 120_000L);
         store.saveReview(review("確", "token-today-c"), "hard", today + 180_000L);
 
-        StudyStatsStore.StudyStreak streak = store.studyStreak(today + 3_600_000L);
+        val streak = store.studyStreak(today + 3_600_000L)
         assertEquals(3, streak.currentDays);
         assertEquals(3, streak.bestDays);
         assertTrue(streak.studiedToday);
         assertEquals(3, streak.reviewsToday);
         assertEquals(today + 180_000L, streak.lastStudyAtMillis);
-        assertEquals(2, store.studiedKanjiSince(today).size());
+        assertEquals(2, store.studiedKanjiSince(today).size);
 
-        StudyStatsStore.StudyStreak tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L);
+        val tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L)
         assertEquals(3, tomorrow.currentDays);
         assertEquals(3, tomorrow.bestDays);
         assertFalse(tomorrow.studiedToday);
         assertEquals(0, tomorrow.reviewsToday);
 
-        StudyStatsStore.StudyStreak afterMiss = store.studyStreak(moveLocalDays(today, 2) + 3_600_000L);
+        val afterMiss = store.studyStreak(moveLocalDays(today, 2) + 3_600_000L)
         assertEquals(0, afterMiss.currentDays);
         assertEquals(3, afterMiss.bestDays);
         assertFalse(afterMiss.studiedToday);
     }
 
     @Test
-    public void testUnselectedSuspendedCardsStayOutOfArchiveButRemainInHistory() {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note suspendedNote = sourceKikuNote(77L, "孤語", "こ", "alone", "孤語を見た。");
-        RecordsSyncModels.Card suspendedCard = kikuCard(770L, 77L)
+    fun testUnselectedSuspendedCardsStayOutOfArchiveButRemainInHistory() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val suspendedNote = sourceKikuNote(77L, "孤語", "こ", "alone", "孤語を見た。")
+        val suspendedCard = kikuCard(770L, 77L)
                 .suspended()
                 .history(0, 5, 1)
                 .fsrs(3.5, 7.5, 0.22)
-                .build();
+                .build()
 
-        long syncId = store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(Collections.singletonList(suspendedNote), Collections.singletonList(suspendedCard)),
-                Collections.emptyList(),
-                Collections.emptyList(),
+        val syncId = store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(listOf(suspendedNote), listOf(suspendedCard)),
+                emptyList(),
+                emptyList(),
                 settings,
                 1000L,
                 2000L,
                 null
-        );
+        )
 
-        LocalStore.SyncStatus status = store.latestSync();
-        assertNotNull(status);
+        val status = requireNotNull(store.latestSync())
         assertEquals(0, status.activeCards);
         assertEquals(0, status.suspendedCards);
         assertEquals(0, status.importedKanji);
@@ -2187,21 +2171,21 @@ public final class LocalStoreInstrumentedTest {
                 "sync_note_snapshots",
                 "deck_names",
                 "sync_id=? AND note_id=?",
-                new String[]{Long.toString(syncId), "77"},
+                arrayOf(syncId.toString(), "77"),
                 "Kiku"
         );
     }
 
     @Test
-    public void testCursorReadersHandleOldSchemaNullsAndValues() {
-        MatrixCursor cursor = new MatrixCursor(new String[]{
+    fun testCursorReadersHandleOldSchemaNullsAndValues() {
+        val cursor = MatrixCursor(arrayOf(
                 "text_value",
                 "int_value",
                 "long_value",
                 "double_value",
                 "null_value"
-        });
-        cursor.addRow(new Object[]{"value", 7, 8L, 1.25, null});
+        ))
+        cursor.addRow(arrayOf<Any?>("value", 7, 8L, 1.25, null));
         assertTrue(cursor.moveToFirst());
 
         assertEquals("value", LocalStoreBase.string(cursor, "text_value"));
@@ -2213,17 +2197,17 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(Integer.valueOf(7), LocalStoreBase.nullableInt(cursor, "int_value"));
         assertNull(LocalStoreBase.nullableInt(cursor, "null_value"));
         assertNull(LocalStoreBase.nullableInt(cursor, "missing"));
-        assertEquals(Long.valueOf(8L), LocalStoreBase.nullableLong(cursor, "long_value"));
+        assertEquals(java.lang.Long.valueOf(8L), LocalStoreBase.nullableLong(cursor, "long_value"));
         assertNull(LocalStoreBase.nullableLong(cursor, "null_value"));
         assertNull(LocalStoreBase.nullableLong(cursor, "missing"));
-        assertEquals(Double.valueOf(1.25), LocalStoreBase.nullableDouble(cursor, "double_value"));
+        assertEquals(java.lang.Double.valueOf(1.25), LocalStoreBase.nullableDouble(cursor, "double_value"));
         assertNull(LocalStoreBase.nullableDouble(cursor, "null_value"));
         assertNull(LocalStoreBase.nullableDouble(cursor, "missing"));
         assertEquals(8L, LocalStoreBase.longValue(cursor, "long_value"));
         assertEquals(0L, LocalStoreBase.longValue(cursor, "null_value"));
         assertEquals(0L, LocalStoreBase.longValue(cursor, "missing"));
 
-        ContentValues values = new ContentValues();
+        val values = ContentValues()
         LocalStoreBase.putNullableDouble(values, "present", 2.5);
         LocalStoreBase.putNullableDouble(values, "absent", null);
         assertTrue(values.containsKey("present"));
@@ -2231,19 +2215,19 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testInventoryBuilderAndSettingsValuesNormalizeParserEdges() {
-        KanjiInventoryBuilder empty = new KanjiInventoryBuilder(1L, RecordsSyncModels.Settings.kikuDefaults());
+    fun testInventoryBuilderAndSettingsValuesNormalizeParserEdges() {
+        val empty = KanjiInventoryBuilder(1L, RecordsSyncModels.Settings.kikuDefaults())
         empty.addKnownKanji(null);
         assertTrue(empty.build(Collections.emptyMap()).isEmpty());
 
-        KanjiInventoryBuilder builder = new KanjiInventoryBuilder(2000L, RecordsSyncModels.Settings.kikuDefaults());
-        builder.addSourceText(Collections.singletonList("拉"), "pull", "ら", "拉語", "拉語を見た。");
-        builder.addSourceText(Collections.singletonList("拉"), "", "ラー", "", "");
-        builder.addSourceText(Collections.singletonList("拉"), null, "ラ", null, null);
-        builder.addSourceText(Collections.singletonList("拉"), "drag", "ろ", "拉致", "拉致した。");
-        Map<String, KanjiInventoryBuilder.PreviousItem> previous = Collections.singletonMap(
+        val builder = KanjiInventoryBuilder(2000L, RecordsSyncModels.Settings.kikuDefaults())
+        builder.addSourceText(listOf("拉"), "pull", "ら", "拉語", "拉語を見た。");
+        builder.addSourceText(listOf("拉"), "", "ラー", "", "");
+        builder.addSourceText(listOf("拉"), null, "ラ", null, null);
+        builder.addSourceText(listOf("拉"), "drag", "ろ", "拉致", "拉致した。");
+        val previous = Collections.singletonMap(
                 "拉",
-                new KanjiInventoryBuilder.PreviousItem(
+                KanjiInventoryBuilder.PreviousItem(
                 "old pull",
                 "old reading",
                 "deck:Kiku 拉",
@@ -2251,40 +2235,39 @@ public final class LocalStoreInstrumentedTest {
                 1,
                 1000L,
                 1000L
-        ));
-        KanjiInventoryBuilder.BuiltItem item = builder.build(previous).get(0);
+        ))
+        val item = builder.build(previous).get(0)
         assertEquals("pull", item.primaryMeaning());
         assertEquals("ら / ラー / ラ +1 more", item.readings());
         assertTrue(item.searchText().contains("old pull"));
         assertTrue(item.searchText().contains("deck:kiku 拉"));
 
-        LocalStore.ReminderSettings earlyReminder = new LocalStore.ReminderSettings(true, -3, 90).normalized();
+        val earlyReminder = LocalStoreBase.ReminderSettings(true, -3, 90).normalized()
         assertEquals("00:59", earlyReminder.displayTime());
-        LocalStore.ReminderSettings lateReminder = new LocalStore.ReminderSettings(false, 30, -4).normalized();
+        val lateReminder = LocalStoreBase.ReminderSettings(false, 30, -4).normalized()
         assertEquals("23:00", lateReminder.displayTime());
 
-        LocalStore.AutoSyncSettings disabled = new LocalStore.AutoSyncSettings(false, true, -2, 70, -1L, -2L, -3L).normalized();
+        val disabled = LocalStoreBase.AutoSyncSettings(false, true, -2, 70, -1L, -2L, -3L).normalized()
         assertFalse(disabled.configured);
         assertFalse(disabled.enabled);
         assertEquals("00:59", disabled.displayTime());
         assertEquals(0L, disabled.lastAttemptAt);
         assertEquals(0L, disabled.lastSuccessAt);
         assertEquals(0L, disabled.nextRunAt);
-        LocalStore.AutoSyncSettings enabled = new LocalStore.AutoSyncSettings(true, true, 25, -3, 1L, 2L, 3L).normalized();
+        val enabled = LocalStoreBase.AutoSyncSettings(true, true, 25, -3, 1L, 2L, 3L).normalized()
         assertTrue(enabled.enabled);
         assertEquals("23:00", enabled.displayTime());
 
-        LocalStore.AutoUpdateStatus emptyUpdate = new LocalStore.AutoUpdateStatus(true, 0L, null, null, null, null);
+        val emptyUpdate = LocalStoreBase.AutoUpdateStatus(true, 0L, null, null, null, null)
         assertFalse(emptyUpdate.hasPendingUpdate());
         assertEquals("", emptyUpdate.lastResult);
-        LocalStore.AutoUpdateStatus pendingUpdate = new LocalStore.AutoUpdateStatus(false, 123L, "ready", "0.4.34", "kani.apk", null);
+        val pendingUpdate = LocalStoreBase.AutoUpdateStatus(false, 123L, "ready", "0.4.34", "kani.apk", null)
         assertTrue(pendingUpdate.hasPendingUpdate());
         assertEquals("", pendingUpdate.pendingMessage);
     }
 
-    private void assertLatestSyncArchivedSuspendedCard() {
-        LocalStore.SyncStatus status = store.latestSync();
-        assertNotNull(status);
+    private fun assertLatestSyncArchivedSuspendedCard() {
+        val status = requireNotNull(store.latestSync())
         assertEquals("success", status.status);
         assertEquals(1, status.activeCards);
         assertEquals(1, status.suspendedCards);
@@ -2292,7 +2275,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals("Archived locally before provider cleanup.", status.removalMessage);
     }
 
-    private void assertSyncMirrorCounts() {
+    private fun assertSyncMirrorCounts() {
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
         assertEquals(1, count("suspended_archive"));
@@ -2307,58 +2290,58 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(count("sync_kanji_snapshots") >= 2);
     }
 
-    private void assertDashboardRowFsrsStored() {
+    private fun assertDashboardRowFsrsStored() {
         assertEquals("拉", store.dashboardRows().get(0).kanji);
         assertClose(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability);
     }
 
-    private void assertSuspendedImportStored() {
-        List<RecordsImportModels.SuspendedImport> storedImports = store.suspendedImports();
-        assertEquals(1, storedImports.size());
+    private fun assertSuspendedImportStored() {
+        val storedImports = store.suspendedImports()
+        assertEquals(1, storedImports.size);
         assertEquals("拉", storedImports.get(0).kanji);
-        assertEquals(1, storedImports.get(0).sources.size());
+        assertEquals(1, storedImports.get(0).sources.size);
     }
 
-    private void assertImportAuditStored() {
-        assertScalarString("import_rule_audits", "enabled_sources", "sync_id=?", new String[]{"1"}, "suspended");
-        assertScalarString("import_rule_audits", "browser_query", "sync_id=?", new String[]{"1"}, "");
-        assertScalarString("import_decisions", "reason_code", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended_import");
-        assertScalarString("import_decisions", "source_types", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended");
-        assertScalarString("import_decisions", "rule_types", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended");
-        assertScalarString("import_decisions", "source_card_ids", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "20");
+    private fun assertImportAuditStored() {
+        assertScalarString("import_rule_audits", "enabled_sources", "sync_id=?", arrayOf("1"), "suspended");
+        assertScalarString("import_rule_audits", "browser_query", "sync_id=?", arrayOf("1"), "");
+        assertScalarString("import_decisions", "reason_code", "sync_id=? AND kanji=?", arrayOf("1", "拉"), "suspended_import");
+        assertScalarString("import_decisions", "source_types", "sync_id=? AND kanji=?", arrayOf("1", "拉"), "suspended");
+        assertScalarString("import_decisions", "rule_types", "sync_id=? AND kanji=?", arrayOf("1", "拉"), "suspended");
+        assertScalarString("import_decisions", "source_card_ids", "sync_id=? AND kanji=?", arrayOf("1", "拉"), "20");
     }
 
-    private void assertInitialSimilarChoiceDue(RecordsImportModels.SimilarKanjiChoiceCard pull) {
-        assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
+    private fun assertInitialSimilarChoiceDue(pull: RecordsImportModels.SimilarKanjiChoiceCard) {
+        assertEquals(listOf("拉", "提", "謎"), pull.choices);
         assertEquals("pull", pull.primaryMeaning);
         assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2000L));
         assertEquals(3, store.dueSimilarChoiceTaskCount(2000L));
         assertEquals(0, store.dueSimilarWritingRepairTaskCount(2000L));
         assertEquals(3, store.dueSimilarStudyTaskCount(2000L));
-        String inventoryTarget = store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji;
+        val inventoryTarget = store.nextDueInventorySimilarChoice(setOf("拉"), 2000L)!!.targetKanji
         assertNotEquals("inventory-only cards should skip active targets", "拉", inventoryTarget);
     }
 
-    private void assertWrongSimilarChoiceCreatesRepair(RecordsImportModels.SimilarKanjiChoiceResult wrong) {
+    private fun assertWrongSimilarChoiceCreatesRepair(wrong: RecordsImportModels.SimilarKanjiChoiceResult) {
         assertFalse(wrong.correct);
-        assertEquals(Arrays.asList("拉", "提"), wrong.repairKanji);
+        assertEquals(listOf("拉", "提"), wrong.repairKanji);
         assertEquals(0, count("review_log"));
         assertEquals(1, count("similar_kanji_review_log"));
         assertEquals(2, count("similar_kanji_repair_queue"));
-        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L).repairKanji);
+        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L)!!.repairKanji);
         assertNull(store.dueSimilarChoiceForActiveTarget("拉", 2500L));
         assertEquals(2, store.dueSimilarChoiceTaskCount(2500L));
         assertEquals(2, store.dueSimilarWritingRepairTaskCount(2500L));
         assertEquals(4, store.dueSimilarStudyTaskCount(2500L));
     }
 
-    private void assertSimilarChoiceRetryDue() {
+    private fun assertSimilarChoiceRetryDue() {
         assertEquals(3, store.dueSimilarChoiceTaskCount(3000L));
         assertEquals(0, store.dueSimilarWritingRepairTaskCount(3000L));
         assertEquals(3, store.dueSimilarStudyTaskCount(3000L));
     }
 
-    private void assertCorrectSimilarChoicePasses(RecordsImportModels.SimilarKanjiChoiceResult correct) {
+    private fun assertCorrectSimilarChoicePasses(correct: RecordsImportModels.SimilarKanjiChoiceResult) {
         assertTrue(correct.correct);
         assertNull(store.dueSimilarChoiceForActiveTarget("拉", 3200L));
         assertEquals(2, store.dueSimilarStudyTaskCount(3200L));
@@ -2366,37 +2349,37 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(2, count("similar_kanji_review_log"));
     }
 
-    private static void assertContainsKanji(List<RecordsImportModels.KanjiInventoryItem> items, String kanji) {
-        for (RecordsImportModels.KanjiInventoryItem item : items) {
+    private fun assertContainsKanji(items: List<RecordsImportModels.KanjiInventoryItem>, kanji: String) {
+        for (item in items) {
             if (kanji.equals(item.kanji)) {
                 return;
             }
         }
-        throw new AssertionError("Expected search results to include " + kanji);
+        throw AssertionError("Expected search results to include " + kanji);
     }
 
-    private long saveSingleRowSync(RecordsImportModels.DashboardRow row, List<RecordsImportModels.SuspendedImport> imports, long finishedAt) {
-        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
-        RecordsSyncModels.Note note = sourceKikuNote(1L, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。");
-        RecordsSyncModels.Card card = kikuCard(10L, 1L).build();
+    private fun saveSingleRowSync(row: RecordsImportModels.DashboardRow, imports: List<RecordsImportModels.SuspendedImport>, finishedAt: Long): Long {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val note = sourceKikuNote(1L, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。")
+        val card = kikuCard(10L, 1L).build()
         return store.saveSuccessfulSync(
-                new RecordsSyncModels.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
-                imports,
-                Collections.singletonList(row),
-                settings,
-                finishedAt - 500L,
-                finishedAt,
-                null
-        );
+                snapshot = RecordsSyncModels.CollectionSnapshot(listOf(note), listOf(card)),
+                imports = imports,
+                rows = listOf(row),
+                settings = settings,
+                timing = LocalStoreBase.SyncTiming(finishedAt - 500L, finishedAt),
+                removalMessage = null,
+                similarIndex = null,
+        )
     }
 
-    private RecordsImportModels.DashboardRow row(String kanji, int matureSupportCount) {
+    private fun row(kanji: String, matureSupportCount: Int): RecordsImportModels.DashboardRow {
         return rowWithStats(kanji, 88, matureSupportCount);
     }
 
-    private RecordsImportModels.DashboardRow rowWithStats(String kanji, int weaknessScore, int matureSupportCount) {
-        RecordsImportModels.Example active = new RecordsImportModels.Example("active", 10L, 1L, kanji + "語", "ら", "example", kanji + "を見た。", matureSupportCount > 0, 0);
-        return new RecordsImportModels.DashboardRow(
+    private fun rowWithStats(kanji: String, weaknessScore: Int, matureSupportCount: Int): RecordsImportModels.DashboardRow {
+        val active = RecordsImportModels.Example("active", 10L, 1L, kanji + "語", "ら", "example", kanji + "を見た。", matureSupportCount > 0, 0)
+        return RecordsImportModels.DashboardRow(
                 kanji,
                 3401,
                 "ramen radical gap",
@@ -2408,31 +2391,31 @@ public final class LocalStoreInstrumentedTest {
                 1,
                 0,
                 matureSupportCount,
-                Collections.singletonList(active)
+                listOf(active)
         );
     }
 
-    private RecordsImportModels.SuspendedImport suspendedImport(String kanji) {
-        RecordsImportModels.SuspendedSource source = new RecordsImportModels.SuspendedSource(kanji, 20L, 2L, kanji + "例", "ら", "archive example", kanji + "を練習した。");
-        return new RecordsImportModels.SuspendedImport(kanji, 3401, true, 3000, Collections.singletonList(source));
+    private fun suspendedImport(kanji: String): RecordsImportModels.SuspendedImport {
+        val source = RecordsImportModels.SuspendedSource(kanji, 20L, 2L, kanji + "例", "ら", "archive example", kanji + "を練習した。")
+        return RecordsImportModels.SuspendedImport(kanji, 3401, true, 3000, listOf(source));
     }
 
-    private KanjiImpactAnalyzer.Row impactRow(KanjiImpactAnalyzer.Report report, String kanji) {
-        for (KanjiImpactAnalyzer.Row row : report.rows) {
+    private fun impactRow(report: KanjiImpactAnalyzer.Report, kanji: String): KanjiImpactAnalyzer.Row {
+        for (row in report.rows) {
             if (kanji.equals(row.kanji)) {
                 return row;
             }
         }
-        throw new AssertionError("Expected impact row for " + kanji);
+        throw AssertionError("Expected impact row for " + kanji);
     }
 
-    private int countTimelineType(String kanji, String eventType) {
+    private fun countTimelineType(kanji: String, eventType: String): Int {
         return countTimelineType(store.timelineForKanji(kanji), eventType);
     }
 
-    private int countTimelineType(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType) {
-        int count = 0;
-        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
+    private fun countTimelineType(timeline: RecordsStudyModels.KanjiRecoveryTimeline, eventType: String): Int {
+        var count = 0
+        for (event in timeline.events) {
             if (eventType.equals(event.eventType)) {
                 count++;
             }
@@ -2440,22 +2423,22 @@ public final class LocalStoreInstrumentedTest {
         return count;
     }
 
-    private boolean hasTimelineType(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType) {
+    private fun hasTimelineType(timeline: RecordsStudyModels.KanjiRecoveryTimeline, eventType: String): Boolean {
         return countTimelineType(timeline, eventType) > 0;
     }
 
-    private void assertTimelineEventDetailContains(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType, String detail) {
-        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
+    private fun assertTimelineEventDetailContains(timeline: RecordsStudyModels.KanjiRecoveryTimeline, eventType: String, detail: String) {
+        for (event in timeline.events) {
             if (eventType.equals(event.eventType)) {
                 assertTrue(event.detail.contains(detail));
                 return;
             }
         }
-        throw new AssertionError("Expected timeline event " + eventType);
+        throw AssertionError("Expected timeline event " + eventType);
     }
 
-    private static void insertSyncRun(SQLiteDatabase db, long id, long startedAt, long finishedAt) {
-        ContentValues values = new ContentValues();
+    private fun insertSyncRun(db: SQLiteDatabase, id: Long, startedAt: Long, finishedAt: Long) {
+        val values = ContentValues()
         values.put("id", id);
         values.put("started_at", startedAt);
         values.put("finished_at", finishedAt);
@@ -2472,8 +2455,8 @@ public final class LocalStoreInstrumentedTest {
         db.insertOrThrow("sync_runs", null, values);
     }
 
-    private static void insertSourceNote(SQLiteDatabase db, long noteId, String expression, String sentence) {
-        ContentValues values = new ContentValues();
+    private fun insertSourceNote(db: SQLiteDatabase, noteId: Long, expression: String, sentence: String) {
+        val values = ContentValues()
         values.put("note_id", noteId);
         values.put("model_name", "Kiku");
         values.put("expression", expression);
@@ -2486,8 +2469,8 @@ public final class LocalStoreInstrumentedTest {
         db.insertOrThrow("source_notes", null, values);
     }
 
-    private static void insertSourceCard(SQLiteDatabase db, long cardId, long noteId, String deckName) {
-        ContentValues values = new ContentValues();
+    private fun insertSourceCard(db: SQLiteDatabase, cardId: Long, noteId: Long, deckName: String) {
+        val values = ContentValues()
         values.put("card_id", cardId);
         values.put("note_id", noteId);
         values.put("deck_name", deckName);
@@ -2502,23 +2485,8 @@ public final class LocalStoreInstrumentedTest {
         db.insertOrThrow("source_cards", null, values);
     }
 
-    private static void insertKanjiSnapshot(
-            SQLiteDatabase db,
-            long syncId,
-            long finishedAt,
-            String kanji,
-            int activeCards,
-            int suspendedCards,
-            int matureSupportCount,
-            int weaknessScore,
-            String reasonCode,
-            int activeExampleCount,
-            int suspendedExampleCount,
-            Double stability,
-            Double difficulty,
-            Double retrievability
-    ) {
-        ContentValues values = new ContentValues();
+    private fun insertKanjiSnapshot(db: SQLiteDatabase, syncId: Long, finishedAt: Long, kanji: String, activeCards: Int, suspendedCards: Int, matureSupportCount: Int, weaknessScore: Int, reasonCode: String, activeExampleCount: Int, suspendedExampleCount: Int, stability: Double?, difficulty: Double?, retrievability: Double?) {
+        val values = ContentValues()
         values.put("sync_id", syncId);
         values.put("finished_at", finishedAt);
         values.put("kanji", kanji);
@@ -2538,8 +2506,8 @@ public final class LocalStoreInstrumentedTest {
         db.insertOrThrow("sync_kanji_snapshots", null, values);
     }
 
-    private static void insertNoteSnapshot(SQLiteDatabase db, long syncId, long finishedAt, long noteId, String extractedKanji) {
-        ContentValues values = new ContentValues();
+    private fun insertNoteSnapshot(db: SQLiteDatabase, syncId: Long, finishedAt: Long, noteId: Long, extractedKanji: String) {
+        val values = ContentValues()
         values.put("sync_id", syncId);
         values.put("finished_at", finishedAt);
         values.put("note_id", noteId);
@@ -2557,22 +2525,8 @@ public final class LocalStoreInstrumentedTest {
         db.insertOrThrow("sync_note_snapshots", null, values);
     }
 
-    private static void insertCardSnapshot(
-            SQLiteDatabase db,
-            long syncId,
-            long finishedAt,
-            long cardId,
-            long noteId,
-            boolean suspended,
-            boolean mature,
-            int intervalDays,
-            int reps,
-            int lapses,
-            Double stability,
-            Double difficulty,
-            Double retrievability
-    ) {
-        ContentValues values = new ContentValues();
+    private fun insertCardSnapshot(db: SQLiteDatabase, syncId: Long, finishedAt: Long, cardId: Long, noteId: Long, suspended: Boolean, mature: Boolean, intervalDays: Int, reps: Int, lapses: Int, stability: Double?, difficulty: Double?, retrievability: Double?) {
+        val values = ContentValues()
         values.put("sync_id", syncId);
         values.put("started_at", finishedAt - 500L);
         values.put("finished_at", finishedAt);
@@ -2583,36 +2537,36 @@ public final class LocalStoreInstrumentedTest {
         values.put("model_id", 1L);
         values.put("model_name", "Kiku");
         values.put("ord", 0);
-        values.put("queue", suspended ? -1 : 2);
+        values.put("queue", if (suspended) -1 else 2);
         values.put("type", 2);
         values.put("due", 0);
         values.put("interval_days", intervalDays);
         values.put("reps", reps);
         values.put("lapses", lapses);
-        values.put("suspended", suspended ? 1 : 0);
+        values.put("suspended", if (suspended) 1 else 0)
         putNullableDouble(values, "fsrs_stability", stability);
         putNullableDouble(values, "fsrs_difficulty", difficulty);
         putNullableDouble(values, "fsrs_retrievability", retrievability);
-        values.put("mature", mature ? 1 : 0);
+        values.put("mature", if (mature) 1 else 0)
         db.insertOrThrow("sync_card_snapshots", null, values);
     }
 
-    private static void putNullableDouble(ContentValues values, String key, Double value) {
+    private fun putNullableDouble(values: ContentValues, key: String, value: Double?) {
         if (value != null) {
             values.put(key, value);
         }
     }
 
-    private RecordsImportModels.SimilarKanjiChoiceCard findSimilarChoice(String targetKanji) {
-        for (RecordsImportModels.SimilarKanjiChoiceCard card : store.allSimilarChoiceCards()) {
+    private fun findSimilarChoice(targetKanji: String): RecordsImportModels.SimilarKanjiChoiceCard {
+        for (card in store.allSimilarChoiceCards()) {
             if (targetKanji.equals(card.targetKanji)) {
                 return card;
             }
         }
-        throw new AssertionError("No similar-choice card for " + targetKanji);
+        throw AssertionError("No similar-choice card for " + targetKanji);
     }
 
-    private void createLegacyV1Schema(SQLiteDatabase db) {
+    private fun createLegacyV1Schema(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE sync_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
         db.execSQL("CREATE TABLE source_notes (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
@@ -2628,7 +2582,7 @@ public final class LocalStoreInstrumentedTest {
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
     }
 
-    private void createLegacyV15SchedulerSchema(SQLiteDatabase db) {
+    private fun createLegacyV15SchedulerSchema(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
         db.execSQL("CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))");
@@ -2636,9 +2590,9 @@ public final class LocalStoreInstrumentedTest {
         db.execSQL("CREATE TABLE similar_kanji_repair_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, repair_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, wrong_selection TEXT NOT NULL, prompt_meaning TEXT NOT NULL, status TEXT NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER NOT NULL DEFAULT 0)");
     }
 
-    private int count(String table) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
+    private fun count(table: String): Int {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("SELECT COUNT(*) FROM " + table, null)
         try {
             assertTrue(cursor.moveToFirst());
             return cursor.getInt(0);
@@ -2647,9 +2601,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private int countWhere(String table, String where, String... args) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + table + " WHERE " + where, args);
+    private fun countWhere(table: String, where: String, vararg args: String): Int {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("SELECT COUNT(*) FROM " + table + " WHERE " + where, args)
         try {
             assertTrue(cursor.moveToFirst());
             return cursor.getInt(0);
@@ -2658,9 +2612,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertScalarString(String table, String column, String where, String[] args, String expected) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT " + column + " FROM " + table + " WHERE " + where, args);
+    private fun assertScalarString(table: String, column: String, where: String, args: Array<String>, expected: String) {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("SELECT " + column + " FROM " + table + " WHERE " + where, args)
         try {
             assertTrue(cursor.moveToFirst());
             assertEquals(expected, cursor.getString(0));
@@ -2669,9 +2623,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertScalarLong(String table, String column, String where, String[] args, long expected) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT " + column + " FROM " + table + " WHERE " + where, args);
+    private fun assertScalarLong(table: String, column: String, where: String, args: Array<String>, expected: Long) {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("SELECT " + column + " FROM " + table + " WHERE " + where, args)
         try {
             assertTrue(cursor.moveToFirst());
             assertEquals(expected, cursor.getLong(0));
@@ -2680,9 +2634,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertSourceCardFsrs(double stability, double difficulty, double retrievability) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM source_cards WHERE card_id=10", null);
+    private fun assertSourceCardFsrs(stability: Double, difficulty: Double, retrievability: Double) {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("SELECT fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM source_cards WHERE card_id=10", null)
         try {
             assertTrue(cursor.moveToFirst());
             assertClose(stability, cursor.getDouble(0));
@@ -2693,12 +2647,12 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertHistoricalCardSnapshot(long syncId, long cardId, int suspended, int mature, int reps, int lapses, double stability, double difficulty, double retrievability) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery(
+    private fun assertHistoricalCardSnapshot(syncId: Long, cardId: Long, suspended: Int, mature: Int, reps: Int, lapses: Int, stability: Double, difficulty: Double, retrievability: Double) {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery(
                 "SELECT suspended, mature, reps, lapses, fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM sync_card_snapshots WHERE sync_id=? AND card_id=?",
-                new String[]{Long.toString(syncId), Long.toString(cardId)}
-        );
+                arrayOf(syncId.toString(), cardId.toString())
+        )
         try {
             assertTrue(cursor.moveToFirst());
             assertEquals(suspended, cursor.getInt(0));
@@ -2713,12 +2667,12 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertHistoricalKanjiSnapshot(long syncId, String kanji, int activeCards, int suspendedCards) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery(
+    private fun assertHistoricalKanjiSnapshot(syncId: Long, kanji: String, activeCards: Int, suspendedCards: Int) {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery(
                 "SELECT active_cards, suspended_cards FROM sync_kanji_snapshots WHERE sync_id=? AND kanji=?",
-                new String[]{Long.toString(syncId), kanji}
-        );
+                arrayOf(syncId.toString(), kanji)
+        )
         try {
             assertTrue(cursor.moveToFirst());
             assertEquals(activeCards, cursor.getInt(0));
@@ -2728,12 +2682,12 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private void assertHistoricalIdentitySnapshot(long syncId, long cardId, String deckId, String deckName, long modelId, String noteDeckIds, String noteDeckNames) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor card = db.rawQuery(
+    private fun assertHistoricalIdentitySnapshot(syncId: Long, cardId: Long, deckId: String, deckName: String, modelId: Long, noteDeckIds: String, noteDeckNames: String) {
+        val db = store.getReadableDatabase()
+        val card = db.rawQuery(
                 "SELECT deck_id, deck_name, model_id FROM sync_card_snapshots WHERE sync_id=? AND card_id=?",
-                new String[]{Long.toString(syncId), Long.toString(cardId)}
-        );
+                arrayOf(syncId.toString(), cardId.toString())
+        )
         try {
             assertTrue(card.moveToFirst());
             assertEquals(deckId, card.getString(0));
@@ -2743,10 +2697,10 @@ public final class LocalStoreInstrumentedTest {
             card.close();
         }
 
-        Cursor note = db.rawQuery(
+        val note = db.rawQuery(
                 "SELECT model_id, deck_ids, deck_names FROM sync_note_snapshots WHERE sync_id=? AND note_id=1",
-                new String[]{Long.toString(syncId)}
-        );
+                arrayOf(syncId.toString())
+        )
         try {
             assertTrue(note.moveToFirst());
             assertEquals(modelId, note.getLong(0));
@@ -2757,9 +2711,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private boolean hasColumn(String table, String column) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
+    private fun hasColumn(table: String, column: String): Boolean {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null)
         try {
             while (cursor.moveToNext()) {
                 if (column.equals(cursor.getString(cursor.getColumnIndexOrThrow("name")))) {
@@ -2772,9 +2726,9 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private boolean hasIndex(String table, String index) {
-        SQLiteDatabase db = store.getReadableDatabase();
-        Cursor cursor = db.rawQuery("PRAGMA index_list(" + table + ")", null);
+    private fun hasIndex(table: String, index: String): Boolean {
+        val db = store.getReadableDatabase()
+        val cursor = db.rawQuery("PRAGMA index_list(" + table + ")", null)
         try {
             while (cursor.moveToNext()) {
                 if (index.equals(cursor.getString(cursor.getColumnIndexOrThrow("name")))) {
@@ -2787,11 +2741,11 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private static void assertClose(double expected, double actual) {
+    private fun assertClose(expected: Double, actual: Double) {
         assertTrue(Math.abs(expected - actual) <= 0.001);
     }
 
-    private static void assertClose(double expected, Double actual) {
+    private fun assertClose(expected: Double, actual: Double?) {
         assertTrue(actual != null && Math.abs(expected - actual) <= 0.001);
     }
 }
