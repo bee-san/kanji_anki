@@ -1,30 +1,27 @@
-package dev.bee.kanjianki.core;
+package dev.bee.kanjianki.core
 
-import org.junit.Test;
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Locale;
+import java.util.Locale
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-
-public final class SettingsTextCopyTest {
+class SettingsTextCopyTest {
     @Test
-    public void importSummariesPreserveSourceAndMatchingCopy() {
-        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)));
-        assertEquals("1 matching card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)));
-        assertEquals("active + suspended + tagged + weak + query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)));
-        assertEquals("No sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)));
-        assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsImportSummary(null));
-        assertThrows(NullPointerException.class, () -> SettingsTextCopy.matchingCardsSummary(null));
+    fun importSummariesPreserveSourceAndMatchingCopy() {
+        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("1 matching card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
+        assertEquals("active + suspended + tagged + weak + query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("No sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
+        assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
 
     @Test
-    public void settingsStatusSummariesPreserveAutomationCopy() {
+    fun settingsStatusSummariesPreserveAutomationCopy() {
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Blocked",
                         "21:05",
                         "Off",
@@ -50,7 +47,7 @@ public final class SettingsTextCopyTest {
                         "Display & data",
                         "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
                         SettingsTextCopy.settingsReminderSummary(true, false, "21:05"),
                         SettingsTextCopy.settingsReminderSummary(false, false, "21:05"),
@@ -76,9 +73,9 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.settingsReferenceDataTitle(),
                         SettingsTextCopy.settingsReferenceDataBody()
                 )
-        );
+        )
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "GitHub updater",
                         "Current version 1.2.3. Checks GitHub Releases and verifies the APK before install.",
                         "Automatic updates",
@@ -105,7 +102,7 @@ public final class SettingsTextCopyTest {
                         "Daily sync",
                         "Updates"
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.updatePageTitle(),
                         SettingsTextCopy.updatePageBody("1.2.3"),
                         SettingsTextCopy.automaticUpdatesTitle(),
@@ -132,9 +129,9 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.dailySyncStatusLabel(),
                         SettingsTextCopy.updatesStatusLabel()
                 )
-        );
+        )
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Matching cards",
                         "Reminder: Off",
                         "Collapse Study behavior",
@@ -150,7 +147,7 @@ public final class SettingsTextCopyTest {
                         "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
                         "Last auto success yesterday. Last auto attempt today."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
                         SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
@@ -166,12 +163,12 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow"),
                         SettingsTextCopy.autoSyncDetail(true, false, "yesterday", "today", "tomorrow")
                 )
-        );
+        )
     }
 
     @Test
-    public void settingsPanelBodiesStayScannable() {
-        for (String body : Arrays.asList(
+    fun settingsPanelBodiesStayScannable() {
+        for (body in listOf(
                 SettingsTextCopy.settingsAnkiSourceBody(),
                 SettingsTextCopy.settingsStudyBehaviorBody(),
                 SettingsTextCopy.settingsAutomationBody(),
@@ -189,18 +186,18 @@ public final class SettingsTextCopyTest {
                 SettingsTextCopy.studyAheadBody(),
                 SettingsTextCopy.ladderThresholdsBody()
         )) {
-            assertTrue(body, body.length() <= 100);
+            assertTrue(body, body.length <= 100)
         }
 
-        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("cannot appear"));
-        assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"));
-        assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"));
+        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("cannot appear"))
+        assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
+        assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"))
     }
 
     @Test
-    public void importAndFrequencyPanelCopyPreservesLabelsAndToasts() {
+    fun importAndFrequencyPanelCopyPreservesLabelsAndToasts() {
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Import filters",
                         "Suspended cards are the default. Add active, tagged, or weak cards only when needed.",
                         "Active cards",
@@ -226,7 +223,7 @@ public final class SettingsTextCopyTest {
                         "Frequency range",
                         "Import suspended cards only inside this Jiten rank range. Default: 100-3000."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.importFiltersTitle(),
                         SettingsTextCopy.importFiltersBody(),
                         SettingsTextCopy.activeCardsLabel(),
@@ -252,9 +249,9 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.frequencyRangeTitle(),
                         SettingsTextCopy.frequencyRangeBody()
                 )
-        );
+        )
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Min rank",
                         "Max rank",
                         "Minimum rank",
@@ -276,7 +273,7 @@ public final class SettingsTextCopyTest {
                         "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.",
                         "Required fields"
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.minRankLabel(),
                         SettingsTextCopy.maxRankLabel(),
                         SettingsTextCopy.minimumRankLabel(),
@@ -298,9 +295,9 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.noteTypeFieldsBody(),
                         SettingsTextCopy.requiredFieldsTitle()
                 )
-        );
+        )
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.",
                         "Expression field",
                         "Reading field",
@@ -315,7 +312,7 @@ public final class SettingsTextCopyTest {
                         "Choose the field that contains kanji.",
                         "Note type saved. Sync again to rebuild practice."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.requiredFieldsBody(),
                         SettingsTextCopy.expressionFieldLabel(),
                         SettingsTextCopy.readingFieldLabel(),
@@ -330,84 +327,84 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.expressionFieldRequiredToast(),
                         SettingsTextCopy.noteTypeSavedToast()
                 )
-        );
+        )
     }
 
     @Test
-    public void workloadSummariesPreserveSettingsCopy() {
-        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
-        assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
-        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
-        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null));
+    fun workloadSummariesPreserveSettingsCopy() {
+        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
+        assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9))
+        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1))
+        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
         assertEquals(
                 "Auto Pareto: 2 items today",
-                SettingsTextCopy.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
-        );
-        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0));
-        assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle());
+                SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
+        )
+        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
+        assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
                 "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
-        );
-        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel());
-        assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel());
+        )
+        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
+        assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Manual workload sets today's Kani intake; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
-        );
-        assertEquals(Arrays.asList("Very little", "Pareto", "Balanced", "More", "All kanji"), Arrays.asList(SettingsTextCopy.workloadScaleLabels()));
-        assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel());
-        assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel());
-        assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle());
+        )
+        assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
+        assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
+        assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
+        assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
                 "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.",
                 SettingsTextCopy.learningStepsBody()
-        );
-        assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel());
-        assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel());
-        assertEquals("Both 1m 10m", SettingsTextCopy.sameLearningStepsLabel());
-        assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel());
-        assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast());
-        assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle());
+        )
+        assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
+        assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel())
+        assertEquals("Both 1m 10m", SettingsTextCopy.sameLearningStepsLabel())
+        assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
+        assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
+        assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
                 "Pull soon-due cards into the queue. 0 disables it; learning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
-        );
-        assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel());
-        assertEquals("Study ahead saved.", SettingsTextCopy.studyAheadSavedToast());
+        )
+        assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
+        assertEquals("Study ahead saved.", SettingsTextCopy.studyAheadSavedToast())
     }
 
     @Test
-    public void newCardSortCopyPreservesModeLabelsAndStatus() {
-        assertEquals("Current: Frequency", SettingsTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE));
-        assertEquals("Anki difficulty", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
-        assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
-        assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
-        assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY));
-        assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY));
-        assertEquals("Harder Anki cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
-        assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
-        assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+    fun newCardSortCopyPreservesModeLabelsAndStatus() {
+        assertEquals("Current: Frequency", SettingsTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
+        assertEquals("Anki difficulty", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
+        assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
+        assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
+        assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals("Harder Anki cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
+        assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
                 "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
-        );
-        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"));
-        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null));
-        assertEquals("New card sort", SettingsTextCopy.newCardSortTitle());
+        )
+        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
+        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
+        assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
                 "Choose how unseen cards enter study; due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
-        );
-        assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel());
+        )
+        assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
     }
 
     @Test
-    public void rangeRetentionAndLadderCopyPreserveSettingsLabels() {
-        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults();
+    fun rangeRetentionAndLadderCopyPreserveSettingsLabels() {
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
 
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "FSRS retention",
@@ -429,7 +426,7 @@ public final class SettingsTextCopyTest {
                         "Study ladder",
                         "Turn rungs off or move them up and down. At least one always-available rung stays on."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
                         SettingsTextCopy.retentionStatusText(95),
                         SettingsTextCopy.fsrsRetentionTitle(),
@@ -451,9 +448,9 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.studyLadderTitle(),
                         SettingsTextCopy.studyLadderBody()
                 )
-        );
+        )
         assertEquals(
-                Arrays.asList(
+                listOf(
                         "On",
                         "Off",
                         "Up",
@@ -476,7 +473,7 @@ public final class SettingsTextCopyTest {
                         "Save ladder thresholds",
                         "Ladder thresholds saved."
                 ),
-                Arrays.asList(
+                listOf(
                         SettingsTextCopy.ladderToggleLabel(true),
                         SettingsTextCopy.ladderToggleLabel(false),
                         SettingsTextCopy.moveUpLabel(),
@@ -494,95 +491,95 @@ public final class SettingsTextCopyTest {
                         SettingsTextCopy.saveLadderThresholdsLabel(),
                         SettingsTextCopy.ladderThresholdsSavedToast()
                 )
-        );
-        assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
+        )
+        assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsLadderRungLabel(null as RecordsBase.LadderRung) }
     }
 
     @Test
-    public void reminderCopyPreservesPanelStatusAndTimeFormatting() {
-        assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle());
+    fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
+        assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
                 "Daily nudge for active problem kanji. Android may batch the time.",
                 SettingsTextCopy.dailyReminderBody()
-        );
-        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
-        assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
-        assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
-        assertEquals("Morning", SettingsTextCopy.morningReminderPresetLabel());
-        assertEquals("Lunch", SettingsTextCopy.lunchReminderPresetLabel());
-        assertEquals("Evening", SettingsTextCopy.eveningReminderPresetLabel());
-        assertEquals("Night", SettingsTextCopy.nightReminderPresetLabel());
-        assertEquals("Save reminder", SettingsTextCopy.saveReminderLabel());
-        assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel());
-        assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel());
+        )
+        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
+        assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"))
+        assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"))
+        assertEquals("Morning", SettingsTextCopy.morningReminderPresetLabel())
+        assertEquals("Lunch", SettingsTextCopy.lunchReminderPresetLabel())
+        assertEquals("Evening", SettingsTextCopy.eveningReminderPresetLabel())
+        assertEquals("Night", SettingsTextCopy.nightReminderPresetLabel())
+        assertEquals("Save reminder", SettingsTextCopy.saveReminderLabel())
+        assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
+        assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
                 "Android notifications are off for Kani, so this reminder cannot appear yet.",
                 SettingsTextCopy.notificationsBlockedBody()
-        );
-        assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel());
+        )
+        assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
                 "Android will ask for notification permission before turning this on.",
                 SettingsTextCopy.notificationPermissionBody()
-        );
-        assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
-        assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
-        assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5));
-        assertEquals("Daily Anki sync", SettingsTextCopy.dailyAnkiSyncTitle());
-        assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel());
-        assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel());
-        assertEquals("App updates", SettingsTextCopy.appUpdatesTitle());
-        assertEquals("Open updater", SettingsTextCopy.openUpdaterLabel());
+        )
+        assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
+        assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5))
+        assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5))
+        assertEquals("Daily Anki sync", SettingsTextCopy.dailyAnkiSyncTitle())
+        assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel())
+        assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel())
+        assertEquals("App updates", SettingsTextCopy.appUpdatesTitle())
+        assertEquals("Open updater", SettingsTextCopy.openUpdaterLabel())
     }
 
     @Test
-    public void studyAheadCopyPreservesLabelsAndValidationMessages() {
-        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel());
-        assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange());
-        assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription());
-        assertEquals("Use a whole number of minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText());
-        assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText());
+    fun studyAheadCopyPreservesLabelsAndValidationMessages() {
+        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
+        assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
+        assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
+        assertEquals("Use a whole number of minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
+        assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
     }
 
-    private static RecordsSyncModels.Settings settings(
-            boolean active,
-            boolean suspended,
-            boolean tagged,
-            boolean weak,
-            boolean query,
-            int matchingCards
-    ) {
-        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
-        return new RecordsSyncModels.Settings(
-                defaults.modelName,
-                defaults.templateName,
-                defaults.expressionField,
-                defaults.readingField,
-                defaults.meaningField,
-                defaults.sentenceField,
-                defaults.frequencyField,
-                defaults.frequencySortField,
-                defaults.matureDays,
-                defaults.matureSupportThreshold,
-                defaults.suspendedRankMin,
-                defaults.suspendedRankMax,
-                defaults.activeQueueCap,
-                defaults.newPerDay,
-                defaults.writingTriggerMissDays,
-                defaults.recognitionPromotionPasses,
-                defaults.realDueReviewsToMove,
-                active,
-                suspended,
-                tagged,
-                tagged ? Collections.singletonList("leeches") : Collections.emptyList(),
-                weak,
-                defaults.importWeakFsrsDifficultyThreshold,
-                defaults.importWeakLapsesThreshold,
-                matchingCards,
-                query,
-                query ? "deck:Kiku" : "",
-                defaults.newCardSortMode,
-                defaults.ladderPromotionIntervalDays,
-                defaults.ladderDemotionFailStreak
-        );
+    private fun settings(
+        active: Boolean,
+        suspended: Boolean,
+        tagged: Boolean,
+        weak: Boolean,
+        query: Boolean,
+        matchingCards: Int,
+    ): RecordsSyncModels.Settings {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        return RecordsSyncModels.Settings(
+            defaults.modelName,
+            defaults.templateName,
+            defaults.expressionField,
+            defaults.readingField,
+            defaults.meaningField,
+            defaults.sentenceField,
+            defaults.frequencyField,
+            defaults.frequencySortField,
+            defaults.matureDays,
+            defaults.matureSupportThreshold,
+            defaults.suspendedRankMin,
+            defaults.suspendedRankMax,
+            defaults.activeQueueCap,
+            defaults.newPerDay,
+            defaults.writingTriggerMissDays,
+            defaults.recognitionPromotionPasses,
+            defaults.realDueReviewsToMove,
+            active,
+            suspended,
+            tagged,
+            if (tagged) listOf("leeches") else emptyList(),
+            weak,
+            defaults.importWeakFsrsDifficultyThreshold,
+            defaults.importWeakLapsesThreshold,
+            matchingCards,
+            query,
+            if (query) "deck:Kiku" else "",
+            defaults.newCardSortMode,
+            defaults.ladderPromotionIntervalDays,
+            defaults.ladderDemotionFailStreak,
+        )
     }
 }
