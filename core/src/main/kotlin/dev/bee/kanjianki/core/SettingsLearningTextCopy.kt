@@ -6,17 +6,17 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "New cards and review misses can come back fast. First-answer repeats stay in practice."
+        return "New cards and relearning can come back fast. First-answer repeats are practice-only."
     }
 
     @JvmStatic
-    fun reviewMissesLabel(): String = "Review misses"
+    fun reviewMissesLabel(): String = "Relearning"
 
     @JvmStatic
     fun ankiDefaultLabel(): String = "Anki default"
 
     @JvmStatic
-    fun sameLearningStepsLabel(): String = "Use new-card steps for both"
+    fun sameLearningStepsLabel(): String = "Use new-card steps"
 
     @JvmStatic
     fun saveLearningStepsLabel(): String = "Save learning steps"

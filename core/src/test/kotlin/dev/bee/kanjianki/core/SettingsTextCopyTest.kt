@@ -357,12 +357,12 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and review misses can come back fast. First-answer repeats stay in practice.",
+                "New cards and relearning can come back fast. First-answer repeats are practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
-        assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
+        assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
         assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel())
-        assertEquals("Use new-card steps for both", SettingsTextCopy.sameLearningStepsLabel())
+        assertEquals("Use new-card steps", SettingsTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())

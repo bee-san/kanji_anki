@@ -8,12 +8,12 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "New cards and review misses can come back fast. First-answer repeats stay in practice.",
+            "New cards and relearning can come back fast. First-answer repeats are practice-only.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
-        assertEquals("Review misses", SettingsLearningTextCopy.reviewMissesLabel())
+        assertEquals("Relearning", SettingsLearningTextCopy.reviewMissesLabel())
         assertEquals("Anki default", SettingsLearningTextCopy.ankiDefaultLabel())
-        assertEquals("Use new-card steps for both", SettingsLearningTextCopy.sameLearningStepsLabel())
+        assertEquals("Use new-card steps", SettingsLearningTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsLearningTextCopy.saveLearningStepsLabel())
         assertEquals("Learning steps saved.", SettingsLearningTextCopy.learningStepsSavedToast())
     }
