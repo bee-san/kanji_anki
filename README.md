@@ -149,4 +149,5 @@ Cheap Ralph's forever loop reads this checklist from top to bottom. It should ke
 - [ ] Go through each view in the app and analyse the copy on the page. Make sure it is absolutely essential for that page, if it isn't remove it.
 - [ ] Emulate the whole app in Android Studio and use the app for 24 hours, going through every single ladder stage and option. Fix as many issues as you find.
 - [ ] Analyse the stats page. Really think in depth, what stats would help the user understand if Kani is working for them? What stats would be cool to show off? What stats would help them? Implement them. Do not stop at 1 or 2 stats. Feel free to modify existing stats.
+- [ ] Add a Japanese translation to the app
 <!-- cheap-ralph-queue:end -->
