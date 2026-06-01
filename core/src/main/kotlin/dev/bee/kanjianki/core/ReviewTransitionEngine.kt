@@ -58,6 +58,10 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         } else {
             context.learningSettings.reviewStepsMinutes
         }
+        if (steps.isEmpty()) {
+            applyEmptyLearningStepsTransition(context, state, isNewLearning)
+            return
+        }
         when (context.rating) {
             StudyRatings.AGAIN -> {
                 state.stepIndex = 0
@@ -70,6 +74,18 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             StudyRatings.GOOD -> applyLearningGood(context, state, steps, isNewLearning)
             else -> applyLearningGood(context, state, steps, isNewLearning)
         }
+    }
+
+    private fun applyEmptyLearningStepsTransition(context: ReviewContext, state: ReviewState, isNewLearning: Boolean) {
+        if (isNewLearning || StudyRatings.AGAIN != context.rating) {
+            graduateToReview(context, state, isNewLearning)
+            return
+        }
+        state.stepIndex = 0
+        state.phase = RecordsBase.SchedulerPhase.REVIEW
+        state.due = context.nowMillis + StudyLadderRules.DAY
+        state.schedulerState = StudyLadderRules.STATE_REVIEW
+        state.scheduledIntervalDays = 1
     }
 
     private fun applyLearningHard(
