@@ -424,7 +424,7 @@ class SettingsTextCopyTest {
                         "Enabled always available rung",
                         "Enabled conditional rung",
                         "Study ladder",
-                        "Turn rungs off or move them up and down. At least one always-available rung stays on."
+                        "Turn rungs on/off or move them. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
