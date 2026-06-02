@@ -1010,7 +1010,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun allKanjiAdaptivePlanAdmitsEveryCandidate() {
+    public fun allKanjiAdaptivePlanBypassesDeckNewCardLimit() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var plan: RecordsSchedulerModels.AdaptiveLoadPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
                 100,
@@ -1021,28 +1021,32 @@ public class BridgeSchedulerTest {
                 true,
                 "all"
         )
+        var settings: RecordsSyncModels.Settings = RecordsSyncModels.Settings(
+                "Kiku",
+                "Mining",
+                "Expression",
+                "ExpressionReading",
+                "MainDefinition",
+                "Sentence",
+                "Frequency",
+                "FreqSort",
+                21,
+                2,
+                3000,
+                1,
+                1
+        )
+
         var items: List<RecordsStudyModels.StudyItem> = scheduler.seedQueue(
                 listOf(row("裂", 50), row("謎", 10), row("示", 5)),
                 emptyList(),
-                RecordsSyncModels.Settings(
-                        "Kiku",
-                        "Mining",
-                        "Expression",
-                        "ExpressionReading",
-                        "MainDefinition",
-                        "Sentence",
-                        "Frequency",
-                        "FreqSort",
-                        21,
-                        2,
-                        3000,
-                        1,
-                        1
-                ),
+                settings,
                 1000L,
                 0L,
                 plan
         )
+
+        assertEquals(1, settings.newPerDay)
         assertEquals(3, items.size)
     }
 
