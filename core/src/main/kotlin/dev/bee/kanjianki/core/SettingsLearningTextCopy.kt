@@ -6,7 +6,7 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "New cards and relearning repeat fast. Repeats are practice only."
+        return "New cards and relearning repeat fast. Those repeats are practice only."
     }
 
     @JvmStatic
