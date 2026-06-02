@@ -609,9 +609,9 @@ class ComposeScreenModelsTest {
             "Daily sync, reminders, and update checks that run Kani in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Data sources", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution.",
+            "Offline dictionaries, stroke data, fonts, and licenses.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }

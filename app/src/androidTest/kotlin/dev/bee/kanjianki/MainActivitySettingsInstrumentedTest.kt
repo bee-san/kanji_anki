@@ -98,7 +98,7 @@ class MainActivitySettingsInstrumentedTest {
                 assertTrue(activity.settingsSyncExpanded)
                 assertTrue(containsText(settingsRoot, "Daily Anki sync"))
 
-                performClickableWithText(settingsRoot, "Display & data")
+                performClickableWithText(settingsRoot, "Data sources")
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertTrue(activity.settingsAppExpanded)
                 assertTrue(containsText(settingsRoot, "Offline data & licenses"))

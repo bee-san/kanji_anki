@@ -45,12 +45,12 @@ class MainActivitySettingsScreenComposeTest {
                             panels = emptyList()
                         ),
                         SettingsCategorySectionModel(
-                            title = "Display & data",
+                            title = "Data sources",
                             summary = "Offline data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
                             panelCount = "1 panel",
-                            contentDescription = "Collapse Display & data",
+                            contentDescription = "Collapse Data sources",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -71,7 +71,7 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("Display & data").assertIsDisplayed()
+        composeRule.onNodeWithText("Data sources").assertIsDisplayed()
         composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
         composeRule.onNodeWithText("Open licenses").assertIsDisplayed()
 

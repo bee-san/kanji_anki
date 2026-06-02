@@ -740,7 +740,7 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
 fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Display & data");
+            clickText(scenario, "Data sources");
             waitForText(scenario, "Open data licenses");
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
@@ -751,7 +751,7 @@ fun testReferenceDataLicensesRoundTripFromSettings() {
                 assertHasText(activity, "Back to settings");
             }
             clickText(scenario, "Back to settings");
-            waitForText(scenario, "Display & data");
+            waitForText(scenario, "Data sources");
         }
     }
 
@@ -2774,7 +2774,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Import from Anki",
                 "Study behavior",
                 "Automation",
-                "Display & data",
+                "Data sources",
                 "Note type",
                 "Using Kiku",
                 "Expression field",

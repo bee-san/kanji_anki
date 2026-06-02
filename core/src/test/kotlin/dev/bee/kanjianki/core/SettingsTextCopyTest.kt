@@ -43,8 +43,8 @@ class SettingsTextCopyTest {
                         "Learning steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
                         "Automation",
                         "Daily sync, reminders, and update checks that run Kani in the background.",
-                        "Display & data",
-                        "Offline dictionaries, stroke data, fonts, and attribution."
+                        "Data sources",
+                        "Offline dictionaries, stroke data, fonts, and licenses."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by import, study, automation, and display & data.",
+                        "Grouped by import, study, automation, and data sources.",
                         "Anki note type",
                         "Import filters",
                         "Frequency range",

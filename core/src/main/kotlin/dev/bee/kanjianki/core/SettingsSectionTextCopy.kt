@@ -20,17 +20,17 @@ object SettingsSectionTextCopy {
     fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks that run Kani in the background."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Display & data"
+    fun settingsReferenceDataTitle(): String = "Data sources"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and licenses."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, study, automation, and display & data."
+        return "Grouped by import, study, automation, and data sources."
     }
 
     @JvmStatic
