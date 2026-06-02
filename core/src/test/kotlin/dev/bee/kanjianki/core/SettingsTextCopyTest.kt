@@ -40,7 +40,7 @@ class SettingsTextCopyTest {
                         "Import & sync",
                         "AnkiDroid fields, import filters, frequency, and daily sync.",
                         "Deck options",
-                        "Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
+                        "App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
                         "Advanced controls",
                         "Reminders and update checks that run Kani in the background.",
                         "Display & data",
