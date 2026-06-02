@@ -1601,7 +1601,7 @@ fun testFocusDoneScreenAppearsWhenSimilarChoiceIsOutsideTodaysFocus() {
                 assertHasText(activity, "0 / 1");
                 assertHasText(activity, "Practice");
                 assertHasText(activity, "Today's focus done");
-                assertHasText(activity, "Today's focus: 0 items left / 1");
+                assertHasText(activity, "Today's focus: 0 of 1 left");
                 assertHasText(activity, "Continue all kanji");
                 assertNoText(activity, SIMILAR_KANJI);
             }

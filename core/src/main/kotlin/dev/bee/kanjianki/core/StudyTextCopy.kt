@@ -128,7 +128,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun adaptiveFocusDoneSummary(target: Int): String {
-        return "Today's focus: 0 items left / $target"
+        return "Today's focus: 0 of $target left"
     }
 
     @JvmStatic
