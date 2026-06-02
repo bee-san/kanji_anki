@@ -91,9 +91,6 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     return false
                 }
                 activity.flashcardTouchTracking = false
-                if (!isTouchInsideFlashcard(event)) {
-                    return false
-                }
                 handleFlashcardRelease(event)
             }
 

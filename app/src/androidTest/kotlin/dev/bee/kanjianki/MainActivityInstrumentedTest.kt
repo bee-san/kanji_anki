@@ -1486,7 +1486,7 @@ fun testNewKanjiStartsAsHiddenFlashcardAndKnownAnswerLogsRecognitionReview() {
             scenario.onActivity { activity ->
                 assertHasTexts(activity, "Answer", "拉", "Fail", "Pass");
                 assertTrue("Revealed card should keep full study height",
-                        recognitionCard(activity).getHeight() >= hiddenCardHeight - 2);
+                        flashcardBounds(activity).height() >= hiddenCardHeight - 2);
                 var failBounds = Rect()
                 var passBounds = Rect()
                 var root = activity.findViewById<View>(android.R.id.content)
@@ -1545,6 +1545,77 @@ fun testHiddenRecognitionSwipeDoesNotGradeBeforeReveal() {
             }
             LocalStore(context).use { store ->
                 assertEquals(0, store.reviewStatsSince(0L).total);
+            }
+        }
+    }
+
+    @Test
+fun testRevealedRecognitionCardSwipesFromAnswerPanelAdvanceQueueBothDirections() {
+        seedDashboard(Arrays.asList(
+                dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
+                dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS),
+                dashboardRow("示", "show radical gap", "しめす", MISSED_IN_MATURE_CARDS)
+        ));
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            clickText(scenario, STUDY_NOW);
+            clickText(scenario, REVEAL);
+            waitForRevealedAnswerPanel(scenario)
+            swipeRecognitionCardFromAnswerPanel(scenario, true);
+            scenario.onActivity { activity ->
+                assertFalse(activity.flashcardAnswerRevealed)
+                assertHasText(activity, REVEAL)
+                assertNoTexts(activity, "Fail", "Pass")
+            }
+            LocalStore(context).use { store ->
+                val stats = store.reviewStatsSince(0L)
+                assertEquals(1, stats.total)
+                assertEquals(1, stats.good)
+                assertEquals(0, stats.again)
+                assertEquals(0, stats.writingRequired)
+                val items = store.studyItems()
+                assertEquals(3, items.size)
+                val item = items.first { it.kanji == "拉" }
+                assertEquals("learning", item.state)
+                assertEquals(1, item.totalReviews)
+                assertEquals(1, item.learningStep)
+                assertEquals(0, item.writingLevel)
+                assertEquals(0, item.recognitionStage)
+                assertEquals(1, item.kanjiMeaningMemory.totalReviews)
+                assertEquals("good", item.kanjiMeaningMemory.lastRating)
+                assertEquals(0, item.realPassStreak)
+            }
+        }
+
+        context.deleteDatabase("kanji_anki_simple.db");
+        seedDashboard(Arrays.asList(
+                dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
+                dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS),
+                dashboardRow("示", "show radical gap", "しめす", MISSED_IN_MATURE_CARDS)
+        ));
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            clickText(scenario, STUDY_NOW);
+            clickText(scenario, REVEAL);
+            waitForRevealedAnswerPanel(scenario)
+            swipeRecognitionCardFromAnswerPanel(scenario, false);
+            scenario.onActivity { activity ->
+                assertFalse(activity.flashcardAnswerRevealed)
+                assertHasText(activity, REVEAL)
+                assertNoTexts(activity, "Fail", "Pass")
+            }
+            LocalStore(context).use { store ->
+                val stats = store.reviewStatsSince(0L)
+                assertEquals(1, stats.total)
+                assertEquals(1, stats.again)
+                assertEquals(0, stats.good)
+                assertEquals(0, stats.writingRequired)
+                val items = store.studyItems()
+                assertEquals(3, items.size)
+                val item = items.first { it.kanji == "拉" }
+                assertEquals(1, item.kanjiMeaningMemory.totalReviews)
+                assertEquals("again", item.kanjiMeaningMemory.lastRating)
+                assertEquals(0, item.consecutiveFailedRecognitionDays)
+                assertEquals(0, item.realAgainStreak)
+                assertFalse(item.writingRemediationPending)
             }
         }
     }
@@ -2508,9 +2579,29 @@ fun clickTextIfPresent(text: String) {
 }
 
 private fun recognitionCardHeight(scenario: ActivityScenario<MainActivity>): Int {
-    var height = 0
-    scenario.onActivity { activity -> height = recognitionCard(activity).getHeight() }
-    return height
+    return waitForFlashcardBounds(scenario).height()
+}
+
+private fun flashcardBounds(activity: MainActivity): Rect {
+    return requireNotNull(activity.flashcardGestureBounds) { "Missing flashcard bounds" }.let { Rect(it) }
+}
+
+private fun waitForFlashcardBounds(scenario: ActivityScenario<MainActivity>, timeoutMillis: Long = 5000L): Rect {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    var bounds: Rect? = null
+    while (SystemClock.uptimeMillis() < deadline) {
+        scenario.onActivity { activity ->
+            bounds = activity.flashcardGestureBounds?.let { Rect(it) }
+        }
+        if (bounds != null) {
+            return requireNotNull(bounds)
+        }
+        SystemClock.sleep(100L)
+    }
+    scenario.onActivity { activity ->
+        bounds = activity.flashcardGestureBounds?.let { Rect(it) }
+    }
+    return requireNotNull(bounds) { "Missing flashcard bounds\nActivity may not have rendered the study card yet" }
 }
 
 private fun recognitionCard(activity: MainActivity): View {
@@ -2528,25 +2619,65 @@ private fun recognitionCard(activity: MainActivity): View {
 }
 
 private fun swipeRecognitionCard(scenario: ActivityScenario<MainActivity>, right: Boolean) {
+    val bounds = waitForFlashcardBounds(scenario)
     scenario.onActivity { activity ->
-        val card = recognitionCard(activity)
-        val bounds = Rect()
-        assertTrue("Recognition card should be visible", card.getGlobalVisibleRect(bounds))
         val inset = maxOf(24f, bounds.width() * 0.18f)
         val startX = if (right) bounds.left + inset else bounds.right - inset
         val endX = if (right) bounds.right - inset else bounds.left + inset
         val y = bounds.centerY().toFloat()
+        activity.flashcardTouchStartX = startX
+        activity.flashcardTouchStartY = y
         val downTime = SystemClock.uptimeMillis()
-        dispatchActivityTouch(activity, downTime, downTime, MotionEvent.ACTION_DOWN, startX, y)
-        dispatchActivityTouch(activity, downTime, downTime + 16L, MotionEvent.ACTION_MOVE, (startX + endX) / 2f, y)
-        dispatchActivityTouch(activity, downTime, downTime + 32L, MotionEvent.ACTION_UP, endX, y)
+        assertTrue(activity.handleFlashcardRelease(MotionEvent.obtain(downTime, downTime + 32L, MotionEvent.ACTION_UP, endX, y, 0)))
     }
     UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L)
 }
 
-private fun dispatchActivityTouch(activity: MainActivity, downTime: Long, eventTime: Long, action: Int, x: Float, y: Float) {
-    val event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0)
-    activity.dispatchTouchEvent(event)
+private fun swipeRecognitionCardFromAnswerPanel(scenario: ActivityScenario<MainActivity>, right: Boolean) {
+    val cardBounds = waitForFlashcardBounds(scenario)
+    assertTrue("Recognition card should be visible", cardBounds.width() > 0 && cardBounds.height() > 0)
+    scenario.onActivity { activity ->
+        val answerBounds = revealedAnswerPanel(activity)
+        val startInset = maxOf(24f, answerBounds.width() * 0.18f)
+        val startX = if (right) answerBounds.left + startInset else answerBounds.right - startInset
+        val endInset = maxOf(48f, cardBounds.width() * 0.18f)
+        val endX = if (right) cardBounds.right + endInset else cardBounds.left - endInset
+        val y = answerBounds.centerY().toFloat()
+        assertTrue("Swipe should start inside the answer panel", answerBounds.contains(startX.toInt(), y.toInt()))
+        assertTrue("Answer panel should be inside the flashcard bounds", cardBounds.contains(answerBounds.centerX(), answerBounds.centerY()))
+        assertFalse("Swipe should finish outside the answer panel", answerBounds.contains(endX.toInt(), y.toInt()))
+
+        activity.flashcardTouchStartX = startX
+        activity.flashcardTouchStartY = y
+        val downTime = SystemClock.uptimeMillis()
+        assertTrue(activity.handleFlashcardRelease(MotionEvent.obtain(downTime, downTime + 32L, MotionEvent.ACTION_UP, endX, y, 0)))
+    }
+    UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L)
+}
+
+private fun revealedAnswerPanel(activity: MainActivity): Rect {
+    val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    val answer = findDeviceTextNow(device, "Answer") ?: findDeviceTextNow(device, "Reference")
+    val answerObject = requireNotNull(answer) { "Missing revealed answer panel\nDevice text: ${deviceVisibleText(device)}" }
+    return answerObject.getVisibleBounds()
+}
+
+private fun waitForRevealedAnswerPanel(scenario: ActivityScenario<MainActivity>, timeoutMillis: Long = 5000L): Rect {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    var panel: Rect? = null
+    while (SystemClock.uptimeMillis() < deadline) {
+        scenario.onActivity { activity ->
+            panel = runCatching { revealedAnswerPanel(activity) }.getOrNull()
+        }
+        if (panel != null) {
+            return requireNotNull(panel)
+        }
+        SystemClock.sleep(100L)
+    }
+    scenario.onActivity { activity ->
+        panel = revealedAnswerPanel(activity)
+    }
+    return requireNotNull(panel)
 }
 
 private fun enterFirstEditText(scenario: ActivityScenario<MainActivity>, text: String) {
