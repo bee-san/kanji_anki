@@ -17,11 +17,20 @@ class LearningStepSettingsTest {
     }
 
     @Test
+    fun parsesAndFormatsAnkiStyleDaySteps() {
+        val parsed = RecordsSchedulerModels.LearningStepSettings.tryParseSteps("1m 10m 1h 2d")
+
+        assertEquals(listOf(1, 10, 60, 2 * 24 * 60), parsed)
+        assertEquals("1m, 10m, 1h, 2d", RecordsSchedulerModels.LearningStepSettings.formatSteps(parsed))
+    }
+
+    @Test
     fun rejectsInvalidSteps() {
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("").isEmpty())
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps(null).isEmpty())
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("0m, 10m").isEmpty())
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("h").isEmpty())
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("d").isEmpty())
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("999999999999999999999h").isEmpty())
         assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("soon").isEmpty())
     }
