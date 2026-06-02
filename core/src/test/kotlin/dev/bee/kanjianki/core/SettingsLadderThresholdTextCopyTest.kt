@@ -8,7 +8,7 @@ class SettingsLadderThresholdTextCopyTest {
     @Test
     fun ladderThresholdStringsStayStable() {
         assertEquals("Ladder thresholds", SettingsLadderThresholdTextCopy.ladderThresholdsTitle())
-        assertEquals("Only due-review passes can move the ladder; learning/relearning repeats are practice-only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody())
+        assertEquals("Only due reviews move the ladder; learning/relearning repeats are practice only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody())
         assertEquals("Promotion interval days", SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel())
         assertEquals("Demotion fail streak", SettingsLadderThresholdTextCopy.failsToGoDownLabel())
         assertEquals("Use default ladder thresholds", SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel())
