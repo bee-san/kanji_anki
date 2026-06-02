@@ -53,7 +53,7 @@ object StudyTaskCopy {
     @JvmStatic
     fun studyModeLabel(session: RecordsSchedulerModels.StudySession?): String = when {
         isNewLearningRepeat(session) -> "Learn"
-        isRelearning(session) -> "Relearn"
+        isRelearning(session) -> "Relearning"
         session != null && session.writingRequired -> "Practice"
         isWordReadingTask(session) -> "Read"
         isTypingMeaningTask(session) -> "Type"
