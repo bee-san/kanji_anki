@@ -1855,6 +1855,58 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun ankiBuryOrderKeepsDueLearningRepeatAheadOfDueReviewSibling() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var learning: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+        var dueReviewHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "学",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now
+        )
+        var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
+                listOf(dueReviewHigherRung, learning),
+                listOf(row("学", 1)),
+                now
+        )!!
+        assertNotNull(session)
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+    }
+
+    @Test
+    public fun ankiBuryOrderKeepsDueRelearningRepeatAheadOfDueReviewSibling() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(5)
+                .lapses(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build()
+        var dueReviewHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "復",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now
+        )
+        var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
+                listOf(dueReviewHigherRung, relearning),
+                listOf(row("復", 1)),
+                now
+        )!!
+        assertNotNull(session)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, session.item!!.phase)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+    }
+
+    @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()

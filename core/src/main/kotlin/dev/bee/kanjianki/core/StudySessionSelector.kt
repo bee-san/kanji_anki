@@ -343,6 +343,10 @@ class StudySessionSelector {
                 if (due != 0) {
                     return due
                 }
+                val ankiGatherOrder = duePriority(left).compareTo(duePriority(right))
+                if (ankiGatherOrder != 0) {
+                    return ankiGatherOrder
+                }
             }
             val rank = (-safeLadder.rankForRung(left.rung)).compareTo(-safeLadder.rankForRung(right.rung))
             if (rank != 0) {
