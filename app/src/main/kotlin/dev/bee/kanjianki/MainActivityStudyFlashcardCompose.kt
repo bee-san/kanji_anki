@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import kotlin.math.roundToInt
 
 internal class FlashcardActionBarState(
@@ -66,11 +67,11 @@ fun StudyFlashcardActionBar(
                 .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            StudyFailButton(
+            StudyAgainButton(
                 onClick = onFail,
                 modifier = Modifier.weight(1f)
             )
-            StudyPassButton(
+            StudyGoodButton(
                 onClick = onPass,
                 modifier = Modifier.weight(1f)
             )
@@ -138,11 +139,11 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
 }
 
 @Composable
-private fun StudyFailButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    StudySecondaryActionButton(MainActivityBase.LABEL_FAIL, onClick, modifier)
+private fun StudyAgainButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    StudySecondaryActionButton(StudyReviewButtonCopy.againLabel(), onClick, modifier)
 }
 
 @Composable
-private fun StudyPassButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    StudyPrimaryActionButton(MainActivityBase.LABEL_PASS, onClick, modifier)
+private fun StudyGoodButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    StudyPrimaryActionButton(StudyReviewButtonCopy.goodLabel(), onClick, modifier)
 }

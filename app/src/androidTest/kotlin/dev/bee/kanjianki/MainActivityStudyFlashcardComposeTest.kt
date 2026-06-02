@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -41,7 +42,7 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersFailAndPassButtonsAndInvokesActions() {
+    fun rendersAgainAndGoodButtonsAndInvokesActions() {
         var failed = false
         var passed = false
 
@@ -54,10 +55,10 @@ class MainActivityStudyFlashcardComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Fail").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).assertIsDisplayed()
-        composeRule.onNodeWithText("Fail").performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).performClick()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).performClick()
 
         assertTrue(failed)
         assertTrue(passed)
