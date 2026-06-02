@@ -132,7 +132,7 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Use Jiten-rank retention ranges"
+    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
