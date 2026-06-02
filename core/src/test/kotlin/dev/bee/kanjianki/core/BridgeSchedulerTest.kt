@@ -1907,6 +1907,47 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun focusQueueItemsKeepDueRelearningRepeatAheadOfHigherReviewSibling() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(5)
+                .lapses(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build()
+                .withToken("relearning")
+        var dueReviewHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "復",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now
+        ).withToken("review")
+        var active: List<RecordsStudyModels.StudyItem> = scheduler.activeQueueItems(
+                listOf(dueReviewHigherRung, relearning),
+                listOf(row("復", 1)),
+                now,
+                0L,
+                null,
+                RecordsBase.StudyLadderSettings.defaults()
+        )
+        var focus: List<RecordsStudyModels.StudyItem> = scheduler.focusQueueItems(
+                listOf(dueReviewHigherRung, relearning),
+                listOf(row("復", 1)),
+                now,
+                0L,
+                RecordsBase.StudyLadderSettings.defaults()
+        )
+        assertEquals(1, active.size)
+        assertEquals("review", active.get(0).activeToken)
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, active.get(0).rung)
+        assertEquals(1, focus.size)
+        assertEquals("relearning", focus.get(0).activeToken)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, focus.get(0).phase)
+    }
+
+    @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()
