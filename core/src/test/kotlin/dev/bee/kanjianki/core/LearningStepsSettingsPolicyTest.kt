@@ -39,6 +39,16 @@ class LearningStepsSettingsPolicyTest {
     }
 
     @Test
+    fun saveRequestTreatsWhitespaceOnlyReviewStepsAsEmpty() {
+        val result = LearningStepsSettingsPolicy.saveRequest("1m, 10m", "   ")
+        val settings = requireNotNull(result.settings)
+
+        assertTrue(result.valid)
+        assertEquals(listOf(1, 10), settings.newStepsMinutes)
+        assertTrue(settings.reviewStepsMinutes.isEmpty())
+    }
+
+    @Test
     fun saveResultFactoriesRemainCallableFromJava() {
         val settings = RecordsSchedulerModels.LearningStepSettings(listOf(1), listOf(10))
 
