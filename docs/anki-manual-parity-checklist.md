@@ -37,7 +37,9 @@ Current Kani snapshot used for this review:
 
 3. Verify sibling burying semantics against Anki’s new/review/learning order.
 
-   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Targeted `BridgeSchedulerTest` and `FocusQueuePolicyTest` coverage now keeps due learning and relearning repeats ahead of due review siblings in the same family for both study-session selection and the home focus queue, and study-ahead/interday learning repeats now outrank due review siblings during same-family session selection. Additional targeted coverage confirms Kani's same-family selection order follows Anki's gather order: intraday learning, interday learning, review, then new. Broader manual-unbury semantics still need review.
+   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Targeted `BridgeSchedulerTest` and `FocusQueuePolicyTest` coverage now keeps due learning and relearning repeats ahead of due review siblings in the same family for both study-session selection and the home focus queue, and study-ahead/interday learning repeats now outrank due review siblings during same-family session selection. Additional targeted coverage confirms Kani's same-family selection order follows Anki's gather order: intraday learning, interday learning, review, then new. There is no manual unbury UI/control in the scheduler/app code searched; Kani currently has session/queue same-family selection plus persistent mature-sibling suppression that clears when no valid dominator remains, not an Anki-style “unbury buried cards now” action.
+
+   Manual-unbury boundary: same-session same-family hiding is covered by `coreSessionSelectionHidesSameFamilyWithoutPermanentSuppression()` and related learning-repeat regressions; persistent `suppressedByTaskType` is for mature or writing-remediation sibling dominance and clears in `SiblingSuppressionPolicy` when the dominator no longer qualifies.
 
    Manual anchors:
    - Studying: “When you answer a card that has siblings, Anki can prevent the card’s siblings from being shown in the same session by automatically ‘burying’ them. Buried cards are hidden from review until the clock rolls over to a new day or you manually unbury them…” Source: https://docs.ankiweb.net/studying.html#siblings-and-burying
@@ -49,7 +51,7 @@ Current Kani snapshot used for this review:
    - [x] Confirm study-ahead/interday learning repeats are selected before due review siblings in the same family.
    - [x] Confirm the home focus queue surfaces that same due learning/relearning sibling instead of a higher-rung review sibling.
    - [x] Add explicit tests named around Anki bury semantics for due learning/relearning repeats, not just generic sibling suppression.
-   - [ ] Decide whether “manual unbury” has a Kani concept; if not, document that burying is session/queue suppression only.
+   - [x] Decide whether “manual unbury” has a Kani concept; if not, document that burying is session/queue suppression only.
 
 ## P1 / high-value parity gaps
 
