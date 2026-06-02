@@ -71,6 +71,8 @@ Current Kani snapshot used for this review:
 
    Current Kani: has a bundled `fsrs-java` module, `LatestFsrsAdapter`, `SchedulerParameters.targetRetention`, rating multipliers, and optional frequency-based retention. It uses FSRS for local scheduling and stores imported FSRS memory (`stability`, `difficulty`, `retrievability`), but it does not appear to import Anki deck preset FSRS parameters wholesale or expose Anki's optimizer/reschedule controls.
 
+   Local FSRS parameters: Kani's scheduler defaults are `targetRetention=0.90`, `againMultiplier=0.45`, `hardMultiplier=1.20`, `goodMultiplier=2.00`, and `easyMultiplier=3.10` in `RecordsSchedulerModels.SchedulerParameters.defaults()`. Settings persist those values under `scheduler_target_retention` and `scheduler_*_multiplier`, clamp tuned multipliers in Kani-specific ranges, and optionally override target retention by Jiten rank via `scheduler_frequency_retention_*`; this is local scheduler tuning, not imported Anki deck preset FSRS parameters.
+
    Manual anchors:
    - “The Free Spaced Repetition Scheduler (FSRS) is an alternative to Anki’s legacy SuperMemo 2 (SM-2) algorithm…” Source: https://docs.ankiweb.net/deck-options.html#fsrs
    - “Desired retention controls how likely you are to remember cards when they are scheduled for a review… The default value of 90%…” and Anki recommends staying below 97%. Source: https://docs.ankiweb.net/deck-options.html#desired-retention
@@ -78,7 +80,7 @@ Current Kani snapshot used for this review:
    FSRS memory import boundary: the AnkiDroid reader asks for `fsrs_stability`, `fsrs_difficulty`, `fsrs_retrievability`, legacy `stability`, `difficulty`, `retrievability`, and serialized `data`. `ProviderCardPolicy` keeps the first finite explicit-column value for each memory field, preferring `fsrs_*` over legacy columns; only when no explicit memory field is present does it parse serialized `data` keys `stability`, `difficulty`, `retrievability` or aliases `s`, `d`, `r`. It does not import Anki optimizer parameters, review logs, or reschedule history through this path.
 
    Checklist:
-   - [ ] Document that Kani uses FSRS for local scheduling but has its own parameters/default multipliers.
+   - [x] Document that Kani uses FSRS for local scheduling but has its own parameters/default multipliers.
    - [x] If importing from AnkiDroid FSRS memory, document exactly which fields are read (`stability`, `difficulty`, `retrievability` from explicit columns or serialized data).
    - [x] Add parity tests around target retention and rating-specific interval ordering (`Again < Hard < Good < Easy`) if missing.
    - [ ] Decide whether to expose Anki-style parameter optimization/reschedule controls; otherwise mark non-goal.
