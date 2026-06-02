@@ -321,6 +321,68 @@ class LadderSchedulerTest {
     }
 
     @Test
+    fun customRelearningStepsControlLapseDelayAndPracticeGraduation() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val customSteps = RecordsSchedulerModels.LearningStepSettings(
+                listOf(1, 10),
+                listOf(7, 30));
+
+        val lapsed = scheduler.applyReview(
+                item.withToken("custom-fail"),
+                failRequest("裂", "custom-fail"),
+                consumed,
+                1000L,
+                null,
+                null,
+                customSteps
+        );
+
+        assertEquals("A due review Again enters relearning",
+                RecordsBase.SchedulerPhase.RELEARNING, lapsed.item.phase);
+        assertEquals("learning", lapsed.item.state);
+        assertEquals("Custom first relearning step controls lapse delay",
+                1000L + 7L * 60_000L, lapsed.item.dueAtMillis);
+        assertEquals(0, lapsed.item.learningStep);
+        assertEquals(0, lapsed.item.matureIntervalDays);
+        assertEquals(1, lapsed.item.lapses);
+
+        val firstPracticeNow = lapsed.item.dueAtMillis + 1;
+        val afterFirstPractice = scheduler.applyReview(
+                lapsed.item.withToken("custom-good-1"),
+                passRequest("裂", "custom-good-1"),
+                consumed,
+                firstPracticeNow,
+                null,
+                null,
+                customSteps
+        );
+
+        assertEquals("Good advances to the second custom relearning step",
+                RecordsBase.SchedulerPhase.RELEARNING, afterFirstPractice.item.phase);
+        assertEquals(1, afterFirstPractice.item.learningStep);
+        assertEquals(firstPracticeNow + 30L * 60_000L, afterFirstPractice.item.dueAtMillis);
+
+        val secondPracticeNow = afterFirstPractice.item.dueAtMillis + 1;
+        val afterSecondPractice = scheduler.applyReview(
+                afterFirstPractice.item.withToken("custom-good-2"),
+                passRequest("裂", "custom-good-2"),
+                consumed,
+                secondPracticeNow,
+                null,
+                null,
+                customSteps
+        );
+
+        assertEquals("Good past the last custom relearning step graduates back to review",
+                RecordsBase.SchedulerPhase.REVIEW, afterSecondPractice.item.phase);
+        assertEquals("review", afterSecondPractice.item.state);
+        assertEquals(0, afterSecondPractice.item.learningStep);
+        assertTrue(afterSecondPractice.item.dueAtMillis > secondPracticeNow);
+    }
+
+    @Test
     fun reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval() {
         val scheduler = BridgeScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
