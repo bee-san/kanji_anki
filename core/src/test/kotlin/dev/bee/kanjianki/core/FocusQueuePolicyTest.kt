@@ -56,6 +56,29 @@ class FocusQueuePolicyTest {
     }
 
     @Test
+    fun queuedEntriesSurfaceDueRelearningSiblingBeforeHigherReviewSibling() {
+        val now = 5_000L
+        val higherReview = review("復", now)
+            .withRung(RecordsBase.LadderRung.FONT_MEANING)
+            .withToken("review")
+        val dueRelearning = item("復", StudyLadderRules.STATE_LEARNING, now, 5)
+            .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING)
+            .withToken("relearning")
+        val entries = FocusQueuePolicy.queuedEntries(
+            listOf(row("復", 10)),
+            listOf(higherReview, dueRelearning),
+            now,
+            0L,
+            null,
+            RecordsBase.StudyLadderSettings.defaults()
+        )
+
+        assertEquals(listOf("復"), kanji(entries))
+        assertEquals("relearning", entries[0].item.activeToken)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, entries[0].item.phase)
+    }
+
+    @Test
     fun queuedEntriesTreatMissingInputsAsEmpty() {
         val entries = FocusQueuePolicy.queuedEntries(
             null,

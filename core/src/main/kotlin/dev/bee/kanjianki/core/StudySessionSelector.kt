@@ -176,6 +176,17 @@ class StudySessionSelector {
         return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, false)
     }
 
+    fun focusQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, true)
+    }
+
     private fun dueQueueItems(
         items: List<RecordsStudyModels.StudyItem>,
         rows: List<RecordsImportModels.DashboardRow>,
