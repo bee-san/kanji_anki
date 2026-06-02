@@ -118,12 +118,12 @@ object StudyTextCopy {
 
     @JvmStatic
     fun adaptiveFocusDoneBody(): String {
-        return "Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji."
+        return "Kani finished today's adaptive focus. Keep going or stop here."
     }
 
     @JvmStatic
     fun studyRunDoneBody(): String {
-        return "Kani finished the Study now set. You can stop here, or keep going through all current problem kanji."
+        return "Kani finished the Study now set. Keep going or stop here."
     }
 
     @JvmStatic
