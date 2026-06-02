@@ -407,7 +407,7 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "FSRS retention",
-                        "Kani FSRS uses local settings; Anki due dates stay unchanged.",
+                        "Kani FSRS stays local. Anki due dates stay unchanged.",
                         "Use Jiten-rank retention ranges",
                         "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",

@@ -128,7 +128,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Kani FSRS uses local settings; Anki due dates stay unchanged."
+        return "Kani FSRS stays local. Anki due dates stay unchanged."
     }
 
     @JvmStatic
