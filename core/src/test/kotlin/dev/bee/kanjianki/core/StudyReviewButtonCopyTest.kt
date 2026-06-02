@@ -12,7 +12,7 @@ class StudyReviewButtonCopyTest {
 
     @Test
     fun reviewButtonDescriptionsExplainSchedulingEffect() {
-        assertEquals("Again: repeat this card sooner", StudyReviewButtonCopy.againContentDescription())
-        assertEquals("Good: schedule the next review", StudyReviewButtonCopy.goodContentDescription())
+        assertEquals("Again: show this card again sooner", StudyReviewButtonCopy.againContentDescription())
+        assertEquals("Good: keep the next review on schedule", StudyReviewButtonCopy.goodContentDescription())
     }
 }
