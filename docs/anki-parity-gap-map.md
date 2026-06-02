@@ -5,7 +5,7 @@ Status captured from `main` at repo-health loop 01. This map is scoped to Anki s
 ## Current parity anchors
 
 - Provider sync reads AnkiDroid's flashcard provider, mirrors Kiku / Mining notes, and imports active, suspended, tagged, weak, and browser-query cards.
-- FSRS memory state is imported when provider columns or serialized card data expose stability, difficulty, and retrievability.
+- FSRS memory state is imported when AnkiDroid card columns or serialized `data` expose finite `stability`, `difficulty`, and `retrievability` values; explicit `fsrs_*` columns win over legacy columns, and serialized aliases `s`, `d`, `r` are a fallback only when no explicit memory field is present.
 - Kani's scheduler keeps Anki-style `new_learning`, `review`, and `relearning` phases.
 - Learning and relearning support `Again`, `Hard`, `Good`, and `Easy` transitions: `Again` resets to the first step, `Hard` repeats/uses the Anki first-step midpoint behavior, `Good` advances, and `Easy` graduates immediately.
 - Review cards use FSRS for interval/stability/difficulty updates and enter relearning on `Again`.
