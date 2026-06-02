@@ -53,10 +53,10 @@ def base_fake_adb(extra_cases: str = "") -> str:
 set -euo pipefail
 printf '%s\\n' "$*" >> "$RUNNER_TEMP/adb-calls.log"
 case "$*" in
+{extra_cases}
   logcat\\ -d*) exit 0 ;;
   wait-for-device*) exit 0 ;;
   install*) exit 0 ;;
-{extra_cases}
   shell\\ monkey*) exit 0 ;;
   shell\\ am\\ start*) exit 0 ;;
   root*) exit 0 ;;
@@ -160,6 +160,32 @@ OUT
         self.assertIn("Process crashed", result.stdout)
         self.assertIn("Instrumentation reported a failure", result.stdout)
         self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+
+    def test_fixture_does_not_retry_known_fake_provider_classpath_crash(self):
+        fake_adb = base_fake_adb(
+            """  logcat\\ -d*)
+    cat <<'OUT'
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: FATAL EXCEPTION: main
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: Unable to instantiate provider dev.bee.kanjianki.anki.FakeAnkiDroidProvider
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: java.lang.NoClassDefFoundError: Failed resolution of: Lkotlin/jvm/internal/Intrinsics;
+OUT
+    exit 0 ;;
+  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
+        self.assertIn("Fake AnkiDroid provider classpath crash", result.stdout)
+        self.assertIn("not retrying", result.stdout)
 
     def test_fixture_does_not_retry_assertion_failures(self):
         fake_adb = base_fake_adb(
@@ -271,6 +297,28 @@ OUT
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
+
+    def test_fixture_retries_provider_probe_until_models_are_visible(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ content\\ query*)
+    count_file="$RUNNER_TEMP/provider-probe-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'No result found.'
+    else
+      echo 'Row: 0 _id=123, name=Kiku'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
