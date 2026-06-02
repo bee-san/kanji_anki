@@ -111,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first."
+        return "Choose how new cards enter study; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -128,7 +128,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged."
+        return "Kani FSRS uses local settings; Anki due dates stay unchanged."
     }
 
     @JvmStatic

@@ -24,7 +24,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("Choose how new cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Heads up: visually similar kanji appear close together in this preview: 人/入, 土/士.",
@@ -42,7 +42,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
-            "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged.",
+            "Kani FSRS uses local settings; Anki due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
