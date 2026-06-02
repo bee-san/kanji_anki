@@ -5,13 +5,13 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, import filters, frequency, and daily sync."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, filters, frequency, and sync."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Advanced controls"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck, automation, and data. Each setting appears once."
+        return "Grouped by import, deck, automation, and data."
     }
 
     @JvmStatic
