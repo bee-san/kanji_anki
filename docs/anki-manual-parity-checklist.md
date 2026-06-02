@@ -26,14 +26,14 @@ Current Kani snapshot used for this review:
 
 2. Add explicit leech parity or intentionally document a Kani alternative.
 
-   Current Kani: tracks `lapses`, `taskLapses`, weak-card import thresholds (`DEFAULT_IMPORT_WEAK_LAPSES = 2`), and recent mistakes, but I found no leech threshold/action equivalent that tags, warns, or suspends a local item/card after repeated review lapses.
+   Current Kani: tracks `lapses`, `taskLapses`, weak-card import thresholds (`DEFAULT_IMPORT_WEAK_LAPSES = 2`), and recent mistakes, but does not have a leech threshold/action equivalent that tags, warns, or suspends a local item/card after repeated review lapses. The import-filter settings copy now documents Kani as leech-informed only: weak/lapsed Anki cards can be imported for repair, while AnkiDroid remains the owner of leech tag/suspend policy unless Kani adds a future local leech feature.
 
    Manual anchor: “Leeches are cards that you keep forgetting… Each time a review card ‘lapses’ (is failed while it is in review mode), a counter increases. When this counter reaches 8, Anki tags the note as a leech and suspends the card. The threshold, and whether to suspend or not, can be adjusted in the deck options.” Source: https://docs.ankiweb.net/leeches.html
 
    Checklist:
-   - [ ] Decide whether Kani should implement leech detection or explicitly remain “leech-informed” only.
+   - [x] Decide whether Kani should implement leech detection or explicitly remain “leech-informed” only: Kani remains leech-informed only for now, with local leech detection/action left as a future feature decision.
    - [ ] If implementing: add configurable threshold/action, record leech events, surface them in stats/timeline, and decide what “suspend” maps to for a Kani `StudyItem`.
-   - [ ] If not implementing: add docs/UI copy that Kani imports weak/lapsed Anki cards but does not apply Anki’s leech tag/suspend policy locally.
+   - [x] If not implementing: add docs/UI copy that Kani imports weak/lapsed Anki cards but does not apply Anki’s leech tag/suspend policy locally.
 
 3. Verify sibling burying semantics against Anki’s new/review/learning order.
 
@@ -144,6 +144,6 @@ Likely already close:
 
 Remaining highest-risk mismatches:
 
-- Leech behavior appears absent as a first-class local policy.
+- Leech behavior is intentionally leech-informed/import-only for now; Kani imports weak/lapsed Anki cards but does not locally leech-tag or suspend items.
 - Kani has FSRS scheduling, but not full Anki FSRS deck-option parity such as optimizer/reschedule/preset semantics.
 - Stats and import/sync docs still need clearer Anki-vs-Kani boundaries.

@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended cards are default. Add active, tagged, or weak cards only if needed."
+        return "Suspended cards are default. Add active/tagged/weak only if needed; no local leech tag/suspend."
     }
 
     @JvmStatic
