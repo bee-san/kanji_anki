@@ -116,6 +116,12 @@ instrumentation_failure_is_transient() {
   grep -Eqi 'Process crashed|INSTRUMENTATION_RESULT: shortMsg=Process crashed|INSTRUMENTATION_CODE: 0|No test results|Test run failed to complete' "${instrumentation_output_path}"
 }
 
+instrumentation_failure_is_known_fake_provider_classpath_crash() {
+  [ -f "${logcat_path}" ] || return 1
+  grep -Fq 'FakeAnkiDroidProvider' "${logcat_path}" && \
+    grep -Eqi 'Unable to instantiate provider|NoClassDefFoundError|kotlin/jvm/internal/Intrinsics' "${logcat_path}"
+}
+
 reset_apps_after_transient_instrumentation_failure() {
   adb shell am force-stop dev.bee.kanjianki || true
   adb shell am force-stop com.ichi2.anki || true
@@ -141,8 +147,13 @@ run_instrumentation_gate() {
       return 1
     fi
 
-    echo "Instrumentation appears to have hit a transient runner/process failure; resetting apps and retrying" >&2
     dump_logcat
+    if instrumentation_failure_is_known_fake_provider_classpath_crash; then
+      echo "Instrumentation hit a known Fake AnkiDroid provider classpath crash; not retrying" >&2
+      return 1
+    fi
+
+    echo "Instrumentation appears to have hit a transient runner/process failure; resetting apps and retrying" >&2
     reset_apps_after_transient_instrumentation_failure
     adb logcat -c
     attempt=$((attempt + 1))
