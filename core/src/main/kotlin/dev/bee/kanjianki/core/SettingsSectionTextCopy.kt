@@ -40,7 +40,7 @@ object SettingsSectionTextCopy {
     fun importFiltersStatusLabel(): String = "Import filters"
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Frequency range"
+    fun importRanksStatusLabel(): String = "Suspended card range"
 
     @JvmStatic
     fun reminderStatusLabel(): String = "Daily reminder"

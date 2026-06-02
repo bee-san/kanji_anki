@@ -2,7 +2,7 @@ package dev.bee.kanjianki.core
 
 object SettingsReferenceDataTextCopy {
     @JvmStatic
-    fun frequencyRangeTitle(): String = "Frequency range"
+    fun frequencyRangeTitle(): String = "Suspended card range"
 
     @JvmStatic
     fun frequencyRangeBody(): String {
@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks from 1 to 20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Frequency range saved. Sync again to rebuild practice."
+    fun frequencyRangeSavedToast(): String = "Suspended card range saved. Sync again to rebuild practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"

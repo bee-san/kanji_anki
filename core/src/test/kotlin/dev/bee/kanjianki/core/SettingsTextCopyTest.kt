@@ -96,7 +96,7 @@ class SettingsTextCopyTest {
                         "Grouped by import, study, automation, and data sources.",
                         "Anki note type",
                         "Import filters",
-                        "Frequency range",
+                        "Suspended card range",
                         "Daily reminder",
                         "Daily Anki sync",
                         "App updates"
@@ -219,7 +219,7 @@ class SettingsTextCopyTest {
                         "Import preset saved. Sync again to rebuild practice.",
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
-                        "Frequency range",
+                        "Suspended card range",
                         "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
                 ),
                 listOf(
@@ -258,7 +258,7 @@ class SettingsTextCopyTest {
                         "Save frequency range",
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
-                        "Frequency range saved. Sync again to rebuild practice.",
+                        "Suspended card range saved. Sync again to rebuild practice.",
                         "Offline data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",

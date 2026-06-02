@@ -18,7 +18,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Grouped by import, study, automation, and data sources.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Anki note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
-        assertEquals("Frequency range", SettingsSectionTextCopy.importRanksStatusLabel())
+        assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
         assertEquals("Reminder: Off", SettingsSectionTextCopy.statusPillDescription("Reminder", "Off"))
         assertEquals("Daily reminder", SettingsSectionTextCopy.reminderStatusLabel())
         assertEquals("Daily Anki sync", SettingsSectionTextCopy.dailySyncStatusLabel())
