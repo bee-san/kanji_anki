@@ -30,7 +30,7 @@ class SettingsTextCopyTest {
                         "Verified APK ready",
                         "Automatic checks on",
                         "Manual checks",
-                        "4 suspended cards archived, 2 rare kanji added; active cards optional",
+                        "4 suspended cards archived, 2 rare kanji added; active cards remain optional",
                         "Sync blocked: No provider",
                         "Sync blocked: null",
                         "unknown version",
