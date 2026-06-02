@@ -198,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspended cards are default. Add active, tagged, or weak cards only if needed.",
+                        "Suspended cards are default. Add active/tagged/weak only if needed; no local leech tag/suspend.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
