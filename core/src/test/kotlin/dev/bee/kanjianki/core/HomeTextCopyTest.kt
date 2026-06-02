@@ -82,7 +82,7 @@ class HomeTextCopyTest {
     @Test
     fun homeShellCopyPreservesHeaderMetricsAndEmptyStates() {
         assertEquals("Kani", HomeTextCopy.appTitle())
-        assertEquals("An AnkiDroid companion for focused kanji repair", HomeTextCopy.appSubtitle())
+        assertEquals("An AnkiDroid companion for kanji blindness", HomeTextCopy.appSubtitle())
         assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel())
         assertEquals("Focus queue", HomeTextCopy.focusQueueTitle())
         assertEquals("View all", HomeTextCopy.viewAllLabel())
