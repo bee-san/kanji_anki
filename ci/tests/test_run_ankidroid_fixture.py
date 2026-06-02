@@ -104,7 +104,7 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "3")
+        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "4")
 
     def test_fixture_fails_when_instrumentation_output_contains_failures(self):
         fake_adb = base_fake_adb(
@@ -215,6 +215,63 @@ OUT
             "mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media",
             adb_calls,
         )
+
+    def test_fixture_repairs_ankidroid_dir_after_app_installs_before_provider_probe(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ pm\\ grant*)
+    touch "$RUNNER_TEMP/app-installed-and-granted"
+    exit 0 ;;
+  shell\\ *chmod*)
+    if [ -f "$RUNNER_TEMP/app-installed-and-granted" ]; then
+      touch "$RUNNER_TEMP/repaired-after-app-installs"
+    fi
+    exit 0 ;;
+  shell\\ content\\ query*)
+    if [ -f "$RUNNER_TEMP/repaired-after-app-installs" ]; then
+      echo 'Row: 0 _id=123, name=Kiku'
+    else
+      echo 'No result found.'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        last_repair = max(i for i, call in enumerate(adb_calls) if "chmod -R" in call)
+        first_probe = next(i for i, call in enumerate(adb_calls) if "content query" in call)
+        self.assertLess(last_repair, first_probe)
+
+    def test_fixture_retries_provider_probe_when_permission_repair_fails(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ pm\\ grant*)
+    touch "$RUNNER_TEMP/app-installed-and-granted"
+    exit 0 ;;
+  shell\\ *chmod*)
+    if [ -f "$RUNNER_TEMP/app-installed-and-granted" ]; then
+      count_file="$RUNNER_TEMP/post-grant-repair-count"
+      count=$(cat "$count_file" 2>/dev/null || echo 0)
+      count=$((count + 1))
+      echo "$count" > "$count_file"
+      if [ "$count" -lt 2 ]; then
+        echo 'chmod: /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid: Permission denied' >&2
+        exit 1
+      fi
+    fi
+    exit 0 ;;
+  shell\\ content\\ query*)
+    echo 'Row: 0 _id=123, name=Kiku'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
         result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
