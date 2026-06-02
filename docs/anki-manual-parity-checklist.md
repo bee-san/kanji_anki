@@ -64,12 +64,12 @@ Current Kani snapshot used for this review:
    - “New Cards/Day… controls how many new cards can be introduced each day…” and “Maximum Reviews/Day… set an upper limit on the number of review cards to show each day.” Source: https://docs.ankiweb.net/deck-options.html#daily-limits
 
    Checklist:
-   - [ ] Add/confirm UI copy that Kani settings are global/app-level unless otherwise stated; they are not Anki deck presets.
+   - [x] Add/confirm UI copy that Kani settings are global/app-level unless otherwise stated; they are not Anki deck presets.
    - [x] Map Anki “new cards/day” to Kani adaptive new admission / workload controls, or document the mismatch.
    - [x] Map Anki “maximum reviews/day” to Kani daily workload cap if present; otherwise document no direct equivalent.
    - [x] Keep learning/relearning step text examples compatible with Anki (`1m 10m`, `h` suffix); Kani parser currently supports `m`/`h`.
 
-   Evidence: `SettingsStudyPlanTextCopy.deckLimitsBody()` labels the global deck-limit panel as an Anki new-card cap; `StudyQueueSeeder.seedQueue(..., plan)` limits normal/adaptive-focus admissions by `min(plan.newAdmissionLimit, settings.newPerDay)`; `BridgeSchedulerTest.allKanjiAdaptivePlanBypassesDeckNewCardLimit` pins the intentional All-kanji exception; `AdaptiveLoadPlannerTest.autoWorkloadRespectsMaxItems` and `dueRecoveryIsCappedByMaxItems` cover the workload `maxItems` cap as a Kani focus/admission limit rather than an Anki review-card/day cap.
+   Evidence: `SettingsSectionTextCopy.settingsStudyBehaviorBody()` calls these options app-wide, and `SettingsStudyPlanTextCopy.deckLimitsBody()` labels the global deck-limit panel as an Anki new-card cap; `StudyQueueSeeder.seedQueue(..., plan)` limits normal/adaptive-focus admissions by `min(plan.newAdmissionLimit, settings.newPerDay)`; `BridgeSchedulerTest.allKanjiAdaptivePlanBypassesDeckNewCardLimit` pins the intentional All-kanji exception; `AdaptiveLoadPlannerTest.autoWorkloadRespectsMaxItems` and `dueRecoveryIsCappedByMaxItems` cover the workload `maxItems` cap as a Kani focus/admission limit rather than an Anki review-card/day cap.
 
 5. FSRS parity should distinguish “uses FSRS-like scheduling” from “Anki FSRS feature parity.”
 

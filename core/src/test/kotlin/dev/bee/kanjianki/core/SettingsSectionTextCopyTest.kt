@@ -9,7 +9,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("AnkiDroid fields, import filters, frequency, and daily sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Reminders and update checks that run Kani in the background.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
