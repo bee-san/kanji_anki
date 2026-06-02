@@ -39,7 +39,7 @@ object SettingsNoteTypeTextCopy {
     fun frequencySortFieldLabel(): String = "Frequency sort field"
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose from AnkiDroid"
+    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
 
     @JvmStatic
     fun useKikuLabel(): String = "Use Kiku"

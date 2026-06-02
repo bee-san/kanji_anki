@@ -17,7 +17,7 @@ class SettingsNoteTypeTextCopyTest {
         assertEquals("Sentence field", SettingsNoteTypeTextCopy.sentenceFieldLabel())
         assertEquals("Frequency field", SettingsNoteTypeTextCopy.frequencyFieldLabel())
         assertEquals("Frequency sort field", SettingsNoteTypeTextCopy.frequencySortFieldLabel())
-        assertEquals("Choose from AnkiDroid", SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel())
+        assertEquals("Choose note type", SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel())
         assertEquals("Use Kiku", SettingsNoteTypeTextCopy.useKikuLabel())
         assertEquals("Save note type", SettingsNoteTypeTextCopy.saveNoteTypeLabel())
         assertEquals("Enter a note type name.", SettingsNoteTypeTextCopy.noteTypeRequiredToast())

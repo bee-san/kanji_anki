@@ -304,7 +304,7 @@ class SettingsTextCopyTest {
                         "Sentence field",
                         "Frequency field",
                         "Frequency sort field",
-                        "Choose from AnkiDroid",
+                        "Choose note type",
                         "Use Kiku",
                         "Save note type",
                         "Enter a note type name.",
