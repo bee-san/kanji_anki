@@ -19,7 +19,7 @@ class MainActivitySettingsReferenceDataComposeTest {
         composeRule.setContent {
             ReferenceDataLinkPanel(
                 model = SettingsReferenceDataLinkModel(
-                    title = "Offline data & licenses",
+                    title = "Offline data licenses",
                     body = "One reference page covers offline data.",
                     actionLabel = "Open data licenses",
                     onAction = Runnable { clicked = true }
@@ -27,7 +27,7 @@ class MainActivitySettingsReferenceDataComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Offline data & licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
         composeRule.onNodeWithText("One reference page covers offline data.").assertIsDisplayed()
         composeRule.onNodeWithText("Open data licenses").performClick()
 

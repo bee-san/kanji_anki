@@ -101,7 +101,7 @@ class MainActivitySettingsInstrumentedTest {
                 performClickableWithText(settingsRoot, "Data sources")
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertTrue(activity.settingsAppExpanded)
-                assertTrue(containsText(settingsRoot, "Offline data & licenses"))
+                assertTrue(containsText(settingsRoot, "Offline data licenses"))
                 performClickableWithText(settingsRoot, "Open data licenses")
                 assertHasText(activity, "Data licenses")
                 performClickableWithText(requireNotNull(activity.findViewById<View>(android.R.id.content)), "Back to settings")

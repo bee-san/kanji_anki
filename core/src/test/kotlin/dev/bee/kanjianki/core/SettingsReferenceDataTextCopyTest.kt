@@ -22,7 +22,7 @@ class SettingsReferenceDataTextCopyTest {
             "Frequency range saved. Sync again to rebuild practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
-        assertEquals("Offline data & licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
+        assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
             "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),

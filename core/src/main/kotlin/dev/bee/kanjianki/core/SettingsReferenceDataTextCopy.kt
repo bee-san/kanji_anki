@@ -34,7 +34,7 @@ object SettingsReferenceDataTextCopy {
     fun frequencyRangeSavedToast(): String = "Frequency range saved. Sync again to rebuild practice."
 
     @JvmStatic
-    fun offlineDataLicensesTitle(): String = "Offline data & licenses"
+    fun offlineDataLicensesTitle(): String = "Offline data licenses"
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {

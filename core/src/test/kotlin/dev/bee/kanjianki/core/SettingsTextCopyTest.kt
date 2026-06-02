@@ -259,7 +259,7 @@ class SettingsTextCopyTest {
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
                         "Frequency range saved. Sync again to rebuild practice.",
-                        "Offline data & licenses",
+                        "Offline data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",
