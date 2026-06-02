@@ -98,7 +98,12 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     ): BrowseDetailIdentityModel {
         val title = if (row == null) HomeTextCopy.inventoryTitle(inventory) else StudyTextCopy.rowMeaning(row)
         val reading = if (row == null) inventory?.readings.orEmpty() else row.reading
-        return BrowseDetailIdentityModel(title, reading, suspended)
+        val stateBadges = if (suspended) {
+            listOf(BrowseStateBadgeModel(HomeTextCopy.suspendedChipLabel(), MainActivityBase.CORAL))
+        } else {
+            emptyList()
+        }
+        return BrowseDetailIdentityModel(title, reading, stateBadges)
     }
 
     fun detailReasonPanelModel(

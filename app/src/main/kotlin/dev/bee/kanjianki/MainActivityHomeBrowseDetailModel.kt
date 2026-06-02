@@ -21,7 +21,12 @@ data class BrowseDetailHeroModel(
 data class BrowseDetailIdentityModel(
     val title: String,
     val reading: String,
-    val suspended: Boolean,
+    val stateBadges: List<BrowseStateBadgeModel>,
+)
+
+data class BrowseStateBadgeModel(
+    val label: String,
+    val color: Int,
 )
 
 data class BrowseDetailActionsModel(

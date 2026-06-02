@@ -91,7 +91,7 @@ Current Kani snapshot used for this review:
 
 6. Browser/search parity should lean on Anki query semantics for import filters.
 
-   Current Kani: has an import source for `browser_query`, active/suspended/tagged/weak filters, and settings UI for browser query text. It does not look like Kani implements a full local Anki browser; it likely delegates or stores a configured Anki query used during provider sync.
+   Current Kani: has an import source for `browser_query`, active/suspended/tagged/weak filters, and settings UI for browser query text. Kani has a local Browse/detail screen for imported kanji and study history, but not a full local Anki browser. The detail identity model now has an extensible state-badge list and shows a suspended badge for imported/local suspended inventory; Kani does not currently import Anki flag, marked-note, or buried-state fields, so it intentionally does not show badges for unknown states.
 
    Manual anchors:
    - Searching card state terms include `is:due`, `is:new`, `is:learn`, `is:review`, `is:suspended`, `is:buried`, `is:buried-sibling`, and `is:buried-manually`. Source: https://docs.ankiweb.net/searching.html#card-state
@@ -101,7 +101,7 @@ Current Kani snapshot used for this review:
    Checklist:
    - [x] Treat `browser_query` as raw Anki/AnkiDroid search syntax, and validate errors clearly instead of silently importing nothing.
    - [x] Add docs/examples for useful Kani import queries: `is:suspended`, `rated:31:1`, and tag/deck filters; keep FSRS-property examples out until AnkiDroid provider support is verified.
-   - [ ] If Kani has a local browse/detail screen, decide whether it should show suspended/flagged/marked/buried state badges from Anki.
+   - [x] If Kani has a local browse/detail screen, decide whether it should show suspended/flagged/marked/buried state badges from Anki: show suspended, and do not claim flagged/marked/buried badges until those Anki state fields are imported.
 
 ## P2 / important but less blocking
 
@@ -145,5 +145,5 @@ Likely already close:
 Remaining highest-risk mismatches:
 
 - Leech behavior appears absent as a first-class local policy.
-- Sibling burying is present conceptually but needs tests/docs for Anki’s exact gathering order and learning-card exceptions.
 - Kani has FSRS scheduling, but not full Anki FSRS deck-option parity such as optimizer/reschedule/preset semantics.
+- Stats and import/sync docs still need clearer Anki-vs-Kani boundaries.

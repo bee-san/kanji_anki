@@ -226,6 +226,24 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun browseDetailIdentityKeepsAnkiStateBadges() {
+        val coral = 0xFFFF4C76.toInt()
+        val badge = BrowseStateBadgeModel("Suspended", coral)
+        val model = BrowseDetailIdentityModel(
+            title = "split",
+            reading = "レツ",
+            stateBadges = listOf(badge),
+        )
+
+        assertEquals("split", model.title)
+        assertEquals("レツ", model.reading)
+        assertEquals(listOf(badge), model.stateBadges)
+        assertEquals("Suspended", model.stateBadges.single().label)
+        assertEquals(coral, model.stateBadges.single().color)
+        assertEquals(model, model.copy())
+    }
+
+    @Test
     fun syncResultModelKeepsPrimaryAndSecondaryActions() {
         val coral = 0xFFFF4C76.toInt()
         val teal = 0xFF00AEB5.toInt()
