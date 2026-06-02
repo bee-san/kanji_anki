@@ -87,6 +87,7 @@ val fastSonarCoverageExclusions = listOf(
 val testSonarCoverageExclusions = listOf(
     "**/src/test/**",
     "**/src/androidTest/**",
+    "**/src/debug/**",
 )
 val sonarCoverageExclusions = testSonarCoverageExclusions + if (sonarFullCoverage) {
     emptyList()
@@ -103,6 +104,7 @@ sonar {
         property("sonar.java.test.binaries", existingSonarPaths(maybeSonarTestBinaries))
         property("sonar.coverage.jacoco.xmlReportPaths", existingSonarPaths(maybeSonarCoveragePaths))
         property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
+        property("sonar.exclusions", "**/src/debug/**")
     }
 }
 

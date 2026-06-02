@@ -127,10 +127,10 @@ class MainActivityInstrumentedTest {
 
     @Before
 fun setUp() {
+      context = InstrumentationRegistry.getInstrumentation().getTargetContext()
         if (liveAnkiDroidEnabled() && !LIVE_FOREGROUND_SYNC_TEST.equals(testName.getMethodName())) {
             Assume.assumeTrue("Live AnkiDroid runs only the foreground sync button path from MainActivity.", false);
         }
-      context = InstrumentationRegistry.getInstrumentation().getTargetContext()
         context.deleteDatabase("kanji_anki_simple.db");
         MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
         MainActivityRuntimeOverrides.setCollectionGateway(null);
