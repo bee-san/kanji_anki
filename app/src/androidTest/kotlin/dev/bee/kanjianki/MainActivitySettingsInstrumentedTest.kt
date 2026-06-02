@@ -81,21 +81,24 @@ class MainActivitySettingsInstrumentedTest {
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
 
                 performClickableWithText(settingsRoot, "Study behavior")
+                assertEquals(48, activity.contentScrollY)
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertTrue(activity.settingsStudyExpanded)
                 assertTrue(containsText(settingsRoot, "Daily workload"))
 
-                performClickableWithText(settingsRoot, "Anki source")
+                performClickableWithText(settingsRoot, "Import from Anki")
+                assertEquals(48, activity.contentScrollY)
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertFalse(activity.settingsAnkiExpanded)
                 assertFalse(containsText(settingsRoot, "Frequency range"))
 
                 performClickableWithText(settingsRoot, "Automation")
+                assertEquals(48, activity.contentScrollY)
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertTrue(activity.settingsSyncExpanded)
                 assertTrue(containsText(settingsRoot, "Daily Anki sync"))
 
-                performClickableWithText(settingsRoot, "Reference data")
+                performClickableWithText(settingsRoot, "Display & data")
                 settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
                 assertTrue(activity.settingsAppExpanded)
                 assertTrue(containsText(settingsRoot, "Offline data & licenses"))
