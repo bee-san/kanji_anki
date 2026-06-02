@@ -41,7 +41,10 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
-        assertEquals("Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged.", SettingsStudyPlanTextCopy.fsrsRetentionBody())
+        assertEquals(
+            "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged.",
+            SettingsStudyPlanTextCopy.fsrsRetentionBody(),
+        )
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
         assertEquals("Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
