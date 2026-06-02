@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Only due reviews move the ladder; learning/relearning repeats are practice only.",
+                        "Only due reviews move the ladder. Learning and relearning repeats are practice only.",
                         "Promotion interval days",
                         "Demotion fail streak",
                         "Use default ladder thresholds",
