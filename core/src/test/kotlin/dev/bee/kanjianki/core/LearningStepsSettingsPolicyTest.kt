@@ -19,6 +19,16 @@ class LearningStepsSettingsPolicyTest {
     }
 
     @Test
+    fun saveRequestAcceptsAnkiStyleSpaceSeparatedStepExamples() {
+        val result = LearningStepsSettingsPolicy.saveRequest("1m 10m", "10m 1h")
+        val settings = requireNotNull(result.settings)
+
+        assertTrue(result.valid)
+        assertEquals(listOf(1, 10), settings.newStepsMinutes)
+        assertEquals(listOf(10, 60), settings.reviewStepsMinutes)
+    }
+
+    @Test
     fun saveRequestAllowsEmptyReviewSteps() {
         val result = LearningStepsSettingsPolicy.saveRequest("1m, 10m", "")
         val settings = requireNotNull(result.settings)
