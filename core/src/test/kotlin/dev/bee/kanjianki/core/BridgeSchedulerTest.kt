@@ -1948,6 +1948,35 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun studyAheadLearningRepeatIsSelectedBeforeDueReviewSiblingInSameFamily() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var studyAhead: Long = 24 * 60 * 60_000L
+        var interdayLearning: RecordsStudyModels.StudyItem = itemAtRung("間", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now + 12 * 60 * 60_000L)
+                .totalReviews(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+        var dueReviewHigherRung: RecordsStudyModels.StudyItem = reviewItem(
+                "間",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now
+        )
+        var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
+                listOf(dueReviewHigherRung, interdayLearning),
+                listOf(row("間", 1)),
+                now,
+                studyAhead,
+                null
+        )!!
+        assertNotNull(session)
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+    }
+
+    @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()
