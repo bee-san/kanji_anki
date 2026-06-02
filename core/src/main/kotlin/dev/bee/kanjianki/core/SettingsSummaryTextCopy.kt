@@ -45,7 +45,7 @@ object SettingsSummaryTextCopy {
         }
         return String.format(
             Locale.ROOT,
-            "%d suspended cards archived, %d rare kanji added; active cards optional",
+            "%d suspended cards archived, %d rare kanji added; active cards remain optional",
             suspendedCards,
             importedKanji,
         )

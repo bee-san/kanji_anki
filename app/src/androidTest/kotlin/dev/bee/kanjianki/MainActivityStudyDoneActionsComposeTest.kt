@@ -82,7 +82,7 @@ class MainActivityStudyDoneActionsComposeTest {
                     title = "Today's focus done",
                     headline = null,
                     body = "Your Pareto focus is complete.",
-                    summaryLines = listOf("Today's focus: 0 items left / 3", "Done"),
+                    summaryLines = listOf("Today's focus: 0 of 3 left", "Done"),
                     showDoneActions = true,
                     availableStudyMoreNewCards = 0,
                     showBackHome = false,
@@ -97,7 +97,7 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText(MainActivityBase.LABEL_PRACTICE).assertIsDisplayed()
         composeRule.onNodeWithText("Today's focus done").assertIsDisplayed()
         composeRule.onNodeWithText("Your Pareto focus is complete.").assertIsDisplayed()
-        composeRule.onNodeWithText("Today's focus: 0 items left / 3").assertIsDisplayed()
+        composeRule.onNodeWithText("Today's focus: 0 of 3 left").assertIsDisplayed()
         composeRule.onNodeWithText("Done").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).performClick()
         composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()

@@ -596,12 +596,12 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid fields, import filters, frequency, and daily sync.",
+            "AnkiDroid fields, filters, frequency, and sync.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
+            "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())

@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks how many problem kanji to study today; Anki due dates stay unchanged."
+        return "Kani picks today's problem-kanji count; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set how many problem kanji Kani studies today; Anki due dates stay unchanged."
+        return "Set today's problem-kanji count; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -111,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first."
+        return "Choose how new cards enter study; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -128,7 +128,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged."
+        return "Kani FSRS stays local. Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -155,7 +155,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs on/off or move them. Keep one always-available rung on."
+        return "Turn rungs on or off, or move them. Keep one always-available rung on."
     }
 
     @JvmStatic
@@ -187,9 +187,9 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
-        val status = if (ladder.isEnabled(rung)) "Enabled" else "Disabled"
-        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "conditional" else "always available"
-        return "$status $kind rung"
+        val status = if (ladder.isEnabled(rung)) "enabled" else "disabled"
+        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "Conditional rung" else "Always available rung"
+        return "$kind $status"
     }
 
     @JvmStatic

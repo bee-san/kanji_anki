@@ -26,7 +26,7 @@ class HomeFocusQueueComposeTest {
         composeRule.setContent {
             HomeFocusQueuePanel(
                 model = HomeFocusQueuePanelModel(
-                    planText = "Today's adaptive focus: 2 items left / 5",
+                    planText = "Today's adaptive focus: 2 of 5 left",
                     emptyTitle = null,
                     emptyBody = null,
                     showSyncButton = false,

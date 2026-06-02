@@ -9,7 +9,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. One card owns the note type and all clue mapping."
+        return "Default: Kiku. One card owns the note type and clue mapping."
     }
 
     @JvmStatic

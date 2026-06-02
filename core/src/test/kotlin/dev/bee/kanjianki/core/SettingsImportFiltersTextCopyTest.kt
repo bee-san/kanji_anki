@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Suspended cards are default. Add active/tagged/weak only if needed; no local leech tag/suspend.",
+            "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())

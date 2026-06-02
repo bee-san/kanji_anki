@@ -12,7 +12,7 @@ class AdaptiveFocusCopyTest {
 
         assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(null))
         assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(waiting))
-        assertEquals("Adaptive focus is set to all current problem kanji", AdaptiveFocusCopy.adaptiveFocusText(all))
-        assertEquals("Today's adaptive focus: 2 items left / 5", AdaptiveFocusCopy.adaptiveFocusText(focused))
+        assertEquals("Adaptive focus covers all current problem kanji", AdaptiveFocusCopy.adaptiveFocusText(all))
+        assertEquals("Today's adaptive focus: 2 of 5 left", AdaptiveFocusCopy.adaptiveFocusText(focused))
     }
 }

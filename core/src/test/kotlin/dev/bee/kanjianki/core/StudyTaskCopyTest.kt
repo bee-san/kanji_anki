@@ -74,13 +74,13 @@ class StudyTaskCopyTest {
             )
         )
         assertEquals(
-            "Relearn",
+            "Relearning",
             StudyTaskCopy.studyModeLabel(
                 sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.RELEARNING)
             )
         )
         assertEquals(
-            "Relearn",
+            "Relearning",
             StudyTaskCopy.studyModeLabel(
                 sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.RELEARNING)
             )

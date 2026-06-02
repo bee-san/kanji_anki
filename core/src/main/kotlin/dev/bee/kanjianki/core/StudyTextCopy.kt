@@ -118,17 +118,17 @@ object StudyTextCopy {
 
     @JvmStatic
     fun adaptiveFocusDoneBody(): String {
-        return "Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji."
+        return "Kani finished today's adaptive focus. Keep going or stop here."
     }
 
     @JvmStatic
     fun studyRunDoneBody(): String {
-        return "Kani finished the Study now set. You can stop here, or keep going through all current problem kanji."
+        return "Kani finished this study session. Keep going or stop here."
     }
 
     @JvmStatic
     fun adaptiveFocusDoneSummary(target: Int): String {
-        return "Today's focus: 0 items left / $target"
+        return "Today's focus: 0 of $target left"
     }
 
     @JvmStatic
@@ -138,7 +138,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun missedSummary(count: Int): String {
-        return countText(count, "missed and will come back soon", "missed and will come back soon")
+        return countText(count, "kanji was missed and will come back soon", "kanji were missed and will come back soon")
     }
 
     @JvmStatic

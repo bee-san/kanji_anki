@@ -30,7 +30,7 @@ class SettingsTextCopyTest {
                         "Verified APK ready",
                         "Automatic checks on",
                         "Manual checks",
-                        "4 suspended cards archived, 2 rare kanji added; active cards optional",
+                        "4 suspended cards archived, 2 rare kanji added; active cards remain optional",
                         "Sync blocked: No provider",
                         "Sync blocked: null",
                         "unknown version",
@@ -38,9 +38,9 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "AnkiDroid fields, import filters, frequency, and daily sync.",
+                        "AnkiDroid fields, filters, frequency, and sync.",
                         "Deck options",
-                        "App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.",
                         "Advanced controls",
                         "Reminders and update checks that run Kani in the background.",
                         "Display & data",
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings cockpit",
-                        "Grouped by import, deck, automation, and data. Each setting appears once.",
+                        "Grouped by import, deck, automation, and data.",
                         "Note type",
                         "Import filters",
                         "Import ranks",
@@ -198,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspended cards are default. Add active/tagged/weak only if needed; no local leech tag/suspend.",
+                        "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Frequency range",
-                        "Import suspended cards only inside this Jiten rank range. Default: 100-3000."
+                        "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -260,16 +260,16 @@ class SettingsTextCopyTest {
                         "Use ranks from 1 to 20000.",
                         "Frequency range saved. Sync again to rebuild practice.",
                         "Offline data & licenses",
-                        "View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution.",
+                        "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",
-                        "Dictionary and stroke-order data bundled for offline study.",
+                        "Dictionary and stroke data bundled for offline use.",
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
                         "Note type & clue fields",
                         "Using Kiku",
-                        "Default: Kiku. One card owns the note type and all clue mapping.",
+                        "Default: Kiku. One card owns the note type and clue mapping.",
                         "Required fields"
                 ),
                 listOf(
@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks how many problem kanji to study today; Anki due dates stay unchanged.",
+                "Kani picks today's problem-kanji count; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set how many problem kanji Kani studies today; Anki due dates stay unchanged.",
+                "Set today's problem-kanji count; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and relearning can come back fast. First-answer repeats are practice-only.",
+                "New cards and relearning use short steps. Those repeats are practice only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Pull soon-due cards ahead. 0 disables it; learning/relearning delays still apply.",
+                "Pull due reviews ahead. 0 disables it; learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -392,7 +392,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first.",
+                "Choose how new cards enter study; due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -407,7 +407,7 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "FSRS retention",
-                        "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged.",
+                        "Kani FSRS stays local. Anki due dates stay unchanged.",
                         "Use Jiten-rank retention ranges",
                         "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
@@ -420,10 +420,10 @@ class SettingsTextCopyTest {
                         "Kanji -> meaning",
                         "Font -> meaning",
                         "Word -> reading",
-                        "Enabled always available rung",
-                        "Enabled conditional rung",
+                        "Always available rung enabled",
+                        "Conditional rung enabled",
                         "Study ladder",
-                        "Turn rungs on/off or move them. Keep one always-available rung on."
+                        "Turn rungs on or off, or move them. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Only due-review passes can move the ladder; learning/relearning repeats are practice-only.",
+                        "Only due reviews move the ladder. Learning and relearning repeats are practice only.",
                         "Promotion interval days",
                         "Demotion fail streak",
                         "Use default ladder thresholds",

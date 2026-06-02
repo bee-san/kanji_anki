@@ -7,15 +7,15 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("AnkiDroid fields, import filters, frequency, and daily sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("AnkiDroid fields, filters, frequency, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Reminders and update checks that run Kani in the background.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Offline dictionaries, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings cockpit", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Grouped by import, deck, automation, and data. Each setting appears once.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Grouped by import, deck, automation, and data.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Import ranks", SettingsSectionTextCopy.importRanksStatusLabel())
