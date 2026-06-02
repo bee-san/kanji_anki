@@ -184,7 +184,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailIdentityModel(
                         title = "split",
                         reading = "レツ",
-                        suspended = true
+                        stateBadges = listOf(BrowseStateBadgeModel("SUSPENDED", 0xFFFF4C76.toInt()))
                     )
                 )
                 BrowseDetailActions(
@@ -235,7 +235,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                         identity = BrowseDetailIdentityModel(
                             title = "split",
                             reading = "レツ",
-                            suspended = false
+                            stateBadges = emptyList()
                         ),
                         reason = BrowseDetailPanelModel(
                             title = "",
