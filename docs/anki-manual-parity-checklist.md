@@ -100,7 +100,7 @@ Current Kani snapshot used for this review:
 
    Checklist:
    - [x] Treat `browser_query` as raw Anki/AnkiDroid search syntax, and validate errors clearly instead of silently importing nothing.
-   - [ ] Add docs/examples for useful Kani import queries: `is:suspended`, `rated:31:1`, tag filters, FSRS properties if available through AnkiDroid.
+   - [x] Add docs/examples for useful Kani import queries: `is:suspended`, `rated:31:1`, and tag/deck filters; keep FSRS-property examples out until AnkiDroid provider support is verified.
    - [ ] If Kani has a local browse/detail screen, decide whether it should show suspended/flagged/marked/buried state badges from Anki.
 
 ## P2 / important but less blocking

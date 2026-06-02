@@ -64,7 +64,8 @@ Kani uses the Pareto principle: focus on the kanji most worth studying today ins
 
 Suspended cards remain the default import source. Browser query import is opt-in from Settings for cases where you want Kani to consider the same cards you would find with an Anki browser search, such as:
 
-- `rated:1`
+- `is:suspended`
+- `rated:31:1`
 - `deck:Japanese tag:kani`
 - `prop:due<=0 -is:suspended`
 
