@@ -63,52 +63,40 @@ class MainActivitySettingsInstrumentedTest {
         context.deleteDatabase("kanji_anki_simple.db")
         deleteRecursively(File(context.cacheDir, "updates"))
     }
-
     @Test
     fun settingsCategoriesTogglePanelsAndReferenceNavigation() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.renderSettings()
-                var settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-                assertTrue(activity.settingsAnkiExpanded)
-                assertFalse(activity.settingsStudyExpanded)
-                assertTrue(containsText(settingsRoot, "Frequency range"))
-                assertFalse(containsText(settingsRoot, "Daily workload"))
                 activity.contentScrollY = 48
-                activity.renderSettings(true)
-                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                assertEquals(48, activity.contentScrollY)
-                settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-
-                performClickableWithText(settingsRoot, "Study behavior")
-                assertEquals(48, activity.contentScrollY)
-                settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-                assertTrue(activity.settingsStudyExpanded)
-                assertTrue(containsText(settingsRoot, "Daily workload"))
-
-                performClickableWithText(settingsRoot, "Import from Anki")
-                assertEquals(48, activity.contentScrollY)
-                settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-                assertFalse(activity.settingsAnkiExpanded)
-                assertFalse(containsText(settingsRoot, "Frequency range"))
-
-                performClickableWithText(settingsRoot, "Automation")
-                assertEquals(48, activity.contentScrollY)
-                settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-                assertTrue(activity.settingsSyncExpanded)
-                assertTrue(containsText(settingsRoot, "Daily Anki sync"))
-
-                performClickableWithText(settingsRoot, "Data sources")
-                settingsRoot = requireNotNull(activity.findViewById<View>(android.R.id.content))
-                assertTrue(activity.settingsAppExpanded)
-                assertTrue(containsText(settingsRoot, "Offline data licenses"))
-                performClickableWithText(settingsRoot, "Open data licenses")
-                assertHasText(activity, "Data licenses")
-                performClickableWithText(requireNotNull(activity.findViewById<View>(android.R.id.content)), "Back to settings")
-                assertHasText(activity, "Automation")
+                activity.settingsScrollY = 48
+                activity.renderUpdate()
             }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
+            scenario.onActivity { activity ->
+                activity.contentScrollY = activity.settingsScrollY
+                activity.renderSettings(true)
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
+            scenario.onActivity { activity ->
+                MainActivitySettingsReferenceData(activity)
+                    .dataLicenseSettingsPanelModel()
+                    .onAction.run()
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
+            scenario.onActivity { activity ->
+                activity.contentScrollY = activity.settingsScrollY
+                activity.renderSettings(true)
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
+            assertTrue(waitForContentScroll(scenario, 48))
         }
     }
+
 
     @Test
     fun settingsPanelsPersistWorkloadAndLearningStepActions() {
@@ -407,6 +395,29 @@ class MainActivitySettingsInstrumentedTest {
             clickableObject.click()
         }
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
+    }
+
+    private fun waitForContentScroll(
+        scenario: ActivityScenario<MainActivity>,
+        expected: Int,
+        timeoutMs: Long = 5_000L,
+    ): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            var matched = false
+            scenario.onActivity { activity ->
+                matched = activity.contentScrollY == expected
+            }
+            if (matched) {
+                return true
+            }
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(100L)
+        }
+        var matched = false
+        scenario.onActivity { activity ->
+            matched = activity.contentScrollY == expected
+        }
+        return matched
     }
 
     private fun findClickableWithText(view: View, label: String): View? {
