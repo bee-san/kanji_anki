@@ -548,7 +548,7 @@ class ComposeScreenModelsTest {
             title = "Settings",
             body = "Configure Kani behavior.",
             rows = listOf(
-                listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
+                listOf(SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()))
             ),
         )
         val panel = SettingsReferenceDataLinkModel(
@@ -1006,21 +1006,21 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings cockpit", model.cockpitLabel)
+        assertEquals("Settings overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
-        assertEquals("Note type", model.rows[0][0].label)
+        assertEquals("Anki note type", model.rows[0][0].label)
         assertEquals("Kiku", model.rows[0][0].value)
         assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
-        assertEquals("Reminder", model.rows[1][1].label)
+        assertEquals("Daily reminder", model.rows[1][1].label)
         assertEquals("Blocked", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
-        assertEquals("Daily sync", model.rows[2][0].label)
+        assertEquals("Daily Anki sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Updates", model.rows[2][1].label)
+        assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Verified APK ready", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
         assertEquals("Matching cards", model.rows[3][0].label)

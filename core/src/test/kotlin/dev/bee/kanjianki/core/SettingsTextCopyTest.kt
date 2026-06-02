@@ -92,14 +92,14 @@ class SettingsTextCopyTest {
                         "Turn off automatic updates",
                         "Turn on automatic updates",
                         "Back to settings",
-                        "Settings cockpit",
-                        "Grouped by import, study, automation, and data.",
-                        "Note type",
+                        "Settings overview",
+                        "Grouped by import, study, automation, and display & data.",
+                        "Anki note type",
                         "Import filters",
-                        "Import ranks",
-                        "Reminder",
-                        "Daily sync",
-                        "Updates"
+                        "Frequency range",
+                        "Daily reminder",
+                        "Daily Anki sync",
+                        "App updates"
                 ),
                 listOf(
                         SettingsTextCopy.updatePageTitle(),

@@ -26,30 +26,30 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = "Settings cockpit"
+    fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, study, automation, and data."
+        return "Grouped by import, study, automation, and display & data."
     }
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Note type"
+    fun noteTypeStatusLabel(): String = "Anki note type"
 
     @JvmStatic
     fun importFiltersStatusLabel(): String = "Import filters"
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Import ranks"
+    fun importRanksStatusLabel(): String = "Frequency range"
 
     @JvmStatic
-    fun reminderStatusLabel(): String = "Reminder"
+    fun reminderStatusLabel(): String = "Daily reminder"
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily sync"
+    fun dailySyncStatusLabel(): String = "Daily Anki sync"
 
     @JvmStatic
-    fun updatesStatusLabel(): String = "Updates"
+    fun updatesStatusLabel(): String = "App updates"
 
     @JvmStatic
     fun matchingCardsStatusLabel(): String = "Matching cards"

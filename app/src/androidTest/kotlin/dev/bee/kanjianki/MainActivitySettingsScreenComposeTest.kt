@@ -25,12 +25,12 @@ class MainActivitySettingsScreenComposeTest {
                     homeLabel = "Home",
                     onHome = Runnable { homeClicked = true },
                     hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Cockpit",
+                        cockpitLabel = "Settings overview",
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
-                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
-                            listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
+                            listOf(SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt())),
+                            listOf(SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()))
                         )
                     ),
                     categories = listOf(
@@ -68,7 +68,7 @@ class MainActivitySettingsScreenComposeTest {
 
         composeRule.onNodeWithText("Home").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
-        composeRule.onNodeWithText("Note type").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
         composeRule.onNodeWithText("Display & data").assertIsDisplayed()
