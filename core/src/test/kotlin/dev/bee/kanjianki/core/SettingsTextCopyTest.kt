@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's problem-kanji count; Anki due dates stay unchanged.",
+                "Kani picks today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's problem-kanji count; Anki due dates stay unchanged.",
+                "Set today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
