@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged.",
+                "Kani picks how many problem kanji to study today; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Manual workload sets today's Kani intake; Anki due dates stay unchanged.",
+                "Set how many problem kanji Kani studies today; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -392,7 +392,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose how unseen cards enter study; due reviews and learning repeats stay first.",
+                "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Only due-review passes can move the ladder; learning repeats are practice-only.",
+                        "Only due-review passes can move the ladder; learning/relearning repeats are practice-only.",
                         "Promotion interval days",
                         "Demotion fail streak",
                         "Use default ladder thresholds",
