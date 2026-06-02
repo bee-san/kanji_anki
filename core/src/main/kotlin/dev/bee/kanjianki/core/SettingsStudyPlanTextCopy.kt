@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged."
+        return "Kani picks how many problem kanji to study today; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Manual workload sets today's Kani intake; Anki due dates stay unchanged."
+        return "Set how many problem kanji Kani studies today; Anki due dates stay unchanged."
     }
 
     @JvmStatic
