@@ -3,11 +3,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import sys
 import time
-import zlib
 from pathlib import Path
 
 FIELD_SEPARATOR = "\x1f"
@@ -252,6 +252,10 @@ def insert_collection_metadata(db: sqlite3.Connection, now: int) -> None:
     )
 
 
+def anki_checksum(value: str) -> int:
+    return int(hashlib.sha1(value.encode("utf-8")).hexdigest()[:8], 16)
+
+
 def insert_notes_and_cards(db: sqlite3.Connection, now: int) -> None:
     for note in NOTES:
         field_text = FIELD_SEPARATOR.join(note["fields"])
@@ -267,7 +271,7 @@ def insert_notes_and_cards(db: sqlite3.Connection, now: int) -> None:
                 note["tags"],
                 field_text,
                 sort_field,
-                zlib.crc32(sort_field.encode("utf-8")) & 0xFFFFFFFF,
+                anki_checksum(sort_field),
                 0,
                 "",
             ),
