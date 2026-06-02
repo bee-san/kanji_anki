@@ -5,7 +5,7 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Note type, filters, and frequency range for imports."
+    fun settingsAnkiSourceBody(): String = "Note type, filters, and frequency range."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study settings"

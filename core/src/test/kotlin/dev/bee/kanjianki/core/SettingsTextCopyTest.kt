@@ -38,7 +38,7 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import from Anki",
-                        "Note type, filters, and frequency range for imports.",
+                        "Note type, filters, and frequency range.",
                         "Study settings",
                         "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
                         "Automation",
