@@ -42,7 +42,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
-            "Kani FSRS stays local. Anki due dates stay unchanged.",
+            "FSRS stays local. Anki due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
