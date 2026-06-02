@@ -13,16 +13,16 @@ Current Kani snapshot used for this review:
 
 ## P0 / must align before calling parity “done”
 
-1. Relearning steps must support the Anki empty-step behavior.
+1. Relearning steps support the Anki empty-step behavior.
 
-   Current Kani: `LearningStepSettings` always normalizes an empty/invalid review-step list to the default one-step list (`defaultReviewSteps() == [10]`), and `ReviewTransitionEngine.applyReviewAgain()` always enters `RELEARNING` and indexes `relearning[0]`.
+   Current Kani: `LearningStepsSettingsPolicy` and `LocalStoreStudySettings` preserve an explicit blank `review_relearning_steps_minutes` value, `LearningStepSettings` keeps `reviewStepsMinutes` empty when allowed, and `ReviewTransitionEngine.applyReviewAgain()` skips `RELEARNING` with the default 1-day post-lapse interval when relearning steps are empty.
 
    Manual anchor: Anki deck options say: “The same as learning steps, but for lapsed cards. When you fail a review card (press **Again**), the card goes through _relearning steps_, before it becomes a review card again. If you leave the steps blank, the card will skip relearning, and will be assigned a new interval of 1 day by default.” Source: https://docs.ankiweb.net/deck-options.html#relearning-steps
 
    Checklist:
-   - [ ] Preserve a true empty `reviewStepsMinutes` value instead of falling back to `[10]` when the user explicitly blanks relearning steps.
-   - [ ] On review `Again`, if relearning steps are empty, skip `RELEARNING`, set review phase/state, and schedule the default 1-day post-lapse interval.
-   - [ ] Add scheduler tests for blank relearning steps and for non-empty relearning steps.
+   - [x] Preserve a true empty `reviewStepsMinutes` value instead of falling back to `[10]` when the user explicitly blanks relearning steps.
+   - [x] On review `Again`, if relearning steps are empty, skip `RELEARNING`, set review phase/state, and schedule the default 1-day post-lapse interval.
+   - [x] Add scheduler and app settings tests for blank relearning steps, while keeping non-empty relearning-step tests green.
 
 2. Add explicit leech parity or intentionally document a Kani alternative.
 
@@ -132,9 +132,8 @@ Likely already close:
 - Import filters cover active/suspended/tagged/weak/browser-query sources, which is a practical bridge to Anki Browser search workflows.
 - Stats include answer-button counts plus Kani-specific study/writing/impact views.
 
-Highest-risk mismatches:
+Remaining highest-risk mismatches:
 
-- Empty relearning steps are not representable as an Anki-style “skip relearning, 1 day” policy.
 - Leech behavior appears absent as a first-class local policy.
 - Sibling burying is present conceptually but needs tests/docs for Anki’s exact gathering order and learning-card exceptions.
 - Kani has FSRS scheduling, but not full Anki FSRS deck-option parity such as optimizer/reschedule/preset semantics.

@@ -111,6 +111,20 @@ class SettingsWriteActionsTest {
     }
 
     @Test
+    fun saveLearningStepsPreservesEmptyReviewSteps() {
+        val writer = RecordingLearningStepWriter()
+
+        SettingsWriteActions.saveLearningSteps(
+            LearningStepsSettingsPolicy.saveRequest("1m 10m", ""),
+            writer
+        )
+
+        assertEquals("1m, 10m", writer.settings!!.newStepsText())
+        assertEquals("", writer.settings!!.reviewStepsText())
+        assertTrue(writer.settings!!.reviewStepsMinutes.isEmpty())
+    }
+
+    @Test
     fun studyLadderActionsWriteMovedRestoredAndProvidedSettings() {
         val writer = RecordingStudyLadderWriter()
         val current = RecordsBase.StudyLadderSettings.defaults()
