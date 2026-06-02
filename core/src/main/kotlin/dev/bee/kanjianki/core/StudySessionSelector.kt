@@ -2,7 +2,6 @@ package dev.bee.kanjianki.core
 
 import java.security.SecureRandom
 import java.util.Collections
-import java.util.Random
 
 class StudySessionSelector {
     fun nextSession(
@@ -58,11 +57,7 @@ class StudySessionSelector {
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
-        if (randomSeed == null) {
-            Collections.shuffle(dueItems, SecureRandom())
-        } else {
-            Collections.shuffle(dueItems, Random(randomSeed))
-        }
+        shuffleDuePriorityBuckets(dueItems, randomSeed)
         return dueItems.map { sessionTaskKeyForItem(it) }
     }
 
@@ -325,6 +320,44 @@ class StudySessionSelector {
                 return if (item.totalReviews > 0) 0 else 2
             }
             return 1
+        }
+
+        fun shuffleDuePriorityBuckets(items: MutableList<RecordsStudyModels.StudyItem>, randomSeed: Long?) {
+            val seed = randomSeed
+            val secureRandom = if (seed == null) SecureRandom() else null
+            var start = 0
+            while (start < items.size) {
+                val priority = duePriority(items[start])
+                var end = start + 1
+                while (end < items.size && duePriority(items[end]) == priority) {
+                    end++
+                }
+                if (end - start > 1) {
+                    val bucket = items.subList(start, end)
+                    if (seed == null) {
+                        Collections.shuffle(bucket, secureRandom ?: SecureRandom())
+                    } else {
+                        bucket.sortWith(
+                            compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(seed, it) }
+                                .thenBy { taskKeyForSeededShuffle(it) }
+                        )
+                    }
+                }
+                start = end
+            }
+        }
+
+        fun seededShuffleRank(seed: Long, item: RecordsStudyModels.StudyItem): Long {
+            var hash = seed xor -7046029254386353131L
+            val key = taskKeyForSeededShuffle(item)
+            for (index in key.indices) {
+                hash = java.lang.Long.rotateLeft(hash xor key[index].code.toLong(), 27) * 1099511628211L
+            }
+            return hash
+        }
+
+        fun taskKeyForSeededShuffle(item: RecordsStudyModels.StudyItem): String {
+            return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
         }
 
         fun rowWeakness(
