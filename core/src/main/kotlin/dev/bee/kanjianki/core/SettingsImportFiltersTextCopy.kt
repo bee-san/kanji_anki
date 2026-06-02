@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Runs raw Anki search. Kani redacts it and keeps note type, rank, and threshold."
+        return "Examples: is:suspended, rated:31:1, tag:kani. Kani keeps note type, rank, and threshold."
     }
 
     @JvmStatic
