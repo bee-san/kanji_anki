@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and relearning can come back fast. First-answer repeats are practice-only.",
+                "New cards and relearning can repeat fast. Those repeats are practice only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
