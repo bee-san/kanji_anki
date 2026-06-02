@@ -8,10 +8,10 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceBody(): String = "AnkiDroid note type, filters, and frequency."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study behavior"
+    fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"

@@ -39,8 +39,8 @@ class SettingsTextCopyTest {
                         "release-v0.4.33",
                         "Import from Anki",
                         "AnkiDroid note type, filters, and frequency.",
-                        "Study behavior",
-                        "Learning steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Study settings",
+                        "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
                         "Automation",
                         "Daily sync, reminders, and update checks that run Kani in the background.",
                         "Data sources",
@@ -133,7 +133,7 @@ class SettingsTextCopyTest {
                 listOf(
                         "Matching cards",
                         "Reminder: Off",
-                        "Collapse Study behavior",
+                        "Collapse Study settings",
                         "Expand Automation",
                         "1 card",
                         "2 cards",
@@ -149,7 +149,7 @@ class SettingsTextCopyTest {
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
                         SettingsTextCopy.categoryToggleDescription(false, "Automation"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),
