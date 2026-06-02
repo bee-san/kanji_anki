@@ -40,6 +40,12 @@ wait_for_external_storage() {
 }
 
 probe_ankidroid_provider() {
+  # AnkiDroid can recreate or tighten its app-specific external-storage
+  # directory during first-run/provider startup. Re-apply the CI fixture
+  # permissions immediately before each provider probe so readiness retries fix
+  # the storage state instead of repeatedly querying a provider that cannot
+  # write to its collection directory.
+  repair_ankidroid_dir_permissions || return 1
   adb shell content query --uri content://com.ichi2.anki.flashcards/models \
     | tee "${provider_probe_path}"
   grep -Eq 'Row:|Kiku' "${provider_probe_path}"
