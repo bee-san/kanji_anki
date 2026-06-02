@@ -14,6 +14,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -79,8 +80,8 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             assertVisible("Recognise")
             assertVisible("Name this kanji")
             clickVisible("Reveal")
-            assertVisible("Fail")
-            assertVisible(MainActivityBase.LABEL_PASS)
+            assertVisible(StudyReviewButtonCopy.againLabel())
+            assertVisible(StudyReviewButtonCopy.goodLabel())
             scenario.onActivity { activity -> assertTrue(activity.flashcardAnswerRevealed) }
 
             scenario.onActivity { activity ->
