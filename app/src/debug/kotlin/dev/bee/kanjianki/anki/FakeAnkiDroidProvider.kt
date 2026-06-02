@@ -191,7 +191,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
             throw IllegalArgumentException("model search failed")
         }
         if (path == "/notes" || path == "/notes_v2") {
-            return notes(selection.orEmpty())
+            return notes(selection.orEmpty(), allowBrowserQuerySearch = path == "/notes")
         }
         if (NOTES_ID_PATH.matcher(path).matches()) {
             return noteById(uri.lastPathSegment!!.toLong(), projection)
@@ -361,10 +361,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
         return null
     }
 
-    private fun notes(selection: String): Cursor? {
+    private fun notes(selection: String, allowBrowserQuerySearch: Boolean): Cursor? {
         val cursor = MatrixCursor(arrayOf("_id", "mid", "flds", "tags"))
         val suspendedOnly = isSuspendedModelSearch(selection)
-        val browserQuery = isBrowserQuerySearch(selection)
+        val browserQuery = allowBrowserQuerySearch && isBrowserQuerySearch(selection)
         if (suspendedOnly && nullSuspendedSearchCursor) {
             return null
         }

@@ -367,6 +367,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, snapshot.cards.size)
         assertEquals("確認", snapshot.notes[0].expression(RecordsSyncModels.Settings.kikuDefaults()))
         assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(0, providerInt("browserQueryQueries"))
     }
 
     @Test
