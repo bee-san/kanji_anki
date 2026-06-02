@@ -87,7 +87,7 @@ Current Kani snapshot used for this review:
    - [x] Document that Kani uses FSRS for local scheduling but has its own parameters/default multipliers.
    - [x] If importing from AnkiDroid FSRS memory, document exactly which fields are read (`stability`, `difficulty`, `retrievability` from explicit columns or serialized data).
    - [x] Add parity tests around target retention and rating-specific interval ordering (`Again < Hard < Good < Easy`) if missing.
-   - [ ] Decide whether to expose Anki-style parameter optimization/reschedule controls; otherwise mark non-goal.
+   - [x] Treat Anki-style parameter optimization, deck-preset import, and reschedule controls as non-goals for now: Kani exposes local FSRS tuning only, and Settings copy says Anki due dates, presets, and optimizer/reschedule stay unchanged.
 
 6. Browser/search parity should lean on Anki query semantics for import filters.
 

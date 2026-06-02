@@ -128,7 +128,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged."
+        return "Kani FSRS uses local settings; Anki due dates, presets, and optimizer/reschedule stay unchanged."
     }
 
     @JvmStatic
