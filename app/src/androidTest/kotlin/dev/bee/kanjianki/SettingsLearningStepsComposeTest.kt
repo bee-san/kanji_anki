@@ -73,4 +73,51 @@ class SettingsLearningStepsComposeTest {
             assertEquals(defaults.newStepsText(), savedReviewSteps)
         }
     }
+
+    @Test
+    fun useNewCardStepsCopiesCurrentCustomTextInCompose() {
+        var saved = false
+        var savedNewSteps = ""
+        var savedReviewSteps = ""
+
+        composeRule.setContent {
+            SettingsLearningStepsPanel(
+                model = SettingsLearningStepsPanelModel(
+                    title = SettingsTextCopy.learningStepsTitle(),
+                    body = SettingsTextCopy.learningStepsBody(),
+                    newCardsLabel = MainActivityBase.LABEL_NEW_CARDS,
+                    initialNewStepsText = "2m 15m",
+                    reviewMissesLabel = SettingsTextCopy.reviewMissesLabel(),
+                    initialReviewStepsText = "5m 20m",
+                    defaultNewStepsText = RecordsSchedulerModels.LearningStepSettings.defaults().newStepsText(),
+                    defaultReviewStepsText = RecordsSchedulerModels.LearningStepSettings.defaults().reviewStepsText(),
+                    ankiDefaultLabel = SettingsTextCopy.ankiDefaultLabel(),
+                    sameStepsLabel = SettingsTextCopy.sameLearningStepsLabel(),
+                    saveLabel = SettingsTextCopy.saveLearningStepsLabel(),
+                    onSave = SettingsLearningStepsSaveAction { newStepsText, reviewStepsText ->
+                        savedNewSteps = newStepsText
+                        savedReviewSteps = reviewStepsText
+                        saved = true
+                    }
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.NEW_STEPS_INPUT).performTextReplacement("4m 30m")
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT).performTextReplacement("9m")
+        composeRule.onNodeWithText(SettingsTextCopy.sameLearningStepsLabel()).performClick()
+
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.NEW_STEPS_INPUT)
+            .assertTextEquals("4m 30m")
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT)
+            .assertTextEquals("4m 30m")
+
+        composeRule.onNodeWithText(SettingsTextCopy.saveLearningStepsLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(saved)
+            assertEquals("4m 30m", savedNewSteps)
+            assertEquals("4m 30m", savedReviewSteps)
+        }
+    }
 }
