@@ -52,4 +52,12 @@ class SettingsLearningStepsPanelModelsTest {
         assertEquals("1m, 10m", newStepsText)
         assertEquals("", reviewStepsText)
     }
+
+    @Test
+    fun useNewCardStepsUsesCurrentNewCardTextInsteadOfResettingToDefaults() {
+        val textState = SettingsLearningStepsPanelModels.useNewCardStepsTextState("4m, 30m")
+
+        assertEquals("4m, 30m", textState.newStepsText)
+        assertEquals("4m, 30m", textState.reviewStepsText)
+    }
 }
