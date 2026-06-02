@@ -111,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how unseen cards enter study; due reviews and learning repeats stay first."
+        return "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first."
     }
 
     @JvmStatic

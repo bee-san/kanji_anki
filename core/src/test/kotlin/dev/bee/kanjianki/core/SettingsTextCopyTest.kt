@@ -392,7 +392,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose how unseen cards enter study; due reviews and learning repeats stay first.",
+                "Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder thresholds",
-                        "Only due-review passes can move the ladder; learning repeats are practice-only.",
+                        "Only due-review passes can move the ladder; learning/relearning repeats are practice-only.",
                         "Promotion interval days",
                         "Demotion fail streak",
                         "Use default ladder thresholds",

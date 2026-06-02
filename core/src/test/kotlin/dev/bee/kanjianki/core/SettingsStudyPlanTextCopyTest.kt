@@ -24,7 +24,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("Choose how unseen cards enter study; due reviews and learning repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("Choose how unseen cards enter study; due reviews and learning/relearning repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Heads up: visually similar kanji appear close together in this preview: 人/入, 土/士.",
