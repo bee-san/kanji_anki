@@ -37,7 +37,7 @@ Current Kani snapshot used for this review:
 
 3. Verify sibling burying semantics against Anki’s new/review/learning order.
 
-   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Need a targeted test review to confirm it matches Anki’s type ordering and learning exceptions.
+   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Targeted `BridgeSchedulerTest` coverage now keeps due learning and relearning repeats ahead of due review siblings in the same family, matching Anki’s learning-before-review gather order for time-critical repeats. Broader ordering and manual-unbury semantics still need review.
 
    Manual anchors:
    - Studying: “When you answer a card that has siblings, Anki can prevent the card’s siblings from being shown in the same session by automatically ‘burying’ them. Buried cards are hidden from review until the clock rolls over to a new day or you manually unbury them…” Source: https://docs.ankiweb.net/studying.html#siblings-and-burying
@@ -45,8 +45,8 @@ Current Kani snapshot used for this review:
 
    Checklist:
    - [ ] Confirm Kani’s suppression order prefers intraday learning, interday learning, review, then new.
-   - [ ] Confirm learning cards are not buried when they are time-critical, while learning cards can bury new/review siblings as Anki describes.
-   - [ ] Add explicit tests named around Anki bury semantics, not just generic sibling suppression.
+   - [x] Confirm due learning/relearning cards are not buried behind due review siblings when they are time-critical.
+   - [x] Add explicit tests named around Anki bury semantics for due learning/relearning repeats, not just generic sibling suppression.
    - [ ] Decide whether “manual unbury” has a Kani concept; if not, document that burying is session/queue suppression only.
 
 ## P1 / high-value parity gaps
