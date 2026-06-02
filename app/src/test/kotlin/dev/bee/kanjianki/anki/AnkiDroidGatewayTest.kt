@@ -11,9 +11,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.lang.reflect.InvocationHandler
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Proxy
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class AnkiDroidGatewayTest {
     @Test
     fun fsrsValuesAreReadFromCardCursorColumns() {
@@ -351,8 +357,97 @@ class AnkiDroidGatewayTest {
         assertEquals(1, result.projectionIndex())
     }
 
-    private fun card(cardId: Long, noteId: Long): RecordsSyncModels.Card {
-        return RecordsSyncModels.Card(cardId, noteId, 0, "deck", 0, 0, 0, 0, 0, 0, false)
+    @Test
+    fun splitFieldsPreservesBlankMiddleAndTrailingAnkiFields() {
+        val fields = invokePrivateStatic(
+            "splitFields",
+            arrayOf(String::class.java),
+            "箱\u001f\u001fbox\u001f",
+        ) as List<String>
+
+        assertEquals(listOf("箱", "", "box", ""), fields)
+    }
+
+    @Test
+    fun uriForBuildsProviderUrisWithEncodedPathSegments() {
+        val uri = invokePrivateStatic(
+            "uriFor",
+            arrayOf(String::class.java, Array<String>::class.java),
+            "com.ichi2.anki.flashcards",
+            arrayOf("notes", "deck name/with slash", "cards"),
+        )
+
+        assertEquals("content://com.ichi2.anki.flashcards/notes/deck%20name%2Fwith%20slash/cards", uri.toString())
+    }
+
+    @Test
+    fun browserQueryMatchingReturnsOriginalListWhenQueryDisabled() {
+        val cards = listOf(card(10L, 1L), card(20L, 2L))
+
+        val result = invokePrivateStatic(
+            "markBrowserQueryMatchedCards",
+            arrayOf(List::class.java, Set::class.java),
+            cards,
+            emptySet<Long>(),
+        ) as List<RecordsSyncModels.Card>
+
+        assertEquals(cards, result)
+        assertFalse(result.any { it.browserQueryMatched })
+    }
+
+    @Test
+    fun validateTemplateCardsAcceptsOnlyOrdZeroCards() {
+        val gateway = uninitializedGateway()
+
+        invokePrivateInstance(
+            gateway,
+            "validateTemplateCards",
+            arrayOf(List::class.java, RecordsSyncModels.Settings::class.java),
+            listOf(card(10L, 1L, ord = 0)),
+            RecordsSyncModels.Settings.kikuDefaults(),
+        )
+    }
+
+    @Test
+    fun validateTemplateCardsRejectsSecondaryTemplateOrdWithActionableMessage() {
+        val gateway = uninitializedGateway()
+
+        try {
+            invokePrivateInstance(
+                gateway,
+                "validateTemplateCards",
+                arrayOf(List::class.java, RecordsSyncModels.Settings::class.java),
+                listOf(card(10L, 1L, ord = 1)),
+                RecordsSyncModels.Settings.kikuDefaults(),
+            )
+            throw AssertionError("Expected secondary template cards to be rejected")
+        } catch (error: InvocationTargetException) {
+            val failure = error.targetException as AnkiDroidGateway.SyncFailure
+            assertTrue(failure.permanentFailure)
+            assertEquals(
+                "Kiku has card template ord 1. This app supports only the first card template at ord 0.",
+                failure.message,
+            )
+        }
+    }
+
+    @Test
+    fun syncFailureFactoriesPreserveRetryabilityCauseAndNullableMessage() {
+        val cause = IllegalStateException("provider busy")
+
+        val retryable = AnkiDroidGateway.SyncFailure.retryable("retry later", cause)
+        val permanent = AnkiDroidGateway.SyncFailure.permanent(null, cause)
+
+        assertFalse(retryable.permanentFailure)
+        assertEquals("retry later", retryable.message)
+        assertSame(cause, retryable.cause)
+        assertTrue(permanent.permanentFailure)
+        assertNull(permanent.message)
+        assertSame(cause, permanent.cause)
+    }
+
+    private fun card(cardId: Long, noteId: Long, ord: Int = 0): RecordsSyncModels.Card {
+        return RecordsSyncModels.Card(cardId, noteId, ord, "deck", 0, 0, 0, 0, 0, 0, false)
     }
 
     private fun fsrsFromCursor(cursor: Cursor): Any {

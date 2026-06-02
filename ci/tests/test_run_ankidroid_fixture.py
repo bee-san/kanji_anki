@@ -321,6 +321,89 @@ OUT
         self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
+    def test_fixture_fails_when_instrumentation_omits_ok_marker(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    cat <<'OUT'
+INSTRUMENTATION_STATUS: numtests=45
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS_CODE: -1
+OUT
+    exit 0 ;;
+"""
+        )
+
+        result, _ = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Instrumentation did not report a successful test completion marker", result.stdout)
+
+    def test_fixture_dumps_logcat_when_instrumentation_fails(self):
+        fake_adb = base_fake_adb(
+            """  logcat\\ -d*)
+    echo 'fixture diagnostic logcat line'
+    exit 0 ;;
+  shell\\ am\\ instrument*)
+    echo 'FAILURES!!!'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("fixture diagnostic logcat line", (tmp_path / "ankidroid-fixture-logcat.txt").read_text())
+
+    def test_fixture_respects_single_instrumentation_attempt_override(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(
+            fake_adb,
+            extra_env={"KANJI_LIVE_INSTRUMENTATION_ATTEMPTS": "1"},
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
+        self.assertIn("Running live-provider instrumentation attempt 1/1", result.stdout)
+        self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+
+    def test_fixture_regrants_permission_and_reprobes_before_transient_retry(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+      exit 0
+    fi
+    echo 'OK (45 tests)'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        first_instrument = next(i for i, call in enumerate(adb_calls) if "am instrument" in call)
+        retry_grant = next(i for i, call in enumerate(adb_calls[first_instrument + 1 :], start=first_instrument + 1) if "pm grant" in call)
+        retry_probe = next(i for i, call in enumerate(adb_calls[retry_grant + 1 :], start=retry_grant + 1) if "content query" in call)
+        second_instrument = next(i for i, call in enumerate(adb_calls[first_instrument + 1 :], start=first_instrument + 1) if "am instrument" in call)
+        self.assertLess(retry_grant, retry_probe)
+        self.assertLess(retry_probe, second_instrument)
+        self.assertGreaterEqual(sum(1 for call in adb_calls if call == "logcat -c"), 2)
+
     def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
         result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
 
