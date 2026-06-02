@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type & clue fields",
                         "Using Kiku",
-                        "Default: Kiku. One card owns the note type and all clue mapping.",
+                        "Default: Kiku. One card owns the note type and clue mapping.",
                         "Required fields"
                 ),
                 listOf(
