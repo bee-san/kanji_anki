@@ -123,7 +123,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun studyRunDoneBody(): String {
-        return "Kani finished the Study now set. Keep going or stop here."
+        return "Kani finished this study session. Keep going or stop here."
     }
 
     @JvmStatic
@@ -138,7 +138,7 @@ object StudyTextCopy {
 
     @JvmStatic
     fun missedSummary(count: Int): String {
-        return countText(count, "missed and will come back soon", "missed and will come back soon")
+        return countText(count, "kanji was missed and will come back soon", "kanji were missed and will come back soon")
     }
 
     @JvmStatic
