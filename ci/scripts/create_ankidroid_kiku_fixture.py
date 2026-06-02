@@ -8,7 +8,6 @@ import json
 import sqlite3
 import sys
 import time
-import zlib
 from pathlib import Path
 
 FIELD_SEPARATOR = "\x1f"

@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ROOT_BUILD_GRADLE = ROOT / "build.gradle.kts"
 MAIN_RELEASE_WORKFLOW = ROOT / ".github/workflows/main-bugfix-release.yml"
 ANDROID_RELEASE_WORKFLOW = ROOT / ".github/workflows/android-release.yml"
 ANDROID_INSTRUMENTED_WORKFLOW = ROOT / ".github/workflows/android-instrumented.yml"
@@ -33,6 +34,19 @@ def android_fixture_gate_patterns(workflow: str) -> tuple[str, ...]:
         elif line.endswith(")"):
             patterns.append(line[:-1])
     return tuple(patterns)
+
+
+class FastCiTaskWiringTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.gradle = ROOT_BUILD_GRADLE.read_text(encoding="utf-8")
+
+    def test_ci_fast_runs_ci_script_python_tests(self) -> None:
+        self.assertIn('tasks.register<Exec>("testCiScripts")', self.gradle)
+        self.assertIn('"-s", "ci/tests"', self.gradle)
+        self.assertIn('"-p", "test_*.py"', self.gradle)
+        fast_tasks = self.gradle.split("val fastCiTasks = listOf(", maxsplit=1)[1].split(")", maxsplit=1)[0]
+        self.assertIn('"testDictionaryAssets"', fast_tasks)
+        self.assertIn('"testCiScripts"', fast_tasks)
 
 
 class MainBugfixReleaseWorkflowTest(unittest.TestCase):
