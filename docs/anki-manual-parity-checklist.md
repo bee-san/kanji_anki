@@ -37,14 +37,14 @@ Current Kani snapshot used for this review:
 
 3. Verify sibling burying semantics against Anki’s new/review/learning order.
 
-   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Targeted `BridgeSchedulerTest` and `FocusQueuePolicyTest` coverage now keeps due learning and relearning repeats ahead of due review siblings in the same family for both study-session selection and the home focus queue, and study-ahead/interday learning repeats now outrank due review siblings during same-family session selection. That matches Anki’s learning-before-review gather order for time-critical and study-ahead learning repeats. Broader manual-unbury semantics still need review.
+   Current Kani: `BridgeScheduler.seedQueue()` and related active queue methods pass seeded items through `SiblingSuppressionPolicy`; this looks like Kani’s bury/sibling suppression equivalent. Targeted `BridgeSchedulerTest` and `FocusQueuePolicyTest` coverage now keeps due learning and relearning repeats ahead of due review siblings in the same family for both study-session selection and the home focus queue, and study-ahead/interday learning repeats now outrank due review siblings during same-family session selection. Additional targeted coverage confirms Kani's same-family selection order follows Anki's gather order: intraday learning, interday learning, review, then new. Broader manual-unbury semantics still need review.
 
    Manual anchors:
    - Studying: “When you answer a card that has siblings, Anki can prevent the card’s siblings from being shown in the same session by automatically ‘burying’ them. Buried cards are hidden from review until the clock rolls over to a new day or you manually unbury them…” Source: https://docs.ankiweb.net/studying.html#siblings-and-burying
    - Deck options: “When Anki gathers cards, it first gathers intraday learning cards, then interday learning cards, then review cards, and finally new cards.” It also exposes separate bury toggles for new, review, and interday learning siblings. Source: https://docs.ankiweb.net/deck-options.html#burying
 
    Checklist:
-   - [ ] Confirm Kani’s suppression order prefers intraday learning, interday learning, review, then new.
+   - [x] Confirm Kani’s suppression order prefers intraday learning, interday learning, review, then new.
    - [x] Confirm due learning/relearning cards are not buried behind due review siblings when they are time-critical.
    - [x] Confirm study-ahead/interday learning repeats are selected before due review siblings in the same family.
    - [x] Confirm the home focus queue surfaces that same due learning/relearning sibling instead of a higher-rung review sibling.

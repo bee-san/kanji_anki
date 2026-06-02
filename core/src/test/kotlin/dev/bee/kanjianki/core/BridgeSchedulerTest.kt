@@ -1977,6 +1977,66 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun ankiBuryOrderPrefersIntradayThenInterdayLearningThenReviewThenNewSiblings() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var now: Long = 1_000_000L
+        var studyAhead: Long = 24 * 60 * 60_000L
+        var rows: List<RecordsImportModels.DashboardRow> = listOf(row("順", 1))
+        var intradayLearning: RecordsStudyModels.StudyItem = itemAtRung("順", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now)
+                .totalReviews(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+                .withToken("intraday-learning")
+        var interdayLearning: RecordsStudyModels.StudyItem = itemAtRung("順", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
+                .state("learning")
+                .dueAtMillis(now + 12 * 60 * 60_000L)
+                .totalReviews(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+                .withToken("interday-learning")
+        var dueReview: RecordsStudyModels.StudyItem = reviewItem(
+                "順",
+                RecordsBase.LadderRung.FONT_MEANING,
+                now
+        ).withToken("review")
+        var newCard: RecordsStudyModels.StudyItem = itemAtRung("順", RecordsBase.LadderRung.WORD_READING)
+                .withToken("new")
+
+        assertEquals("intraday-learning", scheduler.nextSession(
+                listOf(newCard, dueReview, interdayLearning, intradayLearning),
+                rows,
+                now,
+                studyAhead,
+                null
+        )!!.item!!.activeToken)
+        assertEquals("interday-learning", scheduler.nextSession(
+                listOf(newCard, dueReview, interdayLearning),
+                rows,
+                now,
+                studyAhead,
+                null
+        )!!.item!!.activeToken)
+        assertEquals("review", scheduler.nextSession(
+                listOf(newCard, dueReview),
+                rows,
+                now,
+                studyAhead,
+                null
+        )!!.item!!.activeToken)
+        assertEquals("new", scheduler.nextSession(
+                listOf(newCard),
+                rows,
+                now,
+                studyAhead,
+                null
+        )!!.item!!.activeToken)
+    }
+
+    @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()
