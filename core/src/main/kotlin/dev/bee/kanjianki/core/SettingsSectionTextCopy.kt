@@ -11,7 +11,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Advanced controls"

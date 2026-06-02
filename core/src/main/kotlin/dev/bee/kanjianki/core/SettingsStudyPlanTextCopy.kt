@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks how many problem kanji to study today; Anki due dates stay unchanged."
+        return "Kani picks today's problem-kanji count; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set how many problem kanji Kani studies today; Anki due dates stay unchanged."
+        return "Set today's problem-kanji count; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -155,7 +155,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs on/off or move them. Keep one always-available rung on."
+        return "Turn rungs on or off, or move them. Keep one always-available rung on."
     }
 
     @JvmStatic

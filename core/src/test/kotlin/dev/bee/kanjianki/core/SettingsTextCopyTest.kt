@@ -40,7 +40,7 @@ class SettingsTextCopyTest {
                         "Import & sync",
                         "AnkiDroid fields, import filters, frequency, and daily sync.",
                         "Deck options",
-                        "App-wide learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Learning steps, FSRS, workload, sorting, ahead limits, and ladder thresholds.",
                         "Advanced controls",
                         "Reminders and update checks that run Kani in the background.",
                         "Display & data",
@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks how many problem kanji to study today; Anki due dates stay unchanged.",
+                "Kani picks today's problem-kanji count; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set how many problem kanji Kani studies today; Anki due dates stay unchanged.",
+                "Set today's problem-kanji count; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -423,7 +423,7 @@ class SettingsTextCopyTest {
                         "Enabled always available rung",
                         "Enabled conditional rung",
                         "Study ladder",
-                        "Turn rungs on/off or move them. Keep one always-available rung on."
+                        "Turn rungs on or off, or move them. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
