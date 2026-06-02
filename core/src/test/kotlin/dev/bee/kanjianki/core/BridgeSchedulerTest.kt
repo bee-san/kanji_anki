@@ -9,7 +9,6 @@ import java.util.HashSet
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -316,7 +315,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun randomizedSessionTaskKeysUseDeterministicSeedAcrossTaskTypes() {
+    public fun randomizedSessionTaskKeysUseDeterministicSeedWithinPriorityGroups() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var items: List<RecordsStudyModels.StudyItem> = listOf(
                 reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L),
@@ -334,7 +333,40 @@ public class BridgeSchedulerTest {
         assertEquals(first, second)
         assertEquals(3, first.size)
         assertTrue(first.containsAll(dueSorted))
-        assertNotEquals(dueSorted, first)
+        assertEquals(BridgeScheduler.sessionTaskKeyForItem(items.get(1)), first.get(0))
+    }
+
+    @Test
+    public fun randomizedSessionTaskKeysKeepLearningRepeatsAndReviewsBeforeNewCards() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var learningRepeat: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING)
+                .copyBuilder()
+                .state("learning")
+                .totalReviews(1)
+                .learningStep(1)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+                .build()
+        var dueReview: RecordsStudyModels.StudyItem = reviewItem("復", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+        var unseenNew: RecordsStudyModels.StudyItem = itemAtRung("新", RecordsBase.LadderRung.KANJI_MEANING)
+        var plan: List<String> = scheduler.randomizedSessionTaskKeys(
+                listOf(unseenNew, dueReview, learningRepeat),
+                listOf(row("新", 30), row("復", 20), row("学", 10)),
+                1000L,
+                0L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults(),
+                7L
+        )
+        var repeatKey: String = BridgeScheduler.sessionTaskKeyForItem(learningRepeat)
+        var reviewKey: String = BridgeScheduler.sessionTaskKeyForItem(dueReview)
+        var newKey: String = BridgeScheduler.sessionTaskKeyForItem(unseenNew)
+
+        assertTrue(plan.contains(repeatKey))
+        assertTrue(plan.contains(reviewKey))
+        assertTrue(plan.contains(newKey))
+        assertTrue(plan.indexOf(repeatKey) < plan.indexOf(newKey))
+        assertTrue(plan.indexOf(reviewKey) < plan.indexOf(newKey))
     }
 
     @Test
