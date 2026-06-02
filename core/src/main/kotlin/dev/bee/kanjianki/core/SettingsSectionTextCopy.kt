@@ -2,22 +2,22 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import & sync"
+    fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, filters, frequency, and sync."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid note type, filters, and frequency."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Deck options"
+    fun settingsStudyBehaviorTitle(): String = "Study behavior"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Advanced controls"
+    fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and update checks that run Kani in the background."
+    fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks that run Kani in the background."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Display & data"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck, automation, and data."
+        return "Grouped by import, study, automation, and data."
     }
 
     @JvmStatic

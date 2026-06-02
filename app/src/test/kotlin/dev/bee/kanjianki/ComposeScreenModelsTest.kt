@@ -594,19 +594,19 @@ class ComposeScreenModelsTest {
 
     @Test
     fun settingsCategoryCopyUsesAnkiLikeSections() {
-        assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Import from Anki", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid fields, filters, frequency, and sync.",
+            "AnkiDroid note type, filters, and frequency.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.",
+            "Learning steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and update checks that run Kani in the background.",
+            "Daily sync, reminders, and update checks that run Kani in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
@@ -724,15 +724,15 @@ class ComposeScreenModelsTest {
             onOpenUpdater = {},
         )
 
-        val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
-        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val importSource = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency)
+        val automation = settingsAutomationCategoryModel(false, noop, autoSync, reminder, update)
 
-        assertEquals("Import & sync", importSync.title)
-        assertEquals("4 cards", importSync.panelCount)
-        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
-        assertEquals("Advanced controls", advanced.title)
-        assertEquals("2 cards", advanced.panelCount)
-        assertEquals(listOf(reminder, update), advanced.panels)
+        assertEquals("Import from Anki", importSource.title)
+        assertEquals("3 cards", importSource.panelCount)
+        assertEquals(listOf(noteType, importFilters, frequency), importSource.panels)
+        assertEquals("Automation", automation.title)
+        assertEquals("3 cards", automation.panelCount)
+        assertEquals(listOf(autoSync, reminder, update), automation.panels)
     }
 
     @Test
