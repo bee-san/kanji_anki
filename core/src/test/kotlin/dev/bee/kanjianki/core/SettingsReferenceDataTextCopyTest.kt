@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Import suspended cards only inside this Jiten rank range. Default: 100-3000.",
+            "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -24,13 +24,13 @@ class SettingsReferenceDataTextCopyTest {
         )
         assertEquals("Offline data & licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution.",
+            "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Dictionary and stroke-order data bundled for offline study.",
+            "Dictionary and stroke data bundled for offline use.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())

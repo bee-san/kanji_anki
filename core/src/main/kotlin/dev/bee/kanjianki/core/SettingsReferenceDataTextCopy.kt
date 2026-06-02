@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Import suspended cards only inside this Jiten rank range. Default: 100-3000."
+        return "Import suspended cards only inside this Jiten rank range. Default 100-3000."
     }
 
     @JvmStatic
@@ -38,7 +38,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "View KANJIDIC2, Jiten, KanjiVG, and bundled font attribution."
+        return "View KANJIDIC2, Jiten, KanjiVG, and font credits."
     }
 
     @JvmStatic
@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Dictionary and stroke-order data bundled for offline study."
+    fun dataLicensesBody(): String = "Dictionary and stroke data bundled for offline use."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"
