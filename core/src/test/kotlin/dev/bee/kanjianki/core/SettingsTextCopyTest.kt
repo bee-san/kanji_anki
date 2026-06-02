@@ -420,8 +420,8 @@ class SettingsTextCopyTest {
                         "Kanji -> meaning",
                         "Font -> meaning",
                         "Word -> reading",
-                        "Enabled always available rung",
-                        "Enabled conditional rung",
+                        "Always available rung enabled",
+                        "Conditional rung enabled",
                         "Study ladder",
                         "Turn rungs on or off, or move them. Keep one always-available rung on."
                 ),

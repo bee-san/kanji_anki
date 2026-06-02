@@ -55,7 +55,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
         assertEquals("Write kanji off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
-            "Enabled conditional rung",
+            "Conditional rung enabled",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, true),
                 RecordsBase.LadderRung.SIMILAR_KANJI,
