@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -70,8 +71,10 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Import from Anki")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
         composeRule.onNodeWithText("Data sources").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Data sources")).assertIsDisplayed()
         composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
         composeRule.onNodeWithText("Open licenses").assertIsDisplayed()
 
