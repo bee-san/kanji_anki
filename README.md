@@ -147,7 +147,7 @@ Cheap Ralph's forever loop reads this checklist from top to bottom. It should ke
 - [ ] Reduce excessive Settings copy, starting with Settings copy files and preserving warnings, accessibility labels, test tags, and behavior.
 - [ ] Slim and compact Settings one section at a time without broad redesigns, navigation rewrites, or scheduler/storage semantic changes.
 - [ ] Go through each view in the app and analyse the copy on the page. Make sure it is absolutely essential for that page, if it isn't remove it.
-- [ ] Emulate the whole app in Android Studio and use the app for 24 hours, going through every single ladder stage and option. Fix as many issues as you find.
 - [ ] Analyse the stats page. Really think in depth, what stats would help the user understand if Kani is working for them? What stats would be cool to show off? What stats would help them? Implement them. Do not stop at 1 or 2 stats. Feel free to modify existing stats.
 - [ ] Add a Japanese translation to the app
+- [ ] Emulate the whole app in Android Studio and use the app for 24 hours, going through every single ladder stage and option. Fix as many issues as you find.
 <!-- cheap-ralph-queue:end -->
