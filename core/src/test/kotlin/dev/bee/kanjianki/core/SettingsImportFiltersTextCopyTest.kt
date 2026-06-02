@@ -19,7 +19,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Anki browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Kani redacts the query and still uses note type, rank, and threshold.",
+            "Runs raw Anki search. Kani redacts it and keeps note type, rank, and threshold.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())

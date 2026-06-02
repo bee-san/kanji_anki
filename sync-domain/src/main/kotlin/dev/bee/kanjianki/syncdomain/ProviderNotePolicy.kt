@@ -28,9 +28,7 @@ class ProviderNotePolicy private constructor() {
         }
 
         @JvmStatic
-        fun configuredBrowserQuerySearch(modelName: String, normalizedBrowserQuery: String): String {
-            return "${modelSearch(modelName)} ($normalizedBrowserQuery)"
-        }
+        fun browserQuerySearch(normalizedBrowserQuery: String): String = normalizedBrowserQuery
 
         @JvmStatic
         fun modelSearch(modelName: String): String = "$NOTE_MODEL_QUERY_PREFIX${escapeQuotedSearchValue(modelName)}\""

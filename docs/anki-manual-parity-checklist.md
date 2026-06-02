@@ -99,7 +99,7 @@ Current Kani snapshot used for this review:
    - Browser card rows use state coloring; “if the card is flagged, use the flag colour, if the card is suspended, yellow, if the card’s note is marked, purple.” Source: https://docs.ankiweb.net/browsing.html
 
    Checklist:
-   - [ ] Treat `browser_query` as raw Anki/AnkiDroid search syntax, and validate errors clearly instead of silently importing nothing.
+   - [x] Treat `browser_query` as raw Anki/AnkiDroid search syntax, and validate errors clearly instead of silently importing nothing.
    - [ ] Add docs/examples for useful Kani import queries: `is:suspended`, `rated:31:1`, tag filters, FSRS properties if available through AnkiDroid.
    - [ ] If Kani has a local browse/detail screen, decide whether it should show suspended/flagged/marked/buried state badges from Anki.
 

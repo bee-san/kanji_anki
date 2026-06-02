@@ -367,6 +367,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, snapshot.cards.size)
         assertEquals("確認", snapshot.notes[0].expression(RecordsSyncModels.Settings.kikuDefaults()))
         assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(0, providerInt("browserQueryQueries"))
     }
 
     @Test
@@ -433,7 +434,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun browserQueryProviderContractMatchesActiveNoteWithNoteTypeConjunction() {
+    fun browserQueryProviderContractMatchesActiveNoteWithRawQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_active"))
@@ -444,7 +445,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun browserQueryProviderContractMatchesSuspendedNoteWithParenthesizedQuery() {
+    fun browserQueryProviderContractMatchesSuspendedNoteWithRawQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_suspended"))

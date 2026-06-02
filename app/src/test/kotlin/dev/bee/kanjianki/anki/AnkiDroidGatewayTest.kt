@@ -195,6 +195,23 @@ class AnkiDroidGatewayTest {
     }
 
     @Test
+    fun browserQueryFailureIsPermanentAndActionable() {
+        val gateway = uninitializedGateway()
+        val cause = IllegalArgumentException("bad syntax")
+
+        val failure = invokePrivateInstance(
+            gateway,
+            "browserQueryFailure",
+            arrayOf(Throwable::class.java),
+            cause,
+        ) as AnkiDroidGateway.SyncFailure
+
+        assertTrue(failure.permanentFailure)
+        assertEquals("AnkiDroid could not run the browser query. Check the query in Import filters.", failure.message)
+        assertSame(cause, failure.cause)
+    }
+
+    @Test
     fun cardsWithNotesFiltersCardsWhoseNotesWereSkipped() {
         val gateway = uninitializedGateway()
         val kept = card(10L, 1L)

@@ -492,25 +492,23 @@ Likely code changes:
 
 ## Provider Query Construction
 
-Add a small helper in `AnkiDroidGateway`, for example:
+Base note reads should keep using the configured note-type search helper:
 
 ```java
 private String configuredModelSearch(Records.Settings settings) {
     return "note:\"" + escapedSearchValue(settings.modelName) + "\"";
 }
-
-private String configuredBrowserQuerySearch(Records.Settings settings) {
-    return configuredModelSearch(settings) + " (" + settings.normalizedBrowserQuery() + ")";
-}
 ```
 
-If escaping or parentheses are risky against AnkiDroid's provider, test and
-adjust before release.
+Browser-query imports should pass `settings.normalizedBrowserQuery()` to
+AnkiDroid as raw browser-search text. Kani still filters returned rows by the
+configured model id before importing them, but it must not wrap the user's query
+with a `note:"..." (...)` prefix because that changes normal Anki search syntax
+and can make a copied Browser query behave differently.
 
-At minimum, model names containing quotes should not produce broken search
-strings. A conservative first pass can reject model names or queries that cannot
-be safely expressed, but that should produce a clear config error rather than
-silently broadening the search.
+At minimum, model names containing quotes should not produce broken base-note
+search strings. Query failures should produce a clear config error rather than
+silently broadening or ignoring the search.
 
 Do not build provider selection strings with unbounded SQL assumptions. The
 AnkiDroid notes provider treats selection as browser-search text for the current

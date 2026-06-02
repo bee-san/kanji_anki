@@ -191,7 +191,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
             throw IllegalArgumentException("model search failed")
         }
         if (path == "/notes" || path == "/notes_v2") {
-            return notes(selection.orEmpty())
+            return notes(selection.orEmpty(), allowBrowserQuerySearch = path == "/notes")
         }
         if (NOTES_ID_PATH.matcher(path).matches()) {
             return noteById(uri.lastPathSegment!!.toLong(), projection)
@@ -361,10 +361,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
         return null
     }
 
-    private fun notes(selection: String): Cursor? {
+    private fun notes(selection: String, allowBrowserQuerySearch: Boolean): Cursor? {
         val cursor = MatrixCursor(arrayOf("_id", "mid", "flds", "tags"))
-        val suspendedOnly = selection.contains("is:suspended")
-        val browserQuery = isKikuBrowserQuerySearch(selection) && !suspendedOnly
+        val suspendedOnly = isSuspendedModelSearch(selection)
+        val browserQuery = allowBrowserQuerySearch && isBrowserQuerySearch(selection)
         if (suspendedOnly && nullSuspendedSearchCursor) {
             return null
         }
@@ -375,7 +375,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
             throw IllegalArgumentException("Invalid search: malformed browser query")
         }
         val custom = selection.contains("Custom Japanese")
-        if (custom) {
+        if (custom && !browserQuery) {
             if (!suspendedOnly) {
                 cursor.addRow(arrayOf<Any?>(101L, 200L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100"), activeTags))
             }
@@ -541,11 +541,22 @@ class FakeAnkiDroidProvider : ContentProvider() {
     }
 
     private fun isConfiguredModelSearch(selection: String): Boolean {
-        return selection.contains("note:\"") && !selection.contains("is:suspended") && !selection.contains("(")
+        val trimmed = selection.trim()
+        return trimmed.startsWith("note:\"") && trimmed.endsWith("\"") && !trimmed.contains("(")
     }
 
-    private fun isKikuBrowserQuerySearch(selection: String): Boolean {
-        return selection.contains("note:\"Kiku\"") && selection.contains("(") && selection.trim().endsWith(")")
+    private fun isSuspendedModelSearch(selection: String): Boolean {
+        val trimmed = selection.trim()
+        return trimmed.startsWith("note:\"") && trimmed.endsWith(" is:suspended")
+    }
+
+    private fun isBrowserQuerySearch(selection: String): Boolean {
+        val trimmed = selection.trim()
+        if (trimmed.isEmpty()) {
+            return false
+        }
+        val legacyWrappedQuery = trimmed.contains("note:\"Kiku\"") && trimmed.contains("(") && trimmed.endsWith(")")
+        return legacyWrappedQuery || (!isConfiguredModelSearch(trimmed) && !isSuspendedModelSearch(trimmed))
     }
 
     private class ThrowingCursor(columns: Array<String>, message: String) : MatrixCursor(columns) {

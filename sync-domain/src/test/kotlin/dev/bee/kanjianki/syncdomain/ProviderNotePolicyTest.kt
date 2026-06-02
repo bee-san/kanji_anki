@@ -109,10 +109,10 @@ class ProviderNotePolicyTest {
     }
 
     @Test
-    fun browserQuerySearchKeepsConfiguredModelBoundary() {
-        val search = ProviderNotePolicy.configuredBrowserQuerySearch("Kiku", "tag:Kani marked:1")
+    fun browserQuerySearchUsesRawAnkiSyntax() {
+        val search = ProviderNotePolicy.browserQuerySearch("tag:Kani marked:1")
 
-        assertEquals("note:\"Kiku\" (tag:Kani marked:1)", search)
+        assertEquals("tag:Kani marked:1", search)
         assertEquals("note:\"Kiku\"", ProviderNotePolicy.modelSearch("Kiku"))
     }
 
