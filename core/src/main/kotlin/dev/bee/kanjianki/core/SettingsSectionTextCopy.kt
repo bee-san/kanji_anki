@@ -5,7 +5,7 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note type, filters, and frequency."
+    fun settingsAnkiSourceBody(): String = "Note type, filters, and frequency range for imports."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study settings"
@@ -17,7 +17,7 @@ object SettingsSectionTextCopy {
     fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks that run Kani in the background."
+    fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Data sources"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, study, automation, and data sources."
+        return "Grouped by Anki imports, study settings, automation, and data sources."
     }
 
     @JvmStatic
