@@ -96,6 +96,38 @@ class KaniFsrsAdapterTest {
     }
 
     @Test
+    fun targetRetentionControlsReviewIntervalsWithHigherRetentionShorter() {
+        val adapter = LatestFsrsAdapter()
+
+        val lowerRetention = adapter.review(14.0, 5.0, StudyRatings.GOOD, 14, 0.80)
+        val defaultRetention = adapter.review(14.0, 5.0, StudyRatings.GOOD, 14, 0.90)
+        val higherRetention = adapter.review(14.0, 5.0, StudyRatings.GOOD, 14, 0.96)
+
+        assertTrue(
+            "Higher desired retention should shorten the next review interval.",
+            higherRetention.intervalMillis < defaultRetention.intervalMillis,
+        )
+        assertTrue(
+            "Lower desired retention should lengthen the next review interval.",
+            defaultRetention.intervalMillis < lowerRetention.intervalMillis,
+        )
+    }
+
+    @Test
+    fun reviewRatingIntervalsKeepAnkiAnswerButtonOrdering() {
+        val adapter = LatestFsrsAdapter()
+
+        val again = adapter.review(12.0, 5.0, StudyRatings.AGAIN, 21, 0.90)
+        val hard = adapter.review(12.0, 5.0, StudyRatings.HARD, 21, 0.90)
+        val good = adapter.review(12.0, 5.0, StudyRatings.GOOD, 21, 0.90)
+        val easy = adapter.review(12.0, 5.0, StudyRatings.EASY, 21, 0.90)
+
+        assertTrue("Again should schedule sooner than Hard.", again.intervalMillis < hard.intervalMillis)
+        assertTrue("Hard should schedule sooner than Good.", hard.intervalMillis < good.intervalMillis)
+        assertTrue("Good should schedule sooner than Easy.", good.intervalMillis < easy.intervalMillis)
+    }
+
+    @Test
     fun latestAdapterNormalizesNegativeElapsedDaysAtTheAppBoundary() {
         val adapter = LatestFsrsAdapter()
 
