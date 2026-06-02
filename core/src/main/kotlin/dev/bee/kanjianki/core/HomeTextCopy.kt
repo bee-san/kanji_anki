@@ -72,10 +72,12 @@ object HomeTextCopy {
             return "Already saved."
         }
         val streakText = if (currentStreakDays <= 0) "" else " ${streakHeadline(currentStreakDays)}."
-        if (StudyRatings.AGAIN == appliedRating) {
-            return "Saved. This kanji will come back soon.$streakText"
+        return when (appliedRating) {
+            StudyRatings.AGAIN -> "Saved. This kanji will come back soon.$streakText"
+            StudyRatings.HARD -> "Saved. This kanji stays in practice.$streakText"
+            StudyRatings.GOOD, StudyRatings.EASY -> "Saved. This kanji moved forward.$streakText"
+            else -> "Saved.$streakText"
         }
-        return "Saved.$streakText"
     }
 
     @JvmStatic

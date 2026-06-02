@@ -1350,7 +1350,7 @@ private fun verifyTokenCandidatesAndReviewToasts(activity: MainActivity) {
         var streak = StudyStatsStore.StudyStreak(2, 2, true, 1, 1000L)
         assertEquals("Already saved.", HomeTextCopy.reviewToast(true, "duplicate", streak.currentDays));
         assertTrue(HomeTextCopy.reviewToast(false, MainActivityBase.RATING_AGAIN, streak.currentDays).contains("2-day streak"));
-        assertEquals("Saved.", HomeTextCopy.reviewToast(false, MainActivityBase.RATING_GOOD, 0));
+        assertEquals("Saved. This kanji moved forward.", HomeTextCopy.reviewToast(false, MainActivityBase.RATING_GOOD, 0));
     }
 
 private fun verifyFlashcardActionBarAndGestureBranches(activity: MainActivity, writing: RecordsSchedulerModels.StudySession) {

@@ -51,8 +51,24 @@ class HomeTextCopyTest {
     @Test
     fun reviewToastPreservesSavedCopyAndStreakSuffix() {
         assertEquals("Already saved.", HomeTextCopy.reviewToast(true, StudyRatings.GOOD, 2))
-        assertEquals("Saved.", HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 0))
-        assertEquals("Saved. 2-day streak.", HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 2))
+        assertEquals("Saved.", HomeTextCopy.reviewToast(false, null, 0))
+        assertEquals("Saved. 2-day streak.", HomeTextCopy.reviewToast(false, "unknown", 2))
+        assertEquals(
+            "Saved. This kanji moved forward.",
+            HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 0)
+        )
+        assertEquals(
+            "Saved. This kanji moved forward. 2-day streak.",
+            HomeTextCopy.reviewToast(false, StudyRatings.EASY, 2)
+        )
+        assertEquals(
+            "Saved. This kanji stays in practice.",
+            HomeTextCopy.reviewToast(false, StudyRatings.HARD, 0)
+        )
+        assertEquals(
+            "Saved. This kanji stays in practice. 2-day streak.",
+            HomeTextCopy.reviewToast(false, StudyRatings.HARD, 2)
+        )
         assertEquals(
             "Saved. This kanji will come back soon.",
             HomeTextCopy.reviewToast(false, StudyRatings.AGAIN, 0)
