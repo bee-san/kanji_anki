@@ -385,7 +385,7 @@ class SettingsTextCopyTest {
         assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
+                "Balances Kani weakness, Anki risk, missed examples, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
