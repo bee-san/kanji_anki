@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type & clue fields",
                         "Using Kiku",
-                        "Default: Kiku. One card owns the note type and clue mapping.",
+                        "Default: Kiku. One card keeps the note type and clue mapping.",
                         "Required fields"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Expression source, Reading=reading, Meaning=meaning, Sentence=context, Frequency/FreqSort=metadata.",
+                        "Expression source, reading=reading, meaning=meaning, sentence=context, frequency/FreqSort=metadata.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
