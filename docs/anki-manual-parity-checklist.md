@@ -57,7 +57,7 @@ Current Kani snapshot used for this review:
 
 4. Deck-option surface should map Anki concepts to Kani settings one-for-one where Kani has an equivalent.
 
-   Current Kani: exposes learning steps, relearning steps, target retention, interval multipliers, frequency retention, study-ahead, adaptive workload, new-card sort, ladder promotion/demotion, active/suspended/tagged/weak/browser-query import filters, and auto-sync. It is not a full deck model with per-deck new/review limits or preset inheritance. The step parser accepts Anki-style whitespace examples (`1m 10m`) and hour suffixes (`1h`), and scheduler tests cover custom relearning delays through lapse practice graduation.
+   Current Kani: exposes learning steps, relearning steps, target retention, interval multipliers, frequency retention, study-ahead, adaptive workload, new-card sort, ladder promotion/demotion, active/suspended/tagged/weak/browser-query import filters, and auto-sync. It is not a full deck model with per-deck presets or preset inheritance. Kani's `Deck limits` panel maps Anki's new-cards/day concept to the global `newPerDay` setting and `StudyQueueSeeder` applies it to normal/adaptive-focus new admissions; `All kanji` adaptive mode is the documented exception because it intentionally admits every current problem candidate even when `newPerDay` is lower. Kani's adaptive workload `maxItems` is a total problem-kanji focus/admission cap, not Anki's separate maximum-reviews/day limit for review cards. The step parser accepts Anki-style whitespace examples (`1m 10m`) and hour suffixes (`1h`), and scheduler tests cover custom relearning delays through lapse practice graduation.
 
    Manual anchors:
    - “Deck options primarily control the way Anki schedules cards.” Source: https://docs.ankiweb.net/deck-options.html
@@ -65,9 +65,11 @@ Current Kani snapshot used for this review:
 
    Checklist:
    - [ ] Add/confirm UI copy that Kani settings are global/app-level unless otherwise stated; they are not Anki deck presets.
-   - [ ] Map Anki “new cards/day” to Kani adaptive new admission / workload controls, or document the mismatch.
-   - [ ] Map Anki “maximum reviews/day” to Kani daily workload cap if present; otherwise document no direct equivalent.
+   - [x] Map Anki “new cards/day” to Kani adaptive new admission / workload controls, or document the mismatch.
+   - [x] Map Anki “maximum reviews/day” to Kani daily workload cap if present; otherwise document no direct equivalent.
    - [x] Keep learning/relearning step text examples compatible with Anki (`1m 10m`, `h` suffix); Kani parser currently supports `m`/`h`.
+
+   Evidence: `SettingsStudyPlanTextCopy.deckLimitsBody()` labels the global deck-limit panel as an Anki new-card cap; `StudyQueueSeeder.seedQueue(..., plan)` limits normal/adaptive-focus admissions by `min(plan.newAdmissionLimit, settings.newPerDay)`; `BridgeSchedulerTest.allKanjiAdaptivePlanBypassesDeckNewCardLimit` pins the intentional All-kanji exception; `AdaptiveLoadPlannerTest.autoWorkloadRespectsMaxItems` and `dueRecoveryIsCappedByMaxItems` cover the workload `maxItems` cap as a Kani focus/admission limit rather than an Anki review-card/day cap.
 
 5. FSRS parity should distinguish “uses FSRS-like scheduling” from “Anki FSRS feature parity.”
 
