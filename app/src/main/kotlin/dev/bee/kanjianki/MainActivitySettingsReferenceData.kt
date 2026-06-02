@@ -37,7 +37,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
                 backLabel = SettingsTextCopy.backToSettingsLabel(),
                 title = SettingsTextCopy.dataLicensesTitle(),
                 body = SettingsTextCopy.dataLicensesBody(),
-                onBack = Runnable { activity.renderSettings(false) }
+                onBack = Runnable { activity.renderSettings(true) }
             ),
             dataSources = dataSourcesModel()
         )

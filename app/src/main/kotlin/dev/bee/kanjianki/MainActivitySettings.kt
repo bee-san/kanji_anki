@@ -22,7 +22,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     title = SettingsTextCopy.updatePageTitle(),
                     body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = this@MainActivitySettings::renderHome,
-                    onBack = { renderSettings(false) },
+                    onBack = { renderSettings(true) },
                     onCheckForUpdate = { runUpdate(false) },
                     panel = settingsUpdatePanelModel(
                         activity = this@MainActivitySettings,
@@ -37,7 +37,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettings(false)
     }
 
-    fun renderSettings(preserveScroll: Boolean) {
+    override fun renderSettings(preserveScroll: Boolean) {
         val scrollY = if (preserveScroll) {
             contentScrollY
         } else {
@@ -121,7 +121,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     body = copy.body(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
-                    onBack = { renderSettings(false) },
+                    onBack = { renderSettings(true) },
                 )
             )
         }

@@ -187,6 +187,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun renderHome()
     abstract fun renderUpdate()
     abstract fun renderSettings()
+    open fun renderSettings(preserveScroll: Boolean) {
+        renderSettings()
+    }
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
     abstract fun renderStudyForKanji(kanji: String?)

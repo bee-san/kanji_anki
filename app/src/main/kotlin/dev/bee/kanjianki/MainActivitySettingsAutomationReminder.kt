@@ -69,7 +69,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
             ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
             if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
         ).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun disableReminder(reminder: LocalStoreBase.ReminderSettings) {
@@ -79,7 +79,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         )
         ReminderScheduler.cancel(activity)
         Toast.makeText(activity, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun reminderWarning(blocked: Boolean): String? {
