@@ -29,6 +29,16 @@ class LearningStepsSettingsPolicyTest {
     }
 
     @Test
+    fun saveRequestAcceptsAnkiStyleDayStepExamples() {
+        val result = LearningStepsSettingsPolicy.saveRequest("1m 10m 1d", "10m 2d")
+        val settings = requireNotNull(result.settings)
+
+        assertTrue(result.valid)
+        assertEquals(listOf(1, 10, 24 * 60), settings.newStepsMinutes)
+        assertEquals(listOf(10, 2 * 24 * 60), settings.reviewStepsMinutes)
+    }
+
+    @Test
     fun saveRequestAllowsEmptyReviewSteps() {
         val result = LearningStepsSettingsPolicy.saveRequest("1m, 10m", "")
         val settings = requireNotNull(result.settings)
