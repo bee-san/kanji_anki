@@ -68,7 +68,7 @@ Suspended cards remain the default import source. Browser query import is opt-in
 - `deck:Japanese tag:kani`
 - `prop:due<=0 -is:suspended`
 
-Kani combines the query with the configured note type, then still applies the rank range and minimum matching-card threshold before adding kanji to the practice queue. Query text can include private deck names, tag names, or other collection-specific labels; it is used locally for the AnkiDroid provider search and is redacted from import audit output. If the query selects suspended cards, Kani archives those selected suspended cards locally before the provider cleanup hides them from later syncs.
+Kani sends the query to AnkiDroid unchanged, then filters the returned notes by the configured note type, rank range, and minimum matching-card threshold before adding kanji to the practice queue. Query text can include private deck names, tag names, or other collection-specific labels; it is used locally for the AnkiDroid provider search and is redacted from import audit output. If the query selects suspended cards, Kani archives those selected suspended cards locally before the provider cleanup hides them from later syncs.
 
 The goal is to spend less time managing study queues and more time reading, listening, and immersing.
 

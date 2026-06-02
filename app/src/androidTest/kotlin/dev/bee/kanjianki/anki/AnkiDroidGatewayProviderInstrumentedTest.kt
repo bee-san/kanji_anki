@@ -433,7 +433,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun browserQueryProviderContractMatchesActiveNoteWithNoteTypeConjunction() {
+    fun browserQueryProviderContractMatchesActiveNoteWithRawQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_active"))
@@ -444,7 +444,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun browserQueryProviderContractMatchesSuspendedNoteWithParenthesizedQuery() {
+    fun browserQueryProviderContractMatchesSuspendedNoteWithRawQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val snapshot = gateway.readCollection(browserQuerySettings(true, "tag:kani_contract_suspended"))
