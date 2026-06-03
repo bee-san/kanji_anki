@@ -331,12 +331,12 @@ class SettingsTextCopyTest {
 
     @Test
     fun workloadSummariesPreserveSettingsCopy() {
-        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
+        assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9))
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1))
-        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Automatic workload: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
         assertEquals(
-                "Auto Pareto: 2 items today",
+                "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         )
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
@@ -346,12 +346,12 @@ class SettingsTextCopyTest {
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save item limit", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Set today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
-        assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
+        assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
         assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())

@@ -8,10 +8,10 @@ class SettingsStudyPlanTextCopyTest {
     fun workloadAndSortHelpersPreserveFormatting() {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
         assertEquals("Save item limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
-        assertEquals("Use manual workload", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Pareto: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
+        assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
+        assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Maximum: 1 item", SettingsStudyPlanTextCopy.maxItemsStatusText(0))
-        assertEquals("Auto Pareto: waiting for problem kanji", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Automatic workload: waiting for problem kanji", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))

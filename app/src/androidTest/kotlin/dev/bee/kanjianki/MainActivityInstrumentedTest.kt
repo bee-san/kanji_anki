@@ -318,7 +318,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
     }
 
 private fun setNavigationWorkloadControls(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
@@ -355,8 +355,8 @@ fun setFrequencyRangeInputs(minRank: String, maxRank: String) {
 private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
         scenario.onActivity { activity ->
             assertHasText(activity, "Daily workload");
-            assertHasText(activity, "Auto Pareto: waiting for problem kanji");
-            assertHasText(activity, "Use manual workload");
+            assertHasText(activity, SettingsTextCopy.autoWorkloadStatusText(null));
+            assertHasText(activity, SettingsTextCopy.manualWorkloadLabel());
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
             assertHasText(activity, "Ladder thresholds");
@@ -486,7 +486,7 @@ private fun assertLadderThresholdSettings(scenario: ActivityScenario<MainActivit
     }
 
 private fun configureManualWorkload(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS

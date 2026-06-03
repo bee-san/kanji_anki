@@ -1076,14 +1076,14 @@ class ComposeScreenModelsTest {
         val model = SettingsWorkloadPanelModel(
             title = "Daily workload",
             autoMode = true,
-            autoStatus = "Automatic Pareto",
+            autoStatus = "Automatic workload",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
             saveMaximumLabel = "Save item limit",
-            manualWorkloadLabel = "Manual workload",
+            manualWorkloadLabel = "Set workload manually",
             saveWorkloadLabel = "Save workload",
             automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
@@ -1094,14 +1094,14 @@ class ComposeScreenModelsTest {
 
         assertEquals("Daily workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Automatic Pareto", model.autoStatus)
+        assertEquals("Automatic workload", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
         assertEquals("Save item limit", model.saveMaximumLabel)
-        assertEquals("Manual workload", model.manualWorkloadLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
         assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
