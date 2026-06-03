@@ -20,7 +20,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                     body = "Sync, retention, and import controls live here.",
                     rows = listOf(
                         listOf(
-                            SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt()),
+                            SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt()),
                             SettingsAutomationHeroPillModel("Import filters", "1-20 / 4", 0xFF00AEB5.toInt())
                         ),
                         listOf(
@@ -28,11 +28,11 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("Daily reminder", "Daily around 21:05", 0xFF6E6E78.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()),
+                            SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()),
                             SettingsAutomationHeroPillModel("App updates", "Pending verified APK", 0xFFFF4C76.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Matching cards", "Kiku only", 0xFF7A245D.toInt())
+                            SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())
                         )
                     )
                 )
@@ -42,15 +42,15 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("Settings overview").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Sync, retention, and import controls live here.").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
+        composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()
         composeRule.onNodeWithText("Import filters").assertIsDisplayed()
         composeRule.onNodeWithText("1-20 / 4").assertIsDisplayed()
         composeRule.onNodeWithText("Suspended card range").assertIsDisplayed()
         composeRule.onNodeWithText("Daily reminder").assertIsDisplayed()
-        composeRule.onNodeWithText("Daily Anki sync").assertIsDisplayed()
+        composeRule.onNodeWithText("Daily sync").assertIsDisplayed()
         composeRule.onNodeWithText("App updates").assertIsDisplayed()
-        composeRule.onNodeWithText("Matching cards").assertIsDisplayed()
+        composeRule.onNodeWithText("Cards per kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku only").assertIsDisplayed()
     }
 }

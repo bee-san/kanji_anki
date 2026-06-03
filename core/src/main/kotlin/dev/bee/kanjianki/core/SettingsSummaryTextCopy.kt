@@ -23,7 +23,7 @@ object SettingsSummaryTextCopy {
             sources.add("weak")
         }
         if (safeSettings.browserQueryImportEnabled()) {
-            sources.add("query")
+            sources.add("browser query")
         }
         if (sources.isEmpty()) {
             return "No import sources selected"

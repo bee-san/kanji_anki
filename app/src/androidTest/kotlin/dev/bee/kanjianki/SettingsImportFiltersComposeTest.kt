@@ -110,13 +110,13 @@ class SettingsImportFiltersComposeTest {
     }
 
     @Test
-    fun summaryUsesQueryPillWithoutPrivateBrowserQuery() {
+    fun summaryUsesBrowserQueryPillWithoutPrivateBrowserQuery() {
         render(
             state = freshState(browserQueryCards = true, browserQuery = "deck:Private tag:secret"),
-            summary = "query; 2 matching cards per kanji"
+            summary = "browser query; 2 matching cards per kanji"
         )
 
-        composeRule.onNodeWithText("query; 2 matching cards per kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("browser query; 2 matching cards per kanji").assertIsDisplayed()
         composeRule.onNodeWithText("deck:Private tag:secret").assertDoesNotExist()
     }
 

@@ -2,19 +2,19 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import from Anki"
+    fun settingsAnkiSourceTitle(): String = "Anki import"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Choose the note type, import filters, and suspended-card range."
+    fun settingsAnkiSourceBody(): String = "Note type, filters, and suspended-card range."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study settings"
+    fun settingsStudyBehaviorTitle(): String = "Study behavior"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules."
+    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Automation"
+    fun settingsAutomationTitle(): String = "Sync, reminders, and updates"
 
     @JvmStatic
     fun settingsAutomationBody(): String = "Daily sync, reminders, and app updates."
@@ -23,18 +23,18 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataTitle(): String = "Offline data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and licenses."
+    fun settingsReferenceDataBody(): String = "Bundled dictionaries, stroke data, fonts, and licenses for offline use."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by what they affect: Anki imports, study settings, automation, and offline data."
+        return "Choose a section below. Expanding it keeps the page in place and preserves your scroll position."
     }
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Anki note type"
+    fun noteTypeStatusLabel(): String = "Note type"
 
     @JvmStatic
     fun importFiltersStatusLabel(): String = "Import filters"
@@ -46,13 +46,13 @@ object SettingsSectionTextCopy {
     fun reminderStatusLabel(): String = "Daily reminder"
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily Anki sync"
+    fun dailySyncStatusLabel(): String = "Daily sync"
 
     @JvmStatic
     fun updatesStatusLabel(): String = "App updates"
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = "Matching cards"
+    fun matchingCardsStatusLabel(): String = "Cards per kanji"
 
     @JvmStatic
     fun statusPillDescription(label: String, value: String): String = "$label: $value"

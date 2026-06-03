@@ -27,7 +27,7 @@ internal class AutoSyncRunner @JvmOverloads constructor(
     private fun run(now: Long, syncClock: AppClock): Result {
         val settings = store.autoSyncSettings()
         if (!settings.enabled) {
-            return Result.skipped("Daily Anki sync is off.")
+            return Result.skipped("Daily sync is off.")
         }
         if (store.hasSuccessfulSyncSince(AutoSyncSchedulePolicy.localDayStart(now))) {
             return Result.skipped("AnkiDroid already synced today.")

@@ -502,14 +502,14 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
                 DateTextPolicy.shortDateTime(enabled.lastSuccessAt),
                 DateTextPolicy.shortDateTime(enabled.lastAttemptAt),
                 DateTextPolicy.shortDateTime(enabled.nextRunAt)
-        ).contains("Last auto success"));
+        ).contains("Last successful sync"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 disabled.configured,
                 disabled.enabled,
                 "",
                 DateTextPolicy.shortDateTime(disabled.lastAttemptAt),
                 ""
-        ).contains("Last auto attempt"));
+        ).contains("Last sync attempt"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 enabledNoHistory.configured,
                 enabledNoHistory.enabled,
@@ -761,7 +761,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
                 assertHasText(activity, "Stats");
 
                 performClickableWithText(homeActionRowTestView(activity), "Settings");
-                assertHasText(activity, "Automation");
+                assertHasText(activity, "Sync, reminders, and updates");
 
                 fullWidthHomeButtonTestView(activity).performClick();
                 assertHasText(activity, "Kani");

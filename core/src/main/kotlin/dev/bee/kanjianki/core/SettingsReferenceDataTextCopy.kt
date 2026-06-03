@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Import suspended cards only inside this Jiten rank range. Default 100-3000."
+        return "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000."
     }
 
     @JvmStatic

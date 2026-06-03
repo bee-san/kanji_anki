@@ -8,27 +8,27 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags.",
+            "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
         assertEquals("Suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
         assertEquals("Tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
         assertEquals("Weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Use browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
-        assertEquals("Anki browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
+        assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
             "Examples: is:suspended, rated:31:1, tag:kani. Kani keeps note type, rank, and threshold.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
-        assertEquals("Anki note tags", SettingsImportFiltersTextCopy.ankiNoteTagsLabel())
+        assertEquals("Note tags", SettingsImportFiltersTextCopy.ankiNoteTagsLabel())
         assertEquals("FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel())
         assertEquals("Lapses", SettingsImportFiltersTextCopy.lapsesLabel())
         assertEquals("Minimum matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
-        assertEquals("Enter a query or turn off Browser query.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
+        assertEquals("Enter a browser query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Turn on at least one import source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
         assertEquals("Import filters saved. Sync again to rebuild practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())

@@ -11,7 +11,7 @@ class SettingsTextCopyTest {
     fun importSummariesPreserveSourceAndMatchingCopy() {
         assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1 matching card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
-        assertEquals("active + suspended + tagged + weak + query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("active + suspended + tagged + weak + browser query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
         assertEquals("No import sources selected", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
@@ -37,14 +37,14 @@ class SettingsTextCopyTest {
                         "unknown version",
                         "0.4.33",
                         "release-v0.4.33",
-                        "Import from Anki",
-                        "Choose the note type, import filters, and suspended-card range.",
-                        "Study settings",
-                        "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
-                        "Automation",
+                        "Anki import",
+                        "Note type, filters, and suspended-card range.",
+                        "Study behavior",
+                        "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules.",
+                        "Sync, reminders, and updates",
                         "Daily sync, reminders, and app updates.",
                         "Offline data",
-                        "Offline dictionaries, stroke data, fonts, and licenses."
+                        "Bundled dictionaries, stroke data, fonts, and licenses for offline use.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -93,12 +93,12 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by what they affect: Anki imports, study settings, automation, and offline data.",
-                        "Anki note type",
+                        "Choose a section below. Expanding it keeps the page in place and preserves your scroll position.",
+                        "Note type",
                         "Import filters",
                         "Suspended card range",
                         "Daily reminder",
-                        "Daily Anki sync",
+                        "Daily sync",
                         "App updates"
                 ),
                 listOf(
@@ -131,10 +131,10 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Matching cards",
+                        "Cards per kanji",
                         "Reminder: Off",
-                        "Collapse Study settings",
-                        "Expand Automation",
+                        "Collapse Study behavior",
+                        "Expand Sync, reminders, and updates",
                         "1 card",
                         "2 cards",
                         "Starts after first successful sync",
@@ -143,14 +143,14 @@ class SettingsTextCopyTest {
                         "Sync once manually; Kani refreshes daily after that.",
                         "Scheduled daily; Android may batch the time.",
                         "Daily background sync is paused.",
-                        "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
-                        "Last auto success yesterday. Last auto attempt today."
+                        "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",
+                        "Last successful sync yesterday. Last sync attempt today."
                 ),
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
-                        SettingsTextCopy.categoryToggleDescription(false, "Automation"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
+                        SettingsTextCopy.categoryToggleDescription(false, "Sync, reminders, and updates"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),
                         SettingsTextCopy.autoSyncStatus(false, true, "07:30"),
@@ -198,21 +198,21 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags.",
+                        "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
                         "Weak cards",
-                        "Browser query",
+                        "Use browser query",
                         "deck:Japanese tag:kani",
-                        "Anki browser query",
+                        "Browser query",
                         "tag1, tag2",
-                        "Anki note tags",
+                        "Note tags",
                         "FSRS difficulty",
                         "Lapses",
                         "Minimum matching cards per kanji",
                         "Save import filters",
-                        "Enter a query or turn off Browser query.",
+                        "Enter a browser query or turn it off.",
                         "Turn on at least one import source.",
                         "Import filters saved. Sync again to rebuild practice.",
                         "Presets",
@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Suspended card range",
-                        "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
+                        "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -267,10 +267,10 @@ class SettingsTextCopyTest {
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
-                        "Note type and fields",
+                        "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Keep one note type and map the fields below.",
-                        "Required fields"
+                        "Default: Kiku. Keep one note type selected and map the fields below.",
+                        "Field mappings"
                 ),
                 listOf(
                         SettingsTextCopy.minRankLabel(),
@@ -461,8 +461,8 @@ class SettingsTextCopyTest {
                         "Write kanji on.",
                         "Ladder thresholds",
                         "Only due reviews move the ladder. Learning and relearning repeats are practice only.",
-                        "Promotion interval days",
-                        "Demotion fail streak",
+                        "Days before promotion",
+                        "Fail streak before demotion",
                         "Use default ladder thresholds",
                         "Save ladder thresholds",
                         "Ladder thresholds saved."
@@ -518,7 +518,7 @@ class SettingsTextCopyTest {
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5))
         assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5))
-        assertEquals("Daily Anki sync", SettingsTextCopy.dailyAnkiSyncTitle())
+        assertEquals("Daily sync", SettingsTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel())
         assertEquals("App updates", SettingsTextCopy.appUpdatesTitle())

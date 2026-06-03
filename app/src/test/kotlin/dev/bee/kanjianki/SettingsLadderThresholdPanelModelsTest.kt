@@ -16,8 +16,8 @@ class SettingsLadderThresholdPanelModelsTest {
         }
 
         assertEquals("Ladder thresholds", model.title)
-        assertEquals("Promotion interval days", model.promotionDaysLabel)
-        assertEquals("42", model.initialPromotionDaysText)
+        assertEquals("Days before promotion", model.promotionDaysLabel)
+        assertEquals("Fail streak before demotion", model.failStreakLabel)
         assertEquals("1", model.initialFailStreakText)
         assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(), model.defaultPromotionDaysText)
         assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString(), model.defaultFailStreakText)

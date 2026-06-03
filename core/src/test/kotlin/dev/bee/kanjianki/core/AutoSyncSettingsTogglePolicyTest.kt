@@ -11,9 +11,9 @@ class AutoSyncSettingsTogglePolicyTest {
         val result = AutoSyncSettingsTogglePolicy.enable()
 
         assertTrue(result.enabled)
-        assertEquals("Daily Anki sync turned on.", result.message)
+        assertEquals("Daily sync turned on.", result.message)
         assertTrue(AutoSyncSettingsTogglePolicy.ToggleResult::class.java.isRecord)
-        assertEquals("ToggleResult[enabled=true, message=Daily Anki sync turned on.]", result.toString())
+        assertEquals("ToggleResult[enabled=true, message=Daily sync turned on.]", result.toString())
     }
 
     @Test
@@ -21,6 +21,6 @@ class AutoSyncSettingsTogglePolicyTest {
         val result = AutoSyncSettingsTogglePolicy.disable()
 
         assertFalse(result.enabled)
-        assertEquals("Daily Anki sync turned off.", result.message)
+        assertEquals("Daily sync turned off.", result.message)
     }
 }

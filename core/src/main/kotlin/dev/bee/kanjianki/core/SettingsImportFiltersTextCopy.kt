@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags."
+        return "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags."
     }
 
     @JvmStatic
@@ -22,13 +22,13 @@ object SettingsImportFiltersTextCopy {
     fun weakCardsLabel(): String = "Weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Browser query"
+    fun browserQueryLabel(): String = "Use browser query"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
 
     @JvmStatic
-    fun ankiBrowserQueryLabel(): String = "Anki browser query"
+    fun ankiBrowserQueryLabel(): String = "Browser query"
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
@@ -39,7 +39,7 @@ object SettingsImportFiltersTextCopy {
     fun ankiNoteTagsHint(): String = "tag1, tag2"
 
     @JvmStatic
-    fun ankiNoteTagsLabel(): String = "Anki note tags"
+    fun ankiNoteTagsLabel(): String = "Note tags"
 
     @JvmStatic
     fun fsrsDifficultyLabel(): String = "FSRS difficulty"
@@ -54,7 +54,7 @@ object SettingsImportFiltersTextCopy {
     fun saveImportFiltersLabel(): String = "Save import filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Enter a query or turn off Browser query."
+    fun browserQueryRequiredToast(): String = "Enter a browser query or turn it off."
 
     @JvmStatic
     fun importSourceRequiredToast(): String = "Turn on at least one import source."

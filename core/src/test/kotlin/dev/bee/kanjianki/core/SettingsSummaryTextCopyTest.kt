@@ -9,7 +9,7 @@ class SettingsSummaryTextCopyTest {
     fun summaryHelpersPreserveFormatting() {
         assertEquals("3 matching cards per kanji", SettingsSummaryTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1 matching card per kanji", SettingsSummaryTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
-        assertEquals("active + suspended + tagged + weak + query; 3 matching cards per kanji", SettingsSummaryTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("active + suspended + tagged + weak + browser query; 3 matching cards per kanji", SettingsSummaryTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
         assertEquals("No import sources selected", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertEquals("Sync blocked: No provider", SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0))
         assertEquals("Sync blocked: unknown error", SettingsSummaryTextCopy.syncStatusHeadline(false, null, 0, 0))

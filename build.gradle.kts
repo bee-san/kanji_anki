@@ -104,6 +104,7 @@ sonar {
         property("sonar.java.test.binaries", existingSonarPaths(maybeSonarTestBinaries))
         property("sonar.coverage.jacoco.xmlReportPaths", existingSonarPaths(maybeSonarCoveragePaths))
         property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
+        property("sonar.scanner.skipJreProvisioning", "true")
         property("sonar.exclusions", "**/src/debug/**")
     }
 }

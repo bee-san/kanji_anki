@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Suspended card range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
+            "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())

@@ -1,8 +1,8 @@
 package dev.bee.kanjianki.core
 
 object AutoSyncSettingsTogglePolicy {
-    const val ENABLED_MESSAGE: String = "Daily Anki sync turned on."
-    const val DISABLED_MESSAGE: String = "Daily Anki sync turned off."
+    const val ENABLED_MESSAGE: String = "Daily sync turned on."
+    const val DISABLED_MESSAGE: String = "Daily sync turned off."
 
     @JvmStatic
     fun enable(): ToggleResult {
