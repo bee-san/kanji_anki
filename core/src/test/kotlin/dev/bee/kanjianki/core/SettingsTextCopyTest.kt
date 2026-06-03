@@ -43,8 +43,8 @@ class SettingsTextCopyTest {
                         "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
                         "Automation",
                         "Daily sync, reminders, and app updates.",
-                        "Offline data",
-                        "Offline dictionaries, stroke data, fonts, and licenses."
+                        "Reference data",
+                        "Dictionaries, stroke data, fonts, and licenses."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by what they affect: Anki import, study behavior, automation, and offline data.",
+                        "Grouped by what they affect: Anki import, study behavior, automation, and reference data.",
                         "Anki note type",
                         "Import filters",
                         "Suspended card range",
@@ -259,7 +259,7 @@ class SettingsTextCopyTest {
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
                         "Suspended card range saved. Sync again to rebuild practice.",
-                        "Offline data licenses",
+                        "Data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",

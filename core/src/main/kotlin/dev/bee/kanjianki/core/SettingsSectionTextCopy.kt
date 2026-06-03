@@ -20,17 +20,17 @@ object SettingsSectionTextCopy {
     fun settingsAutomationBody(): String = "Daily sync, reminders, and app updates."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Offline data"
+    fun settingsReferenceDataTitle(): String = "Reference data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and licenses."
+    fun settingsReferenceDataBody(): String = "Dictionaries, stroke data, fonts, and licenses."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by what they affect: Anki import, study behavior, automation, and offline data."
+        return "Grouped by what they affect: Anki import, study behavior, automation, and reference data."
     }
 
     @JvmStatic

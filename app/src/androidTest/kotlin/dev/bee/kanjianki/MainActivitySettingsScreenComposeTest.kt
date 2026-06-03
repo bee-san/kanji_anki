@@ -109,16 +109,16 @@ class MainActivitySettingsScreenComposeTest {
                         ),
                         SettingsCategorySectionModel(
                             sectionKey = "settings-reference-data",
-                            title = "Offline data",
-                            summary = "Offline data and licenses.",
+                            title = "Reference data",
+                            summary = "Reference data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
                             panelCount = "1 panel",
-                            contentDescription = "Collapse Offline data",
+                            contentDescription = "Collapse Reference data",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
-                                    title = "Offline data licenses",
+                                    title = "Data licenses",
                                     body = "Dictionary, stroke, and font attributions.",
                                     actionLabel = "Open licenses",
                                     onAction = Runnable {}
@@ -136,10 +136,10 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Anki import").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("Offline data").assertIsDisplayed()
+        composeRule.onNodeWithText("Reference data").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertDoesNotExist()
-        composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
         composeRule.onNodeWithContentDescription("Expand Anki import").performClick()

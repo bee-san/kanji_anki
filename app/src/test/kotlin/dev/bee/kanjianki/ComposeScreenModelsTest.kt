@@ -552,7 +552,7 @@ class ComposeScreenModelsTest {
             ),
         )
         val panel = SettingsReferenceDataLinkModel(
-            title = "Offline data licenses",
+            title = "Data licenses",
             body = "Dictionary, stroke, and font attributions.",
             actionLabel = "Open licenses",
             onAction = Runnable {},
@@ -611,9 +611,9 @@ class ComposeScreenModelsTest {
             "Daily sync, reminders, and app updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Offline data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Reference data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and licenses.",
+            "Dictionaries, stroke data, fonts, and licenses.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -746,7 +746,7 @@ class ComposeScreenModelsTest {
         val homeAction = Runnable { wentHome = true }
         val backAction = Runnable { wentBack = true }
         val link = SettingsReferenceDataLinkModel(
-            title = "Offline data licenses",
+            title = "Data licenses",
             body = "Dictionary, stroke, and font attributions.",
             actionLabel = "Open licenses",
             onAction = openAction,
@@ -772,7 +772,7 @@ class ComposeScreenModelsTest {
             dataSources = sources,
         )
 
-        assertEquals("Offline data licenses", link.title)
+        assertEquals("Data licenses", link.title)
         assertEquals("Dictionary, stroke, and font attributions.", link.body)
         assertEquals("Open licenses", link.actionLabel)
         assertSame(openAction, link.onAction)
