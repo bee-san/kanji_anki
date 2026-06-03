@@ -609,7 +609,7 @@ class ComposeScreenModelsTest {
             "Daily sync, reminders, and update checks.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Data sources", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Reference data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
             "Offline dictionaries, stroke data, fonts, and licenses.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),

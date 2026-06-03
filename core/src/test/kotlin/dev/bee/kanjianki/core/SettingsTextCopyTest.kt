@@ -43,7 +43,7 @@ class SettingsTextCopyTest {
                         "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
                         "Automation",
                         "Daily sync, reminders, and update checks.",
-                        "Data sources",
+                        "Reference data",
                         "Offline dictionaries, stroke data, fonts, and licenses."
                 ),
                 listOf(
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by Anki imports, study settings, automation, and data sources.",
+                        "Grouped by Anki imports, study settings, automation, and reference data.",
                         "Anki note type",
                         "Import filters",
                         "Suspended card range",
