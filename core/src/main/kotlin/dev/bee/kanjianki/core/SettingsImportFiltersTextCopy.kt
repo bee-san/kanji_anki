@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspended cards default. Add active, tagged, or weak only when needed; Kani won't add leech tags."
+        return "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags."
     }
 
     @JvmStatic
