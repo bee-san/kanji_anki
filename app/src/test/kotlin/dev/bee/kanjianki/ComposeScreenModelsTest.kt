@@ -606,7 +606,7 @@ class ComposeScreenModelsTest {
             "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Sync, reminders, and updates", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
             "Daily sync, reminders, and app updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
@@ -732,7 +732,7 @@ class ComposeScreenModelsTest {
         assertEquals("Anki import", importSource.title)
         assertEquals("3 cards", importSource.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency), importSource.panels)
-        assertEquals("Automation", automation.title)
+        assertEquals("Sync, reminders, and updates", automation.title)
         assertEquals("3 cards", automation.panelCount)
         assertEquals(listOf(autoSync, reminder, update), automation.panels)
     }

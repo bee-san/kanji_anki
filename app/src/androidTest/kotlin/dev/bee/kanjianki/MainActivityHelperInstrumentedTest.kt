@@ -761,7 +761,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
                 assertHasText(activity, "Stats");
 
                 performClickableWithText(homeActionRowTestView(activity), "Settings");
-                assertHasText(activity, "Automation");
+                assertHasText(activity, "Sync, reminders, and updates");
 
                 fullWidthHomeButtonTestView(activity).performClick();
                 assertHasText(activity, "Kani");

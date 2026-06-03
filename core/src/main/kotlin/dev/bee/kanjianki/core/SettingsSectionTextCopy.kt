@@ -14,7 +14,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Automation"
+    fun settingsAutomationTitle(): String = "Sync, reminders, and updates"
 
     @JvmStatic
     fun settingsAutomationBody(): String = "Daily sync, reminders, and app updates."
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by what they affect: Anki import, study behavior, automation, and reference data."
+        return "Grouped by area: Anki import, study behavior, sync, reminders, updates, and reference data."
     }
 
     @JvmStatic
