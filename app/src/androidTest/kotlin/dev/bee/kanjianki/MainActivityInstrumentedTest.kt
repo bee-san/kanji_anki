@@ -2781,7 +2781,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Reading field",
                 "Meaning field",
                 "Frequency sort field",
-                "Choose from AnkiDroid",
+                SettingsTextCopy.chooseFromAnkiDroidLabel(),
                 "Save note type",
                 "Import filters",
                 "Active cards",

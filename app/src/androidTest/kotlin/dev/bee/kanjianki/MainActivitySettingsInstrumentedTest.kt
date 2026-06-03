@@ -69,18 +69,26 @@ class MainActivitySettingsInstrumentedTest {
             scenario.onActivity { activity ->
                 activity.renderSettings()
                 activity.contentScrollY = 48
-                activity.settingsScrollY = 48
-                activity.renderUpdate()
+                val automationCategory = MainActivitySettingsScreenCoordinator(activity)
+                    .settingsScreenModel()
+                    .categories
+                    .single { it.title == SettingsTextCopy.settingsAutomationTitle() }
+                val updatePanel = automationCategory.panels
+                    .filterIsInstance<SettingsUpdateOverviewPanelModel>()
+                    .single()
+                updatePanel.onOpenUpdater()
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
             scenario.onActivity { activity ->
+                assertEquals(48, activity.settingsScrollY)
                 activity.contentScrollY = activity.settingsScrollY
                 activity.renderSettings(true)
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
             scenario.onActivity { activity ->
+                activity.contentScrollY = 96
                 MainActivitySettingsReferenceData(activity)
                     .dataLicenseSettingsPanelModel()
                     .onAction.run()
@@ -88,12 +96,13 @@ class MainActivitySettingsInstrumentedTest {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
             scenario.onActivity { activity ->
+                assertEquals(96, activity.settingsScrollY)
                 activity.contentScrollY = activity.settingsScrollY
                 activity.renderSettings(true)
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
-            assertTrue(waitForContentScroll(scenario, 48))
+            assertTrue(waitForContentScroll(scenario, 96))
         }
     }
 

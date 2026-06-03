@@ -11,6 +11,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
             actionLabel = SettingsTextCopy.openDataLicensesLabel(),
             onAction = Runnable {
                 val scrollY = activity.contentScrollY
+                activity.settingsScrollY = scrollY
                 val model = referenceDataScreenModel()
                 activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
                     ReferenceDataScreen(model)

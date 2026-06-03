@@ -138,6 +138,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     ),
                     SettingsTextCopy.openUpdaterLabel(),
                 ) {
+                    activity.settingsScrollY = activity.contentScrollY
                     activity.renderUpdate()
                 },
             ),
