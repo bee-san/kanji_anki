@@ -41,7 +41,8 @@ object SettingsSummaryTextCopy {
     @JvmStatic
     fun syncStatusHeadline(success: Boolean, errorMessage: String?, suspendedCards: Int, importedKanji: Int): String {
         if (!success) {
-            return "Sync blocked: " + errorMessage.toString()
+            val safeErrorMessage = errorMessage?.takeIf { it.isNotBlank() } ?: "unknown error"
+            return "Sync blocked: $safeErrorMessage"
         }
         return String.format(
             Locale.ROOT,
