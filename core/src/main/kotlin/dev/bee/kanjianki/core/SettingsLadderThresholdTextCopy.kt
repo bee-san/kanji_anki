@@ -10,10 +10,10 @@ object SettingsLadderThresholdTextCopy {
     }
 
     @JvmStatic
-    fun fsrsDaysToGoUpLabel(): String = "Promotion interval days"
+    fun fsrsDaysToGoUpLabel(): String = "Days before promotion"
 
     @JvmStatic
-    fun failsToGoDownLabel(): String = "Demotion fail streak"
+    fun failsToGoDownLabel(): String = "Fail streak before demotion"
 
     @JvmStatic
     fun useDefaultLadderThresholdsLabel(): String = "Use default ladder thresholds"

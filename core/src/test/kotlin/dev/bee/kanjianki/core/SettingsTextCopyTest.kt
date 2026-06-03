@@ -143,8 +143,8 @@ class SettingsTextCopyTest {
                         "Sync once manually; Kani refreshes daily after that.",
                         "Scheduled daily; Android may batch the time.",
                         "Daily background sync is paused.",
-                        "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
-                        "Last auto success yesterday. Last auto attempt today."
+                        "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",
+                        "Last successful sync yesterday. Last sync attempt today."
                 ),
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
@@ -461,8 +461,8 @@ class SettingsTextCopyTest {
                         "Write kanji on.",
                         "Ladder thresholds",
                         "Only due reviews move the ladder. Learning and relearning repeats are practice only.",
-                        "Promotion interval days",
-                        "Demotion fail streak",
+                        "Days before promotion",
+                        "Fail streak before demotion",
                         "Use default ladder thresholds",
                         "Save ladder thresholds",
                         "Ladder thresholds saved."

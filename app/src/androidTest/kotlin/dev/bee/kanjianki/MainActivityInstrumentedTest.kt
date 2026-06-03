@@ -360,8 +360,8 @@ private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
             assertHasText(activity, "Ladder thresholds");
-            assertHasText(activity, "Promotion interval days");
-            assertHasText(activity, "Demotion fail streak");
+            assertHasText(activity, "Days before promotion");
+            assertHasText(activity, "Fail streak before demotion");
         }
     }
 
@@ -542,8 +542,8 @@ fun testConfiguredDailySyncSettingsScreenCanPauseAndResume() {
             waitForText(scenario, "Daily sync");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On around 06:30");
-                assertHasText(activity, "Last auto success");
-                assertHasText(activity, "Next scheduled");
+                assertHasText(activity, "Last successful sync");
+                assertHasText(activity, "Next sync");
                 assertHasText(activity, "Turn off daily sync");
             }
 

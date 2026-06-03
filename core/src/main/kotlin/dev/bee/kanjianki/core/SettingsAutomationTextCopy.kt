@@ -114,10 +114,10 @@ object SettingsAutomationTextCopy {
             return "Sync once manually; Kani refreshes daily after that."
         }
         val details = ArrayList<String>()
-        addDetail(details, "Last auto success ", lastSuccessText)
-        addDetail(details, "Last auto attempt ", lastAttemptText)
+        addDetail(details, "Last successful sync ", lastSuccessText)
+        addDetail(details, "Last sync attempt ", lastAttemptText)
         if (enabled) {
-            addDetail(details, "Next scheduled ", nextRunText)
+            addDetail(details, "Next sync ", nextRunText)
         }
         if (details.isEmpty()) {
             return if (enabled) {
