@@ -1,0 +1,153 @@
+package dev.bee.kanjianki
+
+import android.content.Context
+import android.os.SystemClock
+import android.view.MotionEvent
+import android.widget.LinearLayout
+import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyRatings
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class MainActivityStudyFlashcardGestureTest {
+    @Test
+    fun swipesFromRevealedAnswerPanelAdvanceEvenWhenReleaseLeavesCardBounds() {
+        assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+            tokenSuffix = "left",
+            releaseX = -80f,
+            expectedRating = StudyRatings.AGAIN,
+        )
+        assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+            tokenSuffix = "right",
+            releaseX = 480f,
+            expectedRating = StudyRatings.GOOD,
+        )
+    }
+
+    private fun assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+        tokenSuffix: String,
+        releaseX: Float,
+        expectedRating: String,
+    ) {
+        val token = "flashcard-token-$tokenSuffix"
+        val activity = createActivity()
+        activity.activeSession = RecordsSchedulerModels.StudySession(
+            item = studyItem("弱", token),
+            row = null,
+            token = token,
+            taskType = "flashcard",
+            writingRequired = false,
+            prompt = "",
+        )
+        StudySessionActions.activateStudySession(
+            activity.activeSession!!,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        activity.studyAnswerPanel = LinearLayout(activity)
+        activity.flashcardHeroPanel = LinearLayout(activity)
+        activity.revealFlashcardAnswer()
+        assertTrue(activity.flashcardAnswerRevealed)
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+
+        val downTime = SystemClock.uptimeMillis()
+        // Start the gesture inside the revealed answer panel area.
+        val answerPanelStartX = 210f
+        val answerPanelStartY = 520f
+        val beforeReviewCount = reviewLogCount(activity)
+
+        assertFalse(
+            activity.handleFlashcardGesture(
+                motionEvent(
+                    action = MotionEvent.ACTION_DOWN,
+                    x = answerPanelStartX,
+                    y = answerPanelStartY,
+                    downTime = downTime,
+                    eventTime = downTime,
+                )
+            )
+        )
+        assertTrue(activity.flashcardTouchTracking)
+        assertTrue(
+            activity.handleFlashcardGesture(
+                motionEvent(
+                    action = MotionEvent.ACTION_UP,
+                    x = releaseX,
+                    y = answerPanelStartY,
+                    downTime = downTime,
+                    eventTime = downTime + 120L,
+                )
+            )
+        )
+        assertEquals(beforeReviewCount + 1, reviewLogCount(activity))
+        assertEquals(expectedRating, reviewRating(activity, token))
+    }
+
+    private fun createActivity(): MainActivity {
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        return try {
+            Robolectric.buildActivity(MainActivity::class.java).create().start().resume().get()
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    private fun fakeAnkiDroidGateway(): AnkiDroidGateway {
+        val constructor = AnkiDroidGateway::class.java.getDeclaredConstructor(Context::class.java, List::class.java)
+        constructor.isAccessible = true
+        return constructor.newInstance(
+            ApplicationProvider.getApplicationContext<Context>(),
+            emptyList<Any>(),
+        ) as AnkiDroidGateway
+    }
+
+    private fun motionEvent(
+        action: Int,
+        x: Float,
+        y: Float,
+        downTime: Long,
+        eventTime: Long,
+    ): MotionEvent {
+        return MotionEvent.obtain(downTime, eventTime, action, x, y, 0)
+    }
+
+    private fun reviewLogCount(activity: MainActivity): Int {
+        activity.store.readableDatabase.rawQuery("SELECT COUNT(*) FROM review_log", null).use { cursor ->
+            check(cursor.moveToFirst())
+            return cursor.getInt(0)
+        }
+    }
+
+    private fun reviewRating(activity: MainActivity, token: String): String {
+        activity.store.readableDatabase.rawQuery(
+            "SELECT rating FROM review_log WHERE token=?",
+            arrayOf(token),
+        ).use { cursor ->
+            check(cursor.moveToFirst())
+            return cursor.getString(0)
+        }
+    }
+
+    private fun studyItem(kanji: String, token: String): RecordsStudyModels.StudyItem {
+        return RecordsStudyModels.StudyItem(kanji, "review", 1_000L, 1.0, 2.0, 1, 0, 0, 0, "", 1_000L)
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .activeToken(token)
+            .build()
+    }
+}
