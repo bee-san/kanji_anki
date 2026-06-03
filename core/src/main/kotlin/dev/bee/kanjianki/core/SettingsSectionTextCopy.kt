@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by area: Import from Anki, study behavior, sync, reminders, updates, and reference data."
+        return "Choose a section below. Expanding it keeps you on the same page."
     }
 
     @JvmStatic

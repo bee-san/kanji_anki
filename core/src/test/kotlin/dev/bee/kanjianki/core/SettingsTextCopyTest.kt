@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by area: Import from Anki, study behavior, sync, reminders, updates, and reference data.",
+                        "Choose a section below. Expanding it keeps you on the same page.",
                         "Anki note type",
                         "Import filters",
                         "Suspended card range",
