@@ -17,7 +17,7 @@ class MainActivitySettingsScreenComposeTest {
 
     @Test
     fun preservesExpandedCategoryWhenTitleChanges() {
-        val titleState = mutableStateOf("Import from Anki")
+        val titleState = mutableStateOf("Anki import")
 
         composeRule.setContent {
             SettingsScreen(
@@ -91,12 +91,12 @@ class MainActivitySettingsScreenComposeTest {
                     categories = listOf(
                         SettingsCategorySectionModel(
                             sectionKey = "settings-anki-source",
-                            title = "Import from Anki",
+                            title = "Anki import",
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
                             expanded = false,
                             panelCount = "3 panels",
-                            contentDescription = "Expand Import from Anki",
+                            contentDescription = "Expand Anki import",
                             onToggle = Runnable { categoryToggled = true },
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -133,7 +133,7 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Home").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
-        composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki import").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
         composeRule.onNodeWithText("Offline data").assertIsDisplayed()
@@ -142,8 +142,8 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
-        composeRule.onNodeWithContentDescription("Expand Import from Anki").performClick()
-        composeRule.onNodeWithContentDescription("Collapse Import from Anki").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Expand Anki import").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Anki import").assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertExists()
         composeRule.onNodeWithText("Open import details").performClick()
         composeRule.onNodeWithText("Open licenses").assertExists()

@@ -596,9 +596,9 @@ class ComposeScreenModelsTest {
 
     @Test
     fun settingsCategoryCopyUsesAnkiLikeSections() {
-        assertEquals("Import from Anki", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Anki import", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Note type, import filters, and suspended-card range.",
+            "Note type, filters, and suspended-card range.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
@@ -729,7 +729,7 @@ class ComposeScreenModelsTest {
         val importSource = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency)
         val automation = settingsAutomationCategoryModel(false, noop, autoSync, reminder, update)
 
-        assertEquals("Import from Anki", importSource.title)
+        assertEquals("Anki import", importSource.title)
         assertEquals("3 cards", importSource.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency), importSource.panels)
         assertEquals("Sync, reminders, and updates", automation.title)

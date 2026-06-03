@@ -6,8 +6,8 @@ import org.junit.Test
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
-        assertEquals("Import from Anki", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("Note type, import filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Anki import", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Note type, filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study behavior", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Sync, reminders, and updates", SettingsSectionTextCopy.settingsAutomationTitle())

@@ -2,10 +2,10 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import from Anki"
+    fun settingsAnkiSourceTitle(): String = "Anki import"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Note type, import filters, and suspended-card range."
+    fun settingsAnkiSourceBody(): String = "Note type, filters, and suspended-card range."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study behavior"
