@@ -2,18 +2,18 @@ package dev.bee.kanjianki.core
 
 object SettingsNoteTypeTextCopy {
     @JvmStatic
-    fun noteTypeFieldsTitle(): String = "Note type and fields"
+    fun noteTypeFieldsTitle(): String = "Note type setup"
 
     @JvmStatic
     fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. Keep one note type and map the fields below."
+        return "Default: Kiku. Keep one note type selected and map the fields below."
     }
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Required fields"
+    fun requiredFieldsTitle(): String = "Field mappings"
 
     @JvmStatic
     fun requiredFieldsBody(): String {

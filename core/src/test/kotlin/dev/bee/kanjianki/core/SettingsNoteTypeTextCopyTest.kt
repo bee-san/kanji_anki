@@ -6,10 +6,10 @@ import org.junit.Test
 class SettingsNoteTypeTextCopyTest {
     @Test
     fun noteTypeHelpersPreserveFormatting() {
-        assertEquals("Note type and fields", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
+        assertEquals("Note type setup", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
-        assertEquals("Default: Kiku. Keep one note type and map the fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
-        assertEquals("Required fields", SettingsNoteTypeTextCopy.requiredFieldsTitle())
+        assertEquals("Default: Kiku. Keep one note type selected and map the fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
+        assertEquals("Field mappings", SettingsNoteTypeTextCopy.requiredFieldsTitle())
         assertEquals("Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort.", SettingsNoteTypeTextCopy.requiredFieldsBody())
         assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())

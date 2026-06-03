@@ -267,10 +267,10 @@ class SettingsTextCopyTest {
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
-                        "Note type and fields",
+                        "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Keep one note type and map the fields below.",
-                        "Required fields"
+                        "Default: Kiku. Keep one note type selected and map the fields below.",
+                        "Field mappings"
                 ),
                 listOf(
                         SettingsTextCopy.minRankLabel(),
