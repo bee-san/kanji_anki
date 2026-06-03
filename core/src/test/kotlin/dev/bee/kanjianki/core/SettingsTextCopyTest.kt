@@ -42,9 +42,9 @@ class SettingsTextCopyTest {
                         "Study settings",
                         "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
                         "Automation",
-                        "Daily sync, reminder notifications, and update checks.",
-                        "Reference data",
-                        "Offline dictionaries, stroke data, fonts, and license attributions."
+                        "Daily sync, reminders, and app updates.",
+                        "Offline data",
+                        "Offline dictionaries, stroke data, fonts, and licenses."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by what they affect: Anki imports, study settings, automation, and reference data.",
+                        "Grouped by what they affect: Anki imports, study settings, automation, and offline data.",
                         "Anki note type",
                         "Import filters",
                         "Suspended card range",
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Pull due reviews ahead. 0 disables it; learning/relearning delays still apply.",
+                "Show due reviews early. 0 disables it; learning and relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
