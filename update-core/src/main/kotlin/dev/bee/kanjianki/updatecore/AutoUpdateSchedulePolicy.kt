@@ -7,7 +7,7 @@ object AutoUpdateSchedulePolicy {
 
     @JvmStatic
     fun plan(enabled: Boolean): SchedulePlan {
-        return SchedulePlan(enabled, UNIQUE_WORK_NAME, INTERVAL_MILLIS, FLEX_MILLIS, true)
+        return SchedulePlan(enabled, UNIQUE_WORK_NAME, INTERVAL_MILLIS, FLEX_MILLIS, true, true)
     }
 
     class SchedulePlan(
@@ -16,11 +16,13 @@ object AutoUpdateSchedulePolicy {
         private val intervalMillis: Long,
         private val flexMillis: Long,
         private val requiresConnectedNetwork: Boolean,
+        private val requiresBatteryNotLow: Boolean,
     ) {
         fun enabled(): Boolean = enabled
         fun uniqueWorkName(): String = uniqueWorkName
         fun intervalMillis(): Long = intervalMillis
         fun flexMillis(): Long = flexMillis
         fun requiresConnectedNetwork(): Boolean = requiresConnectedNetwork
+        fun requiresBatteryNotLow(): Boolean = requiresBatteryNotLow
     }
 }

@@ -71,6 +71,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
             val safeApkName = safeFileName(assets.apk().name())
             val apkFile = cachedApkFile(safeApkName)
+            cleanupStaleCachedApks(currentPendingApkName())
             client.download(assets.apk().downloadUrl(), apkFile)
 
             val checksum = UpdateArtifactValidator.validateChecksum(expected, sha256(apkFile))
@@ -198,6 +199,14 @@ class GitHubUpdater @JvmOverloads constructor(
     @Throws(IOException::class)
     private fun cachedApkFile(name: String?): File {
         return cachedApkFile(context.cacheDir, name, DirectoryCreation { dir -> dir.mkdirs() })
+    }
+
+    private fun currentPendingApkName(): String {
+        return LocalStore(context).use { store -> store.autoUpdateStatus().pendingApkName }
+    }
+
+    private fun cleanupStaleCachedApks(pendingApkName: String): Int {
+        return cleanupStaleCachedApks(File(context.cacheDir, "updates"), pendingApkName, System.currentTimeMillis())
     }
 
     enum class UpdateSource {
@@ -501,6 +510,27 @@ class GitHubUpdater @JvmOverloads constructor(
                 return false
             }
             return true
+        }
+
+        @JvmStatic
+        fun cleanupStaleCachedApks(updatesDir: File, pendingApkName: String?, nowMillis: Long): Int {
+            return cleanupStaleCachedApks(updatesDir, pendingApkName, nowMillis, CacheFileDeletion { file -> file.delete() })
+        }
+
+        @JvmStatic
+        fun cleanupStaleCachedApks(
+            updatesDir: File,
+            pendingApkName: String?,
+            nowMillis: Long,
+            deletion: CacheFileDeletion,
+        ): Int {
+            var deleted = 0
+            for (file in UpdateCacheFilePolicy.staleCachedApks(updatesDir, pendingApkName, nowMillis)) {
+                if (deleteCachedApk(file, deletion)) {
+                    deleted += 1
+                }
+            }
+            return deleted
         }
 
         @JvmStatic
