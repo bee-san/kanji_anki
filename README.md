@@ -150,4 +150,5 @@ Cheap Ralph's forever loop reads this checklist from top to bottom. It should ke
 - [ ] Analyse the stats page. Really think in depth, what stats would help the user understand if Kani is working for them? What stats would be cool to show off? What stats would help them? Implement them. Do not stop at 1 or 2 stats. Feel free to modify existing stats.
 - [ ] Add a Japanese translation to the app
 - [ ] Emulate the whole app in Android Studio and use the app for 24 hours, going through every single ladder stage and option. Fix as many issues as you find.
+- [ ] Make the writing part feel similar to Ringotan / Skritter
 <!-- cheap-ralph-queue:end -->
