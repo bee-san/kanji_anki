@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study settings");
+            clickText(scenario, "Study behavior");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Study settings");
+            clickText(scenario, "Study behavior");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study settings");
+            clickText(scenario, "Study behavior");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -2772,7 +2772,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 "Import from Anki",
-                "Study settings",
+                "Study behavior",
                 "Automation",
                 "Offline data",
                 "Note type",

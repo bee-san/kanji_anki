@@ -601,7 +601,7 @@ class ComposeScreenModelsTest {
             "Choose the note type, import filters, and suspended-card range.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
             "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),

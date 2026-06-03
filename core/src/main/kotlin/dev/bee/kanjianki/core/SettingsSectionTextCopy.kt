@@ -8,7 +8,7 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceBody(): String = "Choose the note type, import filters, and suspended-card range."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study settings"
+    fun settingsStudyBehaviorTitle(): String = "Study behavior"
 
     @JvmStatic
     fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules."
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by what they affect: Anki imports, study settings, automation, and offline data."
+        return "Grouped by what they affect: Anki imports, study behavior, automation, and offline data."
     }
 
     @JvmStatic
