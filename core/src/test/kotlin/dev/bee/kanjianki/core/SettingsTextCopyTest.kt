@@ -353,7 +353,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
         assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
-        assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel())
+        assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
                 "New cards and relearning use short steps. Those repeats are practice only.",

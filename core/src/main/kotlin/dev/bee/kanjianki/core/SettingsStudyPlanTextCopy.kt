@@ -43,7 +43,7 @@ object SettingsStudyPlanTextCopy {
     fun saveWorkloadLabel(): String = "Save workload"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Use automatic Pareto"
+    fun automaticParetoLabel(): String = "Use automatic workload"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
