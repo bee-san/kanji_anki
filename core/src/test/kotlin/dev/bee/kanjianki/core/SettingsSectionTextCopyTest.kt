@@ -9,7 +9,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Import from Anki", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("Choose the note type, import filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Card ordering, daily limits, learning steps, retention, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily sync, reminder notifications, and update checks.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Reference data", SettingsSectionTextCopy.settingsReferenceDataTitle())

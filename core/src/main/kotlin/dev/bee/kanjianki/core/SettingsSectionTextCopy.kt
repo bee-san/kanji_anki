@@ -11,7 +11,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, retention, study ahead, and ladder rules."
+    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"

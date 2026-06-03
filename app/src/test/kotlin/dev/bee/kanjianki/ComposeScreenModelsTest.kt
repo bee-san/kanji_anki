@@ -601,7 +601,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Card ordering, daily limits, learning steps, retention, study ahead, and ladder rules.",
+            "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())

@@ -40,7 +40,7 @@ class SettingsTextCopyTest {
                         "Import from Anki",
                         "Choose the note type, import filters, and suspended-card range.",
                         "Study settings",
-                        "Card ordering, daily limits, learning steps, retention, study ahead, and ladder rules.",
+                        "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
                         "Automation",
                         "Daily sync, reminder notifications, and update checks.",
                         "Reference data",
