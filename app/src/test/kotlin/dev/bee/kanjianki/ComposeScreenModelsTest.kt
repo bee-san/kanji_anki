@@ -558,6 +558,7 @@ class ComposeScreenModelsTest {
             onAction = Runnable {},
         )
         val category = settingsCategorySectionModel(
+            sectionKey = "settings-study-behavior",
             title = "Study",
             summary = "Tune review behavior.",
             iconRes = R.drawable.ic_target_24,
@@ -576,6 +577,7 @@ class ComposeScreenModelsTest {
         assertSame(home, screen.onHome)
         assertSame(hero, screen.hero)
         assertEquals(listOf(category), screen.categories)
+        assertEquals("settings-study-behavior", category.sectionKey)
         assertEquals("Study", category.title)
         assertEquals("Tune review behavior.", category.summary)
         assertEquals(R.drawable.ic_target_24, category.iconRes)

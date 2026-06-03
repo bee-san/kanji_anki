@@ -20,10 +20,10 @@ import java.util.Locale
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
-    val expandedCategories = remember(model.categories.map { it.title }) {
+    val expandedCategories = remember(model.categories.map { it.sectionKey }) {
         mutableStateMapOf<String, Boolean>().apply {
             model.categories.forEach { category ->
-                put(category.title, category.expanded)
+                put(category.sectionKey, category.expanded)
             }
         }
     }
@@ -37,9 +37,9 @@ fun SettingsScreen(model: SettingsScreenModel) {
         SettingsAutomationHero(model.hero)
         Spacer(modifier = Modifier.height(10.dp))
         model.categories.forEach { category ->
-            val expanded = expandedCategories[category.title] ?: category.expanded
+            val expanded = expandedCategories[category.sectionKey] ?: category.expanded
             val onToggle = Runnable {
-                expandedCategories[category.title] = !expanded
+                expandedCategories[category.sectionKey] = !expanded
                 category.onToggle.run()
             }
             SettingsCategorySection(
@@ -104,6 +104,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
 }
 
 internal fun settingsCategorySectionModel(
+    sectionKey: String,
     title: String,
     summary: String,
     iconRes: Int,
@@ -112,6 +113,7 @@ internal fun settingsCategorySectionModel(
     panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return SettingsCategorySectionModel(
+        sectionKey = sectionKey,
         title = title,
         summary = summary,
         iconRes = iconRes,

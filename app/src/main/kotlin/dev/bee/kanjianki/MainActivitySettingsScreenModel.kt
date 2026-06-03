@@ -10,6 +10,7 @@ data class SettingsScreenModel(
 )
 
 data class SettingsCategorySectionModel(
+    val sectionKey: String,
     val title: String,
     val summary: String,
     val iconRes: Int,

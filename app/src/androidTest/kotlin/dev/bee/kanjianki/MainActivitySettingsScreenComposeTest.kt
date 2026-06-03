@@ -18,7 +18,6 @@ class MainActivitySettingsScreenComposeTest {
     @Test
     fun preservesExpandedCategoryWhenTitleChanges() {
         val titleState = mutableStateOf("Import from Anki")
-        val expandedState = mutableStateOf(false)
 
         composeRule.setContent {
             SettingsScreen(
@@ -35,19 +34,14 @@ class MainActivitySettingsScreenComposeTest {
                     ),
                     categories = listOf(
                         SettingsCategorySectionModel(
+                            sectionKey = "settings-anki-source",
                             title = titleState.value,
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
-                            expanded = expandedState.value,
+                            expanded = false,
                             panelCount = "1 panel",
-                            contentDescription = if (expandedState.value) {
-                                "Collapse ${titleState.value}"
-                            } else {
-                                "Expand ${titleState.value}"
-                            },
-                            onToggle = Runnable {
-                                expandedState.value = !expandedState.value
-                            },
+                            contentDescription = "Expand ${titleState.value}",
+                            onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
                                     title = "Import details",
@@ -96,6 +90,7 @@ class MainActivitySettingsScreenComposeTest {
                     ),
                     categories = listOf(
                         SettingsCategorySectionModel(
+                            sectionKey = "settings-anki-source",
                             title = "Import from Anki",
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
@@ -113,6 +108,7 @@ class MainActivitySettingsScreenComposeTest {
                             )
                         ),
                         SettingsCategorySectionModel(
+                            sectionKey = "settings-reference-data",
                             title = "Reference data",
                             summary = "Offline data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
