@@ -34,7 +34,7 @@ object SettingsSectionTextCopy {
     }
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Anki note type"
+    fun noteTypeStatusLabel(): String = "Note type"
 
     @JvmStatic
     fun importFiltersStatusLabel(): String = "Import filters"

@@ -94,7 +94,7 @@ class SettingsTextCopyTest {
                         "Back to settings",
                         "Settings overview",
                         "Choose a section below. Expanding it keeps the page in place and preserves your scroll position.",
-                        "Anki note type",
+                        "Note type",
                         "Import filters",
                         "Suspended card range",
                         "Daily reminder",

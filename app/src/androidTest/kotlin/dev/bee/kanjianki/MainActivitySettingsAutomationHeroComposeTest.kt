@@ -20,7 +20,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                     body = "Sync, retention, and import controls live here.",
                     rows = listOf(
                         listOf(
-                            SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt()),
+                            SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt()),
                             SettingsAutomationHeroPillModel("Import filters", "1-20 / 4", 0xFF00AEB5.toInt())
                         ),
                         listOf(
@@ -42,7 +42,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("Settings overview").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Sync, retention, and import controls live here.").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
+        composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()
         composeRule.onNodeWithText("Import filters").assertIsDisplayed()
         composeRule.onNodeWithText("1-20 / 4").assertIsDisplayed()

@@ -29,7 +29,7 @@ class MainActivitySettingsScreenComposeTest {
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
-                            listOf(SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt())),
+                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
                         ),
                     ),
                     categories = listOf(
@@ -84,7 +84,7 @@ class MainActivitySettingsScreenComposeTest {
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
-                            listOf(SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt())),
+                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
                             listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
                         )
                     ),
@@ -132,7 +132,7 @@ class MainActivitySettingsScreenComposeTest {
 
         composeRule.onNodeWithText("Home").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
+        composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()

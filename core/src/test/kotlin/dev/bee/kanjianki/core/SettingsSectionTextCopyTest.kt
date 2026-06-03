@@ -16,7 +16,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Bundled dictionaries, stroke data, fonts, and licenses.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
-        assertEquals("Anki note type", SettingsSectionTextCopy.noteTypeStatusLabel())
+        assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
         assertEquals("Reminder: Off", SettingsSectionTextCopy.statusPillDescription("Reminder", "Off"))

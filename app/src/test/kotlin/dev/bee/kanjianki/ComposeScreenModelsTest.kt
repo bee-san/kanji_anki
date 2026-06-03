@@ -1011,7 +1011,7 @@ class ComposeScreenModelsTest {
         assertEquals("Settings overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
-        assertEquals("Anki note type", model.rows[0][0].label)
+        assertEquals("Note type", model.rows[0][0].label)
         assertEquals("Kiku", model.rows[0][0].value)
         assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
         assertEquals("Import filters", model.rows[0][1].label)
