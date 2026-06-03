@@ -2,14 +2,14 @@ package dev.bee.kanjianki.core
 
 object SettingsNoteTypeTextCopy {
     @JvmStatic
-    fun noteTypeFieldsTitle(): String = "Note type & clue fields"
+    fun noteTypeFieldsTitle(): String = "Note type and fields"
 
     @JvmStatic
     fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. One card keeps the note type and clue mapping."
+        return "Default: Kiku. Keep one note type and map the fields below."
     }
 
     @JvmStatic
@@ -17,7 +17,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Expression source, reading=reading, meaning=meaning, sentence=context, frequency/FreqSort=metadata."
+        return "Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort."
     }
 
     @JvmStatic

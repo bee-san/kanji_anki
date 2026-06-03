@@ -267,9 +267,9 @@ class SettingsTextCopyTest {
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
-                        "Note type & clue fields",
+                        "Note type and fields",
                         "Using Kiku",
-                        "Default: Kiku. One card keeps the note type and clue mapping.",
+                        "Default: Kiku. Keep one note type and map the fields below.",
                         "Required fields"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Expression source, reading=reading, meaning=meaning, sentence=context, frequency/FreqSort=metadata.",
+                        "Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
