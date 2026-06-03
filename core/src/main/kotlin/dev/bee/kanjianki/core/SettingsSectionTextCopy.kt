@@ -2,10 +2,10 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import from Anki"
+    fun settingsAnkiSourceTitle(): String = "Anki import"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Choose the note type, import filters, and suspended-card range."
+    fun settingsAnkiSourceBody(): String = "Note type, import filters, and suspended-card range."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study behavior"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by what they affect: Anki imports, study behavior, automation, and offline data."
+        return "Grouped by what they affect: Anki import, study behavior, automation, and offline data."
     }
 
     @JvmStatic

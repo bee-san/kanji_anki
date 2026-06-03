@@ -6,8 +6,8 @@ import org.junit.Test
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
-        assertEquals("Import from Anki", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("Choose the note type, import filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Anki import", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Note type, import filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study behavior", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
@@ -15,7 +15,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Offline data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Offline dictionaries, stroke data, fonts, and licenses.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Grouped by what they affect: Anki imports, study behavior, automation, and offline data.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Grouped by what they affect: Anki import, study behavior, automation, and offline data.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Anki note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
