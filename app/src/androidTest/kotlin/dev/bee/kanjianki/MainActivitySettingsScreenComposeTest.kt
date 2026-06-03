@@ -56,7 +56,7 @@ class MainActivitySettingsScreenComposeTest {
             )
         }
 
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Import from Anki")).performClick()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).performClick()
         composeRule.onNodeWithText("Open import details").assertIsDisplayed()
 
         composeRule.runOnIdle {
@@ -134,10 +134,10 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Anki note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Import from Anki")).assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
         composeRule.onNodeWithText("Reference data").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Reference data")).assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertDoesNotExist()
         composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
 

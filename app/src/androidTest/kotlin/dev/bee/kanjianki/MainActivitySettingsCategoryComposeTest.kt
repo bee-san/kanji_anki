@@ -37,6 +37,7 @@ class MainActivitySettingsCategoryComposeTest {
                     summaryColor = ComposeColor(0xFF826084),
                     countColor = ComposeColor(0xFFDA3A7A),
                     contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, "Study settings"),
+                    testTagKey = "settings-study-behavior",
                     onToggle = { expanded = !expanded }
                 )
             }
