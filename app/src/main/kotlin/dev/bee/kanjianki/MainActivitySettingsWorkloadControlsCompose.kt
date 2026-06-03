@@ -21,7 +21,7 @@ private val WorkloadControlTeal = KaniUiTokens.Teal
 
 object SettingsWorkloadControlDescriptions {
     const val WORKLOAD_PERCENT_SLIDER = "Daily workload percentage"
-    const val MAX_ITEMS_SLIDER = "Maximum Pareto items"
+    const val MAX_ITEMS_SLIDER = "Maximum items"
 }
 
 object SettingsWorkloadTestTags {

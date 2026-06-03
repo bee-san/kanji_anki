@@ -345,7 +345,7 @@ class SettingsTextCopyTest {
                 "Kani picks today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
-        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
+        assertEquals("Save item limit", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Set today's workload; Anki due dates stay unchanged.",

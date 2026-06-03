@@ -7,7 +7,7 @@ class SettingsStudyPlanTextCopyTest {
     @Test
     fun workloadAndSortHelpersPreserveFormatting() {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
-        assertEquals("Save maximum", SettingsStudyPlanTextCopy.saveMaximumLabel())
+        assertEquals("Save item limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsStudyPlanTextCopy.manualWorkloadLabel())
         assertEquals("Pareto: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Maximum: 1 item", SettingsStudyPlanTextCopy.maxItemsStatusText(0))
@@ -36,7 +36,7 @@ class SettingsStudyPlanTextCopyTest {
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
         assertEquals("Limit how many new cards Kani can show each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
-        assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
+        assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
