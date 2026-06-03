@@ -611,9 +611,9 @@ class ComposeScreenModelsTest {
             "Daily sync, reminders, and app updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Reference data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Offline data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Bundled dictionaries, stroke data, fonts, and licenses.",
+            "Bundled dictionaries, stroke data, fonts, and licenses for offline use.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }

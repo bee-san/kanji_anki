@@ -20,10 +20,10 @@ object SettingsSectionTextCopy {
     fun settingsAutomationBody(): String = "Daily sync, reminders, and app updates."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Reference data"
+    fun settingsReferenceDataTitle(): String = "Offline data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Bundled dictionaries, stroke data, fonts, and licenses."
+    fun settingsReferenceDataBody(): String = "Bundled dictionaries, stroke data, fonts, and licenses for offline use."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"

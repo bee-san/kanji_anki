@@ -43,8 +43,8 @@ class SettingsTextCopyTest {
                         "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules.",
                         "Sync, reminders, and updates",
                         "Daily sync, reminders, and app updates.",
-                        "Reference data",
-                        "Bundled dictionaries, stroke data, fonts, and licenses.",
+                        "Offline data",
+                        "Bundled dictionaries, stroke data, fonts, and licenses for offline use.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),

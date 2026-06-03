@@ -109,12 +109,12 @@ class MainActivitySettingsScreenComposeTest {
                         ),
                         SettingsCategorySectionModel(
                             sectionKey = "settings-reference-data",
-                            title = "Reference data",
-                            summary = "Reference data and licenses.",
+                            title = "Offline data",
+                            summary = "Offline data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
                             panelCount = "1 panel",
-                            contentDescription = "Collapse Reference data",
+                            contentDescription = "Collapse Offline data",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -136,7 +136,7 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Import from Anki").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("Reference data").assertIsDisplayed()
+        composeRule.onNodeWithText("Offline data").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertDoesNotExist()
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
