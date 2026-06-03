@@ -2771,7 +2771,7 @@ private fun waitForText(scenario: ActivityScenario<MainActivity>, text: String, 
 private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
-                "Anki import",
+                "Import from Anki",
                 "Study behavior",
                 "Sync, reminders, and updates",
                 "Reference data",

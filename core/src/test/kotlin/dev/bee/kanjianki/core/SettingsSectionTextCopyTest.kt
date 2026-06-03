@@ -6,7 +6,7 @@ import org.junit.Test
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
-        assertEquals("Anki import", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Import from Anki", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("Note type, import filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study behavior", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
@@ -15,7 +15,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Reference data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Bundled dictionaries, stroke data, fonts, and licenses.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Grouped by area: Anki import, study behavior, sync, reminders, updates, and reference data.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Grouped by area: Import from Anki, study behavior, sync, reminders, updates, and reference data.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Anki note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())

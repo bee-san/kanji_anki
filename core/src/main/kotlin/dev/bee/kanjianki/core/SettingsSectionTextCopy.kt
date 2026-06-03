@@ -2,7 +2,7 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Anki import"
+    fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
     fun settingsAnkiSourceBody(): String = "Note type, import filters, and suspended-card range."
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by area: Anki import, study behavior, sync, reminders, updates, and reference data."
+        return "Grouped by area: Import from Anki, study behavior, sync, reminders, updates, and reference data."
     }
 
     @JvmStatic
