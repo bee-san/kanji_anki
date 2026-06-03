@@ -46,13 +46,13 @@ object SettingsSectionTextCopy {
     fun reminderStatusLabel(): String = "Daily reminder"
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily Anki sync"
+    fun dailySyncStatusLabel(): String = "Daily sync"
 
     @JvmStatic
     fun updatesStatusLabel(): String = "App updates"
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = "Matching cards"
+    fun matchingCardsStatusLabel(): String = "Cards per kanji"
 
     @JvmStatic
     fun statusPillDescription(label: String, value: String): String = "$label: $value"

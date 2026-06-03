@@ -345,7 +345,7 @@ class ComposeScreenModelsTest {
         var toggled = false
         val action = SettingsAutoSyncAction { toggled = true }
         val model = SettingsAutoSyncPanelModel(
-            title = "Daily Anki sync",
+            title = "Daily sync",
             status = "On at 06:45",
             statusColor = 0xFF00AEB5.toInt(),
             detail = "Last success yesterday. Next run tomorrow.",
@@ -360,7 +360,7 @@ class ComposeScreenModelsTest {
             onAction = null,
         )
 
-        assertEquals("Daily Anki sync", model.title)
+        assertEquals("Daily sync", model.title)
         assertEquals("On at 06:45", model.status)
         assertEquals(0xFF00AEB5.toInt(), model.statusColor)
         assertEquals("Last success yesterday. Next run tomorrow.", model.detail)
@@ -548,7 +548,7 @@ class ComposeScreenModelsTest {
             title = "Settings",
             body = "Configure Kani behavior.",
             rows = listOf(
-                listOf(SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()))
+                listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
             ),
         )
         val panel = SettingsReferenceDataLinkModel(
@@ -679,7 +679,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsFrequencyRangeSaveAction { _, _ -> },
         )
         val autoSync = SettingsAutoSyncPanelModel(
-            title = "Daily Anki sync",
+            title = "Daily sync",
             status = "On",
             statusColor = 0xFF00AEB5.toInt(),
             detail = "Runs daily",
@@ -1019,13 +1019,13 @@ class ComposeScreenModelsTest {
         assertEquals("Daily reminder", model.rows[1][1].label)
         assertEquals("Blocked", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
-        assertEquals("Daily Anki sync", model.rows[2][0].label)
+        assertEquals("Daily sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
         assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Verified APK ready", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
-        assertEquals("Matching cards", model.rows[3][0].label)
+        assertEquals("Cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
     }
 

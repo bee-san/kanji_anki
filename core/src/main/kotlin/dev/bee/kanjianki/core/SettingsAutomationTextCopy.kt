@@ -130,7 +130,7 @@ object SettingsAutomationTextCopy {
     }
 
     @JvmStatic
-    fun dailyAnkiSyncTitle(): String = "Daily Anki sync"
+    fun dailyAnkiSyncTitle(): String = "Daily sync"
 
     @JvmStatic
     fun turnOffDailySyncLabel(): String = "Turn off daily sync"

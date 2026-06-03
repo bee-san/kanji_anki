@@ -514,7 +514,7 @@ private fun verifyWorkloadAutoActions(scenario: ActivityScenario<MainActivity>) 
 
 private fun enableMorningReminder(scenario: ActivityScenario<MainActivity>) {
         clickText(scenario, "Sync, reminders, and updates");
-        scenario.onActivity { activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync") }
+        scenario.onActivity { activity -> assertHasTexts(activity, "Daily reminder", "Daily sync") }
         clickText(scenario, "Morning 08:00");
         clickText(scenario, "Enable reminder");
         clickTextIfPresent("Allow");
@@ -539,7 +539,7 @@ fun testConfiguredDailySyncSettingsScreenCanPauseAndResume() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             clickText(scenario, "Sync, reminders, and updates");
-            waitForText(scenario, "Daily Anki sync");
+            waitForText(scenario, "Daily sync");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On around 06:30");
                 assertHasText(activity, "Last auto success");

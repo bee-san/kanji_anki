@@ -98,7 +98,7 @@ class SettingsTextCopyTest {
                         "Import filters",
                         "Suspended card range",
                         "Daily reminder",
-                        "Daily Anki sync",
+                        "Daily sync",
                         "App updates"
                 ),
                 listOf(
@@ -131,7 +131,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Matching cards",
+                        "Cards per kanji",
                         "Reminder: Off",
                         "Collapse Study behavior",
                         "Expand Sync, reminders, and updates",
@@ -518,7 +518,7 @@ class SettingsTextCopyTest {
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5))
         assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5))
-        assertEquals("Daily Anki sync", SettingsTextCopy.dailyAnkiSyncTitle())
+        assertEquals("Daily sync", SettingsTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel())
         assertEquals("App updates", SettingsTextCopy.appUpdatesTitle())

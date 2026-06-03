@@ -28,11 +28,11 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("Daily reminder", "Daily around 21:05", 0xFF6E6E78.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()),
+                            SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()),
                             SettingsAutomationHeroPillModel("App updates", "Pending verified APK", 0xFFFF4C76.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Matching cards", "Kiku only", 0xFF7A245D.toInt())
+                            SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())
                         )
                     )
                 )
@@ -48,9 +48,9 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("1-20 / 4").assertIsDisplayed()
         composeRule.onNodeWithText("Suspended card range").assertIsDisplayed()
         composeRule.onNodeWithText("Daily reminder").assertIsDisplayed()
-        composeRule.onNodeWithText("Daily Anki sync").assertIsDisplayed()
+        composeRule.onNodeWithText("Daily sync").assertIsDisplayed()
         composeRule.onNodeWithText("App updates").assertIsDisplayed()
-        composeRule.onNodeWithText("Matching cards").assertIsDisplayed()
+        composeRule.onNodeWithText("Cards per kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku only").assertIsDisplayed()
     }
 }

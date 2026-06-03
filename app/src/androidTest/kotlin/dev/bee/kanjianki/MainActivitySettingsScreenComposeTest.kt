@@ -85,7 +85,7 @@ class MainActivitySettingsScreenComposeTest {
                         body = "Configure Kani behavior.",
                         rows = listOf(
                             listOf(SettingsAutomationHeroPillModel("Anki note type", "Kiku", 0xFF7A245D.toInt())),
-                            listOf(SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()))
+                            listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
                         )
                     ),
                     categories = listOf(

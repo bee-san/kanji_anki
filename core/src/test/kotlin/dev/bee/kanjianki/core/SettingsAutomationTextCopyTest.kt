@@ -33,7 +33,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Verified APK ready", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
         assertEquals("Starts after first successful sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("Sync once manually; Kani refreshes daily after that.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
-        assertEquals("Daily Anki sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())
+        assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel())
         assertEquals("App updates", SettingsAutomationTextCopy.appUpdatesTitle())
