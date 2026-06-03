@@ -26,7 +26,7 @@ object SettingsSummaryTextCopy {
             sources.add("query")
         }
         if (sources.isEmpty()) {
-            return "No sources"
+            return "No import sources selected"
         }
         return sources.joinToString(" + ") + "; " + matchingCardsSummary(safeSettings)
     }
