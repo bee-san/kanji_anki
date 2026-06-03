@@ -4,16 +4,16 @@ import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
     @JvmStatic
-    fun deckLimitsTitle(): String = "Deck limits"
+    fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Set the daily new-card cap from Anki deck options."
+    fun deckLimitsBody(): String = "Limit how many new cards Kani can show each day."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Maximum new cards/day"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save deck limits"
+    fun saveDeckLimitsLabel(): String = "Save daily limits"
 
     @JvmStatic
     fun dailyWorkloadTitle(): String = "Daily workload"

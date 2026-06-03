@@ -34,10 +34,10 @@ class SettingsStudyPlanTextCopyTest {
             "Heads up: visually similar kanji appear close together in this preview.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
-        assertEquals("Deck limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Set the daily new-card cap from Anki deck options.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
+        assertEquals("Limit how many new cards Kani can show each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("Maximum new cards/day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
-        assertEquals("Save deck limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
+        assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
