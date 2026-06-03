@@ -5,32 +5,32 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Note type, filters, and frequency range."
+    fun settingsAnkiSourceBody(): String = "Choose the note type, import filters, and suspended-card range."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, retention, study ahead, and ladder rules."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks."
+    fun settingsAutomationBody(): String = "Daily sync, reminder notifications, and update checks."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Reference data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and licenses."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and license attributions."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by Anki imports, study settings, automation, and reference data."
+        return "Grouped by what they affect: Anki imports, study settings, automation, and reference data."
     }
 
     @JvmStatic
