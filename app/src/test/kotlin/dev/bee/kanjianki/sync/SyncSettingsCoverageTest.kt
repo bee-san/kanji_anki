@@ -65,10 +65,10 @@ class SyncSettingsCoverageTest {
         assertFalse(failed.success)
         assertEquals("Provider missing.", failed.message)
 
-        val skipped = autoSyncResult("skipped", "Daily Anki sync is off.")
+        val skipped = autoSyncResult("skipped", "Daily sync is off.")
         assertFalse(skipped.ran)
         assertFalse(skipped.success)
-        assertEquals("Daily Anki sync is off.", skipped.message)
+        assertEquals("Daily sync is off.", skipped.message)
     }
 
     @Test

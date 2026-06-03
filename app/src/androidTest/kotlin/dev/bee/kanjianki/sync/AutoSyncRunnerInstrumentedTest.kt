@@ -62,7 +62,7 @@ class AutoSyncRunnerInstrumentedTest {
         ).run()
 
         assertFalse(result.ran)
-        assertEquals("Daily Anki sync is off.", result.message)
+        assertEquals("Daily sync is off.", result.message)
         assertEquals(0, providerInt("perNoteCardsQueries"))
         val auto = store.autoSyncSettings()
         assertEquals(0L, auto.lastAttemptAt)
