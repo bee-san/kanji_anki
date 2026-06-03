@@ -11,7 +11,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = "Study behavior"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules."
+    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Sync, reminders, and updates"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Choose a section below. Expanding it keeps you on the same page."
+        return "Choose a section below. Expanding it keeps the page in place and preserves your scroll position."
     }
 
     @JvmStatic
