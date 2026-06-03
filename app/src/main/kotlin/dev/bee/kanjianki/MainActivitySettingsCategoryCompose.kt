@@ -59,6 +59,7 @@ internal fun SettingsCategoryHeader(
     summaryColor: ComposeColor,
     countColor: ComposeColor,
     contentDescription: String,
+    testTagKey: String,
     onToggle: () -> Unit,
 ) {
     Surface(
@@ -73,7 +74,7 @@ internal fun SettingsCategoryHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
-                .testTag(settingsCategoryHeaderTestTag(title))
+                .testTag(settingsCategoryHeaderTestTag(testTagKey))
                 .semantics {
                     this.contentDescription = contentDescription
                 }

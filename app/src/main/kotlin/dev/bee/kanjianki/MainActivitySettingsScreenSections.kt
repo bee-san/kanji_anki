@@ -2,6 +2,11 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.SettingsTextCopy
 
+private const val SETTINGS_SECTION_ANKI_SOURCE = "settings-anki-source"
+private const val SETTINGS_SECTION_STUDY_BEHAVIOR = "settings-study-behavior"
+private const val SETTINGS_SECTION_AUTOMATION = "settings-automation"
+private const val SETTINGS_SECTION_REFERENCE_DATA = "settings-reference-data"
+
 internal fun settingsAnkiSourceCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
@@ -10,12 +15,13 @@ internal fun settingsAnkiSourceCategoryModel(
     frequencyRange: SettingsFrequencyRangePanelModel,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
-        SettingsTextCopy.settingsAnkiSourceTitle(),
-        SettingsTextCopy.settingsAnkiSourceBody(),
-        R.drawable.ic_book_24,
-        expanded,
-        onToggle,
-        listOf(noteType, importFilters, frequencyRange),
+        sectionKey = SETTINGS_SECTION_ANKI_SOURCE,
+        title = SettingsTextCopy.settingsAnkiSourceTitle(),
+        summary = SettingsTextCopy.settingsAnkiSourceBody(),
+        iconRes = R.drawable.ic_book_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = listOf(noteType, importFilters, frequencyRange),
     )
 }
 
@@ -32,12 +38,13 @@ internal fun settingsStudyBehaviorCategoryModel(
     ladderThreshold: SettingsLadderThresholdPanelModel,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
-        SettingsTextCopy.settingsStudyBehaviorTitle(),
-        SettingsTextCopy.settingsStudyBehaviorBody(),
-        R.drawable.ic_study_24,
-        expanded,
-        onToggle,
-        listOf(
+        sectionKey = SETTINGS_SECTION_STUDY_BEHAVIOR,
+        title = SettingsTextCopy.settingsStudyBehaviorTitle(),
+        summary = SettingsTextCopy.settingsStudyBehaviorBody(),
+        iconRes = R.drawable.ic_study_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = listOf(
             newCardSort,
             deckLimits,
             workload,
@@ -58,12 +65,13 @@ internal fun settingsAutomationCategoryModel(
     update: SettingsUpdateOverviewPanelModel,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
-        SettingsTextCopy.settingsAutomationTitle(),
-        SettingsTextCopy.settingsAutomationBody(),
-        R.drawable.ic_sync_24,
-        expanded,
-        onToggle,
-        listOf(autoSync, reminder, update),
+        sectionKey = SETTINGS_SECTION_AUTOMATION,
+        title = SettingsTextCopy.settingsAutomationTitle(),
+        summary = SettingsTextCopy.settingsAutomationBody(),
+        iconRes = R.drawable.ic_sync_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = listOf(autoSync, reminder, update),
     )
 }
 
@@ -73,11 +81,12 @@ internal fun settingsReferenceDataCategoryModel(
     dataLicense: SettingsReferenceDataLinkModel,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
-        SettingsTextCopy.settingsReferenceDataTitle(),
-        SettingsTextCopy.settingsReferenceDataBody(),
-        R.drawable.ic_sparkle_24,
-        expanded,
-        onToggle,
-        listOf(dataLicense),
+        sectionKey = SETTINGS_SECTION_REFERENCE_DATA,
+        title = SettingsTextCopy.settingsReferenceDataTitle(),
+        summary = SettingsTextCopy.settingsReferenceDataBody(),
+        iconRes = R.drawable.ic_sparkle_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = listOf(dataLicense),
     )
 }

@@ -38,13 +38,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import from Anki",
-                        "Note type, filters, and frequency range.",
+                        "Choose the note type, import filters, and suspended-card range.",
                         "Study settings",
-                        "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Card ordering, daily limits, learning steps, review retention, study ahead, and ladder rules.",
                         "Automation",
-                        "Daily sync, reminders, and update checks.",
+                        "Daily sync, reminder notifications, and update checks.",
                         "Reference data",
-                        "Offline dictionaries, stroke data, fonts, and licenses."
+                        "Offline dictionaries, stroke data, fonts, and license attributions."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -93,7 +93,7 @@ class SettingsTextCopyTest {
                         "Turn on automatic updates",
                         "Back to settings",
                         "Settings overview",
-                        "Grouped by Anki imports, study settings, automation, and reference data.",
+                        "Grouped by what they affect: Anki imports, study settings, automation, and reference data.",
                         "Anki note type",
                         "Import filters",
                         "Suspended card range",
@@ -406,7 +406,7 @@ class SettingsTextCopyTest {
                 listOf(
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
-                        "FSRS retention",
+                        "Review retention",
                         "FSRS stays local. Anki due dates stay unchanged.",
                         "Jiten-rank retention ranges",
                         "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",

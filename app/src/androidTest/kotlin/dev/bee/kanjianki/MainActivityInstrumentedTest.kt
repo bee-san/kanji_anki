@@ -357,7 +357,7 @@ private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
             assertHasText(activity, "Daily workload");
             assertHasText(activity, "Auto Pareto: waiting for problem kanji");
             assertHasText(activity, "Use manual workload");
-            assertHasText(activity, "FSRS retention");
+            assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
             assertHasText(activity, "Ladder thresholds");
             assertHasText(activity, "Promotion interval days");
