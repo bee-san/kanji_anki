@@ -613,7 +613,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Reference data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Dictionaries, stroke data, fonts, and licenses.",
+            "Bundled dictionaries, stroke data, fonts, and licenses.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }

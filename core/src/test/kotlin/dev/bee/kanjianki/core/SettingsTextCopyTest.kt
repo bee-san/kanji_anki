@@ -44,7 +44,7 @@ class SettingsTextCopyTest {
                         "Automation",
                         "Daily sync, reminders, and app updates.",
                         "Reference data",
-                        "Dictionaries, stroke data, fonts, and licenses."
+                        "Bundled dictionaries, stroke data, fonts, and licenses.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -259,7 +259,7 @@ class SettingsTextCopyTest {
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
                         "Suspended card range saved. Sync again to rebuild practice.",
-                        "Data licenses",
+                        "Offline data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",

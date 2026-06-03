@@ -23,7 +23,7 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataTitle(): String = "Reference data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Dictionaries, stroke data, fonts, and licenses."
+    fun settingsReferenceDataBody(): String = "Bundled dictionaries, stroke data, fonts, and licenses."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"

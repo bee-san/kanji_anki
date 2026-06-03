@@ -13,7 +13,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily sync, reminders, and app updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Reference data", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Dictionaries, stroke data, fonts, and licenses.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Bundled dictionaries, stroke data, fonts, and licenses.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Grouped by what they affect: Anki import, study behavior, automation, and reference data.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Anki note type", SettingsSectionTextCopy.noteTypeStatusLabel())
