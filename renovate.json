@@ -1,0 +1,55 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices"
+  ],
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "dependencyDashboard": true,
+  "labels": [
+    "Dependencies"
+  ],
+  "rebaseWhen": "conflicted",
+  "semanticCommits": "enabled",
+  "automerge": false,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "enabledManagers": [
+    "github-actions",
+    "gradle",
+    "gradle-wrapper"
+  ],
+  "packageRules": [
+    {
+      "description": "Keep GitHub Actions updates together and pin action references by digest.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github-actions",
+      "pinDigests": true
+    },
+    {
+      "description": "Keep Gradle wrapper updates separate from library and plugin updates.",
+      "matchManagers": [
+        "gradle-wrapper"
+      ],
+      "groupName": "gradle-wrapper"
+    },
+    {
+      "description": "Group non-major Gradle dependency and plugin updates for lower PR noise.",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "groupName": "gradle dependencies"
+    }
+  ]
+}

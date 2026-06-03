@@ -24,6 +24,9 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
+      - 'renovate.json'
+      - '.github/dependabot.yml'
+      - 'docs/dependency-updates.md'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -45,6 +48,9 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
+      - 'renovate.json'
+      - '.github/dependabot.yml'
+      - 'docs/dependency-updates.md'
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -139,6 +145,26 @@ jobs:
       - name: Run deterministic asset tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
 
+  dependency-safety:
+    name: Dependency safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check out repository
+        uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+
+      - name: Validate Gradle wrapper
+        uses: "gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e"
+
+      - name: Review dependency changes
+        continue-on-error: true
+        uses: "actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294"
+
   fast-confidence-gate:
     name: Fast confidence gate
     runs-on: ubuntu-latest
@@ -150,4 +176,4 @@ jobs:
 
     steps:
       - name: Confirm split checks passed
-        run: true
+        run: "true"
