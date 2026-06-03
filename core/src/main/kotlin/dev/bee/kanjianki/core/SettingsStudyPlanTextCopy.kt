@@ -124,7 +124,7 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun fsrsRetentionTitle(): String = "FSRS retention"
+    fun fsrsRetentionTitle(): String = "Review retention"
 
     @JvmStatic
     fun fsrsRetentionBody(): String {

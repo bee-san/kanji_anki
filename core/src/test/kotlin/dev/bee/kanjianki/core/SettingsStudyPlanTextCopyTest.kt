@@ -40,7 +40,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
-        assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
+        assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
             "FSRS stays local. Anki due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),

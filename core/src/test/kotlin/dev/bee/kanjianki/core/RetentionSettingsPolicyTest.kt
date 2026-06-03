@@ -24,7 +24,7 @@ class RetentionSettingsPolicyTest {
         assertEquals(latest.lastAdjustmentReviewCount, parameters.lastAdjustmentReviewCount)
         assertFalse(parameters.frequencyRetentionEnabled)
         assertEquals("1-500=95%", parameters.frequencyRetentionRanges)
-        assertEquals("FSRS retention saved.", result.message)
+        assertEquals("Review retention saved.", result.message)
     }
 
     @Test

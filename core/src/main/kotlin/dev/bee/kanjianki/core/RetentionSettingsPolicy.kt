@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.core
 
 object RetentionSettingsPolicy {
-    const val SAVED_MESSAGE: String = "FSRS retention saved."
+    const val SAVED_MESSAGE: String = "Review retention saved."
 
     @JvmStatic
     fun saveRequest(
