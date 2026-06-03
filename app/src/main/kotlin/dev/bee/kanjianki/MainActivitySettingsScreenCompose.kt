@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.unit.dp
@@ -18,6 +20,13 @@ import java.util.Locale
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
+    val expandedCategories = remember(model.categories.map { it.title }) {
+        mutableStateMapOf<String, Boolean>().apply {
+            model.categories.forEach { category ->
+                put(category.title, category.expanded)
+            }
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(modifier = Modifier.padding(bottom = 10.dp)) {
             HomeFullWidthHomeButton(
@@ -28,7 +37,18 @@ fun SettingsScreen(model: SettingsScreenModel) {
         SettingsAutomationHero(model.hero)
         Spacer(modifier = Modifier.height(10.dp))
         model.categories.forEach { category ->
-            SettingsCategorySection(category)
+            val expanded = expandedCategories[category.title] ?: category.expanded
+            val onToggle = Runnable {
+                expandedCategories[category.title] = !expanded
+                category.onToggle.run()
+            }
+            SettingsCategorySection(
+                category.copy(
+                    expanded = expanded,
+                    contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, category.title),
+                    onToggle = onToggle,
+                )
+            )
         }
     }
 }

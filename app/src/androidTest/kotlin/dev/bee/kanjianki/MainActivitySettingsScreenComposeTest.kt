@@ -18,7 +18,7 @@ class MainActivitySettingsScreenComposeTest {
     fun rendersSettingsRouteAndInvokesShellActions() {
         var homeClicked = false
         var categoryToggled = false
-        var dataClicked = false
+        var importClicked = false
 
         composeRule.setContent {
             SettingsScreen(
@@ -43,7 +43,14 @@ class MainActivitySettingsScreenComposeTest {
                             panelCount = "3 panels",
                             contentDescription = "Expand Import from Anki",
                             onToggle = Runnable { categoryToggled = true },
-                            panels = emptyList()
+                            panels = listOf(
+                                SettingsReferenceDataLinkModel(
+                                    title = "Import details",
+                                    body = "Review the import mapping before enabling it.",
+                                    actionLabel = "Open import details",
+                                    onAction = Runnable { importClicked = true }
+                                )
+                            )
                         ),
                         SettingsCategorySectionModel(
                             title = "Reference data",
@@ -58,7 +65,7 @@ class MainActivitySettingsScreenComposeTest {
                                     title = "Offline data licenses",
                                     body = "Dictionary, stroke, and font attributions.",
                                     actionLabel = "Open licenses",
-                                    onAction = Runnable { dataClicked = true }
+                                    onAction = Runnable {}
                                 )
                             )
                         )
@@ -75,15 +82,18 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
         composeRule.onNodeWithText("Reference data").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("Reference data")).assertIsDisplayed()
+        composeRule.onNodeWithText("Open import details").assertDoesNotExist()
         composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
-        composeRule.onNodeWithText("Open licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
         composeRule.onNodeWithContentDescription("Expand Import from Anki").performClick()
-        composeRule.onNodeWithText("Open licenses").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Import from Anki").assertIsDisplayed()
+        composeRule.onNodeWithText("Open import details").assertExists()
+        composeRule.onNodeWithText("Open import details").performClick()
+        composeRule.onNodeWithText("Open licenses").assertExists()
 
         assertTrue(homeClicked)
         assertTrue(categoryToggled)
-        assertTrue(dataClicked)
+        assertTrue(importClicked)
     }
 }
