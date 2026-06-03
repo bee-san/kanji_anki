@@ -10,7 +10,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsBody(): String = "Limit how many new cards Kani can show each day."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "Maximum new cards/day"
+    fun newCardsPerDayLabel(): String = "Daily new card limit"
 
     @JvmStatic
     fun saveDeckLimitsLabel(): String = "Save daily limits"
@@ -24,7 +24,7 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save maximum"
+    fun saveMaximumLabel(): String = "Save item limit"
 
     @JvmStatic
     fun manualWorkloadLabel(): String = "Use manual workload"
@@ -43,7 +43,7 @@ object SettingsStudyPlanTextCopy {
     fun saveWorkloadLabel(): String = "Save workload"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Use automatic Pareto"
+    fun automaticParetoLabel(): String = "Use automatic workload"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
