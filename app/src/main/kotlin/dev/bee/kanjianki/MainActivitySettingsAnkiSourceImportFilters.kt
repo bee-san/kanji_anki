@@ -102,7 +102,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             SettingsStoreWriter(activity)
         )
         Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun applyPreset(preset: SettingsImportPreset) {
@@ -122,7 +122,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             SettingsStoreWriter(activity)
         )
         Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private class SettingsStoreWriter(

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
@@ -100,6 +101,10 @@ internal fun settingsCategorySectionModel(
         onToggle = onToggle,
         panels = panels,
     )
+}
+
+internal fun settingsCategoryHeaderTestTag(title: String): String {
+    return "settings-category-" + title.lowercase(Locale.ROOT).replace(" ", "-")
 }
 
 internal fun settingsScreenModel(

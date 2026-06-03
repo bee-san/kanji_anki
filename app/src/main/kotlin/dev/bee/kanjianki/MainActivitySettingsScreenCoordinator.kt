@@ -107,7 +107,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.noteTypeSettingsPanelModel(current),
                 activity.importFilterSettingsPanelModel(current),
                 activity.frequencyRangeSettingsPanelModel(current),
-                activity.autoSyncSettingsPanelModel(),
             ),
             settingsStudyBehaviorCategoryModel(
                 activity.settingsStudyExpanded,
@@ -130,6 +129,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     activity.settingsSyncExpanded = !activity.settingsSyncExpanded
                     activity.renderSettings(true)
                 },
+                activity.autoSyncSettingsPanelModel(),
                 activity.reminderSettingsPanelModel(),
                 SettingsUpdateOverviewPanelModel(
                     settingsUpdatePanelModel(
@@ -138,6 +138,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     ),
                     SettingsTextCopy.openUpdaterLabel(),
                 ) {
+                    activity.settingsScrollY = activity.contentScrollY
                     activity.renderUpdate()
                 },
             ),

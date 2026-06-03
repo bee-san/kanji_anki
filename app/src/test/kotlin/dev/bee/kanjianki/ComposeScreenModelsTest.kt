@@ -548,7 +548,7 @@ class ComposeScreenModelsTest {
             title = "Settings",
             body = "Configure Kani behavior.",
             rows = listOf(
-                listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
+                listOf(SettingsAutomationHeroPillModel("Daily Anki sync", "Enabled", 0xFF00AEB5.toInt()))
             ),
         )
         val panel = SettingsReferenceDataLinkModel(
@@ -594,24 +594,24 @@ class ComposeScreenModelsTest {
 
     @Test
     fun settingsCategoryCopyUsesAnkiLikeSections() {
-        assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Import from Anki", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid fields, filters, frequency, and sync.",
+            "Note type, filters, and frequency range.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.",
+            "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and update checks that run Kani in the background.",
+            "Daily sync, reminders, and update checks.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Reference data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution.",
+            "Offline dictionaries, stroke data, fonts, and licenses.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -664,7 +664,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsImportFilterAction {},
         )
         val frequency = SettingsFrequencyRangePanelModel(
-            title = "Frequency range",
+            title = "Suspended card range",
             body = "Ranks",
             selectedRanks = intArrayOf(1, 500),
             minRankLabel = "Min",
@@ -724,15 +724,15 @@ class ComposeScreenModelsTest {
             onOpenUpdater = {},
         )
 
-        val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
-        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val importSource = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency)
+        val automation = settingsAutomationCategoryModel(false, noop, autoSync, reminder, update)
 
-        assertEquals("Import & sync", importSync.title)
-        assertEquals("4 cards", importSync.panelCount)
-        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
-        assertEquals("Advanced controls", advanced.title)
-        assertEquals("2 cards", advanced.panelCount)
-        assertEquals(listOf(reminder, update), advanced.panels)
+        assertEquals("Import from Anki", importSource.title)
+        assertEquals("3 cards", importSource.panelCount)
+        assertEquals(listOf(noteType, importFilters, frequency), importSource.panels)
+        assertEquals("Automation", automation.title)
+        assertEquals("3 cards", automation.panelCount)
+        assertEquals(listOf(autoSync, reminder, update), automation.panels)
     }
 
     @Test
@@ -1006,21 +1006,21 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings cockpit", model.cockpitLabel)
+        assertEquals("Settings overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
-        assertEquals("Note type", model.rows[0][0].label)
+        assertEquals("Anki note type", model.rows[0][0].label)
         assertEquals("Kiku", model.rows[0][0].value)
         assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
-        assertEquals("Reminder", model.rows[1][1].label)
+        assertEquals("Daily reminder", model.rows[1][1].label)
         assertEquals("Blocked", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
-        assertEquals("Daily sync", model.rows[2][0].label)
+        assertEquals("Daily Anki sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Updates", model.rows[2][1].label)
+        assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Verified APK ready", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
         assertEquals("Matching cards", model.rows[3][0].label)

@@ -2,54 +2,54 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import & sync"
+    fun settingsAnkiSourceTitle(): String = "Import from Anki"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, filters, frequency, and sync."
+    fun settingsAnkiSourceBody(): String = "Note type, filters, and frequency range."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Deck options"
+    fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Advanced controls"
+    fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and update checks that run Kani in the background."
+    fun settingsAutomationBody(): String = "Daily sync, reminders, and update checks."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Display & data"
+    fun settingsReferenceDataTitle(): String = "Reference data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and licenses."
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = "Settings cockpit"
+    fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck, automation, and data."
+        return "Grouped by Anki imports, study settings, automation, and reference data."
     }
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Note type"
+    fun noteTypeStatusLabel(): String = "Anki note type"
 
     @JvmStatic
     fun importFiltersStatusLabel(): String = "Import filters"
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Import ranks"
+    fun importRanksStatusLabel(): String = "Suspended card range"
 
     @JvmStatic
-    fun reminderStatusLabel(): String = "Reminder"
+    fun reminderStatusLabel(): String = "Daily reminder"
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily sync"
+    fun dailySyncStatusLabel(): String = "Daily Anki sync"
 
     @JvmStatic
-    fun updatesStatusLabel(): String = "Updates"
+    fun updatesStatusLabel(): String = "App updates"
 
     @JvmStatic
     fun matchingCardsStatusLabel(): String = "Matching cards"

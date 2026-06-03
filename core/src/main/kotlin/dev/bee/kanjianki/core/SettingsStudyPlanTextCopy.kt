@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's problem-kanji count; Anki due dates stay unchanged."
+        return "Kani picks today's workload; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's problem-kanji count; Anki due dates stay unchanged."
+        return "Set today's workload; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -91,7 +91,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Mixes Kani weakness, Anki risk, missed examples, and frequency."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances Kani weakness, Anki risk, missed examples, and frequency."
             else -> "Jiten frequency first."
         }
     }
@@ -128,11 +128,11 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Kani FSRS stays local. Anki due dates stay unchanged."
+        return "FSRS stays local. Anki due dates stay unchanged."
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Use Jiten-rank retention ranges"
+    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {

@@ -9,7 +9,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. One card owns the note type and clue mapping."
+        return "Default: Kiku. One card keeps the note type and clue mapping."
     }
 
     @JvmStatic
@@ -17,7 +17,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Expression source, Reading=reading, Meaning=meaning, Sentence=context, Frequency/FreqSort=metadata."
+        return "Expression source, reading=reading, meaning=meaning, sentence=context, frequency/FreqSort=metadata."
     }
 
     @JvmStatic
@@ -39,7 +39,7 @@ object SettingsNoteTypeTextCopy {
     fun frequencySortFieldLabel(): String = "Frequency sort field"
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose from AnkiDroid"
+    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
 
     @JvmStatic
     fun useKikuLabel(): String = "Use Kiku"

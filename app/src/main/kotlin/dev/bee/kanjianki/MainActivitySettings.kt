@@ -10,19 +10,24 @@ import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
+    internal var settingsScrollY = 0
+
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
     }
 
     override fun renderUpdate() {
         cancelPendingHomeRouteLoads()
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, contentScrollY) {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
                     body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = this@MainActivitySettings::renderHome,
-                    onBack = { renderSettings(false) },
+                    onBack = {
+                        contentScrollY = settingsScrollY
+                        renderSettings(true)
+                    },
                     onCheckForUpdate = { runUpdate(false) },
                     panel = settingsUpdatePanelModel(
                         activity = this@MainActivitySettings,
@@ -37,12 +42,13 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettings(false)
     }
 
-    fun renderSettings(preserveScroll: Boolean) {
+    override fun renderSettings(preserveScroll: Boolean) {
         val scrollY = if (preserveScroll) {
             contentScrollY
         } else {
             0
         }
+        settingsScrollY = scrollY
         renderAsyncHomeRoute(
             loadingTitle = MainActivityBase.NAV_SETTINGS,
             load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
@@ -114,14 +120,17 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun runUpdate(cachedPending: Boolean) {
         val copy = UpdateRunScreenCopy.forRun(cachedPending)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, contentScrollY) {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),
                     body = copy.body(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
-                    onBack = { renderSettings(false) },
+                    onBack = {
+                        contentScrollY = settingsScrollY
+                        renderSettings(true)
+                    },
                 )
             )
         }

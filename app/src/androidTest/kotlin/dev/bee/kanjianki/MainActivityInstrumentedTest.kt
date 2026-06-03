@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -2771,8 +2771,8 @@ private fun waitForText(scenario: ActivityScenario<MainActivity>, text: String, 
 private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
-                "Anki source",
-                "Study behavior",
+                "Import from Anki",
+                "Study settings",
                 "Automation",
                 "Reference data",
                 "Note type",
@@ -2781,7 +2781,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Reading field",
                 "Meaning field",
                 "Frequency sort field",
-                "Choose from AnkiDroid",
+                SettingsTextCopy.chooseFromAnkiDroidLabel(),
                 "Save note type",
                 "Import filters",
                 "Active cards",
@@ -2789,7 +2789,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Tagged cards",
                 "Weak cards",
                 "Minimum matching cards per kanji",
-                "Frequency range",
+                "Suspended card range",
                 "Default: 100-3000",
                 "Min rank",
                 "Max rank"

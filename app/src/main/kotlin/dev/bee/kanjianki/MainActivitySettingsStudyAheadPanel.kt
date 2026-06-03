@@ -20,6 +20,6 @@ internal class MainActivitySettingsStudyAheadPanel(private val activity: MainAct
         }
         activity.store.saveStudyAheadMinutes(request.minutes)
         Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 }

@@ -17,6 +17,6 @@ internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainAct
         val request = DeckLimitsSettingsPolicy.saveNewPerDay(text, fallback)
         activity.store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, request.newPerDay)
         Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 }

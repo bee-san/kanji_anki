@@ -20,7 +20,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Cards most likely to be forgotten first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kanji with weaker Kani history first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-            "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
+            "Balances Kani weakness, Anki risk, missed examples, and frequency.",
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
@@ -42,10 +42,10 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
-            "Kani FSRS stays local. Anki due dates stay unchanged.",
+            "FSRS stays local. Anki due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
-        assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
+        assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
         assertEquals("Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())

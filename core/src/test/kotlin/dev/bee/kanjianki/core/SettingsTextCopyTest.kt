@@ -37,14 +37,14 @@ class SettingsTextCopyTest {
                         "unknown version",
                         "0.4.33",
                         "release-v0.4.33",
-                        "Import & sync",
-                        "AnkiDroid fields, filters, frequency, and sync.",
-                        "Deck options",
-                        "Learning steps, FSRS, workload, sorting, ahead, and ladder thresholds.",
-                        "Advanced controls",
-                        "Reminders and update checks that run Kani in the background.",
-                        "Display & data",
-                        "Offline dictionaries, stroke data, fonts, and attribution."
+                        "Import from Anki",
+                        "Note type, filters, and frequency range.",
+                        "Study settings",
+                        "Learning steps, retention, workload, sorting, ahead limits, and ladder thresholds.",
+                        "Automation",
+                        "Daily sync, reminders, and update checks.",
+                        "Reference data",
+                        "Offline dictionaries, stroke data, fonts, and licenses."
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -92,14 +92,14 @@ class SettingsTextCopyTest {
                         "Turn off automatic updates",
                         "Turn on automatic updates",
                         "Back to settings",
-                        "Settings cockpit",
-                        "Grouped by import, deck, automation, and data.",
-                        "Note type",
+                        "Settings overview",
+                        "Grouped by Anki imports, study settings, automation, and reference data.",
+                        "Anki note type",
                         "Import filters",
-                        "Import ranks",
-                        "Reminder",
-                        "Daily sync",
-                        "Updates"
+                        "Suspended card range",
+                        "Daily reminder",
+                        "Daily Anki sync",
+                        "App updates"
                 ),
                 listOf(
                         SettingsTextCopy.updatePageTitle(),
@@ -133,7 +133,7 @@ class SettingsTextCopyTest {
                 listOf(
                         "Matching cards",
                         "Reminder: Off",
-                        "Collapse Study behavior",
+                        "Collapse Study settings",
                         "Expand Automation",
                         "1 card",
                         "2 cards",
@@ -149,7 +149,7 @@ class SettingsTextCopyTest {
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
                         SettingsTextCopy.categoryToggleDescription(false, "Automation"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),
@@ -219,7 +219,7 @@ class SettingsTextCopyTest {
                         "Import preset saved. Sync again to rebuild practice.",
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
-                        "Frequency range",
+                        "Suspended card range",
                         "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
                 ),
                 listOf(
@@ -258,8 +258,8 @@ class SettingsTextCopyTest {
                         "Save frequency range",
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
-                        "Frequency range saved. Sync again to rebuild practice.",
-                        "Offline data & licenses",
+                        "Suspended card range saved. Sync again to rebuild practice.",
+                        "Offline data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",
@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type & clue fields",
                         "Using Kiku",
-                        "Default: Kiku. One card owns the note type and clue mapping.",
+                        "Default: Kiku. One card keeps the note type and clue mapping.",
                         "Required fields"
                 ),
                 listOf(
@@ -297,14 +297,14 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Expression source, Reading=reading, Meaning=meaning, Sentence=context, Frequency/FreqSort=metadata.",
+                        "Expression source, reading=reading, meaning=meaning, sentence=context, frequency/FreqSort=metadata.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
                         "Sentence field",
                         "Frequency field",
                         "Frequency sort field",
-                        "Choose from AnkiDroid",
+                        "Choose note type",
                         "Use Kiku",
                         "Save note type",
                         "Enter a note type name.",
@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's problem-kanji count; Anki due dates stay unchanged.",
+                "Kani picks today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's problem-kanji count; Anki due dates stay unchanged.",
+                "Set today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -385,7 +385,7 @@ class SettingsTextCopyTest {
         assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Mixes Kani weakness, Anki risk, missed examples, and frequency.",
+                "Balances Kani weakness, Anki risk, missed examples, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
@@ -407,8 +407,8 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "FSRS retention",
-                        "Kani FSRS stays local. Anki due dates stay unchanged.",
-                        "Use Jiten-rank retention ranges",
+                        "FSRS stays local. Anki due dates stay unchanged.",
+                        "Jiten-rank retention ranges",
                         "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",

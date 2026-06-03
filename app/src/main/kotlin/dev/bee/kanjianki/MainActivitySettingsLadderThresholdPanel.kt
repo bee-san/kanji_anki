@@ -24,6 +24,6 @@ internal class MainActivitySettingsLadderThresholdPanel(private val activity: Ma
         }
         SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting)
         Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 }
