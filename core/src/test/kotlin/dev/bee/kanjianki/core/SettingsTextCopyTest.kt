@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Suspended card range",
-                        "Import suspended cards only inside this Jiten rank range. Default 100-3000.",
+                        "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
