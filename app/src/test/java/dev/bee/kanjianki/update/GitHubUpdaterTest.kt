@@ -23,6 +23,7 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -83,6 +84,32 @@ class GitHubUpdaterTest {
         assertFalse(GitHubUpdater.deleteCachedApk(File(existing.parentFile, "missing.apk")) { file -> file.delete() })
         assertTrue(GitHubUpdater.deleteCachedApk(existing) { file -> file.delete() })
         assertFalse(existing.exists())
+    }
+
+    @Test
+    fun cleanupStaleCachedApksDeletesOnlySelectedFiles() {
+        val dir = java.nio.file.Files.createTempDirectory("kani-cache-cleanup").toFile()
+        val now = 3_000_000_000L
+        val deletedNames = mutableListOf<String>()
+        touch(File(dir, "pending.apk"), now - TimeUnit.DAYS.toMillis(30))
+        touch(File(dir, "fresh.apk"), now - TimeUnit.HOURS.toMillis(1))
+        touch(File(dir, "stale-a.apk"), now - TimeUnit.DAYS.toMillis(30))
+        touch(File(dir, "stale-b.APK"), now - TimeUnit.DAYS.toMillis(30))
+        touch(File(dir, "notes.txt"), now - TimeUnit.DAYS.toMillis(30))
+
+        val deleted = GitHubUpdater.cleanupStaleCachedApks(dir, "../pending.apk", now) { file ->
+            deletedNames += file.name
+            true
+        }
+
+        assertEquals(2, deleted)
+        assertEquals(listOf("stale-a.apk", "stale-b.APK"), deletedNames)
+    }
+
+    private fun touch(file: File, lastModified: Long): File {
+        assertTrue(file.createNewFile())
+        assertTrue(file.setLastModified(lastModified))
+        return file
     }
 
     @Test

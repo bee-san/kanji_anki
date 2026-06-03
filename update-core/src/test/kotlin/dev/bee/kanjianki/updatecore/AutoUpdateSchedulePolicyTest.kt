@@ -24,6 +24,7 @@ class AutoUpdateSchedulePolicyTest {
         assertTrue(plan.enabled())
         assertEquals("kani_daily_auto_updates", plan.uniqueWorkName())
         assertTrue(plan.requiresConnectedNetwork())
+        assertTrue(plan.requiresBatteryNotLow())
         assertEquals(TimeUnit.DAYS.toMillis(1), plan.intervalMillis())
         assertEquals(TimeUnit.HOURS.toMillis(6), plan.flexMillis())
     }
