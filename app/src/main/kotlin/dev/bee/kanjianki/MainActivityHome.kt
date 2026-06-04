@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
+import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
@@ -42,6 +43,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
         scheduleStatsPrecomputeIfStale()
+
+        if (isScreenshotRouteRequested()) {
+            renderScreenshotHome()
+            return
+        }
 
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
@@ -94,6 +100,43 @@ internal abstract class MainActivityHome : MainActivityBase() {
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
                 homeFocusQueueCardModel(this, entry, now)
             }
+        )
+        renderHomeRoute {
+            HomeScreen(model)
+        }
+    }
+
+    private fun isScreenshotRouteRequested(): Boolean {
+        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
+    }
+
+    private fun renderScreenshotHome() {
+        val provider = AnkiDroidGateway.ProviderStatus.create(
+            installed = false,
+            permissionGranted = false,
+            canSync = false,
+            authority = null,
+            permission = null,
+            message = "Screenshot route"
+        )
+        val model = HomeScreenModel(
+            title = HomeTextCopy.appTitle(),
+            subtitle = HomeTextCopy.appSubtitle(),
+            metrics = homeMetricModels(this, null, provider, null, null),
+            deckOverviewRows = emptyList(),
+            showSyncCta = true,
+            syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
+            studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+            studySubtitle = HomeTextCopy.studySupportText(),
+            onSync = this::confirmSync,
+            onStudy = this::startFocusedStudy,
+            actions = homeActionModels(this),
+            focusTitle = HomeTextCopy.focusQueueTitle(),
+            focusActionLabel = null,
+            onFocusAction = null,
+            emptyTitle = HomeTextCopy.noKanjiQueuedTitle(),
+            emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
+            previewCards = emptyList(),
         )
         renderHomeRoute {
             HomeScreen(model)

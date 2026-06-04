@@ -142,6 +142,8 @@ If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat
 - If the job sits on `Launch app and capture screenshots` for a long time, the capture script is usually
   waiting for the requested route or an Android dialog/ANR. Treat that as a workflow problem if it never
   advances to `Upload screenshots`.
+- Capture immediately once the route marker appears; we removed the fixed post-route settle sleep because
+  it gave System UI time to raise an ANR/dialog over an otherwise valid frame.
 - Screenshot launches skip the app's background startup side effects when `EXTRA_SCREENSHOT_ROUTE` is
   present. Keep that guard in place so route captures don't wait on reminder/sync/update/backup setup.
 - If the emulator fails with `Timeout waiting for emulator to boot`, raise the workflow's
