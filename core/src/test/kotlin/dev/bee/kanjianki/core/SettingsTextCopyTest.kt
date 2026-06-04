@@ -44,7 +44,7 @@ class SettingsTextCopyTest {
                         "Reminders & updates",
                         "Daily reminders, daily sync, and app updates.",
                         "Offline data & credits",
-                        "Kanji frequency range, dictionaries, stroke data, fonts, and attribution.",
+                        "Offline dictionaries, stroke data, fonts, and attribution.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),

@@ -13,7 +13,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Reminders & updates", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily reminders, daily sync, and app updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Offline data & credits", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Kanji frequency range, dictionaries, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Offline dictionaries, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())

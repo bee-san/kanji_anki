@@ -615,7 +615,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Offline data & credits", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Kanji frequency range, dictionaries, stroke data, fonts, and attribution.",
+            "Offline dictionaries, stroke data, fonts, and attribution.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
