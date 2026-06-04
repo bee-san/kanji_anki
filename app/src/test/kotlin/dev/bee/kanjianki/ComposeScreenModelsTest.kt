@@ -1257,7 +1257,6 @@ class ComposeScreenModelsTest {
         )
         val page = SettingsUpdatePageModel(
             title = "Updater",
-            body = "Check for a signed GitHub release.",
             onHome = home,
             onBack = back,
             onCheckForUpdate = check,
@@ -1272,7 +1271,6 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("Updater", page.title)
-        assertEquals("Check for a signed GitHub release.", page.body)
         assertSame(home, page.onHome)
         assertSame(back, page.onBack)
         assertSame(check, page.onCheckForUpdate)

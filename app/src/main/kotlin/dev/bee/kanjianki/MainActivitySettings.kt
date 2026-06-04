@@ -22,7 +22,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
-                    body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = this@MainActivitySettings::renderHome,
                     onBack = {
                         contentScrollY = settingsScrollY
