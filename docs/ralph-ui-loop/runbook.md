@@ -146,6 +146,8 @@ If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat
   it gave System UI time to raise an ANR/dialog over an otherwise valid frame.
 - Screenshot launches skip the app's background startup side effects when `EXTRA_SCREENSHOT_ROUTE` is
   present. Keep that guard in place so route captures don't wait on reminder/sync/update/backup setup.
+- Home screenshot rendering should short-circuit before any synchronous store precompute or provider
+  checks; use a lightweight screenshot-only model if the route starts ANRing.
 - If the emulator fails with `Timeout waiting for emulator to boot`, raise the workflow's
   `emulator-boot-timeout` before retrying.
 - On GitHub-hosted Ubuntu in this investigation, `system-images;android-35;google_apis;x86` was not

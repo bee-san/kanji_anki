@@ -42,12 +42,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
-        scheduleStatsPrecomputeIfStale()
-
         if (isScreenshotRouteRequested()) {
             renderScreenshotHome()
             return
         }
+        scheduleStatsPrecomputeIfStale()
 
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
