@@ -6,9 +6,9 @@ import org.junit.Test
 class SettingsReferenceDataTextCopyTest {
     @Test
     fun referenceDataHelpersPreserveFormatting() {
-        assertEquals("Suspended card range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
+        assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000.",
+            "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -19,7 +19,7 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
         assertEquals("Use ranks from 1 to 20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Suspended card range saved. Sync again to rebuild practice.",
+            "Kanji frequency range saved. Sync again to rebuild practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())

@@ -2789,7 +2789,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Tagged cards",
                 "Weak cards",
                 "Minimum matching cards per kanji",
-                "Suspended card range",
+                "Kanji frequency range",
                 "Default: 100-3000",
                 "Min rank",
                 "Max rank"

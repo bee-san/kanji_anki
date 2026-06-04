@@ -96,7 +96,7 @@ class SettingsTextCopyTest {
                         "Choose a section below. Expanding it keeps the page in place and preserves your scroll position.",
                         "Note type",
                         "Import filters",
-                        "Suspended card range",
+                        "Kanji frequency range",
                         "Daily reminder",
                         "Daily sync",
                         "App updates"
@@ -223,8 +223,8 @@ class SettingsTextCopyTest {
                         "Import preset saved. Sync again to rebuild practice.",
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
-                        "Suspended card range",
-                        "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000.",
+                        "Kanji frequency range",
+                        "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -262,7 +262,7 @@ class SettingsTextCopyTest {
                         "Save frequency range",
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
-                        "Suspended card range saved. Sync again to rebuild practice.",
+                        "Kanji frequency range saved. Sync again to rebuild practice.",
                         "Offline data licenses",
                         "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
