@@ -165,13 +165,12 @@ class HomeTextCopyTest {
     @Test
     fun browseStaticCopyAndFallbackMeaningStayCentralized() {
         assertEquals("Browse Kanji", HomeTextCopy.browseTitle())
-        assertEquals("Local kanji from synced Kani data and study history.", HomeTextCopy.browseBody())
         assertEquals("Search kanji, meaning, reading, or examples", HomeTextCopy.browseSearchHint())
         assertEquals("Search", HomeTextCopy.browseSearchButtonLabel())
         assertEquals("No local kanji found", HomeTextCopy.browseEmptyTitle())
         assertEquals("Sync AnkiDroid first, or try a different search.", HomeTextCopy.browseEmptyBody())
         assertEquals("Kanji not found", HomeTextCopy.kanjiNotFoundTitle())
-        assertEquals("This row may have disappeared after a sync.", HomeTextCopy.kanjiNotFoundBody())
+        assertEquals("No local record found.", HomeTextCopy.kanjiNotFoundBody())
         assertEquals("Meaning not stored yet", HomeTextCopy.browseItemMeaning(inventory("語", "", "")))
         assertEquals("language", HomeTextCopy.browseItemMeaning(inventory("語", "language", "")))
         assertEquals("1 local source · 2 examples", HomeTextCopy.browseInventorySummary(1, 2))

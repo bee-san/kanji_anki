@@ -233,9 +233,6 @@ object HomeTextCopy {
     fun browseTitle(): String = "Browse Kanji"
 
     @JvmStatic
-    fun browseBody(): String = "Local kanji from synced Kani data and study history."
-
-    @JvmStatic
     fun browseSearchHint(): String = "Search kanji, meaning, reading, or examples"
 
     @JvmStatic
@@ -251,7 +248,7 @@ object HomeTextCopy {
     fun kanjiNotFoundTitle(): String = "Kanji not found"
 
     @JvmStatic
-    fun kanjiNotFoundBody(): String = "This row may have disappeared after a sync."
+    fun kanjiNotFoundBody(): String = "No local record found."
 
     @JvmStatic
     fun browseItemMeaning(item: RecordsImportModels.KanjiInventoryItem?): String {
