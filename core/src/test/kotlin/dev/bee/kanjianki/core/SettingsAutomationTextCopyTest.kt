@@ -28,8 +28,8 @@ class SettingsAutomationTextCopyTest {
 
     @Test
     fun automationHelpersPreserveStatusCopy() {
-        assertEquals("Blocked", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
-        assertEquals("After first sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
+        assertEquals("Notifications off", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
+        assertEquals("After first successful sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
         assertEquals("Verified APK ready", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
         assertEquals("Starts after first successful sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("Sync once manually; Kani refreshes daily after that.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))

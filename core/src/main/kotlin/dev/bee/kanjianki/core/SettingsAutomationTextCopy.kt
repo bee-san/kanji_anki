@@ -4,7 +4,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Blocked"
+            return "Notifications off"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "After first sync"
+            return "After first successful sync"
         }
         return if (enabled) displayTime else "Off"
     }

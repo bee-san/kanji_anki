@@ -238,7 +238,7 @@ fun testNavigationSettingsAndEmptyStates() {
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity { activity -> assertCollapsedSettingsScreen(activity) }
-            clickText(scenario, "Reminders & updates");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Study settings");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -340,7 +340,7 @@ private fun setNavigationRetentionAndReminder(scenario: ActivityScenario<MainAct
         clickText(scenario, "95%");
         verifyRetentionValidationAndRanges(scenario);
         clickText(scenario, "Save retention");
-        clickText(scenario, "Reminders & updates");
+        clickText(scenario, "Automation");
         clickText(scenario, "Morning 08:00");
         clickText(scenario, "Enable reminder");
         clickTextIfPresent("Allow");
@@ -513,7 +513,7 @@ private fun verifyWorkloadAutoActions(scenario: ActivityScenario<MainActivity>) 
     }
 
 private fun enableMorningReminder(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Reminders & updates");
+        clickText(scenario, "Automation");
         scenario.onActivity { activity -> assertHasTexts(activity, "Daily reminder", "Daily sync") }
         clickText(scenario, "Morning 08:00");
         clickText(scenario, "Enable reminder");
@@ -538,7 +538,7 @@ fun testConfiguredDailySyncSettingsScreenCanPauseAndResume() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Reminders & updates");
+            clickText(scenario, "Automation");
             waitForText(scenario, "Daily sync");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On around 06:30");
@@ -564,7 +564,7 @@ fun testReminderSettingsPanelCanEnableAndTurnOffReminder() {
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
             clickText(scenario, "Settings")
-            clickText(scenario, "Reminders & updates")
+            clickText(scenario, "Automation")
             waitForText(scenario, "Daily reminder")
             clickText(scenario, "Morning 08:00")
             waitForText(scenario, "Reminder time: 08:00")
@@ -740,7 +740,7 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
 fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Offline data & credits");
+            clickText(scenario, "Display & data");
             waitForText(scenario, "Open data licenses");
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
@@ -751,7 +751,7 @@ fun testReferenceDataLicensesRoundTripFromSettings() {
                 assertHasText(activity, "Back to settings");
             }
             clickText(scenario, "Back to settings");
-            waitForText(scenario, "Offline data & credits");
+            waitForText(scenario, "Display & data");
         }
     }
 
@@ -761,7 +761,7 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Reminders & updates");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On: checks about once a day");
@@ -797,7 +797,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Reminders & updates");
+            clickText(scenario, "Automation");
             waitForText(scenario, "Verified APK ready: 9.9.9");
             scenario.onActivity { activity ->
                 assertHasText(activity, "Install permission: Ready");
@@ -2772,9 +2772,9 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 "Import & sync",
-                "Study behavior",
-                "Reminders & updates",
-                "Offline data & credits",
+                "Study settings",
+                "Automation",
+                "Display & data",
                 "Note type",
                 "Using Kiku",
                 "Expression field",
@@ -2789,7 +2789,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Tagged cards",
                 "Weak cards",
                 "Minimum matching cards per kanji",
-                "Kanji frequency range",
+                "Suspended card range",
                 "Default: 100-3000",
                 "Min rank",
                 "Max rank"
