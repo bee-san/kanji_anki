@@ -51,9 +51,13 @@ object SettingsStudyPlanTextCopy {
         val normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems)
         val label = workloadStatusLabel(snapped)
         if (snapped >= 100) {
-            return "$label: up to $normalizedMax items"
+            return "$label: up to " + StudyTextCopy.countText(normalizedMax, "item", "items")
         }
-        return "$label: up to ${minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax)} items"
+        return "$label: up to " + StudyTextCopy.countText(
+            minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax),
+            "item",
+            "items",
+        )
     }
 
     @JvmStatic
