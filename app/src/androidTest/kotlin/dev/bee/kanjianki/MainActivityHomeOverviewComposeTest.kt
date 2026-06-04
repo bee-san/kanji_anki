@@ -118,13 +118,11 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.setContent {
             HomeStudyCta(
                 title = MainActivityBase.LABEL_STUDY_NOW,
-                subtitle = HomeTextCopy.studySupportText(),
                 onClick = { clicked = true }
             )
         }
 
         composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY_NOW).assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.studySupportText()).assertIsDisplayed()
         composeRule.onNodeWithTag(homeStudyCtaTestTag(MainActivityBase.LABEL_STUDY_NOW))
             .assertIsDisplayed()
             .assertHasClickAction()

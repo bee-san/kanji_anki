@@ -119,7 +119,6 @@ fun HomePrimaryCta(
 @Composable
 fun HomeStudyCta(
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -157,16 +156,6 @@ fun HomeStudyCta(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = noFontPadding
-            )
-            Text(
-                text = subtitle,
-                color = Color(0xFFFFF5FA),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp),
                 style = noFontPadding
             )
         }

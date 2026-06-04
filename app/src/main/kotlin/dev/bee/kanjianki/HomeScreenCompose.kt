@@ -73,7 +73,6 @@ private fun HomePrimaryHomeCta(model: HomeScreenModel) {
         ) {
             HomeStudyCta(
                 title = model.studyLabel,
-                subtitle = model.studySubtitle,
                 onClick = model.onStudy
             )
         }

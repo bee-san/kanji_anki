@@ -143,7 +143,6 @@ class ComposeScreenModelsTest {
             showSyncCta = true,
             syncLabel = "Sync",
             studyLabel = "Study",
-            studySubtitle = "Next weak kanji",
             onSync = onSync,
             onStudy = onStudy,
             actions = listOf(action),
@@ -162,7 +161,6 @@ class ComposeScreenModelsTest {
         assertEquals(true, model.showSyncCta)
         assertEquals("Sync", model.syncLabel)
         assertEquals("Study", model.studyLabel)
-        assertEquals("Next weak kanji", model.studySubtitle)
         assertSame(onSync, model.onSync)
         assertSame(onStudy, model.onStudy)
         assertEquals(listOf(action), model.actions)
