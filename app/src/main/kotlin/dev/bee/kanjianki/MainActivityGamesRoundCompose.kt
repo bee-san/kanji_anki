@@ -100,7 +100,7 @@ fun GamesQuestionCard(
     question: KanjiGameEngine.GameQuestion,
     onChoiceSelected: (String) -> Unit
 ) {
-    val accent = ComposeColor(gameModeColor(question.mode))
+    val accent = gameModeColor(question.mode)
     val useKanjiTypography = KanjiGameCopy.choiceUsesKanjiTypography(question)
     Surface(
         modifier = Modifier
@@ -207,10 +207,10 @@ private fun GameChoiceButton(
     }
 }
 
-private fun gameModeColor(mode: KanjiGameEngine.GameMode): Int {
+internal fun gameModeColor(mode: KanjiGameEngine.GameMode): ComposeColor {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> 0xFFFF4C76.toInt()
-        KanjiGameEngine.GameMode.READING_RUSH -> 0xFF00AEB5.toInt()
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> 0xFF6E5CE6.toInt()
+        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral
+        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue
     }
 }
