@@ -107,6 +107,20 @@ GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh gh run download <run_id> \
   --dir .ralph-loop/current/remote-screenshots
 ```
 
+## Local emulator fallback
+
+Use the local emulator only when you are debugging the capture script or reproducing a workflow failure. It is not the source of truth for the final evidence bundle.
+
+Local capture requires:
+
+- `adb` on PATH.
+- Android build-tools with `aapt` available.
+- A booted emulator or attached device visible in `adb devices`.
+- `ANDROID_HOME` / `ANDROID_SDK_ROOT` pointing at the SDK that contains that device tooling.
+- A built debug APK under `app/build/outputs/apk`.
+
+If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat that as a debugging signal and fall back to GitHub Actions for the final artifact.
+
 ## Failure states
 
 - `remote_visual_pending`: GitHub auth is missing, the branch could not be pushed or dispatched, or the
