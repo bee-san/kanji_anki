@@ -40,7 +40,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Open updater", SettingsAutomationTextCopy.openUpdaterLabel())
         assertEquals("Blocked: notifications off", SettingsAutomationTextCopy.reminderStatus(true, true, "21:05"))
         assertEquals("Daily reminder", SettingsAutomationTextCopy.dailyReminderTitle())
-        assertEquals("Daily nudge for active problem kanji; Android may batch it.", SettingsAutomationTextCopy.dailyReminderBody())
+        assertEquals("Daily reminders and review nudges; Android may batch them.", SettingsAutomationTextCopy.dailyReminderBody())
         assertEquals("Morning", SettingsAutomationTextCopy.morningReminderPresetLabel())
         assertEquals("Lunch", SettingsAutomationTextCopy.lunchReminderPresetLabel())
         assertEquals("Evening", SettingsAutomationTextCopy.eveningReminderPresetLabel())

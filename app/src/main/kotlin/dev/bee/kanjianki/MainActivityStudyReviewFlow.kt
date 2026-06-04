@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.widget.Toast
+import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsBase
@@ -87,6 +88,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             saveAppliedReview(request, result, now)
             streak = activity.store.studyStreak(now)
             activity.tuneSchedulerIfNeeded(parameters, now)
+            ReminderScheduler.schedule(activity)
         }
         val currentStreakDays = streak?.currentDays ?: 0
         Toast.makeText(activity, HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays), Toast.LENGTH_SHORT).show()

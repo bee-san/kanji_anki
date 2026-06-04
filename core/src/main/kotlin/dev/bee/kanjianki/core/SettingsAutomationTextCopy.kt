@@ -160,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Daily nudge for active problem kanji; Android may batch it."
+        return "Daily reminders and review nudges; Android may batch them."
     }
 
     @JvmStatic
