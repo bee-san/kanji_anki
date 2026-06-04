@@ -83,7 +83,7 @@ internal fun settingsReferenceDataCategoryModel(
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_REFERENCE_DATA,
         title = SettingsTextCopy.settingsReferenceDataTitle(),
-        summary = SettingsTextCopy.settingsReferenceDataBody(),
+        summary = "",
         iconRes = R.drawable.ic_sparkle_24,
         expanded = expanded,
         onToggle = onToggle,

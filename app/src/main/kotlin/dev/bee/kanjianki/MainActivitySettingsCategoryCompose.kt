@@ -115,11 +115,13 @@ internal fun SettingsCategoryHeader(
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = summary,
-                    color = summaryColor,
-                    fontSize = 14.sp
-                )
+                if (summary.isNotBlank()) {
+                    Text(
+                        text = summary,
+                        color = summaryColor,
+                        fontSize = 14.sp
+                    )
+                }
             }
 
             Surface(
