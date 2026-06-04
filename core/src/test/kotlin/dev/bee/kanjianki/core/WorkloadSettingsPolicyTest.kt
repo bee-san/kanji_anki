@@ -11,7 +11,7 @@ class WorkloadSettingsPolicyTest {
         assertEquals(null, request.mode)
         assertEquals(null, request.workloadPercent)
         assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, request.maxItems)
-        assertEquals("Pareto maximum saved.", request.message)
+        assertEquals("Item limit saved.", request.message)
     }
 
     @Test
@@ -31,7 +31,7 @@ class WorkloadSettingsPolicyTest {
         assertEquals(AdaptiveLoadPlanner.MODE_AUTO, request.mode)
         assertEquals(null, request.workloadPercent)
         assertEquals(null, request.maxItems)
-        assertEquals("Automatic Pareto workload enabled.", request.message)
+        assertEquals("Automatic workload enabled.", request.message)
     }
 
     @Test

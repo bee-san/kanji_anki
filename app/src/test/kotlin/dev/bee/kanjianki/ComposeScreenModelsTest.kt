@@ -600,22 +600,22 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+            "Choose which AnkiDroid cards Kani imports and when sync runs.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            "Learning steps, deck limits, retention, workload, sorting, and ladder movement.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Reminders & updates", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and app update checks that change how Kani runs in the background.",
+            "Daily reminders, daily sync, and app updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
+            "Offline dictionaries, stroke data, fonts, and attribution.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -735,7 +735,7 @@ class ComposeScreenModelsTest {
         assertEquals("Import & sync", importSync.title)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
-        assertEquals("Advanced controls", advanced.title)
+        assertEquals("Reminders & updates", advanced.title)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals(listOf(reminder, update), advanced.panels)
     }
@@ -1076,14 +1076,14 @@ class ComposeScreenModelsTest {
         val model = SettingsWorkloadPanelModel(
             title = "Daily workload",
             autoMode = true,
-            autoStatus = "Automatic Pareto",
+            autoStatus = "Automatic workload",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
             saveMaximumLabel = "Save item limit",
-            manualWorkloadLabel = "Manual workload",
+            manualWorkloadLabel = "Set workload manually",
             saveWorkloadLabel = "Save workload",
             automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
@@ -1094,14 +1094,14 @@ class ComposeScreenModelsTest {
 
         assertEquals("Daily workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Automatic Pareto", model.autoStatus)
+        assertEquals("Automatic workload", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
         assertEquals("Save item limit", model.saveMaximumLabel)
-        assertEquals("Manual workload", model.manualWorkloadLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
         assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)

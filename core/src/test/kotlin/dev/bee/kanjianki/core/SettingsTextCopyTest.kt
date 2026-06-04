@@ -38,13 +38,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+                        "Choose which AnkiDroid cards Kani imports and when sync runs.",
                         "Deck options",
-                        "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
-                        "Advanced controls",
-                        "Reminders and app update checks that change how Kani runs in the background.",
+                        "Learning steps, deck limits, retention, workload, sorting, and ladder movement.",
+                        "Reminders & updates",
+                        "Daily reminders, daily sync, and app updates.",
                         "Display & data",
-                        "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
+                        "Offline dictionaries, stroke data, fonts, and attribution.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -134,7 +134,7 @@ class SettingsTextCopyTest {
                         "Cards per kanji",
                         "Reminder: Off",
                         "Collapse Deck options",
-                        "Expand Advanced controls",
+                        "Expand Reminders & updates",
                         "1 card",
                         "2 cards",
                         "Starts after first successful sync",
@@ -150,7 +150,7 @@ class SettingsTextCopyTest {
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
                         SettingsTextCopy.categoryToggleDescription(true, "Deck options"),
-                        SettingsTextCopy.categoryToggleDescription(false, "Advanced controls"),
+                        SettingsTextCopy.categoryToggleDescription(false, "Reminders & updates"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),
                         SettingsTextCopy.autoSyncStatus(false, true, "07:30"),
@@ -331,12 +331,12 @@ class SettingsTextCopyTest {
 
     @Test
     fun workloadSummariesPreserveSettingsCopy() {
-        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
+        assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9))
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1))
-        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Automatic workload: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
         assertEquals(
-                "Auto Pareto: 2 items today",
+                "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         )
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
@@ -346,12 +346,12 @@ class SettingsTextCopyTest {
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save item limit", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Set today's workload; Anki due dates stay unchanged.",
                 SettingsTextCopy.manualWorkloadBody()
         )
-        assertEquals(listOf("Very little", "Pareto", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
+        assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
         assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
