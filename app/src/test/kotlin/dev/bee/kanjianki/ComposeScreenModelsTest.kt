@@ -964,29 +964,29 @@ class ComposeScreenModelsTest {
             savedFailStreak = failStreakText
         }
         val model = SettingsLadderThresholdPanelModel(
-            title = "Ladder thresholds",
+            title = "Ladder movement",
             body = "Tune rung movement.",
-            promotionDaysLabel = "Days before promotion",
+            promotionDaysLabel = "Days to move up",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Fail streak before demotion",
+            failStreakLabel = "Fails to move down",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use default ladder thresholds",
-            saveLabel = "Save ladder thresholds",
+            defaultsLabel = "Use default movement rules",
+            saveLabel = "Save movement rules",
             onSave = save,
         )
 
-        assertEquals("Ladder thresholds", model.title)
+        assertEquals("Ladder movement", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("Days before promotion", model.promotionDaysLabel)
+        assertEquals("Days to move up", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Fail streak before demotion", model.failStreakLabel)
+        assertEquals("Fails to move down", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use default ladder thresholds", model.defaultsLabel)
-        assertEquals("Save ladder thresholds", model.saveLabel)
+        assertEquals("Use default movement rules", model.defaultsLabel)
+        assertEquals("Save movement rules", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
         assertEquals("28", savedPromotionDays)

@@ -276,7 +276,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
             clickText(scenario, "Save study ahead");
             verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, "Save movement rules");
             configureManualWorkload(scenario);
             verifyWorkloadAutoActions(scenario);
         }
@@ -310,7 +310,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setStudyAheadMinutes();
             clickText(scenario, "Save study ahead");
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, "Save movement rules");
             setNavigationWorkloadControls(scenario);
             setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();
@@ -359,9 +359,9 @@ private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
             assertHasText(activity, SettingsTextCopy.manualWorkloadLabel());
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
-            assertHasText(activity, "Ladder thresholds");
-            assertHasText(activity, "Days before promotion");
-            assertHasText(activity, "Fail streak before demotion");
+            assertHasText(activity, "Ladder movement");
+            assertHasText(activity, "Days to move up");
+            assertHasText(activity, "Fails to move down");
         }
     }
 

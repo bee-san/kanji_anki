@@ -463,13 +463,13 @@ class SettingsTextCopyTest {
                         "Keep at least one always-available rung on.",
                         "Write kanji off.",
                         "Write kanji on.",
-                        "Ladder thresholds",
-                        "Only due reviews move the ladder. Learning and relearning repeats are practice only.",
-                        "Days before promotion",
-                        "Fail streak before demotion",
-                        "Use default ladder thresholds",
-                        "Save ladder thresholds",
-                        "Ladder thresholds saved."
+                        "Ladder movement",
+                        "Due reviews move cards up or down. Learning and relearning repeats stay practice-only.",
+                        "Days to move up",
+                        "Fails to move down",
+                        "Use default movement rules",
+                        "Save movement rules",
+                        "Ladder movement saved."
                 ),
                 listOf(
                         SettingsTextCopy.ladderToggleLabel(true),
