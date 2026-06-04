@@ -11,7 +11,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Advanced controls"
@@ -26,11 +26,11 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = "Settings cockpit"
+    fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Grouped by import, deck behavior, automation, and reference data. Each setting appears once."
+        return "Choose a section below. Expanding it keeps the page in place and preserves your scroll position."
     }
 
     @JvmStatic
@@ -40,19 +40,19 @@ object SettingsSectionTextCopy {
     fun importFiltersStatusLabel(): String = "Import filters"
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Import ranks"
+    fun importRanksStatusLabel(): String = "Suspended card range"
 
     @JvmStatic
-    fun reminderStatusLabel(): String = "Reminder"
+    fun reminderStatusLabel(): String = "Daily reminder"
 
     @JvmStatic
     fun dailySyncStatusLabel(): String = "Daily sync"
 
     @JvmStatic
-    fun updatesStatusLabel(): String = "Updates"
+    fun updatesStatusLabel(): String = "App updates"
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = "Matching cards"
+    fun matchingCardsStatusLabel(): String = "Cards per kanji"
 
     @JvmStatic
     fun statusPillDescription(label: String, value: String): String = "$label: $value"

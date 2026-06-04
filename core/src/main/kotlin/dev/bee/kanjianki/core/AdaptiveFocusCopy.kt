@@ -7,8 +7,8 @@ object AdaptiveFocusCopy {
             return "Adaptive focus is waiting for sync"
         }
         if (plan.allKanjiMode) {
-            return "Adaptive focus is set to all current problem kanji"
+            return "Adaptive focus covers all current problem kanji"
         }
-        return "Today's adaptive focus: ${plan.remaining} items left / ${plan.target}"
+        return "Today's adaptive focus: ${plan.remaining} of ${plan.target} left"
     }
 }

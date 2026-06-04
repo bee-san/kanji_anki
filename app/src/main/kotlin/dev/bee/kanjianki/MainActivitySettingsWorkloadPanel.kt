@@ -75,7 +75,7 @@ internal class MainActivitySettingsWorkloadPanel(private val activity: MainActiv
     ) {
         SettingsWriteActions.saveWorkload(request, writer)
         Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private class WorkloadSettingsStoreWriter(

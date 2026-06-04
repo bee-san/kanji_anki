@@ -22,8 +22,18 @@ jacoco {
     toolVersion = "0.8.14"
 }
 
+val coverageClassDirectories = files(
+    fileTree(layout.buildDirectory.dir("classes/java/main").get().asFile) {
+        exclude("**/*WhenMappings*")
+    },
+    fileTree(layout.buildDirectory.dir("classes/kotlin/main").get().asFile) {
+        exclude("**/*WhenMappings*")
+    },
+)
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(coverageClassDirectories)
     reports {
         xml.required = true
         html.required = true
@@ -32,6 +42,7 @@ tasks.jacocoTestReport {
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+    classDirectories.setFrom(coverageClassDirectories)
     violationRules {
         rule {
             limit {

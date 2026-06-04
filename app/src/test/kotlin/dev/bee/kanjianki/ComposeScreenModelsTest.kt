@@ -228,6 +228,24 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun browseDetailIdentityKeepsAnkiStateBadges() {
+        val coral = 0xFFFF4C76.toInt()
+        val badge = BrowseStateBadgeModel("Suspended", coral)
+        val model = BrowseDetailIdentityModel(
+            title = "split",
+            reading = "レツ",
+            stateBadges = listOf(badge),
+        )
+
+        assertEquals("split", model.title)
+        assertEquals("レツ", model.reading)
+        assertEquals(listOf(badge), model.stateBadges)
+        assertEquals("Suspended", model.stateBadges.single().label)
+        assertEquals(coral, model.stateBadges.single().color)
+        assertEquals(model, model.copy())
+    }
+
+    @Test
     fun syncResultModelKeepsPrimaryAndSecondaryActions() {
         val coral = 0xFFFF4C76.toInt()
         val teal = 0xFF00AEB5.toInt()
@@ -329,7 +347,7 @@ class ComposeScreenModelsTest {
         var toggled = false
         val action = SettingsAutoSyncAction { toggled = true }
         val model = SettingsAutoSyncPanelModel(
-            title = "Daily Anki sync",
+            title = "Daily sync",
             status = "On at 06:45",
             statusColor = 0xFF00AEB5.toInt(),
             detail = "Last success yesterday. Next run tomorrow.",
@@ -344,7 +362,7 @@ class ComposeScreenModelsTest {
             onAction = null,
         )
 
-        assertEquals("Daily Anki sync", model.title)
+        assertEquals("Daily sync", model.title)
         assertEquals("On at 06:45", model.status)
         assertEquals(0xFF00AEB5.toInt(), model.statusColor)
         assertEquals("Last success yesterday. Next run tomorrow.", model.detail)
@@ -536,12 +554,13 @@ class ComposeScreenModelsTest {
             ),
         )
         val panel = SettingsReferenceDataLinkModel(
-            title = "Offline data licenses",
+            title = "Data licenses",
             body = "Dictionary, stroke, and font attributions.",
             actionLabel = "Open licenses",
             onAction = Runnable {},
         )
         val category = settingsCategorySectionModel(
+            sectionKey = "settings-study-behavior",
             title = "Study",
             summary = "Tune review behavior.",
             iconRes = R.drawable.ic_target_24,
@@ -560,6 +579,7 @@ class ComposeScreenModelsTest {
         assertSame(home, screen.onHome)
         assertSame(hero, screen.hero)
         assertEquals(listOf(category), screen.categories)
+        assertEquals("settings-study-behavior", category.sectionKey)
         assertEquals("Study", category.title)
         assertEquals("Tune review behavior.", category.summary)
         assertEquals(R.drawable.ic_target_24, category.iconRes)
@@ -585,7 +605,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Study steps, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -599,6 +619,7 @@ class ComposeScreenModelsTest {
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
+
 
     @Test
     fun settingsCategoryFactoriesGroupSyncWithImports() {
@@ -648,7 +669,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsImportFilterAction {},
         )
         val frequency = SettingsFrequencyRangePanelModel(
-            title = "Frequency range",
+            title = "Suspended card range",
             body = "Ranks",
             selectedRanks = intArrayOf(1, 500),
             minRankLabel = "Min",
@@ -661,7 +682,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsFrequencyRangeSaveAction { _, _ -> },
         )
         val autoSync = SettingsAutoSyncPanelModel(
-            title = "Daily Anki sync",
+            title = "Daily sync",
             status = "On",
             statusColor = 0xFF00AEB5.toInt(),
             detail = "Runs daily",
@@ -728,7 +749,7 @@ class ComposeScreenModelsTest {
         val homeAction = Runnable { wentHome = true }
         val backAction = Runnable { wentBack = true }
         val link = SettingsReferenceDataLinkModel(
-            title = "Offline data licenses",
+            title = "Data licenses",
             body = "Dictionary, stroke, and font attributions.",
             actionLabel = "Open licenses",
             onAction = openAction,
@@ -754,7 +775,7 @@ class ComposeScreenModelsTest {
             dataSources = sources,
         )
 
-        assertEquals("Offline data licenses", link.title)
+        assertEquals("Data licenses", link.title)
         assertEquals("Dictionary, stroke, and font attributions.", link.body)
         assertEquals("Open licenses", link.actionLabel)
         assertSame(openAction, link.onAction)
@@ -945,26 +966,26 @@ class ComposeScreenModelsTest {
         val model = SettingsLadderThresholdPanelModel(
             title = "Ladder thresholds",
             body = "Tune rung movement.",
-            promotionDaysLabel = "FSRS days to go up",
+            promotionDaysLabel = "Days before promotion",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Fails to go down",
+            failStreakLabel = "Fail streak before demotion",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use 21 and 3",
+            defaultsLabel = "Use default ladder thresholds",
             saveLabel = "Save ladder thresholds",
             onSave = save,
         )
 
         assertEquals("Ladder thresholds", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("FSRS days to go up", model.promotionDaysLabel)
+        assertEquals("Days before promotion", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Fails to go down", model.failStreakLabel)
+        assertEquals("Fail streak before demotion", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use 21 and 3", model.defaultsLabel)
+        assertEquals("Use default ladder thresholds", model.defaultsLabel)
         assertEquals("Save ladder thresholds", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
@@ -990,7 +1011,7 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings cockpit", model.cockpitLabel)
+        assertEquals("Settings overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
         assertEquals("Note type", model.rows[0][0].label)
@@ -998,16 +1019,16 @@ class ComposeScreenModelsTest {
         assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
-        assertEquals("Reminder", model.rows[1][1].label)
+        assertEquals("Daily reminder", model.rows[1][1].label)
         assertEquals("Blocked", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
         assertEquals("Daily sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Updates", model.rows[2][1].label)
+        assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Verified APK ready", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
-        assertEquals("Matching cards", model.rows[3][0].label)
+        assertEquals("Cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
     }
 
@@ -1061,10 +1082,10 @@ class ComposeScreenModelsTest {
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
-            saveMaximumLabel = "Save maximum",
+            saveMaximumLabel = "Save item limit",
             manualWorkloadLabel = "Manual workload",
             saveWorkloadLabel = "Save workload",
-            automaticParetoLabel = "Automatic Pareto",
+            automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
             onEnableManual = enableManual,
             onSaveWorkload = saveWorkload,
@@ -1079,10 +1100,10 @@ class ComposeScreenModelsTest {
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
-        assertEquals("Save maximum", model.saveMaximumLabel)
+        assertEquals("Save item limit", model.saveMaximumLabel)
         assertEquals("Manual workload", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
-        assertEquals("Automatic Pareto", model.automaticParetoLabel)
+        assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
         assertSame(enableManual, model.onEnableManual)
         assertSame(saveWorkload, model.onSaveWorkload)

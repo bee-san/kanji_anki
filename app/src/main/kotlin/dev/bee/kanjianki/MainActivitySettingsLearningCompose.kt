@@ -87,8 +87,9 @@ fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
                     label = model.sameStepsLabel,
                     modifier = Modifier.weight(1f),
                     onClick = {
-                        newStepsText = model.defaultNewStepsText
-                        reviewStepsText = model.defaultNewStepsText
+                        val sameSteps = SettingsLearningStepsPanelModels.useNewCardStepsTextState(newStepsText)
+                        newStepsText = sameSteps.newStepsText
+                        reviewStepsText = sameSteps.reviewStepsText
                     }
                 )
             }

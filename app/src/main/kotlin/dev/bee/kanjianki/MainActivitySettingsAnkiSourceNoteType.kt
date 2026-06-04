@@ -65,6 +65,6 @@ internal class MainActivitySettingsAnkiSourceNoteType(private val activity: Main
             activity.store::putStringSetting
         )
         Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 }

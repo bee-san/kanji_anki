@@ -345,6 +345,16 @@ class BridgeScheduler {
         return sessionSelector.activeQueueItems(safeItems(items), safeRows(rows), nowMillis, studyAheadMillis, allowedKanji, ladder)
     }
 
+    fun focusQueueItems(
+        items: List<RecordsStudyModels.StudyItem>?,
+        rows: List<RecordsImportModels.DashboardRow>?,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        ladder: RecordsBase.StudyLadderSettings?
+    ): List<RecordsStudyModels.StudyItem> {
+        return sessionSelector.focusQueueItems(safeItems(items), safeRows(rows), nowMillis, studyAheadMillis, null, ladder)
+    }
+
     fun randomizedSessionTaskKeys(
         items: List<RecordsStudyModels.StudyItem>?,
         rows: List<RecordsImportModels.DashboardRow>?,

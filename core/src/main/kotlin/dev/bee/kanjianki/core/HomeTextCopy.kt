@@ -33,7 +33,7 @@ object HomeTextCopy {
     @JvmStatic
     fun recentMistakeTitle(rowMeaning: String?): String {
         if (rowMeaning.isNullOrEmpty()) {
-            return "Recent review miss"
+            return "Recent mistake"
         }
         return rowMeaning
     }
@@ -72,17 +72,19 @@ object HomeTextCopy {
             return "Already saved."
         }
         val streakText = if (currentStreakDays <= 0) "" else " ${streakHeadline(currentStreakDays)}."
-        if (StudyRatings.AGAIN == appliedRating) {
-            return "Saved. This kanji will come back soon.$streakText"
+        return when (appliedRating) {
+            StudyRatings.AGAIN -> "Saved. This kanji will come back soon.$streakText"
+            StudyRatings.HARD -> "Saved. This kanji stays in practice.$streakText"
+            StudyRatings.GOOD, StudyRatings.EASY -> "Saved. This kanji moved forward.$streakText"
+            else -> "Saved.$streakText"
         }
-        return "Saved.$streakText"
     }
 
     @JvmStatic
     fun appTitle(): String = "Kani"
 
     @JvmStatic
-    fun appSubtitle(): String = "An AnkiDroid companion for focused kanji repair"
+    fun appSubtitle(): String = "An AnkiDroid companion for kanji blindness"
 
     @JvmStatic
     fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"

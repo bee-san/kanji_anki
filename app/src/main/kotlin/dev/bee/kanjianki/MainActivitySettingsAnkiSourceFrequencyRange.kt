@@ -51,7 +51,7 @@ internal class MainActivitySettingsAnkiSourceFrequencyRange(
         activity.store.putIntSetting(SUSPENDED_RANK_MIN_SETTING_KEY, rankRange.minRank)
         activity.store.putIntSetting(SUSPENDED_RANK_MAX_SETTING_KEY, rankRange.maxRank)
         Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private companion object {

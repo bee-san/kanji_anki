@@ -35,6 +35,7 @@ object AutoUpdateScheduler {
     private fun dailyUpdateRequest(plan: AutoUpdateSchedulePolicy.SchedulePlan): PeriodicWorkRequest {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(if (plan.requiresConnectedNetwork()) NetworkType.CONNECTED else NetworkType.NOT_REQUIRED)
+            .setRequiresBatteryNotLow(plan.requiresBatteryNotLow())
             .build()
         return PeriodicWorkRequest.Builder(
             AutoUpdateWorker::class.java,

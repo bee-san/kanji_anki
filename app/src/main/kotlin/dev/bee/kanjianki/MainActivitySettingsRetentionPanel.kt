@@ -48,7 +48,7 @@ internal class MainActivitySettingsRetentionPanel(private val activity: MainActi
         }
         activity.store.saveSchedulerParameters(request.parameters!!)
         Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private companion object {

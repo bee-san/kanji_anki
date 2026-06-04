@@ -32,6 +32,7 @@ class AutoUpdateSchedulerTest {
         assertEquals(ExistingPeriodicWorkPolicy.KEEP, backend.policy)
         assertNotNull(backend.request)
         assertEquals(NetworkType.CONNECTED, backend.request?.workSpec?.constraints?.requiredNetworkType)
+        assertTrue(backend.request?.workSpec?.constraints?.requiresBatteryNotLow() == true)
         assertEquals(AutoUpdateSchedulePolicy.INTERVAL_MILLIS, backend.request?.workSpec?.intervalDuration)
         assertEquals(AutoUpdateSchedulePolicy.FLEX_MILLIS, backend.request?.workSpec?.flexDuration)
     }

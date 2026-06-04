@@ -17,12 +17,11 @@ object FocusQueuePolicy {
         }
         val focusOrder = focusOrder(plan)
         val entries = ArrayList<QueueEntry>()
-        val activeItems = BridgeScheduler().activeQueueItems(
+        val activeItems = BridgeScheduler().focusQueueItems(
             items.orEmpty(),
             safeRows,
             nowMillis,
             studyAheadMillis,
-            null,
             ladder,
         )
         for (item in activeItems) {

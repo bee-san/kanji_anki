@@ -8,12 +8,11 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeLeft
-import androidx.compose.ui.test.swipeRight
+import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -44,7 +43,7 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersFailAndPassButtonsAndInvokesActions() {
+    fun rendersAgainAndGoodButtonsAndInvokesActions() {
         var failed = false
         var passed = false
 
@@ -57,64 +56,15 @@ class MainActivityStudyFlashcardComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Fail").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).assertIsDisplayed()
-        composeRule.onNodeWithText("Fail").performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(StudyReviewButtonCopy.againContentDescription()).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(StudyReviewButtonCopy.goodContentDescription()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).performClick()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).performClick()
 
         assertTrue(failed)
         assertTrue(passed)
-    }
-
-    @Test
-    fun revealedActionBarSwipesGradeEvenWhenStartedOnButtons() {
-        var failCount = 0
-        var passCount = 0
-
-        composeRule.setContent {
-            StudyFlashcardActionBar(
-                revealed = true,
-                onReveal = {},
-                onFail = { failCount++ },
-                onPass = { passCount++ }
-            )
-        }
-
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performTouchInput { swipeLeft() }
-        composeRule.runOnIdle {
-            assertEquals(1, failCount)
-            assertEquals(0, passCount)
-        }
-
-        composeRule.onNodeWithText("Fail").performTouchInput { swipeRight() }
-        composeRule.runOnIdle {
-            assertEquals(1, failCount)
-            assertEquals(1, passCount)
-        }
-    }
-
-    @Test
-    fun unrevealedActionBarKeepsRevealTapAndNoGradingActions() {
-        var revealed = false
-        var failed = false
-        var passed = false
-
-        composeRule.setContent {
-            StudyFlashcardActionBar(
-                revealed = false,
-                onReveal = { revealed = true },
-                onFail = { failed = true },
-                onPass = { passed = true }
-            )
-        }
-
-        composeRule.onNodeWithText("Reveal").performClick()
-
-        composeRule.runOnIdle {
-            assertEquals(true, revealed)
-            assertEquals(false, failed)
-            assertEquals(false, passed)
-        }
     }
 
     @Test

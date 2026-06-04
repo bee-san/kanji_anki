@@ -20,7 +20,7 @@ class StudySessionSelector {
             rowByKanji[row.kanji] = row
         }
         var best: RecordsStudyModels.StudyItem? = null
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
             if (item.dueAtMillis > horizon) {
                 continue
             }
@@ -53,19 +53,12 @@ class StudySessionSelector {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         val rowByKanji = rowByKanji(rows)
-        val dueItems = activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+        val dueItems = dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
-        val randomizedItems = if (randomSeed == null) {
-            Collections.shuffle(dueItems, SecureRandom())
-            dueItems
-        } else {
-            val seededItems = dueItems.toMutableList()
-            rotateDeterministically(seededItems, randomSeed)
-            seededItems
-        }
-        return randomizedItems.map { sessionTaskKeyForItem(it) }
+        shuffleDuePriorityBuckets(dueItems, randomSeed)
+        return dueItems.map { sessionTaskKeyForItem(it) }
     }
 
     fun nextSessionForTaskKeys(
@@ -95,25 +88,6 @@ class StudySessionSelector {
         return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
     }
 
-    private fun rotateDeterministically(
-        items: MutableList<RecordsStudyModels.StudyItem>,
-        seed: Long,
-    ) {
-        if (items.size <= 1) {
-            return
-        }
-        val shift = ((mix64(seed) and Long.MAX_VALUE) % items.size).toInt()
-        Collections.rotate(items, if (shift == 0) 1 else shift)
-    }
-
-    private fun mix64(value: Long): Long {
-        var x = value
-        x = (x xor (x ushr 33)) * -49064778989728563L
-        x = (x xor (x ushr 33)) * -4265267296055464877L
-        x = x xor (x ushr 33)
-        return x
-    }
-
     private fun dueItemByTaskKey(
         items: List<RecordsStudyModels.StudyItem>,
         rows: List<RecordsImportModels.DashboardRow>,
@@ -127,7 +101,7 @@ class StudySessionSelector {
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         val rowByKanji = rowByKanji(rows)
         val out = LinkedHashMap<String, RecordsStudyModels.StudyItem>()
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }) {
             out.putIfAbsent(sessionTaskKeyForItem(item), item)
@@ -178,7 +152,7 @@ class StudySessionSelector {
     ): Int {
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
         var count = 0
-        for (item in activeQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
+        for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
             if (item.dueAtMillis <= horizon) {
                 count++
             }
@@ -193,6 +167,40 @@ class StudySessionSelector {
         studyAheadMillis: Long,
         allowedKanji: Set<String>?,
         ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, false)
+    }
+
+    fun focusQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, true)
+    }
+
+    private fun dueQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): List<RecordsStudyModels.StudyItem> {
+        return familyQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder, true)
+    }
+
+    private fun familyQueueItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings?,
+        preferDueEligible: Boolean,
     ): List<RecordsStudyModels.StudyItem> {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
         val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
@@ -211,7 +219,7 @@ class StudySessionSelector {
         }
         val out = ArrayList<RecordsStudyModels.StudyItem>()
         for (family in byFamily.values) {
-            out.add(activeFamilyItem(family, horizon, safeLadder))
+            out.add(activeFamilyItem(family, nowMillis, horizon, safeLadder, preferDueEligible))
         }
         return out
     }
@@ -255,11 +263,13 @@ class StudySessionSelector {
     private fun activeFamilyItem(
         family: List<RecordsStudyModels.StudyItem>,
         nowMillis: Long,
+        horizonMillis: Long,
         ladder: RecordsBase.StudyLadderSettings,
+        preferDueEligible: Boolean,
     ): RecordsStudyModels.StudyItem {
         var best: RecordsStudyModels.StudyItem? = null
         for (item in family) {
-            if (best == null || compareFamilyActivity(item, best, nowMillis, ladder) < 0) {
+            if (best == null || compareFamilyActivity(item, best, nowMillis, horizonMillis, ladder, preferDueEligible) < 0) {
                 best = item
             }
         }
@@ -312,6 +322,44 @@ class StudySessionSelector {
             return 1
         }
 
+        fun shuffleDuePriorityBuckets(items: MutableList<RecordsStudyModels.StudyItem>, randomSeed: Long?) {
+            val seed = randomSeed
+            val secureRandom = if (seed == null) SecureRandom() else null
+            var start = 0
+            while (start < items.size) {
+                val priority = duePriority(items[start])
+                var end = start + 1
+                while (end < items.size && duePriority(items[end]) == priority) {
+                    end++
+                }
+                if (end - start > 1) {
+                    val bucket = items.subList(start, end)
+                    if (seed == null) {
+                        Collections.shuffle(bucket, secureRandom ?: SecureRandom())
+                    } else {
+                        bucket.sortWith(
+                            compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(seed, it) }
+                                .thenBy { taskKeyForSeededShuffle(it) }
+                        )
+                    }
+                }
+                start = end
+            }
+        }
+
+        fun seededShuffleRank(seed: Long, item: RecordsStudyModels.StudyItem): Long {
+            var hash = seed xor -7046029254386353131L
+            val key = taskKeyForSeededShuffle(item)
+            for (index in key.indices) {
+                hash = java.lang.Long.rotateLeft(hash xor key[index].code.toLong(), 27) * 1099511628211L
+            }
+            return hash
+        }
+
+        fun taskKeyForSeededShuffle(item: RecordsStudyModels.StudyItem): String {
+            return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
+        }
+
         fun rowWeakness(
             item: RecordsStudyModels.StudyItem,
             rowByKanji: Map<String, RecordsImportModels.DashboardRow>,
@@ -323,17 +371,37 @@ class StudySessionSelector {
             left: RecordsStudyModels.StudyItem,
             right: RecordsStudyModels.StudyItem,
             nowMillis: Long,
+            horizonMillis: Long,
             ladder: RecordsBase.StudyLadderSettings?,
+            preferDueEligible: Boolean,
         ): Int {
             val safeLadder = StudyLadderRules.safeLadder(ladder)
+            if (preferDueEligible) {
+                val eligible = (if (left.dueAtMillis <= horizonMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= horizonMillis) 0 else 1)
+                if (eligible != 0) {
+                    return eligible
+                }
+                val ankiGatherOrder = duePriority(left).compareTo(duePriority(right))
+                if (ankiGatherOrder != 0) {
+                    return ankiGatherOrder
+                }
+                val due = (if (left.dueAtMillis <= nowMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= nowMillis) 0 else 1)
+                if (due != 0) {
+                    return due
+                }
+            }
             val rank = (-safeLadder.rankForRung(left.rung)).compareTo(-safeLadder.rankForRung(right.rung))
             if (rank != 0) {
                 return rank
             }
-            val due = (if (left.dueAtMillis <= nowMillis) 0 else 1)
-                .compareTo(if (right.dueAtMillis <= nowMillis) 0 else 1)
-            if (due != 0) {
-                return due
+            if (!preferDueEligible) {
+                val due = (if (left.dueAtMillis <= horizonMillis) 0 else 1)
+                    .compareTo(if (right.dueAtMillis <= horizonMillis) 0 else 1)
+                if (due != 0) {
+                    return due
+                }
             }
             return left.dueAtMillis.compareTo(right.dueAtMillis)
         }

@@ -29,7 +29,7 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
         }
         activity.store.saveStudyLadderSettings(next)
         Toast.makeText(activity, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun rungModel(
@@ -58,13 +58,13 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
 
     private fun moveRung(rung: RecordsBase.LadderRung, direction: Int) {
         activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(rung, direction))
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun restoreDefaultLadderSettings() {
         activity.store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults())
         Toast.makeText(activity, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private companion object {

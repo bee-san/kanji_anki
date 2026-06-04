@@ -25,7 +25,7 @@ class SettingsAutoSyncComposeTest {
                     title = SettingsTextCopy.dailyAnkiSyncTitle(),
                     status = SettingsTextCopy.autoSyncStatus(true, true, "06:45"),
                     statusColor = MainActivityUiSupport.TEAL,
-                    detail = "Last auto success yesterday. Next scheduled tomorrow.",
+                    detail = "Last successful sync yesterday. Next sync tomorrow.",
                     actionLabel = SettingsTextCopy.turnOffDailySyncLabel(),
                     primaryAction = false,
                     onAction = SettingsAutoSyncAction { toggled = true }
@@ -35,7 +35,7 @@ class SettingsAutoSyncComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.dailyAnkiSyncTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoSyncStatus(true, true, "06:45")).assertIsDisplayed()
-        composeRule.onNodeWithText("Last auto success yesterday. Next scheduled tomorrow.").assertIsDisplayed()
+        composeRule.onNodeWithText("Last successful sync yesterday. Next sync tomorrow.").assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.turnOffDailySyncLabel()).performClick()
 
         composeRule.runOnIdle {
