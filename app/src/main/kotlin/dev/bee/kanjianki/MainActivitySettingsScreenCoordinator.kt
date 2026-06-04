@@ -102,7 +102,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsAnkiExpanded,
                 Runnable {
                     activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
-                    activity.renderSettings(true)
                 },
                 activity.noteTypeSettingsPanelModel(current),
                 activity.importFilterSettingsPanelModel(current),
@@ -113,7 +112,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsStudyExpanded,
                 Runnable {
                     activity.settingsStudyExpanded = !activity.settingsStudyExpanded
-                    activity.renderSettings(true)
                 },
                 MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
@@ -128,7 +126,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsSyncExpanded,
                 Runnable {
                     activity.settingsSyncExpanded = !activity.settingsSyncExpanded
-                    activity.renderSettings(true)
                 },
                 activity.reminderSettingsPanelModel(),
                 SettingsUpdateOverviewPanelModel(
@@ -146,7 +143,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsAppExpanded,
                 Runnable {
                     activity.settingsAppExpanded = !activity.settingsAppExpanded
-                    activity.renderSettings(true)
                 },
                 MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
             ),
