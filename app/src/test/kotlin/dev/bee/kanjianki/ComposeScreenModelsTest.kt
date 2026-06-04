@@ -584,7 +584,7 @@ class ComposeScreenModelsTest {
         assertEquals("Tune review behavior.", category.summary)
         assertEquals(R.drawable.ic_target_24, category.iconRes)
         assertEquals(true, category.expanded)
-        assertEquals("1 card", category.panelCount)
+        assertEquals("1 setting", category.panelCount)
         assertEquals("Collapse Study", category.contentDescription)
         assertSame(toggle, category.onToggle)
         assertEquals(listOf(panel), category.panels)
@@ -600,12 +600,12 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+            "Choose which AnkiDroid cards Kani imports and when sync runs.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            "New-card order, workload, retention, learning steps, study ahead, and ladder movement.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -613,9 +613,9 @@ class ComposeScreenModelsTest {
             "Daily reminders and update checks that run in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Offline data & credits", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
+            "Offline dictionaries, stroke data, fonts, and attribution.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -669,7 +669,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsImportFilterAction {},
         )
         val frequency = SettingsFrequencyRangePanelModel(
-            title = "Suspended card range",
+            title = "Kanji frequency range",
             body = "Ranks",
             selectedRanks = intArrayOf(1, 500),
             minRankLabel = "Min",
@@ -733,7 +733,7 @@ class ComposeScreenModelsTest {
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("4 cards", importSync.panelCount)
+        assertEquals("4 settings", importSync.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
         assertEquals("Automation", advanced.title)
         assertEquals("2 cards", advanced.panelCount)
@@ -964,29 +964,29 @@ class ComposeScreenModelsTest {
             savedFailStreak = failStreakText
         }
         val model = SettingsLadderThresholdPanelModel(
-            title = "Ladder thresholds",
+            title = "Ladder movement",
             body = "Tune rung movement.",
-            promotionDaysLabel = "Days before promotion",
+            promotionDaysLabel = "Days to move up",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Fail streak before demotion",
+            failStreakLabel = "Fails to move down",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use default ladder thresholds",
-            saveLabel = "Save ladder thresholds",
+            defaultsLabel = "Use default movement rules",
+            saveLabel = "Save movement rules",
             onSave = save,
         )
 
-        assertEquals("Ladder thresholds", model.title)
+        assertEquals("Ladder movement", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("Days before promotion", model.promotionDaysLabel)
+        assertEquals("Days to move up", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Fail streak before demotion", model.failStreakLabel)
+        assertEquals("Fails to move down", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use default ladder thresholds", model.defaultsLabel)
-        assertEquals("Save ladder thresholds", model.saveLabel)
+        assertEquals("Use default movement rules", model.defaultsLabel)
+        assertEquals("Save movement rules", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
         assertEquals("28", savedPromotionDays)
@@ -1076,14 +1076,14 @@ class ComposeScreenModelsTest {
         val model = SettingsWorkloadPanelModel(
             title = "Daily workload",
             autoMode = true,
-            autoStatus = "Automatic Pareto",
+            autoStatus = "Automatic workload",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
             saveMaximumLabel = "Save item limit",
-            manualWorkloadLabel = "Manual workload",
+            manualWorkloadLabel = "Set workload manually",
             saveWorkloadLabel = "Save workload",
             automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
@@ -1094,14 +1094,14 @@ class ComposeScreenModelsTest {
 
         assertEquals("Daily workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Automatic Pareto", model.autoStatus)
+        assertEquals("Automatic workload", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
         assertEquals("Save item limit", model.saveMaximumLabel)
-        assertEquals("Manual workload", model.manualWorkloadLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
         assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)

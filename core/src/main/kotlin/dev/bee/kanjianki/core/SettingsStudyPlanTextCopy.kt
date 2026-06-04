@@ -27,7 +27,7 @@ object SettingsStudyPlanTextCopy {
     fun saveMaximumLabel(): String = "Save item limit"
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Use manual workload"
+    fun manualWorkloadLabel(): String = "Set workload manually"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
@@ -36,7 +36,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun workloadScaleLabels(): Array<String> {
-        return arrayOf("Very little", "Pareto", "Balanced", "More", "All kanji")
+        return arrayOf("Very little", "Focused", "Balanced", "More", "All kanji")
     }
 
     @JvmStatic
@@ -49,11 +49,15 @@ object SettingsStudyPlanTextCopy {
     fun workloadStatusText(percent: Int, maxItems: Int): String {
         val snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent)
         val normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems)
-        val label = AdaptiveLoadPlanner.workloadLabel(snapped)
+        val label = workloadStatusLabel(snapped)
         if (snapped >= 100) {
-            return "$label: up to $normalizedMax items"
+            return "$label: up to " + StudyTextCopy.countText(normalizedMax, "item", "items")
         }
-        return "$label: up to ${minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax)} items"
+        return "$label: up to " + StudyTextCopy.countText(
+            minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax),
+            "item",
+            "items",
+        )
     }
 
     @JvmStatic
@@ -64,9 +68,25 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Auto Pareto: waiting for problem kanji"
+            return "Automatic workload: waiting for problem kanji"
         }
-        return "Auto Pareto: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        return "Automatic workload: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+    }
+
+    private fun workloadStatusLabel(snappedWorkloadPercent: Int): String {
+        if (snappedWorkloadPercent <= 0) {
+            return "Very little"
+        }
+        if (snappedWorkloadPercent <= 20) {
+            return "Focused"
+        }
+        if (snappedWorkloadPercent <= 50) {
+            return "Balanced"
+        }
+        if (snappedWorkloadPercent < 100) {
+            return "More"
+        }
+        return "All kanji"
     }
 
     @JvmStatic

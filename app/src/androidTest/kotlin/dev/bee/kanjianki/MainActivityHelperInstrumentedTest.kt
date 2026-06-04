@@ -545,12 +545,12 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
     }
 
 private fun verifyWorkloadAndReminderSummaries(activity: MainActivity) {
-        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
+        assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
-        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null));
+        assertEquals("Automatic workload: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
-                "Auto Pareto: 2 items today",
+                "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         );
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
@@ -826,7 +826,7 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
                 assertHasText(activity, "Try again after checking AnkiDroid permissions.");
 
-                activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Auto Pareto: 2 items today"));
+                activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Automatic workload: 2 items today"));
                 assertHasText(activity, "Sync complete");
                 assertHasText(activity, "Cleanup finished.");
 

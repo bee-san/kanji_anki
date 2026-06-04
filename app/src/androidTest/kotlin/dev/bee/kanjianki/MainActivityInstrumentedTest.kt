@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -276,7 +276,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
             clickText(scenario, "Save study ahead");
             verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, "Save movement rules");
             configureManualWorkload(scenario);
             verifyWorkloadAutoActions(scenario);
         }
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -310,7 +310,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setStudyAheadMinutes();
             clickText(scenario, "Save study ahead");
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, "Save movement rules");
             setNavigationWorkloadControls(scenario);
             setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();
@@ -318,7 +318,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
     }
 
 private fun setNavigationWorkloadControls(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
@@ -355,13 +355,13 @@ fun setFrequencyRangeInputs(minRank: String, maxRank: String) {
 private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
         scenario.onActivity { activity ->
             assertHasText(activity, "Daily workload");
-            assertHasText(activity, "Auto Pareto: waiting for problem kanji");
-            assertHasText(activity, "Use manual workload");
+            assertHasText(activity, SettingsTextCopy.autoWorkloadStatusText(null));
+            assertHasText(activity, SettingsTextCopy.manualWorkloadLabel());
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
-            assertHasText(activity, "Ladder thresholds");
-            assertHasText(activity, "Days before promotion");
-            assertHasText(activity, "Fail streak before demotion");
+            assertHasText(activity, "Ladder movement");
+            assertHasText(activity, "Days to move up");
+            assertHasText(activity, "Fails to move down");
         }
     }
 
@@ -486,7 +486,7 @@ private fun assertLadderThresholdSettings(scenario: ActivityScenario<MainActivit
     }
 
 private fun configureManualWorkload(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
@@ -740,7 +740,7 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
 fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Display & data");
+            clickText(scenario, "Offline data & credits");
             waitForText(scenario, "Open data licenses");
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
@@ -751,7 +751,7 @@ fun testReferenceDataLicensesRoundTripFromSettings() {
                 assertHasText(activity, "Back to settings");
             }
             clickText(scenario, "Back to settings");
-            waitForText(scenario, "Display & data");
+            waitForText(scenario, "Offline data & credits");
         }
     }
 
@@ -2789,7 +2789,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Tagged cards",
                 "Weak cards",
                 "Minimum matching cards per kanji",
-                "Suspended card range",
+                "Kanji frequency range",
                 "Default: 100-3000",
                 "Min rank",
                 "Max rank"

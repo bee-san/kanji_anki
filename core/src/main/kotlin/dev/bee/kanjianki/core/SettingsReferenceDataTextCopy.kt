@@ -2,11 +2,11 @@ package dev.bee.kanjianki.core
 
 object SettingsReferenceDataTextCopy {
     @JvmStatic
-    fun frequencyRangeTitle(): String = "Suspended card range"
+    fun frequencyRangeTitle(): String = "Kanji frequency range"
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Import suspended cards only inside this Jiten rank range. Defaults to 100-3000."
+        return "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks from 1 to 20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Suspended card range saved. Sync again to rebuild practice."
+    fun frequencyRangeSavedToast(): String = "Kanji frequency range saved. Sync again to rebuild practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"

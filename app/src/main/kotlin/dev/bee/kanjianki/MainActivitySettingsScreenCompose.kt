@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -80,7 +81,9 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
         )
         if (model.expanded) {
             model.panels.forEach { panel ->
-                SettingsPanel(panel)
+                Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
+                    SettingsPanel(panel)
+                }
             }
         }
     }
@@ -131,6 +134,26 @@ internal fun settingsCategorySectionModel(
 
 internal fun settingsCategoryHeaderTestTag(sectionKey: String): String {
     return "settings-category-$sectionKey"
+}
+
+internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
+    return when (panel) {
+        is SettingsNoteTypePanelModel -> "settings-panel-note-type"
+        is SettingsImportFiltersPanelModel -> "settings-panel-import-filters"
+        is SettingsFrequencyRangePanelModel -> "settings-panel-frequency-range"
+        is SettingsNewCardSortPanelModel -> "settings-panel-new-card-sort"
+        is SettingsDeckLimitsPanelModel -> "settings-panel-deck-limits"
+        is SettingsWorkloadPanelModel -> "settings-panel-workload"
+        is SettingsRetentionPanelModel -> "settings-panel-retention"
+        is SettingsLearningStepsPanelModel -> "settings-panel-learning-steps"
+        is SettingsStudyAheadPanelModel -> "settings-panel-study-ahead"
+        is SettingsStudyLadderPanelModel -> "settings-panel-study-ladder"
+        is SettingsLadderThresholdPanelModel -> "settings-panel-ladder-thresholds"
+        is SettingsReminderPanelModel -> "settings-panel-reminder"
+        is SettingsAutoSyncPanelModel -> "settings-panel-auto-sync"
+        is SettingsUpdateOverviewPanelModel -> "settings-panel-app-updates"
+        is SettingsReferenceDataLinkModel -> "settings-panel-reference-data"
+    }
 }
 
 internal fun settingsScreenModel(

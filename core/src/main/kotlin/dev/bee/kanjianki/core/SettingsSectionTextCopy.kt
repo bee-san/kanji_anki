@@ -5,13 +5,13 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
+    fun settingsAnkiSourceBody(): String = "Choose which AnkiDroid cards Kani imports and when sync runs."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Deck options"
+    fun settingsStudyBehaviorTitle(): String = "Study behavior"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "New-card order, workload, retention, learning steps, study ahead, and ladder movement."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"
@@ -20,10 +20,10 @@ object SettingsSectionTextCopy {
     fun settingsAutomationBody(): String = "Daily reminders and update checks that run in the background."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Display & data"
+    fun settingsReferenceDataTitle(): String = "Offline data & credits"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
@@ -40,7 +40,7 @@ object SettingsSectionTextCopy {
     fun importFiltersStatusLabel(): String = "Import filters"
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Suspended card range"
+    fun importRanksStatusLabel(): String = "Kanji frequency range"
 
     @JvmStatic
     fun reminderStatusLabel(): String = "Daily reminder"
@@ -63,5 +63,8 @@ object SettingsSectionTextCopy {
     }
 
     @JvmStatic
-    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " card" else " cards"
+    fun categoryStateDescription(expanded: Boolean): String = if (expanded) "Expanded" else "Collapsed"
+
+    @JvmStatic
+    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " setting" else " settings"
 }

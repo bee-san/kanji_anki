@@ -26,7 +26,7 @@ class MainActivitySettingsCategoryComposeTest {
                 val expandedState = remember { mutableStateOf(false) }
                 var expanded by expandedState
                 SettingsCategoryHeader(
-                    title = "Deck options",
+                    title = "Study behavior",
                     summary = "How much appears today, how quickly repeats return, and when cards move rungs.",
                     iconRes = R.drawable.ic_study_24,
                     iconTint = ComposeColor(0xFFDA3A7A),
@@ -36,19 +36,19 @@ class MainActivitySettingsCategoryComposeTest {
                     titleColor = ComposeColor(0xFF4B2552),
                     summaryColor = ComposeColor(0xFF826084),
                     countColor = ComposeColor(0xFFDA3A7A),
-                    contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, "Deck options"),
+                    contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, "Study behavior"),
                     testTagKey = "settings-study-behavior",
                     onToggle = { expanded = !expanded }
                 )
             }
         }
 
-        composeRule.onNodeWithText("Deck options").assertIsDisplayed()
+        composeRule.onNodeWithText("Study behavior").assertIsDisplayed()
         composeRule.onNodeWithText("How much appears today, how quickly repeats return, and when cards move rungs.").assertIsDisplayed()
         composeRule.onNodeWithText("5 cards").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Expand Deck options").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Expand Deck options").performClick()
+        composeRule.onNodeWithContentDescription("Expand Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Expand Study behavior").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithContentDescription("Collapse Deck options").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
     }
 }
