@@ -211,6 +211,10 @@ private fun assertWritingGuideText() {
 fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                val startup = MainActivityStartup(activity)
+                assertTrue(startup.shouldRunBackgroundStartupTasks(Intent()))
+                assertFalse(startup.shouldRunBackgroundStartupTasks(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)))
+
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
                 assertHasText(activity, "GitHub updater");
 

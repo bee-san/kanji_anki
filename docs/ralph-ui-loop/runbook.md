@@ -142,6 +142,8 @@ If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat
 - If the job sits on `Launch app and capture screenshots` for a long time, the capture script is usually
   waiting for the requested route or an Android dialog/ANR. Treat that as a workflow problem if it never
   advances to `Upload screenshots`.
+- Screenshot launches skip the app's background startup side effects when `EXTRA_SCREENSHOT_ROUTE` is
+  present. Keep that guard in place so route captures don't wait on reminder/sync/update/backup setup.
 - If the emulator fails with `Timeout waiting for emulator to boot`, raise the workflow's
   `emulator-boot-timeout` before retrying.
 - On GitHub-hosted Ubuntu in this investigation, `system-images;android-35;google_apis;x86` was not

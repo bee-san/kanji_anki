@@ -10,14 +10,19 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler
 
 internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
+        val launchIntent = activity.intent
+
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
-        activity.requestAnkiPermissionIfNeeded()
-        ReminderScheduler.schedule(activity)
-        AutoSyncScheduler.schedule(activity)
-        AutoUpdateScheduler.schedule(activity)
-        DatabaseBackupScheduler.schedule(activity)
-        handleLaunchIntent(activity.intent)
+
+        if (shouldRunBackgroundStartupTasks(launchIntent)) {
+            activity.requestAnkiPermissionIfNeeded()
+            ReminderScheduler.schedule(activity)
+            AutoSyncScheduler.schedule(activity)
+            AutoUpdateScheduler.schedule(activity)
+            DatabaseBackupScheduler.schedule(activity)
+        }
+        handleLaunchIntent(launchIntent)
     }
 
     fun handleLaunchIntent(intent: Intent?) {
@@ -31,6 +36,10 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         } else {
             activity.renderHome()
         }
+    }
+
+    internal fun shouldRunBackgroundStartupTasks(intent: Intent?): Boolean {
+        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank()
     }
 
     private fun renderScreenshotRoute(route: String) {
