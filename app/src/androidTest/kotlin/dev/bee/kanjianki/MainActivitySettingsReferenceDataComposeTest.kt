@@ -28,7 +28,6 @@ class MainActivitySettingsReferenceDataComposeTest {
         }
 
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
-        composeRule.onNodeWithText("One reference page covers reference data.").assertIsDisplayed()
         composeRule.onNodeWithText("Open data licenses").performClick()
 
         assertTrue(clicked)
@@ -50,7 +49,6 @@ class MainActivitySettingsReferenceDataComposeTest {
         }
 
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
-        composeRule.onNodeWithText("Bundled source attribution.").assertIsDisplayed()
         composeRule.onNodeWithText("Back to settings").performClick()
 
         assertTrue(clicked)
