@@ -139,7 +139,7 @@ object HomeTextCopy {
     fun deckOverviewBuriedLabel(): String = "Buried"
 
     @JvmStatic
-    fun studySupportText(): String = "Start focused practice"
+    fun studySupportText(): String = "Next weak kanji"
 
     @JvmStatic
     fun browseActionLabel(): String = "Browse Kanji"

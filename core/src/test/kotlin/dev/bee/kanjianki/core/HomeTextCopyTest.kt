@@ -97,7 +97,7 @@ class HomeTextCopyTest {
         assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false))
         assertEquals("Streak", HomeTextCopy.streakMetricLabel())
         assertEquals("Focus", HomeTextCopy.focusMetricLabel())
-        assertEquals("Start focused practice", HomeTextCopy.studySupportText())
+        assertEquals("Next weak kanji", HomeTextCopy.studySupportText())
         assertEquals("Browse Kanji", HomeTextCopy.browseActionLabel())
         assertEquals("Recent mistakes", HomeTextCopy.recentMistakesTitle())
         assertEquals("Stats", HomeTextCopy.statsActionLabel())
