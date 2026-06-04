@@ -2,6 +2,8 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -78,17 +80,17 @@ class SettingsNoteTypeComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.expressionFieldLabel()).assertIsDisplayed()
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.NOTE_TYPE_INPUT).performTextReplacement("Custom model")
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.EXPRESSION_FIELD_INPUT).performTextReplacement("Word")
-        composeRule.onNodeWithText(SettingsTextCopy.saveNoteTypeLabel()).performClick()
+        composeRule.onNode(hasText(SettingsTextCopy.saveNoteTypeLabel()) and hasClickAction()).performClick()
         composeRule.runOnIdle {
             assertTrue(saved)
             assertEquals("Custom model", savedNoteType)
             assertEquals("Word", savedExpression)
         }
 
-        composeRule.onNodeWithText(SettingsTextCopy.chooseFromAnkiDroidLabel()).performClick()
+        composeRule.onNode(hasText(SettingsTextCopy.chooseFromAnkiDroidLabel()) and hasClickAction()).performClick()
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.NOTE_TYPE_INPUT).assertTextEquals("Chosen model")
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.EXPRESSION_FIELD_INPUT).assertTextEquals("Front")
-        composeRule.onNodeWithText(SettingsTextCopy.useKikuLabel()).performClick()
+        composeRule.onNode(hasText(SettingsTextCopy.useKikuLabel()) and hasClickAction()).performClick()
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.NOTE_TYPE_INPUT).assertTextEquals(defaults.modelName)
         composeRule.onNodeWithTag(SettingsNoteTypeTestTags.EXPRESSION_FIELD_INPUT).assertTextEquals(defaults.expressionField)
 

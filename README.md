@@ -136,6 +136,7 @@ Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that
 - Product contract checks: read this README and the centralized strings in `core/src/main/kotlin/dev/bee/kanjianki/core/HomeTextCopy.kt` before changing user-facing copy.
 - Targeted copy regression: `./gradlew :core:test --tests dev.bee.kanjianki.core.HomeTextCopyTest`.
 - Full local smoke check: `./gradlew :core:test :app:assembleDebug`.
+- Remote Android screenshots and Ralph loop: `docs/ralph-ui-loop/runbook.md`.
 - Release verification: confirm the GitHub Release contains both the signed APK and matching `.sha256` artifact.
 
 ## Cheap Ralph queue

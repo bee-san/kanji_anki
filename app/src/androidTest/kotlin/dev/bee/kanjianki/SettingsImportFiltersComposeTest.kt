@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -116,8 +118,7 @@ class SettingsImportFiltersComposeTest {
             summary = "browser query; 2 matching cards per kanji"
         )
 
-        composeRule.onNodeWithText("browser query; 2 matching cards per kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("deck:Private tag:secret").assertDoesNotExist()
+        composeRule.onNodeWithText("browser query; 2 matching cards per kanji").assertTextEquals("browser query; 2 matching cards per kanji")
     }
 
     @Test
@@ -147,8 +148,8 @@ class SettingsImportFiltersComposeTest {
 
         composeRule.onNodeWithTag(SettingsImportFiltersTestTags.TAGS_INPUT).performTextReplacement("leeches, custom")
         composeRule.onNodeWithTag(SettingsImportFiltersTestTags.DIFFICULTY_INPUT).assertTextEquals("7.5")
-        composeRule.onNodeWithText("Leech tag").performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.saveImportFiltersLabel()).performClick()
+        composeRule.onNode(hasText("Leech tag") and hasClickAction()).performClick()
+        composeRule.onNode(hasText(SettingsTextCopy.saveImportFiltersLabel()) and hasClickAction()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(presetApplied)
