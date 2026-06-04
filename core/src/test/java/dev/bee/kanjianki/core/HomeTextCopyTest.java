@@ -85,6 +85,13 @@ public final class HomeTextCopyTest {
         assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false));
         assertEquals("Streak", HomeTextCopy.streakMetricLabel());
         assertEquals("Focus", HomeTextCopy.focusMetricLabel());
+        assertEquals("Deck overview", HomeTextCopy.deckOverviewTitle());
+        assertEquals("Due", HomeTextCopy.deckOverviewDueLabel());
+        assertEquals("New", HomeTextCopy.deckOverviewNewLabel());
+        assertEquals("Learning", HomeTextCopy.deckOverviewLearningLabel());
+        assertEquals("Relearning", HomeTextCopy.deckOverviewRelearningLabel());
+        assertEquals("Suspended", HomeTextCopy.deckOverviewSuspendedLabel());
+        assertEquals("Buried", HomeTextCopy.deckOverviewBuriedLabel());
         assertEquals("Start focused practice", HomeTextCopy.studySupportText());
         assertEquals("Browse Kanji", HomeTextCopy.browseActionLabel());
         assertEquals("Recent mistakes", HomeTextCopy.recentMistakesTitle());

@@ -139,6 +139,7 @@ class ComposeScreenModelsTest {
             title = "Kani",
             subtitle = "Repair weak kanji",
             metrics = listOf(metric),
+            deckOverviewRows = listOf("Due 2", "New 1"),
             showSyncCta = true,
             syncLabel = "Sync",
             studyLabel = "Study",
@@ -157,6 +158,7 @@ class ComposeScreenModelsTest {
         assertEquals("Kani", model.title)
         assertEquals("Repair weak kanji", model.subtitle)
         assertEquals(listOf(metric), model.metrics)
+        assertEquals(listOf("Due 2", "New 1"), model.deckOverviewRows)
         assertEquals(true, model.showSyncCta)
         assertEquals("Sync", model.syncLabel)
         assertEquals("Study", model.studyLabel)

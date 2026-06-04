@@ -61,6 +61,7 @@ class HomeScreenComposeTest {
                 model = baseModel(
                     showSyncCta = false,
                     onStudy = { studyClicked = true },
+                    deckOverviewRows = listOf("Due 2", "New 1"),
                     focusActionLabel = "View all",
                     onFocusAction = { focusClicked = true },
                     actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) { actionClicked = true }),
@@ -89,6 +90,9 @@ class HomeScreenComposeTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
         composeRule.onNodeWithText("View all").performClick()
+        composeRule.onNodeWithText("Deck overview").assertIsDisplayed()
+        composeRule.onNodeWithText("Due 2").assertIsDisplayed()
+        composeRule.onNodeWithText("New 1").assertIsDisplayed()
         composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performClick()
         assertTrue(studyClicked)
         assertTrue(actionClicked)
@@ -100,6 +104,7 @@ class HomeScreenComposeTest {
         showSyncCta: Boolean,
         onSync: () -> Unit = {},
         onStudy: () -> Unit = {},
+        deckOverviewRows: List<String> = emptyList(),
         focusActionLabel: String? = null,
         onFocusAction: (() -> Unit)? = null,
         emptyTitle: String? = null,
@@ -115,6 +120,7 @@ class HomeScreenComposeTest {
                 HomeMetricModel(R.drawable.ic_flame_24, MainActivityUiSupport.GOLD, "Streak", "2 days", "Done today", null),
                 HomeMetricModel(R.drawable.ic_target_24, MainActivityUiSupport.CORAL, "Focus", "1 left", null, null)
             ),
+            deckOverviewRows = deckOverviewRows,
             showSyncCta = showSyncCta,
             syncLabel = "Sync AnkiDroid",
             studyLabel = "Study now",
