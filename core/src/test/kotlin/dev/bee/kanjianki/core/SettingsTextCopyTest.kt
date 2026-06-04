@@ -21,7 +21,7 @@ class SettingsTextCopyTest {
     fun settingsStatusSummariesPreserveAutomationCopy() {
         assertEquals(
                 listOf(
-                        "Blocked by notifications",
+                        "Notifications off",
                         "21:05",
                         "Off",
                         "After first successful sync",

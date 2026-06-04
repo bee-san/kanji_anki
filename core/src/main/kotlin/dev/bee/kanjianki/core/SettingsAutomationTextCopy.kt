@@ -4,7 +4,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Blocked by notifications"
+            return "Notifications off"
         }
         return if (enabled) displayTime else "Off"
     }

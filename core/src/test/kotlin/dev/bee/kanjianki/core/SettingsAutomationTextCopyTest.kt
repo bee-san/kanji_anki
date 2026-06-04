@@ -28,7 +28,7 @@ class SettingsAutomationTextCopyTest {
 
     @Test
     fun automationHelpersPreserveStatusCopy() {
-        assertEquals("Blocked by notifications", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
+        assertEquals("Notifications off", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
         assertEquals("After first successful sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
         assertEquals("Verified APK ready", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
         assertEquals("Starts after first successful sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
