@@ -6,14 +6,14 @@ import org.junit.Test
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
-        assertEquals("Anki import", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("Note type, filters, and suspended-card range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
-        assertEquals("Study behavior", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
-        assertEquals("Sync, reminders, and updates", SettingsSectionTextCopy.settingsAutomationTitle())
-        assertEquals("Daily sync, reminders, and app updates.", SettingsSectionTextCopy.settingsAutomationBody())
-        assertEquals("Offline data", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Bundled dictionaries, stroke data, fonts, and licenses for offline use.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+        assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle())
+        assertEquals("Reminders and app update checks that change how Kani runs in the background.", SettingsSectionTextCopy.settingsAutomationBody())
+        assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
+        assertEquals("Offline dictionaries, stroke data, fonts, and attribution shown by the app.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
@@ -24,8 +24,8 @@ class SettingsSectionTextCopyTest {
         assertEquals("Daily sync", SettingsSectionTextCopy.dailySyncStatusLabel())
         assertEquals("App updates", SettingsSectionTextCopy.updatesStatusLabel())
         assertEquals("Cards per kanji", SettingsSectionTextCopy.matchingCardsStatusLabel())
-        assertEquals("Collapse Study behavior", SettingsSectionTextCopy.categoryToggleDescription(true, "Study behavior"))
-        assertEquals("Expand Sync, reminders, and updates", SettingsSectionTextCopy.categoryToggleDescription(false, "Sync, reminders, and updates"))
+        assertEquals("Collapse Deck options", SettingsSectionTextCopy.categoryToggleDescription(true, "Deck options"))
+        assertEquals("Expand Advanced controls", SettingsSectionTextCopy.categoryToggleDescription(false, "Advanced controls"))
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
     }

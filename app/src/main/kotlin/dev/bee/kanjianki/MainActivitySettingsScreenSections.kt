@@ -13,6 +13,7 @@ internal fun settingsAnkiSourceCategoryModel(
     noteType: SettingsNoteTypePanelModel,
     importFilters: SettingsImportFiltersPanelModel,
     frequencyRange: SettingsFrequencyRangePanelModel,
+    autoSync: SettingsAutoSyncPanelModel,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_ANKI_SOURCE,
@@ -21,7 +22,7 @@ internal fun settingsAnkiSourceCategoryModel(
         iconRes = R.drawable.ic_book_24,
         expanded = expanded,
         onToggle = onToggle,
-        panels = listOf(noteType, importFilters, frequencyRange),
+        panels = listOf(noteType, importFilters, frequencyRange, autoSync),
     )
 }
 
@@ -60,7 +61,6 @@ internal fun settingsStudyBehaviorCategoryModel(
 internal fun settingsAutomationCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
-    autoSync: SettingsAutoSyncPanelModel,
     reminder: SettingsReminderPanelModel,
     update: SettingsUpdateOverviewPanelModel,
 ): SettingsCategorySectionModel {
@@ -71,7 +71,7 @@ internal fun settingsAutomationCategoryModel(
         iconRes = R.drawable.ic_sync_24,
         expanded = expanded,
         onToggle = onToggle,
-        panels = listOf(autoSync, reminder, update),
+        panels = listOf(reminder, update),
     )
 }
 

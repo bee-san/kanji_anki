@@ -2,28 +2,28 @@ package dev.bee.kanjianki.core
 
 object SettingsSectionTextCopy {
     @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Anki import"
+    fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Note type, filters, and suspended-card range."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study behavior"
+    fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules."
+    fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Sync, reminders, and updates"
+    fun settingsAutomationTitle(): String = "Advanced controls"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Daily sync, reminders, and app updates."
+    fun settingsAutomationBody(): String = "Reminders and app update checks that change how Kani runs in the background."
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Offline data"
+    fun settingsReferenceDataTitle(): String = "Display & data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Bundled dictionaries, stroke data, fonts, and licenses for offline use."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
