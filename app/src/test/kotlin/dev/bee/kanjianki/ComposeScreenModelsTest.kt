@@ -669,7 +669,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsImportFilterAction {},
         )
         val frequency = SettingsFrequencyRangePanelModel(
-            title = "Suspended card range",
+            title = "Kanji frequency range",
             body = "Ranks",
             selectedRanks = intArrayOf(1, 500),
             minRankLabel = "Min",

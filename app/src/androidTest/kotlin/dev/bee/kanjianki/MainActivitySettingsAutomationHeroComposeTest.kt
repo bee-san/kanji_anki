@@ -24,7 +24,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("Import filters", "1-20 / 4", 0xFF00AEB5.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Suspended card range", "1-100", 0xFF00AEB5.toInt()),
+                            SettingsAutomationHeroPillModel("Kanji frequency range", "1-100", 0xFF00AEB5.toInt()),
                             SettingsAutomationHeroPillModel("Daily reminder", "Daily around 21:05", 0xFF6E6E78.toInt())
                         ),
                         listOf(
@@ -46,7 +46,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()
         composeRule.onNodeWithText("Import filters").assertIsDisplayed()
         composeRule.onNodeWithText("1-20 / 4").assertIsDisplayed()
-        composeRule.onNodeWithText("Suspended card range").assertIsDisplayed()
+        composeRule.onNodeWithText("Kanji frequency range").assertIsDisplayed()
         composeRule.onNodeWithText("Daily reminder").assertIsDisplayed()
         composeRule.onNodeWithText("Daily sync").assertIsDisplayed()
         composeRule.onNodeWithText("App updates").assertIsDisplayed()
