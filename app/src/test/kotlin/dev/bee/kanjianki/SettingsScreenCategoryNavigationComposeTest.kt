@@ -3,8 +3,10 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
@@ -23,6 +25,13 @@ class SettingsScreenCategoryNavigationComposeTest {
     @Test
     fun categoryToggleCollapsesAndExpandsInPlace() {
         var toggleRuns = 0
+        val panel = SettingsReferenceDataLinkModel(
+            title = "Deep setting",
+            body = "A nested Settings panel stays on the same composed page.",
+            actionLabel = "Open",
+            onAction = Runnable {},
+        )
+        val panelTag = settingsPanelTestTag(panel)
         val screen = settingsScreenModel(
             hero = SettingsAutomationHeroModel(
                 cockpitLabel = "Settings",
@@ -38,14 +47,7 @@ class SettingsScreenCategoryNavigationComposeTest {
                     iconRes = R.drawable.ic_study_24,
                     expanded = true,
                     onToggle = Runnable { toggleRuns += 1 },
-                    panels = listOf(
-                        SettingsReferenceDataLinkModel(
-                            title = "Deep setting",
-                            body = "A nested Settings panel stays on the same composed page.",
-                            actionLabel = "Open",
-                            onAction = Runnable {},
-                        ),
-                    ),
+                    panels = listOf(panel),
                 ),
             ),
             onHome = Runnable {},
@@ -56,6 +58,7 @@ class SettingsScreenCategoryNavigationComposeTest {
         }
 
         composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("Collapse Study behavior").performClick()
@@ -63,6 +66,7 @@ class SettingsScreenCategoryNavigationComposeTest {
 
         assertEquals(1, toggleRuns)
         composeRule.onNodeWithContentDescription("Expand Study behavior").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(panelTag).assertCountEquals(0)
         composeRule.onAllNodesWithText("Deep setting").assertCountEquals(0)
 
         composeRule.onNodeWithContentDescription("Expand Study behavior").performClick()
@@ -70,6 +74,7 @@ class SettingsScreenCategoryNavigationComposeTest {
 
         assertEquals(2, toggleRuns)
         composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
     }
 }
