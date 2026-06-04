@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 from subprocess import CompletedProcess
 from unittest.mock import patch
+from typing import cast
 
 from scripts.ralph_loop import orchestrator
 
@@ -216,6 +217,67 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertTrue((root / ".ralph-loop/current/button-contract.json").exists())
             self.assertTrue((root / ".ralph-loop/current/button-contract.md").exists())
             self.assertTrue((root / ".ralph-loop/current/audit-report.md").exists())
+
+    def test_malformed_or_schema_missing_reviewer_json_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            review_dir = root / ".ralph-loop/current/audit/home"
+            call_profiles: list[str] = []
+            qa_stdout = json.dumps(
+                {
+                    "passed": True,
+                    "missing_contract_rows": [],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                    "highest_priority_fix": {"row": "home-study-cta", "reason": "covered", "test_file": "HomeScreenComposeTest.kt"},
+                }
+            )
+
+            def fake_run(args, cwd=None, text=None, capture_output=None, check=None):
+                profile = args[2]
+                call_profiles.append(profile)
+                if profile == "uitester":
+                    return CompletedProcess(args, 0, "not json", "")
+                if profile == "qa":
+                    return CompletedProcess(args, 0, qa_stdout, "")
+                raise AssertionError(f"unexpected profile command: {args}")
+
+            with patch.object(orchestrator.subprocess, "run", side_effect=fake_run):
+                result = orchestrator._review_with_qa_retry(
+                    "hermes -p {profile} chat -q {prompt}",
+                    "prompt body",
+                    root,
+                    review_dir=review_dir,
+                    initial_profile="uitester",
+                )
+
+            self.assertEqual(["uitester", "qa"], call_profiles)
+            self.assertEqual("passed", result["status"])
+            self.assertTrue(result["used_qa_retry"])
+            attempts = cast(list[dict[str, object]], result["attempts"])
+            first_attempt = attempts[0]
+            second_attempt = attempts[1]
+            schema_errors = cast(list[str], first_attempt["schema_errors"])
+            self.assertEqual("failed", first_attempt["status"])
+            self.assertIn("not valid JSON", schema_errors[0])
+            self.assertEqual("passed", second_attempt["status"])
+
+            def missing_schema_run(args, cwd=None, text=None, capture_output=None, check=None):
+                return CompletedProcess(args, 0, json.dumps({"unexpected": True}), "")
+
+            with patch.object(orchestrator.subprocess, "run", side_effect=missing_schema_run):
+                missing_schema = orchestrator._run_profile_command(
+                    "hermes -p {profile} chat -q {prompt}",
+                    "prompt body",
+                    root,
+                    out_dir=review_dir,
+                    label="button-attempt-1",
+                    profile="uitester",
+                )
+
+            self.assertEqual("failed", missing_schema["status"])
+            self.assertEqual(["button review JSON must include boolean 'passed'"], missing_schema["schema_errors"])
 
     def test_audit_only_preserves_raw_prompt_and_status_when_button_retry_still_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

@@ -105,6 +105,19 @@ def _format_command(template: str, *, prompt: str, profile: str) -> list[str]:
     return [part.format(prompt=prompt, profile=profile) for part in shlex.split(template)]
 
 
+def _review_schema_errors(label: str, parsed: object) -> list[str]:
+    if not isinstance(parsed, dict):
+        return ["reviewer stdout must be a JSON object"]
+    if label.startswith("button") and not isinstance(parsed.get("passed"), bool):
+        return ["button review JSON must include boolean 'passed'"]
+    if label.startswith("design"):
+        has_file_audit_schema = "visual_problems" in parsed and "interaction_a11y_problems" in parsed
+        has_design_critic_schema = "accepted_issues" in parsed or isinstance(parsed.get("passed"), bool)
+        if not (has_file_audit_schema or has_design_critic_schema):
+            return ["design review JSON is missing expected issue fields"]
+    return []
+
+
 def _run_profile_command(
     template: str,
     prompt: str,
@@ -158,10 +171,18 @@ def _run_profile_command(
         try:
             parsed = json.loads(stdout)
             result["parsed"] = parsed
-            if isinstance(parsed, dict) and parsed.get("passed") is False:
+            schema_errors = _review_schema_errors(label, parsed)
+            if schema_errors:
                 result["status"] = "failed"
-        except json.JSONDecodeError:
-            pass
+                result["schema_errors"] = schema_errors
+            elif isinstance(parsed, dict) and parsed.get("passed") is False:
+                result["status"] = "failed"
+        except json.JSONDecodeError as exc:
+            result["status"] = "failed"
+            result["schema_errors"] = [f"reviewer stdout was not valid JSON: {exc.msg}"]
+    elif result["status"] == "passed":
+        result["status"] = "failed"
+        result["schema_errors"] = ["reviewer stdout was empty"]
     _write_json(result_path, result)
     return result
 
