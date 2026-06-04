@@ -42,8 +42,8 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = model.title,
@@ -86,6 +86,9 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
                 testTag = SettingsNoteTypeTestTags.EXPRESSION_FIELD_INPUT,
                 onValueChange = model.fields::setExpression
             )
+            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.run() }
+            NoteTypeOutlinedButton(model.chooseLabel, minHeightDp = 44) { model.onChoose.run() }
+            NoteTypeOutlinedButton(model.kikuLabel, minHeightDp = 44) { model.onUseKiku.run() }
             NoteTypeInput(
                 label = model.readingLabel,
                 value = model.fields.reading,
@@ -116,9 +119,6 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
                 testTag = SettingsNoteTypeTestTags.FREQUENCY_SORT_FIELD_INPUT,
                 onValueChange = model.fields::setFrequencySort
             )
-            NoteTypeOutlinedButton(model.chooseLabel) { model.onChoose.run() }
-            NoteTypeOutlinedButton(model.kikuLabel) { model.onUseKiku.run() }
-            KaniPrimaryButton(label = model.saveLabel) { model.onSave.run() }
         }
     }
 }
@@ -154,6 +154,6 @@ private fun NoteTypeInput(
 }
 
 @Composable
-private fun NoteTypeOutlinedButton(label: String, onClick: () -> Unit) {
-    KaniOutlinedButton(label = label, onClick = onClick)
+private fun NoteTypeOutlinedButton(label: String, minHeightDp: Int = 50, onClick: () -> Unit) {
+    KaniOutlinedButton(label = label, minHeightDp = minHeightDp, onClick = onClick)
 }

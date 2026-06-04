@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -47,8 +48,8 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = model.title,
@@ -67,15 +68,6 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 color = ImportFilterMuted,
                 fontSize = 15.sp
             )
-            Text(
-                text = model.presetsTitle,
-                color = ImportFilterInk,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
-            model.presets.forEach { preset ->
-                KaniOutlinedButton(label = preset.label) { preset.onClick.run() }
-            }
             ImportFilterCheckbox(model.activeCardsLabel, model.state.activeCards) { model.state.activeCards = it }
             ImportFilterCheckbox(model.suspendedCardsLabel, model.state.suspendedCards) { model.state.suspendedCards = it }
             ImportFilterCheckbox(model.taggedCardsLabel, model.state.taggedCards) { model.state.taggedCards = it }
@@ -117,6 +109,26 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                     onValueChange = { model.state.lapses = it }
                 )
             }
+            Text(
+                text = model.presetsTitle,
+                color = ImportFilterInk,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (model.presets.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    model.presets.forEach { preset ->
+                        KaniOutlinedButton(
+                            label = preset.label,
+                            minHeightDp = 44
+                        ) { preset.onClick.run() }
+                    }
+                }
+            }
+            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.run() }
             ImportFilterTextField(
                 label = model.minMatchingLabel,
                 value = model.state.minMatching,
@@ -124,7 +136,6 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 keyboardType = KeyboardType.Number,
                 onValueChange = { model.state.minMatching = it }
             )
-            KaniPrimaryButton(label = model.saveLabel) { model.onSave.run() }
         }
     }
 }
@@ -134,7 +145,7 @@ private fun ImportFilterCheckbox(label: String, checked: Boolean, onCheckedChang
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 44.dp)
             .toggleable(
                 value = checked,
                 role = Role.Checkbox,
@@ -151,7 +162,7 @@ private fun ImportFilterCheckbox(label: String, checked: Boolean, onCheckedChang
         Text(
             text = label,
             color = ImportFilterInk,
-            fontSize = 17.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -168,6 +179,7 @@ private fun ImportFilterTextField(
     helperText: String = "",
     keyboardType: KeyboardType = KeyboardType.Text,
 ) {
+    val showHintBelow = hint.isNotEmpty() && helperText.isNotEmpty()
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label,
@@ -182,7 +194,7 @@ private fun ImportFilterTextField(
                 .fillMaxWidth()
                 .testTag(testTag)
                 .semantics { contentDescription = label },
-            placeholder = if (hint.isEmpty()) null else {
+            placeholder = if (showHintBelow || hint.isEmpty()) null else {
                 { Text(text = hint, color = ImportFilterMuted, fontSize = 15.sp) }
             },
             singleLine = true,
@@ -192,13 +204,26 @@ private fun ImportFilterTextField(
                 fontSize = 18.sp
             )
         )
+        if (showHintBelow) {
+            Text(
+                text = hint,
+                color = ImportFilterMuted,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
         if (helperText.isNotEmpty()) {
             Text(
                 text = helperText,
                 color = ImportFilterMuted,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
-                modifier = Modifier.padding(top = 4.dp)
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = if (showHintBelow) 2.dp else 4.dp)
             )
         }
     }

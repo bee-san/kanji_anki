@@ -90,7 +90,7 @@ capture_png() {
 
 dump_ui_xml() {
   local local_xml
-  local_xml="$(mktemp -t kani-ui)"
+  local_xml="$(mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX")"
   if ! adb shell uiautomator dump /sdcard/kani-ui.xml >/dev/null 2>&1; then
     rm -f "${local_xml}"
     printf '\n'
@@ -117,6 +117,10 @@ xml = xml_path.read_text(encoding='utf-8', errors='ignore')
 lower = xml.lower()
 if "isn't responding" in lower or "is not responding" in lower or "aerr_" in lower:
     print("Detected Android ANR dialog in UI dump.", file=sys.stderr)
+    for line in xml.splitlines():
+        lowered = line.lower()
+        if "responding" in lowered or "aerr_" in lowered:
+            print(line.strip(), file=sys.stderr)
     sys.exit(2)
 
 expected_terms = [term for term in sys.argv[2:] if term]

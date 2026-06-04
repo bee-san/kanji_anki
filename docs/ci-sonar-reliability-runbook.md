@@ -76,3 +76,4 @@ Before tagging or publishing a release, confirm those check names still match th
 - Sonar workflow-dispatch on a branch tries to discover the matching PR through `gh pr view "$GITHUB_REF_NAME"`. If no PR exists, it falls back to branch analysis arguments.
 - Android CI's `Fast confidence gate` is an aggregate check. Inspect the split matrix jobs and uploaded diagnostic artifacts to find the actual failing task.
 - The deterministic AnkiDroid fixture can pass with the small sanitized Kiku collection while the local real-collection gate still finds provider/sync scale issues. Use the stricter local gate before release-risk provider/sync changes.
+- For remote Android screenshots and the Ralph UI loop, see `docs/ralph-ui-loop/runbook.md`.
