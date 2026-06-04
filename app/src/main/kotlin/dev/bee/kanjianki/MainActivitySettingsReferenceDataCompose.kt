@@ -7,11 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,17 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Ink = ComposeColor(0xFF2D1635)
-private val Muted = ComposeColor(0xFF6C5674)
-private val White = ComposeColor(0xFFFFFFFF)
-private val SettingsPanelFill = ComposeColor(0xFFFFFDFE)
-private val SettingsPanelBorder = ComposeColor(0xFFFFC7DE)
-private val SettingsButtonBorder = ComposeColor(0xFFEEBDDA)
+private val Ink = KaniUiTokens.Ink
+private val Muted = KaniUiTokens.Muted
+private val White = KaniUiTokens.White
+private val SettingsPanelFill = KaniUiTokens.PanelFill
+private val SettingsPanelBorder = KaniUiTokens.PanelBorder
 private val DictionaryBorder = ComposeColor(0xFF31C7D6)
 private val StrokeBorder = ComposeColor(0xFFF6CAE1)
 private val FontBorder = ComposeColor(0xFFFFD640)
-private val PanelShape = RoundedCornerShape(24.dp)
-private val ButtonShape = RoundedCornerShape(12.dp)
+private val PanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun ReferenceDataLinkPanel(model: SettingsReferenceDataLinkModel) {
@@ -124,21 +118,12 @@ private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun SettingsSecondaryButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 3.dp, vertical = 6.dp)
-            .heightIn(min = 54.dp),
-        shape = ButtonShape,
-        border = BorderStroke(1.dp, SettingsButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = White,
-            contentColor = Ink
-        )
-    ) {
-        Text(text = label)
-    }
+    KaniOutlinedButton(
+        label = label,
+        modifier = Modifier.padding(horizontal = 3.dp, vertical = 6.dp),
+        minHeightDp = 54,
+        onClick = onClick
+    )
 }
 
 @Composable

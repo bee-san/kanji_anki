@@ -210,7 +210,7 @@ object HomeTextCopy {
         StudyTextCopy.countText(count, "new archived suspended kanji added", "new archived suspended kanji added")
 
     @JvmStatic
-    fun syncNeedsAttentionTitle(): String = "Sync needs attention"
+    fun syncNeedsAttentionTitle(): String = "AnkiDroid needs attention"
 
     @JvmStatic
     fun syncReadErrorTitle(): String = "Could not read AnkiDroid"

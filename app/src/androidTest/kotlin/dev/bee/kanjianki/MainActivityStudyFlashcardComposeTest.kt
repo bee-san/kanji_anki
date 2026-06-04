@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -37,7 +38,9 @@ class MainActivityStudyFlashcardComposeTest {
         }
 
         composeRule.onNodeWithText("Reveal").assertIsDisplayed()
-        composeRule.onNodeWithText("Reveal").performClick()
+        composeRule.onNodeWithTag(studyActionButtonTestTag("Reveal"))
+            .assertIsDisplayed()
+            .performClick()
 
         assertTrue(revealed)
     }
@@ -58,10 +61,14 @@ class MainActivityStudyFlashcardComposeTest {
 
         composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyReviewButtonCopy.againLabel()))
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyReviewButtonCopy.goodLabel()))
+            .assertIsDisplayed()
+            .performClick()
         composeRule.onNodeWithContentDescription(StudyReviewButtonCopy.againContentDescription()).assertIsDisplayed()
         composeRule.onNodeWithContentDescription(StudyReviewButtonCopy.goodContentDescription()).assertIsDisplayed()
-        composeRule.onNodeWithText(StudyReviewButtonCopy.againLabel()).performClick()
-        composeRule.onNodeWithText(StudyReviewButtonCopy.goodLabel()).performClick()
 
         assertTrue(failed)
         assertTrue(passed)

@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.content.Context
-import android.graphics.Color
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
@@ -115,29 +114,29 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
     }
 
     companion object {
-        @JvmField val BG: Int = Color.rgb(255, 247, 251)
-        @JvmField val INK: Int = Color.rgb(45, 22, 53)
-        @JvmField val MUTED: Int = Color.rgb(108, 86, 116)
-        @JvmField val CORAL: Int = Color.rgb(255, 76, 118)
-        @JvmField val TEAL: Int = Color.rgb(0, 174, 181)
-        @JvmField val GOLD: Int = Color.rgb(255, 214, 64)
-        @JvmField val BLUE: Int = Color.rgb(110, 92, 230)
-        @JvmField val BLUSH: Int = Color.rgb(255, 239, 246)
-        @JvmField val PINK_STROKE: Int = Color.rgb(255, 174, 204)
-        @JvmField val LILAC: Int = Color.rgb(118, 72, 255)
-        @JvmField val STUDY_BG: Int = Color.rgb(255, 245, 250)
-        @JvmField val STUDY_CARD: Int = Color.rgb(255, 255, 255)
-        @JvmField val STUDY_PANEL: Int = Color.rgb(255, 236, 245)
-        @JvmField val STUDY_PLUM: Int = Color.rgb(75, 37, 82)
-        @JvmField val STUDY_MUTED: Int = Color.rgb(130, 96, 132)
-        @JvmField val STUDY_PINK_DARK: Int = Color.rgb(218, 58, 122)
-        @JvmField val STUDY_BORDER: Int = Color.rgb(255, 199, 222)
-        @JvmField val STUDY_PILL: Int = Color.rgb(255, 239, 247)
-        @JvmField val STUDY_BG_SOFT: Int = Color.rgb(255, 246, 251)
-        @JvmField val STUDY_HERO_PANEL: Int = Color.rgb(253, 241, 247)
-        @JvmField val STUDY_HERO_PILL: Int = Color.rgb(253, 239, 246)
-        @JvmField val STUDY_HERO_PINK: Int = Color.rgb(248, 45, 114)
-        @JvmField val STUDY_HERO_PLUM: Int = Color.rgb(33, 7, 44)
-        @JvmField val STUDY_HERO_MUTED: Int = Color.rgb(102, 82, 110)
+        @JvmField val BG: Int = 0xFFFFF7FB.toInt()
+        @JvmField val INK: Int = 0xFF2D1635.toInt()
+        @JvmField val MUTED: Int = 0xFF6C5674.toInt()
+        @JvmField val CORAL: Int = 0xFFFF4C76.toInt()
+        @JvmField val TEAL: Int = 0xFF00AEB5.toInt()
+        @JvmField val GOLD: Int = 0xFFFFD640.toInt()
+        @JvmField val BLUE: Int = 0xFF6E5CE6.toInt()
+        @JvmField val BLUSH: Int = 0xFFFFEFF6.toInt()
+        @JvmField val PINK_STROKE: Int = 0xFFFFAECC.toInt()
+        @JvmField val LILAC: Int = 0xFF7648FF.toInt()
+        @JvmField val STUDY_BG: Int = 0xFFFFF5FA.toInt()
+        @JvmField val STUDY_CARD: Int = 0xFFFFFFFF.toInt()
+        @JvmField val STUDY_PANEL: Int = 0xFFFFECF5.toInt()
+        @JvmField val STUDY_PLUM: Int = 0xFF4B2552.toInt()
+        @JvmField val STUDY_MUTED: Int = 0xFF826084.toInt()
+        @JvmField val STUDY_PINK_DARK: Int = 0xFFDA3A7A.toInt()
+        @JvmField val STUDY_BORDER: Int = 0xFFFFC7DE.toInt()
+        @JvmField val STUDY_PILL: Int = 0xFFFFEFF7.toInt()
+        @JvmField val STUDY_BG_SOFT: Int = 0xFFFFF6FB.toInt()
+        @JvmField val STUDY_HERO_PANEL: Int = 0xFFFDF1F7.toInt()
+        @JvmField val STUDY_HERO_PILL: Int = 0xFFFDEFF6.toInt()
+        @JvmField val STUDY_HERO_PINK: Int = 0xFFF82D72.toInt()
+        @JvmField val STUDY_HERO_PLUM: Int = 0xFF21072C.toInt()
+        @JvmField val STUDY_HERO_MUTED: Int = 0xFF66526E.toInt()
     }
 }

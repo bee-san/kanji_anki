@@ -42,7 +42,7 @@ class StatsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithTag(homeFullWidthHomeButtonTestTag("Home")).performClick()
         composeRule.onNodeWithText("Stats").assertIsDisplayed()
 
         composeRule.runOnIdle {

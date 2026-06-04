@@ -93,7 +93,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("Search").performClick()
         assertEquals(" 裂 ", searched)
 
-        composeRule.onNodeWithText("split").performClick()
+        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
         assertEquals("裂", clickedKanji)
 
         composeRule.onNodeWithText("Home").performClick()

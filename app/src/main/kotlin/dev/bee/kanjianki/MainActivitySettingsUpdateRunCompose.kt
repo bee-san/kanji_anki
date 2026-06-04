@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -55,7 +54,7 @@ private fun SettingsUpdateProgressPanel(label: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = UpdateRunPanelShape,
-        color = UpdateRunWhite,
+        color = UpdateRunPanelFill,
         border = BorderStroke(1.dp, UpdateRunPanelBorder)
     ) {
         Row(
@@ -99,6 +98,6 @@ private val UpdateRunInk = KaniUiTokens.Ink
 private val UpdateRunMuted = KaniUiTokens.Muted
 private val UpdateRunPlum = ComposeColor(0xFF4B2552)
 private val UpdateRunPink = KaniUiTokens.Primary
-private val UpdateRunWhite = KaniUiTokens.White
-private val UpdateRunPanelBorder = ComposeColor(0xFFF6CAE1)
-private val UpdateRunPanelShape = RoundedCornerShape(18.dp)
+private val UpdateRunPanelFill = KaniUiTokens.PanelFill
+private val UpdateRunPanelBorder = KaniUiTokens.PanelBorder
+private val UpdateRunPanelShape = KaniUiTokens.PanelShape

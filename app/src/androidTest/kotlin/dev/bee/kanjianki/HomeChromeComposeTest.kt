@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.semantics.Role
@@ -34,7 +35,7 @@ class HomeChromeComposeTest {
         }
 
         listOf("Browse", "Stats", "Settings").forEach { label ->
-            composeRule.onNodeWithText(label)
+            composeRule.onNodeWithTag(homeActionButtonTestTag(label))
                 .assertIsDisplayed()
                 .assertHasClickAction()
                 .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
@@ -56,11 +57,11 @@ class HomeChromeComposeTest {
         }
 
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
-        composeRule.onNodeWithText("View all")
+        composeRule.onNodeWithTag(homeSectionActionButtonTestTag("View all"))
             .assertIsDisplayed()
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-        composeRule.onNodeWithText("View all").performClick()
+        composeRule.onNodeWithTag(homeSectionActionButtonTestTag("View all")).performClick()
         assertTrue(clicked)
     }
 
@@ -76,7 +77,7 @@ class HomeChromeComposeTest {
         }
 
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.homeLabel())
+        composeRule.onNodeWithTag(homeFullWidthHomeButtonTestTag(HomeTextCopy.homeLabel()))
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()

@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +42,15 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
+
+internal fun homeMetricCardDescription(model: HomeMetricModel): String {
+    return listOfNotNull(
+        "Home metric card",
+        model.label,
+        model.value,
+        model.body?.let { StudyTextCopy.compact(it, 22) }
+    ).joinToString(", ")
+}
 
 internal fun homeMetricModels(
     home: MainActivityHome,
@@ -107,6 +118,9 @@ fun HomeMetricCard(
     val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     val cardModifier = modifier
         .testTag(homeMetricCardTestTag(model.label))
+        .semantics {
+            contentDescription = homeMetricCardDescription(model)
+        }
         .then(
             if (model.onClick == null) {
                 Modifier

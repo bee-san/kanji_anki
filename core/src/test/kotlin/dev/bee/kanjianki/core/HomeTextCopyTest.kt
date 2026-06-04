@@ -148,7 +148,7 @@ class HomeTextCopyTest {
         )
         assertEquals("1 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(1))
         assertEquals("4 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(4))
-        assertEquals("Sync needs attention", HomeTextCopy.syncNeedsAttentionTitle())
+        assertEquals("AnkiDroid needs attention", HomeTextCopy.syncNeedsAttentionTitle())
         assertEquals("Could not read AnkiDroid", HomeTextCopy.syncReadErrorTitle())
         assertEquals("Try again after checking AnkiDroid permissions.", HomeTextCopy.syncFailureFallback())
         assertEquals("Try sync again", HomeTextCopy.trySyncAgainLabel())

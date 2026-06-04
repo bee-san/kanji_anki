@@ -2,101 +2,437 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from subprocess import CompletedProcess
 from unittest.mock import patch
 
 from scripts.ralph_loop import orchestrator
 
 
 class RalphOrchestratorTest(unittest.TestCase):
-    def test_remote_screenshot_flags_call_github_renderer_without_mutating_checkout(self) -> None:
+    def test_parser_accepts_audit_flags_and_caps_iterations(self) -> None:
+        parser = orchestrator.build_parser()
+        root = Path("/tmp/ralph-audit-fixture")
+
+        args = parser.parse_args(
+            [
+                "--repo-root",
+                str(root),
+                "--run-dir",
+                ".ralph-loop/current",
+                "--audit-only",
+                "--file-bucket",
+                "settings",
+                "--max-files",
+                "2",
+                "--critic-profile",
+                "design-critic",
+                "--button-profile",
+                "qa",
+                "--critic-cmd",
+                "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                "--button-cmd",
+                "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                "--agent-cmd",
+                "hermes -p agent chat -Q -t safe -q {prompt}",
+                "--reviewer-model",
+                "gpt-5.4-mini",
+                "--reviewer-cmd",
+                "hermes -p reviewer chat -Q -t safe -q {prompt}",
+                "--pr-branch",
+                "feat/ralph-audit",
+                "--push-pr-branch",
+                "--require-remote-green",
+                "--iterations",
+                "1",
+                "--max-iterations",
+                "3",
+            ]
+        )
+
+        self.assertTrue(args.audit_only)
+        self.assertEqual("settings", args.file_bucket)
+        self.assertEqual(2, args.max_files)
+        self.assertEqual("design-critic", args.critic_profile)
+        self.assertEqual("qa", args.button_profile)
+        self.assertEqual("hermes -p {profile} chat -Q -t safe -q {prompt}", args.critic_cmd)
+        self.assertEqual("hermes -p {profile} chat -Q -t safe -q {prompt}", args.button_cmd)
+        self.assertEqual("hermes -p agent chat -Q -t safe -q {prompt}", args.agent_cmd)
+        self.assertEqual("gpt-5.4-mini", args.reviewer_model)
+        self.assertEqual("hermes -p reviewer chat -Q -t safe -q {prompt}", args.reviewer_cmd)
+        self.assertEqual("feat/ralph-audit", args.pr_branch)
+        self.assertTrue(args.push_pr_branch)
+        self.assertTrue(args.require_remote_green)
+        self.assertEqual(root, args.repo_root)
+        self.assertEqual(Path(".ralph-loop/current"), args.run_dir)
+        self.assertEqual("hermes -p {profile} chat -Q -t safe -q {prompt}", parser.get_default("critic_cmd"))
+        self.assertEqual("hermes -p {profile} chat -Q -t safe -q {prompt}", parser.get_default("button_cmd"))
+
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["--repo-root", str(root), "--file-bucket", "bogus"])
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["--repo-root", str(root), "--iterations", "2", "--max-iterations", "1"])
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["--repo-root", str(root), "--max-files", "0"])
+
+    def test_audit_only_generates_artifacts_and_retries_button_review_once_with_qa(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            source_texts = self._write_fixture_repo(root)
             project_root = Path(__file__).resolve().parents[2]
             shutil.copytree(project_root / "scripts" / "prompts", root / "scripts" / "prompts")
-            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots") as remote, patch.object(
-                orchestrator, "_run_profile_command"
-            ) as profile_command:
-                manifest_path = root / "manifest.json"
-                manifest_path.write_text('{"schema":"ui-manifest-v1","files":[]}', encoding="utf-8")
-                remote.return_value = {"status": "passed", "run_id": 77, "manifest": str(manifest_path), "pngs": [str(root / "home.png")]}
-                profile_command.return_value = {"status": "passed"}
 
+            call_profiles: list[str] = []
+            design_stdout = json.dumps(
+                {
+                    "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                    "components": [{"name": "HomeScreen", "role": "home surface", "states": ["default"]}],
+                    "visual_strengths": ["Clear primary CTA"],
+                    "visual_problems": [],
+                    "interaction_a11y_problems": [],
+                    "one_best_fix": {
+                        "summary": "No UI change needed",
+                        "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                        "why_first": "No accepted issues",
+                    },
+                    "do_not_touch": ["study flow"],
+                }
+            )
+            button_initial_stdout = json.dumps(
+                {
+                    "passed": False,
+                    "missing_contract_rows": ["home-study-cta"],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                    "highest_priority_fix": {
+                        "row": "home-study-cta",
+                        "reason": "Retry with qa once before filing a backlog item",
+                        "test_file": "app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt",
+                    },
+                }
+            )
+            button_retry_stdout = json.dumps(
+                {
+                    "passed": True,
+                    "missing_contract_rows": [],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                    "highest_priority_fix": {
+                        "row": "home-study-cta",
+                        "reason": "Already covered by the existing test",
+                        "test_file": "app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt",
+                    },
+                }
+            )
+
+            def fake_run(args, cwd=None, text=None, capture_output=None, check=None):
+                self.assertEqual(root.resolve(), Path(cwd).resolve())
+                self.assertGreaterEqual(len(args), 3)
+                self.assertEqual("hermes", args[0])
+                self.assertEqual("-p", args[1])
+                profile = args[2]
+                call_profiles.append(profile)
+                if profile == "design":
+                    return CompletedProcess(args, 0, design_stdout, "")
+                if profile == "uitester":
+                    return CompletedProcess(args, 1, button_initial_stdout, "uitester review asked for qa retry")
+                if profile == "qa":
+                    return CompletedProcess(args, 0, button_retry_stdout, "")
+                raise AssertionError(f"unexpected profile command: {args}")
+
+            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots", side_effect=AssertionError("remote screenshots should not run in audit-only mode")), patch.object(orchestrator.subprocess, "run", side_effect=fake_run):
                 with redirect_stdout(StringIO()):
                     exit_code = orchestrator.main(
                         [
                             "--repo-root",
                             str(root),
                             "--audit-only",
-                            "--remote-screenshot-workflow",
-                            "android-screenshots.yml",
-                            "--screenshot-artifact",
-                            "android-screenshots",
-                            "--screenshot-route",
-                            "home",
-                            "--require-remote-screenshots",
-                            "--max-iterations",
+                            "--file-bucket",
+                            "all",
+                            "--max-files",
                             "1",
+                            "--critic-cmd",
+                            "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                            "--button-cmd",
+                            "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                            "--critic-profile",
+                            "design",
+                            "--button-profile",
+                            "uitester",
+                            "--run-dir",
+                            ".ralph-loop/current",
                         ]
                     )
 
             self.assertEqual(0, exit_code)
-            remote.assert_called_once()
-            kwargs = remote.call_args.kwargs
-            self.assertEqual(root.resolve(), kwargs["repo_root"])
-            self.assertEqual("android-screenshots.yml", kwargs["workflow"])
-            self.assertEqual("android-screenshots", kwargs["artifact"])
-            self.assertEqual("home", kwargs["screenshot_route"])
-            self.assertFalse(kwargs["push_pr_branch"])
-            self.assertTrue(kwargs["require_remote_screenshots"])
-            self.assertEqual(2, profile_command.call_count)
-            design_prompt = profile_command.call_args_list[0].args[1]
-            button_prompt = profile_command.call_args_list[1].args[1]
-            self.assertIn("Ralph's independent Kani design critic", design_prompt)
-            self.assertIn('"schema":"ui-manifest-v1"', design_prompt)
-            self.assertIn("Ralph's Kani button-contract reviewer", button_prompt)
-            self.assertIn('"schema": "button-contract-v1"', button_prompt)
+            self.assertEqual(["design", "uitester", "qa"], call_profiles)
 
-    def test_pending_remote_visual_status_is_not_accepted_at_top_level(self) -> None:
+            report_path = root / ".ralph-loop/current/audit-report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual("passed", report["status"])
+            self.assertEqual(7, report["summary"]["manifest_files"])
+            self.assertEqual(8, report["button_contract_summary"]["row_count"])
+            self.assertEqual(1, report["summary"]["selected_files"])
+            self.assertEqual(1, report["summary"]["interactive_files"])
+            self.assertEqual(1, report["summary"]["qa_retries"])
+            self.assertEqual(0, report["summary"]["backlog_items"])
+            self.assertEqual(1, len(report["file_reviews"]))
+
+            review = report["file_reviews"][0]
+            self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", review["file"])
+            self.assertEqual("home", review["bucket"])
+            self.assertTrue(review["interactive"])
+            self.assertEqual("passed", review["design"]["status"])
+            self.assertEqual("passed", review["button"]["status"])
+            self.assertTrue(review["button"]["used_qa_retry"])
+            self.assertEqual(2, len(review["button"]["attempts"]))
+            self.assertEqual("failed", review["button"]["attempts"][0]["status"])
+            self.assertEqual("passed", review["button"]["attempts"][1]["status"])
+            self.assertEqual([], report["backlog"])
+
+            design_prompt_path = Path(review["design"]["prompt_path"])
+            button_prompt_path = Path(review["button"]["attempts"][0]["prompt_path"])
+            self.assertTrue(design_prompt_path.exists())
+            self.assertTrue(button_prompt_path.exists())
+            self.assertIn("File under review: app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", design_prompt_path.read_text(encoding="utf-8"))
+            self.assertIn('"schema": "ui-manifest-v1"', design_prompt_path.read_text(encoding="utf-8"))
+            self.assertIn('"schema": "button-contract-v1"', button_prompt_path.read_text(encoding="utf-8"))
+            self.assertEqual(source_texts, self._current_source_texts(root))
+            self.assertTrue((root / ".ralph-loop/current/ui-manifest.json").exists())
+            self.assertTrue((root / ".ralph-loop/current/button-contract.json").exists())
+            self.assertTrue((root / ".ralph-loop/current/button-contract.md").exists())
+            self.assertTrue((root / ".ralph-loop/current/audit-report.md").exists())
+
+    def test_audit_only_preserves_raw_prompt_and_status_when_button_retry_still_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots") as remote, patch.object(
-                orchestrator, "_run_profile_command"
-            ) as profile_command:
-                remote.return_value = {"status": "remote_visual_pending", "message": "workflow is unavailable"}
+            source_texts = self._write_fixture_repo(root)
+            project_root = Path(__file__).resolve().parents[2]
+            shutil.copytree(project_root / "scripts" / "prompts", root / "scripts" / "prompts")
 
-                output = StringIO()
-                with redirect_stdout(output):
+            call_profiles: list[str] = []
+            design_stdout = json.dumps(
+                {
+                    "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                    "components": [{"name": "HomeScreen", "role": "home surface", "states": ["default"]}],
+                    "visual_strengths": ["Clear primary CTA"],
+                    "visual_problems": [],
+                    "interaction_a11y_problems": [],
+                    "one_best_fix": {
+                        "summary": "No UI change needed",
+                        "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                        "why_first": "No accepted issues",
+                    },
+                    "do_not_touch": ["study flow"],
+                }
+            )
+            button_initial_stdout = json.dumps(
+                {
+                    "passed": False,
+                    "missing_contract_rows": ["home-study-cta"],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                    "highest_priority_fix": {
+                        "row": "home-study-cta",
+                        "reason": "Retry with qa once before filing a backlog item",
+                        "test_file": "app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt",
+                    },
+                }
+            )
+            button_retry_stdout = json.dumps(
+                {
+                    "passed": False,
+                    "missing_contract_rows": ["home-study-cta"],
+                    "missing_click_tests": ["home-study-cta"],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [{"row": "home-study-cta", "gap": "Low-contrast CTA"}],
+                    "highest_priority_fix": {
+                        "row": "home-study-cta",
+                        "reason": "The CTA still lacks a focused click test after the qa retry",
+                        "test_file": "app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt",
+                    },
+                }
+            )
+
+            def fake_run(args, cwd=None, text=None, capture_output=None, check=None):
+                self.assertEqual(root.resolve(), Path(cwd).resolve())
+                self.assertGreaterEqual(len(args), 3)
+                self.assertEqual("hermes", args[0])
+                self.assertEqual("-p", args[1])
+                profile = args[2]
+                call_profiles.append(profile)
+                if profile == "design":
+                    return CompletedProcess(args, 0, design_stdout, "")
+                if profile == "uitester":
+                    return CompletedProcess(args, 1, button_initial_stdout, "uitester review asked for qa retry")
+                if profile == "qa":
+                    return CompletedProcess(args, 1, button_retry_stdout, "qa still sees missing button coverage")
+                raise AssertionError(f"unexpected profile command: {args}")
+
+            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots", side_effect=AssertionError("remote screenshots should not run in audit-only mode")), patch.object(orchestrator.subprocess, "run", side_effect=fake_run):
+                with redirect_stdout(StringIO()):
                     exit_code = orchestrator.main(
                         [
                             "--repo-root",
                             str(root),
                             "--audit-only",
-                            "--max-iterations",
+                            "--file-bucket",
+                            "all",
+                            "--max-files",
                             "1",
+                            "--critic-cmd",
+                            "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                            "--button-cmd",
+                            "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                            "--critic-profile",
+                            "design",
+                            "--button-profile",
+                            "uitester",
+                            "--run-dir",
+                            ".ralph-loop/current",
                         ]
                     )
 
             self.assertEqual(1, exit_code)
-            self.assertIn('"status": "remote_visual_pending"', output.getvalue())
-            self.assertIn('"remote_visual_pending"', output.getvalue())
-            profile_command.assert_not_called()
+            self.assertEqual(["design", "uitester", "qa"], call_profiles)
 
-    def test_iterations_cap_is_required_and_hard_limited(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            with redirect_stderr(StringIO()):
-                with self.assertRaises(SystemExit):
-                    orchestrator.build_parser().parse_args(["--repo-root", str(root), "--iterations", "0"])
-                with self.assertRaises(SystemExit):
-                    orchestrator.build_parser().parse_args(["--repo-root", str(root), "--max-iterations", "0"])
-                with self.assertRaises(SystemExit):
-                    orchestrator.build_parser().parse_args(["--repo-root", str(root), "--iterations", "2", "--max-iterations", "1"])
+            report_path = root / ".ralph-loop/current/audit-report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual("failed", report["status"])
+            self.assertGreater(report["summary"]["backlog_items"], 0)
+            self.assertEqual(1, len(report["file_reviews"]))
+
+            review = report["file_reviews"][0]
+            self.assertEqual("failed", review["button"]["status"])
+            self.assertEqual(2, len(review["button"]["attempts"]))
+            self.assertEqual(["failed", "failed"], [attempt["status"] for attempt in review["button"]["attempts"]])
+            self.assertEqual("button-missing-contract-row", report["backlog"][0]["kind"])
+            self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", report["backlog"][0]["file"])
+
+            first_attempt = review["button"]["attempts"][0]
+            second_attempt = review["button"]["attempts"][1]
+            self.assertTrue(Path(first_attempt["prompt_path"]).exists())
+            self.assertTrue(Path(first_attempt["result_path"]).exists())
+            self.assertTrue(Path(second_attempt["result_path"]).exists())
+            self.assertIn('"status": "failed"', Path(first_attempt["result_path"]).read_text(encoding="utf-8"))
+            self.assertIn('"status": "failed"', Path(second_attempt["result_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(source_texts, self._current_source_texts(root))
+
+    def _write_fixture_repo(self, root: Path) -> dict[str, str]:
+        fixtures = {
+            "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt": """
+                package dev.bee.kanjianki
+
+                import androidx.compose.runtime.Composable
+
+                @Composable
+                fun HomeScreen() {
+                    HomePrimaryCta()
+                }
+
+                @Composable
+                private fun HomePrimaryCta() {
+                    Button(onClick = {}, modifier = Modifier.testTag(\"primary_home_cta\")) {
+                        Text(\"Study now\")
+                    }
+                }
+            """,
+            "app/src/main/kotlin/dev/bee/kanjianki/StudyFlashcardCompose.kt": """
+                package dev.bee.kanjianki
+
+                import androidx.compose.runtime.Composable
+
+                @Composable
+                fun StudyFlashcard() {
+                    TextField(value = \"\", onValueChange = {})
+                }
+            """,
+            "app/src/main/kotlin/dev/bee/kanjianki/SettingsStudyLadderCompose.kt": """
+                package dev.bee.kanjianki
+
+                import androidx.compose.runtime.Composable
+
+                @Composable
+                fun SettingsStudyLadderPanel() {
+                    Switch(checked = true, onCheckedChange = {})
+                    Button(onClick = {}) {
+                        Text(\"Up\")
+                    }
+                    Button(onClick = {}) {
+                        Text(\"Restore default ladder\")
+                    }
+                }
+            """,
+            "app/src/main/kotlin/dev/bee/kanjianki/ui/theme/KaniTheme.kt": """
+                package dev.bee.kanjianki.ui.theme
+
+                import androidx.compose.runtime.Composable
+
+                @Composable
+                fun KaniTheme(content: @Composable () -> Unit) {
+                    content()
+                }
+            """,
+            "app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt": """
+                package dev.bee.kanjianki
+
+                class HomeScreenComposeTest {
+                    @Test
+                    fun home_button_is_clickable() {
+                        compose.onNodeWithText(\"Study now\").performClick()
+                    }
+                }
+            """,
+            "app/src/androidTest/kotlin/dev/bee/kanjianki/StudyFlashcardComposeTest.kt": """
+                package dev.bee.kanjianki
+
+                class StudyFlashcardComposeTest {
+                    @Test
+                    fun study_field_accepts_input() {
+                        compose.onNodeWithText(\"Answer\").performTextInput(\"abc\")
+                    }
+                }
+            """,
+            "app/src/androidTest/kotlin/dev/bee/kanjianki/SettingsStudyLadderComposeTest.kt": """
+                package dev.bee.kanjianki
+
+                class SettingsStudyLadderComposeTest {
+                    @Test
+                    fun ladder_switch_is_clickable() {
+                        compose.onNodeWithText(\"Up\").performClick()
+                    }
+                }
+            """,
+        }
+        written: dict[str, str] = {}
+        for relative, text in fixtures.items():
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            content = text.strip() + "\n"
+            path.write_text(content, encoding="utf-8")
+            if "/main/" in relative:
+                written[relative] = content
+        return written
+
+    def _current_source_texts(self, root: Path) -> dict[str, str]:
+        return {
+            relative: (root / relative).read_text(encoding="utf-8")
+            for relative in (
+                "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                "app/src/main/kotlin/dev/bee/kanjianki/StudyFlashcardCompose.kt",
+                "app/src/main/kotlin/dev/bee/kanjianki/SettingsStudyLadderCompose.kt",
+                "app/src/main/kotlin/dev/bee/kanjianki/ui/theme/KaniTheme.kt",
+            )
+        }
 
 
 if __name__ == "__main__":

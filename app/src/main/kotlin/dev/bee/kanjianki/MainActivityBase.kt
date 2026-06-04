@@ -181,7 +181,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
     private val shellHost = MainActivityShellHost(this)
-    private val startup = MainActivityStartup(this)
+    private val startup = MainActivityStartup(this as MainActivityHome)
     private val activityLifecycle = MainActivityLifecycle(this)
 
     abstract fun renderHome()
@@ -380,6 +380,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         private fun <T> uninitialized(): T = null as T
 
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
+        const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L

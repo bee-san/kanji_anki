@@ -149,4 +149,3 @@ internal fun SettingsCategoryHeader(
         }
     }
 }
-

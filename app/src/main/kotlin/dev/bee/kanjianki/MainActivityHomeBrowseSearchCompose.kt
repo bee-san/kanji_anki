@@ -27,7 +27,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +38,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
+
+internal fun browseKanjiRowTestTag(kanji: String): String = "browse-kanji-row-$kanji"
+
+private fun browseKanjiRowDescription(model: BrowseKanjiRowModel): String {
+    return listOfNotNull(
+        "Browse kanji row",
+        model.kanji,
+        model.meaning,
+        model.readings.takeIf { it.isNotBlank() },
+        model.summary,
+        if (model.suspended) HomeTextCopy.suspendedChipLabel() else null,
+    ).joinToString(", ")
+}
 
 internal fun browseScreenModel(
     activity: MainActivityHome,
@@ -138,8 +154,11 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) { }
-            .clickable(onClick = model.onClick),
+            .testTag(browseKanjiRowTestTag(model.kanji))
+            .semantics {
+                contentDescription = browseKanjiRowDescription(model)
+            }
+            .clickable(role = Role.Button, onClick = model.onClick),
         shape = BrowseCardShape,
         color = BrowseWhite,
         border = BorderStroke(1.dp, borderColor)

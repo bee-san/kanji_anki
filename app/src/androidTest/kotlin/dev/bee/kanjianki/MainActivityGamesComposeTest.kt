@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.KanjiGameCopy
@@ -59,7 +60,7 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Reading Rush").assertIsDisplayed()
         composeRule.onNodeWithText("Needs data").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Meaning Pop").performClick()
+        composeRule.onNodeWithTag(gamesModeCardTestTag("Meaning Pop")).performClick()
 
         composeRule.runOnIdle {
             assertTrue(clicked)
@@ -85,9 +86,9 @@ class MainActivityGamesComposeTest {
 
         composeRule.onNodeWithText("No kanji games yet").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid first so Kani can build practice games from your own cards.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
-
-        composeRule.onNodeWithText("Sync AnkiDroid").performClick()
+        composeRule.onNodeWithTag(gamesSyncButtonTestTag())
+            .assertIsDisplayed()
+            .performClick()
 
         composeRule.runOnIdle {
             assertTrue(syncClicked)
@@ -160,7 +161,8 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Pick the meaning").assertIsDisplayed()
         composeRule.onNodeWithText("語").assertIsDisplayed()
         composeRule.onNodeWithText("language").assertIsDisplayed()
-        composeRule.onNodeWithText(KanjiGameCopy.choiceLabel(question, "language").orEmpty()).performClick()
+        composeRule.onNodeWithTag(gamesChoiceButtonTestTag(KanjiGameCopy.choiceLabel(question, "language").orEmpty()))
+            .performClick()
 
         composeRule.runOnIdle {
             assertTrue(clickedChoice == "language")
@@ -202,10 +204,12 @@ class MainActivityGamesComposeTest {
         }
 
         composeRule.onNodeWithText("Reading Rush").assertIsDisplayed()
-        composeRule.onNodeWithText("Games >").performClick()
+        composeRule.onNodeWithTag(homeSectionActionButtonTestTag(KanjiGameCopy.LABEL_GAMES))
+            .performClick()
         composeRule.onNodeWithText("2/10").assertIsDisplayed()
         composeRule.onNodeWithText("語る").assertIsDisplayed()
-        composeRule.onNodeWithText("かたる").performClick()
+        composeRule.onNodeWithTag(gamesChoiceButtonTestTag(KanjiGameCopy.choiceLabel(question, "かたる").orEmpty()))
+            .performClick()
 
         composeRule.runOnIdle {
             assertTrue(gamesClicked)
@@ -241,8 +245,8 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Your answer: word").assertIsDisplayed()
         composeRule.onNodeWithText("語 = language").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Next").performClick()
-        composeRule.onNodeWithText("Games").performClick()
+        composeRule.onNodeWithTag(gamesResultPrimaryButtonTestTag("Next")).performClick()
+        composeRule.onNodeWithTag(gamesResultGamesButtonTestTag()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(nextClicked)

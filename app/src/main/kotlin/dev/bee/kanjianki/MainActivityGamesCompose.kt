@@ -20,11 +20,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
+
+internal fun gamesModeCardTestTag(title: String): String = "games-mode-card-$title"
+
+internal fun gamesSyncButtonTestTag(): String = "games-sync-button"
+
+private fun gamesModeCardDescription(model: GamesModeCardModel): String {
+    return listOfNotNull(
+        "Games mode card",
+        model.title,
+        model.label,
+        model.body,
+        model.chipLabel,
+    ).joinToString(", ")
+}
 
 @Composable
 fun GamesPlayScreen(
@@ -88,7 +106,9 @@ fun GamesScreen(model: GamesScreenModel) {
             if (model.showSyncButton) {
                 Button(
                     onClick = { model.onSync.run() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(gamesSyncButtonTestTag()),
                     shape = GamesButtonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = GamesCoral,
@@ -139,7 +159,11 @@ private fun GamesModeCard(model: GamesModeCardModel) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = model.available, onClick = { model.onClick.run() }),
+            .testTag(gamesModeCardTestTag(model.title))
+            .semantics {
+                contentDescription = gamesModeCardDescription(model)
+            }
+            .clickable(enabled = model.available, role = Role.Button, onClick = { model.onClick.run() }),
         shape = GamesChoiceShape,
         color = fill,
         border = BorderStroke(1.dp, stroke)

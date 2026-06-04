@@ -21,10 +21,27 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     }
 
     fun handleLaunchIntent(intent: Intent?) {
+        val screenshotRoute = intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)?.takeIf { it.isNotBlank() }
+        if (screenshotRoute != null) {
+            renderScreenshotRoute(screenshotRoute)
+            return
+        }
         if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
             activity.renderUpdate()
         } else {
             activity.renderHome()
+        }
+    }
+
+    private fun renderScreenshotRoute(route: String) {
+        when (route) {
+            MainActivityBase.NAV_HOME_ROUTE, "launcher-home", "narrow", "wide" -> activity.renderHome()
+            MainActivityBase.NAV_STUDY -> activity.renderStudy()
+            MainActivityBase.NAV_STATS_ROUTE -> if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
+            MainActivityBase.NAV_SETTINGS_ROUTE -> activity.renderSettings()
+            "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
+            "update" -> activity.renderUpdate()
+            else -> activity.renderHome()
         }
     }
 }

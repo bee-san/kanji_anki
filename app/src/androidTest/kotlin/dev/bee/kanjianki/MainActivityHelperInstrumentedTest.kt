@@ -214,6 +214,17 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
                 assertHasText(activity, "GitHub updater");
 
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE));
+                assertHasText(activity, "Browse Kanji");
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_STUDY));
+                assertHasText(activity, "Study");
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_STATS_ROUTE));
+                assertHasText(activity, "Stats");
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE));
+                assertHasText(activity, "Settings");
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, "games"));
+                assertHasText(activity, "Games");
+
                 activity.handlePermissionResult(7, intArrayOf(PackageManager.PERMISSION_DENIED));
                 assertHasText(activity, "Kani");
                 activity.onRequestPermissionsResult(7, emptyArray<String>(), intArrayOf(PackageManager.PERMISSION_DENIED));
@@ -803,7 +814,7 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
                 assertHasText(activity, "Kani is already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
-                assertHasText(activity, "Sync needs attention");
+                assertHasText(activity, "AnkiDroid needs attention");
                 assertHasText(activity, "Provider unavailable.");
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
                 assertHasText(activity, "Try again after checking AnkiDroid permissions.");

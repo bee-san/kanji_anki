@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
@@ -41,8 +42,12 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
         composeRule.onNodeWithText("Check").assertIsDisplayed()
         composeRule.onNodeWithText("Download checker").assertIsDisplayed()
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_PASS).assertCountEquals(0)
-        composeRule.onNodeWithText("Check").performClick()
-        composeRule.onNodeWithText("Download checker").performClick()
+        composeRule.onNodeWithTag(studyActionButtonTestTag("Check"))
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithTag(studyActionButtonTestTag("Download checker"))
+            .assertIsDisplayed()
+            .performClick()
 
         assertTrue(checked)
         assertTrue(downloaded)
@@ -72,7 +77,7 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
         composeRule.onNodeWithText("Try cleaner").assertIsDisplayed()
         composeRule.onAllNodesWithText("Download checker").assertCountEquals(0)
         composeRule.onNodeWithText("Save hard").assertIsDisplayed()
-        composeRule.onNodeWithText("Save hard").performClick()
+        composeRule.onNodeWithTag(studyActionButtonTestTag("Save hard")).performClick()
 
         assertTrue(submitted)
     }
@@ -98,9 +103,11 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Check").assertIsDisplayed().assertIsNotEnabled()
+        composeRule.onNodeWithTag(studyActionButtonTestTag("Check"))
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
         val clickFailure = runCatching {
-            composeRule.onNodeWithText("Check").performClick()
+            composeRule.onNodeWithTag(studyActionButtonTestTag("Check")).performClick()
         }.exceptionOrNull()
 
         assertTrue(clickFailure is AssertionError)

@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -23,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
+
+internal fun gamesChoiceButtonTestTag(label: String): String = "games-choice-button-$label"
 
 @Composable
 fun GamesScoreStrip(model: GamesScoreStripModel) {
@@ -97,7 +100,7 @@ fun GamesQuestionCard(
     question: KanjiGameEngine.GameQuestion,
     onChoiceSelected: (String) -> Unit
 ) {
-    val accent = ComposeColor(gameModeColor(question.mode))
+    val accent = gameModeColor(question.mode)
     val useKanjiTypography = KanjiGameCopy.choiceUsesKanjiTypography(question)
     Surface(
         modifier = Modifier
@@ -178,7 +181,10 @@ private fun GameChoiceButton(
     val fontFamily = if (useKanjiTypography) GamesKanjiFontFamily else FontFamily.Default
     OutlinedButton(
         onClick = { onChoiceSelected(choice) },
-        modifier = Modifier.fillMaxWidth().heightIn(min = if (useKanjiTypography) 74.dp else 56.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = if (useKanjiTypography) 74.dp else 56.dp)
+            .testTag(gamesChoiceButtonTestTag(label)),
         shape = GamesChoiceShape,
         border = BorderStroke(1.dp, GamesButtonBorder),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -201,10 +207,10 @@ private fun GameChoiceButton(
     }
 }
 
-private fun gameModeColor(mode: KanjiGameEngine.GameMode): Int {
+internal fun gameModeColor(mode: KanjiGameEngine.GameMode): ComposeColor {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> 0xFFFF4C76.toInt()
-        KanjiGameEngine.GameMode.READING_RUSH -> 0xFF00AEB5.toInt()
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> 0xFF6E5CE6.toInt()
+        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral
+        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue
     }
 }

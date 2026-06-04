@@ -49,16 +49,17 @@ class SimilarKanjiIndexTest {
     fun parseTsvSkipsMalformedRows() {
         val index = SimilarKanjiIndex.parseTsv(
             StringReader(
-                """
-
-                # generated
-                not enough cells
-                abc	麺	fixture
-                拉	kana	fixture
-                拉	拉	fixture
-                拉	麺	
-                提	謎
-                """
+                listOf(
+                    "",
+                    "# generated",
+                    "not enough cells",
+                    "abc	麺	fixture",
+                    "拉	kana	fixture",
+                    "拉	拉	fixture",
+                    "拉	麺	",
+                    "提	謎",
+                    "",
+                ).joinToString("\n")
             )
         )
 
