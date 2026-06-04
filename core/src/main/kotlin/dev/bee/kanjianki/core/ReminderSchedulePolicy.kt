@@ -3,9 +3,16 @@ package dev.bee.kanjianki.core
 import java.util.Calendar
 
 object ReminderSchedulePolicy {
+    private const val REVIEW_CUTOFF_HOUR = 22
+
     @JvmStatic
     fun nextTriggerMillis(hour: Int, minute: Int, nowMillis: Long): Long {
         return nextDailyTriggerMillis(hour, minute, nowMillis, allowToday = true)
+    }
+
+    @JvmStatic
+    fun nextTriggerMillis(hour: Int, minute: Int, nowMillis: Long, allowToday: Boolean): Long {
+        return nextDailyTriggerMillis(hour, minute, nowMillis, allowToday)
     }
 
     @JvmStatic
@@ -32,8 +39,6 @@ object ReminderSchedulePolicy {
         return maxOf(nowMillis, latestDueMillis)
     }
 
-    private const val REVIEW_CUTOFF_HOUR = 22
-
     private fun nextDailyTriggerMillis(hour: Int, minute: Int, nowMillis: Long, allowToday: Boolean): Long {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = nowMillis
@@ -41,12 +46,10 @@ object ReminderSchedulePolicy {
         calendar.set(Calendar.MINUTE, minute)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
-        var trigger = calendar.timeInMillis
-        if (!allowToday || trigger <= nowMillis) {
+        if (!allowToday || calendar.timeInMillis <= nowMillis) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
-            trigger = calendar.timeInMillis
         }
-        return trigger
+        return calendar.timeInMillis
     }
 
     private fun localTimeMillis(referenceMillis: Long, hour: Int, minute: Int): Long {
