@@ -10,9 +10,9 @@ import sys
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
-Runner = Callable[[list[str], Path | None], CompletedProcess[str]]
+Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 EXPECTED_REPO = "bee-san/kanji_anki"
