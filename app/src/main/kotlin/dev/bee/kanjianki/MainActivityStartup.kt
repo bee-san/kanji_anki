@@ -8,7 +8,7 @@ import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 
-internal class MainActivityStartup(private val activity: MainActivityHome) {
+internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
