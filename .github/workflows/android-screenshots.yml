@@ -23,7 +23,7 @@ jobs:
   screenshots:
     name: Capture Android screenshots
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: read
 
@@ -70,9 +70,9 @@ jobs:
         with:
           api-level: 35
           target: google_apis
-          arch: x86
+          arch: x86_64
           profile: pixel_6
-          emulator-boot-timeout: 2400
+          emulator-boot-timeout: 3600
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
