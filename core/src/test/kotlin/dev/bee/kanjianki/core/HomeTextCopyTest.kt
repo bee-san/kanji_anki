@@ -88,7 +88,7 @@ class HomeTextCopyTest {
         assertEquals("View all", HomeTextCopy.viewAllLabel())
         assertEquals("No kanji queued yet", HomeTextCopy.noKanjiQueuedTitle())
         assertEquals(
-            "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice.",
+            "Sync AnkiDroid to build your focus queue.",
             HomeTextCopy.homeNoKanjiQueuedBody()
         )
         assertEquals("Sync AnkiDroid first to build a focus queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())

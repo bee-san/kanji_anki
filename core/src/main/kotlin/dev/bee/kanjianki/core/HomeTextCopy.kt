@@ -100,7 +100,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice."
+        "Sync AnkiDroid to build your focus queue."
 
     @JvmStatic
     fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid first to build a focus queue."
