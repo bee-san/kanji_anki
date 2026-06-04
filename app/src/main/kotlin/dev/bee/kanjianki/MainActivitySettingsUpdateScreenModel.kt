@@ -10,7 +10,6 @@ data class SettingsUpdatePageModel(
 
 data class SettingsUpdateRunModel(
     val title: String,
-    val body: String,
     val progressLabel: String,
     val onHome: () -> Unit,
     val onBack: () -> Unit,

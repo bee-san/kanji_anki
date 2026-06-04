@@ -1264,7 +1264,6 @@ class ComposeScreenModelsTest {
         )
         val run = SettingsUpdateRunModel(
             title = "Checking",
-            body = "Downloading metadata.",
             progressLabel = "Checking GitHub",
             onHome = home,
             onBack = back,
@@ -1276,7 +1275,6 @@ class ComposeScreenModelsTest {
         assertSame(check, page.onCheckForUpdate)
         assertSame(panel, page.panel)
         assertEquals("Checking", run.title)
-        assertEquals("Downloading metadata.", run.body)
         assertEquals("Checking GitHub", run.progressLabel)
         assertSame(home, run.onHome)
         assertSame(back, run.onBack)

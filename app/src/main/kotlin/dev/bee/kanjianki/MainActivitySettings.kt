@@ -123,7 +123,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),
-                    body = copy.body(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
                     onBack = {

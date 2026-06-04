@@ -129,7 +129,6 @@ class MainActivitySettingsUpdatePageComposeTest {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = "Checking release",
-                    body = "Downloading metadata and verifying assets.",
                     progressLabel = "Checking GitHub Releases",
                     onHome = { homeClicked = true },
                     onBack = { backClicked = true }
@@ -140,7 +139,6 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed()
         composeRule.onNodeWithText("Checking release").assertIsDisplayed()
-        composeRule.onNodeWithText("Downloading metadata and verifying assets.").assertIsDisplayed()
         composeRule.onNodeWithText("Checking GitHub Releases").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Checking GitHub Releases").assertIsDisplayed()
 
