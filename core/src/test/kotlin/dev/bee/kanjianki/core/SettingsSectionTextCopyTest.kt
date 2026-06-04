@@ -7,13 +7,13 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Choose which AnkiDroid cards Kani imports and when sync runs.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Learning steps, deck limits, retention, workload, sorting, and ladder movement.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Reminders & updates", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily reminders, daily sync, and app updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Offline dictionaries, stroke data, fonts, and attribution shown by the app.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Offline dictionaries, stroke data, fonts, and attribution.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())

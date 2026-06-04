@@ -5,13 +5,13 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
+    fun settingsAnkiSourceBody(): String = "Choose which AnkiDroid cards Kani imports and when sync runs."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Deck options"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsStudyBehaviorBody(): String = "Learning steps, deck limits, retention, workload, sorting, and ladder movement."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Reminders & updates"
@@ -23,7 +23,7 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataTitle(): String = "Display & data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
