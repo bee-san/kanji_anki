@@ -52,6 +52,10 @@ class GithubScreenshotsTest(unittest.TestCase):
 
         self.assertIn('mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX"', script)
         self.assertNotIn('mktemp -t kani-ui', script)
+        self.assertIn('adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" >/dev/null', script)
+        self.assertNotIn('-a android.intent.action.MAIN', script)
+        self.assertNotIn('-c android.intent.category.LAUNCHER', script)
+        self.assertIn('local status=0', script)
 
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
