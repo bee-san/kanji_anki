@@ -42,6 +42,8 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertIn('./gradlew "$GRADLE_TASK"', workflow)
         self.assertNotIn('./gradlew "${{ inputs.gradle_task }}"', workflow)
         self.assertIn("SCREENSHOT_ROUTE: ${{ inputs.screenshot_route }}", workflow)
+        self.assertIn("ANDROID_SCREENSHOT_API_LEVEL: '35'", workflow)
+        self.assertIn("ANDROID_SCREENSHOT_PROFILE: pixel_6", workflow)
         self.assertIn('bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"', workflow)
         self.assertNotIn("capture_android_screenshots.sh '${{ inputs.screenshot_route }}'", workflow)
 

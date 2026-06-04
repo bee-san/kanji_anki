@@ -65,6 +65,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
         env:
           SCREENSHOT_ROUTE: ${{ inputs.screenshot_route }}
+          ANDROID_SCREENSHOT_API_LEVEL: '35'
+          ANDROID_SCREENSHOT_PROFILE: pixel_6
         with:
           api-level: 35
           target: google_apis
@@ -73,9 +75,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            ANDROID_SCREENSHOT_API_LEVEL=35 \
-            ANDROID_SCREENSHOT_PROFILE=pixel_6 \
-              bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"
+            bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"
 
       - name: Upload screenshots
         if: always()
