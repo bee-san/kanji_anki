@@ -39,7 +39,7 @@ class SettingsTextCopyTest {
                         "release-v0.4.33",
                         "Import & sync",
                         "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
-                        "Deck options",
+                        "Study settings",
                         "New cards, review timing, workload, study ahead, and ladder controls.",
                         "Automation",
                         "Daily reminders and update checks that run in the background.",
@@ -133,7 +133,7 @@ class SettingsTextCopyTest {
                 listOf(
                         "Cards per kanji",
                         "Reminder: Off",
-                        "Collapse Deck options",
+                        "Collapse Study settings",
                         "Expand Automation",
                         "1 card",
                         "2 cards",
@@ -149,7 +149,7 @@ class SettingsTextCopyTest {
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Deck options"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
                         SettingsTextCopy.categoryToggleDescription(false, "Automation"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),

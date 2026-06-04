@@ -46,7 +46,7 @@ class SettingsScreenCategoryNavigationComposeTest {
             categories = listOf(
                 settingsCategorySectionModel(
                     sectionKey = "settings-study-behavior",
-                    title = "Deck options",
+                    title = "Study settings",
                     summary = "Review pace and learning controls.",
                     iconRes = R.drawable.ic_study_24,
                     expanded = true,
@@ -61,7 +61,7 @@ class SettingsScreenCategoryNavigationComposeTest {
             SettingsScreen(screen)
         }
 
-        composeRule.onNodeWithContentDescription("Collapse Deck options").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
@@ -69,21 +69,21 @@ class SettingsScreenCategoryNavigationComposeTest {
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
 
-        composeRule.onNodeWithContentDescription("Collapse Deck options").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").performClick()
         composeRule.waitForIdle()
 
         assertEquals(1, toggleRuns)
-        composeRule.onNodeWithContentDescription("Expand Deck options").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
         composeRule.onAllNodesWithTag(panelTag).assertCountEquals(0)
         composeRule.onAllNodesWithText("Deep setting").assertCountEquals(0)
 
-        composeRule.onNodeWithContentDescription("Expand Deck options").performClick()
+        composeRule.onNodeWithContentDescription("Expand Study settings").performClick()
         composeRule.waitForIdle()
 
         assertEquals(2, toggleRuns)
-        composeRule.onNodeWithContentDescription("Collapse Deck options").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
     }

@@ -8,7 +8,7 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Deck options"
+    fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
     fun settingsStudyBehaviorBody(): String = "New cards, review timing, workload, study ahead, and ladder controls."

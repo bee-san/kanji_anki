@@ -603,7 +603,7 @@ class ComposeScreenModelsTest {
             "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
             "New cards, review timing, workload, study ahead, and ladder controls.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),

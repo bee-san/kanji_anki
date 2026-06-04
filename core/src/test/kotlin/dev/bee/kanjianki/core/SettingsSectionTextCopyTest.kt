@@ -8,7 +8,7 @@ class SettingsSectionTextCopyTest {
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody())
-        assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("New cards, review timing, workload, study ahead, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily reminders and update checks that run in the background.", SettingsSectionTextCopy.settingsAutomationBody())
@@ -24,7 +24,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Daily sync", SettingsSectionTextCopy.dailySyncStatusLabel())
         assertEquals("App updates", SettingsSectionTextCopy.updatesStatusLabel())
         assertEquals("Cards per kanji", SettingsSectionTextCopy.matchingCardsStatusLabel())
-        assertEquals("Collapse Deck options", SettingsSectionTextCopy.categoryToggleDescription(true, "Deck options"))
+        assertEquals("Collapse Study settings", SettingsSectionTextCopy.categoryToggleDescription(true, "Study settings"))
         assertEquals("Expand Automation", SettingsSectionTextCopy.categoryToggleDescription(false, "Automation"))
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
