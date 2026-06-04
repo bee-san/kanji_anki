@@ -10,9 +10,9 @@ import sys
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
-Runner = Callable[[list[str], Path | None], CompletedProcess[str]]
+Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 EXPECTED_REPO = "bee-san/kanji_anki"
@@ -53,7 +53,9 @@ def _manifest_routes(manifest: dict[str, object]) -> list[str]:
         return []
     normalized: list[str] = []
     for route in routes:
-        canonical = _canonical_screenshot_route(str(route))
+        if not isinstance(route, str):
+            continue
+        canonical = _canonical_screenshot_route(route)
         if canonical:
             normalized.append(canonical)
     return normalized
@@ -175,7 +177,8 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
     if not manifest_routes:
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} does not declare any routes.", manifest=str(manifests[0]))
 
-    manifest_requested_route = _canonical_screenshot_route(str(manifest.get("requested_route", "")))
+    raw_requested_route = manifest.get("requested_route")
+    manifest_requested_route = _canonical_screenshot_route(raw_requested_route if isinstance(raw_requested_route, str) else None)
     manifest_files = _manifest_files(manifest, out_dir)
     if manifest_files:
         missing_files = [path for path in manifest_files if not path.exists()]

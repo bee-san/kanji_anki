@@ -34,7 +34,7 @@ private val ImportFilterMuted = KaniUiTokens.Muted
 private val ImportFilterTeal = KaniUiTokens.Teal
 private val ImportFilterPinkDark = KaniUiTokens.Primary
 private val ImportFilterPanelBorder = KaniUiTokens.PanelBorder
-private val ImportFilterWhite = KaniUiTokens.White
+private val ImportFilterPanelFill = KaniUiTokens.PanelFill
 private val ImportFilterPanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -42,7 +42,7 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = ImportFilterPanelShape,
-        color = ImportFilterWhite,
+        color = ImportFilterPanelFill,
         border = BorderStroke(1.dp, ImportFilterPanelBorder),
         shadowElevation = 2.dp
     ) {

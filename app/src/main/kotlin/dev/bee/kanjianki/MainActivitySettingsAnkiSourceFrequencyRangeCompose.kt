@@ -40,7 +40,7 @@ private val FrequencyInk = KaniUiTokens.Ink
 private val FrequencyMuted = KaniUiTokens.Muted
 private val FrequencyTeal = KaniUiTokens.Teal
 private val FrequencyPanelBorder = KaniUiTokens.PanelBorder
-private val FrequencyWhite = KaniUiTokens.White
+private val FrequencyPanelFill = KaniUiTokens.PanelFill
 private val FrequencyPanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -53,7 +53,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = FrequencyPanelShape,
-        color = FrequencyWhite,
+        color = FrequencyPanelFill,
         border = BorderStroke(1.dp, FrequencyPanelBorder),
         shadowElevation = 2.dp
     ) {

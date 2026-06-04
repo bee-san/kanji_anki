@@ -29,7 +29,7 @@ private val NoteTypeMuted = KaniUiTokens.Muted
 private val NoteTypeTeal = KaniUiTokens.Teal
 private val NoteTypePlum = Color(0xFF6E2B73)
 private val NoteTypePanelBorder = KaniUiTokens.PanelBorder
-private val NoteTypeWhite = KaniUiTokens.White
+private val NoteTypePanelFill = KaniUiTokens.PanelFill
 private val NoteTypePanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -37,7 +37,7 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = NoteTypePanelShape,
-        color = NoteTypeWhite,
+        color = NoteTypePanelFill,
         border = BorderStroke(1.dp, NoteTypePanelBorder),
         shadowElevation = 2.dp
     ) {
