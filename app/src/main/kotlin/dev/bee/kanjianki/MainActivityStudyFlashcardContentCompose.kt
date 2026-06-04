@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -41,9 +43,23 @@ private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
 private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
 
 @Composable
-fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
+fun FlashcardCard(
+    model: FlashcardCardModel,
+    modifier: Modifier = Modifier,
+    onTypingDone: Runnable? = null,
+) {
+    val cardHeightModifier = if (model.revealState.isRevealed) {
+        val windowHeight = with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height.toDp()
+        }
+        Modifier.height(maxOf(360.dp, windowHeight * 0.8f))
+    } else {
+        Modifier.heightIn(min = 360.dp)
+    }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(cardHeightModifier),
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 8.dp
@@ -58,10 +74,19 @@ fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
                 FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
             }
             model.typingAnswer?.let { typingAnswerState ->
-                TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, state = typingAnswerState)
+                TypingMeaningAnswer(
+                    label = MainActivityBase.LABEL_MEANING,
+                    state = typingAnswerState,
+                    onDone = onTypingDone,
+                )
             }
             if (model.revealState.isRevealed) {
-                StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+                StudyAnswerPanel(
+                    model.answerPanel,
+                    Modifier
+                        .padding(top = 12.dp, bottom = 10.dp)
+                        .weight(1f),
+                )
             }
         }
     }
