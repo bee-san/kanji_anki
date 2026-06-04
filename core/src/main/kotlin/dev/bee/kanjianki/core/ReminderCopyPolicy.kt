@@ -11,7 +11,14 @@ object ReminderCopyPolicy {
             return syncCopy()
         }
         val plan = AdaptiveLoadPlanner().plan(safeRequest)
-        return forCounts(plan.remaining, currentDueCount(rows, safeItems(safeRequest), safeRequest.nowMillis()))
+        val due = currentDueCount(rows, safeItems(safeRequest), safeRequest.nowMillis())
+        val studiedToday = safeRequest.studiedToday?.isNotEmpty() == true
+        return when {
+            !studiedToday -> streakCopy(maxOf(plan.remaining, due), safeRequest.currentStreakDays)
+            due > 0 -> reviewCopy(due)
+            plan.remaining > 0 -> focusCopy(plan.remaining)
+            else -> caughtUpCopy()
+        }
     }
 
     @JvmStatic
@@ -41,6 +48,49 @@ object ReminderCopyPolicy {
             )
         }
         return ReminderCopy("Kani is caught up", "No problem kanji are due. Open Kani for extra practice if you want.")
+    }
+
+    private fun focusCopy(focusRemaining: Int): ReminderCopy {
+        return forCounts(focusRemaining, 0)
+    }
+
+    private fun reviewCopy(due: Int): ReminderCopy {
+        return ReminderCopy(
+            "You have more Kanji to review",
+            String.format(
+                Locale.ROOT,
+                "%d kanji %s ready now. Open Kani to review %s.",
+                due,
+                if (due == 1) "is" else "are",
+                if (due == 1) "it" else "them",
+            ),
+        )
+    }
+
+    private fun streakCopy(waiting: Int, currentStreakDays: Int): ReminderCopy {
+        val streakLabel = if (currentStreakDays > 0) {
+            "your ${currentStreakDays}-day streak"
+        } else {
+            "your streak"
+        }
+        val waitingMessage = if (waiting > 0) {
+            String.format(
+                Locale.ROOT,
+                "%d kanji %s waiting. ",
+                waiting,
+                if (waiting == 1) "is" else "are",
+            )
+        } else {
+            ""
+        }
+        return ReminderCopy(
+            "Kani streak reminder",
+            waitingMessage + "Open Kani to keep $streakLabel alive.",
+        )
+    }
+
+    private fun caughtUpCopy(): ReminderCopy {
+        return ReminderCopy("Kani is caught up", "You've already studied today. Open Kani later when more kanji come back.")
     }
 
     private fun syncCopy(): ReminderCopy {

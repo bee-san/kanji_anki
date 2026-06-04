@@ -38,10 +38,14 @@ class ReminderCopyPolicyTest {
         val now = utc(2026, Calendar.MAY, 15, 8, 0)
 
         val copy = ReminderCopyPolicy.forPlan(planRequest(
-            listOf(row("裂", 80)),
-            listOf(RecordsStudyModels.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
-            1,
-            now
+            listOf(row("裂", 80), row("提", 70)),
+            listOf(
+                RecordsStudyModels.StudyItem("裂", "review", now + 3_600_000L, 1.0, 5.0, 2, 0, 2, 1, null, now),
+                RecordsStudyModels.StudyItem("提", "review", now + 7_200_000L, 1.0, 5.0, 2, 0, 2, 1, null, now),
+            ),
+            2,
+            now,
+            studiedToday = setOf("裂"),
         ))
 
         assertEquals("Kani focus is ready", copy.title)
@@ -56,11 +60,27 @@ class ReminderCopyPolicyTest {
             listOf(row("裂", 80)),
             null,
             1,
-            now
+            now,
         ))
 
-        assertEquals("Kani focus is ready", copy.title)
-        assertEquals("1 focus kanji is waiting. Open Kani to review it.", copy.message)
+        assertEquals("Kani streak reminder", copy.title)
+        assertEquals("1 kanji is waiting. Open Kani to keep your streak alive.", copy.message)
+    }
+
+    @Test
+    fun forPlanUsesReviewReminderAfterStudy() {
+        val now = utc(2026, Calendar.MAY, 15, 8, 0)
+
+        val copy = ReminderCopyPolicy.forPlan(planRequest(
+            listOf(row("裂", 80)),
+            listOf(RecordsStudyModels.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
+            1,
+            now,
+            studiedToday = setOf("裂"),
+        ))
+
+        assertEquals("You have more Kanji to review", copy.title)
+        assertEquals("1 kanji is ready now. Open Kani to review it.", copy.message)
     }
 
     @Test
@@ -93,13 +113,15 @@ class ReminderCopyPolicyTest {
         items: List<RecordsStudyModels.StudyItem>?,
         maxItems: Int,
         now: Long,
+        studiedToday: Set<String> = emptySet(),
+        currentStreakDays: Int = 0,
     ): AdaptiveLoadPlanner.PlanRequest {
         return AdaptiveLoadPlanner.PlanRequest.builder(
             rows,
             items,
             RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
-            0,
-            emptySet<String>(),
+            currentStreakDays,
+            studiedToday,
             AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE,

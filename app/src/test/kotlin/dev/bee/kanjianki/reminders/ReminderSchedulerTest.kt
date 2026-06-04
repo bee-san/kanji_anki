@@ -141,6 +141,73 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun adaptiveNextTriggerUsesLatestReviewTimeAfterStudy() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(
+                    utc(2026, Calendar.MAY, 15, 12, 0),
+                    utc(2026, Calendar.MAY, 15, 13, 0),
+                    utc(2026, Calendar.MAY, 15, 14, 0),
+                ),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 15, 14, 0), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun adaptiveNextTriggerFallsBackToTomorrowWhenReviewsAreAlreadyDue() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(
+                    utc(2026, Calendar.MAY, 15, 7, 30),
+                    utc(2026, Calendar.MAY, 15, 8, 0),
+                ),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 16, 8, 30), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun adaptiveNextTriggerSkipsLateReviewTimesUntilTomorrow() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 21, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(utc(2026, Calendar.MAY, 15, 23, 0)),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 16, 8, 30), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
     fun nextTriggerWrapperUsesInjectedClock() {
         val original = TimeZone.getDefault()
         try {
