@@ -8,7 +8,7 @@ import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 
-internal class MainActivityStartup(private val activity: MainActivityBase) {
+internal class MainActivityStartup(private val activity: MainActivityHome) {
     fun start() {
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
@@ -37,9 +37,9 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         when (route) {
             MainActivityBase.NAV_HOME_ROUTE, "launcher-home", "narrow", "wide" -> activity.renderHome()
             MainActivityBase.NAV_STUDY -> activity.renderStudy()
-            MainActivityBase.NAV_STATS_ROUTE -> activity.renderStats()
+            MainActivityBase.NAV_STATS_ROUTE -> if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
             MainActivityBase.NAV_SETTINGS_ROUTE -> activity.renderSettings()
-            "games" -> activity.renderGames()
+            "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
             "update" -> activity.renderUpdate()
             else -> activity.renderHome()
         }

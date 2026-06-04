@@ -181,7 +181,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
     private val shellHost = MainActivityShellHost(this)
-    private val startup = MainActivityStartup(this)
+    private val startup = MainActivityStartup(this as MainActivityHome)
     private val activityLifecycle = MainActivityLifecycle(this)
 
     abstract fun renderHome()
