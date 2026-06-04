@@ -117,6 +117,10 @@ xml = xml_path.read_text(encoding='utf-8', errors='ignore')
 lower = xml.lower()
 if "isn't responding" in lower or "is not responding" in lower or "aerr_" in lower:
     print("Detected Android ANR dialog in UI dump.", file=sys.stderr)
+    for line in xml.splitlines():
+        lowered = line.lower()
+        if "responding" in lowered or "aerr_" in lowered:
+            print(line.strip(), file=sys.stderr)
     sys.exit(2)
 
 expected_terms = [term for term in sys.argv[2:] if term]
