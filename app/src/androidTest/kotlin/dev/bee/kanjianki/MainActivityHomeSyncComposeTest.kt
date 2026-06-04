@@ -4,6 +4,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -87,6 +90,9 @@ class MainActivityHomeSyncComposeTest {
         composeRule.onNodeWithText("AnkiDroid needs attention").assertIsDisplayed()
         composeRule.onNodeWithText("Could not read AnkiDroid").assertIsDisplayed()
         composeRule.onNodeWithText("Provider unavailable.").assertIsDisplayed()
+        composeRule.onNode(
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive)
+        ).assertIsDisplayed()
 
         composeRule.onNodeWithText("Try sync again").performClick()
 

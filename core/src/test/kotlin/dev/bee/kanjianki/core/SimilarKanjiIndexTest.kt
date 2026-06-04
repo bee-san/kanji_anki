@@ -59,8 +59,7 @@ class SimilarKanjiIndexTest {
                     "拉	麺	",
                     "提	謎",
                     "",
-                ).joinToString("
-")
+                ).joinToString("\n")
             )
         )
 
