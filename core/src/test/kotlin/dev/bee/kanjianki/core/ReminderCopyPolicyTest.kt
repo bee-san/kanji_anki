@@ -81,6 +81,17 @@ class ReminderCopyPolicyTest {
         assertEquals("No problem kanji are due. Open Kani for extra practice if you want.", rest.message)
     }
 
+    @Test
+    fun reviewCopyFormatsReviewBatchCount() {
+        val one = ReminderCopyPolicy.reviewCopy(1)
+        val many = ReminderCopyPolicy.reviewCopy(3)
+
+        assertEquals("You have more Kanji to review", one.title)
+        assertEquals("1 kanji is ready now. Open Kani to review it.", one.message)
+        assertEquals("You have more Kanji to review", many.title)
+        assertEquals("3 kanji are ready now. Open Kani to review them.", many.message)
+    }
+
     private fun utc(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long {
         val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         calendar.set(year, month, day, hour, minute, 0)

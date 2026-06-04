@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -47,6 +48,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         ).show()
         activity.activeSimilarWritingRepair = null
         activity.renderStudy()
+        ReminderScheduler.schedule(activity)
     }
 
     fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
@@ -122,5 +124,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             activity.studySessionTracker::recordReviewOutcome,
             activity::markStudyRunPassed
         )
+        ReminderScheduler.schedule(activity)
     }
 }

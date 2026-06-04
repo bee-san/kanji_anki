@@ -18,6 +18,7 @@ import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
+import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -51,7 +52,10 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        schedule(settings, androidReminderServices(context), AppClock.orSystem(clock))
+        val nowMillis = AppClock.orSystem(clock).nowMillis()
+        LocalStore(context).use { store ->
+            schedule(settings, store, androidReminderServices(context), nowMillis)
+        }
     }
 
     @JvmStatic
@@ -66,6 +70,29 @@ object ReminderScheduler {
             return
         }
         services.scheduleAlarm(nextTriggerMillis(settings, nowMillis))
+    }
+
+    private fun schedule(
+        settings: LocalStoreBase.ReminderSettings?,
+        store: LocalStore,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        if (settings == null || !settings.enabled) {
+            services.cancelAlarm()
+            return
+        }
+        val streak = store.studyStreak(nowMillis)
+        if (streak.studiedToday) {
+            val reviewBatch = reviewReminderBatch(store, nowMillis)
+            if (reviewBatch != null) {
+                services.scheduleAlarm(reviewBatch.triggerAtMillis)
+                return
+            }
+            services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis, false))
+            return
+        }
+        services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis))
     }
 
     @JvmStatic
@@ -134,25 +161,36 @@ object ReminderScheduler {
         }
         services.ensureNotificationChannel()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        val copy = reminderCopy(context, clock)
-        val open = Intent(context, MainActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            REQUEST_CODE,
-            open,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(copy.title)
-            .setContentText(copy.message)
-            .setStyle(Notification.BigTextStyle().bigText(copy.message))
-            .setContentIntent(contentIntent)
-            .setAutoCancel(true)
-            .setColor(Color.rgb(255, 76, 118))
-            .build()
-        manager.notify(NOTIFICATION_ID, notification)
+        LocalStore(context).use { store ->
+            val now = AppClock.orSystem(clock).nowMillis()
+            val reviewBatch = reviewReminderBatch(store, now)
+            val copy = if (reviewBatch != null) {
+                ReminderCopyPolicy.reviewCopy(reviewBatch.dueCount)
+            } else {
+                reminderCopy(store, now)
+            }
+            val open = Intent(context, MainActivity::class.java)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val contentIntent = PendingIntent.getActivity(
+                context,
+                REQUEST_CODE,
+                open,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val notification = Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(copy.title)
+                .setContentText(copy.message)
+                .setStyle(Notification.BigTextStyle().bigText(copy.message))
+                .setContentIntent(contentIntent)
+                .setAutoCancel(true)
+                .setColor(Color.rgb(255, 76, 118))
+                .build()
+            manager.notify(NOTIFICATION_ID, notification)
+            if (reviewBatch != null) {
+                store.recordReviewReminderNotificationShown(now)
+            }
+        }
     }
 
     @JvmStatic
@@ -263,27 +301,46 @@ object ReminderScheduler {
 
     private fun reminderCopy(context: Context, clock: AppClock?): ReminderCopyPolicy.ReminderCopy {
         LocalStore(context).use { store ->
-            val rows = store.activeDashboardRows()
-            val items = store.studyItems()
             val now = AppClock.orSystem(clock).nowMillis()
-            return ReminderCopyPolicy.forPlan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                    rows,
-                    items,
-                    store.reviewStatsSince(now - WEEK_MILLIS),
-                    store.studyStreak(now).currentDays,
-                    store.studiedKanjiSince(startOfLocalDay(now)),
-                    AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                        store.adaptiveLoadWorkPercent(),
-                        store.adaptiveLoadMode(),
-                        store.adaptiveLoadMaxItems()
-                    ),
-                    now
-                )
-                    .settings(RecordsSyncModels.Settings.kikuDefaults())
-                    .build()
-            )
+            return reminderCopy(store, now)
         }
+    }
+
+    private fun reminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy {
+        val rows = store.activeDashboardRows()
+        val items = store.studyItems()
+        return ReminderCopyPolicy.forPlan(
+            AdaptiveLoadPlanner.PlanRequest.builder(
+                rows,
+                items,
+                store.reviewStatsSince(nowMillis - WEEK_MILLIS),
+                store.studyStreak(nowMillis).currentDays,
+                store.studiedKanjiSince(startOfLocalDay(nowMillis)),
+                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                    store.adaptiveLoadWorkPercent(),
+                    store.adaptiveLoadMode(),
+                    store.adaptiveLoadMaxItems()
+                ),
+                nowMillis
+            )
+                .settings(RecordsSyncModels.Settings.kikuDefaults())
+                .build()
+        )
+    }
+
+    private fun reviewReminderBatch(
+        store: LocalStore,
+        nowMillis: Long,
+    ): ReminderReviewBatchPolicy.ReviewBatch? {
+        val streak = store.studyStreak(nowMillis)
+        if (!streak.studiedToday) {
+            return null
+        }
+        return ReminderReviewBatchPolicy.nextBatch(
+            nowMillis,
+            store.studyItems(),
+            store.reviewReminderNotificationsToday(nowMillis)
+        )
     }
 
     private fun startOfLocalDay(nowMillis: Long): Long = LocalDayPolicy.localDayStart(nowMillis)

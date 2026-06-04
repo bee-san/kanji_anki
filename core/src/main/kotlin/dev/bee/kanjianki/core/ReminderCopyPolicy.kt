@@ -43,6 +43,20 @@ object ReminderCopyPolicy {
         return ReminderCopy("Kani is caught up", "No problem kanji are due. Open Kani for extra practice if you want.")
     }
 
+    @JvmStatic
+    fun reviewCopy(due: Int): ReminderCopy {
+        return ReminderCopy(
+            "You have more Kanji to review",
+            String.format(
+                Locale.ROOT,
+                "%d kanji %s ready now. Open Kani to review %s.",
+                due,
+                if (due == 1) "is" else "are",
+                if (due == 1) "it" else "them",
+            ),
+        )
+    }
+
     private fun syncCopy(): ReminderCopy {
         return ReminderCopy("Sync Kani", "Open Kani and tap Sync.")
     }
