@@ -56,6 +56,7 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertNotIn('-a android.intent.action.MAIN', script)
         self.assertNotIn('-c android.intent.category.LAUNCHER', script)
         self.assertIn('local status=0', script)
+        self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
 
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

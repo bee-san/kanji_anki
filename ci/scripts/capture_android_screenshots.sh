@@ -194,7 +194,6 @@ capture_route() {
   set_orientation "${orientation}"
   launch_screenshot_route "${launch_target}"
   wait_for_route "${capture_name}" "${expected_terms[@]}"
-  sleep 1
   capture_png "${capture_name}" >/dev/null
 }
 
