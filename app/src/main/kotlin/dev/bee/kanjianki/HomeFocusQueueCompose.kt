@@ -162,7 +162,6 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 Text(text = model.meaning, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(text = model.sourceEvidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
                 Text(text = model.reasonLine, style = MaterialTheme.typography.bodySmall, color = model.accentColor)
-                Text(text = model.body, style = MaterialTheme.typography.bodyMedium, color = ComposeColor(0xFF6E6E78))
                 Row {
                     model.tags.forEach { tag ->
                         FocusQueueTag(tag)
