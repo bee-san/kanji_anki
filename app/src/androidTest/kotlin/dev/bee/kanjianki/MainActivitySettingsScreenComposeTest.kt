@@ -95,7 +95,7 @@ class MainActivitySettingsScreenComposeTest {
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
                             expanded = false,
-                            panelCount = "3 panels",
+                            panelCount = "3 cards",
                             contentDescription = "Expand Import & sync",
                             onToggle = Runnable { categoryToggled = true },
                             panels = listOf(
@@ -109,12 +109,12 @@ class MainActivitySettingsScreenComposeTest {
                         ),
                         SettingsCategorySectionModel(
                             sectionKey = "settings-reference-data",
-                            title = "Offline data & credits",
-                            summary = "Offline data & credits and licenses.",
+                            title = "Display & data",
+                            summary = "Display & data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
-                            panelCount = "1 panel",
-                            contentDescription = "Collapse Offline data & credits",
+                            panelCount = "1 card",
+                            contentDescription = "Collapse Display & data",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -135,8 +135,8 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Import & sync").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
-        composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("Offline data & credits").assertIsDisplayed()
+        composeRule.onNodeWithText("3 cards").assertIsDisplayed()
+        composeRule.onNodeWithText("Display & data").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertDoesNotExist()
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()

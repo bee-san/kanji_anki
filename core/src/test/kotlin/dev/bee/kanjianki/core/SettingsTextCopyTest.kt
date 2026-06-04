@@ -96,7 +96,7 @@ class SettingsTextCopyTest {
                         "Choose a section below. Expanding it keeps the page in place and preserves your scroll position.",
                         "Note type",
                         "Import filters",
-                        "Kanji frequency range",
+                        "Suspended card range",
                         "Daily reminder",
                         "Daily sync",
                         "App updates"

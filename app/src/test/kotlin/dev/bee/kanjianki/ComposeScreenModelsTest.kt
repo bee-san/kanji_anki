@@ -584,7 +584,7 @@ class ComposeScreenModelsTest {
         assertEquals("Tune review behavior.", category.summary)
         assertEquals(R.drawable.ic_target_24, category.iconRes)
         assertEquals(true, category.expanded)
-        assertEquals("1 setting", category.panelCount)
+        assertEquals("1 card", category.panelCount)
         assertEquals("Collapse Study", category.contentDescription)
         assertSame(toggle, category.onToggle)
         assertEquals(listOf(panel), category.panels)
@@ -600,12 +600,12 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Choose which AnkiDroid cards Kani imports and when sync runs.",
+            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "New-card order, workload, retention, learning steps, study ahead, and ladder movement.",
+            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -613,9 +613,9 @@ class ComposeScreenModelsTest {
             "Daily reminders and update checks that run in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Offline data & credits", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution.",
+            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -733,7 +733,7 @@ class ComposeScreenModelsTest {
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("4 settings", importSync.panelCount)
+        assertEquals("4 cards", importSync.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
         assertEquals("Automation", advanced.title)
         assertEquals("2 cards", advanced.panelCount)

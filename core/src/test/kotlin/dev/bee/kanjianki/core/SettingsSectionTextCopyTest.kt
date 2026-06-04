@@ -18,7 +18,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
-        assertEquals("Kanji frequency range", SettingsSectionTextCopy.importRanksStatusLabel())
+        assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
         assertEquals("Reminder: Off", SettingsSectionTextCopy.statusPillDescription("Reminder", "Off"))
         assertEquals("Daily reminder", SettingsSectionTextCopy.reminderStatusLabel())
         assertEquals("Daily sync", SettingsSectionTextCopy.dailySyncStatusLabel())

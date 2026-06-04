@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Deck options");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Deck options");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Study behavior");
+            clickText(scenario, "Deck options");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -740,7 +740,7 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
 fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Offline data & credits");
+            clickText(scenario, "Display & data");
             waitForText(scenario, "Open data licenses");
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
@@ -751,7 +751,7 @@ fun testReferenceDataLicensesRoundTripFromSettings() {
                 assertHasText(activity, "Back to settings");
             }
             clickText(scenario, "Back to settings");
-            waitForText(scenario, "Offline data & credits");
+            waitForText(scenario, "Display & data");
         }
     }
 
@@ -2789,7 +2789,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Tagged cards",
                 "Weak cards",
                 "Minimum matching cards per kanji",
-                "Kanji frequency range",
+                "Suspended card range",
                 "Default: 100-3000",
                 "Min rank",
                 "Max rank"
