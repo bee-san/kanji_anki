@@ -100,6 +100,9 @@ class MainActivityHomeOverviewComposeTest {
         }
 
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
+        composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync AnkiDroid"))
+            .assertIsDisplayed()
+            .assertHasClickAction()
         composeRule.onNodeWithContentDescription("Sync AnkiDroid")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
@@ -122,6 +125,9 @@ class MainActivityHomeOverviewComposeTest {
 
         composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY_NOW).assertIsDisplayed()
         composeRule.onNodeWithText(HomeTextCopy.studySupportText()).assertIsDisplayed()
+        composeRule.onNodeWithTag(homeStudyCtaTestTag(MainActivityBase.LABEL_STUDY_NOW))
+            .assertIsDisplayed()
+            .assertHasClickAction()
         composeRule.onNodeWithContentDescription(MainActivityBase.LABEL_STUDY_NOW)
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))

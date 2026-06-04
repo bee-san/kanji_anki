@@ -77,7 +77,9 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                 val normalized = normalizeSteps(steps, defaultNewSteps(), allowEmpty)
                 val parts = ArrayList<String>()
                 for (minutes in normalized) {
-                    if (minutes >= 60 && minutes % 60 == 0) {
+                    if (minutes >= 24 * 60 && minutes % (24 * 60) == 0) {
+                        parts.add((minutes / (24 * 60)).toString() + "d")
+                    } else if (minutes >= 60 && minutes % 60 == 0) {
                         parts.add((minutes / 60).toString() + "h")
                     } else {
                         parts.add(minutes.toString() + "m")
@@ -110,6 +112,9 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                 } else if (value.endsWith("h")) {
                     value = value.substring(0, value.length - 1)
                     multiplier = 60
+                } else if (value.endsWith("d")) {
+                    value = value.substring(0, value.length - 1)
+                    multiplier = 24 * 60
                 }
                 if (value.isEmpty()) {
                     return null

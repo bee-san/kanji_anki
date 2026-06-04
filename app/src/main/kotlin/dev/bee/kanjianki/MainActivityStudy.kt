@@ -47,7 +47,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return learningPanelModel(this, session)
     }
 
-    fun firstExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example? {
+    fun firstExample(row: RecordsImportModels.DashboardRow?): RecordsImportModels.Example? {
         return StudyExampleSelector.firstExample(row)
     }
 

@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.core
 
 object LearningStepsSettingsPolicy {
-    const val STEP_FORMAT_ERROR: String = "Use steps like 1m, 10m, or 1h."
+    const val STEP_FORMAT_ERROR: String = "Use steps like 1m, 10m, 1h, or 1d."
 
     @JvmStatic
     fun saveRequest(newStepsText: String?, reviewStepsText: String?): SaveResult {

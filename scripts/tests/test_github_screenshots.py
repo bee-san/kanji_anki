@@ -79,7 +79,16 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
 
             out.mkdir(parents=True, exist_ok=True)
-            (out / "manifest.json").write_text('{"routes":["home_empty_sync_required"]}', encoding="utf-8")
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(out / "home.png")],
+                    }
+                ),
+                encoding="utf-8",
+            )
             (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
             result = github_screenshots.run_remote_screenshots(
@@ -95,6 +104,46 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual(123, result["run_id"])
             self.assertEqual(str(out / "manifest.json"), result["manifest"])
             self.assertEqual([str(out / "home.png")], result["pngs"])
+
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "requested_route": "stats",
+                        "routes": ["stats"],
+                        "files": [str(out / "stats.png")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (out / "stats.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+            mismatch = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", mismatch["status"])
+            self.assertIn("home", mismatch["message"])
+
+    def test_validate_artifact_accepts_all_route_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            routes = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
+            files = []
+            for route in routes:
+                path = out / f"{route}.png"
+                path.write_bytes(b"\x89PNG\r\n\x1a\n")
+                files.append(str(path))
+
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "requested_route": "all",
+                        "routes": routes,
+                        "files": files,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="all")
+            self.assertEqual("passed", result["status"])
+            self.assertEqual(routes, result["routes"])
 
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

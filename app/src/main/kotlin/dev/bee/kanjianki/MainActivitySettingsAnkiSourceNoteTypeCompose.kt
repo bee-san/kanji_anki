@@ -8,12 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,20 +21,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val NoteTypeInk = Color(0xFF2D1635)
-private val NoteTypeMuted = Color(0xFF6C5674)
-private val NoteTypeTeal = Color(0xFF24756C)
+private val NoteTypeInk = KaniUiTokens.Ink
+private val NoteTypeMuted = KaniUiTokens.Muted
+private val NoteTypeTeal = KaniUiTokens.Teal
 private val NoteTypePlum = Color(0xFF6E2B73)
-private val NoteTypePinkDark = Color(0xFFDA3A7A)
-private val NoteTypePanelBorder = Color(0xFFFFC7DE)
-private val NoteTypeButtonBorder = Color(0xFFEEBDDA)
-private val NoteTypeWhite = Color(0xFFFFFFFF)
-private val NoteTypePanelShape = RoundedCornerShape(24.dp)
-private val NoteTypeButtonShape = RoundedCornerShape(12.dp)
+private val NoteTypePanelBorder = KaniUiTokens.PanelBorder
+private val NoteTypeWhite = KaniUiTokens.White
+private val NoteTypePanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
@@ -126,25 +118,7 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
             )
             NoteTypeOutlinedButton(model.chooseLabel) { model.onChoose.run() }
             NoteTypeOutlinedButton(model.kikuLabel) { model.onUseKiku.run() }
-            Button(
-                onClick = { model.onSave.run() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = NoteTypeButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = NoteTypePinkDark,
-                    contentColor = NoteTypeWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.run() }
         }
     }
 }
@@ -181,24 +155,5 @@ private fun NoteTypeInput(
 
 @Composable
 private fun NoteTypeOutlinedButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 50.dp),
-        shape = NoteTypeButtonShape,
-        border = BorderStroke(1.dp, NoteTypeButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = NoteTypeWhite,
-            contentColor = NoteTypeInk
-        )
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    KaniOutlinedButton(label = label, onClick = onClick)
 }

@@ -33,7 +33,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         activity.store.setAutoSyncEnabled(result.enabled)
         AutoSyncScheduler.schedule(activity)
         Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun disableAutoSync() {
@@ -41,7 +41,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         activity.store.setAutoSyncEnabled(result.enabled)
         AutoSyncScheduler.cancel(activity)
         Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private fun autoSyncAction(auto: LocalStoreBase.AutoSyncSettings): AutoSyncActionModel? {

@@ -7,6 +7,7 @@ Scope: Kani's scheduler uses the in-repo `:fsrs-java` 21-parameter FSRS engine.
 Current behavior:
 
 - `BridgeScheduler` always routes scheduling through `LatestFsrsAdapter`.
+- `SchedulerParameters.defaults()` starts from local Kani tuning (`targetRetention=0.90`, `againMultiplier=0.45`, `hardMultiplier=1.20`, `goodMultiplier=2.00`, `easyMultiplier=3.10`); app settings persist those values and optional rank-based target-retention ranges rather than importing Anki deck preset FSRS parameters.
 - The legacy Kani FSRS-5 engine and adapter were removed; there is no `kani.fsrs.engine` runtime switch.
 - First reviews and relearning graduation use the latest engine's initial-state path, with relearning preserving the current post-lapse difficulty.
 - Review elapsed time is computed from the previous task-memory due timestamp minus the previous scheduled interval, so on-time reviews feed FSRS the full elapsed interval rather than `0` overdue days.

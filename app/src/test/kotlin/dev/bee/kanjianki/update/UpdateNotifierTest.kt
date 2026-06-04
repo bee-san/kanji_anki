@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.update
 
 import android.app.NotificationManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -49,9 +50,9 @@ class UpdateNotifierTest {
         assertTrue(controller.notificationsQueried)
         assertTrue(controller.channelCreated)
         assertTrue(controller.notified)
-        assertTrue(controller.events.toString() == "channel notify")
-        assertTrue(controller.title == "Kani update ready to install")
-        assertTrue(controller.body == "Version 0.4.3 is ready. Open Kani to install it.")
+        assertEquals("channel notify", controller.events.toString())
+        assertEquals("Kani update ready to install", controller.title)
+        assertEquals("Version 0.4.3 is ready. Open Kani to install it.", controller.body)
     }
 
     @Test
@@ -72,7 +73,6 @@ class UpdateNotifierTest {
         val events = StringBuilder()
 
         override fun hasRuntimeNotificationPermission(): Boolean = runtimePermission
-
         override fun areNotificationsEnabled(): Boolean {
             notificationsQueried = true
             return notificationsEnabled

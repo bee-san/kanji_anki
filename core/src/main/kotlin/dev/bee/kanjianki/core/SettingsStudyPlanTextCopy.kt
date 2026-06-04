@@ -4,34 +4,34 @@ import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
     @JvmStatic
-    fun deckLimitsTitle(): String = "Deck limits"
+    fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Set the maximum new cards Kani admits each day, matching Anki deck options."
+    fun deckLimitsBody(): String = "Limit how many new cards Kani can show each day."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "Maximum new cards/day"
+    fun newCardsPerDayLabel(): String = "Daily new card limit"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save deck limits"
+    fun saveDeckLimitsLabel(): String = "Save daily limits"
 
     @JvmStatic
     fun dailyWorkloadTitle(): String = "Daily workload"
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's problem-kanji cutoff; Anki due dates stay unchanged."
+        return "Kani picks today's workload; Anki due dates stay unchanged."
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save maximum"
+    fun saveMaximumLabel(): String = "Save item limit"
 
     @JvmStatic
     fun manualWorkloadLabel(): String = "Use manual workload"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Manual workload sets today's Kani intake; Anki due dates stay unchanged."
+        return "Set today's workload; Anki due dates stay unchanged."
     }
 
     @JvmStatic
@@ -43,7 +43,7 @@ object SettingsStudyPlanTextCopy {
     fun saveWorkloadLabel(): String = "Save workload"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Use automatic Pareto"
+    fun automaticParetoLabel(): String = "Use automatic workload"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
@@ -91,7 +91,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Mixes Kani weakness, Anki risk, missed examples, and frequency."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances Kani weakness, Anki risk, missed examples, and frequency."
             else -> "Jiten frequency first."
         }
     }
@@ -111,7 +111,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how unseen cards enter study; due reviews and repeats stay first."
+        return "Choose how new cards enter study; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -124,19 +124,19 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun fsrsRetentionTitle(): String = "FSRS retention"
+    fun fsrsRetentionTitle(): String = "Review retention"
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "Higher retention keeps Kani intervals shorter; Anki due dates stay unchanged."
+        return "FSRS stays local. Anki due dates stay unchanged."
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Use Jiten-rank retention ranges"
+    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above."
+        return "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention."
     }
 
     @JvmStatic
@@ -155,7 +155,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs off or move them up and down. At least one always-available rung stays on."
+        return "Turn rungs on or off, or move them. Keep one always-available rung on."
     }
 
     @JvmStatic
@@ -187,9 +187,9 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
-        val status = if (ladder.isEnabled(rung)) "Enabled" else "Disabled"
-        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "conditional" else "always available"
-        return "$status $kind rung"
+        val status = if (ladder.isEnabled(rung)) "enabled" else "disabled"
+        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "Conditional rung" else "Always available rung"
+        return "$kind $status"
     }
 
     @JvmStatic

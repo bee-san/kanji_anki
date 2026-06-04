@@ -16,6 +16,8 @@ Runner = Callable[[list[str], Path | None], CompletedProcess[str]]
 
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 EXPECTED_REPO = "bee-san/kanji_anki"
+EXPECTED_ALL_SCREENSHOT_ROUTES = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
+SCREENSHOT_ROUTE_ALIASES = {"launcher-home": "home"}
 
 
 def run_command(args: list[str], cwd: Path | None = None) -> CompletedProcess[str]:
@@ -34,6 +36,40 @@ def _run(runner: Runner, args: Sequence[str], repo_root: Path) -> CompletedProce
 
 def _command_text(command: Sequence[str]) -> str:
     return " ".join(command)
+
+
+def _canonical_screenshot_route(route: str | None) -> str | None:
+    if route is None:
+        return None
+    normalized = route.strip()
+    if not normalized:
+        return None
+    return SCREENSHOT_ROUTE_ALIASES.get(normalized, normalized)
+
+
+def _manifest_routes(manifest: dict[str, object]) -> list[str]:
+    routes = manifest.get("routes")
+    if not isinstance(routes, list):
+        return []
+    normalized: list[str] = []
+    for route in routes:
+        canonical = _canonical_screenshot_route(str(route))
+        if canonical:
+            normalized.append(canonical)
+    return normalized
+
+
+def _manifest_files(manifest: dict[str, object], out_dir: Path) -> list[Path]:
+    files = manifest.get("files")
+    if not isinstance(files, list):
+        return []
+    resolved: list[Path] = []
+    for file_name in files:
+        path = Path(str(file_name))
+        if not path.is_absolute():
+            path = out_dir / path
+        resolved.append(path)
+    return resolved
 
 
 def _current_branch(repo_root: Path, runner: Runner) -> tuple[str | None, str | None]:
@@ -121,7 +157,7 @@ def _find_run_for_sha(repo_root: Path, runner: Runner, workflow: str, branch: st
     return None, _status("remote_visual_pending", last_error)
 
 
-def validate_artifact(out_dir: Path) -> dict[str, object]:
+def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[str, object]:
     manifests = sorted(out_dir.rglob("manifest.json"))
     pngs = sorted(out_dir.rglob("*.png"))
     if not manifests:
@@ -129,10 +165,73 @@ def validate_artifact(out_dir: Path) -> dict[str, object]:
     if not pngs:
         return _status("missing_artifact", f"Downloaded artifact under {out_dir} does not contain any PNG screenshots.", manifest=str(manifests[0]))
     try:
-        json.loads(manifests[0].read_text(encoding="utf-8"))
+        manifest = json.loads(manifests[0].read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         return _status("missing_artifact", f"Artifact manifest is not valid JSON: {error}", manifest=str(manifests[0]))
-    return _status("passed", "Remote screenshot artifact contains a valid manifest and PNG screenshots.", manifest=str(manifests[0]), pngs=[str(path) for path in pngs])
+    if not isinstance(manifest, dict):
+        return _status("missing_artifact", f"Artifact manifest at {manifests[0]} is not a JSON object.", manifest=str(manifests[0]))
+
+    manifest_routes = _manifest_routes(manifest)
+    if not manifest_routes:
+        return _status("missing_artifact", f"Artifact manifest at {manifests[0]} does not declare any routes.", manifest=str(manifests[0]))
+
+    manifest_requested_route = _canonical_screenshot_route(str(manifest.get("requested_route", "")))
+    manifest_files = _manifest_files(manifest, out_dir)
+    if manifest_files:
+        missing_files = [path for path in manifest_files if not path.exists()]
+        if missing_files:
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest references missing files: {', '.join(str(path) for path in missing_files)}",
+                manifest=str(manifests[0]),
+            )
+        pngs = manifest_files
+
+    if expected_route is not None:
+        expected_canonical = _canonical_screenshot_route(expected_route)
+        assert expected_canonical is not None
+        if expected_canonical == "all":
+            if manifest_requested_route != "all":
+                return _status(
+                    "missing_artifact",
+                    "Artifact manifest does not report the requested route 'all'.",
+                    manifest=str(manifests[0]),
+                    requested_route=manifest_requested_route,
+                )
+            missing_routes = [route for route in EXPECTED_ALL_SCREENSHOT_ROUTES if route not in manifest_routes]
+            if missing_routes:
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest does not contain the expected screenshot routes: {', '.join(missing_routes)}.",
+                    manifest=str(manifests[0]),
+                    routes=manifest_routes,
+                )
+        else:
+            if manifest_requested_route not in {expected_canonical, None}:
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest reports route {manifest_requested_route!r} instead of {expected_canonical!r}.",
+                    manifest=str(manifests[0]),
+                    routes=manifest_routes,
+                    requested_route=manifest_requested_route,
+                )
+            if expected_canonical not in manifest_routes:
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest does not contain the expected screenshot route {expected_canonical!r}.",
+                    manifest=str(manifests[0]),
+                    routes=manifest_routes,
+                    requested_route=manifest_requested_route,
+                )
+
+    return _status(
+        "passed",
+        "Remote screenshot artifact contains a valid manifest, matching routes, and PNG screenshots.",
+        manifest=str(manifests[0]),
+        pngs=[str(path) for path in pngs],
+        routes=manifest_routes,
+        requested_route=manifest_requested_route,
+    )
 
 
 def run_remote_screenshots(
@@ -199,7 +298,7 @@ def run_remote_screenshots(
     if download.returncode != 0:
         return _status("missing_artifact", f"Unable to download artifact {artifact!r} from run {run_id}.", run_id=run_id, stderr=download.stderr.strip())
 
-    result = validate_artifact(out_dir)
+    result = validate_artifact(out_dir, expected_route=screenshot_route)
     result["run_id"] = run_id
     result["branch"] = branch
     result["head_sha"] = sha

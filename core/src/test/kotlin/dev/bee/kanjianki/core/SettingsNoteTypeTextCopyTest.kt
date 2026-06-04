@@ -1,0 +1,27 @@
+package dev.bee.kanjianki.core
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class SettingsNoteTypeTextCopyTest {
+    @Test
+    fun noteTypeHelpersPreserveFormatting() {
+        assertEquals("Note type setup", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
+        assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
+        assertEquals("Default: Kiku. Keep one note type selected and map the fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
+        assertEquals("Field mappings", SettingsNoteTypeTextCopy.requiredFieldsTitle())
+        assertEquals("Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort.", SettingsNoteTypeTextCopy.requiredFieldsBody())
+        assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
+        assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
+        assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())
+        assertEquals("Sentence field", SettingsNoteTypeTextCopy.sentenceFieldLabel())
+        assertEquals("Frequency field", SettingsNoteTypeTextCopy.frequencyFieldLabel())
+        assertEquals("Frequency sort field", SettingsNoteTypeTextCopy.frequencySortFieldLabel())
+        assertEquals("Choose note type", SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel())
+        assertEquals("Use Kiku", SettingsNoteTypeTextCopy.useKikuLabel())
+        assertEquals("Save note type", SettingsNoteTypeTextCopy.saveNoteTypeLabel())
+        assertEquals("Enter a note type name.", SettingsNoteTypeTextCopy.noteTypeRequiredToast())
+        assertEquals("Choose the field that contains kanji.", SettingsNoteTypeTextCopy.expressionFieldRequiredToast())
+        assertEquals("Note type saved. Sync again to rebuild practice.", SettingsNoteTypeTextCopy.noteTypeSavedToast())
+    }
+}

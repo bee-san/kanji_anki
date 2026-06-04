@@ -1,31 +1,22 @@
 package dev.bee.kanjianki.core
 
-import java.util.Locale
-
 object SettingsLadderThresholdTextCopy {
     @JvmStatic
     fun ladderThresholdsTitle(): String = "Ladder thresholds"
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Cards climb after strong due reviews; learning repeats stay practice-only."
+        return "Only due reviews move the ladder. Learning and relearning repeats are practice only."
     }
 
     @JvmStatic
-    fun fsrsDaysToGoUpLabel(): String = "FSRS days to go up"
+    fun fsrsDaysToGoUpLabel(): String = "Days before promotion"
 
     @JvmStatic
-    fun failsToGoDownLabel(): String = "Fails to go down"
+    fun failsToGoDownLabel(): String = "Fail streak before demotion"
 
     @JvmStatic
-    fun useDefaultLadderThresholdsLabel(): String {
-        return String.format(
-            Locale.ROOT,
-            "Use %d and %d",
-            RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
-            RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
-        )
-    }
+    fun useDefaultLadderThresholdsLabel(): String = "Use default ladder thresholds"
 
     @JvmStatic
     fun saveLadderThresholdsLabel(): String = "Save ladder thresholds"

@@ -1,8 +1,10 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -46,6 +48,7 @@ class HomeSecondaryScreensComposeTest {
     @Test
     fun recentMistakesScreenRendersHeaderAndCards() {
         var homeClicked = false
+        var cardClicked = false
 
         composeRule.setContent {
             HomeRecentMistakesScreen(
@@ -63,7 +66,7 @@ class HomeSecondaryScreensComposeTest {
                                 subtitle = "Rated again",
                                 sourceEvidence = "From 裂語",
                                 accentColor = Color(0xFFFF4C76),
-                                onClick = {}
+                                onClick = { cardClicked = true }
                             )
                         )
                     )
@@ -74,7 +77,12 @@ class HomeSecondaryScreensComposeTest {
         composeRule.onNodeWithText("Recent mistakes").assertIsDisplayed()
         composeRule.onNodeWithText("split").assertIsDisplayed()
         composeRule.onNodeWithText("From 裂語").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeRecentMistakesCardTestTag("裂"))
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .performClick()
         composeRule.onNodeWithText("Home >").performClick()
         assertTrue(homeClicked)
+        assertTrue(cardClicked)
     }
 }

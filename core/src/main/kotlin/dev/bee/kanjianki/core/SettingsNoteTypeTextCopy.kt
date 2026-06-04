@@ -2,22 +2,22 @@ package dev.bee.kanjianki.core
 
 object SettingsNoteTypeTextCopy {
     @JvmStatic
-    fun noteTypeFieldsTitle(): String = "Note type & clue fields"
+    fun noteTypeFieldsTitle(): String = "Note type setup"
 
     @JvmStatic
     fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere."
+        return "Default: Kiku. Keep one note type selected and map the fields below."
     }
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Required fields"
+    fun requiredFieldsTitle(): String = "Field mappings"
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata."
+        return "Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort."
     }
 
     @JvmStatic
@@ -39,7 +39,7 @@ object SettingsNoteTypeTextCopy {
     fun frequencySortFieldLabel(): String = "Frequency sort field"
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose from AnkiDroid"
+    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
 
     @JvmStatic
     fun useKikuLabel(): String = "Use Kiku"

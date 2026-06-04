@@ -10,40 +10,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val ImportFilterInk = Color(0xFF2D1635)
-private val ImportFilterMuted = Color(0xFF6C5674)
-private val ImportFilterTeal = Color(0xFF24756C)
-private val ImportFilterPinkDark = Color(0xFFDA3A7A)
-private val ImportFilterPanelBorder = Color(0xFFFFC7DE)
-private val ImportFilterButtonBorder = Color(0xFFEEBDDA)
-private val ImportFilterWhite = Color(0xFFFFFFFF)
-private val ImportFilterPanelShape = RoundedCornerShape(24.dp)
-private val ImportFilterButtonShape = RoundedCornerShape(12.dp)
+private val ImportFilterInk = KaniUiTokens.Ink
+private val ImportFilterMuted = KaniUiTokens.Muted
+private val ImportFilterTeal = KaniUiTokens.Teal
+private val ImportFilterPinkDark = KaniUiTokens.Primary
+private val ImportFilterPanelBorder = KaniUiTokens.PanelBorder
+private val ImportFilterWhite = KaniUiTokens.White
+private val ImportFilterPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
@@ -82,7 +74,7 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 fontWeight = FontWeight.Bold
             )
             model.presets.forEach { preset ->
-                ImportFilterOutlinedButton(preset.label) { preset.onClick.run() }
+                KaniOutlinedButton(label = preset.label) { preset.onClick.run() }
             }
             ImportFilterCheckbox(model.activeCardsLabel, model.state.activeCards) { model.state.activeCards = it }
             ImportFilterCheckbox(model.suspendedCardsLabel, model.state.suspendedCards) { model.state.suspendedCards = it }
@@ -132,25 +124,7 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 keyboardType = KeyboardType.Number,
                 onValueChange = { model.state.minMatching = it }
             )
-            Button(
-                onClick = { model.onSave.run() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = ImportFilterButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ImportFilterPinkDark,
-                    contentColor = ImportFilterWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.run() }
         }
     }
 }
@@ -227,29 +201,5 @@ private fun ImportFilterTextField(
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun ImportFilterOutlinedButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 50.dp),
-        shape = ImportFilterButtonShape,
-        border = BorderStroke(1.dp, ImportFilterButtonBorder),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = ImportFilterWhite,
-            contentColor = ImportFilterInk
-        )
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

@@ -87,6 +87,7 @@ val fastSonarCoverageExclusions = listOf(
 val testSonarCoverageExclusions = listOf(
     "**/src/test/**",
     "**/src/androidTest/**",
+    "**/src/debug/**",
 )
 val sonarCoverageExclusions = testSonarCoverageExclusions + if (sonarFullCoverage) {
     emptyList()
@@ -103,6 +104,8 @@ sonar {
         property("sonar.java.test.binaries", existingSonarPaths(maybeSonarTestBinaries))
         property("sonar.coverage.jacoco.xmlReportPaths", existingSonarPaths(maybeSonarCoveragePaths))
         property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
+        property("sonar.scanner.skipJreProvisioning", "true")
+        property("sonar.exclusions", "**/src/debug/**")
     }
 }
 
@@ -110,6 +113,12 @@ tasks.register<Exec>("testDictionaryAssets") {
     group = "verification"
     description = "Runs deterministic Python tests for generated dictionary and similar-kanji assets."
     commandLine("python3", "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py")
+}
+
+tasks.register<Exec>("testCiScripts") {
+    group = "verification"
+    description = "Runs deterministic Python tests for CI scripts and live-fixture helpers."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "ci/tests", "-p", "test_*.py")
 }
 
 val fastCiTasks = listOf(
@@ -141,6 +150,7 @@ val fastCiTasks = listOf(
     ":app:compileDebugAndroidTestJavaWithJavac",
     ":app:lintDebug",
     "testDictionaryAssets",
+    "testCiScripts",
 )
 
 tasks.register("ciFast") {

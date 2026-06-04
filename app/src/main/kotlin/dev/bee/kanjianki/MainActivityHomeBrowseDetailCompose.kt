@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.bee.kanjianki.core.HomeTextCopy
 
 @Composable
 internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
@@ -107,8 +106,8 @@ fun BrowseDetailIdentity(model: BrowseDetailIdentityModel) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (model.suspended) {
-            BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = BrowseCoral)
+        model.stateBadges.forEach { badge ->
+            BrowseChip(label = badge.label, color = ComposeColor(badge.color))
         }
         Text(
             text = model.title,

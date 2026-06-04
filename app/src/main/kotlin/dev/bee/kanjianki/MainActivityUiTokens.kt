@@ -11,25 +11,45 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.max
+import kotlin.math.min
 
 internal object KaniUiTokens {
-    val Ink = Color(0xFF2D1635)
-    val Muted = Color(0xFF6C5674)
-    val Primary = Color(0xFFDA3A7A)
+    val Ink = Color(MainActivityUiSupport.INK)
+    val Muted = Color(MainActivityUiSupport.MUTED)
+    val Primary = Color(MainActivityUiSupport.STUDY_PINK_DARK)
     val Coral = Color(MainActivityUiSupport.CORAL)
-    val Teal = Color(0xFF24756C)
+    val Teal = Color(MainActivityUiSupport.TEAL)
+    val Blue = Color(MainActivityUiSupport.BLUE)
+    val Grey = Color(0xFFB2B2BA)
+    val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
     val White = Color(0xFFFFFFFF)
     val PanelFill = Color(0xFFFFFDFE)
-    val PanelBorder = Color(0xFFFFC7DE)
+    val PanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
     val SubtleButtonBorder = Color(0xFFEBD6E4)
     val ButtonBorder = Color(0xFFEEBDDA)
     val PanelShape = RoundedCornerShape(24.dp)
     val ButtonShape = RoundedCornerShape(12.dp)
     val WideButtonShape = RoundedCornerShape(22.dp)
+
+    fun readableTextColor(background: Color): Color {
+        val inkContrast = contrastRatio(Ink, background)
+        val whiteContrast = contrastRatio(White, background)
+        return if (inkContrast >= whiteContrast) Ink else White
+    }
+}
+
+private fun contrastRatio(foreground: Color, background: Color): Double {
+    val foregroundLuminance = foreground.luminance().toDouble()
+    val backgroundLuminance = background.luminance().toDouble()
+    val lighter = max(foregroundLuminance, backgroundLuminance)
+    val darker = min(foregroundLuminance, backgroundLuminance)
+    return (lighter + 0.05) / (darker + 0.05)
 }
 
 @Composable

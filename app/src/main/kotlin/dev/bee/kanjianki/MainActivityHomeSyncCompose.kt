@@ -24,20 +24,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Ink = ComposeColor(0xFF2D1635)
-private val White = ComposeColor(0xFFFFFFFF)
-private val BorderPink = ComposeColor(0xFFEBD6E4)
-
 @Composable
 fun SyncResultScreen(model: SyncResultScreenModel) {
     val accent = ComposeColor(model.accentColor)
+    val contentColor = KaniUiTokens.readableTextColor(accent)
+    val primaryColor = ComposeColor(model.primaryColor)
+    val primaryContentColor = KaniUiTokens.readableTextColor(primaryColor)
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = model.title,
-            color = Ink,
+            color = KaniUiTokens.Ink,
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
@@ -46,7 +45,7 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             color = accent,
-            border = BorderStroke(1.dp, accent)
+            border = BorderStroke(1.dp, KaniUiTokens.PanelBorder)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -55,7 +54,7 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
                 model.headline?.let { headline ->
                     Text(
                         text = headline,
-                        color = White,
+                        color = contentColor,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -63,7 +62,7 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
                 model.lines.forEachIndexed { index, line ->
                     Text(
                         text = line,
-                        color = White,
+                        color = contentColor,
                         fontSize = if (index == 0 && model.headline == null) 17.sp else 15.sp,
                         fontWeight = if (index == 0 && model.headline == null) FontWeight.Normal else FontWeight.Medium
                     )
@@ -76,8 +75,8 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ComposeColor(model.primaryColor),
-                    contentColor = White
+                    containerColor = primaryColor,
+                    contentColor = primaryContentColor
                 )
             ) {
                 Text(
@@ -91,10 +90,10 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
             onClick = { model.onSecondary.run() },
             modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, BorderPink),
+            border = BorderStroke(1.dp, KaniUiTokens.SubtleButtonBorder),
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = White,
-                contentColor = Ink
+                containerColor = KaniUiTokens.White,
+                contentColor = KaniUiTokens.Ink
             )
         ) {
             Text(

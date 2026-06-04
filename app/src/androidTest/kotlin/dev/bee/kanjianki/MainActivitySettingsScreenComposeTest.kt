@@ -1,8 +1,10 @@
 package dev.bee.kanjianki
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -14,10 +16,63 @@ class MainActivitySettingsScreenComposeTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun preservesExpandedCategoryWhenTitleChanges() {
+        val titleState = mutableStateOf("Anki import")
+
+        composeRule.setContent {
+            SettingsScreen(
+                model = SettingsScreenModel(
+                    homeLabel = "Home",
+                    onHome = Runnable {},
+                    hero = SettingsAutomationHeroModel(
+                        cockpitLabel = "Settings overview",
+                        title = "Settings",
+                        body = "Configure Kani behavior.",
+                        rows = listOf(
+                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
+                        ),
+                    ),
+                    categories = listOf(
+                        SettingsCategorySectionModel(
+                            sectionKey = "settings-anki-source",
+                            title = titleState.value,
+                            summary = "Choose what gets imported.",
+                            iconRes = R.drawable.ic_book_24,
+                            expanded = false,
+                            panelCount = "1 panel",
+                            contentDescription = "Expand ${titleState.value}",
+                            onToggle = Runnable {},
+                            panels = listOf(
+                                SettingsReferenceDataLinkModel(
+                                    title = "Import details",
+                                    body = "Review the import mapping before enabling it.",
+                                    actionLabel = "Open import details",
+                                    onAction = Runnable {},
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).performClick()
+        composeRule.onNodeWithText("Open import details").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            titleState.value = "Import sources"
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Open import details").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Import sources").assertIsDisplayed()
+    }
+
+    @Test
     fun rendersSettingsRouteAndInvokesShellActions() {
         var homeClicked = false
         var categoryToggled = false
-        var dataClicked = false
+        var importClicked = false
 
         composeRule.setContent {
             SettingsScreen(
@@ -25,7 +80,7 @@ class MainActivitySettingsScreenComposeTest {
                     homeLabel = "Home",
                     onHome = Runnable { homeClicked = true },
                     hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Cockpit",
+                        cockpitLabel = "Settings overview",
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
@@ -35,29 +90,38 @@ class MainActivitySettingsScreenComposeTest {
                     ),
                     categories = listOf(
                         SettingsCategorySectionModel(
-                            title = "Anki source",
+                            sectionKey = "settings-anki-source",
+                            title = "Anki import",
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
                             expanded = false,
                             panelCount = "3 panels",
-                            contentDescription = "Expand Anki source",
+                            contentDescription = "Expand Anki import",
                             onToggle = Runnable { categoryToggled = true },
-                            panels = emptyList()
+                            panels = listOf(
+                                SettingsReferenceDataLinkModel(
+                                    title = "Import details",
+                                    body = "Review the import mapping before enabling it.",
+                                    actionLabel = "Open import details",
+                                    onAction = Runnable { importClicked = true }
+                                )
+                            )
                         ),
                         SettingsCategorySectionModel(
-                            title = "App data",
-                            summary = "Reference data and licenses.",
+                            sectionKey = "settings-reference-data",
+                            title = "Offline data",
+                            summary = "Offline data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
                             panelCount = "1 panel",
-                            contentDescription = "Collapse App data",
+                            contentDescription = "Collapse Offline data",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
-                                    title = "Offline data licenses",
+                                    title = "Data licenses",
                                     body = "Dictionary, stroke, and font attributions.",
                                     actionLabel = "Open licenses",
-                                    onAction = Runnable { dataClicked = true }
+                                    onAction = Runnable {}
                                 )
                             )
                         )
@@ -69,18 +133,23 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Home").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki source").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki import").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("App data").assertIsDisplayed()
-        composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
-        composeRule.onNodeWithText("Open licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Offline data").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
+        composeRule.onNodeWithText("Open import details").assertDoesNotExist()
+        composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
-        composeRule.onNodeWithContentDescription("Expand Anki source").performClick()
-        composeRule.onNodeWithText("Open licenses").performClick()
+        composeRule.onNodeWithContentDescription("Expand Anki import").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Anki import").assertIsDisplayed()
+        composeRule.onNodeWithText("Open import details").assertExists()
+        composeRule.onNodeWithText("Open import details").performClick()
+        composeRule.onNodeWithText("Open licenses").assertExists()
 
         assertTrue(homeClicked)
         assertTrue(categoryToggled)
-        assertTrue(dataClicked)
+        assertTrue(importClicked)
     }
 }

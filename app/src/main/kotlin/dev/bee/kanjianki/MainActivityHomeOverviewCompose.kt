@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +42,10 @@ import androidx.compose.ui.unit.sp
 
 private val HomeInk = Color(0xFF2D1635)
 private val HomeMuted = Color(0xFF6C5674)
+
+internal fun homePrimaryCtaTestTag(label: String): String = "home-primary-cta-$label"
+
+internal fun homeStudyCtaTestTag(title: String): String = "home-study-cta-$title"
 
 @Composable
 fun HomeHeader(
@@ -94,6 +99,7 @@ fun HomePrimaryCta(
             .fillMaxSize()
             .clip(shape)
             .background(Color(color.toLong() and 0xFFFFFFFFL))
+            .testTag(homePrimaryCtaTestTag(label))
             .semantics {
                 contentDescription = label
             }
@@ -132,6 +138,7 @@ fun HomeStudyCta(
                 )
             )
             .border(2.dp, Color(0xFFFFBED6), shape)
+            .testTag(homeStudyCtaTestTag(title))
             .semantics {
                 contentDescription = title
             }

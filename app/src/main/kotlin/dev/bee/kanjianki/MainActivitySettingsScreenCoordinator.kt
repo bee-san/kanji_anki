@@ -102,18 +102,15 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsAnkiExpanded,
                 Runnable {
                     activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
-                    activity.renderSettings(true)
                 },
                 activity.noteTypeSettingsPanelModel(current),
                 activity.importFilterSettingsPanelModel(current),
                 activity.frequencyRangeSettingsPanelModel(current),
-                activity.autoSyncSettingsPanelModel(),
             ),
             settingsStudyBehaviorCategoryModel(
                 activity.settingsStudyExpanded,
                 Runnable {
                     activity.settingsStudyExpanded = !activity.settingsStudyExpanded
-                    activity.renderSettings(true)
                 },
                 MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
@@ -128,8 +125,8 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsSyncExpanded,
                 Runnable {
                     activity.settingsSyncExpanded = !activity.settingsSyncExpanded
-                    activity.renderSettings(true)
                 },
+                activity.autoSyncSettingsPanelModel(),
                 activity.reminderSettingsPanelModel(),
                 SettingsUpdateOverviewPanelModel(
                     settingsUpdatePanelModel(
@@ -138,6 +135,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     ),
                     SettingsTextCopy.openUpdaterLabel(),
                 ) {
+                    activity.settingsScrollY = activity.contentScrollY
                     activity.renderUpdate()
                 },
             ),
@@ -145,7 +143,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.settingsAppExpanded,
                 Runnable {
                     activity.settingsAppExpanded = !activity.settingsAppExpanded
-                    activity.renderSettings(true)
                 },
                 MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
             ),

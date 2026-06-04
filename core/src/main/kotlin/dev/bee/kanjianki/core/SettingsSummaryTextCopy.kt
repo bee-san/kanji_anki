@@ -23,10 +23,10 @@ object SettingsSummaryTextCopy {
             sources.add("weak")
         }
         if (safeSettings.browserQueryImportEnabled()) {
-            sources.add("query")
+            sources.add("browser query")
         }
         if (sources.isEmpty()) {
-            return "No sources"
+            return "No import sources selected"
         }
         return sources.joinToString(" + ") + "; " + matchingCardsSummary(safeSettings)
     }
@@ -41,11 +41,12 @@ object SettingsSummaryTextCopy {
     @JvmStatic
     fun syncStatusHeadline(success: Boolean, errorMessage: String?, suspendedCards: Int, importedKanji: Int): String {
         if (!success) {
-            return "Sync blocked: " + errorMessage.toString()
+            val safeErrorMessage = errorMessage?.takeIf { it.isNotBlank() } ?: "unknown error"
+            return "Sync blocked: $safeErrorMessage"
         }
         return String.format(
             Locale.ROOT,
-            "%d suspended cards archived, %d rare kanji added; active cards optional",
+            "%d suspended cards archived, %d rare kanji added; active cards remain optional",
             suspendedCards,
             importedKanji,
         )

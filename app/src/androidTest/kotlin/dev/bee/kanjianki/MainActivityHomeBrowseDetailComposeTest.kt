@@ -93,7 +93,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("Search").performClick()
         assertEquals(" 裂 ", searched)
 
-        composeRule.onNodeWithText("split").performClick()
+        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
         assertEquals("裂", clickedKanji)
 
         composeRule.onNodeWithText("Home").performClick()
@@ -184,7 +184,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailIdentityModel(
                         title = "split",
                         reading = "レツ",
-                        suspended = true
+                        stateBadges = listOf(BrowseStateBadgeModel("SUSPENDED", 0xFFFF4C76.toInt()))
                     )
                 )
                 BrowseDetailActions(
@@ -235,7 +235,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                         identity = BrowseDetailIdentityModel(
                             title = "split",
                             reading = "レツ",
-                            suspended = false
+                            stateBadges = emptyList()
                         ),
                         reason = BrowseDetailPanelModel(
                             title = "",

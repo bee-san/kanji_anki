@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.unit.dp
@@ -17,6 +20,13 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
+    val expandedCategories = remember(model.categories.map { it.sectionKey }) {
+        mutableStateMapOf<String, Boolean>().apply {
+            model.categories.forEach { category ->
+                put(category.sectionKey, category.expanded)
+            }
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(modifier = Modifier.padding(bottom = 10.dp)) {
             HomeFullWidthHomeButton(
@@ -27,7 +37,21 @@ fun SettingsScreen(model: SettingsScreenModel) {
         SettingsAutomationHero(model.hero)
         Spacer(modifier = Modifier.height(10.dp))
         model.categories.forEach { category ->
-            SettingsCategorySection(category)
+            key(category.sectionKey) {
+                val expanded = expandedCategories[category.sectionKey] ?: category.expanded
+                val onToggle = Runnable {
+                    val currentExpanded = expandedCategories[category.sectionKey] ?: category.expanded
+                    expandedCategories[category.sectionKey] = !currentExpanded
+                    category.onToggle.run()
+                }
+                SettingsCategorySection(
+                    category.copy(
+                        expanded = expanded,
+                        contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, category.title),
+                        onToggle = onToggle,
+                    )
+                )
+            }
         }
     }
 }
@@ -51,6 +75,7 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
             summaryColor = ComposeColor(MainActivityUiSupport.STUDY_MUTED),
             countColor = ComposeColor(MainActivityUiSupport.STUDY_PINK_DARK),
             contentDescription = model.contentDescription,
+            testTagKey = model.sectionKey,
             onToggle = { model.onToggle.run() }
         )
         if (model.expanded) {
@@ -83,6 +108,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
 }
 
 internal fun settingsCategorySectionModel(
+    sectionKey: String,
     title: String,
     summary: String,
     iconRes: Int,
@@ -91,6 +117,7 @@ internal fun settingsCategorySectionModel(
     panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return SettingsCategorySectionModel(
+        sectionKey = sectionKey,
         title = title,
         summary = summary,
         iconRes = iconRes,
@@ -100,6 +127,10 @@ internal fun settingsCategorySectionModel(
         onToggle = onToggle,
         panels = panels,
     )
+}
+
+internal fun settingsCategoryHeaderTestTag(sectionKey: String): String {
+    return "settings-category-$sectionKey"
 }
 
 internal fun settingsScreenModel(

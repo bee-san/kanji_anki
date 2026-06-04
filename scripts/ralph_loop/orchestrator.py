@@ -4,14 +4,36 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 from typing import Sequence, cast
 
+from scripts.ralph_loop import button_contract
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
+from scripts.ralph_loop import ui_manifest
+
+FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "all")
+BUCKET_PRIORITY = {
+    "home": 0,
+    "study": 1,
+    "settings": 2,
+    "stats": 3,
+    "games": 4,
+    "shell": 5,
+    "theme": 6,
+    "shared": 7,
+}
+RISK_WEIGHTS = {
+    "interactive": 40,
+    "stateful_input": 20,
+    "shell_entry": 15,
+    "no_nearest_test": 10,
+    "visual_theme": 5,
+}
 
 
 def positive_int(value: str) -> int:
@@ -33,15 +55,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser = IterationCapParser(description="Kani Ralph UI loop controller.")
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--run-dir", type=Path, default=Path(".ralph-loop/current"))
-    parser.add_argument("--audit-only", action="store_true", help="Run review/validation steps only; never edit the checkout.")
+    parser.add_argument(
+        "--audit-only",
+        action="store_true",
+        help="Run validation only; never edit the checkout.",
+    )
     parser.add_argument("--iterations", type=positive_int, default=1)
     parser.add_argument("--max-iterations", type=positive_int, default=1)
-    parser.add_argument("--file-bucket", default="all")
+    parser.add_argument("--file-bucket", default="all", choices=FILE_BUCKET_CHOICES)
     parser.add_argument("--max-files", type=positive_int, default=1)
     parser.add_argument("--critic-profile", default="design")
     parser.add_argument("--button-profile", default="uitester")
-    parser.add_argument("--critic-cmd", default="hermes -p design chat -Q -t safe -q {prompt}")
-    parser.add_argument("--button-cmd", default="hermes -p uitester chat -Q -t safe -q {prompt}")
+    parser.add_argument(
+        "--critic-cmd",
+        default="hermes -p {profile} chat -Q -t safe -q {prompt}",
+    )
+    parser.add_argument(
+        "--button-cmd",
+        default="hermes -p {profile} chat -Q -t safe -q {prompt}",
+    )
     parser.add_argument("--agent-cmd", default="")
     parser.add_argument("--reviewer-model", default="gpt5.4-codex-mini")
     parser.add_argument("--reviewer-cmd", default="")
@@ -55,18 +87,600 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run_profile_command(template: str, prompt: str, repo_root: Path) -> dict[str, object]:
+def _json_text(data: object) -> str:
+    return json.dumps(data, indent=2, sort_keys=True, default=str)
+
+
+def _write_json(path: Path, data: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_json_text(data) + "\n", encoding="utf-8")
+
+
+def _slugify_path(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-")
+    return slug.lower() or "file"
+
+
+def _format_command(template: str, *, prompt: str, profile: str) -> list[str]:
+    return [part.format(prompt=prompt, profile=profile) for part in shlex.split(template)]
+
+
+def _run_profile_command(
+    template: str,
+    prompt: str,
+    repo_root: Path,
+    *,
+    out_dir: Path,
+    label: str,
+    profile: str,
+) -> dict[str, object]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prompt_path = out_dir / f"{label}.prompt.txt"
+    result_path = out_dir / f"{label}.result.json"
+    prompt_path.write_text(prompt, encoding="utf-8")
+
+    result: dict[str, object] = {
+        "label": label,
+        "profile": profile,
+        "prompt_path": str(prompt_path),
+        "result_path": str(result_path),
+    }
+
     if not template:
-        return {"status": "skipped", "message": "No profile command configured."}
-    command = [part.format(prompt=prompt) for part in shlex.split(template)]
+        result.update(
+            {
+                "status": "skipped",
+                "returncode": None,
+                "command": [],
+                "command_text": "",
+                "stdout": "",
+                "stderr": "No profile command configured.",
+            }
+        )
+        _write_json(result_path, result)
+        return result
+
+    command = _format_command(template, prompt=prompt, profile=profile)
     process = subprocess.run(command, cwd=repo_root, text=True, capture_output=True, check=False)
     status = "passed" if process.returncode == 0 else "failed"
-    return {"status": status, "returncode": process.returncode, "stdout": process.stdout, "stderr": process.stderr}
+    result.update(
+        {
+            "status": status,
+            "returncode": process.returncode,
+            "command": command,
+            "command_text": shlex.join(command),
+            "stdout": process.stdout,
+            "stderr": process.stderr,
+        }
+    )
+    stdout = process.stdout.strip()
+    if stdout:
+        try:
+            result["parsed"] = json.loads(stdout)
+        except json.JSONDecodeError:
+            pass
+    _write_json(result_path, result)
+    return result
+
+
+def _is_interactive(entry: dict[str, object]) -> bool:
+    risk_tags = {str(tag) for tag in entry.get("risk_tags", [])}
+    interactive_markers = entry.get("interactive_markers", [])
+    return bool(interactive_markers) or "interactive" in risk_tags
+
+
+def _selection_score(entry: dict[str, object]) -> tuple[int, int, str]:
+    bucket = str(entry.get("bucket", ""))
+    bucket_rank = BUCKET_PRIORITY.get(bucket, 99)
+    risk_tags = {str(tag) for tag in entry.get("risk_tags", [])}
+    risk_score = sum(RISK_WEIGHTS.get(tag, 0) for tag in risk_tags)
+    path = str(entry.get("path", ""))
+    return bucket_rank, -risk_score, path
+
+
+def _selected_entries(
+    manifest_files: list[dict[str, object]],
+    bucket: str,
+    max_files: int,
+) -> list[dict[str, object]]:
+    entries = [dict(entry) for entry in manifest_files if str(entry.get("bucket")) != "test"]
+    if bucket != "all":
+        entries = [entry for entry in entries if str(entry.get("bucket")) == bucket]
+    entries.sort(key=_selection_score)
+    selected: list[dict[str, object]] = []
+    for entry in entries[:max_files]:
+        entry["selection_score"] = _selection_score(entry)
+        selected.append(entry)
+    return selected
+
+
+def _manifest_slice(manifest: dict[str, object], entry: dict[str, object]) -> dict[str, object]:
+    selected = dict(entry)
+    return {
+        "schema": manifest.get("schema", "ui-manifest-v1"),
+        "summary": {
+            "file_count": 1,
+            "selected_file": str(entry.get("path", "")),
+            "bucket": str(entry.get("bucket", "")),
+            "selection_score": selected.get("selection_score"),
+        },
+        "files": [selected],
+    }
+
+
+def _button_contract_slice(
+    contract: dict[str, object],
+    bucket: str,
+    manifest_bucket_map: dict[str, str],
+) -> dict[str, object]:
+    rows = [
+        dict(row)
+        for row in contract.get("rows", [])
+        if manifest_bucket_map.get(str(row.get("source_file", ""))) == bucket
+    ]
+    return {
+        "schema": contract.get("schema", "button-contract-v1"),
+        "source_manifest": contract.get("source_manifest"),
+        "rows": rows,
+        "summary": {
+            "row_count": len(rows),
+            "bucket": bucket,
+            "covered_rows": sum(1 for row in rows if row.get("existing_tests")),
+            "missing_rows": sum(1 for row in rows if row.get("missing_tests")),
+        },
+    }
+
+
+def _review_with_qa_retry(
+    template: str,
+    prompt: str,
+    repo_root: Path,
+    *,
+    review_dir: Path,
+    initial_profile: str,
+) -> dict[str, object]:
+    attempts: list[dict[str, object]] = []
+    attempts.append(
+        _run_profile_command(
+            template,
+            prompt,
+            repo_root,
+            out_dir=review_dir,
+            label="button-attempt-1",
+            profile=initial_profile,
+        )
+    )
+    if attempts[0]["status"] != "passed" and initial_profile != "qa":
+        attempts.append(
+            _run_profile_command(
+                template,
+                prompt,
+                repo_root,
+                out_dir=review_dir,
+                label="button-attempt-2",
+                profile="qa",
+            )
+        )
+    final_attempt = attempts[-1]
+    return {
+        "profile": initial_profile,
+        "final_profile": final_attempt["profile"],
+        "status": final_attempt["status"],
+        "used_qa_retry": len(attempts) > 1,
+        "attempts": attempts,
+        "prompt_path": attempts[0]["prompt_path"],
+        "result_path": final_attempt["result_path"],
+        "parsed": final_attempt.get("parsed"),
+    }
+
+
+def _severity_rank(value: object | None) -> int:
+    severity = str(value or "medium").lower()
+    if severity in {"critical", "high"}:
+        return 0
+    if severity == "medium":
+        return 1
+    if severity == "low":
+        return 2
+    return 1
+
+
+def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
+    design = review["design"]
+    parsed = design.get("parsed") if isinstance(design, dict) else None
+    parsed = parsed if isinstance(parsed, dict) else {}
+    items: list[dict[str, object]] = []
+    accepted_issues = parsed.get("accepted_issues", [])
+    if isinstance(accepted_issues, list):
+        for issue in accepted_issues:
+            if not isinstance(issue, dict):
+                continue
+            items.append(
+                {
+                    "priority": _severity_rank(issue.get("severity")),
+                    "kind": "design-accepted-issue",
+                    "file": str(issue.get("file") or review["file"]),
+                    "title": str(issue.get("title") or issue.get("summary") or "Accepted UI issue"),
+                    "reason": str(issue.get("expected_fix") or issue.get("evidence") or ""),
+                    "source": "design",
+                    "prompt_path": design.get("prompt_path"),
+                    "result_path": design.get("result_path"),
+                }
+            )
+    if not items and design.get("status") != "passed":
+        highest = parsed.get("highest_priority_issue")
+        if isinstance(highest, dict):
+            items.append(
+                {
+                    "priority": _severity_rank(highest.get("severity")),
+                    "kind": "design-command-failure",
+                    "file": str(highest.get("file") or review["file"]),
+                    "title": str(highest.get("title") or highest.get("summary") or "Design review failed"),
+                    "reason": str(highest.get("reason") or highest.get("evidence") or design.get("stderr") or design.get("stdout") or ""),
+                    "source": "design",
+                    "prompt_path": design.get("prompt_path"),
+                    "result_path": design.get("result_path"),
+                }
+            )
+        elif highest:
+            items.append(
+                {
+                    "priority": 1,
+                    "kind": "design-command-failure",
+                    "file": str(review["file"]),
+                    "title": str(highest),
+                    "reason": str(design.get("stderr") or design.get("stdout") or ""),
+                    "source": "design",
+                    "prompt_path": design.get("prompt_path"),
+                    "result_path": design.get("result_path"),
+                }
+            )
+        else:
+            items.append(
+                {
+                    "priority": 1,
+                    "kind": "design-command-failure",
+                    "file": str(review["file"]),
+                    "title": "Design review failed",
+                    "reason": str(design.get("stderr") or design.get("stdout") or ""),
+                    "source": "design",
+                    "prompt_path": design.get("prompt_path"),
+                    "result_path": design.get("result_path"),
+                }
+            )
+    return items
+
+
+def _button_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
+    button = review["button"]
+    if not isinstance(button, dict) or button.get("status") == "skipped":
+        return []
+    parsed = button.get("parsed") if isinstance(button.get("parsed"), dict) else {}
+    items: list[dict[str, object]] = []
+    source_prompt_path = button.get("prompt_path")
+    source_result_path = button.get("result_path")
+    file_name = str(review["file"])
+
+    missing_contract_rows = parsed.get("missing_contract_rows", [])
+    if isinstance(missing_contract_rows, list):
+        for row in missing_contract_rows:
+            items.append(
+                {
+                    "priority": 0,
+                    "kind": "button-missing-contract-row",
+                    "file": file_name,
+                    "title": f"Add missing contract row {row}",
+                    "reason": f"Missing button contract row for {row}",
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+
+    missing_click_tests = parsed.get("missing_click_tests", [])
+    if isinstance(missing_click_tests, list):
+        for row in missing_click_tests:
+            items.append(
+                {
+                    "priority": 1,
+                    "kind": "button-missing-click-test",
+                    "file": file_name,
+                    "title": f"Add click test for {row}",
+                    "reason": f"Missing click test coverage for {row}",
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+
+    missing_disabled = parsed.get("missing_disabled_state_tests", [])
+    if isinstance(missing_disabled, list):
+        for row in missing_disabled:
+            items.append(
+                {
+                    "priority": 1,
+                    "kind": "button-missing-disabled-state-test",
+                    "file": file_name,
+                    "title": f"Add disabled/loading state test for {row}",
+                    "reason": f"Missing disabled/loading coverage for {row}",
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+
+    a11y_gaps = parsed.get("a11y_gaps", [])
+    if isinstance(a11y_gaps, list):
+        for gap in a11y_gaps:
+            if isinstance(gap, dict):
+                gap_text = str(gap.get("gap") or gap.get("reason") or gap.get("summary") or gap.get("row") or gap)
+                row = str(gap.get("row") or file_name)
+            else:
+                gap_text = str(gap)
+                row = file_name
+            items.append(
+                {
+                    "priority": 2,
+                    "kind": "button-a11y-gap",
+                    "file": file_name,
+                    "title": f"Fix accessibility gap for {row}",
+                    "reason": gap_text,
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+
+    if not items and button.get("status") != "passed":
+        fix = parsed.get("highest_priority_fix")
+        if isinstance(fix, dict):
+            items.append(
+                {
+                    "priority": 0,
+                    "kind": "button-command-failure",
+                    "file": file_name,
+                    "title": str(fix.get("row") or fix.get("title") or "Button review failed"),
+                    "reason": str(fix.get("reason") or fix.get("summary") or button.get("stderr") or button.get("stdout") or ""),
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+        else:
+            items.append(
+                {
+                    "priority": 0,
+                    "kind": "button-command-failure",
+                    "file": file_name,
+                    "title": "Button review failed",
+                    "reason": str(button.get("stderr") or button.get("stdout") or ""),
+                    "source": "button",
+                    "prompt_path": source_prompt_path,
+                    "result_path": source_result_path,
+                }
+            )
+    return items
+
+
+def _render_audit_report_markdown(report: dict[str, object]) -> str:
+    lines = [
+        "# Ralph audit report",
+        "",
+        f"Status: `{report['status']}`",
+        f"Repository: `{report['repo_root']}`",
+        f"Run dir: `{report['run_dir']}`",
+        f"File bucket: `{report['selection']['file_bucket']}`",
+        f"Selected files: `{report['summary']['selected_files']}`",
+        f"Backlog items: `{report['summary']['backlog_items']}`",
+        "",
+        "## Artifacts",
+        "",
+        f"- Manifest: `{report['artifacts']['manifest_json']}`",
+        f"- Button contract JSON: `{report['artifacts']['button_contract_json']}`",
+        f"- Button contract Markdown: `{report['artifacts']['button_contract_markdown']}`",
+        f"- Audit report JSON: `{report['artifacts']['audit_report_json']}`",
+        f"- Audit report Markdown: `{report['artifacts']['audit_report_markdown']}`",
+        "",
+        "## File reviews",
+        "",
+        "| File | Bucket | Design | Button | QA retry | Design prompt | Button prompt |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for review in report["file_reviews"]:
+        design = review["design"]
+        button = review["button"]
+        button_prompt = button["attempts"][0]["prompt_path"] if button.get("attempts") else "-"
+        lines.append(
+            f"| `{review['file']}` | `{review['bucket']}` | `{design['status']}` | `{button['status']}` | `{button.get('used_qa_retry', False)}` | `{design['prompt_path']}` | `{button_prompt}` |"
+        )
+    lines.extend([
+        "",
+        "## Prioritized backlog",
+        "",
+    ])
+    if report["backlog"]:
+        lines.extend([
+            "| Priority | Kind | File | Title | Reason |",
+            "| --- | --- | --- | --- | --- |",
+        ])
+        for item in report["backlog"]:
+            lines.append(
+                f"| `{item['priority']}` | `{item['kind']}` | `{item['file']}` | {item['title']} | {item['reason']} |"
+            )
+    else:
+        lines.append("No backlog items.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_audit_report(
+    *,
+    args: argparse.Namespace,
+    repo_root: Path,
+    run_dir: Path,
+    manifest: dict[str, object],
+    contract: dict[str, object],
+    file_reviews: list[dict[str, object]],
+    backlog: list[dict[str, object]],
+) -> dict[str, object]:
+    summary = {
+        "manifest_files": len(manifest.get("files", [])),
+        "selected_files": len(file_reviews),
+        "interactive_files": sum(1 for review in file_reviews if review["interactive"]),
+        "design_passed": sum(1 for review in file_reviews if review["design"].get("status") == "passed"),
+        "design_failed": sum(1 for review in file_reviews if review["design"].get("status") != "passed"),
+        "button_passed": sum(
+            1 for review in file_reviews if review["interactive"] and review["button"].get("status") == "passed"
+        ),
+        "button_failed": sum(
+            1 for review in file_reviews if review["interactive"] and review["button"].get("status") != "passed"
+        ),
+        "qa_retries": sum(1 for review in file_reviews if review["interactive"] and review["button"].get("used_qa_retry")),
+        "backlog_items": len(backlog),
+    }
+    status = "passed"
+    if summary["backlog_items"]:
+        status = "failed"
+    if any(review["design"].get("status") != "passed" for review in file_reviews):
+        status = "failed"
+    if any(review["interactive"] and review["button"].get("status") != "passed" for review in file_reviews):
+        status = "failed"
+
+    report: dict[str, object] = {
+        "schema": "ralph-audit-report-v1",
+        "status": status,
+        "audit_only": True,
+        "repo_root": str(repo_root),
+        "run_dir": str(run_dir),
+        "selection": {
+            "file_bucket": args.file_bucket,
+            "max_files": args.max_files,
+            "selected_files": len(file_reviews),
+        },
+        "config": {
+            "critic_profile": args.critic_profile,
+            "button_profile": args.button_profile,
+            "critic_cmd": args.critic_cmd,
+            "button_cmd": args.button_cmd,
+            "agent_cmd": args.agent_cmd,
+            "reviewer_model": args.reviewer_model,
+            "reviewer_cmd": args.reviewer_cmd,
+            "pr_branch": args.pr_branch,
+            "push_pr_branch": args.push_pr_branch,
+            "require_remote_green": args.require_remote_green,
+        },
+        "manifest_summary": manifest.get("summary", {}),
+        "button_contract_summary": contract.get("summary", {}),
+        "summary": summary,
+        "file_reviews": file_reviews,
+        "backlog": backlog,
+        "artifacts": {
+            "manifest_json": str(run_dir / "ui-manifest.json"),
+            "button_contract_json": str(run_dir / "button-contract.json"),
+            "button_contract_markdown": str(run_dir / "button-contract.md"),
+        },
+    }
+    report["artifacts"]["audit_report_json"] = str(run_dir / "audit-report.json")
+    report["artifacts"]["audit_report_markdown"] = str(run_dir / "audit-report.md")
+    return report
+
+
+def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    audit_dir = run_dir / "audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest = ui_manifest.build_manifest(repo_root)
+    manifest_path = run_dir / "ui-manifest.json"
+    _write_json(manifest_path, manifest)
+
+    contract = button_contract.build_contract(repo_root, manifest_path)
+    button_contract.write_outputs(contract, repo_root, run_dir / "button-contract.json", run_dir / "button-contract.md")
+
+    manifest_files = cast(list[dict[str, object]], manifest.get("files", []))
+    selected_entries = _selected_entries(manifest_files, args.file_bucket, args.max_files)
+    manifest_bucket_map = {str(entry.get("path", "")): str(entry.get("bucket", "")) for entry in manifest_files}
+
+    file_reviews: list[dict[str, object]] = []
+    backlog: list[dict[str, object]] = []
+    for entry in selected_entries:
+        review_dir = audit_dir / _slugify_path(str(entry.get("path", "file")))
+        review_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest_slice = _manifest_slice(manifest, entry)
+        design_prompt = prompts.load_project_prompt(repo_root, "ralph_design_file_auditor.md").render(
+            file=str(entry.get("path", "")),
+            manifest_json=_json_text(manifest_slice),
+        )
+        design_result = _run_profile_command(
+            args.critic_cmd,
+            design_prompt,
+            repo_root,
+            out_dir=review_dir,
+            label="design",
+            profile=args.critic_profile,
+        )
+
+        interactive = _is_interactive(entry)
+        if interactive:
+            contract_slice = _button_contract_slice(contract, str(entry.get("bucket", "")), manifest_bucket_map)
+            button_prompt = prompts.load_project_prompt(repo_root, "ralph_button_contract_reviewer.md").render(
+                manifest_json=_json_text(manifest_slice),
+                button_contract_json=_json_text(contract_slice),
+            )
+            button_result = _review_with_qa_retry(
+                args.button_cmd,
+                button_prompt,
+                repo_root,
+                review_dir=review_dir,
+                initial_profile=args.button_profile,
+            )
+        else:
+            button_result = {
+                "profile": args.button_profile,
+                "final_profile": args.button_profile,
+                "status": "skipped",
+                "used_qa_retry": False,
+                "attempts": [],
+                "prompt_path": None,
+                "result_path": None,
+                "parsed": None,
+            }
+
+        review = {
+            "file": str(entry.get("path", "")),
+            "bucket": str(entry.get("bucket", "")),
+            "interactive": interactive,
+            "selection_score": entry.get("selection_score"),
+            "manifest_entry": entry,
+            "design": design_result,
+            "button": button_result,
+        }
+        file_reviews.append(review)
+        backlog.extend(_design_backlog_items(review))
+        backlog.extend(_button_backlog_items(review))
+
+    backlog.sort(key=lambda item: (item["priority"], item["file"], item["kind"], item["title"]))
+    report = _build_audit_report(
+        args=args,
+        repo_root=repo_root,
+        run_dir=run_dir,
+        manifest=manifest,
+        contract=contract,
+        file_reviews=file_reviews,
+        backlog=backlog,
+    )
+
+    report_path = run_dir / "audit-report.json"
+    report_md_path = run_dir / "audit-report.md"
+    _write_json(report_path, report)
+    report_md_path.write_text(_render_audit_report_markdown(report), encoding="utf-8")
+    return report
 
 
 def _read_json_file_or_default(path: Path | None, default: dict[str, object]) -> str:
     if path is None or not path.exists():
-        return json.dumps(default, indent=2, sort_keys=True)
+        return _json_text(default)
     return path.read_text(encoding="utf-8")
 
 
@@ -83,7 +697,7 @@ def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
         {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
     )
     return prompts.load_project_prompt(repo_root, "ralph_design_critic.md").render(
-        screenshots_json=json.dumps(result, indent=2, sort_keys=True),
+        screenshots_json=_json_text(result),
         manifest_json=manifest_json,
     )
 
@@ -103,23 +717,8 @@ def _button_contract_prompt(result: dict[str, object], repo_root: Path, run_dir:
     )
 
 
-def run(args: argparse.Namespace) -> dict[str, object]:
-    repo_root = args.repo_root.resolve()
-    run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
+def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
     remote_out = run_dir / "remote-screenshots"
-
-    summary: dict[str, object] = {
-        "status": "passed",
-        "audit_only": args.audit_only,
-        "iterations": args.iterations,
-        "max_iterations": args.max_iterations,
-        "remote_visual": None,
-        "profile_reviews": {},
-    }
-
-    # Remote screenshots are the default visual renderer for this controller. The
-    # helper itself preserves safety: no GitHub Actions self-loop, no protected
-    # branch, and no push unless --push-pr-branch is set.
     remote_result = github_screenshots.run_remote_screenshots(
         repo_root=repo_root,
         workflow=args.remote_screenshot_workflow,
@@ -129,31 +728,62 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         push_pr_branch=args.push_pr_branch,
         require_remote_screenshots=args.require_remote_screenshots,
     )
-    summary["remote_visual"] = remote_result
-    if remote_result["status"] != "passed":
-        summary["status"] = remote_result["status"]
 
     context_path = run_dir / "remote-visual-context.json"
     context_path.parent.mkdir(parents=True, exist_ok=True)
-    context_path.write_text(json.dumps(remote_result, indent=2, sort_keys=True), encoding="utf-8")
-    summary["remote_visual_context"] = str(context_path)
+    context_path.write_text(_json_text(remote_result), encoding="utf-8")
+
+    summary: dict[str, object] = {
+        "schema": "ralph-remote-visual-v1",
+        "status": remote_result["status"],
+        "audit_only": False,
+        "repo_root": str(repo_root),
+        "run_dir": str(run_dir),
+        "remote_visual": remote_result,
+        "remote_visual_context": str(context_path),
+        "profile_reviews": {},
+    }
 
     if remote_result["status"] == "passed":
+        design_review = _run_profile_command(
+            args.critic_cmd,
+            _remote_visual_prompt(remote_result, repo_root),
+            repo_root,
+            out_dir=run_dir / "remote-visual" / "reviews",
+            label="design",
+            profile=args.critic_profile,
+        )
+        button_review = _run_profile_command(
+            args.button_cmd,
+            _button_contract_prompt(remote_result, repo_root, run_dir),
+            repo_root,
+            out_dir=run_dir / "remote-visual" / "reviews",
+            label="button-qa",
+            profile=args.button_profile,
+        )
         summary["profile_reviews"] = {
-            "design": _run_profile_command(args.critic_cmd, _remote_visual_prompt(remote_result, repo_root), repo_root),
-            "button_qa": _run_profile_command(args.button_cmd, _button_contract_prompt(remote_result, repo_root, run_dir), repo_root),
+            "design": design_review,
+            "button_qa": button_review,
         }
+        if design_review["status"] != "passed" or button_review["status"] != "passed":
+            summary["status"] = "failed"
 
     return summary
+
+
+def run(args: argparse.Namespace) -> dict[str, object]:
+    repo_root = args.repo_root.resolve()
+    run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
+    if args.audit_only:
+        return _run_audit_only(args, repo_root, run_dir)
+    return _run_remote_visual_mode(args, repo_root, run_dir)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     result = run(args)
-    print(json.dumps(result, indent=2, sort_keys=True))
-    if result["status"] == "passed":
-        return 0
-    return 1
+    print(_json_text(result))
+    return 0 if result["status"] == "passed" else 1
 
 
 if __name__ == "__main__":

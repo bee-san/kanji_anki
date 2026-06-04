@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +59,7 @@ internal fun SettingsCategoryHeader(
     summaryColor: ComposeColor,
     countColor: ComposeColor,
     contentDescription: String,
+    testTagKey: String,
     onToggle: () -> Unit,
 ) {
     Surface(
@@ -71,8 +74,12 @@ internal fun SettingsCategoryHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
-                .semantics { this.contentDescription = contentDescription }
+                .testTag(settingsCategoryHeaderTestTag(testTagKey))
+                .semantics {
+                    this.contentDescription = contentDescription
+                }
                 .clickable(
+                    role = Role.Button,
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = onToggle

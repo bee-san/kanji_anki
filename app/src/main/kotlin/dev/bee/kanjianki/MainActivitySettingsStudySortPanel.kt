@@ -138,7 +138,7 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
     private fun saveNewCardSort(mode: String) {
         val request = activity.store.saveNewCardSortMode(mode)
         Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings()
+        activity.renderSettings(true)
     }
 
     private companion object {

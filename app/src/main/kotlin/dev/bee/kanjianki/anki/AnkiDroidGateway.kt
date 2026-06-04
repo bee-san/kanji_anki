@@ -143,7 +143,7 @@ class AnkiDroidGateway private constructor(
                 target,
                 mapping,
                 settings,
-                ProviderNotePolicy.configuredBrowserQuerySearch(settings.modelName, settings.normalizedBrowserQuery()),
+                ProviderNotePolicy.browserQuerySearch(settings.normalizedBrowserQuery()),
             )
             for ((key, value) in extraNotes) {
                 notes.putIfAbsent(key, value)
@@ -367,7 +367,7 @@ class AnkiDroidGateway private constructor(
             return emptySet()
         }
         val ids = LinkedHashSet<Long>()
-        val search = ProviderNotePolicy.configuredBrowserQuerySearch(settings.modelName, settings.normalizedBrowserQuery())
+        val search = ProviderNotePolicy.browserQuerySearch(settings.normalizedBrowserQuery())
         val cursor = try {
             resolver.query(uriFor(target.authority, URI_SEGMENT_NOTES), null, search, null, null)
         } catch (error: Exception) {

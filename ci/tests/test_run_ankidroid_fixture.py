@@ -53,10 +53,10 @@ def base_fake_adb(extra_cases: str = "") -> str:
 set -euo pipefail
 printf '%s\\n' "$*" >> "$RUNNER_TEMP/adb-calls.log"
 case "$*" in
+{extra_cases}
   logcat\\ -d*) exit 0 ;;
   wait-for-device*) exit 0 ;;
   install*) exit 0 ;;
-{extra_cases}
   shell\\ monkey*) exit 0 ;;
   shell\\ am\\ start*) exit 0 ;;
   root*) exit 0 ;;
@@ -104,7 +104,7 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "3")
+        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "4")
 
     def test_fixture_fails_when_instrumentation_output_contains_failures(self):
         fake_adb = base_fake_adb(
@@ -161,6 +161,32 @@ OUT
         self.assertIn("Instrumentation reported a failure", result.stdout)
         self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
 
+    def test_fixture_does_not_retry_known_fake_provider_classpath_crash(self):
+        fake_adb = base_fake_adb(
+            """  logcat\\ -d*)
+    cat <<'OUT'
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: FATAL EXCEPTION: main
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: Unable to instantiate provider dev.bee.kanjianki.anki.FakeAnkiDroidProvider
+06-02 08:02:10.733  3186  3186 E AndroidRuntime: java.lang.NoClassDefFoundError: Failed resolution of: Lkotlin/jvm/internal/Intrinsics;
+OUT
+    exit 0 ;;
+  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
+        self.assertIn("Fake AnkiDroid provider classpath crash", result.stdout)
+        self.assertIn("not retrying", result.stdout)
+
     def test_fixture_does_not_retry_assertion_failures(self):
         fake_adb = base_fake_adb(
             """  shell\\ am\\ instrument*)
@@ -215,6 +241,168 @@ OUT
             "mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media",
             adb_calls,
         )
+
+    def test_fixture_repairs_ankidroid_dir_after_app_installs_before_provider_probe(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ pm\\ grant*)
+    touch "$RUNNER_TEMP/app-installed-and-granted"
+    exit 0 ;;
+  shell\\ *chmod*)
+    if [ -f "$RUNNER_TEMP/app-installed-and-granted" ]; then
+      touch "$RUNNER_TEMP/repaired-after-app-installs"
+    fi
+    exit 0 ;;
+  shell\\ content\\ query*)
+    if [ -f "$RUNNER_TEMP/repaired-after-app-installs" ]; then
+      echo 'Row: 0 _id=123, name=Kiku'
+    else
+      echo 'No result found.'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        last_repair = max(i for i, call in enumerate(adb_calls) if "chmod -R" in call)
+        first_probe = next(i for i, call in enumerate(adb_calls) if "content query" in call)
+        self.assertLess(last_repair, first_probe)
+
+    def test_fixture_retries_provider_probe_when_permission_repair_fails(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ pm\\ grant*)
+    touch "$RUNNER_TEMP/app-installed-and-granted"
+    exit 0 ;;
+  shell\\ *chmod*)
+    if [ -f "$RUNNER_TEMP/app-installed-and-granted" ]; then
+      count_file="$RUNNER_TEMP/post-grant-repair-count"
+      count=$(cat "$count_file" 2>/dev/null || echo 0)
+      count=$((count + 1))
+      echo "$count" > "$count_file"
+      if [ "$count" -lt 2 ]; then
+        echo 'chmod: /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid: Permission denied' >&2
+        exit 1
+      fi
+    fi
+    exit 0 ;;
+  shell\\ content\\ query*)
+    echo 'Row: 0 _id=123, name=Kiku'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
+
+    def test_fixture_retries_provider_probe_until_models_are_visible(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ content\\ query*)
+    count_file="$RUNNER_TEMP/provider-probe-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'No result found.'
+    else
+      echo 'Row: 0 _id=123, name=Kiku'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
+
+    def test_fixture_fails_when_instrumentation_omits_ok_marker(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    cat <<'OUT'
+INSTRUMENTATION_STATUS: numtests=45
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS_CODE: -1
+OUT
+    exit 0 ;;
+"""
+        )
+
+        result, _ = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Instrumentation did not report a successful test completion marker", result.stdout)
+
+    def test_fixture_dumps_logcat_when_instrumentation_fails(self):
+        fake_adb = base_fake_adb(
+            """  logcat\\ -d*)
+    echo 'fixture diagnostic logcat line'
+    exit 0 ;;
+  shell\\ am\\ instrument*)
+    echo 'FAILURES!!!'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("fixture diagnostic logcat line", (tmp_path / "ankidroid-fixture-logcat.txt").read_text())
+
+    def test_fixture_respects_single_instrumentation_attempt_override(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(
+            fake_adb,
+            extra_env={"KANJI_LIVE_INSTRUMENTATION_ATTEMPTS": "1"},
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
+        self.assertIn("Running live-provider instrumentation attempt 1/1", result.stdout)
+        self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+
+    def test_fixture_regrants_permission_and_reprobes_before_transient_retry(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ am\\ instrument*)
+    count_file="$RUNNER_TEMP/instrument-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+      exit 0
+    fi
+    echo 'OK (45 tests)'
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        first_instrument = next(i for i, call in enumerate(adb_calls) if "am instrument" in call)
+        retry_grant = next(i for i, call in enumerate(adb_calls[first_instrument + 1 :], start=first_instrument + 1) if "pm grant" in call)
+        retry_probe = next(i for i, call in enumerate(adb_calls[retry_grant + 1 :], start=retry_grant + 1) if "content query" in call)
+        second_instrument = next(i for i, call in enumerate(adb_calls[first_instrument + 1 :], start=first_instrument + 1) if "am instrument" in call)
+        self.assertLess(retry_grant, retry_probe)
+        self.assertLess(retry_probe, second_instrument)
+        self.assertGreaterEqual(sum(1 for call in adb_calls if call == "logcat -c"), 2)
 
     def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
         result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())

@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -26,13 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.FrequencyRetentionRanges
@@ -41,14 +36,12 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val FrequencyInk = Color(0xFF2D1635)
-private val FrequencyMuted = Color(0xFF6C5674)
-private val FrequencyTeal = Color(0xFF24756C)
-private val FrequencyPinkDark = Color(0xFFDA3A7A)
-private val FrequencyPanelBorder = Color(0xFFFFC7DE)
-private val FrequencyWhite = Color(0xFFFFFFFF)
-private val FrequencyPanelShape = RoundedCornerShape(24.dp)
-private val FrequencyButtonShape = RoundedCornerShape(12.dp)
+private val FrequencyInk = KaniUiTokens.Ink
+private val FrequencyMuted = KaniUiTokens.Muted
+private val FrequencyTeal = KaniUiTokens.Teal
+private val FrequencyPanelBorder = KaniUiTokens.PanelBorder
+private val FrequencyWhite = KaniUiTokens.White
+private val FrequencyPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
@@ -144,25 +137,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
                     maxRank = nextMax
                 }
             )
-            Button(
-                onClick = { model.onSave.save(minRankText, maxRankText) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-                shape = FrequencyButtonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = FrequencyPinkDark,
-                    contentColor = FrequencyWhite
-                )
-            ) {
-                Text(
-                    text = model.saveLabel,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            KaniPrimaryButton(label = model.saveLabel) { model.onSave.save(minRankText, maxRankText) }
         }
     }
 }

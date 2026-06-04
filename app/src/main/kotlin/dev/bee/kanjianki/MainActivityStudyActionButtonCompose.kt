@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -28,6 +29,8 @@ private val StudyActionDisabledBorder = Color(0xFFFFD5E6)
 private val StudyActionDisabledText = Color(0xFF9F8A98)
 private val StudyActionDisabledPrimaryFill = Color(0xFFFFC2D8)
 
+internal fun studyActionButtonTestTag(label: String): String = "study-action-button-$label"
+
 @Composable
 internal fun StudyPrimaryActionButton(
     label: String,
@@ -41,7 +44,9 @@ internal fun StudyPrimaryActionButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = minHeight),
+        modifier = modifier
+            .testTag(studyActionButtonTestTag(label))
+            .heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = StudyActionPrimaryColor,
@@ -68,7 +73,9 @@ internal fun StudySecondaryActionButton(
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = minHeight),
+        modifier = modifier
+            .testTag(studyActionButtonTestTag(label))
+            .heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, if (enabled) StudyActionBorderColor else StudyActionDisabledBorder),
         colors = ButtonDefaults.outlinedButtonColors(

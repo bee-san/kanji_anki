@@ -187,6 +187,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun renderHome()
     abstract fun renderUpdate()
     abstract fun renderSettings()
+    open fun renderSettings(preserveScroll: Boolean) {
+        renderSettings()
+    }
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
     abstract fun renderStudyForKanji(kanji: String?)
@@ -298,7 +301,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return MainActivityRuntimeOverrides.notificationsAllowed ?: ReminderScheduler.notificationsAllowed(this)
     }
 
-    fun candidates(result: WritingRecognizer.RecognitionResult): List<RecognitionCandidate> {
+    fun candidates(result: WritingRecognizer.RecognitionResult?): List<RecognitionCandidate> {
         return WritingRecognizer.recognitionCandidates(result)
     }
 
@@ -377,6 +380,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         private fun <T> uninitialized(): T = null as T
 
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
+        const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L

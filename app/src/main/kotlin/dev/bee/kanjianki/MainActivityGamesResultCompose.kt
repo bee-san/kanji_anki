@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.bee.kanjianki.core.KanjiGameCopy
+
+internal fun gamesResultPrimaryButtonTestTag(label: String): String = "games-result-primary-button-$label"
+
+internal fun gamesResultGamesButtonTestTag(): String = "games-result-games-button"
 
 @Composable
 fun GamesUnavailableCard(model: GamesUnavailableModel) {
@@ -107,7 +112,10 @@ fun GamesResultCard(model: GamesResultModel) {
             }
             Button(
                 onClick = { model.onPrimary.run() },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 58.dp)
+                    .testTag(gamesResultPrimaryButtonTestTag(model.primaryLabel)),
                 shape = GamesButtonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ComposeColor(model.primaryColor),
@@ -122,7 +130,10 @@ fun GamesResultCard(model: GamesResultModel) {
             }
             OutlinedButton(
                 onClick = { model.onGames.run() },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 54.dp)
+                    .testTag(gamesResultGamesButtonTestTag()),
                 shape = GamesButtonShape,
                 border = BorderStroke(1.dp, GamesButtonBorder),
                 colors = ButtonDefaults.outlinedButtonColors(

@@ -18,6 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,6 +32,18 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
+
+internal fun homeRecentMistakesCardTestTag(kanji: String): String = "home-recent-mistakes-card-$kanji"
+
+private fun homeRecentMistakesCardDescription(model: HomeRecentMistakesCardModel): String {
+    return listOfNotNull(
+        "Recent mistakes card",
+        model.kanji,
+        model.title,
+        model.subtitle,
+        model.sourceEvidence?.takeIf { it.isNotBlank() }
+    ).joinToString(", ")
+}
 
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
@@ -88,7 +104,11 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = model.onClick),
+            .testTag(homeRecentMistakesCardTestTag(model.kanji))
+            .semantics {
+                contentDescription = homeRecentMistakesCardDescription(model)
+            }
+            .clickable(role = Role.Button, onClick = model.onClick),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)

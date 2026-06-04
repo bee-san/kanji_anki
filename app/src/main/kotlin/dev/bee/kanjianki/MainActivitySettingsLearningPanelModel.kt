@@ -3,6 +3,11 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 
+internal data class SettingsLearningStepsTextState(
+    val newStepsText: String,
+    val reviewStepsText: String,
+)
+
 internal object SettingsLearningStepsPanelModels {
     @JvmStatic
     fun create(
@@ -24,5 +29,10 @@ internal object SettingsLearningStepsPanelModels {
             saveLabel = SettingsTextCopy.saveLearningStepsLabel(),
             onSave = onSave,
         )
+    }
+
+    @JvmStatic
+    fun useNewCardStepsTextState(currentNewStepsText: String): SettingsLearningStepsTextState {
+        return SettingsLearningStepsTextState(currentNewStepsText, currentNewStepsText)
     }
 }

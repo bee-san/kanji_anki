@@ -12,13 +12,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
+
+internal fun homeActionButtonTestTag(label: String): String = "home-action-button-$label"
+
+internal fun homeSectionActionButtonTestTag(label: String): String = "home-section-action-button-$label"
+
+internal fun homeFullWidthHomeButtonTestTag(label: String): String = "home-full-width-home-button-$label"
 
 internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
     return buildList {
@@ -61,7 +67,7 @@ fun HomeActionGrid(actions: List<HomeActionModel>) {
 fun HomeActionButton(action: HomeActionModel, modifier: Modifier = Modifier) {
     KaniOutlinedButton(
         label = action.label,
-        modifier = modifier,
+        modifier = modifier.testTag(homeActionButtonTestTag(action.label)),
         minHeightDp = 58,
         textSizeSp = 15,
         onClick = action.onClick
@@ -83,7 +89,7 @@ fun HomeSectionHeader(
     ) {
         Text(
             text = title,
-            color = Color(0xFF2D1635),
+            color = KaniUiTokens.Ink,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
@@ -94,7 +100,8 @@ fun HomeSectionHeader(
                 label = actionLabel,
                 modifier = Modifier
                     .padding(start = 12.dp)
-                    .width(104.dp),
+                    .width(104.dp)
+                    .testTag(homeSectionActionButtonTestTag(actionLabel)),
                 minHeightDp = 42,
                 textSizeSp = 14,
                 onClick = onAction
@@ -110,7 +117,9 @@ fun HomeFullWidthHomeButton(
 ) {
     KaniOutlinedButton(
         label = label,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(homeFullWidthHomeButtonTestTag(label)),
         minHeightDp = 56,
         onClick = onClick
     )
