@@ -17,7 +17,7 @@ class MainActivitySettingsScreenComposeTest {
 
     @Test
     fun preservesExpandedCategoryWhenTitleChanges() {
-        val titleState = mutableStateOf("Anki import")
+        val titleState = mutableStateOf("Import & sync")
 
         composeRule.setContent {
             SettingsScreen(
@@ -91,12 +91,12 @@ class MainActivitySettingsScreenComposeTest {
                     categories = listOf(
                         SettingsCategorySectionModel(
                             sectionKey = "settings-anki-source",
-                            title = "Anki import",
+                            title = "Import & sync",
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
                             expanded = false,
                             panelCount = "3 panels",
-                            contentDescription = "Expand Anki import",
+                            contentDescription = "Expand Import & sync",
                             onToggle = Runnable { categoryToggled = true },
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -109,12 +109,12 @@ class MainActivitySettingsScreenComposeTest {
                         ),
                         SettingsCategorySectionModel(
                             sectionKey = "settings-reference-data",
-                            title = "Offline data",
-                            summary = "Offline data and licenses.",
+                            title = "Display & data",
+                            summary = "Display & data and licenses.",
                             iconRes = R.drawable.ic_sparkle_24,
                             expanded = true,
                             panelCount = "1 panel",
-                            contentDescription = "Collapse Offline data",
+                            contentDescription = "Collapse Display & data",
                             onToggle = Runnable {},
                             panels = listOf(
                                 SettingsReferenceDataLinkModel(
@@ -133,17 +133,17 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Home").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki import").assertIsDisplayed()
+        composeRule.onNodeWithText("Import & sync").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
-        composeRule.onNodeWithText("Offline data").assertIsDisplayed()
+        composeRule.onNodeWithText("Display & data").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertDoesNotExist()
         composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
-        composeRule.onNodeWithContentDescription("Expand Anki import").performClick()
-        composeRule.onNodeWithContentDescription("Collapse Anki import").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Expand Import & sync").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Import & sync").assertIsDisplayed()
         composeRule.onNodeWithText("Open import details").assertExists()
         composeRule.onNodeWithText("Open import details").performClick()
         composeRule.onNodeWithText("Open licenses").assertExists()
