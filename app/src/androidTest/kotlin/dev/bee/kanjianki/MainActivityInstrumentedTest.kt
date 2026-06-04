@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -286,7 +286,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study behavior");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
@@ -740,7 +740,7 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
 fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Display & data");
+            clickText(scenario, "Offline data & credits");
             waitForText(scenario, "Open data licenses");
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
@@ -751,7 +751,7 @@ fun testReferenceDataLicensesRoundTripFromSettings() {
                 assertHasText(activity, "Back to settings");
             }
             clickText(scenario, "Back to settings");
-            waitForText(scenario, "Display & data");
+            waitForText(scenario, "Offline data & credits");
         }
     }
 
@@ -2772,9 +2772,9 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 "Import & sync",
-                "Deck options",
+                "Study behavior",
                 "Reminders & updates",
-                "Display & data",
+                "Offline data & credits",
                 "Note type",
                 "Using Kiku",
                 "Expression field",
