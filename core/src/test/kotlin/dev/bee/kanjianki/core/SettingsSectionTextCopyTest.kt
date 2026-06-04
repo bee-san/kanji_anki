@@ -26,7 +26,9 @@ class SettingsSectionTextCopyTest {
         assertEquals("Cards per kanji", SettingsSectionTextCopy.matchingCardsStatusLabel())
         assertEquals("Collapse Deck options", SettingsSectionTextCopy.categoryToggleDescription(true, "Deck options"))
         assertEquals("Expand Reminders & updates", SettingsSectionTextCopy.categoryToggleDescription(false, "Reminders & updates"))
-        assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
-        assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+        assertEquals("Expanded", SettingsSectionTextCopy.categoryStateDescription(true))
+        assertEquals("Collapsed", SettingsSectionTextCopy.categoryStateDescription(false))
+        assertEquals("1 setting", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
+        assertEquals("2 settings", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
     }
 }
