@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
+import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -46,6 +47,16 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
         val rows = store.activeDashboardRows()
+        val deckOverviewRows = if (rows.isEmpty()) {
+            emptyList()
+        } else {
+            HomeDeckOverviewPolicy.from(
+                studyItems = store.studyItems(),
+                dashboardRows = rows,
+                nowMillis = now,
+                locallySuspendedKanji = store.locallySuspendedKanji(),
+            ).rows()
+        }
         val homeItems = studyQueue(rows, now, false, null)
         val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
         val entries = if (rows.isEmpty()) {
@@ -59,6 +70,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, sync, provider, streak, homePlan),
+            deckOverviewRows = deckOverviewRows,
             showSyncCta = rows.isEmpty(),
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
             studyLabel = MainActivityBase.LABEL_STUDY_NOW,

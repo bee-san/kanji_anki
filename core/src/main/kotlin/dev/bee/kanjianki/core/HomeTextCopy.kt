@@ -118,6 +118,27 @@ object HomeTextCopy {
     fun focusMetricLabel(): String = "Focus"
 
     @JvmStatic
+    fun deckOverviewTitle(): String = "Deck overview"
+
+    @JvmStatic
+    fun deckOverviewDueLabel(): String = "Due"
+
+    @JvmStatic
+    fun deckOverviewNewLabel(): String = "New"
+
+    @JvmStatic
+    fun deckOverviewLearningLabel(): String = "Learning"
+
+    @JvmStatic
+    fun deckOverviewRelearningLabel(): String = "Relearning"
+
+    @JvmStatic
+    fun deckOverviewSuspendedLabel(): String = "Suspended"
+
+    @JvmStatic
+    fun deckOverviewBuriedLabel(): String = "Buried"
+
+    @JvmStatic
     fun studySupportText(): String = "Start focused practice"
 
     @JvmStatic
