@@ -218,6 +218,9 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
                 assertHasText(activity, "GitHub updater");
 
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, "update"));
+                assertHasText(activity, "GitHub updater");
+
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE));
                 assertHasText(activity, "Browse Kanji");
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_STUDY));
@@ -505,7 +508,7 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
         var disabled = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L)
         var enabledNoHistory = LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L)
         var disabledNoHistory = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
-        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("After first successful sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));

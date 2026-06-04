@@ -1020,7 +1020,7 @@ class ComposeScreenModelsTest {
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
         assertEquals("Daily reminder", model.rows[1][1].label)
-        assertEquals("Blocked", model.rows[1][1].value)
+        assertEquals("Blocked by notifications", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
         assertEquals("Daily sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
