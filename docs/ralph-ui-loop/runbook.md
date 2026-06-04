@@ -142,6 +142,8 @@ If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat
 - If the job sits on `Launch app and capture screenshots` for a long time, the capture script is usually
   waiting for the requested route or an Android dialog/ANR. Treat that as a workflow problem if it never
   advances to `Upload screenshots`.
+- If the emulator fails with `Timeout waiting for emulator to boot`, raise the workflow's
+  `emulator-boot-timeout` before retrying.
 - One failure mode we saw was the emulator runner shell logging `/usr/bin/sh: 1: \\: not found`. When
   that happens, treat the workflow step as malformed and fix the workflow command before retrying.
 - The artifact validator is strict about routes. `all` must include `home`, `study`, `stats`, `settings`,
