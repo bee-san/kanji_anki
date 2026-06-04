@@ -160,7 +160,7 @@ object HomeTextCopy {
     fun noRecentMistakesTitle(): String = "No recent mistakes yet"
 
     @JvmStatic
-    fun noRecentMistakesBody(): String = "Missed and hard reviews will show here after you study."
+    fun noRecentMistakesBody(): String = "Missed and hard reviews appear here."
 
     @JvmStatic
     fun syncDialogTitle(): String = "Sync AnkiDroid?"
@@ -242,7 +242,7 @@ object HomeTextCopy {
     fun browseEmptyTitle(): String = "No local kanji found"
 
     @JvmStatic
-    fun browseEmptyBody(): String = "Sync AnkiDroid first, or try a different search."
+    fun browseEmptyBody(): String = "Sync AnkiDroid first."
 
     @JvmStatic
     fun kanjiNotFoundTitle(): String = "Kanji not found"
