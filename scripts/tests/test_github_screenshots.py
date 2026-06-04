@@ -47,6 +47,12 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertIn('bash ci/scripts/capture_android_screenshots.sh "$SCREENSHOT_ROUTE"', workflow)
         self.assertNotIn("capture_android_screenshots.sh '${{ inputs.screenshot_route }}'", workflow)
 
+    def test_capture_script_uses_portable_mktemp_for_uiautomator_dump(self) -> None:
+        script = Path("ci/scripts/capture_android_screenshots.sh").read_text(encoding="utf-8")
+
+        self.assertIn('mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX"', script)
+        self.assertNotIn('mktemp -t kani-ui', script)
+
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp).resolve()

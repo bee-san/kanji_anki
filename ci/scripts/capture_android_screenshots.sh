@@ -90,7 +90,7 @@ capture_png() {
 
 dump_ui_xml() {
   local local_xml
-  local_xml="$(mktemp -t kani-ui)"
+  local_xml="$(mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX")"
   if ! adb shell uiautomator dump /sdcard/kani-ui.xml >/dev/null 2>&1; then
     rm -f "${local_xml}"
     printf '\n'
