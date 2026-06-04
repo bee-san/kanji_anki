@@ -5,7 +5,6 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -142,7 +141,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             model = route.cardModel,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 360.dp)
                 .padding(top = 8.dp, bottom = 8.dp)
                 .onGloballyPositioned { coordinates ->
                     val position = coordinates.positionInWindow()
@@ -154,6 +152,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                         position.y + size.height,
                     )
                 },
+            onTypingDone = Runnable { revealFlashcardAnswer() },
         )
     }
 

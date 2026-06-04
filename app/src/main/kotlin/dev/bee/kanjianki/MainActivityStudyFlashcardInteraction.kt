@@ -26,6 +26,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         if (activity.flashcardAnswerRevealed) {
             return
         }
+        activity.flashcardAnswerRevealed = true
         val session = activity.activeSession
         if (session != null &&
             StudyTaskCopy.isTypingMeaningTask(session) &&
@@ -40,7 +41,6 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             activity.submitReview(MainActivityBase.RATING_GOOD, false)
             return
         }
-        activity.flashcardAnswerRevealed = true
         val revealState = activity.flashcardRevealState
         if (revealState != null) {
             revealState.reveal()
