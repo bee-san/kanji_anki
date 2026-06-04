@@ -84,6 +84,53 @@ class ReminderCopyPolicyTest {
     }
 
     @Test
+    fun forPlanReturnsCaughtUpCopyWhenNothingElseIsDueAfterStudy() {
+        val now = utc(2026, Calendar.MAY, 15, 8, 0)
+
+        val copy = ReminderCopyPolicy.forPlan(planRequest(
+            listOf(row("裂", 80)),
+            listOf(RecordsStudyModels.StudyItem("裂", "review", now + 7_200_000L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
+            1,
+            now,
+            studiedToday = setOf("裂"),
+        ))
+
+        assertEquals("Kani is caught up", copy.title)
+        assertEquals("You've already studied today. Open Kani later when more kanji come back.", copy.message)
+    }
+
+    @Test
+    fun forPlanUsesCurrentStreakLabelWhenWaitingForMoreKanji() {
+        val now = utc(2026, Calendar.MAY, 15, 8, 0)
+
+        val copy = ReminderCopyPolicy.forPlan(planRequest(
+            listOf(row("裂", 80)),
+            emptyList(),
+            1,
+            now,
+            currentStreakDays = 3,
+        ))
+
+        assertEquals("Kani streak reminder", copy.title)
+        assertEquals("1 kanji is waiting. Open Kani to keep your 3-day streak alive.", copy.message)
+    }
+
+    @Test
+    fun streakCopyOmitsWaitingTextWhenNothingIsWaiting() {
+        val method = ReminderCopyPolicy::class.java.getDeclaredMethod(
+            "streakCopy",
+            Int::class.javaPrimitiveType!!,
+            Int::class.javaPrimitiveType!!,
+        )
+        method.isAccessible = true
+
+        val copy = method.invoke(ReminderCopyPolicy, 0, 3) as ReminderCopyPolicy.ReminderCopy
+
+        assertEquals("Kani streak reminder", copy.title)
+        assertEquals("Open Kani to keep your 3-day streak alive.", copy.message)
+    }
+
+    @Test
     fun forCountsFormatsFocusRecoveryAndRestMessages() {
         val oneFocus = ReminderCopyPolicy.forCounts(1, 4)
         val manyFocus = ReminderCopyPolicy.forCounts(3, 4)
