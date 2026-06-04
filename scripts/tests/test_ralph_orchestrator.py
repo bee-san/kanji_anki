@@ -58,6 +58,8 @@ class RalphOrchestratorTest(unittest.TestCase):
 
         self.assertTrue(args.audit_only)
         self.assertEqual("settings", args.file_bucket)
+        shared_args = parser.parse_args(["--repo-root", str(root), "--audit-only", "--file-bucket", "shared"])
+        self.assertEqual("shared", shared_args.file_bucket)
         self.assertEqual(2, args.max_files)
         self.assertEqual("design-critic", args.critic_profile)
         self.assertEqual("qa", args.button_profile)
@@ -143,7 +145,7 @@ class RalphOrchestratorTest(unittest.TestCase):
                 if profile == "design":
                     return CompletedProcess(args, 0, design_stdout, "")
                 if profile == "uitester":
-                    return CompletedProcess(args, 1, button_initial_stdout, "uitester review asked for qa retry")
+                    return CompletedProcess(args, 0, button_initial_stdout, "uitester review asked for qa retry")
                 if profile == "qa":
                     return CompletedProcess(args, 0, button_retry_stdout, "")
                 raise AssertionError(f"unexpected profile command: {args}")
@@ -202,9 +204,13 @@ class RalphOrchestratorTest(unittest.TestCase):
             button_prompt_path = Path(review["button"]["attempts"][0]["prompt_path"])
             self.assertTrue(design_prompt_path.exists())
             self.assertTrue(button_prompt_path.exists())
-            self.assertIn("File under review: app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", design_prompt_path.read_text(encoding="utf-8"))
-            self.assertIn('"schema": "ui-manifest-v1"', design_prompt_path.read_text(encoding="utf-8"))
-            self.assertIn('"schema": "button-contract-v1"', button_prompt_path.read_text(encoding="utf-8"))
+            design_prompt_text = design_prompt_path.read_text(encoding="utf-8")
+            button_prompt_text = button_prompt_path.read_text(encoding="utf-8")
+            self.assertIn("File under review: app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", design_prompt_text)
+            self.assertIn('"schema": "ui-manifest-v1"', design_prompt_text)
+            self.assertIn('"schema": "button-contract-v1"', button_prompt_text)
+            self.assertNotIn("settings-save-toggle-reorder", button_prompt_text)
+            self.assertNotIn("SettingsStudyLadderCompose.kt", button_prompt_text)
             self.assertEqual(source_texts, self._current_source_texts(root))
             self.assertTrue((root / ".ralph-loop/current/ui-manifest.json").exists())
             self.assertTrue((root / ".ralph-loop/current/button-contract.json").exists())
@@ -273,9 +279,9 @@ class RalphOrchestratorTest(unittest.TestCase):
                 if profile == "design":
                     return CompletedProcess(args, 0, design_stdout, "")
                 if profile == "uitester":
-                    return CompletedProcess(args, 1, button_initial_stdout, "uitester review asked for qa retry")
+                    return CompletedProcess(args, 0, button_initial_stdout, "uitester review asked for qa retry")
                 if profile == "qa":
-                    return CompletedProcess(args, 1, button_retry_stdout, "qa still sees missing button coverage")
+                    return CompletedProcess(args, 0, button_retry_stdout, "qa still sees missing button coverage")
                 raise AssertionError(f"unexpected profile command: {args}")
 
             with patch.object(orchestrator.github_screenshots, "run_remote_screenshots", side_effect=AssertionError("remote screenshots should not run in audit-only mode")), patch.object(orchestrator.subprocess, "run", side_effect=fake_run):
@@ -326,6 +332,43 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertIn('"status": "failed"', Path(first_attempt["result_path"]).read_text(encoding="utf-8"))
             self.assertIn('"status": "failed"', Path(second_attempt["result_path"]).read_text(encoding="utf-8"))
             self.assertEqual(source_texts, self._current_source_texts(root))
+
+    def test_design_schema_problems_become_backlog_items(self) -> None:
+        review = {
+            "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+            "design": {
+                "status": "passed",
+                "prompt_path": "/tmp/design.prompt.txt",
+                "result_path": "/tmp/design.result.json",
+                "parsed": {
+                    "file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                    "visual_problems": [
+                        {
+                            "severity": "high",
+                            "component": "HomePrimaryCta",
+                            "problem": "CTA hierarchy is ambiguous",
+                            "evidence": "Primary and secondary actions use the same treatment",
+                        }
+                    ],
+                    "interaction_a11y_problems": [
+                        {
+                            "severity": "medium",
+                            "component": "Sync button",
+                            "problem": "Loading state lacks assistive text",
+                            "evidence": "Stateful action only changes spinner visibility",
+                        }
+                    ],
+                },
+            },
+        }
+
+        items = orchestrator._design_backlog_items(review)
+
+        self.assertEqual(["design-visual-problem", "design-interaction-a11y-problem"], [item["kind"] for item in items])
+        self.assertEqual([0, 1], [item["priority"] for item in items])
+        self.assertIn("HomePrimaryCta", str(items[0]["title"]))
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt", items[0]["file"])
+        self.assertEqual("/tmp/design.prompt.txt", items[0]["prompt_path"])
 
     def _write_fixture_repo(self, root: Path) -> dict[str, str]:
         fixtures = {

@@ -16,7 +16,7 @@ from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
 from scripts.ralph_loop import ui_manifest
 
-FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "all")
+FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "shared", "all")
 BUCKET_PRIORITY = {
     "home": 0,
     "study": 1,
@@ -156,7 +156,10 @@ def _run_profile_command(
     stdout = process.stdout.strip()
     if stdout:
         try:
-            result["parsed"] = json.loads(stdout)
+            parsed = json.loads(stdout)
+            result["parsed"] = parsed
+            if isinstance(parsed, dict) and parsed.get("passed") is False:
+                result["status"] = "failed"
         except json.JSONDecodeError:
             pass
     _write_json(result_path, result)
@@ -210,13 +213,12 @@ def _manifest_slice(manifest: dict[str, object], entry: dict[str, object]) -> di
 
 def _button_contract_slice(
     contract: dict[str, object],
-    bucket: str,
-    manifest_bucket_map: dict[str, str],
+    selected_file: str,
 ) -> dict[str, object]:
     rows = [
         dict(row)
         for row in contract.get("rows", [])
-        if manifest_bucket_map.get(str(row.get("source_file", ""))) == bucket
+        if str(row.get("source_file", "")) == selected_file
     ]
     return {
         "schema": contract.get("schema", "button-contract-v1"),
@@ -224,7 +226,7 @@ def _button_contract_slice(
         "rows": rows,
         "summary": {
             "row_count": len(rows),
-            "bucket": bucket,
+            "selected_file": selected_file,
             "covered_rows": sum(1 for row in rows if row.get("existing_tests")),
             "missing_rows": sum(1 for row in rows if row.get("missing_tests")),
         },
@@ -286,8 +288,9 @@ def _severity_rank(value: object | None) -> int:
 
 
 def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
-    design = review["design"]
-    parsed = design.get("parsed") if isinstance(design, dict) else None
+    raw_design = review["design"]
+    design = raw_design if isinstance(raw_design, dict) else {}
+    parsed = design.get("parsed")
     parsed = parsed if isinstance(parsed, dict) else {}
     items: list[dict[str, object]] = []
     accepted_issues = parsed.get("accepted_issues", [])
@@ -302,6 +305,31 @@ def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
                     "file": str(issue.get("file") or review["file"]),
                     "title": str(issue.get("title") or issue.get("summary") or "Accepted UI issue"),
                     "reason": str(issue.get("expected_fix") or issue.get("evidence") or ""),
+                    "source": "design",
+                    "prompt_path": design.get("prompt_path"),
+                    "result_path": design.get("result_path"),
+                }
+            )
+    for field_name, kind, default_title in (
+        ("visual_problems", "design-visual-problem", "Accepted visual problem"),
+        ("interaction_a11y_problems", "design-interaction-a11y-problem", "Accepted interaction/accessibility problem"),
+    ):
+        issues = parsed.get(field_name, [])
+        if not isinstance(issues, list):
+            continue
+        for issue in issues:
+            if not isinstance(issue, dict):
+                continue
+            component = str(issue.get("component") or "").strip()
+            problem = str(issue.get("problem") or issue.get("title") or issue.get("summary") or default_title)
+            title = f"{component}: {problem}" if component else problem
+            items.append(
+                {
+                    "priority": _severity_rank(issue.get("severity")),
+                    "kind": kind,
+                    "file": str(issue.get("file") or parsed.get("file") or review["file"]),
+                    "title": title,
+                    "reason": str(issue.get("evidence") or issue.get("expected_fix") or ""),
                     "source": "design",
                     "prompt_path": design.get("prompt_path"),
                     "result_path": design.get("result_path"),
@@ -599,8 +627,6 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
 
     manifest_files = cast(list[dict[str, object]], manifest.get("files", []))
     selected_entries = _selected_entries(manifest_files, args.file_bucket, args.max_files)
-    manifest_bucket_map = {str(entry.get("path", "")): str(entry.get("bucket", "")) for entry in manifest_files}
-
     file_reviews: list[dict[str, object]] = []
     backlog: list[dict[str, object]] = []
     for entry in selected_entries:
@@ -623,7 +649,7 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
 
         interactive = _is_interactive(entry)
         if interactive:
-            contract_slice = _button_contract_slice(contract, str(entry.get("bucket", "")), manifest_bucket_map)
+            contract_slice = _button_contract_slice(contract, str(entry.get("path", "")))
             button_prompt = prompts.load_project_prompt(repo_root, "ralph_button_contract_reviewer.md").render(
                 manifest_json=_json_text(manifest_slice),
                 button_contract_json=_json_text(contract_slice),
