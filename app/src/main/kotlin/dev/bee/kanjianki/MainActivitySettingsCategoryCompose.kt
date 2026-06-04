@@ -33,9 +33,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.SettingsTextCopy
 
 private val HEADER_COLLAPSED_BG = ComposeColor(0xFFFFF6FB)
 private val HEADER_ICON_BG = ComposeColor(0xFFFFEDF6)
@@ -77,6 +79,7 @@ internal fun SettingsCategoryHeader(
                 .testTag(settingsCategoryHeaderTestTag(testTagKey))
                 .semantics {
                     this.contentDescription = contentDescription
+                    this.stateDescription = SettingsTextCopy.categoryStateDescription(expanded)
                 }
                 .clickable(
                     role = Role.Button,

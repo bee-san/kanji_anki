@@ -63,5 +63,8 @@ object SettingsSectionTextCopy {
     }
 
     @JvmStatic
-    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " card" else " cards"
+    fun categoryStateDescription(expanded: Boolean): String = if (expanded) "Expanded" else "Collapsed"
+
+    @JvmStatic
+    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " setting" else " settings"
 }

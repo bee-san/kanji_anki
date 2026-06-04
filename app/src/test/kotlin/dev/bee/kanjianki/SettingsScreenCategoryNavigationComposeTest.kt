@@ -1,6 +1,10 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -58,6 +62,10 @@ class SettingsScreenCategoryNavigationComposeTest {
         }
 
         composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+        composeRule.onNodeWithText("1 setting").assertIsDisplayed()
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
 
@@ -66,6 +74,8 @@ class SettingsScreenCategoryNavigationComposeTest {
 
         assertEquals(1, toggleRuns)
         composeRule.onNodeWithContentDescription("Expand Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
         composeRule.onAllNodesWithTag(panelTag).assertCountEquals(0)
         composeRule.onAllNodesWithText("Deep setting").assertCountEquals(0)
 

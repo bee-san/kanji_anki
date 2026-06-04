@@ -584,7 +584,7 @@ class ComposeScreenModelsTest {
         assertEquals("Tune review behavior.", category.summary)
         assertEquals(R.drawable.ic_target_24, category.iconRes)
         assertEquals(true, category.expanded)
-        assertEquals("1 card", category.panelCount)
+        assertEquals("1 setting", category.panelCount)
         assertEquals("Collapse Study", category.contentDescription)
         assertSame(toggle, category.onToggle)
         assertEquals(listOf(panel), category.panels)
@@ -733,10 +733,10 @@ class ComposeScreenModelsTest {
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("4 cards", importSync.panelCount)
+        assertEquals("4 settings", importSync.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
         assertEquals("Reminders & updates", advanced.title)
-        assertEquals("2 cards", advanced.panelCount)
+        assertEquals("2 settings", advanced.panelCount)
         assertEquals(listOf(reminder, update), advanced.panels)
     }
 

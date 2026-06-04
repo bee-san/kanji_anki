@@ -123,6 +123,9 @@ object SettingsTextCopy {
     fun categoryToggleDescription(expanded: Boolean, title: String): String = SettingsSectionTextCopy.categoryToggleDescription(expanded, title)
 
     @JvmStatic
+    fun categoryStateDescription(expanded: Boolean): String = SettingsSectionTextCopy.categoryStateDescription(expanded)
+
+    @JvmStatic
     fun settingsCategoryPanelCount(panels: Int): String = SettingsSectionTextCopy.settingsCategoryPanelCount(panels)
 
     @JvmStatic
