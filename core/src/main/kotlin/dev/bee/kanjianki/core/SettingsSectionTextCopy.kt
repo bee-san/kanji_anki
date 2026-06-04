@@ -14,10 +14,10 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Advanced controls"
+    fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and app update checks that change how Kani runs in the background."
+    fun settingsAutomationBody(): String = "Daily reminders and update checks that run in the background."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Display & data"

@@ -608,9 +608,9 @@ class ComposeScreenModelsTest {
             "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and app update checks that change how Kani runs in the background.",
+            "Daily reminders and update checks that run in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
@@ -735,7 +735,7 @@ class ComposeScreenModelsTest {
         assertEquals("Import & sync", importSync.title)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
-        assertEquals("Advanced controls", advanced.title)
+        assertEquals("Automation", advanced.title)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals(listOf(reminder, update), advanced.panels)
     }
