@@ -27,12 +27,12 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.setContent {
             HomeHeader(
                 title = HomeTextCopy.appTitle(),
-                subtitle = HomeTextCopy.appSubtitle()
+                subtitle = "Home subtitle"
             )
         }
 
         composeRule.onNodeWithText(HomeTextCopy.appTitle()).assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.appSubtitle()).assertIsDisplayed()
+        composeRule.onNodeWithText("Home subtitle").assertIsDisplayed()
     }
 
     @Test

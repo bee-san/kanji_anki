@@ -84,7 +84,7 @@ object HomeTextCopy {
     fun appTitle(): String = "Kani"
 
     @JvmStatic
-    fun appSubtitle(): String = "An AnkiDroid companion for kanji blindness"
+    fun appSubtitle(): String = ""
 
     @JvmStatic
     fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"

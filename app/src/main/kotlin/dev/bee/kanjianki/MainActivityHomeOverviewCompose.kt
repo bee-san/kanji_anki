@@ -68,13 +68,15 @@ fun HomeHeader(
                 textAlign = TextAlign.Start,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
-            Text(
-                text = subtitle,
-                color = HomeMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    color = HomeMuted,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                )
+            }
         }
         Spacer(modifier = Modifier.width(10.dp))
         Image(
