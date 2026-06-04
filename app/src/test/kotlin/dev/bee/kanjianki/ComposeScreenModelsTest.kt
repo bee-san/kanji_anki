@@ -596,27 +596,28 @@ class ComposeScreenModelsTest {
 
     @Test
     fun settingsCategoryCopyUsesAnkiLikeSections() {
-        assertEquals("Anki import", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
+        assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Note type, filters, and suspended-card range.",
+            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Card ordering, daily limits, learning steps, review spacing, study ahead, and ladder rules.",
+            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Sync, reminders, and updates", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Daily sync, reminders, and app updates.",
+            "Reminders and app update checks that change how Kani runs in the background.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Offline data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Bundled dictionaries, stroke data, fonts, and licenses for offline use.",
+            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
+
 
     @Test
     fun settingsCategoryFactoriesGroupSyncWithImports() {
@@ -726,15 +727,15 @@ class ComposeScreenModelsTest {
             onOpenUpdater = {},
         )
 
-        val importSource = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency)
-        val automation = settingsAutomationCategoryModel(false, noop, autoSync, reminder, update)
+        val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
+        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
 
-        assertEquals("Anki import", importSource.title)
-        assertEquals("3 cards", importSource.panelCount)
-        assertEquals(listOf(noteType, importFilters, frequency), importSource.panels)
-        assertEquals("Sync, reminders, and updates", automation.title)
-        assertEquals("3 cards", automation.panelCount)
-        assertEquals(listOf(autoSync, reminder, update), automation.panels)
+        assertEquals("Import & sync", importSync.title)
+        assertEquals("4 cards", importSync.panelCount)
+        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
+        assertEquals("Advanced controls", advanced.title)
+        assertEquals("2 cards", advanced.panelCount)
+        assertEquals(listOf(reminder, update), advanced.panels)
     }
 
     @Test
