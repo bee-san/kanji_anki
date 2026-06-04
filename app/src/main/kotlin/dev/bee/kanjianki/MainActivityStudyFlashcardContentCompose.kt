@@ -24,7 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -48,8 +49,10 @@ fun FlashcardCard(
     onTypingDone: Runnable? = null,
 ) {
     val cardHeightModifier = if (model.revealState.isRevealed) {
-        val configuration = LocalConfiguration.current
-        Modifier.height(maxOf(360.dp, configuration.screenHeightDp.dp * 0.8f))
+        val windowHeight = with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height.toDp()
+        }
+        Modifier.height(maxOf(360.dp, windowHeight * 0.8f))
     } else {
         Modifier.heightIn(min = 360.dp)
     }
