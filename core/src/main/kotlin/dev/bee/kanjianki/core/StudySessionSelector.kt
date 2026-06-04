@@ -2,7 +2,6 @@ package dev.bee.kanjianki.core
 
 import java.security.SecureRandom
 import java.util.Collections
-import java.util.Random
 
 class StudySessionSelector {
     fun nextSession(
@@ -58,12 +57,15 @@ class StudySessionSelector {
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
-        if (randomSeed == null) {
+        val randomizedItems = if (randomSeed == null) {
             Collections.shuffle(dueItems, SecureRandom())
+            dueItems
         } else {
-            Collections.shuffle(dueItems, Random(randomSeed))
+            val seededItems = dueItems.toMutableList()
+            rotateDeterministically(seededItems, randomSeed)
+            seededItems
         }
-        return dueItems.map { sessionTaskKeyForItem(it) }
+        return randomizedItems.map { sessionTaskKeyForItem(it) }
     }
 
     fun nextSessionForTaskKeys(
@@ -91,6 +93,25 @@ class StudySessionSelector {
             return ""
         }
         return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
+    }
+
+    private fun rotateDeterministically(
+        items: MutableList<RecordsStudyModels.StudyItem>,
+        seed: Long,
+    ) {
+        if (items.size <= 1) {
+            return
+        }
+        val shift = ((mix64(seed) and Long.MAX_VALUE) % items.size).toInt()
+        Collections.rotate(items, if (shift == 0) 1 else shift)
+    }
+
+    private fun mix64(value: Long): Long {
+        var x = value
+        x = (x xor (x ushr 33)) * -49064778989728563L
+        x = (x xor (x ushr 33)) * -4265267296055464877L
+        x = x xor (x ushr 33)
+        return x
     }
 
     private fun dueItemByTaskKey(
