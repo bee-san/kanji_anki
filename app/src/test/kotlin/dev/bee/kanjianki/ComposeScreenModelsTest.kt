@@ -603,9 +603,9 @@ class ComposeScreenModelsTest {
             "Choose which AnkiDroid cards Kani imports and when sync runs.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study behavior", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Learning steps, deck limits, retention, workload, sorting, and ladder movement.",
+            "New-card order, workload, retention, learning steps, study ahead, and ladder movement.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Reminders & updates", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -613,7 +613,7 @@ class ComposeScreenModelsTest {
             "Daily reminders, daily sync, and app updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
-        assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
+        assertEquals("Offline data & credits", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
             "Offline dictionaries, stroke data, fonts, and attribution.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),

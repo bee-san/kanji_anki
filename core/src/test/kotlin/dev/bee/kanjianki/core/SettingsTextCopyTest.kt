@@ -39,11 +39,11 @@ class SettingsTextCopyTest {
                         "release-v0.4.33",
                         "Import & sync",
                         "Choose which AnkiDroid cards Kani imports and when sync runs.",
-                        "Deck options",
-                        "Learning steps, deck limits, retention, workload, sorting, and ladder movement.",
+                        "Study behavior",
+                        "New-card order, workload, retention, learning steps, study ahead, and ladder movement.",
                         "Reminders & updates",
                         "Daily reminders, daily sync, and app updates.",
-                        "Display & data",
+                        "Offline data & credits",
                         "Offline dictionaries, stroke data, fonts, and attribution.",
                 ),
                 listOf(
@@ -133,7 +133,7 @@ class SettingsTextCopyTest {
                 listOf(
                         "Cards per kanji",
                         "Reminder: Off",
-                        "Collapse Deck options",
+                        "Collapse Study behavior",
                         "Expand Reminders & updates",
                         "Expanded",
                         "Collapsed",
@@ -151,7 +151,7 @@ class SettingsTextCopyTest {
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Deck options"),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study behavior"),
                         SettingsTextCopy.categoryToggleDescription(false, "Reminders & updates"),
                         SettingsTextCopy.categoryStateDescription(true),
                         SettingsTextCopy.categoryStateDescription(false),
