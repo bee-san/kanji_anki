@@ -67,7 +67,7 @@ internal fun settingsAutomationCategoryModel(
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_AUTOMATION,
         title = SettingsTextCopy.settingsAutomationTitle(),
-        summary = SettingsTextCopy.settingsAutomationBody(),
+        summary = "",
         iconRes = R.drawable.ic_sync_24,
         expanded = expanded,
         onToggle = onToggle,
