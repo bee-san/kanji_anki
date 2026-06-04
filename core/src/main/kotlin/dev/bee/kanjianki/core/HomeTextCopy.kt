@@ -273,19 +273,19 @@ object HomeTextCopy {
     fun relearningChipLabel(): String = "relearning"
 
     @JvmStatic
-    fun backToBrowseKanjiLabel(): String = "Back to Browse Kanji"
+    fun backToBrowseKanjiLabel(): String = "Back to Browse"
 
     @JvmStatic
     fun detailReasonTitle(): String = ""
 
     @JvmStatic
     fun historicalReasonText(): String =
-        "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."
+        "No longer active, but kept in local recovery history."
 
     @JvmStatic
     fun activeReasonText(row: RecordsImportModels.DashboardRow?): String {
         val safeRow = row ?: throw NullPointerException("row")
-        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence from AnkiDroid." else safeRow.reasonText
+        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence." else safeRow.reasonText
     }
 
     @JvmStatic

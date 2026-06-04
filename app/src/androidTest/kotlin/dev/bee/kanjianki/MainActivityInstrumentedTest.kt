@@ -203,7 +203,7 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
             }
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity { activity ->
-                assertHasText(activity, "Back to Browse Kanji");
+                assertHasText(activity, "Back to Browse");
                 assertHasText(activity, "Local inventory");
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Suspend locally");
@@ -219,7 +219,7 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Suspend locally");
             }
-            clickText(scenario, "Back to Browse Kanji");
+            clickText(scenario, "Back to Browse");
             scenario.onActivity { activity ->
                 assertEquals("拉", activity.activeBrowseQuery);
                 assertHasText(activity, "拉");

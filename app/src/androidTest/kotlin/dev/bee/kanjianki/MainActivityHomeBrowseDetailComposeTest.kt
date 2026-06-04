@@ -128,7 +128,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
                         title = "",
-                        lines = listOf("Current local practice evidence from AnkiDroid.", "Anki browser: deck:Japanese"),
+                        lines = listOf("Current local practice evidence.", "Anki browser: deck:Japanese"),
                         color = 0xFF6E5CE6.toInt(),
                         style = BrowseDetailPanelStyle.BAND
                     )
@@ -153,7 +153,7 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("Current local practice evidence from AnkiDroid.").assertIsDisplayed()
+        composeRule.onNodeWithText("Current local practice evidence.").assertIsDisplayed()
         composeRule.onNodeWithText("Anki browser: deck:Japanese").assertIsDisplayed()
         composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
         composeRule.onNodeWithText("1 source note/card · 2 stored examples").assertIsDisplayed()
@@ -176,7 +176,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                 BrowseDetailHero(
                     model = BrowseDetailHeroModel(
                         kanji = "裂",
-                        navigationLabel = "Back to Browse Kanji",
+                        navigationLabel = "Back to Browse",
                         onNavigate = Runnable { backClicked = true }
                     )
                 )
@@ -206,7 +206,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
         composeRule.onNodeWithText("Copy Anki search").performClick()
         composeRule.onNodeWithText("Copied Anki search").assertIsDisplayed()
@@ -229,7 +229,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailScreenModel(
                         hero = BrowseDetailHeroModel(
                             kanji = "裂",
-                            navigationLabel = "Back to Browse Kanji",
+                            navigationLabel = "Back to Browse",
                             onNavigate = Runnable { homeClicked = true }
                         ),
                         identity = BrowseDetailIdentityModel(
@@ -239,7 +239,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                         ),
                         reason = BrowseDetailPanelModel(
                             title = "",
-                            lines = listOf("Current local practice evidence from AnkiDroid."),
+                            lines = listOf("Current local practice evidence."),
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
                         ),
@@ -296,7 +296,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("裂語  レツゴ").assertIsDisplayed()
         composeRule.onNodeWithText("Kanji not found").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
         assertTrue(homeClicked)
         assertTrue(reviewClicked)

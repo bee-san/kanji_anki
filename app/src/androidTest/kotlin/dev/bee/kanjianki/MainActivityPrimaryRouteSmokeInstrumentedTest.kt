@@ -73,7 +73,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisible("local source")
 
             scenario.onActivity { activity -> activity.renderDetail("裂", true, "裂") }
-            assertVisible("Back to Browse Kanji")
+            assertVisible("Back to Browse")
             assertVisible("裂")
 
             scenario.onActivity { it.renderStats() }

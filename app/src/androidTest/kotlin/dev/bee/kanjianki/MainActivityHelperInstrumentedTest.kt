@@ -735,11 +735,11 @@ private fun verifyDetailPanels(activity: MainActivity, inventory: RecordsImportM
         assertEquals("", historicalIdentity.reading);
 
         var inventoryReason = browseDetail.detailReasonPanelModel(null, inventory)
-        assertTrue(inventoryReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(inventoryReason.lines.contains("No longer active, but kept in local recovery history."));
         assertTrue(inventoryReason.lines.contains("Anki browser: kanji:語"));
 
         var historicalReason = browseDetail.detailReasonPanelModel(null, null)
-        assertTrue(historicalReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(historicalReason.lines.contains("No longer active, but kept in local recovery history."));
         assertFalse(historicalReason.lines.toString().contains("Anki browser:"));
 
         var activeReason = browseDetail.detailReasonPanelModel(row, inventory)
@@ -1674,7 +1674,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         assertEquals("裂", activity.activeBrowseQuery);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertHasText(activity, "Back to Browse Kanji");
+        assertHasText(activity, "Back to Browse");
         assertHasText(activity, "Local inventory");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
@@ -1982,7 +1982,7 @@ fun browseAndDetailCopyAvoidMisleadingOrBlankRows() {
                 );
                 var browseDetail = MainActivityHomeBrowseDetail(activity)
                 var reason = browseDetail.detailReasonPanelModel(row, null)
-                assertTrue(reason.lines.contains("Current local practice evidence from AnkiDroid."));
+                assertTrue(reason.lines.contains("Current local practice evidence."));
                 assertTrue(reason.lines.get(1).contains("Anki browser: deck:Japanese"));
 
                 var identity = browseDetail.detailIdentityModel(row, null, false)

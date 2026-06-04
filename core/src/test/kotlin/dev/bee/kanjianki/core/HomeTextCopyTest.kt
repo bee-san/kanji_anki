@@ -178,7 +178,7 @@ class HomeTextCopyTest {
         assertEquals("3 local sources · 1 example", HomeTextCopy.browseInventorySummary(3, 1))
         assertEquals("SUSPENDED", HomeTextCopy.suspendedChipLabel())
         assertEquals("relearning", HomeTextCopy.relearningChipLabel())
-        assertEquals("Back to Browse Kanji", HomeTextCopy.backToBrowseKanjiLabel())
+        assertEquals("Back to Browse", HomeTextCopy.backToBrowseKanjiLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.browseItemMeaning(null) }
     }
 
@@ -196,8 +196,8 @@ class HomeTextCopyTest {
                 "Historical recovery",
                 "Historical recovery",
                 "language",
-                "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
-                "Current local practice evidence from AnkiDroid.",
+                "No longer active, but kept in local recovery history.",
+                "Current local practice evidence.",
                 "manual reason"
             ),
             listOf(
