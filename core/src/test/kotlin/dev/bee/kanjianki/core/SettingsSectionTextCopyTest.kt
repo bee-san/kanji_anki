@@ -9,7 +9,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("New cards, review timing, workload, study ahead, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily reminders and update checks that run in the background.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())

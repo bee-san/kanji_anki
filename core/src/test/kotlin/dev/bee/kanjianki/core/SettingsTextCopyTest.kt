@@ -40,7 +40,7 @@ class SettingsTextCopyTest {
                         "Import & sync",
                         "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
                         "Deck options",
-                        "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+                        "New cards, review timing, workload, study ahead, and ladder controls.",
                         "Automation",
                         "Daily reminders and update checks that run in the background.",
                         "Display & data",

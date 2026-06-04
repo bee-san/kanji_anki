@@ -605,7 +605,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            "New cards, review timing, workload, study ahead, and ladder controls.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
