@@ -11,6 +11,8 @@ internal class StatsPrecomputeStore(
     interface Computations {
         fun outcomeStats(db: SQLiteDatabase): StudyStatsStore.KaniOutcomeStats
         fun impactReport(db: SQLiteDatabase): KanjiImpactAnalyzer.Report
+        fun studyImpactStats(db: SQLiteDatabase): StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)
+        fun recentMistakes(db: SQLiteDatabase, limit: Int): List<StudyStatsStore.RecentMistake> = emptyList()
     }
 
     fun refresh(
@@ -20,11 +22,16 @@ internal class StatsPrecomputeStore(
         val sourceVersion = cacheStore.currentSourceVersion(db)
         val outcomeStats = computations.outcomeStats(db)
         val impactReport = computations.impactReport(db)
+        val studyImpactStats = computations.studyImpactStats(db)
+        val recentMistakes = computations.recentMistakes(db, STATS_RECENT_MISTAKE_LIMIT)
         val snapshot = StatsCacheStore.Snapshot(
             outcomeStats,
             impactReport,
             generatedAtMillis,
             sourceVersion,
+            studyImpactStats,
+            recentMistakes,
+            STATS_CACHE_FORMAT_VERSION,
         )
         cacheStore.write(db, snapshot)
         return snapshot
@@ -37,6 +44,14 @@ internal class StatsPrecomputeStore(
 
         override fun impactReport(db: SQLiteDatabase): KanjiImpactAnalyzer.Report {
             return KanjiImpactReportStore(store).report(db)
+        }
+
+        override fun studyImpactStats(db: SQLiteDatabase): StudyStatsStore.StudyImpactStats {
+            return StudyStatsStore(store, db).studyImpactStats()
+        }
+
+        override fun recentMistakes(db: SQLiteDatabase, limit: Int): List<StudyStatsStore.RecentMistake> {
+            return StudyStatsStore(store, db).recentMistakes(limit)
         }
     }
 }

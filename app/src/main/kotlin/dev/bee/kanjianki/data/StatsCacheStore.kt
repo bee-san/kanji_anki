@@ -6,12 +6,18 @@ import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import org.json.JSONObject
 
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 2
+internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 5
+
 internal class StatsCacheStore(private val store: LocalStore) {
     data class Snapshot(
         val outcomeStats: StudyStatsStore.KaniOutcomeStats,
         val impactReport: KanjiImpactAnalyzer.Report,
         val generatedAtMillis: Long,
         val sourceVersion: Long,
+        val studyImpactStats: StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
+        val recentMistakes: List<StudyStatsStore.RecentMistake> = emptyList(),
+        val cacheFormatVersion: Int = 1,
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -67,7 +73,14 @@ internal class StatsCacheStore(private val store: LocalStore) {
             put("id", 1)
             put("source_version", snapshot.sourceVersion)
             put("generated_at", snapshot.generatedAtMillis)
-            put("outcome_json", StatsCacheCodec.outcomeToJson(snapshot.outcomeStats))
+            put(
+                "outcome_json",
+                StatsCacheCodec.outcomeToJson(
+                    snapshot.outcomeStats,
+                    snapshot.studyImpactStats,
+                    snapshot.recentMistakes,
+                )
+            )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
         }
         db.insertWithOnConflict(
@@ -84,13 +97,16 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val outcomeJson = cursor.getString(2)
         val impactJson = cursor.getString(3)
         return try {
-            JSONObject(outcomeJson)
+            val outcomeRoot = JSONObject(outcomeJson)
             JSONObject(impactJson)
             Snapshot(
-                StatsCacheCodec.outcomeFromJson(outcomeJson),
-                StatsCacheCodec.impactReportFromJson(impactJson),
-                generatedAtMillis,
-                sourceVersion,
+                outcomeStats = StatsCacheCodec.outcomeFromJson(outcomeJson),
+                impactReport = StatsCacheCodec.impactReportFromJson(impactJson),
+                generatedAtMillis = generatedAtMillis,
+                sourceVersion = sourceVersion,
+                studyImpactStats = StatsCacheCodec.studyImpactStatsFromJson(outcomeRoot.optJSONObject("studyImpactStats")),
+                recentMistakes = StatsCacheCodec.recentMistakesFromJson(outcomeRoot.optJSONArray("recentMistakes")),
+                cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
             )
         } catch (_: Exception) {
             null

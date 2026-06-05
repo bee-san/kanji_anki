@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.Assert.assertEquals
@@ -16,9 +17,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
-        assertEquals(1, source.studyImpactReads)
+        assertEquals(0, source.studyImpactReads)
         assertEquals(listOf(4_500_000L), source.studyStreakReads)
-        assertEquals(listOf(5), source.recentMistakeLimits)
+        assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(4_500_000L), source.studyTimeReads)
         assertEquals(
             listOf(
@@ -46,9 +47,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)
-        assertEquals(1, source.studyImpactReads)
+        assertEquals(0, source.studyImpactReads)
         assertEquals(listOf(22_222L), source.studyStreakReads)
-        assertEquals(listOf(5), source.recentMistakeLimits)
+        assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(22_222L), source.recomputeTimes)
         assertEquals(listOf(22_222L), source.studyTimeReads)
     }
@@ -65,9 +66,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(0, source.directRecomputes)
-        assertEquals(1, source.studyImpactReads)
+        assertEquals(0, source.studyImpactReads)
         assertEquals(listOf(33_333L), source.studyStreakReads)
-        assertEquals(listOf(5), source.recentMistakeLimits)
+        assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(33_333L), source.studyTimeReads)
     }
 
@@ -139,6 +140,12 @@ class MainActivityStatsModelTest {
                 KanjiImpactAnalyzer.Report(improvedCount, 0, 0, emptyList()),
                 1_111L,
                 sourceVersion,
+                StudyStatsStore.StudyImpactStats(12, 4, 6, 4, 2, 1),
+                listOf(
+                    StudyStatsStore.RecentMistake("痛", "again", 4_200_000L),
+                    StudyStatsStore.RecentMistake("疲", "hard", 4_140_000L),
+                ),
+                STATS_CACHE_FORMAT_VERSION,
             )
         }
     }

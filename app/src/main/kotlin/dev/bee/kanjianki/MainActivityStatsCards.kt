@@ -4,6 +4,8 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
+import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
@@ -58,15 +60,15 @@ internal fun buildStatsScreenModel(
     val snapshot = source.cachedStatsSnapshotOrNull()
         ?: source.latestStatsSnapshotOrNull()
         ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
-    val studyImpact = source.studyImpactStats()
-    val studyStreak = source.studyStreak(nowMillis)
-    val recentMistakes = source.recentMistakes(5)
+    val needsLiveFallback = snapshot.cacheFormatVersion < STATS_CACHE_FORMAT_VERSION
+    val studyImpact = if (needsLiveFallback) source.studyImpactStats() else snapshot.studyImpactStats
+    val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
         source.studyTaskTimeStats(nowMillis),
         studyImpact,
-        studyStreak,
+        source.studyStreak(nowMillis),
         recentMistakes,
         nowMillis,
     )

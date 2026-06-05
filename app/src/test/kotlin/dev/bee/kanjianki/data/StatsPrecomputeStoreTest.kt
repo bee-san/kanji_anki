@@ -44,6 +44,8 @@ class StatsPrecomputeStoreTest {
         cacheStore.markDirty(db)
         val directOutcome = StudyStatsStore(localStore).kaniOutcomeStats()
         val directImpact = KanjiImpactReportStore(localStore).report()
+        val directStudyImpact = StudyStatsStore(localStore).studyImpactStats()
+        val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(5)
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = 12_345L)
 
@@ -53,6 +55,9 @@ class StatsPrecomputeStoreTest {
         assertEquals(12_345L, cached.generatedAtMillis)
         assertOutcomeStatsEquals(directOutcome, cached.outcomeStats)
         assertImpactReportEquals(directImpact, cached.impactReport)
+        assertStudyImpactStatsEquals(directStudyImpact, cached.studyImpactStats)
+        assertRecentMistakesEquals(directRecentMistakes, cached.recentMistakes)
+        assertEquals(STATS_CACHE_FORMAT_VERSION, cached.cacheFormatVersion)
         assertTrue("fixture should exercise weak-kanji improvement", cached.outcomeStats.weakKanjiImproved.improvedCount > 0)
         assertTrue("fixture should exercise ladder aggregate", cached.outcomeStats.ladderHealth.totalActiveItems > 0)
         assertTrue("fixture should exercise impact rows", cached.impactReport.rows.isNotEmpty())
@@ -194,6 +199,24 @@ class StatsPrecomputeStoreTest {
             assertEquals(expectedRow.currentCardCount, actualRow.currentCardCount)
             assertEquals(expectedRow.retentionDelta, actualRow.retentionDelta, 0.0001)
             assertEquals(expectedRow.difficultyDelta, actualRow.difficultyDelta, 0.0001)
+        }
+    }
+
+    private fun assertStudyImpactStatsEquals(expected: StudyStatsStore.StudyImpactStats, actual: StudyStatsStore.StudyImpactStats) {
+        assertEquals(expected.totalReviews, actual.totalReviews)
+        assertEquals(expected.distinctReviewedKanji, actual.distinctReviewedKanji)
+        assertEquals(expected.writingRequired, actual.writingRequired)
+        assertEquals(expected.writingPassed, actual.writingPassed)
+        assertEquals(expected.writingFailed, actual.writingFailed)
+        assertEquals(expected.manualOverrides, actual.manualOverrides)
+    }
+
+    private fun assertRecentMistakesEquals(expected: List<StudyStatsStore.RecentMistake>, actual: List<StudyStatsStore.RecentMistake>) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (expectedMistake, actualMistake) ->
+            assertEquals(expectedMistake.kanji, actualMistake.kanji)
+            assertEquals(expectedMistake.rating, actualMistake.rating)
+            assertEquals(expectedMistake.reviewedAtMillis, actualMistake.reviewedAtMillis)
         }
     }
 }

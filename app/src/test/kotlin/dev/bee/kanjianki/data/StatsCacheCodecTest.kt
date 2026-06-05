@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.json.JSONObject
 import java.util.Arrays
 import java.util.LinkedHashMap
 
@@ -74,6 +75,35 @@ class StatsCacheCodecTest {
         assertEquals(4, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WRITE_KANJI))
         assertEquals(7, decoded.ladderHealth.countFor(RecordsBase.LadderRung.KANJI_MEANING))
         assertEquals(0, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WORD_READING))
+    }
+
+    @Test
+    fun outcomeStatsRoundTripPreservesCachedExtras() {
+        val stats = StudyStatsStore.KaniOutcomeStats(
+            StudyStatsStore.WeakKanjiImprovedMetric(1, 91.0, 44.0, emptyList()),
+            StudyStatsStore.MatureSupportGainedMetric.empty(),
+            StudyStatsStore.LadderHealthMetric.empty(),
+        )
+        val studyImpact = StudyStatsStore.StudyImpactStats(12, 4, 3, 2, 1, 0)
+        val mistakes = Arrays.asList(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        )
+
+        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes)
+        val root = JSONObject(json)
+        val decoded = StatsCacheCodec.outcomeFromJson(json)
+        val decodedImpact = StatsCacheCodec.studyImpactStatsFromJson(root.optJSONObject("studyImpactStats"))
+        val decodedMistakes = StatsCacheCodec.recentMistakesFromJson(root.optJSONArray("recentMistakes"))
+
+        assertEquals(2, root.optInt("cacheFormatVersion", 0))
+        assertEquals(1, decoded.weakKanjiImproved.improvedCount)
+        assertEquals(12, decodedImpact.totalReviews)
+        assertEquals(4, decodedImpact.distinctReviewedKanji)
+        assertEquals(2, decodedMistakes.size)
+        assertEquals("痛", decodedMistakes[0].kanji)
+        assertEquals("again", decodedMistakes[0].rating)
+        assertEquals(1_000L, decodedMistakes[0].reviewedAtMillis)
     }
 
     @Test

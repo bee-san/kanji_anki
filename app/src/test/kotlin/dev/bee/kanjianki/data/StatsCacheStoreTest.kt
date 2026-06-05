@@ -53,10 +53,40 @@ class StatsCacheStoreTest {
         assertEquals(1234L, fresh.generatedAtMillis)
         assertEquals(2, fresh.outcomeStats.weakKanjiImproved.improvedCount)
         assertEquals(5, fresh.impactReport.helpedCount)
+        assertEquals(STATS_CACHE_FORMAT_VERSION, fresh.cacheFormatVersion)
+        assertEquals(8, fresh.studyImpactStats.totalReviews)
+        assertEquals(3, fresh.studyImpactStats.distinctReviewedKanji)
+        assertEquals(2, fresh.recentMistakes.size)
+        assertEquals("痛", fresh.recentMistakes[0].kanji)
+        assertEquals("again", fresh.recentMistakes[0].rating)
     }
 
     @Test
-    fun readFreshStatsReturnsNullWhenCacheVersionIsStale() {
+    fun readLatestLegacyCacheDefaultsMissingExtrasToEmptyCollections() {
+        val oldOutcomeJson = StatsCacheCodec.outcomeToJson(
+            StudyStatsStore.KaniOutcomeStats(
+                StudyStatsStore.WeakKanjiImprovedMetric(4, 80.0, 40.0, Collections.emptyList()),
+                StudyStatsStore.MatureSupportGainedMetric.empty(),
+                StudyStatsStore.LadderHealthMetric.empty(),
+            ),
+        )
+        val oldImpactJson = StatsCacheCodec.impactReportToJson(KanjiImpactAnalyzer.Report(2, 1, 0, Collections.emptyList()))
+        db.execSQL(
+            "INSERT OR REPLACE INTO ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} (id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any>(3L, 999L, oldOutcomeJson, oldImpactJson),
+        )
+
+        val latest = cacheStore.readLatest(db)
+
+        assertNotNull(latest)
+        latest!!
+        assertEquals(1, latest.cacheFormatVersion)
+        assertEquals(0, latest.studyImpactStats.totalReviews)
+        assertTrue(latest.recentMistakes.isEmpty())
+    }
+
+    @Test
+    fun readFreshStatsReturnsNullWhenSourceVersionChanges() {
         setSourceVersion(8L)
         cacheStore.write(db, snapshot(7L, 1234L, 2, 5))
 
@@ -143,6 +173,12 @@ class StatsCacheStoreTest {
         generatedAtMillis: Long,
         improvedCount: Int,
         helpedCount: Int,
+        studyImpactStats: StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(8, 3, 1, 1, 0, 0),
+        recentMistakes: List<StudyStatsStore.RecentMistake> = listOf(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        ),
+        cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
     ): StatsCacheStore.Snapshot {
         return StatsCacheStore.Snapshot(
             StudyStatsStore.KaniOutcomeStats(
@@ -158,6 +194,9 @@ class StatsCacheStoreTest {
             KanjiImpactAnalyzer.Report(helpedCount, 0, 0, Collections.emptyList()),
             generatedAtMillis,
             sourceVersion,
+            studyImpactStats,
+            recentMistakes,
+            cacheFormatVersion,
         )
     }
 }

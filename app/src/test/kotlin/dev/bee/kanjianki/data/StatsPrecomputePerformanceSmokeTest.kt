@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import dev.bee.kanjianki.StatsScreenStatsSource
 import dev.bee.kanjianki.buildStatsScreenModel
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -16,9 +17,9 @@ class StatsPrecomputePerformanceSmokeTest {
         assertEquals(1, source.freshReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
-        assertEquals(1, source.studyImpactReads)
+        assertEquals(0, source.studyImpactReads)
         assertEquals(listOf(44_444L), source.studyStreakReads)
-        assertEquals(listOf(5), source.recentMistakeLimits)
+        assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(44_444L), source.studyTimeReads)
     }
 
@@ -80,6 +81,9 @@ class StatsPrecomputePerformanceSmokeTest {
                 KanjiImpactAnalyzer.Report(improvedCount, 0, 0, emptyList()),
                 1_111L,
                 1L,
+                StudyStatsStore.StudyImpactStats(8, 3, 2, 1, 1, 0),
+                listOf(StudyStatsStore.RecentMistake("痛", "again", 40_000L)),
+                STATS_CACHE_FORMAT_VERSION,
             )
         }
     }
