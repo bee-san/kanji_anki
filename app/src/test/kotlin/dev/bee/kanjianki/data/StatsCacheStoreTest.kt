@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LocalDayPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,9 +45,10 @@ class StatsCacheStoreTest {
     @Test
     fun readFreshStatsReturnsDecodedSnapshotWhenSourceVersionMatches() {
         setSourceVersion(7L)
-        cacheStore.write(db, snapshot(7L, 1234L, 2, 5))
+        val now = 1_234L
+        cacheStore.write(db, snapshot(7L, now, 2, 5))
 
-        val fresh = cacheStore.readFresh(db)
+        val fresh = cacheStore.readFresh(db, nowMillis = now)
 
         assertNotNull(fresh)
         assertEquals(7L, fresh!!.sourceVersion)
@@ -107,17 +109,37 @@ class StatsCacheStoreTest {
 
     @Test
     fun hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
+        val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(11L)
         db.execSQL(
             "INSERT OR REPLACE INTO stats_screen_cache " +
-                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, 333, 'not-json', '{}')"
+                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, ?, 'not-json', '{}')",
+            arrayOf<Any>(now + 12_000L),
         )
 
-        assertTrue(cacheStore.hasFreshSnapshot(db))
+        assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
 
         cacheStore.markDirty(db)
 
-        assertFalse(cacheStore.hasFreshSnapshot(db))
+        assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
+    }
+
+    @Test
+    fun readFreshReturnsNullWhenSnapshotNotFromCurrentDay() {
+        val today = LocalDayPolicy.localDayStart(1_234_567_890_000L)
+        val yesterday = LocalDayPolicy.moveLocalDays(today, -1)
+        setSourceVersion(12L)
+        cacheStore.write(
+            db,
+            snapshot(
+                sourceVersion = 12L,
+                generatedAtMillis = yesterday + 60_000L,
+                improvedCount = 2,
+                helpedCount = 5,
+            ),
+        )
+
+        assertNull(cacheStore.readFresh(db, nowMillis = today))
     }
 
     @Test

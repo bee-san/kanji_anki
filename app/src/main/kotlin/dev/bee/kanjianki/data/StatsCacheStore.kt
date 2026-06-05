@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LocalDayPolicy
 import org.json.JSONObject
 
 internal const val STATS_CACHE_FORMAT_VERSION: Int = 3
@@ -41,19 +42,31 @@ internal class StatsCacheStore(private val store: LocalStore) {
         return next
     }
 
-    fun readFresh(db: SQLiteDatabase = store.readableDatabase): Snapshot? {
+    fun readFresh(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Snapshot? {
         val snapshot = readLatest(db) ?: return null
-        return if (snapshot.sourceVersion == currentSourceVersion(db)) snapshot else null
+        return if (snapshot.sourceVersion == currentSourceVersion(db) &&
+            LocalDayPolicy.sameLocalDay(snapshot.generatedAtMillis, nowMillis)
+        ) {
+            snapshot
+        } else {
+            null
+        }
     }
 
-    fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase): Boolean {
-        val snapshotSourceVersion = db.rawQuery(
-            "SELECT source_version FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+    fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val cursor = db.rawQuery(
+            "SELECT source_version, generated_at FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
             null,
-        ).use { cursor ->
-            if (cursor.moveToFirst()) cursor.getLong(0) else return false
+        )
+        cursor.use {
+            if (!it.moveToFirst()) {
+                return false
+            }
+            val snapshotSourceVersion = it.getLong(0)
+            val generatedAtMillis = it.getLong(1)
+            return snapshotSourceVersion == currentSourceVersion(db) &&
+                LocalDayPolicy.sameLocalDay(generatedAtMillis, nowMillis)
         }
-        return snapshotSourceVersion == currentSourceVersion(db)
     }
 
     fun readLatest(db: SQLiteDatabase = store.readableDatabase): Snapshot? {
