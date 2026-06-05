@@ -24,7 +24,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             studyDoneScreenModel(
                 "Nothing due now",
                 "All caught up",
-                "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
+                "Your active kanji are resting. Sync if AnkiDroid has new cards, or return when reviews are due.",
                 emptyList(),
                 false,
                 true,
@@ -81,7 +81,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             studyDoneScreenModel(
                 "Study practice",
                 "Nothing to study yet",
-                "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.",
+                "Sync from AnkiDroid first to find kanji to repair.",
                 emptyList(),
                 false,
                 false,
@@ -191,7 +191,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         val defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen)
         studyMoreDialog = StudyMoreNewCardsDialogModel(
             title = "Study more new cards",
-            message = "How many extra new cards do you want to study now?",
+            message = "How many extra new cards?",
             inputLabel = MainActivityBase.LABEL_NEW_CARDS,
             initialCount = defaultCount,
             confirmLabel = MainActivityBase.LABEL_STUDY,

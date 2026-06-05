@@ -1030,7 +1030,7 @@ fun studyDoneActionsStudyMoreAndFallbackPanelsExerciseRealUiBranches() {
                 activity.renderFocusDone(complete);
                 assertHasText(activity, "Study more new cards");
                 performClickableWithText(activity.findViewById(android.R.id.content), "Study more new cards");
-                assertHasText(activity, "How many extra new cards do you want to study now?");
+                assertHasText(activity, "How many extra new cards?");
                 performClickableWithText(activity.findViewById(android.R.id.content), "Cancel");
                 performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
