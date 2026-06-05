@@ -818,13 +818,13 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "", ""));
-                assertHasText(activity, "Kani is already reading AnkiDroid.");
+                assertHasText(activity, "Already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
                 assertHasText(activity, "AnkiDroid needs attention");
                 assertHasText(activity, "Provider unavailable.");
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
-                assertHasText(activity, "Try again after checking AnkiDroid permissions.");
+                assertHasText(activity, "Check AnkiDroid permissions, then retry.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Automatic workload: 2 items today"));
                 assertHasText(activity, "Sync complete");

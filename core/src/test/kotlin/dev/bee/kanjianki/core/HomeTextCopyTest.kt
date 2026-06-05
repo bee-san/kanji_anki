@@ -126,30 +126,30 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani imports suspended Basic cards by default, archives them locally, and only uses active cards when that filter is enabled.",
+            "Kani archives suspended Basic cards locally and uses active cards only when the filter is on.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())
         assertEquals("Cancel", HomeTextCopy.cancelLabel())
         assertEquals("Syncing AnkiDroid", HomeTextCopy.syncingTitle())
         assertEquals("Sync already running", HomeTextCopy.syncAlreadyRunningTitle())
-        assertEquals("Kani is already reading AnkiDroid.", HomeTextCopy.syncAlreadyRunningFallback())
+        assertEquals("Already reading AnkiDroid.", HomeTextCopy.syncAlreadyRunningFallback())
         assertEquals("Sync complete", HomeTextCopy.syncCompleteTitle())
         assertEquals("1 kanji ready to study", HomeTextCopy.syncReadyCountText(1))
         assertEquals("3 kanji ready to study", HomeTextCopy.syncReadyCountText(3))
         assertEquals(
-            "1 candidate found from Anki. Auto Pareto: 1 item today.",
+            "1 candidate from Anki. Auto Pareto: 1 item today.",
             HomeTextCopy.syncCandidateSummary(1, "Auto Pareto: 1 item today")
         )
         assertEquals(
-            "2 candidates found from Anki. Auto Pareto: 2 items today.",
+            "2 candidates from Anki. Auto Pareto: 2 items today.",
             HomeTextCopy.syncCandidateSummary(2, "Auto Pareto: 2 items today")
         )
         assertEquals("1 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(1))
         assertEquals("4 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(4))
         assertEquals("AnkiDroid needs attention", HomeTextCopy.syncNeedsAttentionTitle())
         assertEquals("Could not read AnkiDroid", HomeTextCopy.syncReadErrorTitle())
-        assertEquals("Try again after checking AnkiDroid permissions.", HomeTextCopy.syncFailureFallback())
+        assertEquals("Check AnkiDroid permissions, then retry.", HomeTextCopy.syncFailureFallback())
         assertEquals("Try sync again", HomeTextCopy.trySyncAgainLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.syncDialogMessage(null) }
     }

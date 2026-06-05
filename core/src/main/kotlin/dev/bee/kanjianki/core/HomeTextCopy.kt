@@ -168,8 +168,8 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani imports suspended ${safeSettings.modelName} cards by default, archives them locally, " +
-            "and only uses active cards when that filter is enabled."
+        return "Kani archives suspended ${safeSettings.modelName} cards locally and uses " +
+            "active cards only when the filter is on."
     }
 
     @JvmStatic
@@ -185,7 +185,7 @@ object HomeTextCopy {
     fun syncAlreadyRunningTitle(): String = "Sync already running"
 
     @JvmStatic
-    fun syncAlreadyRunningFallback(): String = "Kani is already reading AnkiDroid."
+    fun syncAlreadyRunningFallback(): String = "Already reading AnkiDroid."
 
     @JvmStatic
     fun syncCompleteTitle(): String = "Sync complete"
@@ -196,7 +196,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun syncCandidateSummary(dashboardRows: Int, adaptiveFocusText: String?): String {
-        return StudyTextCopy.countText(dashboardRows, "candidate found from Anki", "candidates found from Anki") +
+        return StudyTextCopy.countText(dashboardRows, "candidate from Anki", "candidates from Anki") +
             ". " +
             adaptiveFocusText.toString() +
             "."
@@ -213,7 +213,7 @@ object HomeTextCopy {
     fun syncReadErrorTitle(): String = "Could not read AnkiDroid"
 
     @JvmStatic
-    fun syncFailureFallback(): String = "Try again after checking AnkiDroid permissions."
+    fun syncFailureFallback(): String = "Check AnkiDroid permissions, then retry."
 
     @JvmStatic
     fun trySyncAgainLabel(): String = "Try sync again"
