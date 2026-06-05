@@ -142,4 +142,36 @@ class StatsTextCopyTest {
             StatsTextCopy.recentMistakeRowText("疲", "hard", 4_500_000L, 4_500_000L)
         )
     }
+
+    @Test
+    fun edgeCaseFormattingCoversRemainingBranches() {
+        assertEquals(
+            "Best streak 5 days. No reviews today. Last study No study yet.",
+            StatsTextCopy.studyStreakBody(5, false, 0, 0L, 44_444L)
+        )
+        assertEquals(
+            "3 reviews across 2 kanji. No writing prompts yet.",
+            StatsTextCopy.studyImpactBody(3, 2, 0, 0, 0, 0)
+        )
+        assertEquals(
+            "  1 -> 2 mature cards",
+            StatsTextCopy.supportGainExample(null, 1, 2)
+        )
+        assertEquals(
+            "痛  Mistake · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  Again · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "Again", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  1abc · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "1abc", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  Λambda · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "λambda", 4_500_000L, 4_500_000L)
+        )
+    }
 }
