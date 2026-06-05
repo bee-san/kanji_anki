@@ -141,7 +141,9 @@ Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that
 
 ## Cheap Ralph queue
 
-Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. If no unchecked items remain, the loop stops creating new cards. Learning-experience and scheduler-correctness items belong above cosmetic polish because Kani is a learning app first.
+Cheap Ralph's forever loop reads this checklist from top to bottom. It should keep taking one small PR-sized slice for the first unchecked item, tick an item only when it is truly done with PR/review/CI evidence, and then move to the next unchecked item. Learning-experience and scheduler-correctness items belong above cosmetic polish because Kani is a learning app first.
+
+If no unchecked items remain, Cheap Ralph should not silently stop or invent work unaudited. It should draft 10 concise candidate ideas, Telegram them to Bee, and ask which ones Cheap Ralph should work on next. The 10 ideas may include Kani and other Cheap Ralph-suitable projects; bias toward Kani while it is Bee's active project, but do not assume every idea must be Kani. Do not create new cards or PRs from those ideas until Bee chooses; once Bee selects items, append the approved ideas as unchecked queue entries in the requested order.
 
 <!-- cheap-ralph-queue:start -->
 - [x] Continue Kotlin conversion across Java/Kotlin source; do not tick complete until Bee accepts it or inventory shows only documented exceptions remain.
