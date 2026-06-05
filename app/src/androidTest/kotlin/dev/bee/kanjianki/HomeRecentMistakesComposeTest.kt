@@ -15,8 +15,8 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 model = HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "裂",
@@ -42,14 +42,14 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 model = HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = emptyList()
                 )
             )
         }
 
-        composeRule.onNodeWithText("No recent mistakes yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Missed and hard reviews will show here after you study.").assertIsDisplayed()
+        composeRule.onNodeWithText("No mistakes yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Missed or hard reviews.").assertIsDisplayed()
     }
 }

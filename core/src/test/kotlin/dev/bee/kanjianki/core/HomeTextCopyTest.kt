@@ -29,11 +29,11 @@ class HomeTextCopyTest {
     fun homeSyncAndRecentMistakeCopyPreserveFallbacks() {
         assertEquals("Never synced", HomeTextCopy.homeSyncValue(null))
         assertEquals("Date unknown", HomeTextCopy.homeSyncValue(0L))
-        assertEquals("Recent mistake", HomeTextCopy.recentMistakeTitle(null))
-        assertEquals("Recent mistake", HomeTextCopy.recentMistakeTitle(""))
+        assertEquals("Mistake", HomeTextCopy.recentMistakeTitle(null))
+        assertEquals("Mistake", HomeTextCopy.recentMistakeTitle(""))
         assertEquals("split", HomeTextCopy.recentMistakeTitle("split"))
         assertEquals("Again · Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"))
-        assertEquals("Recent miss", HomeTextCopy.recentMistakeSubtitle(null, null))
+        assertEquals("Missed", HomeTextCopy.recentMistakeSubtitle(null, null))
     }
 
     @Test
@@ -102,8 +102,8 @@ class HomeTextCopyTest {
         assertEquals("Stats", HomeTextCopy.statsActionLabel())
         assertEquals("Games", HomeTextCopy.gamesActionLabel())
         assertEquals("Home", HomeTextCopy.homeLabel())
-        assertEquals("No recent mistakes yet", HomeTextCopy.noRecentMistakesTitle())
-        assertEquals("Missed and hard reviews appear here.", HomeTextCopy.noRecentMistakesBody())
+        assertEquals("No mistakes yet", HomeTextCopy.noRecentMistakesTitle())
+        assertEquals("Missed or hard reviews.", HomeTextCopy.noRecentMistakesBody())
     }
 
     @Test

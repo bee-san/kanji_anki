@@ -773,7 +773,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
 
                 performClickableWithText(homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
-                assertHasText(activity, "No recent mistakes yet");
+                assertHasText(activity, "No mistakes yet");
 
                 performClickableWithText(homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
@@ -812,7 +812,7 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
                 activity.renderFocusQueue();
                 assertHasText(activity, "No kanji queued");
                 activity.renderRecentMistakes();
-                assertHasText(activity, "No recent mistakes yet");
+                assertHasText(activity, "No mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
                 assertHasText(activity, "Sync already running");
@@ -1684,7 +1684,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
 
 private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
         activity.renderRecentMistakes();
-        assertHasText(activity, "No recent mistakes yet");
+        assertHasText(activity, "No mistakes yet");
         activity.store.saveReview(RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
         assertContainsText(activity.findViewById(android.R.id.content), "Rated again");

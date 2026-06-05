@@ -57,8 +57,8 @@ class HomeSecondaryScreensComposeTest {
                     homeLabel = "Home",
                     onHome = { homeClicked = true },
                     mistakes = HomeRecentMistakesPanelModel(
-                        emptyTitle = "No recent mistakes yet",
-                        emptyBody = "Missed reviews will appear here.",
+                        emptyTitle = "No mistakes yet",
+                        emptyBody = "Missed or hard reviews.",
                         cards = listOf(
                             HomeRecentMistakesCardModel(
                                 kanji = "裂",

@@ -33,7 +33,7 @@ object HomeTextCopy {
     @JvmStatic
     fun recentMistakeTitle(rowMeaning: String?): String {
         if (rowMeaning.isNullOrEmpty()) {
-            return "Recent mistake"
+            return "Mistake"
         }
         return rowMeaning
     }
@@ -42,7 +42,7 @@ object HomeTextCopy {
     fun recentMistakeSubtitle(rating: String?, dateText: String?): String {
         val safeRating = rating?.takeIf { it.isNotEmpty() }?.let(::sentenceCase)
         val safeDate = dateText?.takeIf { it.isNotEmpty() }
-        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Recent miss" }
+        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Missed" }
     }
 
     @JvmStatic
@@ -157,10 +157,10 @@ object HomeTextCopy {
     fun loadingLabel(): String = "Loading…"
 
     @JvmStatic
-    fun noRecentMistakesTitle(): String = "No recent mistakes yet"
+    fun noRecentMistakesTitle(): String = "No mistakes yet"
 
     @JvmStatic
-    fun noRecentMistakesBody(): String = "Missed and hard reviews appear here."
+    fun noRecentMistakesBody(): String = "Missed or hard reviews."
 
     @JvmStatic
     fun syncDialogTitle(): String = "Sync AnkiDroid?"
