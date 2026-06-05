@@ -6,7 +6,7 @@ object SettingsLadderThresholdTextCopy {
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Due reviews move cards up or down. Learning and relearning repeats stay practice-only."
+        return "Due reviews move cards. Repeats stay practice-only."
     }
 
     @JvmStatic
@@ -22,5 +22,5 @@ object SettingsLadderThresholdTextCopy {
     fun saveLadderThresholdsLabel(): String = "Save movement rules"
 
     @JvmStatic
-    fun ladderThresholdsSavedToast(): String = "Ladder movement saved."
+    fun ladderThresholdsSavedToast(): String = "Movement rules saved."
 }
