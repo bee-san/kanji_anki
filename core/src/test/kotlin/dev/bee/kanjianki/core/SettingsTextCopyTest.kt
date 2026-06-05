@@ -38,7 +38,7 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "AnkiDroid fields, filters, range, and sync.",
+                        "Fields, filters, range, and sync.",
                         "Study settings",
                         "New cards, timing, workload, and ladder controls.",
                         "Automation",
@@ -198,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags.",
+                        "Start with suspended cards. Add other sources only when needed; leech tags are skipped.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -214,9 +214,9 @@ class SettingsTextCopyTest {
                         "Save import filters",
                         "Enter a browser query or turn it off.",
                         "Turn on at least one import source.",
-                        "Import filters saved. Sync again to rebuild practice.",
+                        "Filters saved. Sync again to rebuild practice.",
                         "Presets",
-                        "Import preset saved. Sync again to rebuild practice.",
+                        "Preset saved. Sync again to rebuild practice.",
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Kanji frequency range",
@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Keep one note type selected and map the fields below.",
+                        "Default: Kiku. Map the fields below.",
                         "Field mappings"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort.",
+                        "Map expression, reading, meaning, sentence, frequency, and frequency sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",

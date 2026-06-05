@@ -7,7 +7,7 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("AnkiDroid fields, filters, range, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Fields, filters, range, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("New cards, timing, workload, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
