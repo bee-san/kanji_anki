@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Sequence, cast
 
 from scripts.ralph_loop import button_contract
+from scripts.ralph_loop import button_latency_inventory
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
 from scripts.ralph_loop import ui_manifest
@@ -627,6 +628,8 @@ def _build_audit_report(
             "manifest_json": str(run_dir / "ui-manifest.json"),
             "button_contract_json": str(run_dir / "button-contract.json"),
             "button_contract_markdown": str(run_dir / "button-contract.md"),
+            "button_latency_inventory_json": str(run_dir / "button-latency-inventory.json"),
+            "button_latency_inventory_markdown": str(run_dir / "button-latency-inventory.md"),
         },
     }
     report["artifacts"]["audit_report_json"] = str(run_dir / "audit-report.json")
@@ -645,6 +648,14 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
 
     contract = button_contract.build_contract(repo_root, manifest_path)
     button_contract.write_outputs(contract, repo_root, run_dir / "button-contract.json", run_dir / "button-contract.md")
+
+    latency_inventory = button_latency_inventory.build_inventory(repo_root, manifest, contract)
+    button_latency_inventory.write_outputs(
+        latency_inventory,
+        repo_root,
+        run_dir / "button-latency-inventory.json",
+        run_dir / "button-latency-inventory.md",
+    )
 
     manifest_files = cast(list[dict[str, object]], manifest.get("files", []))
     selected_entries = _selected_entries(manifest_files, args.file_bucket, args.max_files)

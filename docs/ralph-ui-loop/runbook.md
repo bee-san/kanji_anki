@@ -14,6 +14,7 @@ final command sequence.
 - `ci/scripts/capture_android_screenshots.sh`
 - `scripts/ralph_loop/github_screenshots.py`
 - `scripts/ralph_loop/orchestrator.py`
+- `scripts/ralph_loop/button_latency_inventory.py`
 - `scripts/ralph_loop/validation.py`
 
 ## What the screenshot workflow produces
@@ -32,6 +33,8 @@ Expected run-dir outputs after the full Ralph loop:
 - `.ralph-loop/current/ui-manifest.json`
 - `.ralph-loop/current/button-contract.json`
 - `.ralph-loop/current/button-contract.md`
+- `.ralph-loop/current/button-latency-inventory.json`
+- `.ralph-loop/current/button-latency-inventory.md`
 - `.ralph-loop/current/audit-report.json`
 - `.ralph-loop/current/audit-report.md`
 - `.ralph-loop/current/validation.json`
