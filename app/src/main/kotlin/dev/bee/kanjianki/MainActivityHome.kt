@@ -47,7 +47,14 @@ internal abstract class MainActivityHome : MainActivityBase() {
             return
         }
         scheduleStatsPrecomputeIfStale()
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.appTitle(),
+            load = { buildHomeScreenModel() },
+            render = { model -> renderHomeScreen(model) },
+        )
+    }
 
+    private fun buildHomeScreenModel(): HomeScreenModel {
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
@@ -71,7 +78,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
         val provider = gateway.status()
 
-        val model = HomeScreenModel(
+        return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, sync, provider, streak, homePlan),
@@ -99,6 +106,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 homeFocusQueueCardModel(this, entry, now)
             }
         )
+    }
+
+    private fun renderHomeScreen(model: HomeScreenModel) {
         renderHomeRoute {
             HomeScreen(model)
         }
@@ -135,9 +145,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
             previewCards = emptyList(),
         )
-        renderHomeRoute {
-            HomeScreen(model)
-        }
+        renderHomeScreen(model)
     }
 
     fun renderFocusQueue() {

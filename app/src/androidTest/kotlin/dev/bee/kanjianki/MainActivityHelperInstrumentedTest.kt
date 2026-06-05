@@ -782,7 +782,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
                 assertHasText(activity, "Automation");
 
                 fullWidthHomeButtonTestView(activity).performClick();
-                assertHasText(activity, "Kani");
+                waitForText(activity, "Kani");
             }
         }
     }
@@ -790,18 +790,21 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
     @Test
 fun renderHomeUsesSingleComposeScreenForEmptyAndActiveStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.renderHome();
-                assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
-                assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
+            lateinit var activity: MainActivity
+            scenario.onActivity { activity = it }
 
+            scenario.onActivity { activity.renderHome() }
+            waitForText(activity, HomeTextCopy.noKanjiQueuedTitle())
+            waitForText(activity, HomeTextCopy.syncAnkiDroidLabel())
+
+            scenario.onActivity {
                 seedRows(activity, listOf(row("裂", "split", "レツ", emptyList<RecordsImportModels.Example>())));
                 activity.renderHome();
-                assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
-                assertHasText(activity, HomeTextCopy.viewAllLabel());
-                assertHasText(activity, "裂");
-                assertHasText(activity, "split");
             }
+            waitForText(activity, MainActivityBase.LABEL_STUDY_NOW)
+            waitForText(activity, HomeTextCopy.viewAllLabel())
+            waitForText(activity, "裂")
+            waitForText(activity, "split")
         }
     }
 
@@ -2390,6 +2393,18 @@ private fun assertHasText(activity: MainActivity, text: String) {
         if (!containsText(root, text) && findDeviceTextNow(text) == null) {
             throw AssertionError("Missing text: " + text);
         }
+    }
+
+private fun waitForText(activity: MainActivity, text: String, timeoutMillis: Long = 5000L) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            if (containsText(root, text) || findDeviceTextNow(text) != null) {
+                return
+            }
+            Thread.sleep(100L)
+        }
+        assertHasText(activity, text)
     }
 
 private fun assertContainsText(root: View, text: String) {

@@ -230,12 +230,14 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
     @Test
 fun testNavigationSettingsAndEmptyStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForText(scenario, "Stats");
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
                 assertHasTexts(activity, "Stats", "Waiting for evidence", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
             }
 
             clickText(scenario, "Home");
+            waitForText(scenario, "Settings");
             clickText(scenario, "Settings");
             scenario.onActivity { activity -> assertCollapsedSettingsScreen(activity) }
             clickText(scenario, "Automation");
@@ -3244,7 +3246,7 @@ fun <T : View> collectTypes(root: View, type: Class<T>, results: MutableList<T>)
         return
     }
     if (type.isInstance(root)) {
-        results.add(type.cast(root))
+        results.add(requireNotNull(type.cast(root)))
     }
     if (root is android.view.ViewGroup) {
         val group = root as android.view.ViewGroup
