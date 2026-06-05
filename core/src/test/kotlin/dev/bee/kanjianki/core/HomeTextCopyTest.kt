@@ -195,8 +195,8 @@ class HomeTextCopyTest {
                 "Historical recovery",
                 "Historical recovery",
                 "language",
-                "No longer active, but kept in local recovery history.",
-                "Current local practice evidence.",
+                "Inactive; kept in recovery history.",
+                "Active practice evidence.",
                 "manual reason"
             ),
             listOf(
@@ -213,21 +213,21 @@ class HomeTextCopyTest {
         )
         assertEquals(
             listOf(
-                "Anki browser: row:裂",
-                "Review this now",
-                "Copy Anki search",
+                "Anki search: row:裂",
+                "Review now",
+                "Copy search",
                 "Anki search",
                 "Search copied",
                 "Suspend locally",
                 "Unsuspend locally",
-                "Kanji suspended locally.",
-                "Kanji unsuspended.",
+                "Suspended locally.",
+                "Unsuspended.",
                 "Examples",
-                "Local inventory",
-                "1 source note/card · 2 stored examples",
-                "3 source notes/cards · 1 stored example",
-                "Search: row:裂",
-                "Last seen locally ${DateTextPolicy.shortDateTime(123456789L)}"
+                "Local records",
+                "1 source · 2 examples",
+                "3 sources · 1 example",
+                "Anki search: row:裂",
+                "Last seen ${DateTextPolicy.shortDateTime(123456789L)}"
             ),
             listOf(
                 HomeTextCopy.ankiBrowserLine("row:裂"),
@@ -252,11 +252,11 @@ class HomeTextCopyTest {
                 "inventory:語",
                 "row:裂",
                 "",
-                "Mature support 0 / target 2",
-                "Mature support 3 / target 4",
-                "Timeline will fill in after the next sync or review.",
+                "Mature support 0/2",
+                "Mature support 3/4",
+                "Timeline appears after sync or review.",
                 "Recovery timeline",
-                "No active Anki evidence in the latest local sync."
+                "No active Anki evidence."
             ),
             listOf(
                 HomeTextCopy.detailBrowserSearch(row, inventory),
