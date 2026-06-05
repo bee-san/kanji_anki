@@ -128,15 +128,15 @@ class MainActivityHomeBrowseDetailComposeTest {
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
                         title = "",
-                        lines = listOf("Current local practice evidence.", "Anki browser: deck:Japanese"),
+                        lines = listOf("Active practice evidence.", "Anki search: deck:Japanese"),
                         color = 0xFF6E5CE6.toInt(),
                         style = BrowseDetailPanelStyle.BAND
                     )
                 )
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
-                        title = "Local inventory",
-                        lines = listOf("1 source note/card · 2 stored examples", "Search: kanji:語"),
+                        title = "Local records",
+                        lines = listOf("1 source · 2 examples", "Anki search: kanji:語"),
                         color = 0xFFC9F5F7.toInt(),
                         style = BrowseDetailPanelStyle.CARD
                     )
@@ -153,11 +153,11 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("Current local practice evidence.").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki browser: deck:Japanese").assertIsDisplayed()
-        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
-        composeRule.onNodeWithText("1 source note/card · 2 stored examples").assertIsDisplayed()
-        composeRule.onNodeWithText("Search: kanji:語").assertIsDisplayed()
+        composeRule.onNodeWithText("Active practice evidence.").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki search: deck:Japanese").assertIsDisplayed()
+        composeRule.onNodeWithText("Local records").assertIsDisplayed()
+        composeRule.onNodeWithText("1 source · 2 examples").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki search: kanji:語").assertIsDisplayed()
         composeRule.onNodeWithText("ACTIVE").assertIsDisplayed()
         composeRule.onNodeWithText("活動語  カツドウゴ").assertIsDisplayed()
         composeRule.onNodeWithText("活動語を見た。").assertIsDisplayed()
@@ -191,8 +191,8 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailActionsModel(
                         reviewLabel = "Review now",
                         onReview = Runnable { reviewClicked = true },
-                        copyLabel = "Copy Anki search",
-                        copiedLabel = "Copied Anki search",
+                        copyLabel = "Copy search",
+                        copiedLabel = "Copied",
                         onCopy = Runnable { copyClicked = true },
                         suspendLabel = "Unsuspend locally",
                         onSuspend = Runnable { suspendClicked = true }
@@ -208,8 +208,8 @@ class MainActivityHomeBrowseDetailComposeTest {
 
         composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
-        composeRule.onNodeWithText("Copy Anki search").performClick()
-        composeRule.onNodeWithText("Copied Anki search").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy search").performClick()
+        composeRule.onNodeWithText("Copied").assertIsDisplayed()
         composeRule.onNodeWithText("Unsuspend locally").performClick()
 
         assertTrue(backClicked)
@@ -239,13 +239,13 @@ class MainActivityHomeBrowseDetailComposeTest {
                         ),
                         reason = BrowseDetailPanelModel(
                             title = "",
-                            lines = listOf("Current local practice evidence."),
+                            lines = listOf("Active practice evidence."),
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
                         ),
                         localInventory = BrowseDetailPanelModel(
-                            title = "Local inventory",
-                            lines = listOf("1 source note/card · 1 stored example"),
+                            title = "Local records",
+                            lines = listOf("1 source · 1 example"),
                             color = 0xFFC9F5F7.toInt(),
                             style = BrowseDetailPanelStyle.CARD
                         ),
@@ -253,7 +253,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             reviewLabel = "Review now",
                             onReview = Runnable { reviewClicked = true },
                             copyLabel = null,
-                            copiedLabel = "Copied Anki search",
+                            copiedLabel = "Copied",
                             onCopy = null,
                             suspendLabel = "Suspend locally",
                             onSuspend = Runnable {}
@@ -290,7 +290,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         }
 
         composeRule.onNodeWithText("裂").assertIsDisplayed()
-        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
+        composeRule.onNodeWithText("Local records").assertIsDisplayed()
         composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
         composeRule.onNodeWithText("Examples").assertIsDisplayed()
         composeRule.onNodeWithText("裂語  レツゴ").assertIsDisplayed()
