@@ -16,6 +16,7 @@ on:
       - 'update-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
+      - 'scripts/**'
       - 'tools/**'
       - '.github/workflows/**'
       - 'build.gradle*'
@@ -40,6 +41,7 @@ on:
       - 'update-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
+      - 'scripts/**'
       - 'tools/**'
       - '.github/workflows/**'
       - 'build.gradle*'
@@ -132,7 +134,7 @@ jobs:
           path: ${{ matrix.reports }}
 
   asset-tests:
-    name: Dictionary and asset tests
+    name: Dictionary, asset, and Ralph loop tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -144,6 +146,9 @@ jobs:
 
       - name: Run deterministic asset tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
+
+      - name: Run Ralph loop script tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
   dependency-safety:
     name: Dependency safety
