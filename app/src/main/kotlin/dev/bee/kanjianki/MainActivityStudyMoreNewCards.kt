@@ -33,15 +33,17 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
     }
 
     fun startStudyMoreNewCards(requestedCount: Int): Boolean {
-        val rows = study.store.activeDashboardRows()
+        val snapshot = study.doneActions.studyMoreNewCardsSnapshot()
+        val rows = snapshot?.rows ?: study.store.activeDashboardRows()
         if (rows.isEmpty()) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
             return false
         }
         val now = System.currentTimeMillis()
+        val existing = snapshot?.existing ?: study.store.studyItems()
         val result = BridgeScheduler().seedExtraNewCards(
             rows,
-            study.store.studyItems(),
+            existing,
             study.settings(),
             now,
             study.startOfDay(now),
@@ -69,6 +71,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             study::resetStudyRunProgress,
             study.studySessionTracker::setTargetCount
         )
+        study.doneActions.clearStudyMoreNewCardsSnapshot()
         study.continueAllKanjiSession = false
         if (admission.admittedCount < requestedCount) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount), Toast.LENGTH_SHORT).show()
