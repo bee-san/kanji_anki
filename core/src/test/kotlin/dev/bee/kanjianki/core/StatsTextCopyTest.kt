@@ -17,22 +17,22 @@ class StatsTextCopyTest {
 
     @Test
     fun verdictTitlePreservesWorkingAndWaitingCopy() {
-        assertEquals("Kani is working for you", StatsTextCopy.verdictTitle(true))
-        assertEquals("Waiting for Kani evidence", StatsTextCopy.verdictTitle(false))
+        assertEquals("Kani is working", StatsTextCopy.verdictTitle(true))
+        assertEquals("Waiting for evidence", StatsTextCopy.verdictTitle(false))
     }
 
     @Test
     fun verdictBodyKeepsEmptyAndLadderOnlyCopyBrief() {
         assertEquals(
-            "Study and sync to unlock trends.",
+            "Study and sync for trends.",
             StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0)
         )
         assertEquals(
-            "Tracking 2 active kanji. Trends appear after reviews and sync.",
+            "Tracking 2 active kanji. Trends need reviews and sync.",
             StatsTextCopy.verdictBody(true, false, true, 0, 0, 0, 0, 2)
         )
         assertEquals(
-            "Review and sync to compare before and after.",
+            "Review and sync to compare.",
             StatsTextCopy.verdictBody(true, false, false, 0, 0, 0, 0, 0)
         )
     }
@@ -40,7 +40,7 @@ class StatsTextCopyTest {
     @Test
     fun verdictBodyPreservesWorkingSignalsAndRiskCopy() {
         assertEquals(
-            "1 weak kanji improved. 2 mature cards gained. 3 review-phase items crossed the climb threshold. Watch 1 review-phase item with a miss streak.",
+            "1 weak kanji improved. 2 mature cards gained. 3 review items ready to climb. Watch 1 review item with a miss streak.",
             StatsTextCopy.verdictBody(true, true, true, 1, 2, 3, 1, 4)
         )
     }
@@ -48,11 +48,11 @@ class StatsTextCopyTest {
     @Test
     fun ladderHealthBodyDemotesThresholdDetailsAndKeepsEmptyCopyBrief() {
         assertEquals(
-            "No active ladder items yet. Sync or study weak kanji to fill the ladder.",
+            "Sync or study weak kanji to fill the ladder.",
             StatsTextCopy.ladderHealthBody(0, 0, 0, 0, 21, 3)
         )
         assertEquals(
-            "2 ready to climb · 1 at risk · 1 ready to fall. Rules: climb after more than 21 days; fall after 3 misses.",
+            "2 ready to climb · 1 at risk · 1 ready to fall. Climb after more than 21 days; fall after 3 misses.",
             StatsTextCopy.ladderHealthBody(5, 2, 1, 1, 21, 3)
         )
     }
@@ -71,7 +71,7 @@ class StatsTextCopyTest {
     @Test
     fun weaknessAndSupportFormattingPreservesStatsRows() {
         assertEquals(
-            "Weakness trends appear after reviews and sync.",
+            "Weakness trends need reviews and sync.",
             StatsTextCopy.weaknessImprovementBody(0, 0.0, 0.0)
         )
         assertEquals(
@@ -85,7 +85,7 @@ class StatsTextCopyTest {
     @Test
     fun impactAndTimeFormattingPreservesStatsHelpers() {
         assertEquals(
-            "Review and sync to compare before and after.",
+            "Review and sync to compare.",
             StatsTextCopy.notHelpingBody(true, false)
         )
         assertEquals(
@@ -93,7 +93,7 @@ class StatsTextCopyTest {
             StatsTextCopy.notHelpingBody(false, false)
         )
         assertEquals(
-            "Shown after enough reviews and sync.",
+            "Needs enough reviews and sync.",
             StatsTextCopy.notHelpingBody(false, true)
         )
         assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4))
