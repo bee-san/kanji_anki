@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000.",
+            "Jiten ranks imported from suspended cards. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -19,18 +19,18 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
         assertEquals("Use ranks from 1 to 20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Kanji frequency range saved. Sync again to rebuild practice.",
+            "Range saved. Sync again to rebuild practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
+            "KANJIDIC2, Jiten, KanjiVG, and font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Dictionary and stroke data bundled for offline use.",
+            "Bundled dictionary and stroke data.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())
