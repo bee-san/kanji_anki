@@ -17,7 +17,7 @@ object SettingsSectionTextCopy {
     fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Daily reminders and update checks."
+    fun settingsAutomationBody(): String = "Reminders and updates."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Display & data"

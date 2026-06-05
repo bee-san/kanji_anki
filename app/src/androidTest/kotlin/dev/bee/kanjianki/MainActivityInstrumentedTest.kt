@@ -764,16 +764,16 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
             clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             scenario.onActivity { activity ->
-                assertHasText(activity, "On: checks about once a day");
+                assertHasText(activity, "On: daily checks");
                 assertHasText(activity, "Last check: not yet");
                 assertHasText(activity, "Install permission: Missing");
                 assertHasText(activity, "Set up app installs");
-                assertHasText(activity, "Turn off automatic updates");
+                assertHasText(activity, "Turn off updates");
             }
-            clickText(scenario, "Turn off automatic updates");
+            clickText(scenario, "Turn off updates");
             waitForText(scenario, "Off");
-            clickText(scenario, "Turn on automatic updates");
-            waitForText(scenario, "On: checks about once a day");
+            clickText(scenario, "Turn on updates");
+            waitForText(scenario, "On: daily checks");
         }
     }
 
@@ -790,7 +790,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
                     "Android needs confirmation to finish installing.",
                     "v9.9.9",
                     "kani-test.apk",
-                    "Android needs confirmation before Kani can replace itself."
+                    "Android needs confirmation to install updates."
             );
         }
         MainActivityRuntimeOverrides.setInstallPermission(true);
@@ -802,7 +802,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "Install permission: Ready");
                 assertHasText(activity, "Install verified update");
-                assertHasText(activity, "Android needs confirmation before Kani can replace itself.");
+                assertHasText(activity, "Android needs confirmation to install updates.");
             }
         }
 
@@ -814,7 +814,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "Install permission: Ready")
                 assertHasText(activity, "Install verified update")
-                assertHasText(activity, "Android needs confirmation before Kani can replace itself.")
+                assertHasText(activity, "Android needs confirmation to install updates.")
             }
             clickText(scenario, "Install verified update")
             waitForText(scenario, "Last result: APK metadata could not be read. Install blocked.")

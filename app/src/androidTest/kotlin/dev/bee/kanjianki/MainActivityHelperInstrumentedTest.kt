@@ -508,10 +508,10 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
         var disabled = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L)
         var enabledNoHistory = LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L)
         var disabledNoHistory = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
-        assertEquals("After first successful sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
-        assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("Starts after first sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertTrue(SettingsTextCopy.autoSyncDetail(

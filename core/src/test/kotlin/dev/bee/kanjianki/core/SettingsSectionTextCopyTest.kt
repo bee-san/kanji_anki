@@ -11,7 +11,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("New cards, timing, workload, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
-        assertEquals("Daily reminders and update checks.", SettingsSectionTextCopy.settingsAutomationBody())
+        assertEquals("Reminders and updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Offline dictionaries, stroke data, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
