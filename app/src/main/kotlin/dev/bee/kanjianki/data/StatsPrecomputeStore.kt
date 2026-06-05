@@ -20,6 +20,7 @@ internal class StatsPrecomputeStore(
         generatedAtMillis: Long = System.currentTimeMillis(),
     ): StatsCacheStore.Snapshot {
         val sourceVersion = cacheStore.currentSourceVersion(db)
+        val statsStore = StudyStatsStore(store, db)
         val outcomeStats = computations.outcomeStats(db)
         val impactReport = computations.impactReport(db)
         val studyImpactStats = computations.studyImpactStats(db)
@@ -31,6 +32,8 @@ internal class StatsPrecomputeStore(
             sourceVersion,
             studyImpactStats,
             recentMistakes,
+            statsStore.studyStreak(generatedAtMillis),
+            statsStore.studyTaskTimeStats(generatedAtMillis),
             STATS_CACHE_FORMAT_VERSION,
         )
         cacheStore.write(db, snapshot)

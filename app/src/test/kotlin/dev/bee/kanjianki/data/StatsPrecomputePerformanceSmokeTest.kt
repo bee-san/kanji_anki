@@ -18,9 +18,9 @@ class StatsPrecomputePerformanceSmokeTest {
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
-        assertEquals(listOf(44_444L), source.studyStreakReads)
+        assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
-        assertEquals(listOf(44_444L), source.studyTimeReads)
+        assertEquals(emptyList<Long>(), source.studyTimeReads)
     }
 
     private class GuardedStatsSource(
@@ -83,6 +83,8 @@ class StatsPrecomputePerformanceSmokeTest {
                 1L,
                 StudyStatsStore.StudyImpactStats(8, 3, 2, 1, 1, 0),
                 listOf(StudyStatsStore.RecentMistake("痛", "again", 40_000L)),
+                StudyStatsStore.StudyStreak(2, 5, true, 4, 40_000L),
+                StudyStatsStore.StudyTaskTimeStats(1_000L, 2_000L, 2),
                 STATS_CACHE_FORMAT_VERSION,
             )
         }

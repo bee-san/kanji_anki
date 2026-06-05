@@ -46,6 +46,8 @@ class StatsPrecomputeStoreTest {
         val directImpact = KanjiImpactReportStore(localStore).report()
         val directStudyImpact = StudyStatsStore(localStore).studyImpactStats()
         val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
+        val directStreak = StudyStatsStore(localStore).studyStreak(12_345L)
+        val directTaskTime = StudyStatsStore(localStore).studyTaskTimeStats(12_345L)
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = 12_345L)
 
@@ -57,6 +59,8 @@ class StatsPrecomputeStoreTest {
         assertImpactReportEquals(directImpact, cached.impactReport)
         assertStudyImpactStatsEquals(directStudyImpact, cached.studyImpactStats)
         assertRecentMistakesEquals(directRecentMistakes, cached.recentMistakes)
+        assertStudyStreakEquals(directStreak, cached.studyStreak)
+        assertStudyTaskTimeStatsEquals(directTaskTime, cached.studyTaskTimeStats)
         assertEquals(STATS_CACHE_FORMAT_VERSION, cached.cacheFormatVersion)
         assertTrue("fixture should exercise weak-kanji improvement", cached.outcomeStats.weakKanjiImproved.improvedCount > 0)
         assertTrue("fixture should exercise ladder aggregate", cached.outcomeStats.ladderHealth.totalActiveItems > 0)
@@ -74,6 +78,11 @@ class StatsPrecomputeStoreTest {
             KanjiImpactAnalyzer.Report(1, 0, 0, emptyList()),
             1_111L,
             cacheStore.currentSourceVersion(db),
+            StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
+            emptyList(),
+            StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+            StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
+            STATS_CACHE_FORMAT_VERSION,
         )
         cacheStore.write(db, previous)
         val throwing = object : StatsPrecomputeStore.Computations {
@@ -218,5 +227,22 @@ class StatsPrecomputeStoreTest {
             assertEquals(expectedMistake.rating, actualMistake.rating)
             assertEquals(expectedMistake.reviewedAtMillis, actualMistake.reviewedAtMillis)
         }
+    }
+
+    private fun assertStudyStreakEquals(expected: StudyStatsStore.StudyStreak, actual: StudyStatsStore.StudyStreak) {
+        assertEquals(expected.currentDays, actual.currentDays)
+        assertEquals(expected.bestDays, actual.bestDays)
+        assertEquals(expected.studiedToday, actual.studiedToday)
+        assertEquals(expected.reviewsToday, actual.reviewsToday)
+        assertEquals(expected.lastStudyAtMillis, actual.lastStudyAtMillis)
+    }
+
+    private fun assertStudyTaskTimeStatsEquals(
+        expected: StudyStatsStore.StudyTaskTimeStats,
+        actual: StudyStatsStore.StudyTaskTimeStats,
+    ) {
+        assertEquals(expected.todayMillis, actual.todayMillis)
+        assertEquals(expected.lastSevenDaysMillis, actual.lastSevenDaysMillis)
+        assertEquals(expected.answeredTasks, actual.answeredTasks)
     }
 }

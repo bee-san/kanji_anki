@@ -82,6 +82,14 @@ class StatsCacheStoreTest {
         latest!!
         assertEquals(1, latest.cacheFormatVersion)
         assertEquals(0, latest.studyImpactStats.totalReviews)
+        assertEquals(0, latest.studyStreak.currentDays)
+        assertEquals(0, latest.studyStreak.bestDays)
+        assertFalse(latest.studyStreak.studiedToday)
+        assertEquals(0, latest.studyStreak.reviewsToday)
+        assertEquals(0L, latest.studyStreak.lastStudyAtMillis)
+        assertEquals(0L, latest.studyTaskTimeStats.todayMillis)
+        assertEquals(0L, latest.studyTaskTimeStats.lastSevenDaysMillis)
+        assertEquals(0, latest.studyTaskTimeStats.answeredTasks)
         assertTrue(latest.recentMistakes.isEmpty())
     }
 
@@ -196,6 +204,8 @@ class StatsCacheStoreTest {
             sourceVersion,
             studyImpactStats,
             recentMistakes,
+            StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+            StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
             cacheFormatVersion,
         )
     }

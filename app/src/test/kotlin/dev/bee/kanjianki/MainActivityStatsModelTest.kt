@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
+import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.Assert.assertEquals
@@ -10,7 +11,15 @@ import org.junit.Test
 class MainActivityStatsModelTest {
     @Test
     fun buildStatsScreenModelUsesFreshCacheWithoutDirectRecompute() {
-        val source = FakeStatsSource(fresh = snapshot(improvedCount = 3, sourceVersion = 7))
+        val source = FakeStatsSource(
+            fresh = snapshot(
+                improvedCount = 3,
+                sourceVersion = 7,
+                studyStreak = StudyStatsStore.StudyStreak(3, 9, true, 8, 3_600_000L),
+                studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(4_000L, 9_000L, 2),
+            ),
+            direct = snapshot(improvedCount = 9, sourceVersion = 11),
+        )
 
         val model = buildStatsScreenModel(source, nowMillis = 4_500_000L)
 
@@ -18,9 +27,9 @@ class MainActivityStatsModelTest {
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
-        assertEquals(listOf(4_500_000L), source.studyStreakReads)
+        assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
-        assertEquals(listOf(4_500_000L), source.studyTimeReads)
+        assertEquals(emptyList<Long>(), source.studyTimeReads)
         assertEquals(
             listOf(
                 "Weak kanji trend",
@@ -40,7 +49,14 @@ class MainActivityStatsModelTest {
 
     @Test
     fun buildStatsScreenModelFallsBackToDirectComputeWhenNoCacheExists() {
-        val source = FakeStatsSource(direct = snapshot(improvedCount = 5, sourceVersion = 9))
+        val source = FakeStatsSource(
+            direct = snapshot(
+                improvedCount = 5,
+                sourceVersion = 9,
+                studyStreak = StudyStatsStore.StudyStreak(7, 10, true, 4, 8_000L),
+                studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(5_000L, 10_000L, 3),
+            ),
+        )
 
         buildStatsScreenModel(source, nowMillis = 22_222L)
 
@@ -48,16 +64,20 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
-        assertEquals(listOf(22_222L), source.studyStreakReads)
+        assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(22_222L), source.recomputeTimes)
-        assertEquals(listOf(22_222L), source.studyTimeReads)
+        assertEquals(emptyList<Long>(), source.studyTimeReads)
     }
 
     @Test
-    fun buildStatsScreenModelUsesLatestStaleCacheWithoutDirectRecompute() {
+    fun buildStatsScreenModelFallsBackToDirectStatsOnlyWhenLegacyCacheVersion() {
         val source = FakeStatsSource(
-            latest = snapshot(improvedCount = 8, sourceVersion = 3),
+            latest = snapshot(
+                improvedCount = 8,
+                sourceVersion = 3,
+                cacheFormatVersion = 1,
+            ),
             direct = snapshot(improvedCount = 13, sourceVersion = 10),
         )
 
@@ -66,9 +86,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(0, source.directRecomputes)
-        assertEquals(0, source.studyImpactReads)
+        assertEquals(1, source.studyImpactReads)
         assertEquals(listOf(33_333L), source.studyStreakReads)
-        assertEquals(emptyList<Int>(), source.recentMistakeLimits)
+        assertEquals(listOf(STATS_RECENT_MISTAKE_LIMIT), source.recentMistakeLimits)
         assertEquals(listOf(33_333L), source.studyTimeReads)
     }
 
@@ -130,7 +150,13 @@ class MainActivityStatsModelTest {
     }
 
     private companion object {
-        fun snapshot(improvedCount: Int, sourceVersion: Long): StatsCacheStore.Snapshot {
+        fun snapshot(
+            improvedCount: Int,
+            sourceVersion: Long,
+            cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
+            studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+            studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(4_000L, 9_000L, 2),
+        ): StatsCacheStore.Snapshot {
             return StatsCacheStore.Snapshot(
                 StudyStatsStore.KaniOutcomeStats(
                     StudyStatsStore.WeakKanjiImprovedMetric(improvedCount, 80.0, 40.0, emptyList()),
@@ -145,7 +171,9 @@ class MainActivityStatsModelTest {
                     StudyStatsStore.RecentMistake("痛", "again", 4_200_000L),
                     StudyStatsStore.RecentMistake("疲", "hard", 4_140_000L),
                 ),
-                STATS_CACHE_FORMAT_VERSION,
+                studyStreak,
+                studyTaskTimeStats,
+                cacheFormatVersion,
             )
         }
     }

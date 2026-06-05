@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 2
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 3
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
 internal class StatsCacheStore(private val store: LocalStore) {
@@ -17,6 +17,8 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val sourceVersion: Long,
         val studyImpactStats: StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
         val recentMistakes: List<StudyStatsStore.RecentMistake> = emptyList(),
+        val studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+        val studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         val cacheFormatVersion: Int = 1,
     )
 
@@ -79,6 +81,8 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.outcomeStats,
                     snapshot.studyImpactStats,
                     snapshot.recentMistakes,
+                    snapshot.studyStreak,
+                    snapshot.studyTaskTimeStats,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -106,6 +110,8 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 sourceVersion = sourceVersion,
                 studyImpactStats = StatsCacheCodec.studyImpactStatsFromJson(outcomeRoot.optJSONObject("studyImpactStats")),
                 recentMistakes = StatsCacheCodec.recentMistakesFromJson(outcomeRoot.optJSONArray("recentMistakes")),
+                studyStreak = StatsCacheCodec.studyStreakFromJson(outcomeRoot.optJSONObject("studyStreak")),
+                studyTaskTimeStats = StatsCacheCodec.studyTaskTimeStatsFromJson(outcomeRoot.optJSONObject("studyTaskTimeStats")),
                 cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
             )
         } catch (_: Exception) {

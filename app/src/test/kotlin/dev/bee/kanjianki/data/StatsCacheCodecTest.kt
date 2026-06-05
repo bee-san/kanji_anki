@@ -89,14 +89,18 @@ class StatsCacheCodecTest {
             StudyStatsStore.RecentMistake("痛", "again", 1_000L),
             StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
         )
+        val streak = StudyStatsStore.StudyStreak(5, 9, true, 4, 7_000L)
+        val taskTimes = StudyStatsStore.StudyTaskTimeStats(5_500L, 12_000L, 3)
 
-        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes)
+        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes, streak, taskTimes)
         val root = JSONObject(json)
         val decoded = StatsCacheCodec.outcomeFromJson(json)
         val decodedImpact = StatsCacheCodec.studyImpactStatsFromJson(root.optJSONObject("studyImpactStats"))
         val decodedMistakes = StatsCacheCodec.recentMistakesFromJson(root.optJSONArray("recentMistakes"))
+        val decodedStreak = StatsCacheCodec.studyStreakFromJson(root.optJSONObject("studyStreak"))
+        val decodedTaskTimes = StatsCacheCodec.studyTaskTimeStatsFromJson(root.optJSONObject("studyTaskTimeStats"))
 
-        assertEquals(2, root.optInt("cacheFormatVersion", 0))
+        assertEquals(3, root.optInt("cacheFormatVersion", 0))
         assertEquals(1, decoded.weakKanjiImproved.improvedCount)
         assertEquals(12, decodedImpact.totalReviews)
         assertEquals(4, decodedImpact.distinctReviewedKanji)
@@ -104,6 +108,16 @@ class StatsCacheCodecTest {
         assertEquals("痛", decodedMistakes[0].kanji)
         assertEquals("again", decodedMistakes[0].rating)
         assertEquals(1_000L, decodedMistakes[0].reviewedAtMillis)
+
+        assertEquals(5, decodedStreak.currentDays)
+        assertEquals(9, decodedStreak.bestDays)
+        assertEquals(true, decodedStreak.studiedToday)
+        assertEquals(4, decodedStreak.reviewsToday)
+        assertEquals(7_000L, decodedStreak.lastStudyAtMillis)
+
+        assertEquals(5_500L, decodedTaskTimes.todayMillis)
+        assertEquals(12_000L, decodedTaskTimes.lastSevenDaysMillis)
+        assertEquals(3, decodedTaskTimes.answeredTasks)
     }
 
     @Test

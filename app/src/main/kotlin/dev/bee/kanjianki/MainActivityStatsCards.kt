@@ -62,13 +62,15 @@ internal fun buildStatsScreenModel(
         ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
     val needsLiveFallback = snapshot.cacheFormatVersion < STATS_CACHE_FORMAT_VERSION
     val studyImpact = if (needsLiveFallback) source.studyImpactStats() else snapshot.studyImpactStats
+    val studyStreak = if (needsLiveFallback) source.studyStreak(nowMillis) else snapshot.studyStreak
+    val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
     val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
-        source.studyTaskTimeStats(nowMillis),
+        studyTaskTimeStats,
         studyImpact,
-        source.studyStreak(nowMillis),
+        studyStreak,
         recentMistakes,
         nowMillis,
     )

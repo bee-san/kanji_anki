@@ -11,17 +11,21 @@ object StatsCacheCodec {
         stats: StudyStatsStore.KaniOutcomeStats?,
         studyImpactStats: StudyStatsStore.StudyImpactStats? = null,
         recentMistakes: List<StudyStatsStore.RecentMistake>? = null,
+        studyStreak: StudyStatsStore.StudyStreak? = null,
+        studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats? = null,
     ): String {
         val safe = stats ?: StudyStatsStore.KaniOutcomeStats.empty()
         val root = JSONObject()
             .put("weakKanjiImproved", weakKanjiImprovedToJson(safe.weakKanjiImproved))
             .put("matureSupportGained", matureSupportGainedToJson(safe.matureSupportGained))
             .put("ladderHealth", ladderHealthToJson(safe.ladderHealth))
-        val hasExtras = studyImpactStats != null || recentMistakes != null
+        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null
         if (hasExtras) {
             root.put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION)
             root.put("studyImpactStats", studyImpactStatsToJson(studyImpactStats ?: StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)))
             root.put("recentMistakes", recentMistakesToJson(recentMistakes ?: emptyList()))
+            root.put("studyStreak", studyStreakToJson(studyStreak ?: StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)))
+            root.put("studyTaskTimeStats", studyTaskTimeStatsToJson(studyTaskTimeStats ?: StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0)))
         } else {
             root.put("cacheFormatVersion", 1)
         }
@@ -85,6 +89,20 @@ object StatsCacheCodec {
             json.optInt("writingPassed", 0),
             json.optInt("writingFailed", 0),
             json.optInt("manualOverrides", 0),
+        )
+    }
+
+    @JvmStatic
+    fun studyStreakFromJson(json: JSONObject?): StudyStatsStore.StudyStreak {
+        if (json == null) {
+            return StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)
+        }
+        return StudyStatsStore.StudyStreak(
+            json.optInt("currentDays", 0),
+            json.optInt("bestDays", 0),
+            json.optBoolean("studiedToday", false),
+            json.optInt("reviewsToday", 0),
+            json.optLong("lastStudyAtMillis", 0L),
         )
     }
 
@@ -187,6 +205,27 @@ object StatsCacheCodec {
             .put("manualOverrides", stats.manualOverrides)
     }
 
+    private fun studyStreakToJson(stats: StudyStatsStore.StudyStreak): JSONObject {
+        return JSONObject()
+            .put("currentDays", stats.currentDays)
+            .put("bestDays", stats.bestDays)
+            .put("studiedToday", stats.studiedToday)
+            .put("reviewsToday", stats.reviewsToday)
+            .put("lastStudyAtMillis", stats.lastStudyAtMillis)
+    }
+
+    @JvmStatic
+    fun studyTaskTimeStatsFromJson(json: JSONObject?): StudyStatsStore.StudyTaskTimeStats {
+        if (json == null) {
+            return StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0)
+        }
+        return StudyStatsStore.StudyTaskTimeStats(
+            json.optLong("todayMillis", 0L),
+            json.optLong("lastSevenDaysMillis", 0L),
+            json.optInt("answeredTasks", 0),
+        )
+    }
+
     private fun recentMistakesToJson(mistakes: List<StudyStatsStore.RecentMistake>): JSONArray {
         return JSONArray().also { array ->
             mistakes.forEach { mistake ->
@@ -198,6 +237,13 @@ object StatsCacheCodec {
                 )
             }
         }
+    }
+
+    private fun studyTaskTimeStatsToJson(stats: StudyStatsStore.StudyTaskTimeStats): JSONObject {
+        return JSONObject()
+            .put("todayMillis", stats.todayMillis)
+            .put("lastSevenDaysMillis", stats.lastSevenDaysMillis)
+            .put("answeredTasks", stats.answeredTasks)
     }
 
     private fun matureSupportGainedFromJson(json: JSONObject?): StudyStatsStore.MatureSupportGainedMetric {
