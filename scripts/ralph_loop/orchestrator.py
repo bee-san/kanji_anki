@@ -647,9 +647,10 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
     _write_json(manifest_path, manifest)
 
     contract = button_contract.build_contract(repo_root, manifest_path)
-    button_contract.write_outputs(contract, repo_root, run_dir / "button-contract.json", run_dir / "button-contract.md")
+    contract_path = run_dir / "button-contract.json"
+    button_contract.write_outputs(contract, repo_root, contract_path, run_dir / "button-contract.md")
 
-    latency_inventory = button_latency_inventory.build_inventory(repo_root, manifest, contract)
+    latency_inventory = button_latency_inventory.build_inventory(repo_root, manifest_path, contract_path)
     button_latency_inventory.write_outputs(
         latency_inventory,
         repo_root,
