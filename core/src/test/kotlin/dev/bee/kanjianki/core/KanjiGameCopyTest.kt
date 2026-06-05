@@ -11,11 +11,11 @@ import java.util.Arrays
 class KanjiGameCopyTest {
     @Test
     fun modeBodyPreservesGameModeCardCopy() {
-        assertEquals("Needs more local kanji data.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
-        assertEquals("Pick meanings for kanji from your focus list.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true))
-        assertEquals("Pick readings from your source words.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true))
-        assertEquals("Choose between visually similar kanji.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true))
-        assertEquals("Needs more local kanji data.", KanjiGameCopy.modeBody(null, false))
+        assertEquals("Needs more kanji data.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
+        assertEquals("Pick meanings from your focus list.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true))
+        assertEquals("Pick readings from source words.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true))
+        assertEquals("Choose among similar kanji.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true))
+        assertEquals("Needs more kanji data.", KanjiGameCopy.modeBody(null, false))
         assertThrows(NullPointerException::class.java) { KanjiGameCopy.modeBody(null, true) }
     }
 
@@ -82,11 +82,11 @@ class KanjiGameCopyTest {
         assertEquals("Round", KanjiGameCopy.LABEL_ROUND)
         assertEquals("Score", KanjiGameCopy.LABEL_SCORE)
         assertEquals("Streak", KanjiGameCopy.LABEL_STREAK)
-        assertEquals("Practice kanji without changing SRS.", KanjiGameCopy.GAMES_SUBTITLE)
+        assertEquals("Practice without changing reviews.", KanjiGameCopy.GAMES_SUBTITLE)
         assertEquals("No kanji games yet", KanjiGameCopy.EMPTY_NO_KANJI_TITLE)
-        assertEquals("Sync AnkiDroid first so Kani can build practice games from your own cards.", KanjiGameCopy.EMPTY_NO_KANJI_BODY)
+        assertEquals("Sync AnkiDroid to build games from your cards.", KanjiGameCopy.EMPTY_NO_KANJI_BODY)
         assertEquals("Game not ready", KanjiGameCopy.GAME_NOT_READY_TITLE)
-        assertEquals("This game needs at least two usable choices from your local kanji data.", KanjiGameCopy.GAME_NOT_READY_BODY)
+        assertEquals("Needs at least two choices from your kanji data.", KanjiGameCopy.GAME_NOT_READY_BODY)
     }
 
     private fun question(mode: KanjiGameEngine.GameMode, correctAnswer: String): KanjiGameEngine.GameQuestion {
