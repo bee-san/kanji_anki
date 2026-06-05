@@ -18,7 +18,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
+import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.Executor
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -77,6 +79,7 @@ class MainActivityHomeAsyncRenderTest {
         val precomputeTasks = ArrayDeque<Runnable>()
         val scheduledOrder = mutableListOf<String>()
         val mainTasks = ArrayDeque<Runnable>()
+        val ioTasks = QueueingExecutorService()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
@@ -91,6 +94,7 @@ class MainActivityHomeAsyncRenderTest {
 
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
+            replaceField(activity, "io", ioTasks)
             replaceLazyDelegate(
                 activity,
                 "statsPrecomputeScheduler",
@@ -119,12 +123,18 @@ class MainActivityHomeAsyncRenderTest {
             assertEquals(1, backgroundTasks.size)
             assertTrue(precomputeTasks.isEmpty())
             assertTrue(mainTasks.isEmpty())
+            assertEquals(0, ioTasks.pendingCount())
 
             backgroundTasks.removeFirst().run()
             assertEquals(1, mainTasks.size)
             assertTrue(precomputeTasks.isEmpty())
+            assertEquals(0, ioTasks.pendingCount())
 
             mainTasks.removeFirst().run()
+            assertEquals(1, ioTasks.pendingCount())
+            assertTrue(precomputeTasks.isEmpty())
+
+            ioTasks.runNext()
 
             val contentRoot = activity.findViewById<ViewGroup>(android.R.id.content)
             assertTrue(contentRoot.childCount > 0)
@@ -200,6 +210,55 @@ class MainActivityHomeAsyncRenderTest {
         val field = MainActivityHome::class.java.getDeclaredField("$propertyName\$delegate")
         field.isAccessible = true
         field.set(activity, lazyOf(value))
+    }
+
+    private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {
+        val field = MainActivityBase::class.java.getDeclaredField(propertyName)
+        field.isAccessible = true
+        field.set(activity, value)
+    }
+
+    private class QueueingExecutorService : AbstractExecutorService() {
+        private val tasks = ArrayDeque<Runnable>()
+        private var shutdown = false
+
+        override fun shutdown() {
+            shutdown = true
+        }
+
+        override fun shutdownNow(): MutableList<Runnable> {
+            shutdown = true
+            val remaining = tasks.toMutableList()
+            tasks.clear()
+            return remaining
+        }
+
+        override fun isShutdown(): Boolean {
+            return shutdown
+        }
+
+        override fun isTerminated(): Boolean {
+            return shutdown && tasks.isEmpty()
+        }
+
+        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+            return isTerminated()
+        }
+
+        override fun execute(command: Runnable) {
+            if (shutdown) {
+                throw IllegalStateException("executor is shut down")
+            }
+            tasks.addLast(command)
+        }
+
+        fun pendingCount(): Int {
+            return tasks.size
+        }
+
+        fun runNext() {
+            tasks.removeFirst().run()
+        }
     }
 
     private fun containsText(view: View?, expected: String): Boolean {

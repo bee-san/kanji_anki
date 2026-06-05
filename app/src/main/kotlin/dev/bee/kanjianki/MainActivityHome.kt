@@ -51,7 +51,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             load = { buildHomeScreenModel() },
             render = { model ->
                 renderHomeScreen(model)
-                scheduleStatsPrecomputeIfStale()
+                scheduleStatsPrecomputeIfStaleAsync()
             },
         )
     }
@@ -407,6 +407,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun scheduleStatsPrecomputeIfStale(): Boolean {
         return statsPrecomputeScheduler.scheduleIfStale()
+    }
+
+    fun scheduleStatsPrecomputeIfStaleAsync() {
+        io.execute {
+            scheduleStatsPrecomputeIfStale()
+        }
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
