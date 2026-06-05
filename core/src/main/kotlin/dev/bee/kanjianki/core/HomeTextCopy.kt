@@ -242,7 +242,7 @@ object HomeTextCopy {
     fun browseEmptyTitle(): String = "No local kanji found"
 
     @JvmStatic
-    fun browseEmptyBody(): String = "Sync AnkiDroid first."
+    fun browseEmptyBody(): String = "Sync AnkiDroid first, or try a different search."
 
     @JvmStatic
     fun kanjiNotFoundTitle(): String = "Kanji not found"

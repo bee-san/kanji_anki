@@ -168,7 +168,7 @@ class HomeTextCopyTest {
         assertEquals("Search kanji, meaning, reading, or examples", HomeTextCopy.browseSearchHint())
         assertEquals("Search", HomeTextCopy.browseSearchButtonLabel())
         assertEquals("No local kanji found", HomeTextCopy.browseEmptyTitle())
-        assertEquals("Sync AnkiDroid first.", HomeTextCopy.browseEmptyBody())
+        assertEquals("Sync AnkiDroid first, or try a different search.", HomeTextCopy.browseEmptyBody())
         assertEquals("Kanji not found", HomeTextCopy.kanjiNotFoundTitle())
         assertEquals("No local record found.", HomeTextCopy.kanjiNotFoundBody())
         assertEquals("Meaning not stored yet", HomeTextCopy.browseItemMeaning(inventory("語", "", "")))
