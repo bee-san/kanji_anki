@@ -30,7 +30,7 @@ object StatsTextCopy {
         totalActiveItems: Int,
     ): String {
         if (!hasStats) {
-            return "Study in Kani, then sync AnkiDroid to unlock trends."
+            return "Study and sync to unlock trends."
         }
         if (working) {
             return workingVerdictBody(
@@ -41,11 +41,11 @@ object StatsTextCopy {
             )
         }
         if (hasLadder) {
-            return "Kani is tracking " +
+            return "Tracking " +
                 StudyTextCopy.countText(totalActiveItems, "active kanji", "active kanji") +
                 ". Trends appear after reviews and sync."
         }
-        return "Do Kani reviews, then sync AnkiDroid to compare before and after."
+        return "Review and sync to compare before and after."
     }
 
     @JvmStatic
@@ -112,7 +112,7 @@ object StatsTextCopy {
         averageAfterWeakness: Double,
     ): String {
         if (improvedCount == 0) {
-            return "Weakness trends appear after Kani reviews and a successful AnkiDroid sync."
+            return "Weakness trends appear after reviews and sync."
         }
         return "Average weakness: " +
             formatWeakness(averageBeforeWeakness) +
@@ -153,12 +153,12 @@ object StatsTextCopy {
     @JvmStatic
     fun notHelpingBody(noImpactEvidence: Boolean, hasNotHelpingRows: Boolean): String {
         if (noImpactEvidence) {
-            return "Review in Kani, then sync AnkiDroid to compare before and after."
+            return "Review and sync to compare before and after."
         }
         if (!hasNotHelpingRows) {
             return "No kanji need attention right now."
         }
-        return "Shown only after enough Kani reviews and synced Anki evidence."
+        return "Shown after enough reviews and sync."
     }
 
     @JvmStatic
@@ -202,22 +202,22 @@ object StatsTextCopy {
         if (weakKanjiImproved > 0) {
             signals += StudyTextCopy.countText(
                 weakKanjiImproved,
-                "weak kanji is burning down",
-                "weak kanji are burning down",
+                "weak kanji improved",
+                "weak kanji improved",
             )
         }
         if (matureSupportGained > 0) {
             signals += StudyTextCopy.countText(
                 matureSupportGained,
-                "mature Anki card has been gained",
-                "mature Anki cards have been gained",
+                "mature card gained",
+                "mature cards gained",
             )
         }
         if (promotionReadyCount > 0) {
             signals += StudyTextCopy.countText(
                 promotionReadyCount,
-                "review-phase item crossed the FSRS climb threshold",
-                "review-phase items crossed the FSRS climb threshold",
+                "review-phase item crossed the climb threshold",
+                "review-phase items crossed the climb threshold",
             )
         }
         var body = signals.joinToString(". ") + "."

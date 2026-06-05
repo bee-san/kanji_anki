@@ -1709,8 +1709,8 @@ private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: Record
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
-        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study and sync to unlock trends."));
+        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Tracking 1 active kanji"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 ladderOnly.totalActiveItems,
                 ladderOnly.promotionReadyCount,
@@ -1765,10 +1765,10 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionRiskCount,
                 busyLadder.totalActiveItems
         );
-        assertTrue(workingBody.contains("weak kanji are burning down"));
-        assertTrue(workingBody.contains("mature Anki cards have been gained"));
-        assertTrue(workingBody.contains("review-phase item is ready to climb"));
-        assertTrue(workingBody.contains("review-phase items with miss streaks"));
+        assertTrue(workingBody.contains("weak kanji improved"));
+        assertTrue(workingBody.contains("mature card gained"));
+        assertTrue(workingBody.contains("review-phase items crossed the climb threshold"));
+        assertTrue(workingBody.contains("review-phase item with a miss streak"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 busyLadder.totalActiveItems,
                 busyLadder.promotionReadyCount,
@@ -1776,7 +1776,7 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionReadyCount,
                 busyLadder.ladderPromotionIntervalDays,
                 busyLadder.ladderDemotionFailStreak
-        ).contains("at the demotion threshold"));
+        ).contains("fall after 1 misses"));
         assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size)
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));

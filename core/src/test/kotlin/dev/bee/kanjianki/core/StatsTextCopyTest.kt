@@ -24,15 +24,15 @@ class StatsTextCopyTest {
     @Test
     fun verdictBodyKeepsEmptyAndLadderOnlyCopyBrief() {
         assertEquals(
-            "Study in Kani, then sync AnkiDroid to unlock trends.",
+            "Study and sync to unlock trends.",
             StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0)
         )
         assertEquals(
-            "Kani is tracking 2 active kanji. Trends appear after reviews and sync.",
+            "Tracking 2 active kanji. Trends appear after reviews and sync.",
             StatsTextCopy.verdictBody(true, false, true, 0, 0, 0, 0, 2)
         )
         assertEquals(
-            "Do Kani reviews, then sync AnkiDroid to compare before and after.",
+            "Review and sync to compare before and after.",
             StatsTextCopy.verdictBody(true, false, false, 0, 0, 0, 0, 0)
         )
     }
@@ -40,7 +40,7 @@ class StatsTextCopyTest {
     @Test
     fun verdictBodyPreservesWorkingSignalsAndRiskCopy() {
         assertEquals(
-            "1 weak kanji is burning down. 2 mature Anki cards have been gained. 3 review-phase items crossed the FSRS climb threshold. Watch 1 review-phase item with a miss streak.",
+            "1 weak kanji improved. 2 mature cards gained. 3 review-phase items crossed the climb threshold. Watch 1 review-phase item with a miss streak.",
             StatsTextCopy.verdictBody(true, true, true, 1, 2, 3, 1, 4)
         )
     }
@@ -71,7 +71,7 @@ class StatsTextCopyTest {
     @Test
     fun weaknessAndSupportFormattingPreservesStatsRows() {
         assertEquals(
-            "Weakness trends appear after Kani reviews and a successful AnkiDroid sync.",
+            "Weakness trends appear after reviews and sync.",
             StatsTextCopy.weaknessImprovementBody(0, 0.0, 0.0)
         )
         assertEquals(
@@ -85,7 +85,7 @@ class StatsTextCopyTest {
     @Test
     fun impactAndTimeFormattingPreservesStatsHelpers() {
         assertEquals(
-            "Review in Kani, then sync AnkiDroid to compare before and after.",
+            "Review and sync to compare before and after.",
             StatsTextCopy.notHelpingBody(true, false)
         )
         assertEquals(
@@ -93,7 +93,7 @@ class StatsTextCopyTest {
             StatsTextCopy.notHelpingBody(false, false)
         )
         assertEquals(
-            "Shown only after enough Kani reviews and synced Anki evidence.",
+            "Shown after enough reviews and sync.",
             StatsTextCopy.notHelpingBody(false, true)
         )
         assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4))
