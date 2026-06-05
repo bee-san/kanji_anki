@@ -413,7 +413,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val TASK_REPAIR_WRITING = "repair_writing"
         const val EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet"
         const val EMPTY_ACTIVE_PRACTICE_BODY =
-            "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus."
+            "Study now adds the next problem kanji from AnkiDroid."
 
         @JvmField
         val MUTED: Int = MainActivityUiSupport.MUTED
