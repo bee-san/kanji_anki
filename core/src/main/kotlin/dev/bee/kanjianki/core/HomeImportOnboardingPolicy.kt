@@ -88,7 +88,7 @@ object HomeImportOnboardingPolicy {
         }
         return Plan(
             State.READY_FIRST_SYNC,
-            "Ready for first sync. " + sourceAndModelLine(settings) + " Kani reads local AnkiDroid data only after you confirm.",
+            HomeTextCopy.syncDialogMessage(settings) + " Reads local data after you confirm.",
             "Sync cards",
         )
     }
