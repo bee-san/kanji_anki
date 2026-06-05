@@ -49,9 +49,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.appTitle(),
             load = { buildHomeScreenModel() },
-            render = { model -> renderHomeScreen(model) },
+            render = { model ->
+                renderHomeScreen(model)
+                scheduleStatsPrecomputeIfStale()
+            },
         )
-        scheduleStatsPrecomputeIfStale()
     }
 
     private fun buildHomeScreenModel(): HomeScreenModel {
@@ -278,7 +280,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
-        scheduleStatsPrecomputeIfStale()
         val now = System.currentTimeMillis()
         val rows = store.activeDashboardRows()
         val items = store.studyItems()
@@ -308,6 +309,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 this::renderHome,
             )
         )
+        scheduleStatsPrecomputeIfStale()
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {

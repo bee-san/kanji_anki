@@ -28,9 +28,7 @@ class MainActivityHomeAsyncRenderTest {
         val backgroundTasks = ArrayDeque<Runnable>()
         val mainTasks = ArrayDeque<Runnable>()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        MainActivityRuntimeOverrides.setAnkiDroidGateway(
-            AnkiDroidGateway.testProvider(context, "async-home-loading")
-        )
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val intent = Intent(context, MainActivity::class.java).apply {
                 putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
@@ -80,9 +78,7 @@ class MainActivityHomeAsyncRenderTest {
         val scheduledOrder = mutableListOf<String>()
         val mainTasks = ArrayDeque<Runnable>()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        MainActivityRuntimeOverrides.setAnkiDroidGateway(
-            AnkiDroidGateway.testProvider(context, "async-home-order")
-        )
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val intent = Intent(context, MainActivity::class.java).apply {
                 putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
@@ -120,17 +116,36 @@ class MainActivityHomeAsyncRenderTest {
             )
 
             activity.renderHome()
-            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, backgroundTasks.size)
+            assertTrue(precomputeTasks.isEmpty())
+            assertTrue(mainTasks.isEmpty())
+
+            backgroundTasks.removeFirst().run()
+            assertEquals(1, mainTasks.size)
+            assertTrue(precomputeTasks.isEmpty())
+
+            mainTasks.removeFirst().run()
 
             val contentRoot = activity.findViewById<ViewGroup>(android.R.id.content)
             assertTrue(contentRoot.childCount > 0)
             assertEquals(listOf("home-load", "stats-precompute"), scheduledOrder)
-            assertEquals(1, backgroundTasks.size)
             assertEquals(1, precomputeTasks.size)
             assertTrue(mainTasks.isEmpty())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
+    }
+
+    private fun fakeAnkiDroidGateway(): AnkiDroidGateway {
+        val constructor = AnkiDroidGateway::class.java.getDeclaredConstructor(
+            android.content.Context::class.java,
+            List::class.java,
+        )
+        constructor.isAccessible = true
+        return constructor.newInstance(
+            ApplicationProvider.getApplicationContext<android.content.Context>(),
+            emptyList<Any>(),
+        ) as AnkiDroidGateway
     }
 
     private fun replaceLazyDelegate(activity: MainActivity, propertyName: String, value: Any) {
