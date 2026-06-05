@@ -74,7 +74,7 @@ class HomeFocusQueueComposeTest {
                 model = HomeFocusQueuePanelModel(
                     planText = "Adaptive focus is waiting for sync",
                     emptyTitle = "No active practice yet",
-                    emptyBody = "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.",
+                    emptyBody = "Study now adds the next problem kanji from AnkiDroid.",
                     showSyncButton = true,
                     cards = emptyList()
                 ),
@@ -83,7 +83,7 @@ class HomeFocusQueueComposeTest {
         }
 
         composeRule.onNodeWithText("No active practice yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Study now will admit the next problem kanji through your adaptive focus.").assertIsDisplayed()
+        composeRule.onNodeWithText("Study now adds the next problem kanji from AnkiDroid.").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid")
             .assertIsDisplayed()
             .assertHasClickAction()
