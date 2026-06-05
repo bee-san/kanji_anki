@@ -46,12 +46,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
             renderScreenshotHome()
             return
         }
-        scheduleStatsPrecomputeIfStale()
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.appTitle(),
             load = { buildHomeScreenModel() },
             render = { model -> renderHomeScreen(model) },
         )
+        scheduleStatsPrecomputeIfStale()
     }
 
     private fun buildHomeScreenModel(): HomeScreenModel {

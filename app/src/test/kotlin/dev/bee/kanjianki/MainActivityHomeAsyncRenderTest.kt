@@ -73,6 +73,66 @@ class MainActivityHomeAsyncRenderTest {
         }
     }
 
+    @Test
+    fun renderHomeQueuesHomeLoadAheadOfStatsPrecompute() {
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val precomputeTasks = ArrayDeque<Runnable>()
+        val scheduledOrder = mutableListOf<String>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(
+            AnkiDroidGateway.testProvider(context, "async-home-order")
+        )
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            }
+            val activity = Robolectric.buildActivity(MainActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .get()
+
+            activity.cancelPendingHomeRouteLoads()
+            activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
+            replaceLazyDelegate(
+                activity,
+                "statsPrecomputeScheduler",
+                StatsPrecomputeScheduler(
+                    background = Executor {
+                        scheduledOrder.add("stats-precompute")
+                        precomputeTasks.addLast(it)
+                    },
+                    isFresh = { false },
+                    refresh = { },
+                ),
+            )
+            replaceLazyDelegate(
+                activity,
+                "asyncHomeRouteLoader",
+                AsyncHomeRouteLoader(
+                    background = Executor {
+                        scheduledOrder.add("home-load")
+                        backgroundTasks.addLast(it)
+                    },
+                    postToMain = { mainTasks.addLast(it) },
+                ),
+            )
+
+            activity.renderHome()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            val contentRoot = activity.findViewById<ViewGroup>(android.R.id.content)
+            assertTrue(contentRoot.childCount > 0)
+            assertEquals(listOf("home-load", "stats-precompute"), scheduledOrder)
+            assertEquals(1, backgroundTasks.size)
+            assertEquals(1, precomputeTasks.size)
+            assertTrue(mainTasks.isEmpty())
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
     private fun replaceLazyDelegate(activity: MainActivity, propertyName: String, value: Any) {
         val field = MainActivityHome::class.java.getDeclaredField("$propertyName\$delegate")
         field.isAccessible = true
