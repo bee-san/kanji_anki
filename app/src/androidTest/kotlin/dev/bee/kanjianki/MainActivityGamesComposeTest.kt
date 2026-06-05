@@ -23,8 +23,8 @@ class MainActivityGamesComposeTest {
                 model = GamesScreenModel(
                     title = "Games",
                     subtitle = "Practice without changing reviews.",
-                    emptyTitle = "No kanji games yet",
-                    emptyBody = "Sync AnkiDroid to build games from your cards.",
+                    emptyTitle = "No games yet",
+                    emptyBody = "Sync AnkiDroid to build games.",
                     showSyncButton = false,
                     onSync = Runnable {},
                     modeCards = listOf(
@@ -40,7 +40,7 @@ class MainActivityGamesComposeTest {
                         GamesModeCardModel(
                             title = "Reading Rush",
                             label = "Word -> reading",
-                            body = "Needs more kanji data.",
+                            body = "Needs more data.",
                             accentColor = 0xFF00AEB5.toInt(),
                             available = false,
                             chipLabel = "Needs data",
@@ -75,8 +75,8 @@ class MainActivityGamesComposeTest {
                 model = GamesScreenModel(
                     title = "Games",
                     subtitle = "Practice without changing reviews.",
-                    emptyTitle = "No kanji games yet",
-                    emptyBody = "Sync AnkiDroid to build games from your cards.",
+                    emptyTitle = "No games yet",
+                    emptyBody = "Sync AnkiDroid to build games.",
                     showSyncButton = true,
                     onSync = Runnable { syncClicked = true },
                     modeCards = emptyList()
@@ -84,8 +84,8 @@ class MainActivityGamesComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("No kanji games yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid to build games from your cards.").assertIsDisplayed()
+        composeRule.onNodeWithText("No games yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync AnkiDroid to build games.").assertIsDisplayed()
         composeRule.onNodeWithTag(gamesSyncButtonTestTag())
             .assertIsDisplayed()
             .performClick()
@@ -104,8 +104,8 @@ class MainActivityGamesComposeTest {
                 model = GamesScreenModel(
                     title = "Games",
                     subtitle = "Practice without changing reviews.",
-                    emptyTitle = "No kanji games yet",
-                    emptyBody = "Sync AnkiDroid to build games from your cards.",
+                    emptyTitle = "No games yet",
+                    emptyBody = "Sync AnkiDroid to build games.",
                     showSyncButton = false,
                     onSync = Runnable {},
                     modeCards = emptyList()
@@ -277,8 +277,8 @@ class MainActivityGamesComposeTest {
                 )
                 GamesUnavailableCard(
                     model = GamesUnavailableModel(
-                        title = "Game not ready",
-                        body = "Needs at least two choices from your kanji data."
+                        title = "Needs more data",
+                        body = "At least two choices needed."
                     )
                 )
             }
@@ -287,8 +287,8 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Round complete").assertIsDisplayed()
         composeRule.onNodeWithText("Score: 7/10").assertIsDisplayed()
         composeRule.onNodeWithText("Accuracy: 70%").assertIsDisplayed()
-        composeRule.onNodeWithText("Game not ready").assertIsDisplayed()
-        composeRule.onNodeWithText("Needs at least two choices from your kanji data.").assertIsDisplayed()
+        composeRule.onNodeWithText("Needs more data").assertIsDisplayed()
+        composeRule.onNodeWithText("At least two choices needed.").assertIsDisplayed()
 
         composeRule.onNodeWithText("New round").performClick()
 

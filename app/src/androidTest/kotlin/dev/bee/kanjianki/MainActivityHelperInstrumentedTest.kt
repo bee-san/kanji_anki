@@ -847,7 +847,7 @@ fun gamesHostPathsRenderComposeResultAndUnavailableStates() {
                 assertHasText(activity, "Games");
 
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
-                assertHasText(activity, "Game not ready");
+                assertHasText(activity, "Needs more data");
 
                 seedRows(activity, listOf(
                         row("裂", "split", "レツ", emptyList<RecordsImportModels.Example>()),
