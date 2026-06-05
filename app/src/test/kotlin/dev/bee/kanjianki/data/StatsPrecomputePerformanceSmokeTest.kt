@@ -16,6 +16,9 @@ class StatsPrecomputePerformanceSmokeTest {
         assertEquals(1, source.freshReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
+        assertEquals(1, source.studyImpactReads)
+        assertEquals(listOf(44_444L), source.studyStreakReads)
+        assertEquals(listOf(5), source.recentMistakeLimits)
         assertEquals(listOf(44_444L), source.studyTimeReads)
     }
 
@@ -25,6 +28,9 @@ class StatsPrecomputePerformanceSmokeTest {
         var freshReads = 0
         var latestReads = 0
         var directRecomputes = 0
+        var studyImpactReads = 0
+        val studyStreakReads = mutableListOf<Long>()
+        val recentMistakeLimits = mutableListOf<Int>()
         val studyTimeReads = mutableListOf<Long>()
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
@@ -40,6 +46,21 @@ class StatsPrecomputePerformanceSmokeTest {
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
             directRecomputes += 1
             throw AssertionError("cached stats route must not recompute impact report synchronously")
+        }
+
+        override fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
+            studyImpactReads += 1
+            return StudyStatsStore.StudyImpactStats(8, 3, 2, 1, 1, 0)
+        }
+
+        override fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
+            studyStreakReads += nowMillis
+            return StudyStatsStore.StudyStreak(2, 5, true, 4, 40_000L)
+        }
+
+        override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+            recentMistakeLimits += limit
+            return listOf(StudyStatsStore.RecentMistake("痛", "again", 40_000L))
         }
 
         override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {

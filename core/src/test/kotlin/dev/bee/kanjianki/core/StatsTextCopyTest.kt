@@ -104,4 +104,42 @@ class StatsTextCopyTest {
         assertEquals("1 hr", StatsTextCopy.formatStudyTime(3_600_000))
         assertEquals("1 hr 2 min", StatsTextCopy.formatStudyTime(3_720_000))
     }
+
+    @Test
+    fun streakImpactAndMistakeFormattingPreservesStatsHelpers() {
+        assertEquals("No active streak", StatsTextCopy.studyStreakSummary(0))
+        assertEquals("3-day streak", StatsTextCopy.studyStreakSummary(3))
+        assertEquals(
+            "Study and sync to start a streak.",
+            StatsTextCopy.studyStreakBody(0, false, 0, 0L, 44_444L)
+        )
+        assertEquals(
+            "Best streak 9 days. 8 reviews today. Last study 15 min ago.",
+            StatsTextCopy.studyStreakBody(9, true, 8, 3_600_000L, 4_500_000L)
+        )
+        assertEquals(
+            "Study and sync to start measuring impact.",
+            StatsTextCopy.studyImpactBody(0, 0, 0, 0, 0, 0)
+        )
+        assertEquals(
+            "12 reviews across 4 kanji. Writing prompts: 4 passed, 2 failed, 1 manual override.",
+            StatsTextCopy.studyImpactBody(12, 4, 6, 4, 2, 1)
+        )
+        assertEquals(
+            "No recent mistakes right now.",
+            StatsTextCopy.recentMistakesBody(false)
+        )
+        assertEquals(
+            "Recent misses worth another pass.",
+            StatsTextCopy.recentMistakesBody(true)
+        )
+        assertEquals(
+            "痛  Again · 5 min ago",
+            StatsTextCopy.recentMistakeRowText("痛", "again", 4_200_000L, 4_500_000L)
+        )
+        assertEquals(
+            "疲  Hard · just now",
+            StatsTextCopy.recentMistakeRowText("疲", "hard", 4_500_000L, 4_500_000L)
+        )
+    }
 }

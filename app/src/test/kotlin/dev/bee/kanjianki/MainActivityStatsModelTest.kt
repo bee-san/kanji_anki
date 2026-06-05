@@ -11,12 +11,30 @@ class MainActivityStatsModelTest {
     fun buildStatsScreenModelUsesFreshCacheWithoutDirectRecompute() {
         val source = FakeStatsSource(fresh = snapshot(improvedCount = 3, sourceVersion = 7))
 
-        buildStatsScreenModel(source, nowMillis = 12_345L)
+        val model = buildStatsScreenModel(source, nowMillis = 4_500_000L)
 
         assertEquals(1, source.freshReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
-        assertEquals(listOf(12_345L), source.studyTimeReads)
+        assertEquals(1, source.studyImpactReads)
+        assertEquals(listOf(4_500_000L), source.studyStreakReads)
+        assertEquals(listOf(5), source.recentMistakeLimits)
+        assertEquals(listOf(4_500_000L), source.studyTimeReads)
+        assertEquals(
+            listOf(
+                "Weak kanji trend",
+                "Anki support",
+                "Study streak",
+                "Study impact",
+                "Needs attention",
+                "Ladder status",
+                "Recent mistakes",
+                "Study time",
+            ),
+            model.sections.map { it.title },
+        )
+        assertEquals("3-day streak", model.sections[2].summary)
+        assertEquals("2 recent mistakes", model.sections[6].summary)
     }
 
     @Test
@@ -28,6 +46,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)
+        assertEquals(1, source.studyImpactReads)
+        assertEquals(listOf(22_222L), source.studyStreakReads)
+        assertEquals(listOf(5), source.recentMistakeLimits)
         assertEquals(listOf(22_222L), source.recomputeTimes)
         assertEquals(listOf(22_222L), source.studyTimeReads)
     }
@@ -44,6 +65,9 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(0, source.directRecomputes)
+        assertEquals(1, source.studyImpactReads)
+        assertEquals(listOf(33_333L), source.studyStreakReads)
+        assertEquals(listOf(5), source.recentMistakeLimits)
         assertEquals(listOf(33_333L), source.studyTimeReads)
     }
 
@@ -51,10 +75,19 @@ class MainActivityStatsModelTest {
         private val fresh: StatsCacheStore.Snapshot? = null,
         private val latest: StatsCacheStore.Snapshot? = null,
         private val direct: StatsCacheStore.Snapshot = snapshot(improvedCount = 1, sourceVersion = 1),
+        private val impact: StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(12, 4, 6, 4, 2, 1),
+        private val streak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(3, 9, true, 8, 3_600_000L),
+        private val recentMistakeRows: List<StudyStatsStore.RecentMistake> = listOf(
+            StudyStatsStore.RecentMistake("痛", "again", 4_200_000L),
+            StudyStatsStore.RecentMistake("疲", "hard", 4_140_000L),
+        ),
     ) : StatsScreenStatsSource {
         var freshReads = 0
         var latestReads = 0
         var directRecomputes = 0
+        var studyImpactReads = 0
+        val studyStreakReads = mutableListOf<Long>()
+        val recentMistakeLimits = mutableListOf<Int>()
         val recomputeTimes = mutableListOf<Long>()
         val studyTimeReads = mutableListOf<Long>()
 
@@ -72,6 +105,21 @@ class MainActivityStatsModelTest {
             directRecomputes += 1
             recomputeTimes += nowMillis
             return direct
+        }
+
+        override fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
+            studyImpactReads += 1
+            return impact
+        }
+
+        override fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
+            studyStreakReads += nowMillis
+            return streak
+        }
+
+        override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+            recentMistakeLimits += limit
+            return recentMistakeRows
         }
 
         override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {

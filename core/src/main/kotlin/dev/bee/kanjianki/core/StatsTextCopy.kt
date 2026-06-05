@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import java.util.Locale
+import kotlin.math.max
 
 object StatsTextCopy {
     @JvmStatic
@@ -162,6 +163,93 @@ object StatsTextCopy {
     }
 
     @JvmStatic
+    fun studyStreakSummary(currentDays: Int): String {
+        return if (currentDays <= 0) "No active streak" else "$currentDays-day streak"
+    }
+
+    @JvmStatic
+    fun studyStreakBody(
+        bestDays: Int,
+        studiedToday: Boolean,
+        reviewsToday: Int,
+        lastStudyAtMillis: Long,
+        nowMillis: Long,
+    ): String {
+        if (bestDays <= 0 && !studiedToday && reviewsToday <= 0 && lastStudyAtMillis <= 0L) {
+            return "Study and sync to start a streak."
+        }
+        val today = if (studiedToday) {
+            StudyTextCopy.countText(reviewsToday, "review today", "reviews today")
+        } else {
+            "No reviews today"
+        }
+        val lastStudy = if (lastStudyAtMillis <= 0L) {
+            "No study yet"
+        } else {
+            elapsedSinceLabel(nowMillis, lastStudyAtMillis)
+        }
+        return "Best streak " +
+            StudyTextCopy.countText(bestDays, "day", "days") +
+            ". " +
+            today +
+            ". Last study " +
+            lastStudy +
+            "."
+    }
+
+    @JvmStatic
+    fun studyImpactBody(
+        totalReviews: Int,
+        distinctReviewedKanji: Int,
+        writingRequired: Int,
+        writingPassed: Int,
+        writingFailed: Int,
+        manualOverrides: Int,
+    ): String {
+        if (totalReviews <= 0) {
+            return "Study and sync to start measuring impact."
+        }
+        val reviewSummary =
+            StudyTextCopy.countText(totalReviews, "review", "reviews") +
+                " across " +
+                StudyTextCopy.countText(distinctReviewedKanji, "kanji", "kanji")
+        val writingSummary = if (writingRequired <= 0) {
+            "No writing prompts yet"
+        } else {
+            "Writing prompts: " +
+                writingPassed +
+                " passed, " +
+                writingFailed +
+                " failed, " +
+                StudyTextCopy.countText(manualOverrides, "manual override", "manual overrides")
+        }
+        return reviewSummary + ". " + writingSummary + "."
+    }
+
+    @JvmStatic
+    fun recentMistakesBody(hasMistakes: Boolean): String {
+        return if (hasMistakes) {
+            "Recent misses worth another pass."
+        } else {
+            "No recent mistakes right now."
+        }
+    }
+
+    @JvmStatic
+    fun recentMistakeRowText(
+        kanji: String?,
+        rating: String?,
+        reviewedAtMillis: Long,
+        nowMillis: Long,
+    ): String {
+        return clean(kanji) +
+            "  " +
+            recentMistakeRatingLabel(rating) +
+            " · " +
+            elapsedSinceLabel(nowMillis, reviewedAtMillis)
+    }
+
+    @JvmStatic
     fun formatWeakness(weakness: Double): String {
         return String.format(Locale.ROOT, "%.2f", weakness)
     }
@@ -235,5 +323,22 @@ object StatsTextCopy {
 
     private fun clean(value: String?): String {
         return value ?: ""
+    }
+
+    private fun elapsedSinceLabel(nowMillis: Long, pastMillis: Long): String {
+        val elapsed = max(0L, nowMillis - pastMillis)
+        return if (elapsed == 0L) {
+            "just now"
+        } else {
+            formatStudyTime(elapsed) + " ago"
+        }
+    }
+
+    private fun recentMistakeRatingLabel(rating: String?): String {
+        val cleaned = clean(rating)
+        if (cleaned.isBlank()) {
+            return "Mistake"
+        }
+        return cleaned.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
     }
 }
