@@ -68,13 +68,15 @@ fun HomeHeader(
                 textAlign = TextAlign.Start,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
-            Text(
-                text = subtitle,
-                color = HomeMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    color = HomeMuted,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                )
+            }
         }
         Spacer(modifier = Modifier.width(10.dp))
         Image(
@@ -119,7 +121,6 @@ fun HomePrimaryCta(
 @Composable
 fun HomeStudyCta(
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -157,16 +158,6 @@ fun HomeStudyCta(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = noFontPadding
-            )
-            Text(
-                text = subtitle,
-                color = Color(0xFFFFF5FA),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp),
                 style = noFontPadding
             )
         }

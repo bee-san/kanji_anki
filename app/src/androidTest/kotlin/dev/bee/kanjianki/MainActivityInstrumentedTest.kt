@@ -203,7 +203,7 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
             }
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity { activity ->
-                assertHasText(activity, "Back to Browse Kanji");
+                assertHasText(activity, "Back to Browse");
                 assertHasText(activity, "Local inventory");
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Suspend locally");
@@ -219,7 +219,7 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Suspend locally");
             }
-            clickText(scenario, "Back to Browse Kanji");
+            clickText(scenario, "Back to Browse");
             scenario.onActivity { activity ->
                 assertEquals("拉", activity.activeBrowseQuery);
                 assertHasText(activity, "拉");
@@ -932,7 +932,7 @@ fun testStatsShowsImpactHistoryBuckets() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "Kani is not currently working for you");
                 assertHasText(activity, "0 weak kanji improved");
-                assertHasText(activity, "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.");
+                assertHasText(activity, "Weakness trends appear after reviews and sync.");
                 assertHasText(activity, "0 mature cards gained");
                 assertHasText(activity, "0 kanji gained first mature support.");
                 assertHasText(activity, "0 active kanji on the ladder");

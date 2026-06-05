@@ -99,12 +99,6 @@ fun BrowseScreen(model: BrowseScreenModel) {
             fontWeight = FontWeight.Bold,
             style = browseNoFontPaddingStyle(34)
         )
-        Text(
-            text = HomeTextCopy.browseBody(),
-            modifier = Modifier.fillMaxWidth(),
-            color = BrowseMuted,
-            fontSize = 16.sp
-        )
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },

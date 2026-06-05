@@ -84,7 +84,7 @@ object HomeTextCopy {
     fun appTitle(): String = "Kani"
 
     @JvmStatic
-    fun appSubtitle(): String = "An AnkiDroid companion for kanji blindness"
+    fun appSubtitle(): String = ""
 
     @JvmStatic
     fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"
@@ -100,7 +100,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice."
+        "Sync AnkiDroid to build your focus queue."
 
     @JvmStatic
     fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid first to build a focus queue."
@@ -139,9 +139,6 @@ object HomeTextCopy {
     fun deckOverviewBuriedLabel(): String = "Buried"
 
     @JvmStatic
-    fun studySupportText(): String = "Start focused practice"
-
-    @JvmStatic
     fun browseActionLabel(): String = "Browse Kanji"
 
     @JvmStatic
@@ -163,7 +160,7 @@ object HomeTextCopy {
     fun noRecentMistakesTitle(): String = "No recent mistakes yet"
 
     @JvmStatic
-    fun noRecentMistakesBody(): String = "Missed and hard reviews will show here after you study."
+    fun noRecentMistakesBody(): String = "Missed and hard reviews appear here."
 
     @JvmStatic
     fun syncDialogTitle(): String = "Sync AnkiDroid?"
@@ -171,8 +168,8 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani imports suspended ${safeSettings.modelName} cards by default, archives suspended-card evidence locally, " +
-            "and only uses active cards when that import filter is enabled."
+        return "Kani imports suspended ${safeSettings.modelName} cards by default, archives them locally, " +
+            "and only uses active cards when that filter is enabled."
     }
 
     @JvmStatic
@@ -236,9 +233,6 @@ object HomeTextCopy {
     fun browseTitle(): String = "Browse Kanji"
 
     @JvmStatic
-    fun browseBody(): String = "Local kanji from synced Kani data and study history."
-
-    @JvmStatic
     fun browseSearchHint(): String = "Search kanji, meaning, reading, or examples"
 
     @JvmStatic
@@ -254,7 +248,7 @@ object HomeTextCopy {
     fun kanjiNotFoundTitle(): String = "Kanji not found"
 
     @JvmStatic
-    fun kanjiNotFoundBody(): String = "This row may have disappeared after a sync."
+    fun kanjiNotFoundBody(): String = "No local record found."
 
     @JvmStatic
     fun browseItemMeaning(item: RecordsImportModels.KanjiInventoryItem?): String {
@@ -276,19 +270,19 @@ object HomeTextCopy {
     fun relearningChipLabel(): String = "relearning"
 
     @JvmStatic
-    fun backToBrowseKanjiLabel(): String = "Back to Browse Kanji"
+    fun backToBrowseKanjiLabel(): String = "Back to Browse"
 
     @JvmStatic
     fun detailReasonTitle(): String = ""
 
     @JvmStatic
     fun historicalReasonText(): String =
-        "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."
+        "No longer active, but kept in local recovery history."
 
     @JvmStatic
     fun activeReasonText(row: RecordsImportModels.DashboardRow?): String {
         val safeRow = row ?: throw NullPointerException("row")
-        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence from AnkiDroid." else safeRow.reasonText
+        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence." else safeRow.reasonText
     }
 
     @JvmStatic

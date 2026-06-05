@@ -130,7 +130,6 @@ class HomeScreenComposeTest {
             showSyncCta = showSyncCta,
             syncLabel = "Sync AnkiDroid",
             studyLabel = "Study now",
-            studySubtitle = "Repair the next weak kanji.",
             onSync = onSync,
             onStudy = onStudy,
             actions = actions,

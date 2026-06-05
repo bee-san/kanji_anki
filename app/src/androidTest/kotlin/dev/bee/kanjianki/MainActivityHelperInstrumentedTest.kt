@@ -735,11 +735,11 @@ private fun verifyDetailPanels(activity: MainActivity, inventory: RecordsImportM
         assertEquals("", historicalIdentity.reading);
 
         var inventoryReason = browseDetail.detailReasonPanelModel(null, inventory)
-        assertTrue(inventoryReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(inventoryReason.lines.contains("No longer active, but kept in local recovery history."));
         assertTrue(inventoryReason.lines.contains("Anki browser: kanji:語"));
 
         var historicalReason = browseDetail.detailReasonPanelModel(null, null)
-        assertTrue(historicalReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(historicalReason.lines.contains("No longer active, but kept in local recovery history."));
         assertFalse(historicalReason.lines.toString().contains("Anki browser:"));
 
         var activeReason = browseDetail.detailReasonPanelModel(row, inventory)
@@ -1674,7 +1674,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         assertEquals("裂", activity.activeBrowseQuery);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertHasText(activity, "Back to Browse Kanji");
+        assertHasText(activity, "Back to Browse");
         assertHasText(activity, "Local inventory");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
@@ -1709,8 +1709,8 @@ private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: Record
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
-        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study and sync to unlock trends."));
+        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Tracking 1 active kanji"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 ladderOnly.totalActiveItems,
                 ladderOnly.promotionReadyCount,
@@ -1765,10 +1765,10 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionRiskCount,
                 busyLadder.totalActiveItems
         );
-        assertTrue(workingBody.contains("weak kanji are burning down"));
-        assertTrue(workingBody.contains("mature Anki cards have been gained"));
-        assertTrue(workingBody.contains("review-phase item is ready to climb"));
-        assertTrue(workingBody.contains("review-phase items with miss streaks"));
+        assertTrue(workingBody.contains("weak kanji improved"));
+        assertTrue(workingBody.contains("mature card gained"));
+        assertTrue(workingBody.contains("review-phase items crossed the climb threshold"));
+        assertTrue(workingBody.contains("review-phase item with a miss streak"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 busyLadder.totalActiveItems,
                 busyLadder.promotionReadyCount,
@@ -1776,7 +1776,7 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionReadyCount,
                 busyLadder.ladderPromotionIntervalDays,
                 busyLadder.ladderDemotionFailStreak
-        ).contains("at the demotion threshold"));
+        ).contains("fall after 1 misses"));
         assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size)
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
@@ -1982,7 +1982,7 @@ fun browseAndDetailCopyAvoidMisleadingOrBlankRows() {
                 );
                 var browseDetail = MainActivityHomeBrowseDetail(activity)
                 var reason = browseDetail.detailReasonPanelModel(row, null)
-                assertTrue(reason.lines.contains("Current local practice evidence from AnkiDroid."));
+                assertTrue(reason.lines.contains("Current local practice evidence."));
                 assertTrue(reason.lines.get(1).contains("Anki browser: deck:Japanese"));
 
                 var identity = browseDetail.detailIdentityModel(row, null, false)

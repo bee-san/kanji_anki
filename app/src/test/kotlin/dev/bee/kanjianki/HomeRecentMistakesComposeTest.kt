@@ -32,7 +32,7 @@ class HomeRecentMistakesComposeTest {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
                     emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyBody = "Missed and hard reviews appear here.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "裂",
@@ -64,7 +64,7 @@ class HomeRecentMistakesComposeTest {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
                     emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyBody = "Missed and hard reviews appear here.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "語",

@@ -57,7 +57,7 @@ internal fun statsScreenModel(
 ): StatsScreenModel {
     return StatsScreenModel(
         title = "Stats",
-        intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
+        intro = "",
         verdict = statsVerdictCard(stats),
         sections = listOf(
             weaknessBurnDownCard(stats),

@@ -72,12 +72,6 @@ fun SettingsUpdatePage(model: SettingsUpdatePageModel) {
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = model.body,
-            modifier = Modifier.fillMaxWidth(),
-            color = SettingsUpdateMuted,
-            fontSize = 16.sp
-        )
         SettingsUpdatePanel(model = model.panel)
         SettingsUpdateFilledButton(
             label = SettingsTextCopy.checkForUpdateLabel(),
