@@ -5,13 +5,13 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, import filters, frequency range, and sync."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, filters, range, and sync."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "New cards, timing, workload, study ahead, and ladder controls."
+    fun settingsStudyBehaviorBody(): String = "New cards, timing, workload, and ladder controls."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"
@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Choose a section below."
+        return "Choose a section."
     }
 
     @JvmStatic

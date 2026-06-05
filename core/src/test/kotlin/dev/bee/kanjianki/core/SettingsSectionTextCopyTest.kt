@@ -7,15 +7,15 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("AnkiDroid fields, import filters, frequency range, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("AnkiDroid fields, filters, range, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("New cards, timing, workload, study ahead, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("New cards, timing, workload, and ladder controls.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Daily reminders and update checks.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Offline dictionaries, stroke data, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Choose a section below.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Choose a section.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
