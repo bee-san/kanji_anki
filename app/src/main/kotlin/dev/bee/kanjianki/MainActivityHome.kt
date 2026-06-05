@@ -35,6 +35,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
+    private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
 
     abstract fun renderStats()
     abstract fun renderGames()
@@ -42,6 +43,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
+        cachedImportOnboardingPlan = null
         if (isScreenshotRouteRequested()) {
             renderScreenshotHome()
             return
@@ -163,7 +165,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        val plan = importOnboardingPlan()
+        val plan = currentImportOnboardingPlan()
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
             message = plan.body(),
             confirmLabel = plan.primaryActionLabel(),
@@ -179,7 +181,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         rerenderLatestHomeRoute()
     }
 
-    private fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+    protected open fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
         val current = settings()
         val provider = gateway.status()
         return HomeImportOnboardingPolicy.plan(
@@ -190,6 +192,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
             provider.permission,
             current,
         )
+    }
+
+    private fun currentImportOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+        return cachedImportOnboardingPlan ?: importOnboardingPlan().also { cachedImportOnboardingPlan = it }
     }
 
     private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
