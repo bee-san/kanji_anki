@@ -1,3 +1,3 @@
 package dev.bee.kanjianki
 
-internal class MainActivity : MainActivitySettings()
+internal open class MainActivity : MainActivitySettings()

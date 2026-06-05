@@ -12,6 +12,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private val gameEngine = KanjiGameEngine()
     private val gameRandom: Random = SecureRandom()
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+    private var cachedGameData: GameData? = null
 
     override fun renderGames() {
         clearGameSession()
@@ -35,10 +36,11 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun clearGameSession() {
         gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+        cachedGameData = null
     }
 
     fun gamesScreenModel(): GamesScreenModel {
-        val data = gameData()
+        val data = currentGameData()
         val cards = if (data.hasKanji()) {
             val available = gameEngine.availableModes(data.rows, data.inventory, data.pairs)
             KanjiGameEngine.GameMode.values().map { mode ->
@@ -77,7 +79,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             renderGameRoundComplete(mode)
             return
         }
-        val data = gameData()
+        val data = currentGameData()
         val question = gameEngine.nextQuestion(mode, data.rows, data.inventory, data.pairs, gameRandom)
         if (question == null) {
             renderGameUnavailable(mode)
@@ -207,6 +209,10 @@ internal abstract class MainActivityGames : MainActivityHome() {
         return if (correct) null else KanjiGameCopy.selectedAnswerText(selected)
     }
 
+    private fun currentGameData(): GameData {
+        return cachedGameData ?: gameData().also { cachedGameData = it }
+    }
+
     private fun gamePrimaryLabel(roundComplete: Boolean): String {
         return if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT
     }
@@ -222,7 +228,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         }
     }
 
-    private fun gameData(): GameData {
+    protected open fun gameData(): GameData {
         return GameData(
             rows = store.activeDashboardRows().orEmpty(),
             inventory = store.searchKanjiInventory("").orEmpty(),
@@ -230,7 +236,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         )
     }
 
-    private data class GameData(
+    internal data class GameData(
         val rows: List<RecordsImportModels.DashboardRow>,
         val inventory: List<RecordsImportModels.KanjiInventoryItem>,
         val pairs: List<RecordsImportModels.SimilarKanjiPair>
