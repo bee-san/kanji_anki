@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs on or off, or move them. Keep one always-available rung on."
+        return "Choose rungs and order. Keep one always-available rung on."
     }
 
     @JvmStatic
@@ -190,14 +190,14 @@ object SettingsStudyPlanTextCopy {
     fun moveDownLabel(): String = "Down"
 
     @JvmStatic
-    fun restoreDefaultLadderLabel(): String = "Restore default ladder"
+    fun restoreDefaultLadderLabel(): String = "Restore defaults"
 
     @JvmStatic
-    fun studyLadderRestoredToast(): String = "Study ladder restored."
+    fun studyLadderRestoredToast(): String = "Ladder restored."
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep at least one always-available rung on."
+        return "Keep one always-available rung on."
     }
 
     @JvmStatic

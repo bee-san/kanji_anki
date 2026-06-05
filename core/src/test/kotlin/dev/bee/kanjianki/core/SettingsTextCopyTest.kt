@@ -423,7 +423,7 @@ class SettingsTextCopyTest {
                         "Always available rung enabled",
                         "Conditional rung enabled",
                         "Study ladder",
-                        "Turn rungs on or off, or move them. Keep one always-available rung on."
+                        "Choose rungs and order. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -454,18 +454,18 @@ class SettingsTextCopyTest {
                         "Off",
                         "Up",
                         "Down",
-                        "Restore default ladder",
-                        "Study ladder restored.",
-                        "Keep at least one always-available rung on.",
+                        "Restore defaults",
+                        "Ladder restored.",
+                        "Keep one always-available rung on.",
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards up or down. Learning and relearning repeats stay practice-only.",
+                        "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
                         "Save movement rules",
-                        "Ladder movement saved."
+                        "Movement rules saved."
                 ),
                 listOf(
                         SettingsTextCopy.ladderToggleLabel(true),
