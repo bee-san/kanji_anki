@@ -1687,10 +1687,10 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
 
 private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
         activity.renderRecentMistakes();
-        assertHasText(activity, "No mistakes yet");
+        waitForText(activity, "No mistakes yet");
         activity.store.saveReview(RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
-        assertContainsText(activity.findViewById(android.R.id.content), "Rated again");
+        waitForText(activity, "Rated again");
 
         val emptyTimeline = MainActivityHomeBrowseDetail(activity)
                 .recoveryTimelineModel(RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, emptyList<RecordsImportModels.KanjiTimelineEvent>()));
