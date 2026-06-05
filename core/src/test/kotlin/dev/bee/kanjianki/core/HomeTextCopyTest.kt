@@ -126,7 +126,7 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani imports suspended Basic cards by default, archives suspended-card evidence locally, and only uses active cards when that import filter is enabled.",
+            "Kani imports suspended Basic cards by default, archives them locally, and only uses active cards when that filter is enabled.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())

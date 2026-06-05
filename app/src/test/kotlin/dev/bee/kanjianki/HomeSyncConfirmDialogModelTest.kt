@@ -11,13 +11,13 @@ class HomeSyncConfirmDialogModelTest {
         val dismissed = AtomicInteger()
 
         val model = HomeSyncConfirmDialogModels.create(
-            "Kani imports suspended Kiku cards by default.",
-            confirmed::incrementAndGet,
-            dismissed::incrementAndGet,
+            "Kani imports suspended Kiku cards by default, archives them locally, and only uses active cards when that filter is enabled.",
+            onConfirm = confirmed::incrementAndGet,
+            onDismiss = dismissed::incrementAndGet,
         )
 
         assertEquals("Sync AnkiDroid?", model.title)
-        assertEquals("Kani imports suspended Kiku cards by default.", model.message)
+        assertEquals("Kani imports suspended Kiku cards by default, archives them locally, and only uses active cards when that filter is enabled.", model.message)
         assertEquals("Sync cards", model.confirmLabel)
         assertEquals("Cancel", model.dismissLabel)
 
