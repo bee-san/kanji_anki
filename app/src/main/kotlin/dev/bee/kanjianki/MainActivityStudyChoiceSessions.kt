@@ -30,7 +30,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             "Recall",
             LABEL_CHOOSE_KANJI,
             StudyTaskCopy.labelForTask(session.taskType),
-            "Pick the kanji that matches the meaning.",
+            "Pick the matching kanji.",
             "",
             StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt),
             choiceCard.choices,
@@ -101,7 +101,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             "Recognise",
             LABEL_CHOOSE_KANJI,
             MainActivityBase.LABEL_SIMILAR_KANJI,
-            "Pick the kanji that matches the meaning.",
+            "Pick the matching kanji.",
             reason,
             "Which kanji means $meaning?",
             SimilarChoiceGridModel(
