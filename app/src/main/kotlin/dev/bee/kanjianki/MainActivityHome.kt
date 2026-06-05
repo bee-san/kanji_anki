@@ -353,8 +353,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
         now: Long,
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        return focusQueue.studyQueue(rows, now, persist, plan)
+        return focusQueue.studyQueue(rows, now, persist, plan, currentItems)
     }
 
     fun queuedEntries(

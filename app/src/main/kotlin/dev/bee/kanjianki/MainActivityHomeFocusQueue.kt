@@ -94,6 +94,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         now: Long,
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
         val scheduler = BridgeScheduler()
         return HomeStudyQueueActions.studyQueue(
@@ -119,7 +120,8 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                         home.store.replaceStudyItems(items)
                     }
                 },
-            )
+            ),
+            currentItems,
         )
     }
 
