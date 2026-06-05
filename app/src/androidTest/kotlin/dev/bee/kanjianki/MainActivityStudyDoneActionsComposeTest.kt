@@ -128,7 +128,7 @@ class MainActivityStudyDoneActionsComposeTest {
                     onBackHome = Runnable {},
                     studyMoreDialog = StudyMoreNewCardsDialogModel(
                         title = "Study more new cards",
-                        message = "How many extra new cards do you want to study now?",
+                        message = "How many extra new cards?",
                         inputLabel = MainActivityBase.LABEL_NEW_CARDS,
                         initialCount = 2,
                         confirmLabel = MainActivityBase.LABEL_STUDY,
@@ -144,7 +144,7 @@ class MainActivityStudyDoneActionsComposeTest {
         }
 
         composeRule.onAllNodesWithText("Study more new cards").assertCountEquals(2)
-        composeRule.onNodeWithText("How many extra new cards do you want to study now?").assertIsDisplayed()
+        composeRule.onNodeWithText("How many extra new cards?").assertIsDisplayed()
         composeRule.onNodeWithText("2").performTextReplacement("3")
         composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY).performClick()
 

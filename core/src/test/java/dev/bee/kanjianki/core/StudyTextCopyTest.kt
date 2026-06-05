@@ -122,11 +122,11 @@ class StudyTextCopyTest {
     fun studyDoneCopyPreservesFocusAndRunSummaryText() {
         assertEquals("Today's focus done", StudyTextCopy.studyDoneTitle())
         assertEquals(
-            "Kani finished today's adaptive focus. Keep going or stop here.",
+            "Keep going or stop here.",
             StudyTextCopy.adaptiveFocusDoneBody(),
         )
         assertEquals(
-            "Kani finished this study session. Keep going or stop here.",
+            "Keep going or stop here.",
             StudyTextCopy.studyRunDoneBody(),
         )
         assertEquals("Today's focus: 0 of 7 left", StudyTextCopy.adaptiveFocusDoneSummary(7))
