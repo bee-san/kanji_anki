@@ -12,15 +12,15 @@ object KanjiGameCopy {
     const val LABEL_SCORE = "Score"
     const val LABEL_STREAK = "Streak"
     const val GAMES_SUBTITLE = "Practice without changing reviews."
-    const val EMPTY_NO_KANJI_TITLE = "No kanji games yet"
-    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid to build games from your cards."
-    const val GAME_NOT_READY_TITLE = "Game not ready"
-    const val GAME_NOT_READY_BODY = "Needs at least two choices from your kanji data."
+    const val EMPTY_NO_KANJI_TITLE = "No games yet"
+    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid to build games."
+    const val GAME_NOT_READY_TITLE = "Needs more data"
+    const val GAME_NOT_READY_BODY = "At least two choices needed."
 
     @JvmStatic
     fun modeBody(mode: KanjiGameEngine.GameMode?, available: Boolean): String {
         if (!available) {
-            return "Needs more kanji data."
+            return "Needs more data."
         }
         return when (mode!!) {
             KanjiGameEngine.GameMode.MEANING_POP -> "Pick meanings from your focus list."

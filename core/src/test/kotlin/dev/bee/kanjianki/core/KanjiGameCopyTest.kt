@@ -11,11 +11,11 @@ import java.util.Arrays
 class KanjiGameCopyTest {
     @Test
     fun modeBodyPreservesGameModeCardCopy() {
-        assertEquals("Needs more kanji data.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
+        assertEquals("Needs more data.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
         assertEquals("Pick meanings from your focus list.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true))
         assertEquals("Pick readings from source words.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true))
         assertEquals("Choose among similar kanji.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true))
-        assertEquals("Needs more kanji data.", KanjiGameCopy.modeBody(null, false))
+        assertEquals("Needs more data.", KanjiGameCopy.modeBody(null, false))
         assertThrows(NullPointerException::class.java) { KanjiGameCopy.modeBody(null, true) }
     }
 
@@ -83,10 +83,10 @@ class KanjiGameCopyTest {
         assertEquals("Score", KanjiGameCopy.LABEL_SCORE)
         assertEquals("Streak", KanjiGameCopy.LABEL_STREAK)
         assertEquals("Practice without changing reviews.", KanjiGameCopy.GAMES_SUBTITLE)
-        assertEquals("No kanji games yet", KanjiGameCopy.EMPTY_NO_KANJI_TITLE)
-        assertEquals("Sync AnkiDroid to build games from your cards.", KanjiGameCopy.EMPTY_NO_KANJI_BODY)
-        assertEquals("Game not ready", KanjiGameCopy.GAME_NOT_READY_TITLE)
-        assertEquals("Needs at least two choices from your kanji data.", KanjiGameCopy.GAME_NOT_READY_BODY)
+        assertEquals("No games yet", KanjiGameCopy.EMPTY_NO_KANJI_TITLE)
+        assertEquals("Sync AnkiDroid to build games.", KanjiGameCopy.EMPTY_NO_KANJI_BODY)
+        assertEquals("Needs more data", KanjiGameCopy.GAME_NOT_READY_TITLE)
+        assertEquals("At least two choices needed.", KanjiGameCopy.GAME_NOT_READY_BODY)
     }
 
     private fun question(mode: KanjiGameEngine.GameMode, correctAnswer: String): KanjiGameEngine.GameQuestion {
