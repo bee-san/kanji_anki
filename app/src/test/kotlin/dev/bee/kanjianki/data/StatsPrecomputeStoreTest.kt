@@ -51,7 +51,7 @@ class StatsPrecomputeStoreTest {
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = 12_345L)
 
-        val cached = cacheStore.readFresh(db)
+        val cached = cacheStore.readFresh(db, nowMillis = 12_345L)
         assertNotNull(cached)
         cached!!
         assertEquals(12_345L, cached.generatedAtMillis)
