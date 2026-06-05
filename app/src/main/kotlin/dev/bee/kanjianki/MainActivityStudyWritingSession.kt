@@ -107,7 +107,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         if (!StudyTaskCopy.isRecallTask(session)) {
             lines.add(
                 WritingPromptLineModel(
-                    "Learn it from the reference, trace it, then check.",
+                    "Use the reference, trace, then check.",
                     15,
                     MainActivityUiSupport.STUDY_MUTED,
                     false
@@ -128,7 +128,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         }
         lines.add(
             WritingPromptLineModel(
-                "Write the kanji from this prompt. The answer stays hidden until you check.",
+                "Write from the prompt. The answer stays hidden until you check.",
                 15,
                 MainActivityUiSupport.STUDY_MUTED,
                 false
