@@ -91,6 +91,40 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
             self.assertEqual(750, loaded["rows"][0]["target_budget_ms"])
             self.assertTrue(out_md.read_text(encoding="utf-8").startswith("# Ralph Button Latency Inventory"))
 
+    def test_risk_score_includes_manifest_source_keywords(self) -> None:
+        inventory = button_latency_inventory.build_inventory(
+            Path("/"),
+            {
+                "schema": "ui-manifest-v1",
+                "files": [
+                    {
+                        "path": "app/src/main/kotlin/dev/bee/kanjianki/FeatureCompose.kt",
+                        "bucket": "settings",
+                        "risk_tags": ["interactive"],
+                    }
+                ],
+            },
+            {
+                "schema": "button-contract-v1",
+                "rows": [
+                    {
+                        "id": "primary-cta",
+                        "title": "Primary CTA",
+                        "source_file": "app/src/main/kotlin/dev/bee/kanjianki/FeatureCompose.kt",
+                        "composable": "FeatureScreen",
+                        "labels": ["Continue"],
+                        "existing_tests": ["FeatureComposeTest.kt:performClick"],
+                        "missing_tests": [],
+                    }
+                ],
+            },
+        )
+
+        row = cast(list[dict[str, object]], inventory["rows"])[0]
+        self.assertEqual("settings", row["bucket"])
+        self.assertEqual("medium", row["latency_risk_level"])
+        self.assertGreaterEqual(cast(int, row["latency_risk_score"]), 40)
+
     def _manifest(self) -> dict[str, object]:
         return {
             "schema": "ui-manifest-v1",

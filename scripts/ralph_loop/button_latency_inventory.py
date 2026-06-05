@@ -98,7 +98,7 @@ def _inventory_row(
     existing_tests = _strings(row.get("existing_tests", []))
     risk_tags = sorted(set(_strings(source.get("risk_tags", [])))) if source else []
     reasons = _risk_reasons(row, source, risk_tags, missing_tests, existing_tests)
-    score = _risk_score(row, risk_tags, missing_tests, existing_tests, labels)
+    score = _risk_score(row, source, risk_tags, missing_tests, existing_tests, labels)
     return {
         "id": str(row.get("id", "")),
         "title": str(row.get("title", "")),
@@ -160,6 +160,7 @@ def _risk_reasons(
 
 def _risk_score(
     row: dict[str, object],
+    source: dict[str, object],
     risk_tags: list[str],
     missing_tests: list[str],
     existing_tests: list[str],
@@ -171,7 +172,7 @@ def _risk_score(
     score += min(len(missing_tests) * 12, 30)
     if not existing_tests:
         score += 10
-    haystack = _row_keyword_haystack(row, {})
+    haystack = _row_keyword_haystack(row, source)
     for keyword, weight in KEYWORD_WEIGHTS.items():
         if keyword in haystack:
             score += weight
