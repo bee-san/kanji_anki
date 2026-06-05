@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000."
+        return "Jiten ranks imported from suspended cards. Default: 100-3000."
     }
 
     @JvmStatic
@@ -31,14 +31,14 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks from 1 to 20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Kanji frequency range saved. Sync again to rebuild practice."
+    fun frequencyRangeSavedToast(): String = "Range saved. Sync again to rebuild practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "View KANJIDIC2, Jiten, KanjiVG, and font credits."
+        return "KANJIDIC2, Jiten, KanjiVG, and font credits."
     }
 
     @JvmStatic
@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Dictionary and stroke data bundled for offline use."
+    fun dataLicensesBody(): String = "Bundled dictionary and stroke data."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"
