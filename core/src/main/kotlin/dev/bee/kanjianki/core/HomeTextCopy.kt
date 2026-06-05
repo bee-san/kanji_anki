@@ -19,7 +19,7 @@ object HomeTextCopy {
         if (plan.allKanjiMode) {
             return "All current"
         }
-        return "${plan.remaining} left · target ${plan.target}"
+        return "${plan.remaining}/${plan.target} left"
     }
 
     @JvmStatic
@@ -96,14 +96,14 @@ object HomeTextCopy {
     fun viewAllLabel(): String = "View all"
 
     @JvmStatic
-    fun noKanjiQueuedTitle(): String = "No kanji queued yet"
+    fun noKanjiQueuedTitle(): String = "No kanji queued"
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to build your focus queue."
+        "Sync AnkiDroid to build the queue."
 
     @JvmStatic
-    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid first to build a focus queue."
+    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid to build the queue."
 
     @JvmStatic
     fun syncMetricLabel(): String = "Sync"
