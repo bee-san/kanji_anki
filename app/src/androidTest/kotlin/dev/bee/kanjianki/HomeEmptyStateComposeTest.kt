@@ -30,13 +30,13 @@ class HomeEmptyStateComposeTest {
     fun rendersPanelEmptyState() {
         composeRule.setContent {
             HomeEmptyState(
-                title = "No recent mistakes yet",
-                body = "Missed and hard reviews will show here after you study."
+                title = "No mistakes yet",
+                body = "Missed or hard reviews."
             )
         }
 
-        composeRule.onNodeWithTag(homeEmptyStateTestTag("No recent mistakes yet")).assertIsDisplayed()
-        composeRule.onNodeWithText("No recent mistakes yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Missed and hard reviews will show here after you study.").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No mistakes yet")).assertIsDisplayed()
+        composeRule.onNodeWithText("No mistakes yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Missed or hard reviews.").assertIsDisplayed()
     }
 }
