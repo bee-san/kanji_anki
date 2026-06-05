@@ -15,7 +15,7 @@ object StatsTextCopy {
 
     @JvmStatic
     fun verdictTitle(working: Boolean): String {
-        return if (working) "Kani is working for you" else "Waiting for Kani evidence"
+        return if (working) "Kani is working" else "Waiting for evidence"
     }
 
     @JvmStatic
@@ -30,7 +30,7 @@ object StatsTextCopy {
         totalActiveItems: Int,
     ): String {
         if (!hasStats) {
-            return "Study and sync to unlock trends."
+            return "Study and sync for trends."
         }
         if (working) {
             return workingVerdictBody(
@@ -43,9 +43,9 @@ object StatsTextCopy {
         if (hasLadder) {
             return "Tracking " +
                 StudyTextCopy.countText(totalActiveItems, "active kanji", "active kanji") +
-                ". Trends appear after reviews and sync."
+                ". Trends need reviews and sync."
         }
-        return "Review and sync to compare before and after."
+        return "Review and sync to compare."
     }
 
     @JvmStatic
@@ -58,7 +58,7 @@ object StatsTextCopy {
         ladderDemotionFailStreak: Int,
     ): String {
         if (totalActiveItems == 0) {
-            return "No active ladder items yet. Sync or study weak kanji to fill the ladder."
+            return "Sync or study weak kanji to fill the ladder."
         }
         var body = StudyTextCopy.countText(
             promotionReadyCount,
@@ -80,7 +80,7 @@ object StatsTextCopy {
                 )
         }
         return body +
-            ". Rules: climb after more than " +
+            ". Climb after more than " +
             ladderPromotionIntervalDays +
             " days; fall after " +
             ladderDemotionFailStreak +
@@ -112,7 +112,7 @@ object StatsTextCopy {
         averageAfterWeakness: Double,
     ): String {
         if (improvedCount == 0) {
-            return "Weakness trends appear after reviews and sync."
+            return "Weakness trends need reviews and sync."
         }
         return "Average weakness: " +
             formatWeakness(averageBeforeWeakness) +
@@ -153,12 +153,12 @@ object StatsTextCopy {
     @JvmStatic
     fun notHelpingBody(noImpactEvidence: Boolean, hasNotHelpingRows: Boolean): String {
         if (noImpactEvidence) {
-            return "Review and sync to compare before and after."
+            return "Review and sync to compare."
         }
         if (!hasNotHelpingRows) {
             return "No kanji need attention right now."
         }
-        return "Shown after enough reviews and sync."
+        return "Needs enough reviews and sync."
     }
 
     @JvmStatic
@@ -216,8 +216,8 @@ object StatsTextCopy {
         if (promotionReadyCount > 0) {
             signals += StudyTextCopy.countText(
                 promotionReadyCount,
-                "review-phase item crossed the climb threshold",
-                "review-phase items crossed the climb threshold",
+                "review item ready to climb",
+                "review items ready to climb",
             )
         }
         var body = signals.joinToString(". ") + "."
@@ -225,8 +225,8 @@ object StatsTextCopy {
             body += " Watch " +
                 StudyTextCopy.countText(
                     demotionRiskCount,
-                    "review-phase item with a miss streak",
-                    "review-phase items with miss streaks",
+                    "review item with a miss streak",
+                    "review items with miss streaks",
                 ) +
                 "."
         }

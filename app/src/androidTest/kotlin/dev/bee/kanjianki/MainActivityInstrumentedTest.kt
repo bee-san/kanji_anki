@@ -232,7 +232,7 @@ fun testNavigationSettingsAndEmptyStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
+                assertHasTexts(activity, "Stats", "Waiting for evidence", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
             }
 
             clickText(scenario, "Home");
@@ -874,7 +874,7 @@ fun testStatsConnectsKaniPracticeToAnkiImpact() {
     }
 
 private fun assertStatsTimePanel(activity: MainActivity) {
-        assertHasText(activity, "Kani is working for you");
+        assertHasText(activity, "Kani is working");
         assertHasText(activity, "Answered study time");
         assertHasText(activity, "Today: 0 sec");
         assertHasText(activity, "Last 7 days: 0 sec");
@@ -930,9 +930,9 @@ fun testStatsShowsImpactHistoryBuckets() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Kani is not currently working for you");
+                assertHasText(activity, "Waiting for evidence");
                 assertHasText(activity, "0 weak kanji improved");
-                assertHasText(activity, "Weakness trends appear after reviews and sync.");
+                assertHasText(activity, "Weakness trends need reviews and sync.");
                 assertHasText(activity, "0 mature cards gained");
                 assertHasText(activity, "0 kanji gained first mature support.");
                 assertHasText(activity, "0 active kanji on the ladder");
