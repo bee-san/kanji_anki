@@ -7,7 +7,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import org.json.JSONObject
 
 internal const val STATS_CACHE_FORMAT_VERSION: Int = 2
-internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 5
+internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
 internal class StatsCacheStore(private val store: LocalStore) {
     data class Snapshot(

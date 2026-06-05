@@ -45,7 +45,7 @@ class StatsPrecomputeStoreTest {
         val directOutcome = StudyStatsStore(localStore).kaniOutcomeStats()
         val directImpact = KanjiImpactReportStore(localStore).report()
         val directStudyImpact = StudyStatsStore(localStore).studyImpactStats()
-        val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(5)
+        val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = 12_345L)
 

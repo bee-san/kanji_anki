@@ -7,14 +7,35 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
+import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
+import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
-internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
-    private data class RecentMistakesRouteData(
-        val mistakes: List<StudyStatsStore.RecentMistake>,
-        val activeRows: List<RecordsImportModels.DashboardRow>,
-    )
+internal data class RecentMistakesRouteData(
+    val mistakes: List<StudyStatsStore.RecentMistake>,
+    val activeRows: List<RecordsImportModels.DashboardRow>,
+)
 
+internal interface RecentMistakesRouteDataSource {
+    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
+    fun activeDashboardRows(): List<RecordsImportModels.DashboardRow>
+}
+
+internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): RecentMistakesRouteData {
+    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.latestStatsSnapshotOrNull()
+    val mistakes = if (snapshot != null && snapshot.cacheFormatVersion >= STATS_CACHE_FORMAT_VERSION) {
+        snapshot.recentMistakes
+    } else {
+        source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
+    }
+    val rows = if (mistakes.isEmpty()) emptyList() else source.activeDashboardRows()
+    return RecentMistakesRouteData(mistakes, rows)
+}
+
+internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     fun renderFocusQueue() {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.focusQueueTitle(),
@@ -53,9 +74,25 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.recentMistakesTitle(),
             load = {
-                val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
-                val rows = if (mistakes.isEmpty()) emptyList() else home.store.activeDashboardRows()
-                RecentMistakesRouteData(mistakes, rows)
+                recentMistakesRouteData(
+                    object : RecentMistakesRouteDataSource {
+                        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                            return home.store.cachedStatsSnapshotOrNull()
+                        }
+
+                        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                            return home.store.latestStatsSnapshotOrNull()
+                        }
+
+                        override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+                            return home.store.recentMistakes(limit)
+                        }
+
+                        override fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
+                            return home.store.activeDashboardRows()
+                        }
+                    }
+                )
             },
             render = { data ->
                 val mistakesModel = if (data.mistakes.isEmpty()) {
@@ -147,7 +184,4 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         }
     }
 
-    private companion object {
-        const val RECENT_MISTAKE_LIMIT = 12
-    }
 }
