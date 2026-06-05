@@ -1354,7 +1354,7 @@ class ComposeScreenModelsTest {
             modeLabel = "Recognise",
             title = "Choose the kanji",
             taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the kanji that matches the meaning.",
+            body = "Pick the matching kanji.",
             reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = grid,
@@ -1363,7 +1363,7 @@ class ComposeScreenModelsTest {
             modeLabel = "Recall",
             title = "Choose the kanji",
             taskLabel = "meaning -> kanji",
-            body = "Pick the kanji that matches the meaning.",
+            body = "Pick the matching kanji.",
             reasonLine = "",
             question = "Which kanji means split?",
             choices = listOf("裂", "列", "烈", "劣"),
@@ -1377,7 +1377,7 @@ class ComposeScreenModelsTest {
         assertEquals("Recognise", similar.modeLabel)
         assertEquals("Choose the kanji", similar.title)
         assertEquals(MainActivityBase.LABEL_SIMILAR_KANJI, similar.taskLabel)
-        assertEquals("Pick the kanji that matches the meaning.", similar.body)
+        assertEquals("Pick the matching kanji.", similar.body)
         assertEquals("Weak Anki evidence", similar.reasonLine)
         assertEquals("Which kanji means split?", similar.question)
         assertSame(grid, similar.gridModel)

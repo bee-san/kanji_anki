@@ -69,7 +69,7 @@ class MainActivityStudyChoiceComposeTest {
                     modeLabel = "Recognise",
                     title = "Choose the kanji",
                     taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-                    body = "Pick the kanji that matches the meaning.",
+                    body = "Pick the matching kanji.",
                     reasonLine = "Weak Anki evidence",
                     question = "Which kanji means split?",
                     gridModel = SimilarChoiceGridModel(
@@ -84,7 +84,7 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
+        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
         composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
 
@@ -103,7 +103,7 @@ class MainActivityStudyChoiceComposeTest {
                     modeLabel = "Recall",
                     title = "Choose the kanji",
                     taskLabel = "Meaning -> kanji",
-                    body = "Pick the kanji that matches the meaning.",
+                    body = "Pick the matching kanji.",
                     reasonLine = "",
                     question = "Which kanji means split?",
                     choices = listOf("裂", "列", "烈", "劣"),
@@ -160,7 +160,7 @@ class MainActivityStudyChoiceComposeTest {
 
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Meaning -> kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
+        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
     }
 
@@ -504,7 +504,7 @@ class MainActivityStudyChoiceComposeTest {
                 modeLabel = "Recall",
                 title = "Choose the kanji",
                 taskLabel = "Meaning -> kanji",
-                body = "Pick the kanji that matches the meaning.",
+                body = "Pick the matching kanji.",
                 reasonLine = reasonLine,
                 question = question,
                 choices = choices,
