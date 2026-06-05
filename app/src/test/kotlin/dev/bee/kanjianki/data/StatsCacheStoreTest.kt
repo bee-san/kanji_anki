@@ -108,6 +108,14 @@ class StatsCacheStoreTest {
     }
 
     @Test
+    fun readFreshStatsReturnsNullWhenCacheFormatVersionChanges() {
+        setSourceVersion(7L)
+        cacheStore.write(db, snapshot(7L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1))
+
+        assertNull(cacheStore.readFresh(db))
+    }
+
+    @Test
     fun hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
         val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(11L)

@@ -45,6 +45,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
     fun readFresh(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Snapshot? {
         val snapshot = readLatest(db) ?: return null
         return if (snapshot.sourceVersion == currentSourceVersion(db) &&
+            snapshot.cacheFormatVersion == STATS_CACHE_FORMAT_VERSION &&
             LocalDayPolicy.sameLocalDay(snapshot.generatedAtMillis, nowMillis)
         ) {
             snapshot
