@@ -5,32 +5,32 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = "Import & sync"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
+    fun settingsAnkiSourceBody(): String = "AnkiDroid fields, import filters, frequency range, and sync."
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = "Study settings"
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "New cards, review timing, workload, study ahead, and ladder controls."
+    fun settingsStudyBehaviorBody(): String = "New cards, timing, workload, study ahead, and ladder controls."
 
     @JvmStatic
     fun settingsAutomationTitle(): String = "Automation"
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Daily reminders and update checks that run in the background."
+    fun settingsAutomationBody(): String = "Daily reminders and update checks."
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = "Display & data"
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and credits."
 
     @JvmStatic
     fun settingsCockpitLabel(): String = "Settings overview"
 
     @JvmStatic
     fun settingsHeroBody(): String {
-        return "Choose a section below. Expanding it keeps the page in place and preserves your scroll position."
+        return "Choose a section below."
     }
 
     @JvmStatic
