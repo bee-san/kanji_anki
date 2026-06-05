@@ -21,7 +21,11 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
             load = {
                 val now = System.currentTimeMillis()
                 val rows = home.store.activeDashboardRows()
-                val items = home.studyQueue(rows, now, false, null)
+                val items = if (rows.isEmpty()) {
+                    emptyList()
+                } else {
+                    home.store.studyItems()
+                }
                 val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
                 val entries = if (rows.isEmpty()) {
                     emptyList()

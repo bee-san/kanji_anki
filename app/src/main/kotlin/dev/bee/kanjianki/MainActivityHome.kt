@@ -63,17 +63,18 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
         val rows = store.activeDashboardRows()
+        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItems()
         val deckOverviewRows = if (rows.isEmpty()) {
             emptyList()
         } else {
             HomeDeckOverviewPolicy.from(
-                studyItems = store.studyItems(),
+                studyItems = studyItems,
                 dashboardRows = rows,
                 nowMillis = now,
                 locallySuspendedKanji = store.locallySuspendedKanji(),
             ).rows()
         }
-        val homeItems = studyQueue(rows, now, false, null)
+        val homeItems = studyItems
         val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
         val entries = if (rows.isEmpty()) {
             emptyList()
