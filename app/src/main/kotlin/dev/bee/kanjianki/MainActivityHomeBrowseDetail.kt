@@ -173,9 +173,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             if (browserSearch.isEmpty()) null else Runnable { copyAnkiSearch(browserSearch) },
             HomeTextCopy.localSuspendButtonLabel(suspended),
             Runnable {
-                home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
-                Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
-                renderDetail(displayKanji, fromBrowse, browseQuery ?: "")
+                home.io.execute {
+                    home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
+                    home.main.post {
+                        Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
+                        renderDetail(displayKanji, fromBrowse, browseQuery ?: "")
+                    }
+                }
             }
         )
     }
