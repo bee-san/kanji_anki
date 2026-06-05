@@ -689,7 +689,7 @@ private fun verifySourceEvidenceAndEmptyQueue(activity: MainActivity) {
         assertEquals("From AnkiDroid", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
         seedRows(activity, listOf(row("空", "empty", "クウ", emptyList<RecordsImportModels.Example>())));
         activity.renderFocusQueue();
-        assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
+        waitForText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
     }
 
 private fun verifyDetailIdentityAndTimeline(activity: MainActivity, inventory: RecordsImportModels.KanjiInventoryItem, row: RecordsImportModels.DashboardRow) {
@@ -773,7 +773,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
 
                 performClickableWithText(homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
-                assertHasText(activity, "No mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 performClickableWithText(homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
@@ -813,9 +813,9 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.renderFocusQueue();
-                assertHasText(activity, "No kanji queued");
+                waitForText(activity, "No kanji queued");
                 activity.renderRecentMistakes();
-                assertHasText(activity, "No mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
                 assertHasText(activity, "Sync already running");

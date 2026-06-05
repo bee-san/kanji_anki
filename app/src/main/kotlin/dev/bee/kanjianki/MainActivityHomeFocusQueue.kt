@@ -16,26 +16,33 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     )
 
     fun renderFocusQueue() {
-        val now = System.currentTimeMillis()
-        val rows = home.store.activeDashboardRows()
-        val items = home.studyQueue(rows, now, false, null)
-        val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
-        val entries = if (rows.isEmpty()) {
-            emptyList()
-        } else {
-            home.queuedEntries(rows, items, now, plan)
-        }
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.focusQueueTitle(),
+            load = {
+                val now = System.currentTimeMillis()
+                val rows = home.store.activeDashboardRows()
+                val items = home.studyQueue(rows, now, false, null)
+                val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
+                val entries = if (rows.isEmpty()) {
+                    emptyList()
+                } else {
+                    home.queuedEntries(rows, items, now, plan)
+                }
 
-        val model = HomeFocusQueueScreenModel(
-            title = HomeTextCopy.focusQueueTitle(),
-            homeLabel = HomeTextCopy.homeLabel(),
-            onHome = home::renderHome,
-            queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
-            onSync = home::confirmSync
+                HomeFocusQueueScreenModel(
+                    title = HomeTextCopy.focusQueueTitle(),
+                    homeLabel = HomeTextCopy.homeLabel(),
+                    onHome = home::renderHome,
+                    queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
+                    onSync = home::confirmSync
+                )
+            },
+            render = { model ->
+                home.renderHomeRoute {
+                    HomeFocusQueueScreen(model)
+                }
+            },
         )
-        home.renderHomeRoute {
-            HomeFocusQueueScreen(model)
-        }
     }
 
     fun renderRecentMistakes() {

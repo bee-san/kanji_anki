@@ -136,6 +136,54 @@ class MainActivityHomeAsyncRenderTest {
         }
     }
 
+    @Test
+    fun renderFocusQueueShowsLoadingScreenBeforeBackgroundLoadCompletes() {
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            }
+            val activity = Robolectric.buildActivity(MainActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .get()
+
+            activity.cancelPendingHomeRouteLoads()
+            activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
+            replaceLazyDelegate(
+                activity,
+                "statsPrecomputeScheduler",
+                StatsPrecomputeScheduler(
+                    background = Executor { },
+                    isFresh = { true },
+                    refresh = { },
+                ),
+            )
+            replaceLazyDelegate(
+                activity,
+                "asyncHomeRouteLoader",
+                AsyncHomeRouteLoader(
+                    background = Executor { backgroundTasks.addLast(it) },
+                    postToMain = { mainTasks.addLast(it) },
+                ),
+            )
+
+            activity.renderFocusQueue()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            val contentRoot = activity.findViewById<ViewGroup>(android.R.id.content)
+            assertTrue(contentRoot.childCount > 0)
+            assertEquals(1, backgroundTasks.size)
+            assertTrue(mainTasks.isEmpty())
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
     private fun fakeAnkiDroidGateway(): AnkiDroidGateway {
         val constructor = AnkiDroidGateway::class.java.getDeclaredConstructor(
             android.content.Context::class.java,
