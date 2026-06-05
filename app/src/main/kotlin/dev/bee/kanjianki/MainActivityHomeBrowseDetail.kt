@@ -18,6 +18,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val items: List<RecordsImportModels.KanjiInventoryItem>,
     )
 
+    private data class BrowseDetailRouteData(
+        val timeline: RecordsStudyModels.KanjiRecoveryTimeline,
+        val displayKanji: String,
+        val fromBrowse: Boolean,
+        val browseQuery: String,
+        val suspended: Boolean,
+    )
+
     fun renderBrowseKanji(query: String?) {
         val requestedQuery = query ?: ""
         home.activeBrowseQuery = requestedQuery
@@ -39,27 +47,50 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
-        val timeline = home.store.timelineForKanji(kanji)
-        val row = timeline.currentRow
-        val inventory = timeline.inventoryItem
-        if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
-            val model = BrowseDetailMissingModel(
+        val requestedQuery = browseQuery ?: ""
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.browseActionLabel(),
+            load = {
+                val timeline = home.store.timelineForKanji(kanji)
+                val row = timeline.currentRow
+                val inventory = timeline.inventoryItem
+                BrowseDetailRouteData(
+                    timeline = timeline,
+                    displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory),
+                    fromBrowse = fromBrowse,
+                    browseQuery = requestedQuery,
+                    suspended = inventory != null && inventory.suspended,
+                )
+            },
+            render = { data ->
+                val row = data.timeline.currentRow
+                val inventory = data.timeline.inventoryItem
+                if (inventory == null && row == null && data.timeline.currentStudyItem == null && data.timeline.events.isEmpty()) {
+                    val model = BrowseDetailMissingModel(
                         HomeTextCopy.homeLabel(),
                         Runnable { home.renderHome() },
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
-            )
-            home.renderHomeRoute {
-                BrowseDetailMissing(model)
-            }
-            return
-        }
-        val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
-        val suspended = inventory != null && inventory.suspended
-        val model = detailScreenModel(timeline, row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended)
-        home.renderHomeRoute {
-            BrowseDetailScreen(model)
-        }
+                    )
+                    home.renderHomeRoute {
+                        BrowseDetailMissing(model)
+                    }
+                } else {
+                    val model = detailScreenModel(
+                        data.timeline,
+                        row,
+                        inventory,
+                        data.displayKanji,
+                        data.fromBrowse,
+                        data.browseQuery,
+                        data.suspended,
+                    )
+                    home.renderHomeRoute {
+                        BrowseDetailScreen(model)
+                    }
+                }
+            },
+        )
     }
 
     fun detailScreenModel(
