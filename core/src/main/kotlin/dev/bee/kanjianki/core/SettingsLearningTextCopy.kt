@@ -6,7 +6,7 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "New cards and relearning use short steps. Those repeats are practice only."
+        return "New and relearning cards use short steps. Repeats stay practice-only."
     }
 
     @JvmStatic
@@ -22,5 +22,5 @@ object SettingsLearningTextCopy {
     fun saveLearningStepsLabel(): String = "Save learning steps"
 
     @JvmStatic
-    fun learningStepsSavedToast(): String = "Learning steps saved."
+    fun learningStepsSavedToast(): String = "Steps saved."
 }
