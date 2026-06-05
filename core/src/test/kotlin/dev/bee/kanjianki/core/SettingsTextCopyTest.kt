@@ -24,11 +24,11 @@ class SettingsTextCopyTest {
                         "Notifications off",
                         "21:05",
                         "Off",
-                        "After first successful sync",
+                        "After first sync",
                         "07:30",
                         "Off",
                         "Verified APK ready",
-                        "Automatic checks on",
+                        "Daily checks on",
                         "Manual checks",
                         "4 suspended cards archived, 2 rare kanji added; active cards remain optional",
                         "Sync blocked: No provider",
@@ -42,7 +42,7 @@ class SettingsTextCopyTest {
                         "Study settings",
                         "New cards, timing, workload, and ladder controls.",
                         "Automation",
-                        "Daily reminders and update checks.",
+                        "Reminders and updates.",
                         "Display & data",
                         "Offline dictionaries, stroke data, fonts, and credits.",
                 ),
@@ -76,21 +76,21 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "GitHub updater",
-                        "Version 1.2.3. Checks GitHub Releases, then verifies the APK.",
+                        "Version 1.2.3. Checks releases, then verifies the APK.",
                         "Automatic updates",
                         "Check for update",
-                        "On: checks about once a day",
+                        "On: daily checks",
                         "Off",
                         "Last check: not yet",
                         "Last result: none",
                         "Install permission: Ready",
                         "Install permission: Missing",
                         "Verified APK ready: 0.4.33",
-                        "Android needs confirmation before Kani can replace itself.",
+                        "Android needs confirmation to install updates.",
                         "Install verified update",
                         "Set up app installs",
-                        "Turn off automatic updates",
-                        "Turn on automatic updates",
+                        "Turn off updates",
+                        "Turn on updates",
                         "Back to settings",
                         "Settings overview",
                         "Choose a section.",
@@ -137,12 +137,12 @@ class SettingsTextCopyTest {
                         "Expand Automation",
                         "1 card",
                         "2 cards",
-                        "Starts after first successful sync",
+                        "Starts after first sync",
                         "On around 07:30",
                         "Off",
-                        "Sync once manually; Kani refreshes daily after that.",
-                        "Scheduled daily; Android may batch the time.",
-                        "Daily background sync is paused.",
+                        "Sync once; then Kani refreshes daily.",
+                        "Scheduled daily; Android may batch it.",
+                        "Daily sync is paused.",
                         "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",
                         "Last successful sync yesterday. Last sync attempt today.",
                 ),
@@ -493,7 +493,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Daily reminders and review nudges; Android may batch them.",
+                "Daily reminders; Android may batch them.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -507,12 +507,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Android notifications are off, so this reminder cannot appear yet.",
+                "Android notifications are off; this reminder cannot appear.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Android asks for notification permission before turning this on.",
+                "Allow notification permission before turning this on.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
