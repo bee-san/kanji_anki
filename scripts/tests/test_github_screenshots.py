@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
+from typing import Any
+from unittest import mock
 
 from scripts.ralph_loop import github_screenshots
 
@@ -31,6 +34,11 @@ def ok(args: tuple[str, ...], stdout: object = "") -> CompletedProcess[str]:
 
 def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
     return CompletedProcess(list(args), 1, "", stderr)
+
+
+def run_remote_screenshots_for_test(**kwargs: Any) -> dict[str, object]:
+    with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "false"}):
+        return github_screenshots.run_remote_screenshots(**kwargs)
 
 
 class GithubScreenshotsTest(unittest.TestCase):
@@ -78,7 +86,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -88,7 +96,7 @@ class GithubScreenshotsTest(unittest.TestCase):
             )
 
             self.assertEqual("missing_artifact", result["status"])
-            self.assertIn("manifest.json", result["message"])
+            self.assertIn("manifest.json", str(result["message"]))
             self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
 
             out.mkdir(parents=True, exist_ok=True)
@@ -104,7 +112,7 @@ class GithubScreenshotsTest(unittest.TestCase):
             )
             (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -170,7 +178,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                     }
                 )
 
-                result = github_screenshots.run_remote_screenshots(
+                result = run_remote_screenshots_for_test(
                     repo_root=root,
                     workflow="android-screenshots.yml",
                     artifact="android-screenshots",
@@ -181,7 +189,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 )
 
                 self.assertEqual("failed", result["status"], protected_branch)
-                self.assertIn("Refusing to run on protected branch", result["message"])
+                self.assertIn("Refusing to run on protected branch", str(result["message"]))
 
             branch_runner = FakeRunner(
                 {
@@ -191,7 +199,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -220,7 +228,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            github_screenshots.run_remote_screenshots(
+            run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
