@@ -204,19 +204,19 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity { activity ->
                 assertHasText(activity, "Back to Browse");
-                assertHasText(activity, "Local inventory");
-                assertHasText(activity, "Review this now");
+                assertHasText(activity, "Local records");
+                assertHasText(activity, "Review now");
                 assertHasText(activity, "Suspend locally");
             }
             clickText(scenario, "Suspend locally");
             scenario.onActivity { activity ->
                 assertHasText(activity, "SUSPENDED");
                 assertHasText(activity, "Unsuspend locally");
-                assertNoText(activity, "Review this now");
+                assertNoText(activity, "Review now");
             }
             clickText(scenario, "Unsuspend locally");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Review this now");
+                assertHasText(activity, "Review now");
                 assertHasText(activity, "Suspend locally");
             }
             clickText(scenario, "Back to Browse");
@@ -971,17 +971,17 @@ fun testKanjiDetailCopyAndStudyReviewFlow() {
             clickText(scenario, "拉");
             scenario.onActivity { activity -> assertKanjiDetailReady(activity) }
 
-            clickText(scenario, "Copy Anki search");
+            clickText(scenario, "Copy search");
             scenario.onActivity { activity ->
                 var clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 var clip = clipboard.getPrimaryClip()
                 if (clip != null) {
                     assertEquals("deck:Kiku 拉", clip.getItemAt(0).coerceToText(activity).toString());
                 }
-                assertHasText(activity, "Copied Anki search");
+                assertHasText(activity, "Copied");
             }
 
-            clickText(scenario, "Review this now");
+            clickText(scenario, "Review now");
             scenario.onActivity { activity -> assertHiddenRecognitionCard(activity) }
 
             clickText(scenario, REVEAL);
@@ -1648,9 +1648,9 @@ fun testReviewThisNowUsesSimilarChoiceGate() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "拉");
-            scenario.onActivity { activity -> assertHasText(activity, "Review this now") }
+            scenario.onActivity { activity -> assertHasText(activity, "Review now") }
 
-            clickText(scenario, "Review this now");
+            clickText(scenario, "Review now");
             scenario.onActivity { activity ->
                 assertHasText(activity, "0 / 1");
                 assertHasText(activity, SIMILAR_KANJI);
@@ -2919,11 +2919,11 @@ private fun assertKanjiDetailReady(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 IMPORTED_FROM_SUSPENDED_CARDS,
-                "Review this now",
-                "Copy Anki search",
+                "Review now",
+                "Copy search",
                 "Recovery timeline",
                 "Active repair",
-                "Mature support 0 / target 2",
+                "Mature support 0/2",
                 "Kani started watching"
         );
     }

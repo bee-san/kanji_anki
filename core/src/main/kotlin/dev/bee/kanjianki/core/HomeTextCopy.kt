@@ -277,22 +277,22 @@ object HomeTextCopy {
 
     @JvmStatic
     fun historicalReasonText(): String =
-        "No longer active, but kept in local recovery history."
+        "Inactive; kept in recovery history."
 
     @JvmStatic
     fun activeReasonText(row: RecordsImportModels.DashboardRow?): String {
         val safeRow = row ?: throw NullPointerException("row")
-        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence." else safeRow.reasonText
+        return if (safeRow.reasonText.isEmpty()) "Active practice evidence." else safeRow.reasonText
     }
 
     @JvmStatic
-    fun ankiBrowserLine(browserSearch: String?): String = "Anki browser: ${browserSearch.toString()}"
+    fun ankiBrowserLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
 
     @JvmStatic
-    fun reviewNowLabel(): String = "Review this now"
+    fun reviewNowLabel(): String = "Review now"
 
     @JvmStatic
-    fun copyAnkiSearchLabel(): String = "Copy Anki search"
+    fun copyAnkiSearchLabel(): String = "Copy search"
 
     @JvmStatic
     fun ankiSearchClipLabel(): String = "Anki search"
@@ -306,27 +306,27 @@ object HomeTextCopy {
 
     @JvmStatic
     fun localSuspendToast(wasSuspended: Boolean): String =
-        if (wasSuspended) "Kanji unsuspended." else "Kanji suspended locally."
+        if (wasSuspended) "Unsuspended." else "Suspended locally."
 
     @JvmStatic
     fun examplesTitle(): String = "Examples"
 
     @JvmStatic
-    fun localInventoryTitle(): String = "Local inventory"
+    fun localInventoryTitle(): String = "Local records"
 
     @JvmStatic
     fun localInventorySummary(sourceCount: Int, exampleCount: Int): String {
-        return StudyTextCopy.countText(sourceCount, "source note/card", "source notes/cards") +
+        return StudyTextCopy.countText(sourceCount, "source", "sources") +
             " · " +
-            StudyTextCopy.countText(exampleCount, "stored example", "stored examples")
+            StudyTextCopy.countText(exampleCount, "example", "examples")
     }
 
     @JvmStatic
-    fun localInventorySearchLine(browserSearch: String?): String = "Search: ${browserSearch.toString()}"
+    fun localInventorySearchLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
 
     @JvmStatic
     fun localInventoryLastSeenLine(lastSeenAtMillis: Long): String =
-        "Last seen locally ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}"
+        "Last seen ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}"
 
     @JvmStatic
     fun detailDisplayKanji(
@@ -364,16 +364,16 @@ object HomeTextCopy {
 
     @JvmStatic
     fun matureSupportTargetText(matureSupportCount: Int, target: Int): String =
-        "Mature support $matureSupportCount / target $target"
+        "Mature support $matureSupportCount/$target"
 
     @JvmStatic
-    fun timelineEmptyText(): String = "Timeline will fill in after the next sync or review."
+    fun timelineEmptyText(): String = "Timeline appears after sync or review."
 
     @JvmStatic
     fun recoveryTimelineTitle(): String = "Recovery timeline"
 
     @JvmStatic
-    fun noActiveEvidenceText(): String = "No active Anki evidence in the latest local sync."
+    fun noActiveEvidenceText(): String = "No active Anki evidence."
 
     @JvmStatic
     fun exampleSourceLabel(example: RecordsImportModels.Example?): String =

@@ -17,7 +17,7 @@ class HomeActionsTest {
         assertEquals("裂", writer.kanji)
         assertTrue(writer.suspended)
         assertEquals(1234L, writer.changedAtMillis)
-        assertEquals("Kanji suspended locally.", toast)
+        assertEquals("Suspended locally.", toast)
     }
 
     @Test
@@ -30,7 +30,7 @@ class HomeActionsTest {
         assertEquals("裂", writer.kanji)
         assertFalse(writer.suspended)
         assertEquals(5678L, writer.changedAtMillis)
-        assertEquals("Kanji unsuspended.", toast)
+        assertEquals("Unsuspended.", toast)
     }
 
     private class RecordingSuspensionWriter {

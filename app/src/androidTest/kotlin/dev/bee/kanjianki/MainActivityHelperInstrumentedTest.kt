@@ -735,16 +735,16 @@ private fun verifyDetailPanels(activity: MainActivity, inventory: RecordsImportM
         assertEquals("", historicalIdentity.reading);
 
         var inventoryReason = browseDetail.detailReasonPanelModel(null, inventory)
-        assertTrue(inventoryReason.lines.contains("No longer active, but kept in local recovery history."));
-        assertTrue(inventoryReason.lines.contains("Anki browser: kanji:語"));
+        assertTrue(inventoryReason.lines.contains("Inactive; kept in recovery history."));
+        assertTrue(inventoryReason.lines.contains("Anki search: kanji:語"));
 
         var historicalReason = browseDetail.detailReasonPanelModel(null, null)
-        assertTrue(historicalReason.lines.contains("No longer active, but kept in local recovery history."));
-        assertFalse(historicalReason.lines.toString().contains("Anki browser:"));
+        assertTrue(historicalReason.lines.contains("Inactive; kept in recovery history."));
+        assertFalse(historicalReason.lines.toString().contains("Anki search:"));
 
         var activeReason = browseDetail.detailReasonPanelModel(row, inventory)
         assertTrue(activeReason.lines.contains("reason text"));
-        assertTrue(activeReason.lines.contains("Anki browser: 裂"));
+        assertTrue(activeReason.lines.contains("Anki search: 裂"));
     }
 
     @Test
@@ -1675,7 +1675,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
         assertHasText(activity, "Back to Browse");
-        assertHasText(activity, "Local inventory");
+        assertHasText(activity, "Local records");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing", false, "");
@@ -1691,7 +1691,7 @@ private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
 
         val emptyTimeline = MainActivityHomeBrowseDetail(activity)
                 .recoveryTimelineModel(RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, emptyList<RecordsImportModels.KanjiTimelineEvent>()));
-        assertEquals("No active Anki evidence in the latest local sync.", emptyTimeline.supportText);
+        assertEquals("No active Anki evidence.", emptyTimeline.supportText);
     }
 
 private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: RecordsImportModels.DashboardRow) {
@@ -1982,8 +1982,8 @@ fun browseAndDetailCopyAvoidMisleadingOrBlankRows() {
                 );
                 var browseDetail = MainActivityHomeBrowseDetail(activity)
                 var reason = browseDetail.detailReasonPanelModel(row, null)
-                assertTrue(reason.lines.contains("Current local practice evidence."));
-                assertTrue(reason.lines.get(1).contains("Anki browser: deck:Japanese"));
+                assertTrue(reason.lines.contains("Active practice evidence."));
+                assertTrue(reason.lines.get(1).contains("Anki search: deck:Japanese"));
 
                 var identity = browseDetail.detailIdentityModel(row, null, false)
                 assertEquals("split", identity.title);
