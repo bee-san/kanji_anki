@@ -22,7 +22,7 @@ class HomeTextCopyTest {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null))
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting))
         assertEquals("All current", HomeTextCopy.focusHeadline(all))
-        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused))
+        assertEquals("1/4 left", HomeTextCopy.focusHeadline(focused))
     }
 
     @Test
@@ -86,12 +86,12 @@ class HomeTextCopyTest {
         assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel())
         assertEquals("Focus queue", HomeTextCopy.focusQueueTitle())
         assertEquals("View all", HomeTextCopy.viewAllLabel())
-        assertEquals("No kanji queued yet", HomeTextCopy.noKanjiQueuedTitle())
+        assertEquals("No kanji queued", HomeTextCopy.noKanjiQueuedTitle())
         assertEquals(
-            "Sync AnkiDroid to build your focus queue.",
+            "Sync AnkiDroid to build the queue.",
             HomeTextCopy.homeNoKanjiQueuedBody()
         )
-        assertEquals("Sync AnkiDroid first to build a focus queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
+        assertEquals("Sync AnkiDroid to build the queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
         assertEquals("Sync", HomeTextCopy.syncMetricLabel())
         assertEquals("Up to date", HomeTextCopy.syncMetricStatus(true))
         assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false))

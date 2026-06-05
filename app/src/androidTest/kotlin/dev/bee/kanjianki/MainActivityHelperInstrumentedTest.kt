@@ -638,7 +638,7 @@ private fun verifyHomeSyncFocusAndStreakText(activity: MainActivity) {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
         assertEquals("All current", HomeTextCopy.focusHeadline(all));
-        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused));
+        assertEquals("1/4 left", HomeTextCopy.focusHeadline(focused));
 
         var none = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)
         var doneToday = StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L)
@@ -665,9 +665,9 @@ private fun verifyStudyTimeRankAndQueueText(activity: MainActivity) {
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
         assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));
 
-        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", emptyList<RecordsImportModels.Example>())));
+        assertEquals("Needs kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", emptyList<RecordsImportModels.Example>())));
         assertEquals(
-                "Shape mix-up made this a writing-practice target.",
+                "Shape mix-up; practice writing.",
                 FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", emptyList<RecordsImportModels.Example>()))
         );
         assertEquals("custom evidence", FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", emptyList<RecordsImportModels.Example>())));
@@ -686,7 +686,7 @@ private fun verifySourceEvidenceAndEmptyQueue(activity: MainActivity) {
         assertEquals("From 活動語 · missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(active, suspended))));
         assertEquals("From 活動語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(active))));
         assertEquals("Missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(suspended))));
-        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
+        assertEquals("From AnkiDroid", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
         seedRows(activity, listOf(row("空", "empty", "クウ", emptyList<RecordsImportModels.Example>())));
         activity.renderFocusQueue();
         assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
@@ -810,7 +810,7 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.renderFocusQueue();
-                assertHasText(activity, "No kanji queued yet");
+                assertHasText(activity, "No kanji queued");
                 activity.renderRecentMistakes();
                 assertHasText(activity, "No recent mistakes yet");
 

@@ -28,7 +28,7 @@ class HomeSecondaryScreensComposeTest {
                     onHome = { homeClicked = true },
                     queue = HomeFocusQueuePanelModel(
                         planText = "Adaptive focus is waiting for sync",
-                        emptyTitle = "No kanji queued yet",
+                        emptyTitle = "No kanji queued",
                         emptyBody = "Sync AnkiDroid to find problem cards.",
                         showSyncButton = true,
                         cards = emptyList()

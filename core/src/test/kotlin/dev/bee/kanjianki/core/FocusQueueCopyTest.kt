@@ -17,14 +17,14 @@ class FocusQueueCopyTest {
         )
         assertEquals("From active-one", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", listOf(active))))
         assertEquals("Missed suspended-one", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", listOf(suspended))))
-        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", emptyList())))
+        assertEquals("From AnkiDroid", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", emptyList())))
     }
 
     @Test
     fun queueCardBodyPreservesFallbackSimilarAndRawReasonText() {
-        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(row("x", 0, 0, "")))
+        assertEquals("Needs kanji practice.", FocusQueueCopy.queueCardBody(row("x", 0, 0, "")))
         assertEquals(
-            "Shape mix-up made this a writing-practice target.",
+            "Shape mix-up; practice writing.",
             FocusQueueCopy.queueCardBody(row("similar", 0, 0, "Similar-kanji choice missed")),
         )
         assertEquals("Specific reason", FocusQueueCopy.queueCardBody(row("reason", 0, 0, "Specific reason")))

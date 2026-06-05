@@ -26,13 +26,13 @@ object FocusQueueCopy {
         if (suspended.isNotEmpty()) {
             return "Missed $suspended"
         }
-        return "From your AnkiDroid sync"
+        return "From AnkiDroid"
     }
 
     @JvmStatic
     fun queueCardBody(row: RecordsImportModels.DashboardRow): String {
         if (row.reasonText.isEmpty()) {
-            return "Needs focused kanji practice."
+            return "Needs kanji practice."
         }
         val normalized = row.reasonText.lowercase(Locale.ROOT)
         if (
@@ -40,7 +40,7 @@ object FocusQueueCopy {
             normalized.contains("similar kanji") ||
             normalized.contains("similar choice")
         ) {
-            return "Shape mix-up made this a writing-practice target."
+            return "Shape mix-up; practice writing."
         }
         return row.reasonText
     }

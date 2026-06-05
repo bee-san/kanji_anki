@@ -31,7 +31,7 @@ class HomeScreenComposeTest {
                 model = baseModel(
                     showSyncCta = true,
                     onSync = { syncClicked = true },
-                    emptyTitle = "No kanji queued yet",
+                    emptyTitle = "No kanji queued",
                     emptyBody = "Sync AnkiDroid to find problem cards."
                 )
             )
@@ -41,7 +41,7 @@ class HomeScreenComposeTest {
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
         composeRule.onAllNodesWithText("View all").assertCountEquals(0)
-        composeRule.onNodeWithText("No kanji queued yet").assertIsDisplayed()
+        composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
         composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync AnkiDroid"))
             .assertIsDisplayed()
             .assertHasClickAction()
@@ -74,7 +74,7 @@ class HomeScreenComposeTest {
                             meaning = "split",
                             sourceEvidence = "From 裂語",
                             reasonLine = "due now",
-                            body = "Needs focused kanji practice.",
+                            body = "Needs kanji practice.",
                             tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", Color(0xFF6E5CE6))),
                             accentColor = Color(0xFFFF4C76),
                             onClick = { cardClicked = true }

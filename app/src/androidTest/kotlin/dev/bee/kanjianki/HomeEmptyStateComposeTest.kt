@@ -15,14 +15,14 @@ class HomeEmptyStateComposeTest {
     fun rendersLegacyBandEmptyState() {
         composeRule.setContent {
             HomeEmptyState(
-                title = "No kanji queued yet",
+                title = "No kanji queued",
                 body = "Sync AnkiDroid to find problem cards.",
                 style = HomeEmptyStateStyle.LegacyBand
             )
         }
 
-        composeRule.onNodeWithTag(homeEmptyStateTestTag("No kanji queued yet")).assertIsDisplayed()
-        composeRule.onNodeWithText("No kanji queued yet").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No kanji queued")).assertIsDisplayed()
+        composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid to find problem cards.").assertIsDisplayed()
     }
 
