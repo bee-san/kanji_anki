@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show due reviews early. 0 disables it; learning and relearning delays still apply."
+        return "Show due reviews early. 0 turns it off; learning/relearning delays still apply."
     }
 
     @JvmStatic
@@ -34,7 +34,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadWholeNumberErrorText(): String {
-        return String.format(Locale.ROOT, "Use a whole number of minutes (%s).", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Use whole minutes (%s).", studyAheadMinutesRange())
     }
 
     @JvmStatic
