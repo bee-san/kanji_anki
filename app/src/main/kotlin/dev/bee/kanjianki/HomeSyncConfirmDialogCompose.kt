@@ -10,19 +10,31 @@ fun HomeSyncConfirmDialog(model: HomeSyncConfirmDialogModel?) {
         return
     }
     androidx.compose.material3.AlertDialog(
-        onDismissRequest = { model.onDismiss.run() },
+        onDismissRequest = {
+            withButtonTrace("home-sync-confirm-dismiss") {
+                model.onDismiss.run()
+            }
+        },
         title = { Text(text = model.title) },
         text = { Text(text = model.message) },
         confirmButton = {
             TextButton(
-                onClick = { model.onConfirm.run() },
+                onClick = {
+                    withButtonTrace("home-sync-confirm-ok") {
+                        model.onConfirm.run()
+                    }
+                },
             ) {
                 Text(text = model.confirmLabel)
             }
         },
         dismissButton = {
             TextButton(
-                onClick = { model.onDismiss.run() },
+                onClick = {
+                    withButtonTrace("home-sync-confirm-dismiss") {
+                        model.onDismiss.run()
+                    }
+                },
             ) {
                 Text(text = model.dismissLabel)
             }

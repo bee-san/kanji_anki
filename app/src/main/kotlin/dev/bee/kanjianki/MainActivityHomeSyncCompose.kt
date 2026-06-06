@@ -82,7 +82,11 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
         }
         model.primaryLabel?.let { label ->
             Button(
-                onClick = { model.onPrimary?.run() },
+                onClick = {
+                    withButtonTrace(label) {
+                        model.onPrimary?.run()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = KaniUiTokens.ButtonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -98,7 +102,11 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
             }
         }
         OutlinedButton(
-            onClick = { model.onSecondary.run() },
+            onClick = {
+                withButtonTrace(model.secondaryLabel) {
+                    model.onSecondary.run()
+                }
+            },
             modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, KaniUiTokens.SubtleButtonBorder),

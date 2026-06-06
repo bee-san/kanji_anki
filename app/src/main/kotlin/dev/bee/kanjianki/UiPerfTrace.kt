@@ -1,15 +1,20 @@
 package dev.bee.kanjianki
 
+import android.os.SystemClock
 import android.os.Trace
+import android.util.Log
 import java.util.Locale
 
 private val PERF_TRACE_TOKEN_RE = Regex("[^A-Za-z0-9._-]+")
+private const val PERF_TRACE_LOG_TAG = "KaniPerf"
+private const val PERF_TRACE_LOG_THRESHOLD_MS = 16L
 
 internal fun <T> withUiTrace(section: String, action: () -> T): T {
     if (section.isBlank()) {
         return action()
     }
 
+    val startNanos = SystemClock.elapsedRealtimeNanos()
     val traceStarted = runCatching {
         Trace.beginSection(section)
         true
@@ -18,10 +23,23 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
     try {
         return action()
     } finally {
+        val durationMs = (SystemClock.elapsedRealtimeNanos() - startNanos) / 1_000_000.0
         if (traceStarted) {
             runCatching {
                 Trace.endSection()
             }
+        }
+
+        if (BuildConfig.DEBUG && durationMs >= PERF_TRACE_LOG_THRESHOLD_MS) {
+            Log.d(
+                PERF_TRACE_LOG_TAG,
+                String.format(
+                    Locale.US,
+                    "perf section=%s duration_ms=%.2f",
+                    section,
+                    durationMs
+                )
+            )
         }
     }
 }
