@@ -79,7 +79,7 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
             )
             model.options.forEach { option ->
                 OutlinedButton(
-                    onClick = { selectedMode = option.mode },
+                    onClick = { withButtonTrace(option.label) { selectedMode = option.mode } },
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 50.dp)
@@ -117,7 +117,7 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                 NewCardSortPreview(rows = previewRows, warning = model.previewWarning(selectedMode))
             }
             Button(
-                onClick = { model.onSave.save(selectedMode) },
+                onClick = { withButtonTrace(model.saveLabel) { model.onSave.save(selectedMode) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp)
