@@ -35,6 +35,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
+    private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
 
     abstract fun renderStats()
     abstract fun renderGames()
@@ -42,27 +43,38 @@ internal abstract class MainActivityHome : MainActivityBase() {
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
+        cachedImportOnboardingPlan = null
         if (isScreenshotRouteRequested()) {
             renderScreenshotHome()
             return
         }
-        scheduleStatsPrecomputeIfStale()
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.appTitle(),
+            load = { buildHomeScreenModel() },
+            render = { model ->
+                renderHomeScreen(model)
+                scheduleStatsPrecomputeIfStaleAsync()
+            },
+        )
+    }
 
+    private fun buildHomeScreenModel(): HomeScreenModel {
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
         val rows = store.activeDashboardRows()
+        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItems()
         val deckOverviewRows = if (rows.isEmpty()) {
             emptyList()
         } else {
             HomeDeckOverviewPolicy.from(
-                studyItems = store.studyItems(),
+                studyItems = studyItems,
                 dashboardRows = rows,
                 nowMillis = now,
                 locallySuspendedKanji = store.locallySuspendedKanji(),
             ).rows()
         }
-        val homeItems = studyQueue(rows, now, false, null)
+        val homeItems = studyItems
         val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
         val entries = if (rows.isEmpty()) {
             emptyList()
@@ -71,7 +83,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
         val provider = gateway.status()
 
-        val model = HomeScreenModel(
+        return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, sync, provider, streak, homePlan),
@@ -99,6 +111,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 homeFocusQueueCardModel(this, entry, now)
             }
         )
+    }
+
+    private fun renderHomeScreen(model: HomeScreenModel) {
         renderHomeRoute {
             HomeScreen(model)
         }
@@ -135,9 +150,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
             previewCards = emptyList(),
         )
-        renderHomeRoute {
-            HomeScreen(model)
-        }
+        renderHomeScreen(model)
     }
 
     fun renderFocusQueue() {
@@ -153,7 +166,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        val plan = importOnboardingPlan()
+        val plan = currentImportOnboardingPlan()
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
             message = plan.body(),
             confirmLabel = plan.primaryActionLabel(),
@@ -169,7 +182,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         rerenderLatestHomeRoute()
     }
 
-    private fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+    protected open fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
         val current = settings()
         val provider = gateway.status()
         return HomeImportOnboardingPolicy.plan(
@@ -180,6 +193,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
             provider.permission,
             current,
         )
+    }
+
+    private fun currentImportOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+        return cachedImportOnboardingPlan ?: importOnboardingPlan().also { cachedImportOnboardingPlan = it }
     }
 
     private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
@@ -270,7 +287,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
-        scheduleStatsPrecomputeIfStale()
         val now = System.currentTimeMillis()
         val rows = store.activeDashboardRows()
         val items = store.studyItems()
@@ -300,6 +316,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 this::renderHome,
             )
         )
+        scheduleStatsPrecomputeIfStale()
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
@@ -337,8 +354,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
         now: Long,
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        return focusQueue.studyQueue(rows, now, persist, plan)
+        return focusQueue.studyQueue(rows, now, persist, plan, currentItems)
     }
 
     fun queuedEntries(
@@ -397,6 +415,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun scheduleStatsPrecomputeIfStale(): Boolean {
         return statsPrecomputeScheduler.scheduleIfStale()
+    }
+
+    fun scheduleStatsPrecomputeIfStaleAsync() {
+        io.execute {
+            scheduleStatsPrecomputeIfStale()
+        }
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {

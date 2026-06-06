@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -13,6 +15,12 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private var renderedPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
     private var renderedScreenModel: StudyDoneScreenModel? = null
     private var studyMoreDialog: StudyMoreNewCardsDialogModel? = null
+    private var cachedStudyMoreNewCardsSnapshot: StudyMoreNewCardsSnapshot? = null
+
+    internal data class StudyMoreNewCardsSnapshot(
+        val rows: List<RecordsImportModels.DashboardRow>,
+        val existing: List<RecordsStudyModels.StudyItem>,
+    )
 
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
         if (!home.continueAllKanjiSession && seededPlan.focusComplete()) {
@@ -161,10 +169,12 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private fun continueAllKanji() {
         home.studyMoreNewCardKanji.clear()
         home.continueAllKanjiSession = true
+        clearStudyMoreNewCardsSnapshot()
         home.renderStudy()
     }
 
     private fun backHome() {
+        clearStudyMoreNewCardsSnapshot()
         home.clearStudyModeOverrides()
         home.renderHome()
     }
@@ -172,19 +182,28 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     fun availableStudyMoreNewCards(): Int {
         val rows = home.store.activeDashboardRows()
         if (rows.isEmpty()) {
+            cachedStudyMoreNewCardsSnapshot = null
             return 0
         }
         val now = System.currentTimeMillis()
-        val result = BridgeScheduler().seedExtraNewCards(
+        val existing = home.store.studyItems()
+        cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(rows, existing)
+        return BridgeScheduler().countExtraNewCardsAvailable(
             rows,
-            home.store.studyItems(),
+            existing,
             home.settings(),
             now,
             home.startOfDay(now),
-            Int.MAX_VALUE,
-            home.studyLadderSettings()
+            home.studyLadderSettings(),
         )
-        return result.availableCount
+    }
+
+    fun studyMoreNewCardsSnapshot(): StudyMoreNewCardsSnapshot? {
+        return cachedStudyMoreNewCardsSnapshot
+    }
+
+    fun clearStudyMoreNewCardsSnapshot() {
+        cachedStudyMoreNewCardsSnapshot = null
     }
 
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
@@ -199,6 +218,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             onConfirm = ::applyStudyMoreNewCardsRequest,
             onDismiss = Runnable {
                 studyMoreDialog = null
+                clearStudyMoreNewCardsSnapshot()
                 rerenderStudyDone()
             }
         )

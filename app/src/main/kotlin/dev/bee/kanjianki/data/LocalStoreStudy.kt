@@ -85,11 +85,11 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun kanjiImpactReport(): KanjiImpactAnalyzer.Report = KanjiImpactReportStore(this as LocalStore).report()
 
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-        return StatsCacheStore(this as LocalStore).readFresh()
+        return StatsCacheStore(this as LocalStore).readFresh(nowMillis = System.currentTimeMillis())
     }
 
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-        return StatsCacheStore(this as LocalStore).readLatest()
+        return StatsCacheStore(this as LocalStore).readFresh(nowMillis = System.currentTimeMillis())
     }
 
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {

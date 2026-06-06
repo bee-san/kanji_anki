@@ -689,7 +689,7 @@ private fun verifySourceEvidenceAndEmptyQueue(activity: MainActivity) {
         assertEquals("From AnkiDroid", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
         seedRows(activity, listOf(row("空", "empty", "クウ", emptyList<RecordsImportModels.Example>())));
         activity.renderFocusQueue();
-        assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
+        waitForText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
     }
 
 private fun verifyDetailIdentityAndTimeline(activity: MainActivity, inventory: RecordsImportModels.KanjiInventoryItem, row: RecordsImportModels.DashboardRow) {
@@ -773,7 +773,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
 
                 performClickableWithText(homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
-                assertHasText(activity, "No mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 performClickableWithText(homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
@@ -782,7 +782,7 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
                 assertHasText(activity, "Automation");
 
                 fullWidthHomeButtonTestView(activity).performClick();
-                assertHasText(activity, "Kani");
+                waitForText(activity, "Kani");
             }
         }
     }
@@ -790,18 +790,21 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
     @Test
 fun renderHomeUsesSingleComposeScreenForEmptyAndActiveStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.renderHome();
-                assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
-                assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
+            lateinit var activity: MainActivity
+            scenario.onActivity { activity = it }
 
+            scenario.onActivity { activity.renderHome() }
+            waitForText(activity, HomeTextCopy.noKanjiQueuedTitle())
+            waitForText(activity, HomeTextCopy.syncAnkiDroidLabel())
+
+            scenario.onActivity {
                 seedRows(activity, listOf(row("裂", "split", "レツ", emptyList<RecordsImportModels.Example>())));
                 activity.renderHome();
-                assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
-                assertHasText(activity, HomeTextCopy.viewAllLabel());
-                assertHasText(activity, "裂");
-                assertHasText(activity, "split");
             }
+            waitForText(activity, MainActivityBase.LABEL_STUDY_NOW)
+            waitForText(activity, HomeTextCopy.viewAllLabel())
+            waitForText(activity, "裂")
+            waitForText(activity, "split")
         }
     }
 
@@ -810,9 +813,9 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.renderFocusQueue();
-                assertHasText(activity, "No kanji queued");
+                waitForText(activity, "No kanji queued");
                 activity.renderRecentMistakes();
-                assertHasText(activity, "No mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
                 assertHasText(activity, "Sync already running");
@@ -1684,10 +1687,10 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
 
 private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
         activity.renderRecentMistakes();
-        assertHasText(activity, "No mistakes yet");
+        waitForText(activity, "No mistakes yet");
         activity.store.saveReview(RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
-        assertContainsText(activity.findViewById(android.R.id.content), "Rated again");
+        waitForText(activity, "Rated again");
 
         val emptyTimeline = MainActivityHomeBrowseDetail(activity)
                 .recoveryTimelineModel(RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, emptyList<RecordsImportModels.KanjiTimelineEvent>()));
@@ -2390,6 +2393,18 @@ private fun assertHasText(activity: MainActivity, text: String) {
         if (!containsText(root, text) && findDeviceTextNow(text) == null) {
             throw AssertionError("Missing text: " + text);
         }
+    }
+
+private fun waitForText(activity: MainActivity, text: String, timeoutMillis: Long = 5000L) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            if (containsText(root, text) || findDeviceTextNow(text) != null) {
+                return
+            }
+            Thread.sleep(100L)
+        }
+        assertHasText(activity, text)
     }
 
 private fun assertContainsText(root: View, text: String) {

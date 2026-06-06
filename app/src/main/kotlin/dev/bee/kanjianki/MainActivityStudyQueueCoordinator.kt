@@ -11,7 +11,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, study.store.studyItems(), now)
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItems()
+        study.activeStudyPlan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
         if (renderPendingRepairOrDone(study.activeStudyPlan, now, ladder)) {
             return
         }
@@ -19,9 +20,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.renderEmptyStudyQueue()
             return
         }
-        val beforeSeed = study.store.studyItems()
-        val plan = study.studyPlanForMode(rows, beforeSeed, now)
-        val seeded = study.studyQueue(rows, now, true, plan)
+        val plan = study.studyPlanForMode(rows, currentItems, now)
+        val seeded = study.studyQueue(rows, now, true, plan, currentItems)
         val seededPlan = study.studyPlanForMode(rows, seeded, now)
         study.activeStudyPlan = seededPlan
         if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
@@ -66,13 +66,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, study.store.studyItems(), now)
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItems()
+        study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
             study.renderStudyForKanjiNotAvailable()
             return
         }
-        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan)
+        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
         study.activeStudyPlan = study.adaptivePlan(rows, seeded, now)
         val session = BridgeScheduler().targetedSession(
             seeded,
