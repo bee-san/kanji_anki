@@ -80,7 +80,7 @@ class SettingsStudyLadderComposeTest {
         composeRule.onNodeWithText("On").assertHasClickAction().assertIsEnabled().performClick()
         composeRule.onNodeWithContentDescription("Up Word reading").performClick()
         composeRule.onNodeWithText("Off").assertHasClickAction().assertIsEnabled().performClick()
-        composeRule.onNodeWithText("Restore defaults").assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Restore defaults").assertHasClickAction().assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertTrue(toggled)
@@ -140,12 +140,8 @@ class SettingsStudyLadderComposeTest {
             )
         }
 
-        composeRule.onNodeWithContentDescription("Up Write kanji")
-            .assertIsNotEnabled()
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
-        composeRule.onNodeWithContentDescription("Down Word reading")
-            .assertIsNotEnabled()
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        composeRule.onNodeWithContentDescription("Up Write kanji").assertIsNotEnabled().assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        composeRule.onNodeWithContentDescription("Down Word reading").assertIsNotEnabled().assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
 
         composeRule.runOnIdle {
             assertFalse(movedFirstUp)

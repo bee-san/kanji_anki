@@ -146,8 +146,7 @@ class ButtonContractTest(unittest.TestCase):
 
         row = self._row(contract, "settings-save-toggle-reorder")
         missing_tests = cast(list[str], row["missing_tests"])
-        self.assertIn("missing source mapping for dedicated save control", missing_tests)
-        self.assertNotIn("missing enabled/disabled state coverage", missing_tests)
+        self.assertEqual([], missing_tests)
 
     def test_state_coverage_only_counts_actual_state_assertions(self) -> None:
         self.assertFalse(
@@ -253,7 +252,11 @@ class ButtonContractTest(unittest.TestCase):
         self.assertNotIn("Save study ladder", row["labels"])
         self.assertNotEqual("SettingsImportFiltersPanel", row["composable"])
         self.assertTrue(any("Turn off Recognition" in entry for entry in row["existing_tests"]))
-        self.assertIn("missing source mapping for dedicated save control", row["missing_tests"])
+        missing_tests = cast(list[str], row["missing_tests"])
+        self.assertNotIn("missing source mapping for dedicated save control", missing_tests)
+        self.assertIn("missing direct selector/click coverage for \"On\"", missing_tests)
+        self.assertIn("missing direct selector/click coverage for \"Down\"", missing_tests)
+        self.assertIn("missing enabled/disabled state coverage", missing_tests)
 
     def test_settings_new_card_sort_maps_to_sort_panel_controls(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
