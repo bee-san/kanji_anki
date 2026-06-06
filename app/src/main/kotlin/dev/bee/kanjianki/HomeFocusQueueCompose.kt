@@ -46,7 +46,8 @@ internal fun homeFocusQueuePanelModel(
     nowMillis: Long,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?
 ): HomeFocusQueuePanelModel {
-    val cards = entries.map { homeFocusQueueCardModel(home, it, nowMillis) }
+    val matureSupportThreshold = home.settings().matureSupportThreshold
+    val cards = entries.map { homeFocusQueueCardModel(home, it, nowMillis, matureSupportThreshold) }
     return HomeFocusQueuePanelModel(
         planText = AdaptiveFocusCopy.adaptiveFocusText(plan),
         emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
@@ -60,6 +61,7 @@ internal fun homeFocusQueueCardModel(
     home: MainActivityHome,
     entry: MainActivityBase.QueueEntry,
     nowMillis: Long,
+    matureSupportThreshold: Int,
 ): HomeFocusQueueCardModel {
     val row = entry.row
     val item = entry.item
@@ -67,7 +69,7 @@ internal fun homeFocusQueueCardModel(
         kanji = row.kanji,
         meaning = StudyTextCopy.rowMeaning(row),
         sourceEvidence = FocusQueueCopy.sourceEvidenceText(row),
-        reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, home.settings().matureSupportThreshold),
+        reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold),
         body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
         tags = buildList {
             add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
