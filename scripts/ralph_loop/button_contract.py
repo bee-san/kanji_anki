@@ -99,7 +99,7 @@ SEEDS = (
         ("settings", "ladder", "toggle", "reorder", "move", "save"),
         ("SettingsStudyLadder", "StudyLadder", "SettingsStudySort", "SettingsLearningSteps"),
         ("SettingsStudyLadderPanel", "SettingsNewCardSortPanel", "SettingsLearningStepsPanel"),
-        ("On", "Off", "Up", "Down", "Restore default ladder"),
+        ("On", "Off", "Up", "Down", "Restore defaults"),
     ),
 )
 
@@ -167,8 +167,8 @@ def _labels(text: str) -> list[str]:
         "viewAllLabel": "View all >",
         "moveUpLabel": "Up",
         "moveDownLabel": "Down",
-        "restoreLabel": "Restore default ladder",
-        "restoreDefaultLadderLabel": "Restore default ladder",
+        "restoreLabel": "Restore defaults",
+        "restoreDefaultLadderLabel": "Restore defaults",
     }
     for key, value in constants.items():
         if key in text and value not in labels:

@@ -124,18 +124,18 @@ class ButtonContractTest(unittest.TestCase):
                             toggleLabel = "On",
                             moveUpLabel = "Up",
                             moveDownLabel = "Down",
-                            restoreLabel = "Restore default ladder",
+                            restoreLabel = "Restore defaults",
                             toggleDescription = "Turn off Recognition",
                             moveUpDescription = "Move up Recognition",
                             moveDownDescription = "Move down Recognition",
-                            restoreDescription = "Restore default ladder",
+                            restoreDescription = "Restore defaults",
                             onToggle = model.onToggle,
                             onMoveUp = model.onMoveUp,
                             onMoveDown = model.onMoveDown,
                             onRestore = model.onRestore,
                             Switch(checked = true, onCheckedChange = { model.onToggle.run("write_kanji", it) })
                             Button(onClick = { model.onMoveUp.run("write_kanji") }) { Text("Up") }
-                            Button(onClick = { model.onRestore.run() }) { Text("Restore default ladder") }
+                            Button(onClick = { model.onRestore.run() }) { Text("Restore defaults") }
                         }
                     """,
                     "app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.java": """
@@ -144,7 +144,7 @@ class ButtonContractTest(unittest.TestCase):
                             void edits_study_ladder() {
                                 compose.onNodeWithContentDescription("Turn off Recognition").performClick();
                                 compose.onNodeWithText("Up").performClick();
-                                compose.onNodeWithText("Restore default ladder").performClick();
+                                compose.onNodeWithText("Restore defaults").performClick();
                             }
                         }
                     """,
@@ -167,7 +167,7 @@ class ButtonContractTest(unittest.TestCase):
         self.assertIn("Off", row["labels"])
         self.assertIn("Up", row["labels"])
         self.assertIn("Down", row["labels"])
-        self.assertIn("Restore default ladder", row["labels"])
+        self.assertIn("Restore defaults", row["labels"])
         self.assertNotIn("Save study ladder", row["labels"])
         self.assertNotEqual("SettingsImportFiltersPanel", row["composable"])
         self.assertTrue(any("Turn off Recognition" in entry for entry in row["existing_tests"]))
@@ -201,10 +201,10 @@ class ButtonContractTest(unittest.TestCase):
                             toggleLabel = "On",
                             moveUpLabel = "Up",
                             moveDownLabel = "Down",
-                            restoreLabel = "Restore default ladder",
+                            restoreLabel = "Restore defaults",
                             Switch(checked = true, onCheckedChange = {})
                             Button(onClick = {}) { Text("Up") }
-                            Button(onClick = {}) { Text("Restore default ladder") }
+                            Button(onClick = {}) { Text("Restore defaults") }
                         }
                     """,
                     "app/src/androidTest/java/dev/bee/kanjianki/MainActivityHelperInstrumentedTest.java": """
