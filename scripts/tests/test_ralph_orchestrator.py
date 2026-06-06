@@ -182,7 +182,7 @@ class RalphOrchestratorTest(unittest.TestCase):
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual("passed", report["status"])
             self.assertEqual(7, report["summary"]["manifest_files"])
-            self.assertEqual(10, report["button_contract_summary"]["row_count"])
+            self.assertEqual(11, report["button_contract_summary"]["row_count"])
             self.assertEqual(1, report["summary"]["selected_files"])
             self.assertEqual(1, report["summary"]["interactive_files"])
             self.assertEqual(1, report["summary"]["qa_retries"])

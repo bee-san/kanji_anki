@@ -313,6 +313,50 @@ class ButtonContractTest(unittest.TestCase):
         self.assertTrue(any("Save new card sort" in entry for entry in existing_tests))
         self.assertNotIn("missing enabled/disabled state coverage", missing_tests)
 
+    def test_study_settings_toggle_maps_to_category_header(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsCategoryCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun SettingsCategoryHeader(title: String, onToggle: () -> Unit) {
+                            Row(
+                                modifier = Modifier.clickable { withButtonTrace(title) { onToggle() } }
+                            ) {
+                                // Category titles like Study settings reuse this header row.
+                                Text(text = title)
+                            }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/SettingsScreenCategoryNavigationComposeTest.kt": """
+                        package dev.bee.kanjianki;
+                        class SettingsScreenCategoryNavigationComposeTest {
+                            void category_header_title_is_clickable() {
+                                compose.onNodeWithText("Study settings").assertHasClickAction().performClick();
+                                compose.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                ["app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsCategoryCompose.kt"],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "study-settings-toggle")
+        labels = cast(list[str], row["labels"])
+        existing_tests = cast(list[str], row["existing_tests"])
+        missing_tests = cast(list[str], row["missing_tests"])
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsCategoryCompose.kt", row["source_file"])
+        self.assertIn("Study settings", labels)
+        self.assertTrue(any("Study settings" in entry for entry in existing_tests))
+        self.assertEqual([], missing_tests)
+
     def test_study_done_actions_maps_to_exit_and_dialog_controls(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

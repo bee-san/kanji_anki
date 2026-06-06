@@ -87,4 +87,41 @@ class SettingsScreenCategoryNavigationComposeTest {
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
     }
+
+    @Test
+    fun categoryHeaderTitleIsClickable() {
+        var toggleRuns = 0
+        val screen = settingsScreenModel(
+            hero = SettingsAutomationHeroModel(
+                cockpitLabel = "Settings",
+                title = "Settings",
+                body = "Tune Kani.",
+                rows = emptyList(),
+            ),
+            categories = listOf(
+                settingsCategorySectionModel(
+                    sectionKey = "settings-study-behavior",
+                    title = "Study settings",
+                    summary = "Review pace and learning controls.",
+                    iconRes = R.drawable.ic_study_24,
+                    expanded = true,
+                    onToggle = Runnable { toggleRuns += 1 },
+                    panels = emptyList(),
+                ),
+            ),
+            onHome = Runnable {},
+        )
+
+        composeRule.setContent {
+            SettingsScreen(screen)
+        }
+
+        composeRule.onNodeWithText("Study settings").assertIsDisplayed().assertHasClickAction().performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(1, toggleRuns)
+        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+    }
 }

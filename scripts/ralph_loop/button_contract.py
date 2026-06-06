@@ -103,6 +103,14 @@ SEEDS = (
         ("Study more new cards", "Continue all kanji", "Back home", "Study", "Cancel"),
     ),
     Seed(
+        "study-settings-toggle",
+        "Study settings category toggle",
+        ("category", "header", "toggle"),
+        ("MainActivitySettingsCategoryCompose.kt",),
+        (),
+        ("Study settings",),
+    ),
+    Seed(
         "settings-save-toggle-reorder",
         "Settings save/toggle/reorder controls",
         ("settings", "ladder", "toggle", "reorder", "move", "save"),
