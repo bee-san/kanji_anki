@@ -41,7 +41,7 @@ internal class MainActivitySettingsWorkloadPanel(private val activity: MainActiv
         val plan = if (rows.isEmpty()) {
             null
         } else {
-            activity.adaptivePlan(rows, activity.store.studyItems(), System.currentTimeMillis())
+            activity.adaptivePlan(rows, activity.store.studyItemsForKanji(rows.map { it.kanji }), System.currentTimeMillis())
         }
         return SettingsTextCopy.autoWorkloadStatusText(plan)
     }

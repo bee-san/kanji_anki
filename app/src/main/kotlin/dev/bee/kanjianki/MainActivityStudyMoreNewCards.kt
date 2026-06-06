@@ -40,7 +40,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             return false
         }
         val now = System.currentTimeMillis()
-        val existing = snapshot?.existing ?: study.store.studyItems()
+        val existing = snapshot?.existing ?: study.store.studyItemsForKanji((snapshot?.rows ?: study.store.activeDashboardRows()).map { it.kanji })
         val result = BridgeScheduler().seedExtraNewCards(
             rows,
             existing,

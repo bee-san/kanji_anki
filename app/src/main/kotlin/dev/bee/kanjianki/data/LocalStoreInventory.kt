@@ -239,6 +239,39 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return items
     }
 
+    fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
+        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct()
+        if (distinctKanji.isEmpty()) {
+            return emptyList()
+        }
+
+        val db = readableDatabase
+        val placeholders = distinctKanji.joinToString(",") { "?" }
+        val items = ArrayList<RecordsStudyModels.StudyItem>()
+        db.query(
+            TABLE_STUDY_ITEMS,
+            null,
+            "$COLUMN_KANJI IN ($placeholders)",
+            distinctKanji.toTypedArray(),
+            null,
+            null,
+            "due_at ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                items.add(readStudyItem(cursor))
+            }
+        }
+        val withSimilar = kanjiWithSimilarNeighbors(db)
+        for (i in items.indices) {
+            val current = items[i]
+            val hasSimilar = withSimilar.contains(current.kanji)
+            if (hasSimilar != current.hasSimilarKanji) {
+                items[i] = current.withHasSimilarKanji(hasSimilar)
+            }
+        }
+        return items
+    }
+
     fun kanjiWithSimilarNeighbors(db: SQLiteDatabase): Set<String> {
         val out = HashSet<String>()
         db.rawQuery(
