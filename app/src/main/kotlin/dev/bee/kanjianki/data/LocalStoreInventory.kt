@@ -14,9 +14,15 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     private var cachedLocallySuspendedKanji: Set<String>? = null
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+    private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
+        cachedActiveDashboardRows = null
+    }
+
+    internal fun clearLocallySuspendedCache() {
+        cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
     }
 
@@ -24,9 +30,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         cachedStudyItems = null
     }
 
-    internal fun clearLocallySuspendedCache() {
-        cachedLocallySuspendedKanji = null
-        cachedActiveDashboardRows = null
+    internal override fun clearKanjiInventoryAllCache() {
+        cachedKanjiInventoryAll = null
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -96,8 +101,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun searchKanjiInventory(query: String?): List<RecordsImportModels.KanjiInventoryItem> {
-        val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
+        if (parsed.isEmpty()) {
+            cachedKanjiInventoryAll?.let { return it }
+        }
+
+        val db = readableDatabase
         val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
         var selection: String? = null
         var args: Array<String>? = null
@@ -118,6 +127,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             while (cursor.moveToNext()) {
                 out.add(readInventoryItem(db, cursor))
             }
+        }
+        if (parsed.isEmpty()) {
+            cachedKanjiInventoryAll = out
         }
         return out
     }

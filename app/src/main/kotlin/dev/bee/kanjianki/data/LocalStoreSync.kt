@@ -126,6 +126,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
             StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(db)
             clearDashboardRowsCache()
             clearStudyItemsCache()
+            clearKanjiInventoryAllCache()
             syncId
         }
     }
