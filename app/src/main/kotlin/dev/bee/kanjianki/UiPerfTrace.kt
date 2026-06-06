@@ -9,11 +9,20 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
     if (section.isBlank()) {
         return action()
     }
-    Trace.beginSection(section)
+
+    val traceStarted = runCatching {
+        Trace.beginSection(section)
+        true
+    }.getOrDefault(false)
+
     try {
         return action()
     } finally {
-        Trace.endSection()
+        if (traceStarted) {
+            runCatching {
+                Trace.endSection()
+            }
+        }
     }
 }
 
