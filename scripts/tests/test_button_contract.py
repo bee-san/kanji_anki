@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from scripts.ralph_loop import button_contract
 
@@ -105,6 +106,48 @@ class ButtonContractTest(unittest.TestCase):
         row = self._row(contract, "home-action-grid")
         self.assertEqual([], row["existing_tests"])
         self.assertIn('missing direct selector/click coverage for "Browse Kanji"', row["missing_tests"])
+
+    def test_state_assertions_count_toward_state_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
+                            Text("On")
+                            Text("Off")
+                            Text("Up")
+                            Text("Down")
+                            Text("Restore defaults")
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt": """
+                        package dev.bee.kanjianki;
+                        class MainActivitySettingsInstrumentedTest {
+                            void updates_study_ladder() {
+                                compose.onNodeWithText("On").performClick();
+                                compose.onNodeWithText("Off").performClick();
+                                compose.onNodeWithText("Up").assertIsEnabled().performClick();
+                                compose.onNodeWithText("Down").assertIsNotEnabled();
+                                compose.onNodeWithText("Restore defaults").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                ["app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt"],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "settings-save-toggle-reorder")
+        missing_tests = cast(list[str], row["missing_tests"])
+        self.assertIn("missing source mapping for dedicated save control", missing_tests)
+        self.assertNotIn("missing enabled/disabled state coverage", missing_tests)
 
     def test_settings_save_toggle_reorder_maps_to_ladder_settings_controls(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
