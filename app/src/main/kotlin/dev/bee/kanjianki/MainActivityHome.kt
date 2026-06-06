@@ -289,9 +289,21 @@ internal abstract class MainActivityHome : MainActivityBase() {
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
         val now = System.currentTimeMillis()
         val rows = store.activeDashboardRows()
-        val items = store.studyItems()
-        val plan = adaptivePlan(rows, items, now)
-        val entries = queuedEntries(rows, items, now, plan)
+        val items = if (rows.isEmpty()) {
+            emptyList()
+        } else {
+            store.studyItems()
+        }
+        val plan = if (rows.isEmpty()) {
+            null
+        } else {
+            adaptivePlan(rows, items, now)
+        }
+        val entries = if (rows.isEmpty()) {
+            emptyList()
+        } else {
+            queuedEntries(rows, items, now, plan)
+        }
         val summaryLines = mutableListOf<String>()
         summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)))
         if (result.adaptiveSummary.isNotEmpty()) {
