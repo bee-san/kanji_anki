@@ -418,6 +418,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
             load = load,
             render = render,
+            showLoadingAfterMs = 120,
         )
     }
 

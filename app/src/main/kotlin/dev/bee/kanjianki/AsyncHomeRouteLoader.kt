@@ -1,6 +1,9 @@
 package dev.bee.kanjianki
 
 import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal class AsyncHomeRouteLoader(
     private val background: Executor,
@@ -17,11 +20,35 @@ internal class AsyncHomeRouteLoader(
         load: () -> T,
         render: (T) -> Unit,
         renderError: (Throwable) -> Unit = { throw it },
+        showLoadingAfterMs: Long = 0,
     ) {
         val token = ++generation
-        showLoading()
+        val finished = AtomicBoolean(false)
+        if (showLoadingAfterMs <= 0) {
+            showLoading()
+        } else {
+            loaderLoadingScheduler.schedule(
+                {
+                    if (token != generation || finished.get()) {
+                        return@schedule
+                    }
+                    postToMain(
+                        Runnable {
+                            if (token != generation || finished.get()) {
+                                return@Runnable
+                            }
+                            showLoading()
+                        }
+                    )
+                },
+                showLoadingAfterMs,
+                TimeUnit.MILLISECONDS,
+            )
+        }
+
         background.execute {
             val result = runCatching(load)
+            finished.set(true)
             postToMain(
                 Runnable {
                     if (token != generation) {
@@ -30,6 +57,14 @@ internal class AsyncHomeRouteLoader(
                     result.fold(render, renderError)
                 }
             )
+        }
+    }
+
+    private companion object {
+        val loaderLoadingScheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "kani-loader-loading-guard").apply {
+                isDaemon = true
+            }
         }
     }
 }
