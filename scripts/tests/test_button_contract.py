@@ -255,6 +255,107 @@ class ButtonContractTest(unittest.TestCase):
         self.assertTrue(any("Turn off Recognition" in entry for entry in row["existing_tests"]))
         self.assertIn("missing source mapping for dedicated save control", row["missing_tests"])
 
+    def test_settings_new_card_sort_maps_to_sort_panel_controls(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudySortCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
+                            Text("New card sort")
+                            OutlinedButton(onClick = { }) { Text("Frequency") }
+                            OutlinedButton(onClick = { }) { Text("Balanced priority") }
+                            OutlinedButton(onClick = { }) { Text("Anki difficulty") }
+                            OutlinedButton(onClick = { }) { Text("Retrievability risk") }
+                            OutlinedButton(onClick = { }) { Text("Kani weakness") }
+                            Button(onClick = { }) { Text("Save new card sort") }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/SettingsStudySortComposeTest.java": """
+                        package dev.bee.kanjianki;
+                        class SettingsStudySortComposeTest {
+                            void edits_new_card_sort() {
+                                compose.onNodeWithText("Frequency").assertIsEnabled();
+                                compose.onNodeWithText("Frequency").performClick();
+                                compose.onNodeWithText("Balanced priority").assertIsEnabled();
+                                compose.onNodeWithText("Balanced priority").performClick();
+                                compose.onNodeWithText("Anki difficulty").assertIsEnabled();
+                                compose.onNodeWithText("Anki difficulty").performClick();
+                                compose.onNodeWithText("Retrievability risk").assertIsEnabled();
+                                compose.onNodeWithText("Retrievability risk").performClick();
+                                compose.onNodeWithText("Kani weakness").assertIsEnabled();
+                                compose.onNodeWithText("Kani weakness").performClick();
+                                compose.onNodeWithText("Save new card sort").assertIsEnabled();
+                                compose.onNodeWithText("Save new card sort").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                ["app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudySortCompose.kt"],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "settings-new-card-sort")
+        labels = cast(list[str], row["labels"])
+        existing_tests = cast(list[str], row["existing_tests"])
+        missing_tests = cast(list[str], row["missing_tests"])
+        self.assertEqual("SettingsNewCardSortPanel", row["composable"])
+        self.assertIn("Save new card sort", labels)
+        self.assertTrue(any("Save new card sort" in entry for entry in existing_tests))
+        self.assertNotIn("missing enabled/disabled state coverage", missing_tests)
+
+    def test_study_done_actions_maps_to_exit_and_dialog_controls(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivityStudyDoneActionsCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun StudyDoneActions(model: StudyDoneActionsModel) {
+                            Text("Study more new cards")
+                            Text("Continue all kanji")
+                            Text("Back home")
+                            TextButton(onClick = { }) { Text("Study") }
+                            TextButton(onClick = { }) { Text("Cancel") }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/MainActivityStudyDoneActionsComposeTest.java": """
+                        package dev.bee.kanjianki;
+                        class MainActivityStudyDoneActionsComposeTest {
+                            void uses_done_actions_controls() {
+                                compose.onNodeWithText("Study more new cards").performClick();
+                                compose.onNodeWithText("Continue all kanji").performClick();
+                                compose.onNodeWithText("Back home").performClick();
+                                compose.onNodeWithText("Study").performClick();
+                                compose.onNodeWithText("Cancel").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                ["app/src/main/kotlin/dev/bee/kanjianki/MainActivityStudyDoneActionsCompose.kt"],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "study-done-actions")
+        labels = cast(list[str], row["labels"])
+        existing_tests = cast(list[str], row["existing_tests"])
+        self.assertEqual("StudyDoneActions", row["composable"])
+        self.assertIn("Study more new cards", labels)
+        self.assertIn("Back home", labels)
+        self.assertTrue(any("Study more new cards" in entry for entry in existing_tests))
+        self.assertTrue(any("Study" in entry for entry in existing_tests))
+
     def test_state_assertions_do_not_mask_missing_state_for_sibling_labels(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

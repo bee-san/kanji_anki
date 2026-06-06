@@ -95,12 +95,35 @@ SEEDS = (
         ("Pass", "Fail"),
     ),
     Seed(
+        "study-done-actions",
+        "Study done actions",
+        ("study", "done", "continue", "back", "dialog"),
+        ("StudyDoneActions", "StudyMoreNewCardsDialog"),
+        ("StudyDoneActions", "StudyMoreNewCardsDialog"),
+        ("Study more new cards", "Continue all kanji", "Back home", "Study", "Cancel"),
+    ),
+    Seed(
         "settings-save-toggle-reorder",
         "Settings save/toggle/reorder controls",
         ("settings", "ladder", "toggle", "reorder", "move", "save"),
         ("SettingsStudyLadder", "StudyLadder", "SettingsStudySort", "SettingsLearningSteps"),
         ("SettingsStudyLadderPanel", "SettingsNewCardSortPanel", "SettingsLearningStepsPanel"),
         ("On", "Off", "Up", "Down", "Restore defaults"),
+    ),
+    Seed(
+        "settings-new-card-sort",
+        "Settings new card sort controls",
+        ("settings", "new", "card", "sort", "frequency", "retrievability", "kani"),
+        ("SettingsStudySort", "SettingsNewCardSort", "NewCardSort"),
+        ("SettingsNewCardSortPanel",),
+        (
+            "Save new card sort",
+            "Frequency",
+            "Balanced priority",
+            "Anki difficulty",
+            "Retrievability risk",
+            "Kani weakness",
+        ),
     ),
 )
 
@@ -314,6 +337,10 @@ def _best_source(seed: Seed, sources: list[dict[str, object]]) -> dict[str, obje
         if seed.id == "settings-save-toggle-reorder" and "importfilters" in path.lower():
             score -= 100
         if seed.id == "settings-save-toggle-reorder" and "studyladder" in path.lower():
+            score += 80
+        if seed.id == "settings-new-card-sort" and "studysort" in path.lower():
+            score += 80
+        if seed.id == "study-done-actions" and "studydoneactions" in path.lower():
             score += 80
         if seed.id == "study-pass-fail" and any(label in labels for label in ("Pass", "Fail")):
             score += 40
