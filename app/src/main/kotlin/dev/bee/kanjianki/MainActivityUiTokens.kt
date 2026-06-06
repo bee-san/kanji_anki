@@ -102,7 +102,7 @@ private fun KaniActionButton(
         .heightIn(min = minHeightDp.dp)
     if (primary) {
         Button(
-            onClick = onClick,
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             colors = ButtonDefaults.buttonColors(
@@ -114,7 +114,7 @@ private fun KaniActionButton(
         }
     } else {
         OutlinedButton(
-            onClick = onClick,
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),

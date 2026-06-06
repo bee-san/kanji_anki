@@ -17,17 +17,24 @@ internal class AsyncHomeRouteLoader(
         load: () -> T,
         render: (T) -> Unit,
         renderError: (Throwable) -> Unit = { throw it },
+        traceLabel: String = "home-route",
     ) {
         val token = ++generation
-        showLoading()
+        withAsyncLoadTrace(traceLabel, "show-loading") {
+            showLoading()
+        }
         background.execute {
-            val result = runCatching(load)
+            val result = withAsyncLoadTrace(traceLabel, "load") {
+                runCatching(load)
+            }
             postToMain(
                 Runnable {
                     if (token != generation) {
                         return@Runnable
                     }
-                    result.fold(render, renderError)
+                    withAsyncLoadTrace(traceLabel, "render") {
+                        result.fold(render, renderError)
+                    }
                 }
             )
         }

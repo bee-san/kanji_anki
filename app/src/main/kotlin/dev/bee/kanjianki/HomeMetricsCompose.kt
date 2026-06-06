@@ -126,11 +126,7 @@ fun HomeMetricCard(
                 Modifier.clickable(
                     role = Role.Button,
                     onClick = {
-                        if (model.label == HomeTextCopy.syncMetricLabel()) {
-                            withUiTrace("kani.button.home-sync-metric") {
-                                action()
-                            }
-                        } else {
+                        withButtonTrace("Home metric ${model.label}") {
                             action()
                         }
                     }
