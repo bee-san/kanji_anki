@@ -55,6 +55,38 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         self.assertIn("missing direct click/selector coverage before timing can be trusted", sync_reasons)
         self.assertIn("sync/provider path may perform database or import work", sync_reasons)
 
+    def test_inventory_applies_manual_timings(self) -> None:
+        inventory = button_latency_inventory.build_inventory(
+            Path("/"),
+            self._manifest(),
+            self._button_contract(),
+            {
+                "schema": "button-latency-measurements-v1",
+                "rows": [
+                    {
+                        "id": "home-study-cta",
+                        "baseline_ms": 850,
+                        "after_ms": 610,
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual("partial_manual_timings", inventory["measurement_status"])
+        rows = {row["id"]: row for row in cast(list[dict[str, object]], inventory["rows"])}
+        study = rows["home-study-cta"]
+        self.assertEqual(850, study["baseline_ms"])
+        self.assertEqual(610, study["after_ms"])
+        self.assertEqual(-240, study["timing_delta_ms"])
+        self.assertEqual("measured", study["timing_status"])
+        self.assertIn("timing is within the target budget", cast(list[str], study["latency_risk_reasons"]))
+        self.assertLess(cast(int, study["timing_delta_ms"]), 0)
+        self.assertLessEqual(cast(int, study["latency_risk_score"]), 40)
+
+        sync = rows["home-sync-cta"]
+        self.assertEqual("missing_timing_fields", sync["timing_status"])
+        self.assertEqual("partial_manual_timings", inventory["measurement_status"])
+
     def test_cli_writes_json_and_markdown_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -62,8 +94,25 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
             run_dir.mkdir(parents=True, exist_ok=True)
             manifest_path = run_dir / "ui-manifest.json"
             contract_path = run_dir / "button-contract.json"
+            timings_path = run_dir / "button-latency-measurements.json"
             manifest_path.write_text(json.dumps(self._manifest()), encoding="utf-8")
             contract_path.write_text(json.dumps(self._button_contract()), encoding="utf-8")
+            timings_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "button-latency-measurements-v1",
+                        "rows": [
+                            {
+                                "id": "home-study-cta",
+                                "baseline_ms": 620,
+                                "after_ms": 590,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
             out_json = run_dir / "button-latency-inventory.json"
             out_md = run_dir / "button-latency-inventory.md"
 
@@ -75,6 +124,8 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
                     str(manifest_path),
                     "--button-contract",
                     str(contract_path),
+                    "--timings",
+                    str(timings_path),
                     "--out-json",
                     str(out_json),
                     "--out-md",
@@ -87,9 +138,14 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
             self.assertEqual(0, exit_code)
             loaded = json.loads(out_json.read_text(encoding="utf-8"))
             self.assertEqual("button-latency-inventory-v1", loaded["schema"])
+            self.assertEqual("partial_manual_timings", loaded["measurement_status"])
             self.assertEqual(750, loaded["target_budget_ms"])
             self.assertEqual(750, loaded["rows"][0]["target_budget_ms"])
-            self.assertTrue(out_md.read_text(encoding="utf-8").startswith("# Ralph Button Latency Inventory"))
+            self.assertEqual("measured", loaded["rows"][0]["timing_status"])
+            md = out_md.read_text(encoding="utf-8")
+            self.assertTrue(md.startswith("# Ralph Button Latency Inventory"))
+            self.assertIn("620 -> 590 ms", md)
+            self.assertIn("Measurement status: `partial_manual_timings`", md)
 
     def test_risk_score_includes_manifest_source_keywords(self) -> None:
         inventory = button_latency_inventory.build_inventory(
