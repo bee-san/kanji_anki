@@ -119,6 +119,30 @@ SEEDS = (
         ("Study", "Next"),
     ),
     Seed(
+        "shared-home-button",
+        "Shared home navigation button",
+        ("home", "secondary", "navigation"),
+        ("HomeChromeCompose.kt", "MainActivityGamesCompose.kt", "MainActivityStatsCompose.kt"),
+        ("HomeFullWidthHomeButton",),
+        ("Home",),
+    ),
+    Seed(
+        "games-empty-sync-button",
+        "Games empty-state sync button",
+        ("games", "empty", "sync", "anki"),
+        ("MainActivityGamesCompose.kt",),
+        ("GamesScreen", "GamesEmptyState"),
+        ("Sync AnkiDroid",),
+    ),
+    Seed(
+        "games-result-actions",
+        "Games result actions",
+        ("games", "result", "round", "next"),
+        ("MainActivityGamesResultCompose.kt",),
+        ("GamesResultCard",),
+        ("Next", "Games", "New round"),
+    ),
+    Seed(
         "study-pass-fail",
         "Study pass/fail controls",
         ("pass", "fail", "study", "answer"),
@@ -402,12 +426,11 @@ def _best_composable(seed: Seed, source: dict[str, object]) -> str:
 
 def _seed_labels(seed: Seed, source: dict[str, object]) -> list[str]:
     found = cast(list[str], source.get("labels", [])) if source else []
-    selected: list[str] = []
-    for expected in seed.expected_labels:
-        if any(expected.lower() == label.lower() for label in found) or _label_hint_in_source(expected, source):
-            selected.append(expected)
-    if selected:
-        return selected
+    if seed.expected_labels:
+        # Seed labels are the contract's canonical button names; source scans
+        # are only used to pick the best file/composable and to backfill rows
+        # when a seed intentionally leaves labels unspecified.
+        return list(seed.expected_labels)
     return found[:8]
 
 

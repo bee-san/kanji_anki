@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import cast
+from unittest import mock
 
 from scripts.ralph_loop import button_contract
 
@@ -188,6 +189,53 @@ class ButtonContractTest(unittest.TestCase):
         self.assertEqual(["home-recent-mistakes-card-裂"], cast(list[str], recent["labels"]))
         self.assertTrue(any("home-recent-mistakes-card-裂" in entry for entry in cast(list[str], recent["existing_tests"])))
         self.assertEqual([], cast(list[str], recent["missing_tests"]))
+
+    def test_seed_labels_fall_back_to_expected_labels_for_model_driven_ui(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun DynamicGamesScreen(model: DynamicGamesScreenModel) {
+                            Button(onClick = model.onStart) { Text(model.title) }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/DynamicGamesScreenTest.kt": """
+                        package dev.bee.kanjianki
+                        class DynamicGamesScreenTest {
+                            fun clicks_start() {
+                                compose.onNodeWithText("Start").performClick()
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(root, ["app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt"])
+            seed = button_contract.Seed(
+                "dynamic-start",
+                "Dynamic start button",
+                ("dynamic", "start"),
+                ("DynamicGamesScreen.kt",),
+                ("DynamicGamesScreen",),
+                ("Start",),
+            )
+
+            with mock.patch.object(button_contract, "SEEDS", (seed,)):
+                contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "dynamic-start")
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt", row["source_file"])
+        self.assertEqual("DynamicGamesScreen", row["composable"])
+        self.assertEqual(["Start"], cast(list[str], row["labels"]))
+        self.assertEqual(
+            [
+                'app/src/androidTest/java/dev/bee/kanjianki/DynamicGamesScreenTest.kt:onNodeWithText("Start") + performClick',
+            ],
+            row["existing_tests"],
+        )
+        self.assertNotIn('missing direct selector/click coverage for "Start"', cast(list[str], row["missing_tests"]))
 
     def test_state_assertions_count_toward_state_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
