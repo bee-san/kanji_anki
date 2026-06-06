@@ -22,7 +22,7 @@ INTERACTIVE_RE = re.compile(r"\b(Button|IconButton|TextButton|OutlinedButton|Flo
 SELECTOR_RE = re.compile(r"onNodeWith(Text|Tag|ContentDescription)\(\s*\"([^\"]+)\"\s*\)")
 HELPER_CLICK_RE = re.compile(r"performClick(?:able)?WithText\([^;\n]*,\s*\"([^\"]+)\"\s*\)")
 PERFORM_CLICK_RE = re.compile(r"\.performClick\s*\(|\.performTouchInput\s*\{|performClick\s*\(")
-ENABLED_RE = re.compile(r"assertIs(?:Not)?Enabled\s*\(|isEnabled\s*\(|disabled|enabled", re.IGNORECASE)
+STATE_COVERAGE_RE = re.compile(r"\bassertIs(?:Not)?Enabled\b|\bisEnabled\s*\(", re.IGNORECASE)
 STATE_ASSERT_RE = re.compile(r"\.(assertIs(?:Not)?Enabled)\s*\(", re.IGNORECASE)
 TOKEN_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|\d+")
 
@@ -417,11 +417,11 @@ def _has_enabled_disabled_coverage(
     existing: list[str],
     state_tests: dict[str, list[dict[str, str]]],
 ) -> bool:
-    if any(ENABLED_RE.search(item) for item in existing):
+    if any(STATE_COVERAGE_RE.search(item) for item in existing):
         return True
     for entries in state_tests.values():
         for item in entries:
-            if ENABLED_RE.search(item["selector"]):
+            if STATE_COVERAGE_RE.search(item["selector"]):
                 return True
     return False
 

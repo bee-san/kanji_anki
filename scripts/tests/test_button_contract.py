@@ -149,6 +149,42 @@ class ButtonContractTest(unittest.TestCase):
         self.assertIn("missing source mapping for dedicated save control", missing_tests)
         self.assertNotIn("missing enabled/disabled state coverage", missing_tests)
 
+    def test_state_coverage_only_counts_actual_state_assertions(self) -> None:
+        self.assertFalse(
+            button_contract._has_enabled_disabled_coverage(
+                [
+                    'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Enabled mode").performClick()',
+                ],
+                {},
+            )
+        )
+
+        self.assertTrue(
+            button_contract._has_enabled_disabled_coverage(
+                [
+                    'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Study now").performClick()',
+                ],
+                {
+                    "Study now": [
+                        {
+                            "path": "app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt",
+                            "selector": 'onNodeWithText("Study now") + assertIsEnabled',
+                        }
+                    ]
+                },
+            )
+        )
+
+    def test_state_coverage_detects_is_enabled_expression(self) -> None:
+        self.assertTrue(
+            button_contract._has_enabled_disabled_coverage(
+                [
+                    'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Study now").isEnabled()',
+                ],
+                {},
+            )
+        )
+
     def test_settings_save_toggle_reorder_maps_to_ladder_settings_controls(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
