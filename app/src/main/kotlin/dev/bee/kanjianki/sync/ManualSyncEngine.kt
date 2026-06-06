@@ -116,8 +116,8 @@ internal class ManualSyncEngine {
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler()
-            val currentItems = store.studyItems()
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
+            val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
             val plan = adaptivePlan(activeRows, currentItems, finished)
             var seeded = scheduler.seedQueue(
                 activeRows,

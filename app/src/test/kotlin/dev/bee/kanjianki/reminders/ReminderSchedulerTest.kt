@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -300,6 +301,26 @@ class ReminderSchedulerTest {
 
     private fun seedReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
         LocalStore(context).use { store ->
+            store.saveRows(
+                store.writableDatabase,
+                listOf(
+                    RecordsImportModels.DashboardRow(
+                        "裂",
+                        120,
+                        "裂",
+                        "裂",
+                        "裂",
+                        0,
+                        "",
+                        "",
+                        0,
+                        0,
+                        0,
+                        listOf<RecordsImportModels.Example>(),
+                    ),
+                ),
+                reviewedAt,
+            )
             store.saveReview(
                 RecordsSchedulerModels.ReviewRequest("裂", "seed-token", "good", false, false, false, 0),
                 "good",
