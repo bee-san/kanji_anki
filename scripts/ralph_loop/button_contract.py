@@ -151,6 +151,14 @@ SEEDS = (
         ("Pass", "Fail"),
     ),
     Seed(
+        "study-topbar-actions",
+        "Study top bar actions",
+        ("study", "topbar", "close", "settings"),
+        ("StudyTopBarCompose.kt",),
+        ("StudyTopBar",),
+        ("Close study", "Settings"),
+    ),
+    Seed(
         "study-done-actions",
         "Study done actions",
         ("study", "done", "continue", "back", "dialog"),

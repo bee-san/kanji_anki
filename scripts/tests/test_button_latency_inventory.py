@@ -24,9 +24,9 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         self.assertEqual("pending_real_device_timings", inventory["measurement_status"])
         self.assertEqual(
             {
-                "row_count": 2,
+                "row_count": 3,
                 "measured_rows": 0,
-                "pending_timing_rows": 2,
+                "pending_timing_rows": 3,
                 "high_risk_rows": 1,
                 "missing_click_coverage_rows": 1,
             },
@@ -54,6 +54,21 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         sync_reasons = cast(list[str], sync["latency_risk_reasons"])
         self.assertIn("missing direct click/selector coverage before timing can be trusted", sync_reasons)
         self.assertIn("sync/provider path may perform database or import work", sync_reasons)
+
+        topbar = rows["study-topbar-actions"]
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt", topbar["source_file"])
+        self.assertEqual("study", topbar["bucket"])
+        self.assertEqual(["Close study", "Settings"], topbar["labels"])
+        self.assertEqual("kani.button.study-topbar-actions", topbar["trace_name"])
+        self.assertEqual(1_000, topbar["target_budget_ms"])
+        self.assertIsNone(topbar["baseline_ms"])
+        self.assertIsNone(topbar["after_ms"])
+        self.assertEqual("pending_manual_timing", topbar["timing_status"])
+        self.assertEqual("medium", topbar["latency_risk_level"])
+        topbar_reasons = cast(list[str], topbar["latency_risk_reasons"])
+        self.assertIn("interactive control needs click-to-idle timing", topbar_reasons)
+        self.assertNotIn("missing direct click/selector coverage before timing can be trusted", topbar_reasons)
+        self.assertEqual(["interactive"], topbar["source_risk_tags"])
 
     def test_inventory_applies_manual_timings(self) -> None:
         inventory = button_latency_inventory.build_inventory(
@@ -201,8 +216,19 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
                     "nearest_tests": [],
                     "risk_tags": ["interactive", "no_nearest_test"],
                 },
+                {
+                    "path": "app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt",
+                    "bucket": "study",
+                    "composables": ["StudyTopBar"],
+                    "interactive_markers": [
+                        {"kind": "Button", "line": 10, "label": "Close study", "snippet": "Button(...)"},
+                        {"kind": "Button", "line": 11, "label": "Settings", "snippet": "Button(...)"},
+                    ],
+                    "nearest_tests": ["app/src/androidTest/kotlin/dev/bee/kanjianki/StudyTopBarComposeTest.kt"],
+                    "risk_tags": ["interactive"],
+                },
             ],
-            "summary": {"file_count": 2, "buckets": ["home"]},
+            "summary": {"file_count": 3, "buckets": ["home", "study"]},
         }
 
     def _button_contract(self) -> dict[str, object]:
@@ -228,8 +254,20 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
                     "existing_tests": [],
                     "missing_tests": ["missing direct selector/click coverage for \"Sync AnkiDroid\""],
                 },
+                {
+                    "id": "study-topbar-actions",
+                    "title": "Study top bar actions",
+                    "source_file": "app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt",
+                    "composable": "StudyTopBar",
+                    "labels": ["Close study", "Settings"],
+                    "existing_tests": [
+                        'app/src/androidTest/kotlin/dev/bee/kanjianki/StudyTopBarComposeTest.kt:onNodeWithContentDescription("Close study") + performClick',
+                        'app/src/androidTest/kotlin/dev/bee/kanjianki/StudyTopBarComposeTest.kt:onNodeWithContentDescription("Settings") + performClick',
+                    ],
+                    "missing_tests": [],
+                },
             ],
-            "summary": {"row_count": 2, "covered_rows": 1, "missing_rows": 1},
+            "summary": {"row_count": 3, "covered_rows": 2, "missing_rows": 1},
         }
 
 
