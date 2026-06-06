@@ -1655,18 +1655,29 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.expression);
         assertEquals("split word", activeExample.meaning);
+        val matureSupportThreshold = activity.settings().matureSupportThreshold
         val relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        var relearningRow = homeFocusQueueCardModel(activity, MainActivityBase.QueueEntry(activeRow, relearning), 1000L)
+        var relearningRow = homeFocusQueueCardModel(
+                activity,
+                MainActivityBase.QueueEntry(activeRow, relearning),
+                1000L,
+                matureSupportThreshold,
+        )
         assertTrue(relearningRow.tags.any { it.label == "relearning" })
         val learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .totalReviews(1)
                 .build();
-        var learningRow = homeFocusQueueCardModel(activity, MainActivityBase.QueueEntry(activeRow, learning), 1000L)
+        var learningRow = homeFocusQueueCardModel(
+                activity,
+                MainActivityBase.QueueEntry(activeRow, learning),
+                1000L,
+                matureSupportThreshold,
+        )
         assertTrue(learningRow.tags.any { it.label == "learning" })
         seedRows(activity, listOf(activeRow));
         activity.renderStudyForKanji("裂");
