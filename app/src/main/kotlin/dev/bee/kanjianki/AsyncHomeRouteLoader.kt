@@ -1,6 +1,9 @@
 package dev.bee.kanjianki
 
 import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal class AsyncHomeRouteLoader(
     private val background: Executor,
@@ -18,15 +21,41 @@ internal class AsyncHomeRouteLoader(
         render: (T) -> Unit,
         renderError: (Throwable) -> Unit = { throw it },
         traceLabel: String = "home-route",
+        showLoadingAfterMs: Long = 0,
     ) {
         val token = ++generation
-        withAsyncLoadTrace(traceLabel, "show-loading") {
-            showLoading()
+        val finished = AtomicBoolean(false)
+        if (showLoadingAfterMs <= 0) {
+            withAsyncLoadTrace(traceLabel, "show-loading") {
+                showLoading()
+            }
+        } else {
+            loaderLoadingScheduler.schedule(
+                {
+                    if (token != generation || finished.get()) {
+                        return@schedule
+                    }
+                    postToMain(
+                        Runnable {
+                            if (token != generation || finished.get()) {
+                                return@Runnable
+                            }
+                            withAsyncLoadTrace(traceLabel, "show-loading") {
+                                showLoading()
+                            }
+                        }
+                    )
+                },
+                showLoadingAfterMs,
+                TimeUnit.MILLISECONDS,
+            )
         }
+
         background.execute {
             val result = withAsyncLoadTrace(traceLabel, "load") {
                 runCatching(load)
             }
+            finished.set(true)
             postToMain(
                 Runnable {
                     if (token != generation) {
@@ -37,6 +66,14 @@ internal class AsyncHomeRouteLoader(
                     }
                 }
             )
+        }
+    }
+
+    private companion object {
+        val loaderLoadingScheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "kani-loader-loading-guard").apply {
+                isDaemon = true
+            }
         }
     }
 }

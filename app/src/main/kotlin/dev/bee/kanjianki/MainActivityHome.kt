@@ -420,6 +420,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             load = load,
             render = render,
             traceLabel = traceName,
+            showLoadingAfterMs = 120,
         )
     }
 
