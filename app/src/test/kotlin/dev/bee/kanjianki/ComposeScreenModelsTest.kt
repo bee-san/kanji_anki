@@ -44,6 +44,71 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun asyncHomeRouteLoaderShowsLoadingAfterDelayOnlyOnSlowLoads() {
+        val loading = mutableListOf<String>()
+        val rendered = CountDownLatch(1)
+        val background = Executors.newSingleThreadExecutor()
+        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+
+        try {
+            loader.load(
+                showLoading = {
+                    loading.add("loading")
+                },
+                load = {
+                    Thread.sleep(10)
+                    "ready"
+                },
+                render = {
+                    rendered.countDown()
+                },
+                showLoadingAfterMs = 40,
+            )
+
+            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
+            Thread.sleep(80)
+            assertEquals(listOf<String>(), loading)
+        } finally {
+            background.shutdownNow()
+        }
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderShowsLoadingAfterDelayBeforeRenderingSlowLoad() {
+        val events = mutableListOf<String>()
+        val background = Executors.newSingleThreadExecutor()
+        val loading = CountDownLatch(1)
+        val rendered = CountDownLatch(1)
+        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+
+        try {
+            loader.load(
+                showLoading = {
+                    events.add("loading")
+                    loading.countDown()
+                },
+                load = {
+                    Thread.sleep(80)
+                    "ready"
+                },
+                render = { value ->
+                    events.add("render:$value")
+                    rendered.countDown()
+                },
+                showLoadingAfterMs = 40,
+            )
+
+            assertTrue("loading should appear for slow load", loading.await(5, TimeUnit.SECONDS))
+            assertEquals(listOf("loading"), events)
+
+            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
+            assertEquals(listOf("loading", "render:ready"), events)
+        } finally {
+            background.shutdownNow()
+        }
+    }
+
+    @Test
     fun asyncHomeRouteLoaderShowsLoadingBeforeBackgroundWork() {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
