@@ -33,6 +33,7 @@ Expected run-dir outputs after the full Ralph loop:
 - `.ralph-loop/current/ui-manifest.json`
 - `.ralph-loop/current/button-contract.json`
 - `.ralph-loop/current/button-contract.md`
+- `.ralph-loop/current/button-latency-measurements.json`
 - `.ralph-loop/current/button-latency-inventory.json`
 - `.ralph-loop/current/button-latency-inventory.md`
 - `.ralph-loop/current/audit-report.json`
@@ -72,7 +73,32 @@ Expected run-dir outputs after the full Ralph loop:
    The controller writes `remote-visual-context.json` and the review artifacts under
    `.ralph-loop/current/remote-visual/`.
 
-3. Validate the bundle and gate state:
+3. Import manual before/after timing numbers (if captured separately):
+
+   ```sh
+   cat > .ralph-loop/current/button-latency-measurements.json <<'JSON'
+   {
+     "schema": "button-latency-measurements-v1",
+     "rows": [
+       {
+         "id": "home-study-cta",
+         "baseline_ms": 850,
+         "after_ms": 610
+       }
+     ]
+   }
+   JSON
+
+   python3 scripts/ralph_loop/button_latency_inventory.py \
+     --repo-root . \
+     --manifest .ralph-loop/current/ui-manifest.json \
+     --button-contract .ralph-loop/current/button-contract.json \
+     --timings .ralph-loop/current/button-latency-measurements.json \
+     --out-json .ralph-loop/current/button-latency-inventory.json \
+     --out-md .ralph-loop/current/button-latency-inventory.md
+   ```
+
+4. Validate the bundle and gate state:
 
    ```sh
    python3 scripts/ralph_loop/validation.py \

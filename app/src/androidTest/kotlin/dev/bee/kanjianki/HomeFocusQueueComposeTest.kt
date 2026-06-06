@@ -56,7 +56,7 @@ class HomeFocusQueueComposeTest {
         composeRule.onNodeWithText("kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("learning").assertIsDisplayed()
         composeRule.onNodeWithText(">").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Focus queue card 裂, split; tear")
+        composeRule.onNodeWithContentDescription("Study")
             .assertIsDisplayed()
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))

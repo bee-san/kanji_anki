@@ -124,7 +124,7 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
             .semantics {
-                contentDescription = "Focus queue card ${model.kanji}, ${model.meaning}"
+                contentDescription = "Study"
             }
             .clickable(role = Role.Button, onClick = model.onClick),
         shape = RoundedCornerShape(18.dp),

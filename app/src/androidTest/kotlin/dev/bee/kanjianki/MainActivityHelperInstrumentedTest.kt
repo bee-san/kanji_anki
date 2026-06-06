@@ -1601,7 +1601,7 @@ fun flashcardButtonsAndGesturesPersistPassFailOnlyAfterReveal() {
                 assertNotNull(activity.flashcardActionBarState);
                 root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "Reveal");
-                performClickableWithText(root, MainActivityBase.LABEL_PASS);
+                performClickableWithText(root, "Pass");
                 var passStats = activity.store.reviewStatsSince(0L)
                 assertEquals(3, passStats.total);
                 assertEquals(1, passStats.good);

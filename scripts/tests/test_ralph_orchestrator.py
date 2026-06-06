@@ -478,7 +478,7 @@ class RalphOrchestratorTest(unittest.TestCase):
                         Text(\"Up\")
                     }
                     Button(onClick = {}) {
-                        Text(\"Restore default ladder\")
+                        Text(\"Restore defaults\")
                     }
                 }
             """,
