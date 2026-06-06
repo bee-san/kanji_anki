@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,7 +19,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
 import dev.bee.kanjianki.core.HomeTextCopy
+import java.util.Locale
 
 internal fun homeActionButtonTestTag(label: String): String = "home-action-button-$label"
 
@@ -72,7 +73,11 @@ fun HomeActionButton(action: HomeActionModel, modifier: Modifier = Modifier) {
         modifier = modifier.testTag(homeActionButtonTestTag(action.label)),
         minHeightDp = 58,
         textSizeSp = 15,
-        onClick = action.onClick
+        onClick = {
+            withUiTrace("kani.button.home-action-${traceSlug(action.label)}") {
+                action.onClick()
+            }
+        }
     )
 }
 
@@ -100,7 +105,9 @@ fun HomeSectionHeader(
                 .then(
                     if (onAction != null) {
                         Modifier.clickable(role = Role.Button) {
-                            onAction.invoke()
+                            withUiTrace("kani.button.home-section-header-title") {
+                                onAction.invoke()
+                            }
                         }
                     } else {
                         Modifier
@@ -116,7 +123,11 @@ fun HomeSectionHeader(
                     .testTag(homeSectionActionButtonTestTag(actionLabel)),
                 minHeightDp = 42,
                 textSizeSp = 14,
-                onClick = onAction
+                onClick = {
+                    withUiTrace("kani.button.home-section-header-${traceSlug(actionLabel)}") {
+                        onAction()
+                    }
+                }
             )
         }
     }
@@ -135,4 +146,13 @@ fun HomeFullWidthHomeButton(
         minHeightDp = 56,
         onClick = onClick
     )
+}
+
+private fun traceSlug(value: String): String {
+    return value
+        .lowercase(Locale.getDefault())
+        .replace("\\s+".toRegex(), "-")
+        .replace("[^a-z0-9\\-]".toRegex(), "")
+        .trim('-')
+        .ifEmpty { "action" }
 }
