@@ -40,9 +40,9 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
                 appendStudyStateTimelineEvents(this, previous, items, syncId, occurredAt, settings)
             }
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            clearStudyItemsCache()
         }
     }
-
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
         val items = HashMap<String, StudySnapshot>()
         db.query(TABLE_STUDY_ITEMS, arrayOf(COLUMN_KANJI, COLUMN_ANSWER_SIGNATURE, COLUMN_STATE), null, null, null, null, null).use { cursor ->
@@ -59,6 +59,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         writableDatabase.transaction {
             upsertStudyItem(this, item)
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            clearStudyItemsCache()
         }
     }
 

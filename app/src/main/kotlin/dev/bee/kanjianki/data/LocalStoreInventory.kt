@@ -10,7 +10,28 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import java.util.Collections
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
+    private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    private var cachedLocallySuspendedKanji: Set<String>? = null
+    private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+
+    internal fun clearDashboardRowsCache() {
+        cachedDashboardRows = null
+        cachedActiveDashboardRows = null
+    }
+
+    internal fun clearStudyItemsCache() {
+        cachedStudyItems = null
+    }
+
+    internal fun clearLocallySuspendedCache() {
+        cachedLocallySuspendedKanji = null
+        cachedActiveDashboardRows = null
+    }
+
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
+        cachedDashboardRows?.let { return it }
+
         val db = readableDatabase
         val rows = ArrayList<RecordsImportModels.DashboardRow>()
         db.query(
@@ -43,13 +64,18 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 )
             }
         }
+        cachedDashboardRows = rows
         return rows
     }
 
     fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
+        cachedActiveDashboardRows?.let { return it }
+
         val suspended = locallySuspendedKanji()
         if (suspended.isEmpty()) {
-            return dashboardRows()
+            val rows = dashboardRows()
+            cachedActiveDashboardRows = rows
+            return rows
         }
         val out = ArrayList<RecordsImportModels.DashboardRow>()
         for (row in dashboardRows()) {
@@ -57,6 +83,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(row)
             }
         }
+        cachedActiveDashboardRows = out
         return out
     }
 
@@ -96,6 +123,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun locallySuspendedKanji(): Set<String> {
+        cachedLocallySuspendedKanji?.let { return it }
+
         val out = HashSet<String>()
         readableDatabase.query(
             TABLE_LOCAL_KANJI_SUSPENSIONS,
@@ -110,6 +139,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(string(cursor, COLUMN_KANJI))
             }
         }
+        cachedLocallySuspendedKanji = out
         return out
     }
 
@@ -148,6 +178,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, arrayOf(kanji))
             }
         }
+        clearLocallySuspendedCache()
     }
 
     fun timelineForKanji(kanji: String): RecordsStudyModels.KanjiRecoveryTimeline {
@@ -175,6 +206,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun studyItems(): List<RecordsStudyModels.StudyItem> {
+        cachedStudyItems?.let { return it }
+
         val db = readableDatabase
         val items = ArrayList<RecordsStudyModels.StudyItem>()
         db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, "due_at ASC").use { cursor ->
@@ -190,6 +223,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items[i] = current.withHasSimilarKanji(hasSimilar)
             }
         }
+        cachedStudyItems = items
         return items
     }
 
