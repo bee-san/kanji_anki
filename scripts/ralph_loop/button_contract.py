@@ -52,7 +52,7 @@ SEEDS = (
         ("sync", "anki", "home"),
         ("MainActivityHome.kt", "Home", "Sync"),
         ("HomeScreen", "SyncResultScreen"),
-        ("Sync with AnkiDroid", "Sync", "Try sync again"),
+        ("Sync AnkiDroid", "Sync", "Try sync again"),
     ),
     Seed(
         "home-action-grid",
@@ -418,8 +418,6 @@ def _missing_tests(
             missing.append(f"missing direct selector/click coverage for \"{label}\"")
     if not labels:
         missing.append("missing obvious UI label extraction")
-    if seed.id == "settings-save-toggle-reorder":
-        missing.append("missing source mapping for dedicated save control")
     if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(labels, existing, state_tests):
         missing.append("missing enabled/disabled state coverage")
     if not source:
