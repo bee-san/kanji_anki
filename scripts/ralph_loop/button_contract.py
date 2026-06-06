@@ -393,7 +393,7 @@ def _missing_tests(
         missing.append("missing obvious UI label extraction")
     if seed.id == "settings-save-toggle-reorder":
         missing.append("missing source mapping for dedicated save control")
-    if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(existing, state_tests):
+    if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(labels, existing, state_tests):
         missing.append("missing enabled/disabled state coverage")
     if not source:
         missing.append("missing source mapping")
@@ -414,16 +414,22 @@ def _needs_enabled_disabled(seed: Seed, source: dict[str, object]) -> bool:
 
 
 def _has_enabled_disabled_coverage(
+    labels: list[str],
     existing: list[str],
     state_tests: dict[str, list[dict[str, str]]],
 ) -> bool:
-    if any(STATE_COVERAGE_RE.search(item) for item in existing):
-        return True
-    for entries in state_tests.values():
-        for item in entries:
-            if STATE_COVERAGE_RE.search(item["selector"]):
-                return True
-    return False
+    saw_direct_label = False
+    for label in labels:
+        label_entries = [entry for entry in existing if _entry_covers_label(entry, label)]
+        if not label_entries:
+            continue
+        saw_direct_label = True
+        if any(STATE_COVERAGE_RE.search(entry) for entry in label_entries):
+            continue
+        if _matching_test_items(label, state_tests):
+            continue
+        return False
+    return saw_direct_label
 
 
 def _tokens(value: str) -> set[str]:

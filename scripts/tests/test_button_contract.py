@@ -127,11 +127,11 @@ class ButtonContractTest(unittest.TestCase):
                         package dev.bee.kanjianki;
                         class MainActivitySettingsInstrumentedTest {
                             void updates_study_ladder() {
-                                compose.onNodeWithText("On").performClick();
-                                compose.onNodeWithText("Off").performClick();
+                                compose.onNodeWithText("On").assertIsEnabled().performClick();
+                                compose.onNodeWithText("Off").assertIsNotEnabled().performClick();
                                 compose.onNodeWithText("Up").assertIsEnabled().performClick();
-                                compose.onNodeWithText("Down").assertIsNotEnabled();
-                                compose.onNodeWithText("Restore defaults").performClick();
+                                compose.onNodeWithText("Down").assertIsNotEnabled().performClick();
+                                compose.onNodeWithText("Restore defaults").assertIsEnabled().performClick();
                             }
                         }
                     """,
@@ -152,6 +152,7 @@ class ButtonContractTest(unittest.TestCase):
     def test_state_coverage_only_counts_actual_state_assertions(self) -> None:
         self.assertFalse(
             button_contract._has_enabled_disabled_coverage(
+                ["Enabled mode"],
                 [
                     'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Enabled mode").performClick()',
                 ],
@@ -161,6 +162,18 @@ class ButtonContractTest(unittest.TestCase):
 
         self.assertTrue(
             button_contract._has_enabled_disabled_coverage(
+                ["Study now"],
+                [
+                    'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Study now").isEnabled()',
+                ],
+                {},
+            )
+        )
+
+    def test_state_coverage_detects_is_enabled_expression(self) -> None:
+        self.assertTrue(
+            button_contract._has_enabled_disabled_coverage(
+                ["Study now"],
                 [
                     'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Study now").performClick()',
                 ],
@@ -172,16 +185,6 @@ class ButtonContractTest(unittest.TestCase):
                         }
                     ]
                 },
-            )
-        )
-
-    def test_state_coverage_detects_is_enabled_expression(self) -> None:
-        self.assertTrue(
-            button_contract._has_enabled_disabled_coverage(
-                [
-                    'app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsInstrumentedTest.kt:onNodeWithText("Study now").isEnabled()',
-                ],
-                {},
             )
         )
 
@@ -251,6 +254,60 @@ class ButtonContractTest(unittest.TestCase):
         self.assertNotEqual("SettingsImportFiltersPanel", row["composable"])
         self.assertTrue(any("Turn off Recognition" in entry for entry in row["existing_tests"]))
         self.assertIn("missing source mapping for dedicated save control", row["missing_tests"])
+
+    def test_state_assertions_do_not_mask_missing_state_for_sibling_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
+                            toggleLabel = "On",
+                            moveUpLabel = "Up",
+                            moveDownLabel = "Down",
+                            restoreLabel = "Restore default ladder",
+                            toggleDescription = "Turn off Recognition",
+                            moveUpDescription = "Move up Recognition",
+                            moveDownDescription = "Move down Recognition",
+                            restoreDescription = "Restore default ladder",
+                            onToggle = model.onToggle,
+                            onMoveUp = model.onMoveUp,
+                            onMoveDown = model.onMoveDown,
+                            onRestore = model.onRestore,
+                            Switch(checked = true, onCheckedChange = { model.onToggle.run("write_kanji", it) })
+                            Button(onClick = { model.onToggle.run("write_kanji", true) }) { Text("On") }
+                            Button(onClick = { model.onToggle.run("write_kanji", false) }) { Text("Off") }
+                            Button(onClick = { model.onMoveUp.run("write_kanji") }) { Text("Up") }
+                            Button(onClick = { model.onMoveDown.run("write_kanji") }) { Text("Down") }
+                            Button(onClick = { model.onRestore.run() }) { Text("Restore default ladder") }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/MainActivitySettingsStateCoverageInstrumentedTest.java": """
+                        package dev.bee.kanjianki;
+                        class MainActivitySettingsStateCoverageInstrumentedTest {
+                            void edits_study_ladder() {
+                                compose.onNodeWithText("On").assertIsEnabled();
+                                compose.onNodeWithText("On").performClick();
+                                compose.onNodeWithText("Off").performClick();
+                                compose.onNodeWithText("Up").performClick();
+                                compose.onNodeWithText("Down").performClick();
+                                compose.onNodeWithText("Restore default ladder").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                ["app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsStudyLadderCompose.kt"],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "settings-save-toggle-reorder")
+        self.assertIn("missing enabled/disabled state coverage", cast(list[str], row["missing_tests"]))
 
     def test_every_row_has_existing_or_missing_tests_and_cli_writes_json_and_markdown(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
