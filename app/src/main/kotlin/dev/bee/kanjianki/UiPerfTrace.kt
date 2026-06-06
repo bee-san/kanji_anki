@@ -14,7 +14,7 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
         return action()
     }
 
-    val startNanos = SystemClock.elapsedRealtimeNanos()
+    val startNanos = runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
     val traceStarted = runCatching {
         Trace.beginSection(section)
         true
@@ -23,7 +23,7 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
     try {
         return action()
     } finally {
-        val durationMs = (SystemClock.elapsedRealtimeNanos() - startNanos) / 1_000_000.0
+        val durationMs = (runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime()) - startNanos) / 1_000_000.0
         if (traceStarted) {
             runCatching {
                 Trace.endSection()
@@ -31,15 +31,17 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
         }
 
         if (BuildConfig.DEBUG && durationMs >= PERF_TRACE_LOG_THRESHOLD_MS) {
-            Log.d(
-                PERF_TRACE_LOG_TAG,
-                String.format(
-                    Locale.US,
-                    "perf section=%s duration_ms=%.2f",
-                    section,
-                    durationMs
+            runCatching {
+                Log.d(
+                    PERF_TRACE_LOG_TAG,
+                    String.format(
+                        Locale.US,
+                        "perf section=%s duration_ms=%.2f",
+                        section,
+                        durationMs
+                    )
                 )
-            )
+            }
         }
     }
 }
