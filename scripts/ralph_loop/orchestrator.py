@@ -85,6 +85,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--screenshot-artifact", default="android-screenshots")
     parser.add_argument("--screenshot-route", default="all")
     parser.add_argument("--require-remote-screenshots", action="store_true")
+    parser.add_argument(
+        "--latency-measurements",
+        type=Path,
+        default=Path(".ralph-loop/current/button-latency-measurements.json"),
+        help="Optional button-latency-measurements JSON used for latency inventory evidence.",
+    )
     return parser
 
 
@@ -650,7 +656,16 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
     contract_path = run_dir / "button-contract.json"
     button_contract.write_outputs(contract, repo_root, contract_path, run_dir / "button-contract.md")
 
-    latency_inventory = button_latency_inventory.build_inventory(repo_root, manifest_path, contract_path)
+    latency_measurements = args.latency_measurements
+    if latency_measurements and not latency_measurements.is_absolute():
+        latency_measurements = repo_root / latency_measurements
+
+    latency_inventory = button_latency_inventory.build_inventory(
+        repo_root,
+        manifest_path,
+        contract_path,
+        latency_measurements if latency_measurements and latency_measurements.exists() else None,
+    )
     button_latency_inventory.write_outputs(
         latency_inventory,
         repo_root,

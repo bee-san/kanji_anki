@@ -22,7 +22,8 @@ INTERACTIVE_RE = re.compile(r"\b(Button|IconButton|TextButton|OutlinedButton|Flo
 SELECTOR_RE = re.compile(r"onNodeWith(Text|Tag|ContentDescription)\(\s*\"([^\"]+)\"\s*\)")
 HELPER_CLICK_RE = re.compile(r"performClick(?:able)?WithText\([^;\n]*,\s*\"([^\"]+)\"\s*\)")
 PERFORM_CLICK_RE = re.compile(r"\.performClick\s*\(|\.performTouchInput\s*\{|performClick\s*\(")
-ENABLED_RE = re.compile(r"assertIs(?:Not)?Enabled\s*\(|isEnabled\s*\(|disabled|enabled", re.IGNORECASE)
+STATE_COVERAGE_RE = re.compile(r"\bassertIs(?:Not)?Enabled\b|\bisEnabled\s*\(", re.IGNORECASE)
+STATE_ASSERT_RE = re.compile(r"\.(assertIs(?:Not)?Enabled)\s*\(", re.IGNORECASE)
 TOKEN_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|\d+")
 
 
@@ -116,8 +117,8 @@ def build_contract(repo_root: Path, manifest_path: Path | None = None) -> dict[s
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     source_entries = [entry for entry in manifest.get("files", []) if entry.get("bucket") != "test"]
     sources = [_source_info(root, cast(dict[str, object], entry)) for entry in source_entries]
-    tests = _test_evidence(root)
-    rows = [_row_for_seed(seed, sources, tests) for seed in SEEDS]
+    tests, state_tests = _test_evidence(root)
+    rows = [_row_for_seed(seed, sources, tests, state_tests) for seed in SEEDS]
     return {
         "schema": SCHEMA,
         "source_manifest": manifest_file.relative_to(root).as_posix() if manifest_file.is_relative_to(root) else str(manifest_file),
@@ -207,19 +208,25 @@ def _interactive_kinds(text: str) -> list[str]:
     return kinds
 
 
-def _test_evidence(root: Path) -> dict[str, list[dict[str, str]]]:
-    evidence: dict[str, list[dict[str, str]]] = {}
+def _test_evidence(root: Path) -> tuple[
+    dict[str, list[dict[str, str]]],
+    dict[str, list[dict[str, str]]],
+]:
+    click_evidence: dict[str, list[dict[str, str]]] = {}
+    state_evidence: dict[str, list[dict[str, str]]] = {}
     app_root = root / "app" / "src"
     if not app_root.exists():
-        return evidence
+        return click_evidence, state_evidence
     for path in sorted(app_root.rglob("*Test.*")):
         relative = path.relative_to(root).as_posix()
         if not any(part in relative for part in TEST_PARTS):
             continue
         text = path.read_text(encoding="utf-8")
         for label, selector in _direct_selectors(text):
-            evidence.setdefault(label, []).append({"path": relative, "selector": selector})
-    return evidence
+            click_evidence.setdefault(label, []).append({"path": relative, "selector": selector})
+        for label, selector in _state_selectors(text):
+            state_evidence.setdefault(label, []).append({"path": relative, "selector": selector})
+    return click_evidence, state_evidence
 
 
 def _direct_selectors(text: str) -> list[tuple[str, str]]:
@@ -232,6 +239,17 @@ def _direct_selectors(text: str) -> list[tuple[str, str]]:
     for match in HELPER_CLICK_RE.finditer(text):
         label = match.group(1)
         selectors.append((label, f"performClickableWithText(\"{label}\")"))
+    return selectors
+
+
+def _state_selectors(text: str) -> list[tuple[str, str]]:
+    selectors: list[tuple[str, str]] = []
+    for match in SELECTOR_RE.finditer(text):
+        label = match.group(2)
+        trailer = _selector_statement_trailer(text, match)
+        enabled_match = STATE_ASSERT_RE.search(trailer)
+        if enabled_match:
+            selectors.append((label, f"onNodeWith{match.group(1)}(\"{label}\") + {enabled_match.group(1)}"))
     return selectors
 
 
@@ -249,11 +267,16 @@ def _selector_statement_trailer(text: str, match: re.Match[str]) -> str:
     return text[match.end():min(stops)]
 
 
-def _row_for_seed(seed: Seed, sources: list[dict[str, object]], tests: dict[str, list[dict[str, str]]]) -> dict[str, object]:
+def _row_for_seed(
+    seed: Seed,
+    sources: list[dict[str, object]],
+    tests: dict[str, list[dict[str, str]]],
+    state_tests: dict[str, list[dict[str, str]]],
+) -> dict[str, object]:
     source = _best_source(seed, sources)
     labels = _seed_labels(seed, source)
     existing = _existing_tests(labels, tests)
-    missing = _missing_tests(seed, labels, existing, source)
+    missing = _missing_tests(seed, labels, existing, source, state_tests)
     return {
         "id": seed.id,
         "priority": "high",
@@ -355,7 +378,13 @@ def _matching_test_items(label: str, tests: dict[str, list[dict[str, str]]]) -> 
     return items
 
 
-def _missing_tests(seed: Seed, labels: list[str], existing: list[str], source: dict[str, object]) -> list[str]:
+def _missing_tests(
+    seed: Seed,
+    labels: list[str],
+    existing: list[str],
+    source: dict[str, object],
+    state_tests: dict[str, list[dict[str, str]]],
+) -> list[str]:
     missing: list[str] = []
     for label in labels:
         if not any(_entry_covers_label(entry, label) for entry in existing):
@@ -364,7 +393,7 @@ def _missing_tests(seed: Seed, labels: list[str], existing: list[str], source: d
         missing.append("missing obvious UI label extraction")
     if seed.id == "settings-save-toggle-reorder":
         missing.append("missing source mapping for dedicated save control")
-    if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(existing):
+    if source and _needs_enabled_disabled(seed, source) and not _has_enabled_disabled_coverage(labels, existing, state_tests):
         missing.append("missing enabled/disabled state coverage")
     if not source:
         missing.append("missing source mapping")
@@ -384,8 +413,23 @@ def _needs_enabled_disabled(seed: Seed, source: dict[str, object]) -> bool:
     return seed.id.startswith("settings") or bool(kinds & {"Switch", "Checkbox", "RadioButton", "Slider", "TextField", "OutlinedTextField"})
 
 
-def _has_enabled_disabled_coverage(existing: list[str]) -> bool:
-    return any(ENABLED_RE.search(item) for item in existing)
+def _has_enabled_disabled_coverage(
+    labels: list[str],
+    existing: list[str],
+    state_tests: dict[str, list[dict[str, str]]],
+) -> bool:
+    saw_direct_label = False
+    for label in labels:
+        label_entries = [entry for entry in existing if _entry_covers_label(entry, label)]
+        if not label_entries:
+            continue
+        saw_direct_label = True
+        if any(STATE_COVERAGE_RE.search(entry) for entry in label_entries):
+            continue
+        if _matching_test_items(label, state_tests):
+            continue
+        return False
+    return saw_direct_label
 
 
 def _tokens(value: str) -> set[str]:
