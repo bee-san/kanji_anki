@@ -11,7 +11,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
-        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItems()
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
         val plan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
         study.activeStudyPlan = plan
         if (renderPendingRepairOrDone(plan, now, ladder)) {
@@ -66,7 +66,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
-        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItems()
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
         study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {

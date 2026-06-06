@@ -63,7 +63,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
         val rows = store.activeDashboardRows()
-        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItems()
+        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItemsForKanji(rows.map { it.kanji })
         val deckOverviewRows = if (rows.isEmpty()) {
             emptyList()
         } else {
@@ -292,7 +292,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val items = if (rows.isEmpty()) {
             emptyList()
         } else {
-            store.studyItems()
+            store.studyItemsForKanji(rows.map { it.kanji })
         }
         val plan = if (rows.isEmpty()) {
             null

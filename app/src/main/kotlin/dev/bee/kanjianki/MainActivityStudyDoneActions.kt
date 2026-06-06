@@ -186,7 +186,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             return 0
         }
         val now = System.currentTimeMillis()
-        val existing = home.store.studyItems()
+        val existing = home.store.studyItemsForKanji(rows.map { it.kanji })
         cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(rows, existing)
         return BridgeScheduler().countExtraNewCardsAvailable(
             rows,

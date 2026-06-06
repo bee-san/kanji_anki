@@ -45,7 +45,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                 val items = if (rows.isEmpty()) {
                     emptyList()
                 } else {
-                    home.store.studyItems()
+                    home.store.studyItemsForKanji(rows.map { it.kanji })
                 }
                 val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
                 val entries = if (rows.isEmpty()) {

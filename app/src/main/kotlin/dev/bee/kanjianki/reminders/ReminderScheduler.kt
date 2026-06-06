@@ -71,8 +71,9 @@ object ReminderScheduler {
             return
         }
         LocalStore(context).use { store ->
+            val rows = store.activeDashboardRows()
             val studiedToday = store.studiedKanjiSince(startOfLocalDay(nowMillis)).isNotEmpty()
-            val futureDueAtMillis = activeReminderDueAtMillis(store.studyItems())
+            val futureDueAtMillis = activeReminderDueAtMillis(store.studyItemsForKanji(rows.map { it.kanji }))
             services.scheduleAlarm(nextTriggerMillis(settings, nowMillis, studiedToday, futureDueAtMillis))
         }
     }
@@ -303,7 +304,7 @@ object ReminderScheduler {
     private fun reminderCopy(context: Context, clock: AppClock?): ReminderCopyPolicy.ReminderCopy {
         LocalStore(context).use { store ->
             val rows = store.activeDashboardRows()
-            val items = store.studyItems()
+            val items = store.studyItemsForKanji(rows.map { it.kanji })
             val now = AppClock.orSystem(clock).nowMillis()
             return ReminderCopyPolicy.forPlan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
