@@ -201,11 +201,18 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                     manifest=str(manifests[0]),
                     requested_route=manifest_requested_route,
                 )
-            missing_routes = [route for route in EXPECTED_ALL_SCREENSHOT_ROUTES if route not in manifest_routes]
-            if missing_routes:
+            if manifest_routes != EXPECTED_ALL_SCREENSHOT_ROUTES:
+                if len(manifest_routes) != len(EXPECTED_ALL_SCREENSHOT_ROUTES):
+                    return _status(
+                        "missing_artifact",
+                        f"Artifact manifest contains {len(manifest_routes)} routes; expected exactly {len(EXPECTED_ALL_SCREENSHOT_ROUTES)} for route 'all'.",
+                        manifest=str(manifests[0]),
+                        routes=manifest_routes,
+                    )
                 return _status(
                     "missing_artifact",
-                    f"Artifact manifest does not contain the expected screenshot routes: {', '.join(missing_routes)}.",
+                    "Artifact manifest routes for 'all' must exactly match: "
+                    f"{', '.join(EXPECTED_ALL_SCREENSHOT_ROUTES)} in order.",
                     manifest=str(manifests[0]),
                     routes=manifest_routes,
                 )
