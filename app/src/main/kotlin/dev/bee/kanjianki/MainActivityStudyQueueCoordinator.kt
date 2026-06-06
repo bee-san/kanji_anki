@@ -12,15 +12,15 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
         val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItems()
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
-        if (renderPendingRepairOrDone(study.activeStudyPlan, now, ladder)) {
+        val plan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+        study.activeStudyPlan = plan
+        if (renderPendingRepairOrDone(plan, now, ladder)) {
             return
         }
         if (rows.isEmpty()) {
             study.renderEmptyStudyQueue()
             return
         }
-        val plan = study.studyPlanForMode(rows, currentItems, now)
         val seeded = study.studyQueue(rows, now, true, plan, currentItems)
         val seededPlan = study.studyPlanForMode(rows, seeded, now)
         study.activeStudyPlan = seededPlan
