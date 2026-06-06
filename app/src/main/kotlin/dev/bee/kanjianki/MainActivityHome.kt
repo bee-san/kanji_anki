@@ -108,7 +108,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 else -> null
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
-                homeFocusQueueCardModel(this, entry, now)
+                homeFocusQueueCardModel(this, entry, now, settings().matureSupportThreshold)
             }
         )
     }
