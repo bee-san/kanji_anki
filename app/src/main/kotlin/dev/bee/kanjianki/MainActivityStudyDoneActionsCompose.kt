@@ -164,12 +164,20 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
             }
         },
         confirmButton = {
-            TextButton(onClick = { model.onConfirm(requestedCount) }) {
+            TextButton(onClick = {
+                withButtonTrace(model.confirmLabel) {
+                    model.onConfirm(requestedCount)
+                }
+            }) {
                 Text(text = model.confirmLabel)
             }
         },
         dismissButton = {
-            TextButton(onClick = { model.onDismiss.run() }) {
+            TextButton(onClick = {
+                withButtonTrace(model.cancelLabel) {
+                    model.onDismiss.run()
+                }
+            }) {
                 Text(text = model.cancelLabel)
             }
         }
@@ -224,7 +232,7 @@ private fun StudyPrimaryButton(
     onClick: () -> Unit
 ) {
     Button(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
@@ -252,7 +260,7 @@ private fun StudySecondaryButton(
     onClick: () -> Unit
 ) {
     OutlinedButton(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
