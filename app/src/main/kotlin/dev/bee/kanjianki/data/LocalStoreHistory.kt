@@ -19,6 +19,8 @@ import dev.bee.kanjianki.core.TextUtil
 internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(context) {
     private val historicalSyncStore = HistoricalSyncStore(this)
 
+    internal open fun clearKanjiInventoryAllCache() {}
+
     private fun timeline(): LocalStoreTimeline = LocalStoreTimeline(this)
 
     private fun inventoryMaintenance(): LocalStoreInventoryMaintenance = LocalStoreInventoryMaintenance(this)
@@ -156,6 +158,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         settings: RecordsSyncModels.Settings,
     ) {
         inventoryMaintenance().rebuildKanjiInventory(db, snapshot, imports, rows, nowMillis, settings)
+        clearKanjiInventoryAllCache()
     }
 
     fun writeKanjiInventory(db: SQLiteDatabase, inventory: KanjiInventoryBuilder) {
@@ -172,6 +175,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
             values.put(COLUMN_LAST_SEEN_AT, item.lastSeenAtMillis())
             db.insertWithOnConflict(TABLE_KANJI_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE)
         }
+        clearKanjiInventoryAllCache()
     }
 
     fun rebuildSimilarKanjiPairs(db: SQLiteDatabase, similarIndex: SimilarKanjiIndex, nowMillis: Long) {

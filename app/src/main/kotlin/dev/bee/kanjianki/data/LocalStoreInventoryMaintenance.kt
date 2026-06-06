@@ -112,6 +112,7 @@ internal class LocalStoreInventoryMaintenance(
                 SQLiteDatabase.CONFLICT_REPLACE,
             )
         }
+        activity.clearKanjiInventoryAllCache()
     }
 
     fun saveRows(
