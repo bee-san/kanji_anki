@@ -105,7 +105,11 @@ fun GamesScreen(model: GamesScreenModel) {
             )
             if (model.showSyncButton) {
                 Button(
-                    onClick = { model.onSync.run() },
+                    onClick = {
+                        withButtonTrace("games-sync") {
+                            model.onSync.run()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(gamesSyncButtonTestTag()),
@@ -163,7 +167,15 @@ private fun GamesModeCard(model: GamesModeCardModel) {
             .semantics {
                 contentDescription = gamesModeCardDescription(model)
             }
-            .clickable(enabled = model.available, role = Role.Button, onClick = { model.onClick.run() }),
+            .clickable(
+                enabled = model.available,
+                role = Role.Button,
+                onClick = {
+                    withButtonTrace("games-mode-${model.title}") {
+                        model.onClick.run()
+                    }
+                }
+            ),
         shape = GamesChoiceShape,
         color = fill,
         border = BorderStroke(1.dp, stroke)

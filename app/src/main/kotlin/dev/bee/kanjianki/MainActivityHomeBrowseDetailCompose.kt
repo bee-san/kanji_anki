@@ -66,7 +66,11 @@ fun BrowseDetailMissing(model: BrowseDetailMissingModel) {
     Column(modifier = Modifier.fillMaxWidth()) {
         HomeFullWidthHomeButton(
             label = model.homeLabel,
-            onClick = { model.onHome.run() }
+            onClick = {
+                withButtonTrace(model.homeLabel) {
+                    model.onHome.run()
+                }
+            }
         )
         Box(modifier = Modifier.padding(vertical = 8.dp)) {
             HomeEmptyState(
@@ -86,7 +90,11 @@ fun BrowseDetailHero(model: BrowseDetailHeroModel) {
     ) {
         HomeFullWidthHomeButton(
             label = model.navigationLabel,
-            onClick = { model.onNavigate.run() }
+            onClick = {
+                withButtonTrace(model.navigationLabel) {
+                    model.onNavigate.run()
+                }
+            }
         )
         Text(
             text = model.kanji,
@@ -136,7 +144,11 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
     ) {
         model.reviewLabel?.let { label ->
             Button(
-                onClick = { model.onReview?.run() },
+                onClick = {
+                    withButtonTrace(label) {
+                        model.onReview?.run()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -155,7 +167,9 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
             OutlinedButton(
                 onClick = {
                     copied = true
-                    model.onCopy?.run()
+                    withButtonTrace(label) {
+                        model.onCopy?.run()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                 shape = RoundedCornerShape(18.dp),
@@ -173,7 +187,11 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
             }
         }
         OutlinedButton(
-            onClick = { model.onSuspend.run() },
+            onClick = {
+                withButtonTrace(model.suspendLabel) {
+                    model.onSuspend.run()
+                }
+            },
             modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),

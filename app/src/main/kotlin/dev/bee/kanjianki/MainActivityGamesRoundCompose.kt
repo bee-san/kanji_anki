@@ -180,7 +180,11 @@ private fun GameChoiceButton(
     val label = KanjiGameCopy.choiceLabel(question, choice).orEmpty()
     val fontFamily = if (useKanjiTypography) GamesKanjiFontFamily else FontFamily.Default
     OutlinedButton(
-        onClick = { onChoiceSelected(choice) },
+        onClick = {
+            withButtonTrace("games-choice-$label") {
+                onChoiceSelected(choice)
+            }
+        },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (useKanjiTypography) 74.dp else 56.dp)

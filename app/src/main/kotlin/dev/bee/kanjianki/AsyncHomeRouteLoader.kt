@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -20,41 +21,59 @@ internal class AsyncHomeRouteLoader(
         load: () -> T,
         render: (T) -> Unit,
         renderError: (Throwable) -> Unit = { throw it },
+        traceLabel: String = "home-route",
         showLoadingAfterMs: Long = 0,
     ) {
         val token = ++generation
         val finished = AtomicBoolean(false)
+
         if (showLoadingAfterMs <= 0) {
-            showLoading()
-        } else {
-            loaderLoadingScheduler.schedule(
-                {
-                    if (token != generation || finished.get()) {
-                        return@schedule
-                    }
-                    postToMain(
-                        Runnable {
-                            if (token != generation || finished.get()) {
-                                return@Runnable
-                            }
-                            showLoading()
-                        }
-                    )
-                },
-                showLoadingAfterMs,
-                TimeUnit.MILLISECONDS,
-            )
+            withAsyncLoadTrace(traceLabel, "show-loading") {
+                showLoading()
+            }
         }
 
         background.execute {
-            val result = runCatching(load)
+            val loadingHandle: ScheduledFuture<*>? =
+                if (showLoadingAfterMs <= 0) {
+                    null
+                } else {
+                    loaderLoadingScheduler.schedule(
+                        {
+                            if (token != generation || finished.get()) {
+                                return@schedule
+                            }
+                            postToMain(
+                                Runnable {
+                                    if (token != generation || finished.get()) {
+                                        return@Runnable
+                                    }
+                                    withAsyncLoadTrace(traceLabel, "show-loading") {
+                                        showLoading()
+                                    }
+                                }
+                            )
+                        },
+                        showLoadingAfterMs,
+                        TimeUnit.MILLISECONDS,
+                    )
+                }
+
+            val result = withAsyncLoadTrace(traceLabel, "load") {
+                runCatching(load)
+            }
+
             finished.set(true)
+            loadingHandle?.cancel(false)
+
             postToMain(
                 Runnable {
                     if (token != generation) {
                         return@Runnable
                     }
-                    result.fold(render, renderError)
+                    withAsyncLoadTrace(traceLabel, "render") {
+                        result.fold(render, renderError)
+                    }
                 }
             )
         }

@@ -95,7 +95,7 @@ private fun SimilarChoiceButton(
     val contentColor = if (feedback == null) StudyChoicePlum else StudyChoiceFeedbackContent
     OutlinedButton(
         enabled = enabled,
-        onClick = onClick,
+        onClick = { withButtonTrace("study-choice-$glyph") { onClick() } },
         modifier = modifier
             .height(SimilarChoiceButtonHeight)
             .testTag(similarChoiceTestTag(glyph))

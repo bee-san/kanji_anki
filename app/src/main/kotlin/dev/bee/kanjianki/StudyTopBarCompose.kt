@@ -109,7 +109,7 @@ private fun StudyTopBarIconButton(
     onClick: () -> Unit
 ) {
     Surface(
-        onClick = onClick,
+        onClick = { withButtonTrace("$description button") { onClick() } },
         modifier = Modifier
             .size(56.dp)
             .semantics(mergeDescendants = true) {

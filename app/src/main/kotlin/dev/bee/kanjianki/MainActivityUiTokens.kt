@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
@@ -103,7 +102,7 @@ private fun KaniActionButton(
         .heightIn(min = minHeightDp.dp)
     if (primary) {
         Button(
-            onClick = { withUiTrace("kani.button.${traceButtonLabelSlug(label)}") { onClick() } },
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             colors = ButtonDefaults.buttonColors(
@@ -115,7 +114,7 @@ private fun KaniActionButton(
         }
     } else {
         OutlinedButton(
-            onClick = { withUiTrace("kani.button.${traceButtonLabelSlug(label)}") { onClick() } },
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),
@@ -127,15 +126,6 @@ private fun KaniActionButton(
             KaniButtonText(label = label, sizeSp = textSizeSp)
         }
     }
-}
-
-private fun traceButtonLabelSlug(value: String): String {
-    return value
-        .lowercase(Locale.getDefault())
-        .replace("\\s+".toRegex(), "-")
-        .replace("[^a-z0-9\\-]".toRegex(), "")
-        .trim('-')
-        .ifEmpty { "button" }
 }
 
 @Composable

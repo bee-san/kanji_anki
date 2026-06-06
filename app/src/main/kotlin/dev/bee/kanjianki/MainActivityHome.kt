@@ -405,6 +405,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         loadingTitle: String,
         load: () -> T,
         render: (T) -> Unit,
+        traceName: String = "home-route",
     ) {
         asyncHomeRouteLoader.load(
             showLoading = {
@@ -418,6 +419,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
             load = load,
             render = render,
+            traceLabel = traceName,
             showLoadingAfterMs = 120,
         )
     }

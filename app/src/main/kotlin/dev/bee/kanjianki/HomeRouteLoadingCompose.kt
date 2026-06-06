@@ -51,7 +51,7 @@ internal fun HomeRouteLoadingScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
-        Button(onClick = onHome) {
+        Button(onClick = { withButtonTrace(homeLabel) { onHome() } }) {
             Text("$homeLabel >")
         }
     }
