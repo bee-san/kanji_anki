@@ -105,7 +105,14 @@ fun HomePrimaryCta(
             .semantics {
                 contentDescription = label
             }
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-sync-cta") {
+                        onClick()
+                    }
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -143,7 +150,14 @@ fun HomeStudyCta(
             .semantics {
                 contentDescription = title
             }
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-study-cta") {
+                        onClick()
+                    }
+                }
+            )
     ) {
         Column(
             modifier = Modifier

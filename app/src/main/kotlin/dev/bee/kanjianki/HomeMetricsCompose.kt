@@ -122,11 +122,20 @@ fun HomeMetricCard(
             contentDescription = homeMetricCardDescription(model)
         }
         .then(
-            if (model.onClick == null) {
-                Modifier
-            } else {
-                Modifier.clickable(role = Role.Button, onClick = model.onClick)
-            }
+            model.onClick?.let { action ->
+                Modifier.clickable(
+                    role = Role.Button,
+                    onClick = {
+                        if (model.label == HomeTextCopy.syncMetricLabel()) {
+                            withUiTrace("kani.button.home-sync-metric") {
+                                action()
+                            }
+                        } else {
+                            action()
+                        }
+                    }
+                )
+            } ?: Modifier
         )
     Box(
         modifier = cardModifier

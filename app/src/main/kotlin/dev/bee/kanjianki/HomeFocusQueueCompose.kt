@@ -128,7 +128,14 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
             .semantics {
                 contentDescription = "Study"
             }
-            .clickable(role = Role.Button, onClick = model.onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.focus-queue-card") {
+                        model.onClick()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)
