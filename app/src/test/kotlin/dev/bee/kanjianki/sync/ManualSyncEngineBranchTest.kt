@@ -54,4 +54,21 @@ class ManualSyncEngineBranchTest {
 
         assertEquals("3 due, 1 new", result.adaptiveSummary)
     }
+
+    @Test
+    fun syncResultCreateStoresPrecomputedStudyDetails() {
+        val result = ManualSyncEngine.SyncResult.create(
+            true,
+            false,
+            4,
+            1,
+            "ok",
+            "3 due, 1 new",
+            7,
+            "Today's adaptive focus: 2 of 5 left",
+        )
+
+        assertEquals(7, result.studyReadyCount)
+        assertEquals("Today's adaptive focus: 2 of 5 left", result.adaptiveFocusText)
+    }
 }

@@ -2282,7 +2282,16 @@ private fun event(expression: String, reading: String): RecordsImportModels.Kanj
         );
     }
 
-private fun syncResult(success: Boolean, skipped: Boolean, dashboardRows: Int, importedSuspendedKanji: Int, message: String, adaptiveSummary: String): ManualSyncEngine.SyncResult {
+private fun syncResult(
+        success: Boolean,
+        skipped: Boolean,
+        dashboardRows: Int,
+        importedSuspendedKanji: Int,
+        message: String,
+        adaptiveSummary: String,
+        studyReadyCount: Int = dashboardRows,
+        adaptiveFocusText: String = adaptiveSummary.ifEmpty { "Adaptive focus is waiting for sync" },
+): ManualSyncEngine.SyncResult {
         try {
             val constructor = ManualSyncEngine.SyncResult::class.java.getDeclaredConstructor(
                     Boolean::class.javaPrimitiveType!!,
@@ -2293,7 +2302,10 @@ private fun syncResult(success: Boolean, skipped: Boolean, dashboardRows: Int, i
                     String::class.java
             )
             constructor.setAccessible(true)
-            return constructor.newInstance(success, skipped, dashboardRows, importedSuspendedKanji, message, adaptiveSummary)
+            return constructor.newInstance(success, skipped, dashboardRows, importedSuspendedKanji, message, adaptiveSummary).apply {
+                this.studyReadyCount = studyReadyCount
+                this.adaptiveFocusText = adaptiveFocusText
+            }
         } catch (error: ReflectiveOperationException) {
             throw AssertionError(error)
         }
