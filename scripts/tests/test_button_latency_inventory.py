@@ -102,6 +102,31 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         self.assertEqual("missing_timing_fields", sync["timing_status"])
         self.assertEqual("partial_manual_timings", inventory["measurement_status"])
 
+    def test_inventory_preserves_fractional_manual_timings(self) -> None:
+        inventory = button_latency_inventory.build_inventory(
+            Path("/"),
+            self._manifest(),
+            self._button_contract(),
+            {
+                "schema": "button-latency-measurements-v1",
+                "rows": [
+                    {
+                        "id": "home-study-cta",
+                        "baseline_ms": 1.5,
+                        "after_ms": 0.25,
+                    }
+                ],
+            },
+        )
+
+        rows = {row["id"]: row for row in cast(list[dict[str, object]], inventory["rows"])}
+        study = rows["home-study-cta"]
+        self.assertEqual(1.5, study["baseline_ms"])
+        self.assertEqual(0.25, study["after_ms"])
+        self.assertEqual(-1.25, study["timing_delta_ms"])
+        self.assertEqual("measured", study["timing_status"])
+        self.assertIn("1.5 -> 0.25 ms", button_latency_inventory.render_markdown(inventory))
+
     def test_cli_writes_json_and_markdown_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
