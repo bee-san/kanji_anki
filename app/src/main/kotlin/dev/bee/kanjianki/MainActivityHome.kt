@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -287,25 +286,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
-        val now = System.currentTimeMillis()
-        val rows = store.activeDashboardRows()
-        val items = if (rows.isEmpty()) {
-            emptyList()
-        } else {
-            store.studyItemsForKanji(rows.map { it.kanji })
-        }
-        val plan = if (rows.isEmpty()) {
-            null
-        } else {
-            adaptivePlan(rows, items, now)
-        }
-        val entries = if (rows.isEmpty()) {
-            emptyList()
-        } else {
-            queuedEntries(rows, items, now, plan)
-        }
         val summaryLines = mutableListOf<String>()
-        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)))
+        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, result.adaptiveFocusText))
         if (result.adaptiveSummary.isNotEmpty()) {
             summaryLines.add(result.adaptiveSummary)
         }
@@ -318,12 +300,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderSyncResultScreen(
             SyncResultScreenModel(
                 HomeTextCopy.syncCompleteTitle(),
-                HomeTextCopy.syncReadyCountText(entries.size),
+                HomeTextCopy.syncReadyCountText(result.studyReadyCount),
                 summaryLines,
                 TEAL,
-                if (result.dashboardRows > 0) LABEL_STUDY_NOW else null,
+                if (result.studyReadyCount > 0) LABEL_STUDY_NOW else null,
                 CORAL,
-                if (result.dashboardRows > 0) ::startFocusedStudy else null,
+                if (result.studyReadyCount > 0) ::startFocusedStudy else null,
                 LABEL_BACK_HOME,
                 this::renderHome,
             )
