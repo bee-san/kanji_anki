@@ -23,7 +23,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
     private val asyncHomeRouteLoader by lazy {
-        AsyncHomeRouteLoader(io) { task -> main.post(task) }
+        AsyncHomeRouteLoader(
+            background = io,
+            postToMain = { task -> main.post(task) },
+        )
     }
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(

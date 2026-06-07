@@ -20,7 +20,7 @@ class ComposeScreenModelsTest {
         val background = Executors.newSingleThreadExecutor()
         val releaseLoad = CountDownLatch(1)
         val rendered = CountDownLatch(1)
-        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> task.run() })
 
         try {
             val started = System.nanoTime()
@@ -46,66 +46,79 @@ class ComposeScreenModelsTest {
     @Test
     fun asyncHomeRouteLoaderShowsLoadingAfterDelayOnlyOnSlowLoads() {
         val loading = mutableListOf<String>()
-        val rendered = CountDownLatch(1)
-        val background = Executors.newSingleThreadExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loadingScheduler = ManualLoadingTaskScheduler()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { task -> main.execute(task) },
+            loadingTaskScheduler = loadingScheduler,
+        )
 
-        try {
-            loader.load(
-                showLoading = {
-                    loading.add("loading")
-                },
-                load = {
-                    Thread.sleep(10)
-                    "ready"
-                },
-                render = {
-                    rendered.countDown()
-                },
-                showLoadingAfterMs = 40,
-            )
+        loader.load(
+            showLoading = {
+                loading.add("loading")
+            },
+            load = {
+                "ready"
+            },
+            render = {
+                events.add("render")
+            },
+            showLoadingAfterMs = 40,
+        )
 
-            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
-            Thread.sleep(80)
-            assertEquals(listOf<String>(), loading)
-        } finally {
-            background.shutdownNow()
-        }
+        background.runNext()
+        main.runNext()
+
+        assertEquals(listOf("render"), events)
+        loadingScheduler.runPendingTask()
+        assertTrue("unexpected loading task was queued", main.isEmpty())
+        assertEquals(listOf<String>(), loading)
     }
 
     @Test
     fun asyncHomeRouteLoaderShowsLoadingAfterDelayBeforeRenderingSlowLoad() {
         val events = mutableListOf<String>()
-        val background = Executors.newSingleThreadExecutor()
-        val loading = CountDownLatch(1)
-        val rendered = CountDownLatch(1)
-        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loadingScheduler = ManualLoadingTaskScheduler()
+        val loadingShown = CountDownLatch(1)
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { task -> main.execute(task) },
+            loadingTaskScheduler = loadingScheduler,
+        )
 
-        try {
-            loader.load(
-                showLoading = {
-                    events.add("loading")
-                    loading.countDown()
-                },
-                load = {
-                    Thread.sleep(80)
-                    "ready"
-                },
-                render = { value ->
-                    events.add("render:$value")
-                    rendered.countDown()
-                },
-                showLoadingAfterMs = 40,
-            )
+        loader.load(
+            showLoading = {
+                events.add("loading")
+                loadingShown.countDown()
+            },
+            load = {
+                loadingScheduler.runPendingTask()
+                assertTrue("loading should appear before slow load completes", loadingShown.await(5, TimeUnit.SECONDS))
+                "ready"
+            },
+            render = { value ->
+                events.add("render:$value")
+            },
+            showLoadingAfterMs = 40,
+        )
 
-            assertTrue("loading should appear for slow load", loading.await(5, TimeUnit.SECONDS))
-            assertEquals(listOf("loading"), events)
-
-            assertTrue("background result did not render", rendered.await(5, TimeUnit.SECONDS))
-            assertEquals(listOf("loading", "render:ready"), events)
-        } finally {
-            background.shutdownNow()
+        val backgroundWorker = Thread { background.runNext() }
+        backgroundWorker.start()
+        while (main.isEmpty()) {
+            Thread.yield()
         }
+
+        main.runNext()
+        assertEquals(listOf("loading"), events)
+
+        backgroundWorker.join(5_000)
+        main.runNext()
+        assertEquals(listOf("loading", "render:ready"), events)
     }
 
     @Test
@@ -113,7 +126,7 @@ class ComposeScreenModelsTest {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading") },
@@ -138,7 +151,7 @@ class ComposeScreenModelsTest {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading:first") },
@@ -164,7 +177,7 @@ class ComposeScreenModelsTest {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading") },

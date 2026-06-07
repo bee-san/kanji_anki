@@ -6,9 +6,18 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
+internal fun interface LoadingTaskHandle {
+    fun cancel()
+}
+
+internal fun interface LoadingTaskScheduler {
+    fun schedule(delayMs: Long, task: Runnable): LoadingTaskHandle
+}
+
 internal class AsyncHomeRouteLoader(
     private val background: Executor,
     private val postToMain: ((Runnable) -> Unit),
+    private val loadingTaskScheduler: LoadingTaskScheduler = RealLoadingTaskScheduler,
 ) {
     private var generation = 0
 
@@ -34,14 +43,15 @@ internal class AsyncHomeRouteLoader(
         }
 
         background.execute {
-            val loadingHandle: ScheduledFuture<*>? =
+            val loadingHandle: LoadingTaskHandle? =
                 if (showLoadingAfterMs <= 0) {
                     null
                 } else {
-                    loaderLoadingScheduler.schedule(
-                        {
+                    loadingTaskScheduler.schedule(
+                        showLoadingAfterMs,
+                        Runnable {
                             if (token != generation || finished.get()) {
-                                return@schedule
+                                return@Runnable
                             }
                             postToMain(
                                 Runnable {
@@ -54,8 +64,6 @@ internal class AsyncHomeRouteLoader(
                                 }
                             )
                         },
-                        showLoadingAfterMs,
-                        TimeUnit.MILLISECONDS,
                     )
                 }
 
@@ -64,7 +72,7 @@ internal class AsyncHomeRouteLoader(
             }
 
             finished.set(true)
-            loadingHandle?.cancel(false)
+            loadingHandle?.cancel()
 
             postToMain(
                 Runnable {
@@ -78,12 +86,17 @@ internal class AsyncHomeRouteLoader(
             )
         }
     }
+}
 
-    private companion object {
-        val loaderLoadingScheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
-            Thread(runnable, "kani-loader-loading-guard").apply {
-                isDaemon = true
-            }
-        }
+private val loaderLoadingScheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+    Thread(runnable, "kani-loader-loading-guard").apply {
+        isDaemon = true
+    }
+}
+
+private object RealLoadingTaskScheduler : LoadingTaskScheduler {
+    override fun schedule(delayMs: Long, task: Runnable): LoadingTaskHandle {
+        val future: ScheduledFuture<*> = loaderLoadingScheduler.schedule(task, delayMs, TimeUnit.MILLISECONDS)
+        return LoadingTaskHandle { future.cancel(false) }
     }
 }

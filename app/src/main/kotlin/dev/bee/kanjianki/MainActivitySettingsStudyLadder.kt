@@ -7,14 +7,15 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 internal class MainActivitySettingsStudyLadder(private val activity: MainActivitySettings) {
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
         val ladder = activity.studyLadderSettings()
+        val restoreLabel = SettingsTextCopy.restoreDefaultLadderLabel()
         return SettingsStudyLadderPanelModel(
             title = SettingsTextCopy.studyLadderTitle(),
             body = SettingsTextCopy.studyLadderBody(),
             rungs = ladder.orderedRungs.mapIndexed { index, rung ->
                 rungModel(ladder, rung, index)
             },
-            restoreLabel = SettingsTextCopy.restoreDefaultLadderLabel(),
-            restoreDescription = SettingsTextCopy.restoreDefaultLadderLabel(),
+            restoreLabel = restoreLabel,
+            restoreDescription = restoreLabel,
             onRestore = SettingsStudyLadderAction { restoreDefaultLadderSettings() }
         )
     }
@@ -39,17 +40,20 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
     ): SettingsStudyLadderRungModel {
         val label = SettingsTextCopy.settingsLadderRungLabel(rung)
         val rungs = ladder.orderedRungs
+        val enabled = ladder.isEnabled(rung)
+        val moveUpLabel = SettingsTextCopy.moveUpLabel()
+        val moveDownLabel = SettingsTextCopy.moveDownLabel()
         return SettingsStudyLadderRungModel(
             label = label,
             subtitle = SettingsTextCopy.ladderRungSubtitle(ladder, rung),
-            toggleLabel = SettingsTextCopy.ladderToggleLabel(ladder.isEnabled(rung)),
-            moveUpLabel = SettingsTextCopy.moveUpLabel(),
-            moveDownLabel = SettingsTextCopy.moveDownLabel(),
+            toggleLabel = SettingsTextCopy.ladderToggleLabel(enabled),
+            moveUpLabel = moveUpLabel,
+            moveDownLabel = moveDownLabel,
             canMoveUp = index > 0,
             canMoveDown = index < rungs.size - 1,
-            toggleDescription = toggleDescription(label, ladder.isEnabled(rung)),
-            moveUpDescription = ladderActionDescription(SettingsTextCopy.moveUpLabel(), label),
-            moveDownDescription = ladderActionDescription(SettingsTextCopy.moveDownLabel(), label),
+            toggleDescription = toggleDescription(label, enabled),
+            moveUpDescription = ladderActionDescription(moveUpLabel, label),
+            moveDownDescription = ladderActionDescription(moveDownLabel, label),
             onToggle = SettingsStudyLadderAction { toggleLadderRung(rung) },
             onMoveUp = SettingsStudyLadderAction { moveRung(rung, -1) },
             onMoveDown = SettingsStudyLadderAction { moveRung(rung, 1) }
