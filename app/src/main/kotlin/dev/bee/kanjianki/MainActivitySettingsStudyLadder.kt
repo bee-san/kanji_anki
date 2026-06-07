@@ -20,11 +20,13 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
         )
     }
 
-    fun toggleLadderRung(rung: RecordsBase.LadderRung) {
-        val current = activity.studyLadderSettings()
+    fun toggleLadderRung(
+        current: RecordsBase.StudyLadderSettings,
+        rung: RecordsBase.LadderRung,
+    ) {
         val wasEnabled = current.isEnabled(rung)
-        val next = current.withRungEnabled(rung, !wasEnabled)
-        if (wasEnabled && next.enabledText() == current.enabledText()) {
+        val next = SettingsWriteActions.toggleStudyLadder(current, rung)
+        if (next == null) {
             Toast.makeText(activity, SettingsTextCopy.keepAlwaysAvailableRungToast(), Toast.LENGTH_SHORT).show()
             return
         }
@@ -56,14 +58,18 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
             toggleDescription = toggleDescription(label, enabled),
             moveUpDescription = ladderActionDescription(moveUpLabel, label),
             moveDownDescription = ladderActionDescription(moveDownLabel, label),
-            onToggle = SettingsStudyLadderAction { toggleLadderRung(rung) },
-            onMoveUp = SettingsStudyLadderAction { moveRung(rung, -1) },
-            onMoveDown = SettingsStudyLadderAction { moveRung(rung, 1) }
+            onToggle = SettingsStudyLadderAction { toggleLadderRung(ladder, rung) },
+            onMoveUp = SettingsStudyLadderAction { moveRung(ladder, rung, -1) },
+            onMoveDown = SettingsStudyLadderAction { moveRung(ladder, rung, 1) }
         )
     }
 
-    private fun moveRung(rung: RecordsBase.LadderRung, direction: Int) {
-        val next = activity.studyLadderSettings().moveRung(rung, direction)
+    private fun moveRung(
+        current: RecordsBase.StudyLadderSettings,
+        rung: RecordsBase.LadderRung,
+        direction: Int,
+    ) {
+        val next = SettingsWriteActions.moveStudyLadder(current, rung, direction)
         saveStudyLadderSettings(
             traceSection = "kani.settings.study-ladder.move",
             next = next,
