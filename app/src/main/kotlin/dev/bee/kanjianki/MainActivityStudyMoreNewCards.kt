@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.widget.EditText
 import android.widget.Toast
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.RecordsStudyModels
 
@@ -33,14 +34,18 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
     }
 
     fun startStudyMoreNewCards(requestedCount: Int): Boolean {
-        val snapshot = study.doneActions.studyMoreNewCardsSnapshot()
-        val rows = snapshot?.rows ?: study.store.activeDashboardRows()
-        if (rows.isEmpty()) {
+        val loadData = resolveStudyMoreNewCardsLoadData(
+            study.doneActions.studyMoreNewCardsSnapshot(),
+            loadRows = { study.store.activeDashboardRows() },
+            loadExisting = { kanji -> study.store.studyItemsForKanji(kanji) },
+        )
+        if (loadData == null) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
             return false
         }
+        val rows = loadData.rows
+        val existing = loadData.existing
         val now = System.currentTimeMillis()
-        val existing = snapshot?.existing ?: study.store.studyItemsForKanji((snapshot?.rows ?: study.store.activeDashboardRows()).map { it.kanji })
         val result = BridgeScheduler().seedExtraNewCards(
             rows,
             existing,
@@ -79,4 +84,22 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
         study.renderStudy()
         return true
     }
+}
+
+internal data class StudyMoreNewCardsLoadData(
+    val rows: List<RecordsImportModels.DashboardRow>,
+    val existing: List<RecordsStudyModels.StudyItem>,
+)
+
+internal fun resolveStudyMoreNewCardsLoadData(
+    snapshot: MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot?,
+    loadRows: () -> List<RecordsImportModels.DashboardRow>,
+    loadExisting: (List<String>) -> List<RecordsStudyModels.StudyItem>,
+): StudyMoreNewCardsLoadData? {
+    val rows = snapshot?.rows ?: loadRows()
+    if (rows.isEmpty()) {
+        return null
+    }
+    val existing = snapshot?.existing ?: loadExisting(rows.map { it.kanji })
+    return StudyMoreNewCardsLoadData(rows, existing)
 }
