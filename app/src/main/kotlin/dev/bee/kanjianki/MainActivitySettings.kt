@@ -11,6 +11,7 @@ import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
+    internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
