@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.TimelineCopy
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
         val query: String,
+        val onlySimilarKanji: Boolean,
         val items: List<RecordsImportModels.KanjiInventoryItem>,
     )
 
@@ -26,15 +27,17 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val suspended: Boolean,
     )
 
-    fun renderBrowseKanji(query: String?) {
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false) {
         val requestedQuery = query ?: ""
         home.activeBrowseQuery = requestedQuery
+        home.activeBrowseSimilarOnly = onlySimilarKanji
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
-            load = { BrowseRouteData(requestedQuery, home.store.searchKanjiInventory(requestedQuery)) },
+            load = { BrowseRouteData(requestedQuery, onlySimilarKanji, home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)) },
             render = { data ->
                 home.activeBrowseQuery = data.query
-                val model = browseScreenModel(home, data.query, data.items)
+                home.activeBrowseSimilarOnly = data.onlySimilarKanji
+                val model = browseScreenModel(home, data.query, data.items, data.onlySimilarKanji)
                 home.renderHomeRoute {
                     BrowseScreen(model)
                 }
@@ -118,7 +121,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         return BrowseDetailHeroModel(
             displayKanji,
             if (fromBrowse) HomeTextCopy.backToBrowseKanjiLabel() else HomeTextCopy.homeLabel(),
-            if (fromBrowse) Runnable { renderBrowseKanji(browseQuery) } else Runnable { home.renderHome() }
+            if (fromBrowse) Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) } else Runnable { home.renderHome() }
         )
     }
 
