@@ -50,6 +50,18 @@ internal fun homeRecentMistakesPanelModel(
     mistakes: List<StudyStatsStore.RecentMistake>,
     rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 ): HomeRecentMistakesPanelModel {
+    return homeRecentMistakesPanelModel(
+        mistakes = mistakes,
+        rowsByKanji = rowsByKanji,
+        onCardClick = { kanji -> home.renderDetail(kanji, false, "") },
+    )
+}
+
+internal fun homeRecentMistakesPanelModel(
+    mistakes: List<StudyStatsStore.RecentMistake>,
+    rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
+    onCardClick: (String) -> Unit,
+): HomeRecentMistakesPanelModel {
     val cards = mistakes.map { mistake ->
         val row = rowsByKanji[mistake.kanji]
         HomeRecentMistakesCardModel(
@@ -61,7 +73,7 @@ internal fun homeRecentMistakesPanelModel(
             ),
             sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
             accentColor = recentMistakeAccentColor(mistake.rating),
-            onClick = { home.renderDetail(mistake.kanji, false, "") }
+            onClick = { onCardClick(mistake.kanji) }
         )
     }
     return HomeRecentMistakesPanelModel(

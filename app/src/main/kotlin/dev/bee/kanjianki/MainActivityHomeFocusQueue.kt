@@ -15,7 +15,7 @@ import dev.bee.kanjianki.data.StudyStatsStore
 
 internal data class RecentMistakesRouteData(
     val mistakes: List<StudyStatsStore.RecentMistake>,
-    val activeRows: List<RecordsImportModels.DashboardRow>,
+    val rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 )
 
 internal interface RecentMistakesRouteDataSource {
@@ -32,8 +32,12 @@ internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): Rec
     } else {
         source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
     }
-    val rows = if (mistakes.isEmpty()) emptyList() else source.activeDashboardRows()
-    return RecentMistakesRouteData(mistakes, rows)
+    val rowsByKanji = if (mistakes.isEmpty()) {
+        emptyMap()
+    } else {
+        StudyCollectionLookup.dashboardRowsByKanji(source.activeDashboardRows())
+    }
+    return RecentMistakesRouteData(mistakes, rowsByKanji)
 }
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
@@ -59,7 +63,13 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                     title = HomeTextCopy.focusQueueTitle(),
                     homeLabel = HomeTextCopy.homeLabel(),
                     onHome = home::renderHome,
-                    queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
+                    queue = homeFocusQueuePanelModel(
+                        rows = rows,
+                        entries = entries,
+                        nowMillis = now,
+                        plan = plan,
+                        matureSupportThreshold = if (rows.isEmpty()) 0 else home.settings().matureSupportThreshold,
+                    ) { kanji -> home.renderDetail(kanji, false, "") },
                     onSync = home::confirmSync
                 )
             },
@@ -105,10 +115,9 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                     )
                 } else {
                     homeRecentMistakesPanelModel(
-                        home,
-                        data.mistakes,
-                        StudyCollectionLookup.dashboardRowsByKanji(data.activeRows),
-                    )
+                        mistakes = data.mistakes,
+                        rowsByKanji = data.rowsByKanji,
+                    ) { kanji -> home.renderDetail(kanji, false, "") }
                 }
                 val model = HomeRecentMistakesScreenModel(
                     title = HomeTextCopy.recentMistakesTitle(),

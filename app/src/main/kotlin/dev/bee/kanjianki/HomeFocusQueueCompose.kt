@@ -40,14 +40,21 @@ import dev.bee.kanjianki.core.StudyTextCopy
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
 internal fun homeFocusQueuePanelModel(
-    home: MainActivityHome,
     rows: List<RecordsImportModels.DashboardRow>,
     entries: List<MainActivityBase.QueueEntry>,
     nowMillis: Long,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
+    plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+    matureSupportThreshold: Int,
+    onCardClick: (String) -> Unit,
 ): HomeFocusQueuePanelModel {
-    val matureSupportThreshold = home.settings().matureSupportThreshold
-    val cards = entries.map { homeFocusQueueCardModel(home, it, nowMillis, matureSupportThreshold) }
+    val cards = entries.map {
+        homeFocusQueueCardModel(
+            entry = it,
+            nowMillis = nowMillis,
+            matureSupportThreshold = matureSupportThreshold,
+            onCardClick = onCardClick,
+        )
+    }
     return HomeFocusQueuePanelModel(
         planText = AdaptiveFocusCopy.adaptiveFocusText(plan),
         emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
@@ -62,6 +69,20 @@ internal fun homeFocusQueueCardModel(
     entry: MainActivityBase.QueueEntry,
     nowMillis: Long,
     matureSupportThreshold: Int,
+): HomeFocusQueueCardModel {
+    return homeFocusQueueCardModel(
+        entry = entry,
+        nowMillis = nowMillis,
+        matureSupportThreshold = matureSupportThreshold,
+        onCardClick = { kanji -> home.renderDetail(kanji, false, "") },
+    )
+}
+
+internal fun homeFocusQueueCardModel(
+    entry: MainActivityBase.QueueEntry,
+    nowMillis: Long,
+    matureSupportThreshold: Int,
+    onCardClick: (String) -> Unit,
 ): HomeFocusQueueCardModel {
     val row = entry.row
     val item = entry.item
@@ -80,7 +101,7 @@ internal fun homeFocusQueueCardModel(
             }
         },
         accentColor = queueAccentColor(item, nowMillis),
-        onClick = { home.renderDetail(row.kanji, false, "") }
+        onClick = { onCardClick(row.kanji) }
     )
 }
 
