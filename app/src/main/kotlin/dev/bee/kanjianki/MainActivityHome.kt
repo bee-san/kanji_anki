@@ -23,7 +23,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
     private val asyncHomeRouteLoader by lazy {
-        AsyncHomeRouteLoader(io) { task -> main.post(task) }
+        AsyncHomeRouteLoader(
+            background = io,
+            postToMain = { task -> main.post(task) },
+        )
     }
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
@@ -81,6 +84,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             queuedEntries(rows, homeItems, now, homePlan)
         }
         val provider = gateway.status()
+        val matureSupportThreshold = settings().matureSupportThreshold
 
         return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
@@ -107,7 +111,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 else -> null
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
-                homeFocusQueueCardModel(this, entry, now, settings().matureSupportThreshold)
+                homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
             }
         )
     }

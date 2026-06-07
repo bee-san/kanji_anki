@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -38,6 +39,13 @@ class MainActivityHomeOverviewComposeTest {
     @Test
     fun rendersMetricRowAndInvokesClickableMetric() {
         var clicked = false
+        val syncBody = "Connected to AnkiDroid and ready to sync after the latest refresh"
+        val expectedContentDescription = listOfNotNull(
+            "Home metric card",
+            "Sync",
+            "Ready",
+            StudyTextCopy.compact(syncBody, 22),
+        ).joinToString(", ")
 
         composeRule.setContent {
             HomeMetricRow(
@@ -47,7 +55,7 @@ class MainActivityHomeOverviewComposeTest {
                         accent = MainActivityBase.TEAL,
                         label = "Sync",
                         value = "Ready",
-                        body = "Connected",
+                        body = syncBody,
                         onClick = { clicked = true }
                     ),
                     HomeMetricModel(
@@ -74,6 +82,8 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.onNodeWithText("Ready").assertIsDisplayed()
         composeRule.onNodeWithText("Streak").assertIsDisplayed()
         composeRule.onNodeWithText("Focus").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(expectedContentDescription)
+            .assertHasClickAction()
         composeRule.onNodeWithTag(homeMetricCardTestTag("Sync"))
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
