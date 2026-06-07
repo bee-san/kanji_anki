@@ -69,26 +69,46 @@ private fun browseKanjiRowDescription(
     ).joinToString(", ")
 }
 
+internal fun buildBrowseScreenData(
+    items: List<RecordsImportModels.KanjiInventoryItem>,
+    rowBuilder: (RecordsImportModels.KanjiInventoryItem) -> BrowseKanjiRowModel,
+): BrowseScreenData {
+    val rows = ArrayList<BrowseKanjiRowModel>(items.size)
+    val kanjiList = ArrayList<String>(items.size)
+    var studiedCount = 0
+    for (item in items) {
+        val row = rowBuilder(item)
+        rows.add(row)
+        kanjiList.add(item.kanji)
+        if (row.studied) {
+            studiedCount += 1
+        }
+    }
+    return BrowseScreenData(rows, kanjiList, studiedCount)
+}
+
 internal fun browseScreenModel(
     activity: MainActivityHome,
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>,
     onlySimilarKanji: Boolean = false,
 ): BrowseScreenModel {
-    val rows = items.map { item -> browseKanjiRowModel(activity, query, onlySimilarKanji, item) }
+    val screenData = buildBrowseScreenData(items) { item ->
+        browseKanjiRowModel(activity, query, onlySimilarKanji, item)
+    }
     return BrowseScreenModel(
         initialQuery = query,
-        resultHeading = HomeTextCopy.browseResultHeading(rows.size),
-        rows = rows,
+        resultHeading = HomeTextCopy.browseResultHeading(screenData.rows.size),
+        rows = screenData.rows,
         similarFilterActive = onlySimilarKanji,
-        studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(rows.count { it.studied }, rows.size),
+        studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(screenData.studiedCount, screenData.rows.size),
         onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
         onSelectAllStudied = {
-            activity.store.setKanjiLocallySuspendedForKanji(items.map { it.kanji }, false, System.currentTimeMillis())
+            activity.store.setKanjiLocallySuspendedForKanji(screenData.kanjiList, false, System.currentTimeMillis())
             activity.renderBrowseKanji(query, onlySimilarKanji)
         },
         onDeselectAllStudied = {
-            activity.store.setKanjiLocallySuspendedForKanji(items.map { it.kanji }, true, System.currentTimeMillis())
+            activity.store.setKanjiLocallySuspendedForKanji(screenData.kanjiList, true, System.currentTimeMillis())
             activity.renderBrowseKanji(query, onlySimilarKanji)
         },
         onHome = activity::renderHome,

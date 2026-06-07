@@ -13,6 +13,12 @@ data class BrowseScreenModel(
     val onSearch: (String) -> Unit,
 )
 
+internal data class BrowseScreenData(
+    val rows: List<BrowseKanjiRowModel>,
+    val kanjiList: List<String>,
+    val studiedCount: Int,
+)
+
 data class BrowseKanjiRowModel(
     val kanji: String,
     val meaning: String,
