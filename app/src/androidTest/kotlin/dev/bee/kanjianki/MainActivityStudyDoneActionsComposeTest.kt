@@ -33,9 +33,13 @@ class MainActivityStudyDoneActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Study more new cards").assertIsDisplayed().assertIsEnabled().performClick()
-        composeRule.onNodeWithText("Continue all kanji").assertIsDisplayed().assertIsEnabled().performClick()
-        composeRule.onNodeWithText("Back home").assertIsDisplayed().assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Study more new cards").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsDisplayed()
+
+        composeRule.onNodeWithText("Study more new cards").assertIsEnabled().performClick()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).assertIsEnabled().performClick()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsEnabled().performClick()
 
         assertTrue(studyMoreClicked)
         assertTrue(continueClicked)

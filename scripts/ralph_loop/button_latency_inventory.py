@@ -158,11 +158,13 @@ def _inventory_row(
     existing_tests = _strings(row.get("existing_tests", []))
     risk_tags = sorted(set(_strings(source.get("risk_tags", [])))) if source else []
     row_id = str(row.get("id", ""))
-    baseline_ms = _int_or_none(timing.get("baseline_ms"))
-    after_ms = _int_or_none(timing.get("after_ms"))
+    baseline_ms = _number_or_none(timing.get("baseline_ms"))
+    after_ms = _number_or_none(timing.get("after_ms"))
     timing_status = _timing_status(source_timings, baseline_ms, after_ms)
     timing_delta = (
-        after_ms - baseline_ms if isinstance(baseline_ms, int) and isinstance(after_ms, int) else None
+        after_ms - baseline_ms
+        if isinstance(baseline_ms, (int, float)) and isinstance(after_ms, (int, float))
+        else None
     )
     reasons = _risk_reasons(
         row,
@@ -209,7 +211,7 @@ def _inventory_row(
     }
 
 
-def _timing_status(source_timings: str, baseline_ms: int | None, after_ms: int | None) -> str:
+def _timing_status(source_timings: str, baseline_ms: int | float | None, after_ms: int | float | None) -> str:
     if source_timings == "not-provided":
         return "pending_manual_timing"
     if baseline_ms is not None and after_ms is not None:
@@ -227,18 +229,21 @@ def _strings(value: object) -> list[str]:
     return [str(item) for item in value]
 
 
-def _int_or_none(value: object) -> int | None:
+def _number_or_none(value: object) -> int | float | None:
     if value is None:
         return None
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return int(value)
+        return value
     if isinstance(value, str) and value.strip():
         try:
             return int(value.strip())
         except ValueError:
-            return None
+            try:
+                return float(value.strip())
+            except ValueError:
+                return None
     return None
 
 
@@ -248,8 +253,8 @@ def _risk_reasons(
     risk_tags: list[str],
     missing_tests: list[str],
     existing_tests: list[str],
-    baseline_ms: int | None,
-    after_ms: int | None,
+    baseline_ms: int | float | None,
+    after_ms: int | float | None,
     target_budget_ms: int,
 ) -> list[str]:
     reasons: list[str] = []
@@ -292,8 +297,8 @@ def _risk_score(
     existing_tests: list[str],
     labels: list[str],
     timing_status: str = "pending_manual_timing",
-    baseline_ms: int | None = None,
-    after_ms: int | None = None,
+    baseline_ms: int | float | None = None,
+    after_ms: int | float | None = None,
     target_budget_ms: int = DEFAULT_TARGET_BUDGET_MS,
 ) -> int:
     score = 10 + min(len(labels) * 3, 15)
@@ -352,16 +357,25 @@ def _slug(value: str) -> str:
     return SLUG_RE.sub("-", value.lower()).strip("-") or "button"
 
 
+def _format_ms(value: object) -> str:
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        text = f"{value:.6f}".rstrip("0").rstrip(".")
+        return text or "0"
+    return str(value)
+
+
 def _render_timing_cell(row: dict[str, object]) -> str:
     baseline_ms = row.get("baseline_ms")
     after_ms = row.get("after_ms")
     if row["timing_status"] == "measured":
-        return f"{baseline_ms} -> {after_ms} ms"
+        return f"{_format_ms(baseline_ms)} -> {_format_ms(after_ms)} ms"
     if baseline_ms is None and after_ms is None:
         return str(row["timing_status"])
     if baseline_ms is None:
-        return f"after only {after_ms} ms"
-    return f"baseline only {baseline_ms} ms"
+        return f"after only {_format_ms(after_ms)} ms"
+    return f"baseline only {_format_ms(baseline_ms)} ms"
 
 
 def render_markdown(inventory: dict[str, object]) -> str:

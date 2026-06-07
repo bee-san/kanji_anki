@@ -14,24 +14,37 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     private var cachedLocallySuspendedKanji: Set<String>? = null
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+    private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
+    private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
+        clearTimelineCache()
     }
 
     internal fun clearLocallySuspendedCache() {
         cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
+        clearKanjiInventoryAllCache()
     }
 
-    internal fun clearStudyItemsCache() {
+    internal override fun clearStudyItemsCache() {
         cachedStudyItems = null
+        cachedStudyItemsByKanji = null
+        clearTimelineCache()
     }
 
     internal override fun clearKanjiInventoryAllCache() {
         cachedKanjiInventoryAll = null
+        cachedKanjiInventorySearches = null
+        clearTimelineCache()
+    }
+
+    internal override fun clearTimelineCache() {
+        cachedTimelinesByKanji = null
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -107,15 +120,21 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
-        if (parsed.isEmpty() && !onlySimilarKanji) {
-            cachedKanjiInventoryAll?.let { return it }
+        val terms = parsed.terms()
+        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) terms.joinToString("\u0000") else null
+        if (cacheKey == null) {
+            if (!onlySimilarKanji && terms.isEmpty()) {
+                cachedKanjiInventoryAll?.let { return it }
+            }
+        } else {
+            cachedKanjiInventorySearches?.get(cacheKey)?.let { return it }
         }
 
         val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
         val clauses = ArrayList<String>()
         val argsList = ArrayList<String>()
-        if (!parsed.isEmpty()) {
-            for (term in parsed.terms()) {
+        if (terms.isNotEmpty()) {
+            for (term in terms) {
                 clauses.add("search_text LIKE ?")
                 argsList.add("%$term%")
             }
@@ -143,8 +162,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(readInventoryItem(db, cursor))
             }
         }
-        if (parsed.isEmpty() && !onlySimilarKanji) {
+        if (!onlySimilarKanji && terms.isEmpty()) {
             cachedKanjiInventoryAll = out
+        } else if (!onlySimilarKanji) {
+            val searches = cachedKanjiInventorySearches ?: LinkedHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
+                cachedKanjiInventorySearches = it
+            }
+            searches[cacheKey!!] = out
         }
         return out
     }
@@ -237,6 +261,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun timelineForKanji(kanji: String): RecordsStudyModels.KanjiRecoveryTimeline {
+        if (kanji.isNotBlank()) {
+            cachedTimelinesByKanji?.get(kanji)?.let { return it }
+        }
+
         val db = readableDatabase
         val inventoryItem = readInventoryItem(db, kanji)
         val row = readDashboardRow(db, kanji)
@@ -257,7 +285,14 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             }
         }
         Collections.reverse(events)
-        return RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        val timeline = RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        if (kanji.isNotBlank()) {
+            val caches = cachedTimelinesByKanji ?: LinkedHashMap<String, RecordsStudyModels.KanjiRecoveryTimeline>().also {
+                cachedTimelinesByKanji = it
+            }
+            caches[kanji] = timeline
+        }
+        return timeline
     }
 
     fun studyItems(): List<RecordsStudyModels.StudyItem> {
@@ -283,10 +318,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
-        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct()
+        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct().sorted()
         if (distinctKanji.isEmpty()) {
             return emptyList()
         }
+
+        val cacheKey = distinctKanji.joinToString("\u0000")
+        cachedStudyItemsByKanji?.get(cacheKey)?.let { return it }
 
         val db = readableDatabase
         val placeholders = distinctKanji.joinToString(",") { "?" }
@@ -312,6 +350,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items[i] = current.withHasSimilarKanji(hasSimilar)
             }
         }
+        val caches = cachedStudyItemsByKanji ?: LinkedHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
+            cachedStudyItemsByKanji = it
+        }
+        caches[cacheKey] = items
         return items
     }
 

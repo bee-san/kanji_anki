@@ -50,15 +50,22 @@ internal fun browseSimilarFilterTestTag(): String = "browse-similar-filter"
 internal fun browseSelectAllStudiedTestTag(): String = "browse-select-all-studied"
 internal fun browseDeselectAllStudiedTestTag(): String = "browse-deselect-all-studied"
 
-private fun browseKanjiRowDescription(model: BrowseKanjiRowModel): String {
+private fun browseKanjiRowDescription(
+    kanji: String,
+    meaning: String,
+    readings: String,
+    summary: String,
+    studied: Boolean,
+    suspended: Boolean,
+): String {
     return listOfNotNull(
         "Browse kanji row",
-        model.kanji,
-        model.meaning,
-        model.readings.takeIf { it.isNotBlank() },
-        model.summary,
-        if (model.studied) "selected for study" else "not selected for study",
-        if (model.suspended) HomeTextCopy.suspendedChipLabel() else null,
+        kanji,
+        meaning,
+        readings.takeIf { it.isNotBlank() },
+        summary,
+        if (studied) "selected for study" else "not selected for study",
+        if (suspended) HomeTextCopy.suspendedChipLabel() else null,
     ).joinToString(", ")
 }
 
@@ -95,11 +102,21 @@ private fun browseKanjiRowModel(
     onlySimilarKanji: Boolean,
     item: RecordsImportModels.KanjiInventoryItem
 ): BrowseKanjiRowModel {
+    val meaning = HomeTextCopy.browseItemMeaning(item)
+    val summary = HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount)
     return BrowseKanjiRowModel(
         kanji = item.kanji,
-        meaning = HomeTextCopy.browseItemMeaning(item),
+        meaning = meaning,
         readings = item.readings,
-        summary = HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount),
+        summary = summary,
+        contentDescription = browseKanjiRowDescription(
+            kanji = item.kanji,
+            meaning = meaning,
+            readings = item.readings,
+            summary = summary,
+            studied = !item.suspended,
+            suspended = item.suspended,
+        ),
         suspended = item.suspended,
         studied = !item.suspended,
         onStudiedChange = { studied ->
@@ -251,7 +268,7 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
             .fillMaxWidth()
             .testTag(browseKanjiRowTestTag(model.kanji))
             .semantics {
-                contentDescription = browseKanjiRowDescription(model)
+                contentDescription = model.contentDescription
             }
             .clickable(
                 role = Role.Button,

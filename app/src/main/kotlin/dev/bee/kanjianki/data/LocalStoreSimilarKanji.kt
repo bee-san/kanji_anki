@@ -19,6 +19,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
             rebuildSimilarKanjiPairs(this, similarIndex, nowMillis)
             rebuildSimilarKanjiChoiceStates(this, nowMillis)
         }
+        clearStudyItemsCache()
     }
 
     fun allLocalSimilarPairs(): List<RecordsImportModels.SimilarKanjiPair> {

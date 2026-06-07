@@ -13,7 +13,7 @@ from subprocess import CompletedProcess
 from unittest.mock import patch
 from typing import cast
 
-from scripts.ralph_loop import orchestrator
+from scripts.ralph_loop import button_contract, orchestrator
 
 
 class RalphOrchestratorTest(unittest.TestCase):
@@ -182,7 +182,7 @@ class RalphOrchestratorTest(unittest.TestCase):
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual("passed", report["status"])
             self.assertEqual(7, report["summary"]["manifest_files"])
-            self.assertEqual(15, report["button_contract_summary"]["row_count"])
+            self.assertEqual(len(button_contract.SEEDS), report["button_contract_summary"]["row_count"])
             self.assertEqual(1, report["summary"]["selected_files"])
             self.assertEqual(1, report["summary"]["interactive_files"])
             self.assertEqual(1, report["summary"]["qa_retries"])

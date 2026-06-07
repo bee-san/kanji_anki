@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import cast
+from unittest import mock
 
 from scripts.ralph_loop import button_contract
 
@@ -59,13 +60,13 @@ class ButtonContractTest(unittest.TestCase):
     def test_selector_click_evidence_stays_on_same_selector_statement(self) -> None:
         text = """
             compose.onNodeWithText("Study now").assertExists();
-            compose.onNodeWithText("Sync with AnkiDroid").performClick();
+            compose.onNodeWithText("Sync AnkiDroid").performClick();
         """
 
         selectors = button_contract._direct_selectors(text)
 
         self.assertNotIn(("Study now", 'onNodeWithText("Study now") + performClick'), selectors)
-        self.assertIn(("Sync with AnkiDroid", 'onNodeWithText("Sync with AnkiDroid") + performClick'), selectors)
+        self.assertIn(("Sync AnkiDroid", 'onNodeWithText("Sync AnkiDroid") + performClick'), selectors)
 
     def test_selector_click_evidence_stops_at_kotlin_statement_without_semicolon(self) -> None:
         text = """
@@ -117,16 +118,16 @@ class ButtonContractTest(unittest.TestCase):
                         package dev.bee.kanjianki
                         @Composable fun BrowseScreen(model: BrowseScreenModel) {
                             HomeFullWidthHomeButton(label = HomeTextCopy.homeLabel(), onClick = model.onHome)
-                            Button(onClick = { withButtonTrace(\"home-search\") { model.onSearch() } }) {
+                            Button(onClick = { withButtonTrace("home-search") { model.onSearch() } }) {
                                 Text(HomeTextCopy.browseSearchButtonLabel())
                             }
                             Surface(
                                 modifier = Modifier
-                                    .testTag(browseKanjiRowTestTag(\"裂\"))
+                                    .testTag(browseKanjiRowTestTag("裂"))
                                     .semantics { contentDescription = browseKanjiRowDescription(model) }
-                                    .clickable(role = Role.Button, onClick = { withButtonTrace(\"browse-kanji-裂\") { model.onRow() } })
+                                    .clickable(role = Role.Button, onClick = { withButtonTrace("browse-kanji-裂") { model.onRow() } })
                             ) {
-                                Text(\"Browse kanji row\")
+                                Text("Browse kanji row")
                             }
                         }
                     """,
@@ -135,11 +136,11 @@ class ButtonContractTest(unittest.TestCase):
                         @Composable fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
                             Surface(
                                 modifier = Modifier
-                                    .testTag(homeRecentMistakesCardTestTag(\"裂\"))
+                                    .testTag(homeRecentMistakesCardTestTag("裂"))
                                     .semantics { contentDescription = homeRecentMistakesCardDescription(model) }
-                                    .clickable(role = Role.Button, onClick = { withButtonTrace(\"recent-mistake-裂\") { model.onClick() } })
+                                    .clickable(role = Role.Button, onClick = { withButtonTrace("recent-mistake-裂") { model.onClick() } })
                             ) {
-                                Text(\"Recent mistakes card\")
+                                Text("Recent mistakes card")
                             }
                         }
                     """,
@@ -147,10 +148,10 @@ class ButtonContractTest(unittest.TestCase):
                         package dev.bee.kanjianki;
                         class BrowseAndMistakesComposeTest {
                             void clicks_browse_and_recent_mistakes_controls() {
-                                compose.onNodeWithText(\"Home\").performClick();
-                                compose.onNodeWithText(\"Search\").performClick();
-                                compose.onNodeWithTag(\"browse-kanji-row-裂\").performClick();
-                                compose.onNodeWithTag(\"home-recent-mistakes-card-裂\").performClick();
+                                compose.onNodeWithText("Home").performClick();
+                                compose.onNodeWithText("Search").performClick();
+                                compose.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick();
+                                compose.onNodeWithTag("home-recent-mistakes-card-裂").performClick();
                             }
                         }
                     """,
@@ -169,7 +170,7 @@ class ButtonContractTest(unittest.TestCase):
         browse_home = self._row(contract, "browse-home-button")
         self.assertEqual(["Home"], cast(list[str], browse_home["labels"]))
         self.assertEqual(
-            ["app/src/androidTest/java/dev/bee/kanjianki/BrowseAndMistakesComposeTest.java:onNodeWithText(\"Home\") + performClick"],
+            ['app/src/androidTest/java/dev/bee/kanjianki/BrowseAndMistakesComposeTest.java:onNodeWithText("Home") + performClick'],
             cast(list[str], browse_home["existing_tests"]),
         )
         self.assertEqual([], cast(list[str], browse_home["missing_tests"]))
@@ -188,6 +189,107 @@ class ButtonContractTest(unittest.TestCase):
         self.assertEqual(["home-recent-mistakes-card-裂"], cast(list[str], recent["labels"]))
         self.assertTrue(any("home-recent-mistakes-card-裂" in entry for entry in cast(list[str], recent["existing_tests"])))
         self.assertEqual([], cast(list[str], recent["missing_tests"]))
+
+    def test_helper_tag_selectors_support_click_and_state_assertions(self) -> None:
+        text = 'compose.onNodeWithTag(browseKanjiRowTestTag("裂")).assertIsEnabled().performClick()'
+
+        self.assertIn(
+            ('browse-kanji-row-裂', 'onNodeWithTag("browse-kanji-row-裂") + performClick'),
+            button_contract._direct_selectors(text),
+        )
+        self.assertIn(
+            ('browse-kanji-row-裂', 'onNodeWithTag("browse-kanji-row-裂") + assertIsEnabled'),
+            button_contract._state_selectors(text),
+        )
+
+    def test_study_top_bar_actions_map_to_icon_button_clicks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable
+                        fun StudyTopBar() {
+                            Button(onClick = {}) { Text("Close study") }
+                            Button(onClick = {}) { Text("Settings") }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/StudyTopBarComposeTest.java": """
+                        package dev.bee.kanjianki;
+                        class StudyTopBarComposeTest {
+                            void clicks_study_top_bar_actions() {
+                                compose.onNodeWithContentDescription("Close study").performClick();
+                                compose.onNodeWithContentDescription("Settings").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(root, ["app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt"])
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "study-topbar-actions")
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/StudyTopBarCompose.kt", row["source_file"])
+        self.assertEqual("StudyTopBar", row["composable"])
+        self.assertEqual(["Close study", "Settings"], cast(list[str], row["labels"]))
+        self.assertEqual(
+            [
+                'app/src/androidTest/java/dev/bee/kanjianki/StudyTopBarComposeTest.java:onNodeWithContentDescription("Close study") + performClick',
+                'app/src/androidTest/java/dev/bee/kanjianki/StudyTopBarComposeTest.java:onNodeWithContentDescription("Settings") + performClick',
+            ],
+            row["existing_tests"],
+        )
+        self.assertEqual([], row["missing_tests"])
+
+    def test_seed_labels_fall_back_to_expected_labels_for_model_driven_ui(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun DynamicGamesScreen(model: DynamicGamesScreenModel) {
+                            Button(onClick = model.onStart) { Text(model.title) }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/DynamicGamesScreenTest.kt": """
+                        package dev.bee.kanjianki
+                        class DynamicGamesScreenTest {
+                            fun clicks_start() {
+                                compose.onNodeWithText("Start").performClick()
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(root, ["app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt"])
+            seed = button_contract.Seed(
+                "dynamic-start",
+                "Dynamic start button",
+                ("dynamic", "start"),
+                ("DynamicGamesScreen.kt",),
+                ("DynamicGamesScreen",),
+                ("Start",),
+            )
+
+            with mock.patch.object(button_contract, "SEEDS", (seed,)):
+                contract = button_contract.build_contract(root, manifest_path)
+
+        row = self._row(contract, "dynamic-start")
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/DynamicGamesScreen.kt", row["source_file"])
+        self.assertEqual("DynamicGamesScreen", row["composable"])
+        self.assertEqual(["Start"], cast(list[str], row["labels"]))
+        self.assertEqual(
+            [
+                'app/src/androidTest/java/dev/bee/kanjianki/DynamicGamesScreenTest.kt:onNodeWithText("Start") + performClick',
+            ],
+            row["existing_tests"],
+        )
+        self.assertNotIn('missing direct selector/click coverage for "Start"', cast(list[str], row["missing_tests"]))
 
     def test_state_assertions_count_toward_state_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -549,7 +651,7 @@ class ButtonContractTest(unittest.TestCase):
                         package dev.bee.kanjianki
                         @Composable fun HomeScreen(model: HomeScreenModel) {
                             Button(onClick = model.onStudy) { Text("Study now") }
-                            Button(onClick = model.onSync) { Text("Sync with AnkiDroid") }
+                            Button(onClick = model.onSync) { Text("Sync AnkiDroid") }
                             Text("Browse Kanji", Modifier.clickable { model.onBrowse() })
                             Text("Focus queue")
                         }
@@ -578,7 +680,7 @@ class ButtonContractTest(unittest.TestCase):
                         class MainActivityHelperInstrumentedTest {
                             void clicks_core_controls() {
                                 compose.onNodeWithText("Study now").performClick();
-                                compose.onNodeWithText("Sync with AnkiDroid").performClick();
+                                compose.onNodeWithText("Sync AnkiDroid").performClick();
                                 compose.onNodeWithText("Pass").performClick();
                                 compose.onNodeWithText("Fail").performClick();
                             }

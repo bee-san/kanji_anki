@@ -75,10 +75,10 @@ class SettingsStudyLadderComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.studyLadderTitle()).assertIsDisplayed()
         composeRule.onNodeWithText("Similar kanji").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Turn off Similar kanji").performClick()
-        composeRule.onNodeWithContentDescription("Down Similar kanji").performClick()
+        composeRule.onNodeWithContentDescription("Turn off Similar kanji").assertIsEnabled().performClick()
+        composeRule.onNodeWithContentDescription("Down Similar kanji").assertIsEnabled().performClick()
         composeRule.onNodeWithText("On").assertHasClickAction().assertIsEnabled().performClick()
-        composeRule.onNodeWithContentDescription("Up Word reading").performClick()
+        composeRule.onNodeWithContentDescription("Up Word reading").assertIsEnabled().performClick()
         composeRule.onNodeWithText("Off").assertHasClickAction().assertIsEnabled().performClick()
         composeRule.onNodeWithText("Restore defaults").assertHasClickAction().assertIsEnabled().performClick()
 

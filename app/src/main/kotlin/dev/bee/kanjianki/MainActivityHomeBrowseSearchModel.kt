@@ -18,6 +18,7 @@ data class BrowseKanjiRowModel(
     val meaning: String,
     val readings: String,
     val summary: String,
+    val contentDescription: String,
     val suspended: Boolean,
     val studied: Boolean = !suspended,
     val onStudiedChange: (Boolean) -> Unit = {},
