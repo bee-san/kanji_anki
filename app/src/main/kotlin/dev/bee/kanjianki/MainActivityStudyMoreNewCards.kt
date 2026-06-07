@@ -91,6 +91,11 @@ internal data class StudyMoreNewCardsLoadData(
     val existing: List<RecordsStudyModels.StudyItem>,
 )
 
+internal data class StudyMoreNewCardsAvailability(
+    val loadData: StudyMoreNewCardsLoadData,
+    val availableCount: Int,
+)
+
 internal fun resolveStudyMoreNewCardsLoadData(
     snapshot: MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot?,
     loadRows: () -> List<RecordsImportModels.DashboardRow>,
@@ -102,4 +107,18 @@ internal fun resolveStudyMoreNewCardsLoadData(
     }
     val existing = snapshot?.existing ?: loadExisting(rows.map { it.kanji })
     return StudyMoreNewCardsLoadData(rows, existing)
+}
+
+internal fun resolveStudyMoreNewCardsAvailability(
+    snapshot: MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot?,
+    cachedAvailableCount: Int?,
+    loadRows: () -> List<RecordsImportModels.DashboardRow>,
+    loadExisting: (List<String>) -> List<RecordsStudyModels.StudyItem>,
+    countAvailable: (StudyMoreNewCardsLoadData) -> Int,
+): StudyMoreNewCardsAvailability? {
+    val loadData = resolveStudyMoreNewCardsLoadData(snapshot, loadRows, loadExisting) ?: return null
+    if (cachedAvailableCount != null) {
+        return StudyMoreNewCardsAvailability(loadData, cachedAvailableCount)
+    }
+    return StudyMoreNewCardsAvailability(loadData, countAvailable(loadData))
 }
