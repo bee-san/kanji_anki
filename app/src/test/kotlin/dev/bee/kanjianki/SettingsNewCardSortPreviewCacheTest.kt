@@ -1,54 +1,41 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsImportModels
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.Locale
-import kotlin.system.measureNanoTime
 
 class SettingsNewCardSortPreviewCacheTest {
     @Test
-    fun reusesPreviewRowsForTheSameDashboardRowSnapshot() {
+    fun reusesPreviewRowsAndWarningsForTheSameDashboardRowSnapshot() {
         val rows = dashboardRows(120)
+        val similarityChecks = AtomicInteger(0)
 
-        // Warm the JIT so the measured timings reflect the preview work rather than class loading.
-        SettingsNewCardSortPreviewCache.buildPreviewRowsByMode(rows)
-
-        val baselineIterations = 25
-        val hitIterations = 500_000
-
-        val baselineNanos = measureNanoTime {
-            repeat(baselineIterations) {
-                SettingsNewCardSortPreviewCache.buildPreviewRowsByMode(rows)
-            }
+        // Build the first snapshot with a similarity checker that always reports nearby pairs.
+        val cachedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, null) { _, _ ->
+            similarityChecks.incrementAndGet()
+            true
         }
+        val checksAfterBuild = similarityChecks.get()
 
-        val cachedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, null)
-        val afterNanos = measureNanoTime {
-            repeat(hitIterations) {
-                assertSame(cachedSnapshot, SettingsNewCardSortPreviewCache.resolve(rows, cachedSnapshot))
-            }
+        assertTrue(cachedSnapshot.previewWarningsByMode.isNotEmpty())
+
+        val reusedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, cachedSnapshot) { _, _ ->
+            error("cache hit should not rebuild preview warnings")
         }
-
-        val baselineMs = baselineNanos / 1_000_000.0
-        val afterMs = afterNanos / 1_000_000.0
-        val baselineAvgUs = baselineNanos / baselineIterations.toDouble() / 1_000.0
-        val afterAvgUs = afterNanos / hitIterations.toDouble() / 1_000.0
-        println(
-            String.format(
-                Locale.ROOT,
-                "settings-new-card-sort baseline_ms=%.3f baseline_avg_us=%.3f hit_ms=%.3f hit_avg_us=%.6f",
-                baselineMs,
-                baselineAvgUs,
-                afterMs,
-                afterAvgUs,
-            ),
-        )
+        assertSame(cachedSnapshot, reusedSnapshot)
+        assertEquals(checksAfterBuild, similarityChecks.get())
 
         val changedRows = rows + dashboardRow(999)
-        val rebuiltSnapshot = SettingsNewCardSortPreviewCache.resolve(changedRows, cachedSnapshot)
+        val rebuiltSnapshot = SettingsNewCardSortPreviewCache.resolve(changedRows, cachedSnapshot) { _, _ ->
+            similarityChecks.incrementAndGet()
+            true
+        }
         assertNotSame(cachedSnapshot, rebuiltSnapshot)
+        assertTrue(similarityChecks.get() > checksAfterBuild)
     }
 
     private fun dashboardRows(count: Int): List<RecordsImportModels.DashboardRow> {

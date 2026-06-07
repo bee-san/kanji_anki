@@ -10,7 +10,11 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
         val rows = activity.store.activeDashboardRows()
-        val previewRowsData = SettingsNewCardSortPreviewCache.resolve(rows, activity.cachedNewCardSortPreviewRows)
+        val previewRowsData = SettingsNewCardSortPreviewCache.resolve(
+            rows = rows,
+            cached = activity.cachedNewCardSortPreviewRows,
+            hasSimilarLocalPair = activity.store::hasSimilarLocalPair,
+        )
         activity.cachedNewCardSortPreviewRows = previewRowsData
         val previewRowsByMode = previewRowsData.previewRowsByMode
         return SettingsNewCardSortPanelModel(
@@ -20,7 +24,7 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             options = newCardSortOptions(),
             saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
             previewRowsByMode = previewRowsByMode,
-            previewWarningsByMode = newCardSortPreviewWarningsByMode(previewRowsByMode),
+            previewWarningsByMode = previewRowsData.previewWarningsByMode,
             onSave = SettingsNewCardSortSaver { mode -> saveNewCardSort(mode) }
         )
     }
@@ -41,24 +45,6 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             mode = mode,
             description = SettingsTextCopy.newCardSortDescription(mode)
         )
-    }
-
-    private fun newCardSortPreviewWarningsByMode(
-        previewRowsByMode: Map<String, List<SettingsNewCardSortPreviewRowModel>>,
-    ): Map<String, String> {
-        if (previewRowsByMode.isEmpty()) {
-            return emptyMap()
-        }
-        val warnings = LinkedHashMap<String, String>()
-        for ((mode, rows) in previewRowsByMode) {
-            val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
-                activity.store.hasSimilarLocalPair(first, second)
-            }
-            if (examples.isNotEmpty()) {
-                warnings[mode] = SettingsTextCopy.newCardSortConfusablePreviewWarning(examples)
-            }
-        }
-        return warnings
     }
 
     private fun saveNewCardSort(mode: String) {

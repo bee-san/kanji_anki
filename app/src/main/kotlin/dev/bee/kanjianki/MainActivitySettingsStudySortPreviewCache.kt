@@ -3,24 +3,32 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.NewCardSortPlanner
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.SettingsTextCopy
 import java.util.Locale
 
 internal data class SettingsNewCardSortPreviewRowsSnapshot(
     val sourceRows: List<RecordsImportModels.DashboardRow>,
     val previewRowsByMode: Map<String, List<SettingsNewCardSortPreviewRowModel>>,
+    val previewWarningsByMode: Map<String, String>,
 )
 
 internal object SettingsNewCardSortPreviewCache {
     fun resolve(
         rows: List<RecordsImportModels.DashboardRow>,
         cached: SettingsNewCardSortPreviewRowsSnapshot?,
+        hasSimilarLocalPair: (String?, String?) -> Boolean,
     ): SettingsNewCardSortPreviewRowsSnapshot {
         if (cached != null && cached.sourceRows === rows) {
             return cached
         }
+        val previewRowsByMode = buildPreviewRowsByMode(rows)
         return SettingsNewCardSortPreviewRowsSnapshot(
             sourceRows = rows,
-            previewRowsByMode = buildPreviewRowsByMode(rows),
+            previewRowsByMode = previewRowsByMode,
+            previewWarningsByMode = buildPreviewWarningsByMode(
+                previewRowsByMode = previewRowsByMode,
+                hasSimilarLocalPair = hasSimilarLocalPair,
+            ),
         )
     }
 
@@ -39,6 +47,25 @@ internal object SettingsNewCardSortPreviewCache {
                 .take(PREVIEW_LIMIT)
                 .map { row -> previewRow(row, mode) }
         }
+    }
+
+    internal fun buildPreviewWarningsByMode(
+        previewRowsByMode: Map<String, List<SettingsNewCardSortPreviewRowModel>>,
+        hasSimilarLocalPair: (String?, String?) -> Boolean,
+    ): Map<String, String> {
+        if (previewRowsByMode.isEmpty()) {
+            return emptyMap()
+        }
+        val warnings = LinkedHashMap<String, String>()
+        for ((mode, rows) in previewRowsByMode) {
+            val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
+                hasSimilarLocalPair(first, second)
+            }
+            if (examples.isNotEmpty()) {
+                warnings[mode] = SettingsTextCopy.newCardSortConfusablePreviewWarning(examples)
+            }
+        }
+        return warnings
     }
 
     private fun previewRow(
