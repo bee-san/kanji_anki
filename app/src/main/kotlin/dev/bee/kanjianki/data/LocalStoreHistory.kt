@@ -25,6 +25,8 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
 
     internal open fun clearTimelineCache() {}
 
+    internal open fun clearSimilarKanjiNeighborsCache() {}
+
     private fun timeline(): LocalStoreTimeline = LocalStoreTimeline(this)
 
     private fun inventoryMaintenance(): LocalStoreInventoryMaintenance = LocalStoreInventoryMaintenance(this)
@@ -186,6 +188,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     fun rebuildSimilarKanjiPairs(db: SQLiteDatabase, similarIndex: SimilarKanjiIndex, nowMillis: Long) {
         similarKanjiMaintenance().rebuildSimilarKanjiPairs(db, similarIndex, nowMillis)
         clearStudyItemsCache()
+        clearSimilarKanjiNeighborsCache()
     }
 
     override fun rebuildSimilarKanjiChoiceStates(db: SQLiteDatabase, nowMillis: Long) {
