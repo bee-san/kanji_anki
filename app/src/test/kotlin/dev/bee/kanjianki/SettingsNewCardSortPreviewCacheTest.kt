@@ -68,6 +68,20 @@ class SettingsNewCardSortPreviewCacheTest {
         )
     }
 
+    @Test
+    fun memoizesRepeatedSimilarPairChecksAcrossPreviewModes() {
+        val rows = dashboardRows(2)
+        val similarityChecks = AtomicInteger(0)
+
+        val cachedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, null) { _, _ ->
+            similarityChecks.incrementAndGet()
+            true
+        }
+
+        assertTrue(cachedSnapshot.previewWarningsByMode.isNotEmpty())
+        assertEquals(1, similarityChecks.get())
+    }
+
     private fun dashboardRows(count: Int): List<RecordsImportModels.DashboardRow> {
         return List(count) { index -> dashboardRow(index) }
     }

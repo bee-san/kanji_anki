@@ -57,15 +57,37 @@ internal object SettingsNewCardSortPreviewCache {
             return emptyMap()
         }
         val warnings = LinkedHashMap<String, String>()
+        val memoizedHasSimilarLocalPair = memoizeSimilarPairChecks(hasSimilarLocalPair)
         for ((mode, rows) in previewRowsByMode) {
             val examples = SettingsNewCardSortPreviewWarnings.nearbySimilarPairExamples(rows) { first, second ->
-                hasSimilarLocalPair(first, second)
+                memoizedHasSimilarLocalPair(first, second)
             }
             if (examples.isNotEmpty()) {
                 warnings[mode] = SettingsTextCopy.newCardSortConfusablePreviewWarning(examples)
             }
         }
         return warnings
+    }
+
+    private fun memoizeSimilarPairChecks(
+        hasSimilarLocalPair: (String?, String?) -> Boolean,
+    ): (String?, String?) -> Boolean {
+        val cache = HashMap<String, Boolean>()
+        return { first, second ->
+            cache.getOrPut(similarPairKey(first, second)) {
+                hasSimilarLocalPair(first, second)
+            }
+        }
+    }
+
+    private fun similarPairKey(first: String?, second: String?): String {
+        val left = first.orEmpty()
+        val right = second.orEmpty()
+        return if (left <= right) {
+            "$left\u0000$right"
+        } else {
+            "$right\u0000$left"
+        }
     }
 
     private fun previewRow(
