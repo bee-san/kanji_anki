@@ -118,6 +118,7 @@ internal fun settingsCategorySectionModel(
     expanded: Boolean,
     onToggle: Runnable,
     panels: List<SettingsPanelModel>,
+    panelCount: Int = panels.size,
 ): SettingsCategorySectionModel {
     return SettingsCategorySectionModel(
         sectionKey = sectionKey,
@@ -125,7 +126,7 @@ internal fun settingsCategorySectionModel(
         summary = summary,
         iconRes = iconRes,
         expanded = expanded,
-        panelCount = SettingsTextCopy.settingsCategoryPanelCount(panels.size),
+        panelCount = SettingsTextCopy.settingsCategoryPanelCount(panelCount),
         contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, title),
         onToggle = onToggle,
         panels = panels,

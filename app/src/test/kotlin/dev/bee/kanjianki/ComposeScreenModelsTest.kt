@@ -794,12 +794,21 @@ class ComposeScreenModelsTest {
 
         val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val collapsedBehavior = settingsStudyBehaviorCategoryModel(
+            false,
+            noop,
+            panelCount = 8,
+            panels = emptyList(),
+        )
 
         assertEquals("Import & sync", importSync.title)
         assertEquals("4 cards", importSync.panelCount)
-        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
         assertEquals("Automation", advanced.title)
         assertEquals("2 cards", advanced.panelCount)
+        assertEquals("Study settings", collapsedBehavior.title)
+        assertEquals("8 cards", collapsedBehavior.panelCount)
+        assertTrue(collapsedBehavior.panels.isEmpty())
+
         assertEquals(listOf(reminder, update), advanced.panels)
     }
 

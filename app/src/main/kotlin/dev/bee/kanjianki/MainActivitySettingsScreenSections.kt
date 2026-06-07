@@ -10,10 +10,8 @@ private const val SETTINGS_SECTION_REFERENCE_DATA = "settings-reference-data"
 internal fun settingsAnkiSourceCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
-    noteType: SettingsNoteTypePanelModel,
-    importFilters: SettingsImportFiltersPanelModel,
-    frequencyRange: SettingsFrequencyRangePanelModel,
-    autoSync: SettingsAutoSyncPanelModel,
+    panelCount: Int,
+    panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_ANKI_SOURCE,
@@ -22,7 +20,42 @@ internal fun settingsAnkiSourceCategoryModel(
         iconRes = R.drawable.ic_book_24,
         expanded = expanded,
         onToggle = onToggle,
+        panels = panels,
+        panelCount = panelCount,
+    )
+}
+
+internal fun settingsAnkiSourceCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    noteType: SettingsNoteTypePanelModel,
+    importFilters: SettingsImportFiltersPanelModel,
+    frequencyRange: SettingsFrequencyRangePanelModel,
+    autoSync: SettingsAutoSyncPanelModel,
+): SettingsCategorySectionModel {
+    return settingsAnkiSourceCategoryModel(
+        expanded = expanded,
+        onToggle = onToggle,
+        panelCount = 4,
         panels = listOf(noteType, importFilters, frequencyRange, autoSync),
+    )
+}
+
+internal fun settingsStudyBehaviorCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    panelCount: Int,
+    panels: List<SettingsPanelModel>,
+): SettingsCategorySectionModel {
+    return settingsCategorySectionModel(
+        sectionKey = SETTINGS_SECTION_STUDY_BEHAVIOR,
+        title = SettingsTextCopy.settingsStudyBehaviorTitle(),
+        summary = SettingsTextCopy.settingsStudyBehaviorBody(),
+        iconRes = R.drawable.ic_study_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = panels,
+        panelCount = panelCount,
     )
 }
 
@@ -38,13 +71,10 @@ internal fun settingsStudyBehaviorCategoryModel(
     studyLadder: SettingsStudyLadderPanelModel,
     ladderThreshold: SettingsLadderThresholdPanelModel,
 ): SettingsCategorySectionModel {
-    return settingsCategorySectionModel(
-        sectionKey = SETTINGS_SECTION_STUDY_BEHAVIOR,
-        title = SettingsTextCopy.settingsStudyBehaviorTitle(),
-        summary = SettingsTextCopy.settingsStudyBehaviorBody(),
-        iconRes = R.drawable.ic_study_24,
+    return settingsStudyBehaviorCategoryModel(
         expanded = expanded,
         onToggle = onToggle,
+        panelCount = 8,
         panels = listOf(
             newCardSort,
             deckLimits,
@@ -61,8 +91,8 @@ internal fun settingsStudyBehaviorCategoryModel(
 internal fun settingsAutomationCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
-    reminder: SettingsReminderPanelModel,
-    update: SettingsUpdateOverviewPanelModel,
+    panelCount: Int,
+    panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_AUTOMATION,
@@ -71,6 +101,21 @@ internal fun settingsAutomationCategoryModel(
         iconRes = R.drawable.ic_sync_24,
         expanded = expanded,
         onToggle = onToggle,
+        panels = panels,
+        panelCount = panelCount,
+    )
+}
+
+internal fun settingsAutomationCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    reminder: SettingsReminderPanelModel,
+    update: SettingsUpdateOverviewPanelModel,
+): SettingsCategorySectionModel {
+    return settingsAutomationCategoryModel(
+        expanded = expanded,
+        onToggle = onToggle,
+        panelCount = 2,
         panels = listOf(reminder, update),
     )
 }
@@ -78,7 +123,8 @@ internal fun settingsAutomationCategoryModel(
 internal fun settingsReferenceDataCategoryModel(
     expanded: Boolean,
     onToggle: Runnable,
-    dataLicense: SettingsReferenceDataLinkModel,
+    panelCount: Int,
+    panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_REFERENCE_DATA,
@@ -87,6 +133,20 @@ internal fun settingsReferenceDataCategoryModel(
         iconRes = R.drawable.ic_sparkle_24,
         expanded = expanded,
         onToggle = onToggle,
+        panels = panels,
+        panelCount = panelCount,
+    )
+}
+
+internal fun settingsReferenceDataCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    dataLicense: SettingsReferenceDataLinkModel,
+): SettingsCategorySectionModel {
+    return settingsReferenceDataCategoryModel(
+        expanded = expanded,
+        onToggle = onToggle,
+        panelCount = 1,
         panels = listOf(dataLicense),
     )
 }
