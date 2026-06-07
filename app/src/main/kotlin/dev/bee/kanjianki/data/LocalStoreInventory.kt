@@ -18,6 +18,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
+    private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
@@ -45,6 +46,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     internal override fun clearTimelineCache() {
         cachedTimelinesByKanji = null
+    }
+
+    internal override fun clearSimilarKanjiNeighborsCache() {
+        cachedKanjiWithSimilarNeighbors = null
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -358,6 +363,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun kanjiWithSimilarNeighbors(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithSimilarNeighbors?.let { return it }
+
         val out = HashSet<String>()
         db.rawQuery(
             "SELECT kanji_a FROM $TABLE_SIMILAR_KANJI_PAIRS UNION SELECT kanji_b FROM $TABLE_SIMILAR_KANJI_PAIRS",
@@ -370,7 +377,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 }
             }
         }
-        return out
+        val cached = Collections.unmodifiableSet(out)
+        cachedKanjiWithSimilarNeighbors = cached
+        return cached
     }
 
     fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>?): List<RecordsStudyModels.StudyItem> {
