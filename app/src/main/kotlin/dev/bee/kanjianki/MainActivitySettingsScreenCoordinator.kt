@@ -97,22 +97,18 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     }
 
     private fun settingsCategoryModels(current: RecordsSyncModels.Settings): List<SettingsCategorySectionModel> {
-        return listOf(
-            settingsAnkiSourceCategoryModel(
-                activity.settingsAnkiExpanded,
-                Runnable {
-                    activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
-                },
+        val ankiSourcePanels = if (activity.settingsAnkiExpanded) {
+            listOf(
                 activity.noteTypeSettingsPanelModel(current),
                 activity.importFilterSettingsPanelModel(current),
                 activity.frequencyRangeSettingsPanelModel(current),
                 activity.autoSyncSettingsPanelModel(),
-            ),
-            settingsStudyBehaviorCategoryModel(
-                activity.settingsStudyExpanded,
-                Runnable {
-                    activity.settingsStudyExpanded = !activity.settingsStudyExpanded
-                },
+            )
+        } else {
+            emptyList()
+        }
+        val studyBehaviorPanels = if (activity.settingsStudyExpanded) {
+            listOf(
                 MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
                 MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
@@ -121,12 +117,12 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
                 MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
                 activity.ladderThresholdSettingsPanelModel(),
-            ),
-            settingsAutomationCategoryModel(
-                activity.settingsSyncExpanded,
-                Runnable {
-                    activity.settingsSyncExpanded = !activity.settingsSyncExpanded
-                },
+            )
+        } else {
+            emptyList()
+        }
+        val automationPanels = if (activity.settingsSyncExpanded) {
+            listOf(
                 activity.reminderSettingsPanelModel(),
                 SettingsUpdateOverviewPanelModel(
                     settingsUpdatePanelModel(
@@ -138,13 +134,50 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     activity.settingsScrollY = activity.contentScrollY
                     activity.renderUpdate()
                 },
+            )
+        } else {
+            emptyList()
+        }
+        val referencePanels = if (activity.settingsAppExpanded) {
+            listOf(
+                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+            )
+        } else {
+            emptyList()
+        }
+
+        return listOf(
+            settingsAnkiSourceCategoryModel(
+                activity.settingsAnkiExpanded,
+                Runnable {
+                    activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
+                },
+                panelCount = 4,
+                panels = ankiSourcePanels,
+            ),
+            settingsStudyBehaviorCategoryModel(
+                activity.settingsStudyExpanded,
+                Runnable {
+                    activity.settingsStudyExpanded = !activity.settingsStudyExpanded
+                },
+                panelCount = 8,
+                panels = studyBehaviorPanels,
+            ),
+            settingsAutomationCategoryModel(
+                activity.settingsSyncExpanded,
+                Runnable {
+                    activity.settingsSyncExpanded = !activity.settingsSyncExpanded
+                },
+                panelCount = 2,
+                panels = automationPanels,
             ),
             settingsReferenceDataCategoryModel(
                 activity.settingsAppExpanded,
                 Runnable {
                     activity.settingsAppExpanded = !activity.settingsAppExpanded
                 },
-                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+                panelCount = 1,
+                panels = referencePanels,
             ),
         )
     }
