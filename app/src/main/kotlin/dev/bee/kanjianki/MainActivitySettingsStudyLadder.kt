@@ -28,9 +28,11 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
             Toast.makeText(activity, SettingsTextCopy.keepAlwaysAvailableRungToast(), Toast.LENGTH_SHORT).show()
             return
         }
-        activity.store.saveStudyLadderSettings(next)
-        Toast.makeText(activity, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        saveStudyLadderSettings(
+            traceSection = "kani.settings.study-ladder.toggle",
+            next = next,
+            toastMessage = SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled),
+        )
     }
 
     private fun rungModel(
@@ -61,14 +63,35 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
     }
 
     private fun moveRung(rung: RecordsBase.LadderRung, direction: Int) {
-        activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(rung, direction))
-        activity.renderSettings(true)
+        val next = activity.studyLadderSettings().moveRung(rung, direction)
+        saveStudyLadderSettings(
+            traceSection = "kani.settings.study-ladder.move",
+            next = next,
+        )
     }
 
     private fun restoreDefaultLadderSettings() {
-        activity.store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults())
-        Toast.makeText(activity, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        saveStudyLadderSettings(
+            traceSection = "kani.settings.study-ladder.restore",
+            next = RecordsBase.StudyLadderSettings.defaults(),
+            toastMessage = SettingsTextCopy.studyLadderRestoredToast(),
+        )
+    }
+
+    private fun saveStudyLadderSettings(
+        traceSection: String,
+        next: RecordsBase.StudyLadderSettings,
+        toastMessage: String? = null,
+    ) {
+        activity.runSettingsWrite(
+            traceSection = traceSection,
+            write = {
+                activity.store.saveStudyLadderSettings(next)
+            },
+        ) {
+            toastMessage?.let { Toast.makeText(activity, it, Toast.LENGTH_SHORT).show() }
+            activity.renderSettings(true)
+        }
     }
 
     private companion object {

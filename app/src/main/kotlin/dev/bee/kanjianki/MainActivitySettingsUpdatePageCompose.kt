@@ -91,12 +91,18 @@ private fun canInstallUpdates(activity: MainActivitySettings): Boolean {
 
 private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Boolean) {
     val result = AutoUpdateSettingsTogglePolicy.toggle(enabled)
-    activity.store.saveAutoUpdateEnabled(result.enabled())
-    if (result.enabled()) {
-        AutoUpdateScheduler.schedule(activity)
-    } else {
-        AutoUpdateScheduler.cancel(activity)
+    activity.runSettingsWrite(
+        traceSection = "kani.settings.auto-update.toggle",
+        write = {
+            activity.store.saveAutoUpdateEnabled(result.enabled())
+        },
+    ) {
+        if (result.enabled()) {
+            AutoUpdateScheduler.schedule(activity)
+        } else {
+            AutoUpdateScheduler.cancel(activity)
+        }
+        Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
+        activity.renderUpdate()
     }
-    Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
-    activity.renderUpdate()
 }
