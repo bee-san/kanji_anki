@@ -20,8 +20,14 @@ internal class MainActivitySettingsLearningPanel(private val activity: MainActiv
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
             return
         }
-        SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings)
-        Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.learning.save",
+            write = {
+                SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings)
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 }

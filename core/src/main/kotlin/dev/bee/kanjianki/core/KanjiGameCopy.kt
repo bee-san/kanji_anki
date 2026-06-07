@@ -11,21 +11,21 @@ object KanjiGameCopy {
     const val LABEL_ROUND = "Round"
     const val LABEL_SCORE = "Score"
     const val LABEL_STREAK = "Streak"
-    const val GAMES_SUBTITLE = "Practice kanji without changing SRS."
-    const val EMPTY_NO_KANJI_TITLE = "No kanji games yet"
-    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid first so Kani can build practice games from your own cards."
-    const val GAME_NOT_READY_TITLE = "Game not ready"
-    const val GAME_NOT_READY_BODY = "This game needs at least two usable choices from your local kanji data."
+    const val GAMES_SUBTITLE = "Practice without changing reviews."
+    const val EMPTY_NO_KANJI_TITLE = "No games yet"
+    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid to build games."
+    const val GAME_NOT_READY_TITLE = "Needs more data"
+    const val GAME_NOT_READY_BODY = "At least two choices needed."
 
     @JvmStatic
     fun modeBody(mode: KanjiGameEngine.GameMode?, available: Boolean): String {
         if (!available) {
-            return "Needs more local kanji data."
+            return "Needs more data."
         }
         return when (mode!!) {
-            KanjiGameEngine.GameMode.MEANING_POP -> "Pick meanings for kanji from your focus list."
-            KanjiGameEngine.GameMode.READING_RUSH -> "Pick readings from your source words."
-            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "Choose between visually similar kanji."
+            KanjiGameEngine.GameMode.MEANING_POP -> "Pick meanings from your focus list."
+            KanjiGameEngine.GameMode.READING_RUSH -> "Pick readings from source words."
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "Choose among similar kanji."
         }
     }
 

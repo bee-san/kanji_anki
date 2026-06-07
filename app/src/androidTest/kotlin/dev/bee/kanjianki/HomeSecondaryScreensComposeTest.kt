@@ -28,7 +28,7 @@ class HomeSecondaryScreensComposeTest {
                     onHome = { homeClicked = true },
                     queue = HomeFocusQueuePanelModel(
                         planText = "Adaptive focus is waiting for sync",
-                        emptyTitle = "No kanji queued yet",
+                        emptyTitle = "No kanji queued",
                         emptyBody = "Sync AnkiDroid to find problem cards.",
                         showSyncButton = true,
                         cards = emptyList()
@@ -57,8 +57,8 @@ class HomeSecondaryScreensComposeTest {
                     homeLabel = "Home",
                     onHome = { homeClicked = true },
                     mistakes = HomeRecentMistakesPanelModel(
-                        emptyTitle = "No recent mistakes yet",
-                        emptyBody = "Missed reviews will appear here.",
+                        emptyTitle = "No mistakes yet",
+                        emptyBody = "Missed or hard reviews.",
                         cards = listOf(
                             HomeRecentMistakesCardModel(
                                 kanji = "裂",

@@ -108,7 +108,14 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
             .semantics {
                 contentDescription = homeRecentMistakesCardDescription(model)
             }
-            .clickable(role = Role.Button, onClick = model.onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withButtonTrace("recent-mistake-${model.kanji}") {
+                        model.onClick()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)

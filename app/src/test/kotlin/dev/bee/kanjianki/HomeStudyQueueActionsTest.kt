@@ -99,6 +99,33 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
+    fun persistentQueueUsesProvidedCurrentItemsWithoutReadingStoreAgain() {
+        val current = mutableListOf<RecordsStudyModels.StudyItem>()
+        val writer = RecordingWriter(current)
+
+        val result = HomeStudyQueueActions.studyQueue(
+            HomeStudyQueueActions.StudyQueueRequest(
+                emptyList(),
+                123L,
+                true,
+                null,
+                { throw AssertionError("reader should not be called when current items are supplied") },
+                RecordsSyncModels.Settings::kikuDefaults,
+                { 100L },
+                RecordsBase.StudyLadderSettings::defaults,
+                { _, _, _ -> plan(true) },
+                { _, currentItems, _, _, _, _, _ -> currentItems },
+                writer,
+            ),
+            currentItems = current,
+        )
+
+        assertSame(current, result)
+        assertTrue(writer.annotated)
+        assertTrue(writer.replaced)
+    }
+
+    @Test
     fun studyQueueRequestKeepsJavaRecordSemantics() {
         val seeder = HomeStudyQueueActions.StudyQueueSeeder {
             _: List<RecordsImportModels.DashboardRow>,

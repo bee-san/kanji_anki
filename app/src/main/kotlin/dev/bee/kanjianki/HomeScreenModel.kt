@@ -8,7 +8,6 @@ data class HomeScreenModel(
     val showSyncCta: Boolean,
     val syncLabel: String,
     val studyLabel: String,
-    val studySubtitle: String,
     val onSync: () -> Unit,
     val onStudy: () -> Unit,
     val actions: List<HomeActionModel>,

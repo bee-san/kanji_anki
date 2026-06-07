@@ -111,7 +111,11 @@ fun GamesResultCard(model: GamesResultModel) {
                 )
             }
             Button(
-                onClick = { model.onPrimary.run() },
+                onClick = {
+                    withButtonTrace("games-result-primary") {
+                        model.onPrimary.run()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 58.dp)
@@ -129,7 +133,11 @@ fun GamesResultCard(model: GamesResultModel) {
                 )
             }
             OutlinedButton(
-                onClick = { model.onGames.run() },
+                onClick = {
+                    withButtonTrace("games-result-open") {
+                        model.onGames.run()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 54.dp)

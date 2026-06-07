@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -32,13 +33,9 @@ class MainActivityStudyDoneActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Study more new cards").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsDisplayed()
-
-        composeRule.onNodeWithText("Study more new cards").performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+        composeRule.onNodeWithText("Study more new cards").assertIsDisplayed().assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Continue all kanji").assertIsDisplayed().assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Back home").assertIsDisplayed().assertIsEnabled().performClick()
 
         assertTrue(studyMoreClicked)
         assertTrue(continueClicked)
@@ -60,11 +57,8 @@ class MainActivityStudyDoneActionsComposeTest {
         }
 
         composeRule.onAllNodesWithText("Study more new cards").assertCountEquals(0)
-        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsDisplayed()
-
-        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+        composeRule.onNodeWithText("Continue all kanji").assertIsDisplayed().assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Back home").assertIsDisplayed().assertIsEnabled().performClick()
 
         assertTrue(continueClicked)
         assertTrue(backClicked)
@@ -99,8 +93,8 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText("Your Pareto focus is complete.").assertIsDisplayed()
         composeRule.onNodeWithText("Today's focus: 0 of 3 left").assertIsDisplayed()
         composeRule.onNodeWithText("Done").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).performClick()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+        composeRule.onNodeWithText("Continue all kanji").assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Back home").assertIsEnabled().performClick()
 
         assertTrue(continueClicked)
         assertTrue(backClicked)
@@ -128,7 +122,7 @@ class MainActivityStudyDoneActionsComposeTest {
                     onBackHome = Runnable {},
                     studyMoreDialog = StudyMoreNewCardsDialogModel(
                         title = "Study more new cards",
-                        message = "How many extra new cards do you want to study now?",
+                        message = "How many extra new cards?",
                         inputLabel = MainActivityBase.LABEL_NEW_CARDS,
                         initialCount = 2,
                         confirmLabel = MainActivityBase.LABEL_STUDY,
@@ -144,12 +138,12 @@ class MainActivityStudyDoneActionsComposeTest {
         }
 
         composeRule.onAllNodesWithText("Study more new cards").assertCountEquals(2)
-        composeRule.onNodeWithText("How many extra new cards do you want to study now?").assertIsDisplayed()
+        composeRule.onNodeWithText("How many extra new cards?").assertIsDisplayed()
         composeRule.onNodeWithText("2").performTextReplacement("3")
-        composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY).performClick()
+        composeRule.onNodeWithText("Study").assertIsEnabled().performClick()
 
         assertEquals("3", confirmedCount)
-        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.onNodeWithText("Cancel").assertIsEnabled().performClick()
         assertTrue(dismissed)
     }
 
@@ -207,7 +201,7 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText("Nothing due now").assertIsDisplayed()
         composeRule.onNodeWithText("All caught up").assertIsDisplayed()
         composeRule.onNodeWithTag(homeEmptyStateTestTag("All caught up")).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+        composeRule.onNodeWithText("Back home").assertIsEnabled().performClick()
 
         assertTrue(backClicked)
     }

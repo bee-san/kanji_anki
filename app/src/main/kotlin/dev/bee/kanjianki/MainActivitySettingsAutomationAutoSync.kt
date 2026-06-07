@@ -30,18 +30,30 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
 
     private fun enableAutoSync() {
         val result = AutoSyncSettingsTogglePolicy.enable()
-        activity.store.setAutoSyncEnabled(result.enabled)
-        AutoSyncScheduler.schedule(activity)
-        Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.auto-sync.enable",
+            write = {
+                activity.store.setAutoSyncEnabled(result.enabled)
+            },
+        ) {
+            AutoSyncScheduler.schedule(activity)
+            Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 
     private fun disableAutoSync() {
         val result = AutoSyncSettingsTogglePolicy.disable()
-        activity.store.setAutoSyncEnabled(result.enabled)
-        AutoSyncScheduler.cancel(activity)
-        Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.auto-sync.disable",
+            write = {
+                activity.store.setAutoSyncEnabled(result.enabled)
+            },
+        ) {
+            AutoSyncScheduler.cancel(activity)
+            Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 
     private fun autoSyncAction(auto: LocalStoreBase.AutoSyncSettings): AutoSyncActionModel? {

@@ -43,8 +43,9 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.READY_FIRST_SYNC, ready.state())
         assertEquals("Sync cards", ready.primaryActionLabel())
-        assertTrue(ready.body().contains("source selection: active cards + suspended cards"))
-        assertTrue(ready.body().contains("note type Basic"))
+        assertTrue(ready.body().contains("archives suspended Basic cards locally"))
+        assertTrue(ready.body().contains("active cards only when the filter is on"))
+        assertTrue(ready.body().contains("Reads local data after you confirm"))
     }
 
     @Test

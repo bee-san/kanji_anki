@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LocalDayPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,19 +45,58 @@ class StatsCacheStoreTest {
     @Test
     fun readFreshStatsReturnsDecodedSnapshotWhenSourceVersionMatches() {
         setSourceVersion(7L)
-        cacheStore.write(db, snapshot(7L, 1234L, 2, 5))
+        val now = 1_234L
+        cacheStore.write(db, snapshot(7L, now, 2, 5))
 
-        val fresh = cacheStore.readFresh(db)
+        val fresh = cacheStore.readFresh(db, nowMillis = now)
 
         assertNotNull(fresh)
         assertEquals(7L, fresh!!.sourceVersion)
         assertEquals(1234L, fresh.generatedAtMillis)
         assertEquals(2, fresh.outcomeStats.weakKanjiImproved.improvedCount)
         assertEquals(5, fresh.impactReport.helpedCount)
+        assertEquals(STATS_CACHE_FORMAT_VERSION, fresh.cacheFormatVersion)
+        assertEquals(8, fresh.studyImpactStats.totalReviews)
+        assertEquals(3, fresh.studyImpactStats.distinctReviewedKanji)
+        assertEquals(2, fresh.recentMistakes.size)
+        assertEquals("痛", fresh.recentMistakes[0].kanji)
+        assertEquals("again", fresh.recentMistakes[0].rating)
     }
 
     @Test
-    fun readFreshStatsReturnsNullWhenCacheVersionIsStale() {
+    fun readLatestLegacyCacheDefaultsMissingExtrasToEmptyCollections() {
+        val oldOutcomeJson = StatsCacheCodec.outcomeToJson(
+            StudyStatsStore.KaniOutcomeStats(
+                StudyStatsStore.WeakKanjiImprovedMetric(4, 80.0, 40.0, Collections.emptyList()),
+                StudyStatsStore.MatureSupportGainedMetric.empty(),
+                StudyStatsStore.LadderHealthMetric.empty(),
+            ),
+        )
+        val oldImpactJson = StatsCacheCodec.impactReportToJson(KanjiImpactAnalyzer.Report(2, 1, 0, Collections.emptyList()))
+        db.execSQL(
+            "INSERT OR REPLACE INTO ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} (id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any>(3L, 999L, oldOutcomeJson, oldImpactJson),
+        )
+
+        val latest = cacheStore.readLatest(db)
+
+        assertNotNull(latest)
+        latest!!
+        assertEquals(1, latest.cacheFormatVersion)
+        assertEquals(0, latest.studyImpactStats.totalReviews)
+        assertEquals(0, latest.studyStreak.currentDays)
+        assertEquals(0, latest.studyStreak.bestDays)
+        assertFalse(latest.studyStreak.studiedToday)
+        assertEquals(0, latest.studyStreak.reviewsToday)
+        assertEquals(0L, latest.studyStreak.lastStudyAtMillis)
+        assertEquals(0L, latest.studyTaskTimeStats.todayMillis)
+        assertEquals(0L, latest.studyTaskTimeStats.lastSevenDaysMillis)
+        assertEquals(0, latest.studyTaskTimeStats.answeredTasks)
+        assertTrue(latest.recentMistakes.isEmpty())
+    }
+
+    @Test
+    fun readFreshStatsReturnsNullWhenSourceVersionChanges() {
         setSourceVersion(8L)
         cacheStore.write(db, snapshot(7L, 1234L, 2, 5))
 
@@ -68,18 +108,46 @@ class StatsCacheStoreTest {
     }
 
     @Test
+    fun readFreshStatsReturnsNullWhenCacheFormatVersionChanges() {
+        setSourceVersion(7L)
+        cacheStore.write(db, snapshot(7L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1))
+
+        assertNull(cacheStore.readFresh(db))
+    }
+
+    @Test
     fun hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
+        val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(11L)
         db.execSQL(
             "INSERT OR REPLACE INTO stats_screen_cache " +
-                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, 333, 'not-json', '{}')"
+                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, ?, 'not-json', '{}')",
+            arrayOf<Any>(now + 12_000L),
         )
 
-        assertTrue(cacheStore.hasFreshSnapshot(db))
+        assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
 
         cacheStore.markDirty(db)
 
-        assertFalse(cacheStore.hasFreshSnapshot(db))
+        assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
+    }
+
+    @Test
+    fun readFreshReturnsNullWhenSnapshotNotFromCurrentDay() {
+        val today = LocalDayPolicy.localDayStart(1_234_567_890_000L)
+        val yesterday = LocalDayPolicy.moveLocalDays(today, -1)
+        setSourceVersion(12L)
+        cacheStore.write(
+            db,
+            snapshot(
+                sourceVersion = 12L,
+                generatedAtMillis = yesterday + 60_000L,
+                improvedCount = 2,
+                helpedCount = 5,
+            ),
+        )
+
+        assertNull(cacheStore.readFresh(db, nowMillis = today))
     }
 
     @Test
@@ -143,6 +211,12 @@ class StatsCacheStoreTest {
         generatedAtMillis: Long,
         improvedCount: Int,
         helpedCount: Int,
+        studyImpactStats: StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(8, 3, 1, 1, 0, 0),
+        recentMistakes: List<StudyStatsStore.RecentMistake> = listOf(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        ),
+        cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
     ): StatsCacheStore.Snapshot {
         return StatsCacheStore.Snapshot(
             StudyStatsStore.KaniOutcomeStats(
@@ -158,6 +232,11 @@ class StatsCacheStoreTest {
             KanjiImpactAnalyzer.Report(helpedCount, 0, 0, Collections.emptyList()),
             generatedAtMillis,
             sourceVersion,
+            studyImpactStats,
+            recentMistakes,
+            StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+            StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
+            cacheFormatVersion,
         )
     }
 }

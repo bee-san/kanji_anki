@@ -16,9 +16,11 @@ import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.time.AppClock
@@ -51,7 +53,29 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        schedule(settings, androidReminderServices(context), AppClock.orSystem(clock))
+        schedule(context, settings, androidReminderServices(context), AppClock.orSystem(clock).nowMillis())
+    }
+
+    @JvmStatic
+    fun schedule(
+        context: Context?,
+        settings: LocalStoreBase.ReminderSettings?,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        if (context == null) {
+            return
+        }
+        if (settings == null || !settings.enabled) {
+            services.cancelAlarm()
+            return
+        }
+        LocalStore(context).use { store ->
+            val rows = store.activeDashboardRows()
+            val studiedToday = store.studiedKanjiSince(startOfLocalDay(nowMillis)).isNotEmpty()
+            val futureDueAtMillis = activeReminderDueAtMillis(store.studyItemsForKanji(rows.map { it.kanji }))
+            services.scheduleAlarm(nextTriggerMillis(settings, nowMillis, studiedToday, futureDueAtMillis))
+        }
     }
 
     @JvmStatic
@@ -261,10 +285,26 @@ object ReminderScheduler {
         return ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis)
     }
 
+    @JvmStatic
+    fun nextTriggerMillis(
+        settings: LocalStoreBase.ReminderSettings,
+        nowMillis: Long,
+        studiedToday: Boolean,
+        futureDueAtMillis: Iterable<Long>,
+    ): Long {
+        return ReminderSchedulePolicy.nextTriggerMillis(
+            settings.hour,
+            settings.minute,
+            nowMillis,
+            studiedToday,
+            futureDueAtMillis,
+        )
+    }
+
     private fun reminderCopy(context: Context, clock: AppClock?): ReminderCopyPolicy.ReminderCopy {
         LocalStore(context).use { store ->
             val rows = store.activeDashboardRows()
-            val items = store.studyItems()
+            val items = store.studyItemsForKanji(rows.map { it.kanji })
             val now = AppClock.orSystem(clock).nowMillis()
             return ReminderCopyPolicy.forPlan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
@@ -287,4 +327,18 @@ object ReminderScheduler {
     }
 
     private fun startOfLocalDay(nowMillis: Long): Long = LocalDayPolicy.localDayStart(nowMillis)
+
+    private fun activeReminderDueAtMillis(items: List<RecordsStudyModels.StudyItem>): List<Long> {
+        val dueAtMillis = ArrayList<Long>()
+        for (item in items) {
+            if (isActiveReminderItem(item)) {
+                dueAtMillis.add(item.dueAtMillis)
+            }
+        }
+        return dueAtMillis
+    }
+
+    private fun isActiveReminderItem(item: RecordsStudyModels.StudyItem): Boolean {
+        return StudyLadderRules.STATE_RETIRED != item.state && item.suppressedByTaskType.isEmpty()
+    }
 }

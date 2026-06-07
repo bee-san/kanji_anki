@@ -21,14 +21,14 @@ class SettingsTextCopyTest {
     fun settingsStatusSummariesPreserveAutomationCopy() {
         assertEquals(
                 listOf(
-                        "Blocked",
+                        "Notifications off",
                         "21:05",
                         "Off",
                         "After first sync",
                         "07:30",
                         "Off",
                         "Verified APK ready",
-                        "Automatic checks on",
+                        "Daily checks on",
                         "Manual checks",
                         "4 suspended cards archived, 2 rare kanji added; active cards remain optional",
                         "Sync blocked: No provider",
@@ -38,13 +38,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "Choose which AnkiDroid cards Kani imports and when sync runs.",
-                        "Deck options",
-                        "Learning steps, deck limits, retention, workload, sorting, and ladder movement.",
-                        "Reminders & updates",
-                        "Daily reminders, daily sync, and app updates.",
+                        "Fields, filters, range, and sync.",
+                        "Study settings",
+                        "New cards, timing, workload, and ladder controls.",
+                        "Automation",
+                        "Reminders and updates.",
                         "Display & data",
-                        "Offline dictionaries, stroke data, fonts, and attribution.",
+                        "Dictionaries, stroke data, fonts, and credits.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -76,27 +76,27 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "GitHub updater",
-                        "Version 1.2.3. Checks GitHub Releases, then verifies the APK.",
+                        "Version 1.2.3. Checks releases, then verifies the APK.",
                         "Automatic updates",
                         "Check for update",
-                        "On: checks about once a day",
+                        "On: daily checks",
                         "Off",
                         "Last check: not yet",
                         "Last result: none",
                         "Install permission: Ready",
                         "Install permission: Missing",
                         "Verified APK ready: 0.4.33",
-                        "Android needs confirmation before Kani can replace itself.",
+                        "Android needs confirmation to install updates.",
                         "Install verified update",
                         "Set up app installs",
-                        "Turn off automatic updates",
-                        "Turn on automatic updates",
+                        "Turn off updates",
+                        "Turn on updates",
                         "Back to settings",
                         "Settings overview",
-                        "Choose a section below. Expanding it keeps the page in place and preserves your scroll position.",
+                        "Choose a section.",
                         "Note type",
                         "Import filters",
-                        "Kanji frequency range",
+                        "Suspended card range",
                         "Daily reminder",
                         "Daily sync",
                         "App updates"
@@ -133,28 +133,24 @@ class SettingsTextCopyTest {
                 listOf(
                         "Cards per kanji",
                         "Reminder: Off",
-                        "Collapse Deck options",
-                        "Expand Reminders & updates",
-                        "Expanded",
-                        "Collapsed",
-                        "1 setting",
-                        "2 settings",
-                        "Starts after first successful sync",
+                        "Collapse Study settings",
+                        "Expand Automation",
+                        "1 card",
+                        "2 cards",
+                        "Starts after first sync",
                         "On around 07:30",
                         "Off",
-                        "Sync once manually; Kani refreshes daily after that.",
-                        "Scheduled daily; Android may batch the time.",
-                        "Daily background sync is paused.",
+                        "Sync once; then Kani refreshes daily.",
+                        "Scheduled daily; Android may batch it.",
+                        "Daily sync is paused.",
                         "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",
                         "Last successful sync yesterday. Last sync attempt today.",
                 ),
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
                         SettingsTextCopy.statusPillDescription("Reminder", "Off"),
-                        SettingsTextCopy.categoryToggleDescription(true, "Deck options"),
-                        SettingsTextCopy.categoryToggleDescription(false, "Reminders & updates"),
-                        SettingsTextCopy.categoryStateDescription(true),
-                        SettingsTextCopy.categoryStateDescription(false),
+                        SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
+                        SettingsTextCopy.categoryToggleDescription(false, "Automation"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
                         SettingsTextCopy.settingsCategoryPanelCount(2),
                         SettingsTextCopy.autoSyncStatus(false, true, "07:30"),
@@ -202,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags.",
+                        "Start with suspended cards. Add other sources only when needed; leech tags are skipped.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -218,13 +214,13 @@ class SettingsTextCopyTest {
                         "Save import filters",
                         "Enter a browser query or turn it off.",
                         "Turn on at least one import source.",
-                        "Import filters saved. Sync again to rebuild practice.",
+                        "Filters saved. Sync again to rebuild practice.",
                         "Presets",
-                        "Import preset saved. Sync again to rebuild practice.",
+                        "Preset saved. Sync again to rebuild practice.",
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, and cards 1-1000.",
                         "Kanji frequency range",
-                        "Choose which Jiten ranks Kani imports from suspended cards. Defaults to 100-3000.",
+                        "Jiten ranks imported from suspended cards. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -262,18 +258,18 @@ class SettingsTextCopyTest {
                         "Save frequency range",
                         "Enter numeric ranks.",
                         "Use ranks from 1 to 20000.",
-                        "Kanji frequency range saved. Sync again to rebuild practice.",
+                        "Range saved. Sync again to rebuild practice.",
                         "Offline data licenses",
-                        "View KANJIDIC2, Jiten, KanjiVG, and font credits.",
+                        "KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",
                         "Data licenses",
-                        "Dictionary and stroke data bundled for offline use.",
+                        "Bundled dictionary and stroke data.",
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
                         "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Keep one note type selected and map the fields below.",
+                        "Default: Kiku. Map the fields below.",
                         "Field mappings"
                 ),
                 listOf(
@@ -301,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map the fields Kani needs: expression, reading, meaning, sentence, frequency, and frequency sort.",
+                        "Map expression, reading, meaning, sentence, frequency, and frequency sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -360,17 +356,17 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New cards and relearning use short steps. Those repeats are practice only.",
+                "New and relearning cards use short steps. Repeats stay practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
         assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel())
         assertEquals("Use new-card steps", SettingsTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
-        assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast())
+        assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early. 0 disables it; learning and relearning delays still apply.",
+                "Show due reviews early. 0 turns it off; learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -427,7 +423,7 @@ class SettingsTextCopyTest {
                         "Always available rung enabled",
                         "Conditional rung enabled",
                         "Study ladder",
-                        "Turn rungs on or off, or move them. Keep one always-available rung on."
+                        "Choose rungs and order. Keep one always-available rung on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -458,18 +454,18 @@ class SettingsTextCopyTest {
                         "Off",
                         "Up",
                         "Down",
-                        "Restore default ladder",
-                        "Study ladder restored.",
-                        "Keep at least one always-available rung on.",
+                        "Restore defaults",
+                        "Ladder restored.",
+                        "Keep one always-available rung on.",
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards up or down. Learning and relearning repeats stay practice-only.",
+                        "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
                         "Save movement rules",
-                        "Ladder movement saved."
+                        "Movement rules saved."
                 ),
                 listOf(
                         SettingsTextCopy.ladderToggleLabel(true),
@@ -497,7 +493,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Daily nudge for active problem kanji; Android may batch it.",
+                "Daily reminders; Android may batch them.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -511,12 +507,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Android notifications are off, so this reminder cannot appear yet.",
+                "Android notifications are off; this reminder cannot appear.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Android asks for notification permission before turning this on.",
+                "Allow notification permission before turning this on.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
@@ -534,7 +530,7 @@ class SettingsTextCopyTest {
         assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
         assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
-        assertEquals("Use a whole number of minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
+        assertEquals("Use whole minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
         assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
     }
 

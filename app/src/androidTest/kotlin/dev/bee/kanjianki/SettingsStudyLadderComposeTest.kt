@@ -1,7 +1,9 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -24,6 +26,7 @@ class SettingsStudyLadderComposeTest {
         var toggled = false
         var movedUp = false
         var movedDown = false
+        var offToggled = false
         var restored = false
 
         composeRule.setContent {
@@ -58,7 +61,7 @@ class SettingsStudyLadderComposeTest {
                             toggleDescription = "Off Word reading",
                             moveUpDescription = "Up Word reading",
                             moveDownDescription = "Down Word reading",
-                            onToggle = SettingsStudyLadderAction {},
+                            onToggle = SettingsStudyLadderAction { offToggled = true },
                             onMoveUp = SettingsStudyLadderAction { movedUp = true },
                             onMoveDown = SettingsStudyLadderAction {}
                         )
@@ -74,13 +77,16 @@ class SettingsStudyLadderComposeTest {
         composeRule.onNodeWithText("Similar kanji").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Turn off Similar kanji").performClick()
         composeRule.onNodeWithContentDescription("Down Similar kanji").performClick()
+        composeRule.onNodeWithText("On").assertHasClickAction().assertIsEnabled().performClick()
         composeRule.onNodeWithContentDescription("Up Word reading").performClick()
-        composeRule.onNodeWithContentDescription(SettingsTextCopy.restoreDefaultLadderLabel()).performClick()
+        composeRule.onNodeWithText("Off").assertHasClickAction().assertIsEnabled().performClick()
+        composeRule.onNodeWithText("Restore defaults").assertHasClickAction().assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertTrue(toggled)
             assertTrue(movedDown)
             assertTrue(movedUp)
+            assertTrue(offToggled)
             assertTrue(restored)
         }
     }
@@ -134,12 +140,8 @@ class SettingsStudyLadderComposeTest {
             )
         }
 
-        composeRule.onNodeWithContentDescription("Up Write kanji")
-            .assertIsNotEnabled()
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
-        composeRule.onNodeWithContentDescription("Down Word reading")
-            .assertIsNotEnabled()
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        composeRule.onNodeWithContentDescription("Up Write kanji").assertIsNotEnabled().assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        composeRule.onNodeWithContentDescription("Down Word reading").assertIsNotEnabled().assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
 
         composeRule.runOnIdle {
             assertFalse(movedFirstUp)

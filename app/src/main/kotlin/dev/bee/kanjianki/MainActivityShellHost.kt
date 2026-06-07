@@ -5,17 +5,19 @@ import androidx.compose.runtime.Composable
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
-        prepareRoute(selected)
-        activity.contentScrollY = initialScrollY
-        activity.setContent {
-            MainActivityComposeRoute(
-                model = MainActivityShellModel(selectedRoute = selected),
-                initialScrollY = initialScrollY,
-                onScrollY = { activity.contentScrollY = it },
-                content = content
-            )
+        withRouteTrace(selected) {
+            prepareRoute(selected)
+            activity.contentScrollY = initialScrollY
+            activity.setContent {
+                MainActivityComposeRoute(
+                    model = MainActivityShellModel(selectedRoute = selected),
+                    initialScrollY = initialScrollY,
+                    onScrollY = { activity.contentScrollY = it },
+                    content = content
+                )
+            }
+            activity.styleSystemBars()
         }
-        activity.styleSystemBars()
     }
 
     fun composeRouteWithActionBar(
@@ -25,19 +27,21 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        prepareRoute(selected)
-        activity.contentScrollY = initialScrollY
-        beforeContent()
-        activity.setContent {
-            MainActivityComposeRouteWithActionBar(
-                model = MainActivityShellModel(selectedRoute = selected),
-                initialScrollY = initialScrollY,
-                onScrollY = { activity.contentScrollY = it },
-                content = content,
-                actionBar = actionBar,
-            )
+        withRouteTrace(selected) {
+            prepareRoute(selected)
+            activity.contentScrollY = initialScrollY
+            beforeContent()
+            activity.setContent {
+                MainActivityComposeRouteWithActionBar(
+                    model = MainActivityShellModel(selectedRoute = selected),
+                    initialScrollY = initialScrollY,
+                    onScrollY = { activity.contentScrollY = it },
+                    content = content,
+                    actionBar = actionBar,
+                )
+            }
+            activity.styleSystemBars()
         }
-        activity.styleSystemBars()
     }
 
     private fun prepareRoute(selected: String) {

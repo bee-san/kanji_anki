@@ -86,43 +86,55 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             state.lapses,
             state.minMatching
         ) ?: return
-        SettingsWriteActions.saveImportFilters(
-            SettingsWriteActions.ImportFilterWriteRequest(
-                state.activeCards,
-                state.suspendedCards,
-                state.taggedCards,
-                parsedTags.joinToString(" "),
-                state.weakCards,
-                parsedThresholds.difficulty,
-                parsedThresholds.lapseThreshold,
-                parsedThresholds.minCards,
-                state.browserQueryCards,
-                queryText
-            ),
-            SettingsStoreWriter(activity)
-        )
-        Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.import-filters.save",
+            write = {
+                SettingsWriteActions.saveImportFilters(
+                    SettingsWriteActions.ImportFilterWriteRequest(
+                        state.activeCards,
+                        state.suspendedCards,
+                        state.taggedCards,
+                        parsedTags.joinToString(" "),
+                        state.weakCards,
+                        parsedThresholds.difficulty,
+                        parsedThresholds.lapseThreshold,
+                        parsedThresholds.minCards,
+                        state.browserQueryCards,
+                        queryText
+                    ),
+                    SettingsStoreWriter(activity)
+                )
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show()
+            activity.renderSettings(true)
+        }
     }
 
     private fun applyPreset(preset: SettingsImportPreset) {
-        SettingsWriteActions.saveImportFilters(
-            SettingsWriteActions.ImportFilterWriteRequest(
-                preset.activeCards(),
-                preset.suspendedCards(),
-                preset.taggedCards(),
-                preset.tags(),
-                preset.weakCards(),
-                preset.weakDifficulty(),
-                preset.weakLapses(),
-                preset.minMatchingCards(),
-                preset.browserQueryCards(),
-                preset.browserQuery()
-            ),
-            SettingsStoreWriter(activity)
-        )
-        Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.import-filters.preset",
+            write = {
+                SettingsWriteActions.saveImportFilters(
+                    SettingsWriteActions.ImportFilterWriteRequest(
+                        preset.activeCards(),
+                        preset.suspendedCards(),
+                        preset.taggedCards(),
+                        preset.tags(),
+                        preset.weakCards(),
+                        preset.weakDifficulty(),
+                        preset.weakLapses(),
+                        preset.minMatchingCards(),
+                        preset.browserQueryCards(),
+                        preset.browserQuery()
+                    ),
+                    SettingsStoreWriter(activity)
+                )
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show()
+            activity.renderSettings(true)
+        }
     }
 
     private class SettingsStoreWriter(

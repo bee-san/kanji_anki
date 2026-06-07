@@ -359,14 +359,18 @@ class LocalStoreInstrumentedTest {
         assertEquals(listOf("拉", "麺"), similarOnly.map { it.kanji });
         assertTrue(store.searchKanjiInventory("riddle", true).isEmpty());
 
-        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, true, 2500L);
-        assertTrue(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
-        assertTrue(requireNotNull(store.inventoryItemForKanji("麺")).suspended);
-        assertFalse(requireNotNull(store.inventoryItemForKanji("謎")).suspended);
+        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, true, 2500L)
+        val suspendedSimilarOnly = store.searchKanjiInventory("", true)
+        assertTrue(suspendedSimilarOnly.all { it.suspended })
+        assertTrue(requireNotNull(store.inventoryItemForKanji("拉")).suspended)
+        assertTrue(requireNotNull(store.inventoryItemForKanji("麺")).suspended)
+        assertFalse(requireNotNull(store.inventoryItemForKanji("謎")).suspended)
 
-        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, false, 3000L);
-        assertFalse(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
-        assertFalse(requireNotNull(store.inventoryItemForKanji("麺")).suspended);
+        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, false, 3000L)
+        val unsuspendedSimilarOnly = store.searchKanjiInventory("", true)
+        assertTrue(unsuspendedSimilarOnly.none { it.suspended })
+        assertFalse(requireNotNull(store.inventoryItemForKanji("拉")).suspended)
+        assertFalse(requireNotNull(store.inventoryItemForKanji("麺")).suspended)
     }
 
     @Test

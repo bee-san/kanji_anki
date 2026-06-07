@@ -22,7 +22,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
-                    body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = this@MainActivitySettings::renderHome,
                     onBack = {
                         contentScrollY = settingsScrollY
@@ -58,6 +57,19 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 }
             },
         )
+    }
+
+    fun runSettingsWrite(
+        traceSection: String,
+        write: () -> Unit,
+        onComplete: () -> Unit,
+    ) {
+        io.execute {
+            withUiTrace(traceSection) {
+                write()
+            }
+            main.post(onComplete)
+        }
     }
 
     fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
@@ -124,7 +136,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),
-                    body = copy.body(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
                     onBack = {

@@ -46,7 +46,7 @@ class SettingsScreenCategoryNavigationComposeTest {
             categories = listOf(
                 settingsCategorySectionModel(
                     sectionKey = "settings-study-behavior",
-                    title = "Study behavior",
+                    title = "Study settings",
                     summary = "Review pace and learning controls.",
                     iconRes = R.drawable.ic_study_24,
                     expanded = true,
@@ -61,30 +61,67 @@ class SettingsScreenCategoryNavigationComposeTest {
             SettingsScreen(screen)
         }
 
-        composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
-        composeRule.onNodeWithText("1 setting").assertIsDisplayed()
+        composeRule.onNodeWithText("1 card").assertIsDisplayed()
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
 
-        composeRule.onNodeWithContentDescription("Collapse Study behavior").performClick()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").performClick()
         composeRule.waitForIdle()
 
         assertEquals(1, toggleRuns)
-        composeRule.onNodeWithContentDescription("Expand Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
         composeRule.onAllNodesWithTag(panelTag).assertCountEquals(0)
         composeRule.onAllNodesWithText("Deep setting").assertCountEquals(0)
 
-        composeRule.onNodeWithContentDescription("Expand Study behavior").performClick()
+        composeRule.onNodeWithContentDescription("Expand Study settings").performClick()
         composeRule.waitForIdle()
 
         assertEquals(2, toggleRuns)
-        composeRule.onNodeWithContentDescription("Collapse Study behavior").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
+    }
+
+    @Test
+    fun categoryHeaderTitleIsClickable() {
+        var toggleRuns = 0
+        val screen = settingsScreenModel(
+            hero = SettingsAutomationHeroModel(
+                cockpitLabel = "Settings",
+                title = "Settings",
+                body = "Tune Kani.",
+                rows = emptyList(),
+            ),
+            categories = listOf(
+                settingsCategorySectionModel(
+                    sectionKey = "settings-study-behavior",
+                    title = "Study settings",
+                    summary = "Review pace and learning controls.",
+                    iconRes = R.drawable.ic_study_24,
+                    expanded = true,
+                    onToggle = Runnable { toggleRuns += 1 },
+                    panels = emptyList(),
+                ),
+            ),
+            onHome = Runnable {},
+        )
+
+        composeRule.setContent {
+            SettingsScreen(screen)
+        }
+
+        composeRule.onNodeWithText("Study settings").assertIsDisplayed().assertHasClickAction().performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(1, toggleRuns)
+        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
     }
 }

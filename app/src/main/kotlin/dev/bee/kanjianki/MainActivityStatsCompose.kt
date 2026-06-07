@@ -59,13 +59,17 @@ fun StatsScreen(model: StatsScreenModel, modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(7.dp))
         StatsCard(model.verdict)
-        Spacer(modifier = Modifier.height(7.dp))
-        Text(
-            text = model.intro,
-            style = statsTextStyle(sizeSp = 16, bold = false),
-            color = ComposeColor(STATS_MUTED_COLOR)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+        if (model.intro.isNotBlank()) {
+            Spacer(modifier = Modifier.height(7.dp))
+            Text(
+                text = model.intro,
+                style = statsTextStyle(sizeSp = 16, bold = false),
+                color = ComposeColor(STATS_MUTED_COLOR)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        } else {
+            Spacer(modifier = Modifier.height(10.dp))
+        }
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             model.sections.forEach { card ->
                 StatsCard(card)

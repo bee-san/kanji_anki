@@ -19,7 +19,7 @@ object HomeTextCopy {
         if (plan.allKanjiMode) {
             return "All current"
         }
-        return "${plan.remaining} left · target ${plan.target}"
+        return "${plan.remaining}/${plan.target} left"
     }
 
     @JvmStatic
@@ -33,7 +33,7 @@ object HomeTextCopy {
     @JvmStatic
     fun recentMistakeTitle(rowMeaning: String?): String {
         if (rowMeaning.isNullOrEmpty()) {
-            return "Recent mistake"
+            return "Mistake"
         }
         return rowMeaning
     }
@@ -42,7 +42,7 @@ object HomeTextCopy {
     fun recentMistakeSubtitle(rating: String?, dateText: String?): String {
         val safeRating = rating?.takeIf { it.isNotEmpty() }?.let(::sentenceCase)
         val safeDate = dateText?.takeIf { it.isNotEmpty() }
-        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Recent miss" }
+        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Missed" }
     }
 
     @JvmStatic
@@ -84,7 +84,7 @@ object HomeTextCopy {
     fun appTitle(): String = "Kani"
 
     @JvmStatic
-    fun appSubtitle(): String = "An AnkiDroid companion for kanji blindness"
+    fun appSubtitle(): String = ""
 
     @JvmStatic
     fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"
@@ -96,14 +96,14 @@ object HomeTextCopy {
     fun viewAllLabel(): String = "View all"
 
     @JvmStatic
-    fun noKanjiQueuedTitle(): String = "No kanji queued yet"
+    fun noKanjiQueuedTitle(): String = "No kanji queued"
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice."
+        "Sync AnkiDroid to build the queue."
 
     @JvmStatic
-    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid first to build a focus queue."
+    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid to build the queue."
 
     @JvmStatic
     fun syncMetricLabel(): String = "Sync"
@@ -139,9 +139,6 @@ object HomeTextCopy {
     fun deckOverviewBuriedLabel(): String = "Buried"
 
     @JvmStatic
-    fun studySupportText(): String = "Start focused practice"
-
-    @JvmStatic
     fun browseActionLabel(): String = "Browse Kanji"
 
     @JvmStatic
@@ -160,10 +157,10 @@ object HomeTextCopy {
     fun loadingLabel(): String = "Loading…"
 
     @JvmStatic
-    fun noRecentMistakesTitle(): String = "No recent mistakes yet"
+    fun noRecentMistakesTitle(): String = "No mistakes yet"
 
     @JvmStatic
-    fun noRecentMistakesBody(): String = "Missed and hard reviews will show here after you study."
+    fun noRecentMistakesBody(): String = "Missed or hard reviews."
 
     @JvmStatic
     fun syncDialogTitle(): String = "Sync AnkiDroid?"
@@ -171,8 +168,8 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani imports suspended ${safeSettings.modelName} cards by default, archives suspended-card evidence locally, " +
-            "and only uses active cards when that import filter is enabled."
+        return "Kani archives suspended ${safeSettings.modelName} cards locally and uses " +
+            "active cards only when the filter is on."
     }
 
     @JvmStatic
@@ -188,7 +185,7 @@ object HomeTextCopy {
     fun syncAlreadyRunningTitle(): String = "Sync already running"
 
     @JvmStatic
-    fun syncAlreadyRunningFallback(): String = "Kani is already reading AnkiDroid."
+    fun syncAlreadyRunningFallback(): String = "Already reading AnkiDroid."
 
     @JvmStatic
     fun syncCompleteTitle(): String = "Sync complete"
@@ -199,7 +196,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun syncCandidateSummary(dashboardRows: Int, adaptiveFocusText: String?): String {
-        return StudyTextCopy.countText(dashboardRows, "candidate found from Anki", "candidates found from Anki") +
+        return StudyTextCopy.countText(dashboardRows, "candidate from Anki", "candidates from Anki") +
             ". " +
             adaptiveFocusText.toString() +
             "."
@@ -216,7 +213,7 @@ object HomeTextCopy {
     fun syncReadErrorTitle(): String = "Could not read AnkiDroid"
 
     @JvmStatic
-    fun syncFailureFallback(): String = "Try again after checking AnkiDroid permissions."
+    fun syncFailureFallback(): String = "Check AnkiDroid permissions, then retry."
 
     @JvmStatic
     fun trySyncAgainLabel(): String = "Try sync again"
@@ -234,9 +231,6 @@ object HomeTextCopy {
 
     @JvmStatic
     fun browseTitle(): String = "Browse Kanji"
-
-    @JvmStatic
-    fun browseBody(): String = "Local kanji from synced Kani data and study history."
 
     @JvmStatic
     fun browseSearchHint(): String = "Search kanji, meaning, reading, or examples"
@@ -276,7 +270,7 @@ object HomeTextCopy {
     fun kanjiNotFoundTitle(): String = "Kanji not found"
 
     @JvmStatic
-    fun kanjiNotFoundBody(): String = "This row may have disappeared after a sync."
+    fun kanjiNotFoundBody(): String = "No local record found."
 
     @JvmStatic
     fun browseItemMeaning(item: RecordsImportModels.KanjiInventoryItem?): String {
@@ -298,29 +292,29 @@ object HomeTextCopy {
     fun relearningChipLabel(): String = "relearning"
 
     @JvmStatic
-    fun backToBrowseKanjiLabel(): String = "Back to Browse Kanji"
+    fun backToBrowseKanjiLabel(): String = "Back to Browse"
 
     @JvmStatic
     fun detailReasonTitle(): String = ""
 
     @JvmStatic
     fun historicalReasonText(): String =
-        "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."
+        "Inactive; kept in recovery history."
 
     @JvmStatic
     fun activeReasonText(row: RecordsImportModels.DashboardRow?): String {
         val safeRow = row ?: throw NullPointerException("row")
-        return if (safeRow.reasonText.isEmpty()) "Current local practice evidence from AnkiDroid." else safeRow.reasonText
+        return if (safeRow.reasonText.isEmpty()) "Active practice evidence." else safeRow.reasonText
     }
 
     @JvmStatic
-    fun ankiBrowserLine(browserSearch: String?): String = "Anki browser: ${browserSearch.toString()}"
+    fun ankiBrowserLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
 
     @JvmStatic
-    fun reviewNowLabel(): String = "Review this now"
+    fun reviewNowLabel(): String = "Review now"
 
     @JvmStatic
-    fun copyAnkiSearchLabel(): String = "Copy Anki search"
+    fun copyAnkiSearchLabel(): String = "Copy search"
 
     @JvmStatic
     fun ankiSearchClipLabel(): String = "Anki search"
@@ -334,27 +328,27 @@ object HomeTextCopy {
 
     @JvmStatic
     fun localSuspendToast(wasSuspended: Boolean): String =
-        if (wasSuspended) "Kanji unsuspended." else "Kanji suspended locally."
+        if (wasSuspended) "Unsuspended." else "Suspended locally."
 
     @JvmStatic
     fun examplesTitle(): String = "Examples"
 
     @JvmStatic
-    fun localInventoryTitle(): String = "Local inventory"
+    fun localInventoryTitle(): String = "Local records"
 
     @JvmStatic
     fun localInventorySummary(sourceCount: Int, exampleCount: Int): String {
-        return StudyTextCopy.countText(sourceCount, "source note/card", "source notes/cards") +
+        return StudyTextCopy.countText(sourceCount, "source", "sources") +
             " · " +
-            StudyTextCopy.countText(exampleCount, "stored example", "stored examples")
+            StudyTextCopy.countText(exampleCount, "example", "examples")
     }
 
     @JvmStatic
-    fun localInventorySearchLine(browserSearch: String?): String = "Search: ${browserSearch.toString()}"
+    fun localInventorySearchLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
 
     @JvmStatic
     fun localInventoryLastSeenLine(lastSeenAtMillis: Long): String =
-        "Last seen locally ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}"
+        "Last seen ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}"
 
     @JvmStatic
     fun detailDisplayKanji(
@@ -392,16 +386,16 @@ object HomeTextCopy {
 
     @JvmStatic
     fun matureSupportTargetText(matureSupportCount: Int, target: Int): String =
-        "Mature support $matureSupportCount / target $target"
+        "Mature support $matureSupportCount/$target"
 
     @JvmStatic
-    fun timelineEmptyText(): String = "Timeline will fill in after the next sync or review."
+    fun timelineEmptyText(): String = "Timeline appears after sync or review."
 
     @JvmStatic
     fun recoveryTimelineTitle(): String = "Recovery timeline"
 
     @JvmStatic
-    fun noActiveEvidenceText(): String = "No active Anki evidence in the latest local sync."
+    fun noActiveEvidenceText(): String = "No active Anki evidence."
 
     @JvmStatic
     fun exampleSourceLabel(example: RecordsImportModels.Example?): String =

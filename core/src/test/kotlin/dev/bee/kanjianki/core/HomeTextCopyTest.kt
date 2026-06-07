@@ -22,18 +22,18 @@ class HomeTextCopyTest {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null))
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting))
         assertEquals("All current", HomeTextCopy.focusHeadline(all))
-        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused))
+        assertEquals("1/4 left", HomeTextCopy.focusHeadline(focused))
     }
 
     @Test
     fun homeSyncAndRecentMistakeCopyPreserveFallbacks() {
         assertEquals("Never synced", HomeTextCopy.homeSyncValue(null))
         assertEquals("Date unknown", HomeTextCopy.homeSyncValue(0L))
-        assertEquals("Recent mistake", HomeTextCopy.recentMistakeTitle(null))
-        assertEquals("Recent mistake", HomeTextCopy.recentMistakeTitle(""))
+        assertEquals("Mistake", HomeTextCopy.recentMistakeTitle(null))
+        assertEquals("Mistake", HomeTextCopy.recentMistakeTitle(""))
         assertEquals("split", HomeTextCopy.recentMistakeTitle("split"))
         assertEquals("Again · Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"))
-        assertEquals("Recent miss", HomeTextCopy.recentMistakeSubtitle(null, null))
+        assertEquals("Missed", HomeTextCopy.recentMistakeSubtitle(null, null))
     }
 
     @Test
@@ -82,29 +82,28 @@ class HomeTextCopyTest {
     @Test
     fun homeShellCopyPreservesHeaderMetricsAndEmptyStates() {
         assertEquals("Kani", HomeTextCopy.appTitle())
-        assertEquals("An AnkiDroid companion for kanji blindness", HomeTextCopy.appSubtitle())
+        assertEquals("", HomeTextCopy.appSubtitle())
         assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel())
         assertEquals("Focus queue", HomeTextCopy.focusQueueTitle())
         assertEquals("View all", HomeTextCopy.viewAllLabel())
-        assertEquals("No kanji queued yet", HomeTextCopy.noKanjiQueuedTitle())
+        assertEquals("No kanji queued", HomeTextCopy.noKanjiQueuedTitle())
         assertEquals(
-            "Sync AnkiDroid to build a focused Kani queue from kanji that need recall and writing practice.",
+            "Sync AnkiDroid to build the queue.",
             HomeTextCopy.homeNoKanjiQueuedBody()
         )
-        assertEquals("Sync AnkiDroid first to build a focus queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
+        assertEquals("Sync AnkiDroid to build the queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
         assertEquals("Sync", HomeTextCopy.syncMetricLabel())
         assertEquals("Up to date", HomeTextCopy.syncMetricStatus(true))
         assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false))
         assertEquals("Streak", HomeTextCopy.streakMetricLabel())
         assertEquals("Focus", HomeTextCopy.focusMetricLabel())
-        assertEquals("Start focused practice", HomeTextCopy.studySupportText())
         assertEquals("Browse Kanji", HomeTextCopy.browseActionLabel())
         assertEquals("Recent mistakes", HomeTextCopy.recentMistakesTitle())
         assertEquals("Stats", HomeTextCopy.statsActionLabel())
         assertEquals("Games", HomeTextCopy.gamesActionLabel())
         assertEquals("Home", HomeTextCopy.homeLabel())
-        assertEquals("No recent mistakes yet", HomeTextCopy.noRecentMistakesTitle())
-        assertEquals("Missed and hard reviews will show here after you study.", HomeTextCopy.noRecentMistakesBody())
+        assertEquals("No mistakes yet", HomeTextCopy.noRecentMistakesTitle())
+        assertEquals("Missed or hard reviews.", HomeTextCopy.noRecentMistakesBody())
     }
 
     @Test
@@ -127,30 +126,30 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani imports suspended Basic cards by default, archives suspended-card evidence locally, and only uses active cards when that import filter is enabled.",
+            "Kani archives suspended Basic cards locally and uses active cards only when the filter is on.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())
         assertEquals("Cancel", HomeTextCopy.cancelLabel())
         assertEquals("Syncing AnkiDroid", HomeTextCopy.syncingTitle())
         assertEquals("Sync already running", HomeTextCopy.syncAlreadyRunningTitle())
-        assertEquals("Kani is already reading AnkiDroid.", HomeTextCopy.syncAlreadyRunningFallback())
+        assertEquals("Already reading AnkiDroid.", HomeTextCopy.syncAlreadyRunningFallback())
         assertEquals("Sync complete", HomeTextCopy.syncCompleteTitle())
         assertEquals("1 kanji ready to study", HomeTextCopy.syncReadyCountText(1))
         assertEquals("3 kanji ready to study", HomeTextCopy.syncReadyCountText(3))
         assertEquals(
-            "1 candidate found from Anki. Auto Pareto: 1 item today.",
+            "1 candidate from Anki. Auto Pareto: 1 item today.",
             HomeTextCopy.syncCandidateSummary(1, "Auto Pareto: 1 item today")
         )
         assertEquals(
-            "2 candidates found from Anki. Auto Pareto: 2 items today.",
+            "2 candidates from Anki. Auto Pareto: 2 items today.",
             HomeTextCopy.syncCandidateSummary(2, "Auto Pareto: 2 items today")
         )
         assertEquals("1 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(1))
         assertEquals("4 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(4))
         assertEquals("AnkiDroid needs attention", HomeTextCopy.syncNeedsAttentionTitle())
         assertEquals("Could not read AnkiDroid", HomeTextCopy.syncReadErrorTitle())
-        assertEquals("Try again after checking AnkiDroid permissions.", HomeTextCopy.syncFailureFallback())
+        assertEquals("Check AnkiDroid permissions, then retry.", HomeTextCopy.syncFailureFallback())
         assertEquals("Try sync again", HomeTextCopy.trySyncAgainLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.syncDialogMessage(null) }
     }
@@ -166,7 +165,6 @@ class HomeTextCopyTest {
     @Test
     fun browseStaticCopyAndFallbackMeaningStayCentralized() {
         assertEquals("Browse Kanji", HomeTextCopy.browseTitle())
-        assertEquals("Local kanji from synced Kani data and study history.", HomeTextCopy.browseBody())
         assertEquals("Search kanji, meaning, reading, or examples", HomeTextCopy.browseSearchHint())
         assertEquals("Search", HomeTextCopy.browseSearchButtonLabel())
         assertEquals("Similar kanji only", HomeTextCopy.browseSimilarFilterLabel())
@@ -178,14 +176,14 @@ class HomeTextCopyTest {
         assertEquals("No local kanji found", HomeTextCopy.browseEmptyTitle())
         assertEquals("Sync AnkiDroid first, or try a different search.", HomeTextCopy.browseEmptyBody())
         assertEquals("Kanji not found", HomeTextCopy.kanjiNotFoundTitle())
-        assertEquals("This row may have disappeared after a sync.", HomeTextCopy.kanjiNotFoundBody())
+        assertEquals("No local record found.", HomeTextCopy.kanjiNotFoundBody())
         assertEquals("Meaning not stored yet", HomeTextCopy.browseItemMeaning(inventory("語", "", "")))
         assertEquals("language", HomeTextCopy.browseItemMeaning(inventory("語", "language", "")))
         assertEquals("1 local source · 2 examples", HomeTextCopy.browseInventorySummary(1, 2))
         assertEquals("3 local sources · 1 example", HomeTextCopy.browseInventorySummary(3, 1))
         assertEquals("SUSPENDED", HomeTextCopy.suspendedChipLabel())
         assertEquals("relearning", HomeTextCopy.relearningChipLabel())
-        assertEquals("Back to Browse Kanji", HomeTextCopy.backToBrowseKanjiLabel())
+        assertEquals("Back to Browse", HomeTextCopy.backToBrowseKanjiLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.browseItemMeaning(null) }
     }
 
@@ -203,8 +201,8 @@ class HomeTextCopyTest {
                 "Historical recovery",
                 "Historical recovery",
                 "language",
-                "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
-                "Current local practice evidence from AnkiDroid.",
+                "Inactive; kept in recovery history.",
+                "Active practice evidence.",
                 "manual reason"
             ),
             listOf(
@@ -221,21 +219,21 @@ class HomeTextCopyTest {
         )
         assertEquals(
             listOf(
-                "Anki browser: row:裂",
-                "Review this now",
-                "Copy Anki search",
+                "Anki search: row:裂",
+                "Review now",
+                "Copy search",
                 "Anki search",
                 "Search copied",
                 "Suspend locally",
                 "Unsuspend locally",
-                "Kanji suspended locally.",
-                "Kanji unsuspended.",
+                "Suspended locally.",
+                "Unsuspended.",
                 "Examples",
-                "Local inventory",
-                "1 source note/card · 2 stored examples",
-                "3 source notes/cards · 1 stored example",
-                "Search: row:裂",
-                "Last seen locally ${DateTextPolicy.shortDateTime(123456789L)}"
+                "Local records",
+                "1 source · 2 examples",
+                "3 sources · 1 example",
+                "Anki search: row:裂",
+                "Last seen ${DateTextPolicy.shortDateTime(123456789L)}"
             ),
             listOf(
                 HomeTextCopy.ankiBrowserLine("row:裂"),
@@ -260,11 +258,11 @@ class HomeTextCopyTest {
                 "inventory:語",
                 "row:裂",
                 "",
-                "Mature support 0 / target 2",
-                "Mature support 3 / target 4",
-                "Timeline will fill in after the next sync or review.",
+                "Mature support 0/2",
+                "Mature support 3/4",
+                "Timeline appears after sync or review.",
                 "Recovery timeline",
-                "No active Anki evidence in the latest local sync."
+                "No active Anki evidence."
             ),
             listOf(
                 HomeTextCopy.detailBrowserSearch(row, inventory),

@@ -15,8 +15,14 @@ internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainAct
 
     private fun saveNewPerDay(text: String, fallback: Int) {
         val request = DeckLimitsSettingsPolicy.saveNewPerDay(text, fallback)
-        activity.store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, request.newPerDay)
-        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.deck-limits.save",
+            write = {
+                activity.store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, request.newPerDay)
+            },
+        ) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 }

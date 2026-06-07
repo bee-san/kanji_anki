@@ -140,11 +140,13 @@ wait_for_route() {
     local xml_path
     xml_path="$(dump_ui_xml)"
     if [ -n "${xml_path}" ] && [ -f "${xml_path}" ]; then
+      local status=0
       if ui_dump_matches "${xml_path}" "${expected_terms[@]}"; then
         rm -f "${xml_path}"
         return 0
+      else
+        status=$?
       fi
-      local status=$?
       rm -f "${xml_path}"
       if [ "${status}" -eq 2 ]; then
         echo "Detected an Android ANR/dialog while waiting for ${capture_name}." >&2
@@ -178,7 +180,7 @@ set_orientation() {
 launch_screenshot_route() {
   local launch_target="$1"
   adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
-  adb shell am start -W -n "${package_name}/.MainActivity" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER --es "${screen_route_extra}" "${launch_target}" >/dev/null
+  adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" >/dev/null
 }
 
 capture_route() {
@@ -192,7 +194,6 @@ capture_route() {
   set_orientation "${orientation}"
   launch_screenshot_route "${launch_target}"
   wait_for_route "${capture_name}" "${expected_terms[@]}"
-  sleep 1
   capture_png "${capture_name}" >/dev/null
 }
 

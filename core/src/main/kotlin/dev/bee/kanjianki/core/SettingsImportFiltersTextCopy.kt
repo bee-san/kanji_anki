@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags."
+        return "Start with suspended cards. Add other sources only when needed; leech tags are skipped."
     }
 
     @JvmStatic
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani. Kani keeps note type, rank, and threshold."
+        return "Examples: is:suspended, rated:31:1, tag:kani. Note type, rank, and threshold still apply."
     }
 
     @JvmStatic
@@ -60,13 +60,13 @@ object SettingsImportFiltersTextCopy {
     fun importSourceRequiredToast(): String = "Turn on at least one import source."
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Import filters saved. Sync again to rebuild practice."
+    fun importFiltersSavedToast(): String = "Filters saved. Sync again to rebuild practice."
 
     @JvmStatic
     fun presetsTitle(): String = "Presets"
 
     @JvmStatic
-    fun importPresetSavedToast(): String = "Import preset saved. Sync again to rebuild practice."
+    fun importPresetSavedToast(): String = "Preset saved. Sync again to rebuild practice."
 
     @JvmStatic
     fun numericImportThresholdsToast(): String = "Use numeric import thresholds."

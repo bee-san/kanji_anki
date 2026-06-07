@@ -40,11 +40,6 @@ fun SettingsUpdateRunScreen(model: SettingsUpdateRunModel) {
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = model.body,
-            color = UpdateRunMuted,
-            style = MaterialTheme.typography.bodyMedium
-        )
         SettingsUpdateProgressPanel(model.progressLabel)
     }
 }

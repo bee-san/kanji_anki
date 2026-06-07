@@ -36,7 +36,7 @@ class HomeFocusQueueComposeTest {
                             meaning = "split; tear",
                             sourceEvidence = "From phrase · missed card",
                             reasonLine = "weakness 80 · support 0/2 · kanji -> meaning · due now",
-                            body = "Needs focused kanji practice.",
+                            body = "Needs kanji practice.",
                             tags = listOf(
                                 HomeFocusQueueTagModel("kanji -> meaning", androidx.compose.ui.graphics.Color(0xFF6E5CE6)),
                                 HomeFocusQueueTagModel("learning", androidx.compose.ui.graphics.Color(0xFF00AEB5))
@@ -56,7 +56,7 @@ class HomeFocusQueueComposeTest {
         composeRule.onNodeWithText("kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("learning").assertIsDisplayed()
         composeRule.onNodeWithText(">").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Focus queue card 裂, split; tear")
+        composeRule.onNodeWithContentDescription("Study")
             .assertIsDisplayed()
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
@@ -74,7 +74,7 @@ class HomeFocusQueueComposeTest {
                 model = HomeFocusQueuePanelModel(
                     planText = "Adaptive focus is waiting for sync",
                     emptyTitle = "No active practice yet",
-                    emptyBody = "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.",
+                    emptyBody = "Study now adds the next problem kanji from AnkiDroid.",
                     showSyncButton = true,
                     cards = emptyList()
                 ),
@@ -83,7 +83,7 @@ class HomeFocusQueueComposeTest {
         }
 
         composeRule.onNodeWithText("No active practice yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Study now will admit the next problem kanji through your adaptive focus.").assertIsDisplayed()
+        composeRule.onNodeWithText("Study now adds the next problem kanji from AnkiDroid.").assertIsDisplayed()
         composeRule.onNodeWithText("Sync AnkiDroid")
             .assertIsDisplayed()
             .assertHasClickAction()

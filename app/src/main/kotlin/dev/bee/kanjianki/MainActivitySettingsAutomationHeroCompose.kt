@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val HeroInk = ComposeColor(0xFF7A245D)
-private val HeroMuted = ComposeColor(0xFF6E6E78)
 private val HeroWhite = ComposeColor(0xFFFFFFFF)
 private val HeroBadgeBorder = ComposeColor(0xFFEBD6E4)
 private val HeroPanelFill = ComposeColor(0xFFFFF8FC)
@@ -63,11 +62,6 @@ fun SettingsAutomationHero(model: SettingsAutomationHeroModel) {
                 color = HeroInk,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = model.body,
-                color = HeroMuted,
-                fontSize = 16.sp
             )
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)

@@ -4,7 +4,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Blocked"
+            return "Notifications off"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -22,7 +22,7 @@ object SettingsAutomationTextCopy {
         if (hasPendingUpdate) {
             return "Verified APK ready"
         }
-        return if (enabled) "Automatic checks on" else "Manual checks"
+        return if (enabled) "Daily checks on" else "Manual checks"
     }
 
     @JvmStatic
@@ -38,7 +38,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Version " + versionName.toString() + ". Checks GitHub Releases, then verifies the APK."
+        return "Version " + versionName.toString() + ". Checks releases, then verifies the APK."
     }
 
     @JvmStatic
@@ -49,7 +49,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun autoUpdatePanelStatus(enabled: Boolean): String {
-        return if (enabled) "On: checks about once a day" else "Off"
+        return if (enabled) "On: daily checks" else "Off"
     }
 
     @JvmStatic
@@ -74,7 +74,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Android needs confirmation before Kani can replace itself."
+        return "Android needs confirmation to install updates."
     }
 
     @JvmStatic
@@ -85,7 +85,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun automaticUpdatesToggleLabel(enabled: Boolean): String {
-        return if (enabled) "Turn off automatic updates" else "Turn on automatic updates"
+        return if (enabled) "Turn off updates" else "Turn on updates"
     }
 
     @JvmStatic
@@ -94,7 +94,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Starts after first successful sync"
+            return "Starts after first sync"
         }
         if (enabled) {
             return "On around $displayTime"
@@ -111,7 +111,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once manually; Kani refreshes daily after that."
+            return "Sync once; then Kani refreshes daily."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last successful sync ", lastSuccessText)
@@ -121,9 +121,9 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled daily; Android may batch the time."
+                "Scheduled daily; Android may batch it."
             } else {
-                "Daily background sync is paused."
+                "Daily sync is paused."
             }
         }
         return details.joinToString(". ") + "."
@@ -160,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Daily nudge for active problem kanji; Android may batch it."
+        return "Daily reminders; Android may batch them."
     }
 
     @JvmStatic
@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Android notifications are off, so this reminder cannot appear yet."
+        return "Android notifications are off; this reminder cannot appear."
     }
 
     @JvmStatic
@@ -194,7 +194,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Android asks for notification permission before turning this on."
+        return "Allow notification permission before turning this on."
     }
 
     @JvmStatic

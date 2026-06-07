@@ -76,7 +76,7 @@ internal fun SettingsUpdateOutlinedButton(
     borderColor: Color = SettingsUpdateButtonBorder,
 ) {
     OutlinedButton(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = minHeight),
@@ -108,7 +108,7 @@ internal fun SettingsUpdateFilledButton(
     fontSize: TextUnit = 19.sp,
 ) {
     Button(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = minHeight),

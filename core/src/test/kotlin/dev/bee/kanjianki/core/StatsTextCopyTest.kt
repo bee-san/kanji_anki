@@ -17,22 +17,22 @@ class StatsTextCopyTest {
 
     @Test
     fun verdictTitlePreservesWorkingAndWaitingCopy() {
-        assertEquals("Kani is working for you", StatsTextCopy.verdictTitle(true))
-        assertEquals("Waiting for Kani evidence", StatsTextCopy.verdictTitle(false))
+        assertEquals("Kani is working", StatsTextCopy.verdictTitle(true))
+        assertEquals("Waiting for evidence", StatsTextCopy.verdictTitle(false))
     }
 
     @Test
     fun verdictBodyKeepsEmptyAndLadderOnlyCopyBrief() {
         assertEquals(
-            "Study in Kani, then sync AnkiDroid to unlock trends.",
+            "Study and sync for trends.",
             StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0)
         )
         assertEquals(
-            "Kani is tracking 2 active kanji. Trends appear after reviews and sync.",
+            "Tracking 2 active kanji. Trends need reviews and sync.",
             StatsTextCopy.verdictBody(true, false, true, 0, 0, 0, 0, 2)
         )
         assertEquals(
-            "Do Kani reviews, then sync AnkiDroid to compare before and after.",
+            "Review and sync to compare.",
             StatsTextCopy.verdictBody(true, false, false, 0, 0, 0, 0, 0)
         )
     }
@@ -40,7 +40,7 @@ class StatsTextCopyTest {
     @Test
     fun verdictBodyPreservesWorkingSignalsAndRiskCopy() {
         assertEquals(
-            "1 weak kanji is burning down. 2 mature Anki cards have been gained. 3 review-phase items crossed the FSRS climb threshold. Watch 1 review-phase item with a miss streak.",
+            "1 weak kanji improved. 2 mature cards gained. 3 review items ready to climb. Watch 1 review item with a miss streak.",
             StatsTextCopy.verdictBody(true, true, true, 1, 2, 3, 1, 4)
         )
     }
@@ -48,11 +48,11 @@ class StatsTextCopyTest {
     @Test
     fun ladderHealthBodyDemotesThresholdDetailsAndKeepsEmptyCopyBrief() {
         assertEquals(
-            "No active ladder items yet. Sync or study weak kanji to fill the ladder.",
+            "Sync or study weak kanji to fill the ladder.",
             StatsTextCopy.ladderHealthBody(0, 0, 0, 0, 21, 3)
         )
         assertEquals(
-            "2 ready to climb · 1 at risk · 1 ready to fall. Rules: climb after more than 21 days; fall after 3 misses.",
+            "2 ready to climb · 1 at risk · 1 ready to fall. Climb after more than 21 days; fall after 3 misses.",
             StatsTextCopy.ladderHealthBody(5, 2, 1, 1, 21, 3)
         )
     }
@@ -71,7 +71,7 @@ class StatsTextCopyTest {
     @Test
     fun weaknessAndSupportFormattingPreservesStatsRows() {
         assertEquals(
-            "Weakness trends appear after Kani reviews and a successful AnkiDroid sync.",
+            "Weakness trends need reviews and sync.",
             StatsTextCopy.weaknessImprovementBody(0, 0.0, 0.0)
         )
         assertEquals(
@@ -85,7 +85,7 @@ class StatsTextCopyTest {
     @Test
     fun impactAndTimeFormattingPreservesStatsHelpers() {
         assertEquals(
-            "Review in Kani, then sync AnkiDroid to compare before and after.",
+            "Review and sync to compare.",
             StatsTextCopy.notHelpingBody(true, false)
         )
         assertEquals(
@@ -93,7 +93,7 @@ class StatsTextCopyTest {
             StatsTextCopy.notHelpingBody(false, false)
         )
         assertEquals(
-            "Shown only after enough Kani reviews and synced Anki evidence.",
+            "Needs enough reviews and sync.",
             StatsTextCopy.notHelpingBody(false, true)
         )
         assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4))
@@ -103,5 +103,75 @@ class StatsTextCopyTest {
         assertEquals("1 min 5 sec", StatsTextCopy.formatStudyTime(65_000))
         assertEquals("1 hr", StatsTextCopy.formatStudyTime(3_600_000))
         assertEquals("1 hr 2 min", StatsTextCopy.formatStudyTime(3_720_000))
+    }
+
+    @Test
+    fun streakImpactAndMistakeFormattingPreservesStatsHelpers() {
+        assertEquals("No active streak", StatsTextCopy.studyStreakSummary(0))
+        assertEquals("3-day streak", StatsTextCopy.studyStreakSummary(3))
+        assertEquals(
+            "Study and sync to start a streak.",
+            StatsTextCopy.studyStreakBody(0, false, 0, 0L, 44_444L)
+        )
+        assertEquals(
+            "Best streak 9 days. 8 reviews today. Last study 15 min ago.",
+            StatsTextCopy.studyStreakBody(9, true, 8, 3_600_000L, 4_500_000L)
+        )
+        assertEquals(
+            "Study and sync to start measuring impact.",
+            StatsTextCopy.studyImpactBody(0, 0, 0, 0, 0, 0)
+        )
+        assertEquals(
+            "12 reviews across 4 kanji. Writing prompts: 4 passed, 2 failed, 1 manual override.",
+            StatsTextCopy.studyImpactBody(12, 4, 6, 4, 2, 1)
+        )
+        assertEquals(
+            "No recent mistakes right now.",
+            StatsTextCopy.recentMistakesBody(false)
+        )
+        assertEquals(
+            "Recent misses worth another pass.",
+            StatsTextCopy.recentMistakesBody(true)
+        )
+        assertEquals(
+            "痛  Again · 5 min ago",
+            StatsTextCopy.recentMistakeRowText("痛", "again", 4_200_000L, 4_500_000L)
+        )
+        assertEquals(
+            "疲  Hard · just now",
+            StatsTextCopy.recentMistakeRowText("疲", "hard", 4_500_000L, 4_500_000L)
+        )
+    }
+
+    @Test
+    fun edgeCaseFormattingCoversRemainingBranches() {
+        assertEquals(
+            "Best streak 5 days. No reviews today. Last study No study yet.",
+            StatsTextCopy.studyStreakBody(5, false, 0, 0L, 44_444L)
+        )
+        assertEquals(
+            "3 reviews across 2 kanji. No writing prompts yet.",
+            StatsTextCopy.studyImpactBody(3, 2, 0, 0, 0, 0)
+        )
+        assertEquals(
+            "  1 -> 2 mature cards",
+            StatsTextCopy.supportGainExample(null, 1, 2)
+        )
+        assertEquals(
+            "痛  Mistake · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  Again · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "Again", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  1abc · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "1abc", 4_500_000L, 4_500_000L)
+        )
+        assertEquals(
+            "痛  Λambda · just now",
+            StatsTextCopy.recentMistakeRowText("痛", "λambda", 4_500_000L, 4_500_000L)
+        )
     }
 }

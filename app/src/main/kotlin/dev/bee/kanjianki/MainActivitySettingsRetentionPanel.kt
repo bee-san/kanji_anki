@@ -46,9 +46,15 @@ internal class MainActivitySettingsRetentionPanel(private val activity: MainActi
             Toast.makeText(activity, request.message, Toast.LENGTH_LONG).show()
             return
         }
-        activity.store.saveSchedulerParameters(request.parameters!!)
-        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.retention.save",
+            write = {
+                activity.store.saveSchedulerParameters(request.parameters!!)
+            },
+        ) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 
     private companion object {

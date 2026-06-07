@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
+from typing import Any
+from unittest import mock
 
 from scripts.ralph_loop import github_screenshots
 
@@ -33,6 +36,11 @@ def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
     return CompletedProcess(list(args), 1, "", stderr)
 
 
+def run_remote_screenshots_for_test(**kwargs: Any) -> dict[str, object]:
+    with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "false"}):
+        return github_screenshots.run_remote_screenshots(**kwargs)
+
+
 class GithubScreenshotsTest(unittest.TestCase):
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
@@ -52,6 +60,11 @@ class GithubScreenshotsTest(unittest.TestCase):
 
         self.assertIn('mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX"', script)
         self.assertNotIn('mktemp -t kani-ui', script)
+        self.assertIn('adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" >/dev/null', script)
+        self.assertNotIn('-a android.intent.action.MAIN', script)
+        self.assertNotIn('-c android.intent.category.LAUNCHER', script)
+        self.assertIn('local status=0', script)
+        self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
 
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -73,7 +86,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -83,7 +96,7 @@ class GithubScreenshotsTest(unittest.TestCase):
             )
 
             self.assertEqual("missing_artifact", result["status"])
-            self.assertIn("manifest.json", result["message"])
+            self.assertIn("manifest.json", str(result["message"]))
             self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
 
             out.mkdir(parents=True, exist_ok=True)
@@ -99,7 +112,7 @@ class GithubScreenshotsTest(unittest.TestCase):
             )
             (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -148,10 +161,43 @@ class GithubScreenshotsTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-
+        
             result = github_screenshots.validate_artifact(out, expected_route="all")
             self.assertEqual("passed", result["status"])
             self.assertEqual(routes, result["routes"])
+
+    def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            for routes in [
+                ["study", "home", "stats", "settings", "games", "narrow", "wide"],
+                ["home", "study", "stats", "settings", "games", "narrow", "wide", "extra"],
+            ]:
+                files = []
+                for route in routes:
+                    path = out / f"{route}.png"
+                    path.write_bytes(b"\x89PNG\r\n\x1a\n")
+                    files.append(str(path))
+
+                (out / "manifest.json").write_text(
+                    json.dumps(
+                        {
+                            "requested_route": "all",
+                            "routes": routes,
+                            "files": files,
+                        },
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = github_screenshots.validate_artifact(out, expected_route="all")
+                self.assertEqual("missing_artifact", result["status"])
+                self.assertIn("exactly", str(result["message"]))
+
+                for route in routes:
+                    (out / f"{route}.png").unlink()
+                (out / "manifest.json").unlink()
 
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -165,7 +211,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                     }
                 )
 
-                result = github_screenshots.run_remote_screenshots(
+                result = run_remote_screenshots_for_test(
                     repo_root=root,
                     workflow="android-screenshots.yml",
                     artifact="android-screenshots",
@@ -176,7 +222,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 )
 
                 self.assertEqual("failed", result["status"], protected_branch)
-                self.assertIn("Refusing to run on protected branch", result["message"])
+                self.assertIn("Refusing to run on protected branch", str(result["message"]))
 
             branch_runner = FakeRunner(
                 {
@@ -186,7 +232,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            result = github_screenshots.run_remote_screenshots(
+            result = run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",
@@ -215,7 +261,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            github_screenshots.run_remote_screenshots(
+            run_remote_screenshots_for_test(
                 repo_root=root,
                 workflow="android-screenshots.yml",
                 artifact="android-screenshots",

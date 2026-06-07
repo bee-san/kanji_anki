@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -59,10 +60,7 @@ class SettingsStudySortComposeTest {
         composeRule
             .onNodeWithText(SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
             .assertExists()
-        composeRule
-            .onNodeWithTag("new-card-sort-save")
-            .performScrollTo()
-            .performClick()
+        composeRule.onNodeWithText("Save new card sort").performScrollTo().assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, savedMode.get())

@@ -46,7 +46,8 @@ internal fun homeFocusQueuePanelModel(
     nowMillis: Long,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?
 ): HomeFocusQueuePanelModel {
-    val cards = entries.map { homeFocusQueueCardModel(home, it, nowMillis) }
+    val matureSupportThreshold = home.settings().matureSupportThreshold
+    val cards = entries.map { homeFocusQueueCardModel(home, it, nowMillis, matureSupportThreshold) }
     return HomeFocusQueuePanelModel(
         planText = AdaptiveFocusCopy.adaptiveFocusText(plan),
         emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
@@ -60,6 +61,7 @@ internal fun homeFocusQueueCardModel(
     home: MainActivityHome,
     entry: MainActivityBase.QueueEntry,
     nowMillis: Long,
+    matureSupportThreshold: Int,
 ): HomeFocusQueueCardModel {
     val row = entry.row
     val item = entry.item
@@ -67,7 +69,7 @@ internal fun homeFocusQueueCardModel(
         kanji = row.kanji,
         meaning = StudyTextCopy.rowMeaning(row),
         sourceEvidence = FocusQueueCopy.sourceEvidenceText(row),
-        reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, home.settings().matureSupportThreshold),
+        reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold),
         body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
         tags = buildList {
             add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
@@ -124,9 +126,16 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
             .semantics {
-                contentDescription = "Focus queue card ${model.kanji}, ${model.meaning}"
+                contentDescription = "Study"
             }
-            .clickable(role = Role.Button, onClick = model.onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.focus-queue-card") {
+                        model.onClick()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)
@@ -162,7 +171,6 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 Text(text = model.meaning, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(text = model.sourceEvidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
                 Text(text = model.reasonLine, style = MaterialTheme.typography.bodySmall, color = model.accentColor)
-                Text(text = model.body, style = MaterialTheme.typography.bodyMedium, color = ComposeColor(0xFF6E6E78))
                 Row {
                     model.tags.forEach { tag ->
                         FocusQueueTag(tag)

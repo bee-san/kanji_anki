@@ -31,8 +31,8 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "裂",
@@ -63,8 +63,8 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "語",

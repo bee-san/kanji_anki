@@ -3,7 +3,7 @@ package dev.bee.kanjianki
 import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
-import dev.bee.kanjianki.core.AdaptiveFocusCopy
+import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -26,7 +26,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
     private val asyncHomeRouteLoader by lazy {
-        AsyncHomeRouteLoader(io) { task -> main.post(task) }
+        AsyncHomeRouteLoader(
+            background = io,
+            postToMain = { task -> main.post(task) },
+        )
     }
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
@@ -37,6 +40,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
+    private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
 
     abstract fun renderStats()
     abstract fun renderGames()
@@ -44,23 +48,38 @@ internal abstract class MainActivityHome : MainActivityBase() {
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         clearStudyModeOverrides()
-        scheduleStatsPrecomputeIfStale()
+        cachedImportOnboardingPlan = null
+        if (isScreenshotRouteRequested()) {
+            renderScreenshotHome()
+            return
+        }
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.appTitle(),
+            load = { buildHomeScreenModel() },
+            render = { model ->
+                renderHomeScreen(model)
+                scheduleStatsPrecomputeIfStaleAsync()
+            },
+        )
+    }
 
+    private fun buildHomeScreenModel(): HomeScreenModel {
         val now = System.currentTimeMillis()
         val sync = store.latestSync()
         val streak = store.studyStreak(now)
         val rows = store.activeDashboardRows()
+        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItemsForKanji(rows.map { it.kanji })
         val deckOverviewRows = if (rows.isEmpty()) {
             emptyList()
         } else {
             HomeDeckOverviewPolicy.from(
-                studyItems = store.studyItems(),
+                studyItems = studyItems,
                 dashboardRows = rows,
                 nowMillis = now,
                 locallySuspendedKanji = store.locallySuspendedKanji(),
             ).rows()
         }
-        val homeItems = studyQueue(rows, now, false, null)
+        val homeItems = studyItems
         val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
         val entries = if (rows.isEmpty()) {
             emptyList()
@@ -68,8 +87,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
             queuedEntries(rows, homeItems, now, homePlan)
         }
         val provider = gateway.status()
+        val matureSupportThreshold = settings().matureSupportThreshold
 
-        val model = HomeScreenModel(
+        return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, sync, provider, streak, homePlan),
@@ -77,7 +97,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
             showSyncCta = rows.isEmpty(),
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
             studyLabel = MainActivityBase.LABEL_STUDY_NOW,
-            studySubtitle = HomeTextCopy.studySupportText(),
             onSync = this::confirmSync,
             onStudy = this::startFocusedStudy,
             actions = homeActionModels(this),
@@ -95,12 +114,49 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 else -> null
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
-                homeFocusQueueCardModel(this, entry, now)
+                homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
             }
         )
+    }
+
+    private fun renderHomeScreen(model: HomeScreenModel) {
         renderHomeRoute {
             HomeScreen(model)
         }
+    }
+
+    private fun isScreenshotRouteRequested(): Boolean {
+        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
+    }
+
+    private fun renderScreenshotHome() {
+        val provider = AnkiDroidGateway.ProviderStatus.create(
+            installed = false,
+            permissionGranted = false,
+            canSync = false,
+            authority = null,
+            permission = null,
+            message = "Screenshot route"
+        )
+        val model = HomeScreenModel(
+            title = HomeTextCopy.appTitle(),
+            subtitle = HomeTextCopy.appSubtitle(),
+            metrics = homeMetricModels(this, null, provider, null, null),
+            deckOverviewRows = emptyList(),
+            showSyncCta = true,
+            syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
+            studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+            onSync = this::confirmSync,
+            onStudy = this::startFocusedStudy,
+            actions = homeActionModels(this),
+            focusTitle = HomeTextCopy.focusQueueTitle(),
+            focusActionLabel = null,
+            onFocusAction = null,
+            emptyTitle = HomeTextCopy.noKanjiQueuedTitle(),
+            emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
+            previewCards = emptyList(),
+        )
+        renderHomeScreen(model)
     }
 
     fun renderFocusQueue() {
@@ -116,7 +172,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        val plan = importOnboardingPlan()
+        val plan = currentImportOnboardingPlan()
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
             message = plan.body(),
             confirmLabel = plan.primaryActionLabel(),
@@ -132,7 +188,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         rerenderLatestHomeRoute()
     }
 
-    private fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+    protected open fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
         val current = settings()
         val provider = gateway.status()
         return HomeImportOnboardingPolicy.plan(
@@ -143,6 +199,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
             provider.permission,
             current,
         )
+    }
+
+    private fun currentImportOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
+        return cachedImportOnboardingPlan ?: importOnboardingPlan().also { cachedImportOnboardingPlan = it }
     }
 
     private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
@@ -233,14 +293,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
-        scheduleStatsPrecomputeIfStale()
-        val now = System.currentTimeMillis()
-        val rows = store.activeDashboardRows()
-        val items = store.studyItems()
-        val plan = adaptivePlan(rows, items, now)
-        val entries = queuedEntries(rows, items, now, plan)
         val summaryLines = mutableListOf<String>()
-        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)))
+        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, result.adaptiveFocusText))
         if (result.adaptiveSummary.isNotEmpty()) {
             summaryLines.add(result.adaptiveSummary)
         }
@@ -253,16 +307,17 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderSyncResultScreen(
             SyncResultScreenModel(
                 HomeTextCopy.syncCompleteTitle(),
-                HomeTextCopy.syncReadyCountText(entries.size),
+                HomeTextCopy.syncReadyCountText(result.studyReadyCount),
                 summaryLines,
                 TEAL,
-                if (result.dashboardRows > 0) LABEL_STUDY_NOW else null,
+                if (result.studyReadyCount > 0) LABEL_STUDY_NOW else null,
                 CORAL,
-                if (result.dashboardRows > 0) ::startFocusedStudy else null,
+                if (result.studyReadyCount > 0) ::startFocusedStudy else null,
                 LABEL_BACK_HOME,
                 this::renderHome,
             )
         )
+        scheduleStatsPrecomputeIfStale()
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
@@ -300,8 +355,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
         now: Long,
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        return focusQueue.studyQueue(rows, now, persist, plan)
+        return focusQueue.studyQueue(rows, now, persist, plan, currentItems)
     }
 
     fun queuedEntries(
@@ -342,6 +398,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         loadingTitle: String,
         load: () -> T,
         render: (T) -> Unit,
+        traceName: String = "home-route",
     ) {
         asyncHomeRouteLoader.load(
             showLoading = {
@@ -355,6 +412,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
             load = load,
             render = render,
+            traceLabel = traceName,
+            showLoadingAfterMs = 120,
         )
     }
 
@@ -364,6 +423,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun scheduleStatsPrecomputeIfStale(): Boolean {
         return statsPrecomputeScheduler.scheduleIfStale()
+    }
+
+    fun scheduleStatsPrecomputeIfStaleAsync() {
+        io.execute {
+            scheduleStatsPrecomputeIfStale()
+        }
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {

@@ -13,4 +13,8 @@ internal class QueueingExecutor : Executor {
     fun runNext() {
         tasks.removeFirst().run()
     }
+
+    fun isEmpty(): Boolean {
+        return tasks.isEmpty()
+    }
 }

@@ -4,6 +4,8 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
+import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
@@ -11,6 +13,9 @@ internal interface StatsScreenStatsSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
+    fun studyImpactStats(): StudyStatsStore.StudyImpactStats
+    fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak
+    fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats
 }
 
@@ -29,6 +34,18 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
                 return store.recomputeStatsSnapshotSynchronously(nowMillis)
             }
 
+            override fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
+                return store.studyImpactStats()
+            }
+
+            override fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
+                return store.studyStreak(nowMillis)
+            }
+
+            override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+                return store.recentMistakes(limit)
+            }
+
             override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
                 return store.studyTaskTimeStats(nowMillis)
             }
@@ -43,10 +60,19 @@ internal fun buildStatsScreenModel(
     val snapshot = source.cachedStatsSnapshotOrNull()
         ?: source.latestStatsSnapshotOrNull()
         ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    val needsLiveFallback = snapshot.cacheFormatVersion < STATS_CACHE_FORMAT_VERSION
+    val studyImpact = if (needsLiveFallback) source.studyImpactStats() else snapshot.studyImpactStats
+    val studyStreak = if (needsLiveFallback) source.studyStreak(nowMillis) else snapshot.studyStreak
+    val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
+    val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
-        source.studyTaskTimeStats(nowMillis),
+        studyTaskTimeStats,
+        studyImpact,
+        studyStreak,
+        recentMistakes,
+        nowMillis,
     )
 }
 
@@ -54,16 +80,23 @@ internal fun statsScreenModel(
     stats: StudyStatsStore.KaniOutcomeStats,
     report: KanjiImpactAnalyzer.Report?,
     studyTime: StudyStatsStore.StudyTaskTimeStats,
+    studyImpact: StudyStatsStore.StudyImpactStats,
+    studyStreak: StudyStatsStore.StudyStreak,
+    recentMistakes: List<StudyStatsStore.RecentMistake>,
+    nowMillis: Long,
 ): StatsScreenModel {
     return StatsScreenModel(
         title = "Stats",
-        intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
+        intro = "",
         verdict = statsVerdictCard(stats),
         sections = listOf(
             weaknessBurnDownCard(stats),
             supportConversionCard(stats),
+            studyStreakCard(studyStreak, nowMillis),
+            studyImpactCard(studyImpact),
             notHelpingCard(report),
             ladderHealthCard(stats.ladderHealth),
+            recentMistakesCard(recentMistakes, nowMillis),
             studyTimeCard(studyTime)
         )
     )
@@ -178,6 +211,68 @@ private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): Stat
             )
         },
         strokeColor = STATS_BLUE_COLOR
+    )
+}
+
+private fun studyStreakCard(
+    streak: StudyStatsStore.StudyStreak,
+    nowMillis: Long,
+): StatsCardModel {
+    return outcomeCard(
+        title = "Study streak",
+        summary = StatsTextCopy.studyStreakSummary(streak.currentDays),
+        body = StatsTextCopy.studyStreakBody(
+            streak.bestDays,
+            streak.studiedToday,
+            streak.reviewsToday,
+            streak.lastStudyAtMillis,
+            nowMillis
+        ),
+        lines = emptyList(),
+        strokeColor = STATS_TEAL_COLOR
+    )
+}
+
+private fun studyImpactCard(stats: StudyStatsStore.StudyImpactStats): StatsCardModel {
+    return outcomeCard(
+        title = "Study impact",
+        summary = StudyTextCopy.countText(stats.totalReviews, "review", "reviews"),
+        body = StatsTextCopy.studyImpactBody(
+            stats.totalReviews,
+            stats.distinctReviewedKanji,
+            stats.writingRequired,
+            stats.writingPassed,
+            stats.writingFailed,
+            stats.manualOverrides
+        ),
+        lines = emptyList(),
+        strokeColor = STATS_BLUE_COLOR
+    )
+}
+
+private fun recentMistakesCard(
+    mistakes: List<StudyStatsStore.RecentMistake>,
+    nowMillis: Long,
+): StatsCardModel {
+    val rows = mistakes.take(5)
+    return outcomeCard(
+        title = "Recent mistakes",
+        summary = StudyTextCopy.countText(rows.size, "recent mistake", "recent mistakes"),
+        body = StatsTextCopy.recentMistakesBody(rows.isNotEmpty()),
+        lines = rows.map { mistake ->
+            StatsLineModel(
+                text = StatsTextCopy.recentMistakeRowText(
+                    mistake.kanji,
+                    mistake.rating,
+                    mistake.reviewedAtMillis,
+                    nowMillis
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_CORAL_COLOR
     )
 }
 

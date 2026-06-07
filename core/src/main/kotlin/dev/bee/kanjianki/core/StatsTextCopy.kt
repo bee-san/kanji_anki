@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import java.util.Locale
+import kotlin.math.max
 
 object StatsTextCopy {
     @JvmStatic
@@ -15,7 +16,7 @@ object StatsTextCopy {
 
     @JvmStatic
     fun verdictTitle(working: Boolean): String {
-        return if (working) "Kani is working for you" else "Waiting for Kani evidence"
+        return if (working) "Kani is working" else "Waiting for evidence"
     }
 
     @JvmStatic
@@ -30,7 +31,7 @@ object StatsTextCopy {
         totalActiveItems: Int,
     ): String {
         if (!hasStats) {
-            return "Study in Kani, then sync AnkiDroid to unlock trends."
+            return "Study and sync for trends."
         }
         if (working) {
             return workingVerdictBody(
@@ -41,11 +42,11 @@ object StatsTextCopy {
             )
         }
         if (hasLadder) {
-            return "Kani is tracking " +
+            return "Tracking " +
                 StudyTextCopy.countText(totalActiveItems, "active kanji", "active kanji") +
-                ". Trends appear after reviews and sync."
+                ". Trends need reviews and sync."
         }
-        return "Do Kani reviews, then sync AnkiDroid to compare before and after."
+        return "Review and sync to compare."
     }
 
     @JvmStatic
@@ -58,7 +59,7 @@ object StatsTextCopy {
         ladderDemotionFailStreak: Int,
     ): String {
         if (totalActiveItems == 0) {
-            return "No active ladder items yet. Sync or study weak kanji to fill the ladder."
+            return "Sync or study weak kanji to fill the ladder."
         }
         var body = StudyTextCopy.countText(
             promotionReadyCount,
@@ -80,7 +81,7 @@ object StatsTextCopy {
                 )
         }
         return body +
-            ". Rules: climb after more than " +
+            ". Climb after more than " +
             ladderPromotionIntervalDays +
             " days; fall after " +
             ladderDemotionFailStreak +
@@ -112,7 +113,7 @@ object StatsTextCopy {
         averageAfterWeakness: Double,
     ): String {
         if (improvedCount == 0) {
-            return "Weakness trends appear after Kani reviews and a successful AnkiDroid sync."
+            return "Weakness trends need reviews and sync."
         }
         return "Average weakness: " +
             formatWeakness(averageBeforeWeakness) +
@@ -153,12 +154,99 @@ object StatsTextCopy {
     @JvmStatic
     fun notHelpingBody(noImpactEvidence: Boolean, hasNotHelpingRows: Boolean): String {
         if (noImpactEvidence) {
-            return "Review in Kani, then sync AnkiDroid to compare before and after."
+            return "Review and sync to compare."
         }
         if (!hasNotHelpingRows) {
             return "No kanji need attention right now."
         }
-        return "Shown only after enough Kani reviews and synced Anki evidence."
+        return "Needs enough reviews and sync."
+    }
+
+    @JvmStatic
+    fun studyStreakSummary(currentDays: Int): String {
+        return if (currentDays <= 0) "No active streak" else "$currentDays-day streak"
+    }
+
+    @JvmStatic
+    fun studyStreakBody(
+        bestDays: Int,
+        studiedToday: Boolean,
+        reviewsToday: Int,
+        lastStudyAtMillis: Long,
+        nowMillis: Long,
+    ): String {
+        if (bestDays <= 0 && !studiedToday && reviewsToday <= 0 && lastStudyAtMillis <= 0L) {
+            return "Study and sync to start a streak."
+        }
+        val today = if (studiedToday) {
+            StudyTextCopy.countText(reviewsToday, "review today", "reviews today")
+        } else {
+            "No reviews today"
+        }
+        val lastStudy = if (lastStudyAtMillis <= 0L) {
+            "No study yet"
+        } else {
+            elapsedSinceLabel(nowMillis, lastStudyAtMillis)
+        }
+        return "Best streak " +
+            StudyTextCopy.countText(bestDays, "day", "days") +
+            ". " +
+            today +
+            ". Last study " +
+            lastStudy +
+            "."
+    }
+
+    @JvmStatic
+    fun studyImpactBody(
+        totalReviews: Int,
+        distinctReviewedKanji: Int,
+        writingRequired: Int,
+        writingPassed: Int,
+        writingFailed: Int,
+        manualOverrides: Int,
+    ): String {
+        if (totalReviews <= 0) {
+            return "Study and sync to start measuring impact."
+        }
+        val reviewSummary =
+            StudyTextCopy.countText(totalReviews, "review", "reviews") +
+                " across " +
+                StudyTextCopy.countText(distinctReviewedKanji, "kanji", "kanji")
+        val writingSummary = if (writingRequired <= 0) {
+            "No writing prompts yet"
+        } else {
+            "Writing prompts: " +
+                writingPassed +
+                " passed, " +
+                writingFailed +
+                " failed, " +
+                StudyTextCopy.countText(manualOverrides, "manual override", "manual overrides")
+        }
+        return reviewSummary + ". " + writingSummary + "."
+    }
+
+    @JvmStatic
+    fun recentMistakesBody(hasMistakes: Boolean): String {
+        return if (hasMistakes) {
+            "Recent misses worth another pass."
+        } else {
+            "No recent mistakes right now."
+        }
+    }
+
+    @JvmStatic
+    fun recentMistakeRowText(
+        kanji: String?,
+        rating: String?,
+        reviewedAtMillis: Long,
+        nowMillis: Long,
+    ): String {
+        return clean(kanji) +
+            "  " +
+            recentMistakeRatingLabel(rating) +
+            " · " +
+            elapsedSinceLabel(nowMillis, reviewedAtMillis)
     }
 
     @JvmStatic
@@ -202,22 +290,22 @@ object StatsTextCopy {
         if (weakKanjiImproved > 0) {
             signals += StudyTextCopy.countText(
                 weakKanjiImproved,
-                "weak kanji is burning down",
-                "weak kanji are burning down",
+                "weak kanji improved",
+                "weak kanji improved",
             )
         }
         if (matureSupportGained > 0) {
             signals += StudyTextCopy.countText(
                 matureSupportGained,
-                "mature Anki card has been gained",
-                "mature Anki cards have been gained",
+                "mature card gained",
+                "mature cards gained",
             )
         }
         if (promotionReadyCount > 0) {
             signals += StudyTextCopy.countText(
                 promotionReadyCount,
-                "review-phase item crossed the FSRS climb threshold",
-                "review-phase items crossed the FSRS climb threshold",
+                "review item ready to climb",
+                "review items ready to climb",
             )
         }
         var body = signals.joinToString(". ") + "."
@@ -225,8 +313,8 @@ object StatsTextCopy {
             body += " Watch " +
                 StudyTextCopy.countText(
                     demotionRiskCount,
-                    "review-phase item with a miss streak",
-                    "review-phase items with miss streaks",
+                    "review item with a miss streak",
+                    "review items with miss streaks",
                 ) +
                 "."
         }
@@ -235,5 +323,22 @@ object StatsTextCopy {
 
     private fun clean(value: String?): String {
         return value ?: ""
+    }
+
+    private fun elapsedSinceLabel(nowMillis: Long, pastMillis: Long): String {
+        val elapsed = max(0L, nowMillis - pastMillis)
+        return if (elapsed == 0L) {
+            "just now"
+        } else {
+            formatStudyTime(elapsed) + " ago"
+        }
+    }
+
+    private fun recentMistakeRatingLabel(rating: String?): String {
+        val cleaned = clean(rating)
+        if (cleaned.isBlank()) {
+            return "Mistake"
+        }
+        return cleaned.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
     }
 }

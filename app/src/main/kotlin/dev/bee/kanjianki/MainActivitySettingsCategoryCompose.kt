@@ -85,7 +85,7 @@ internal fun SettingsCategoryHeader(
                     role = Role.Button,
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
-                    onClick = onToggle
+                    onClick = { withButtonTrace(title) { onToggle() } }
                 ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -109,17 +109,21 @@ internal fun SettingsCategoryHeader(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Category titles like Study settings, Automation, and Display & data
+                // all reuse this header row.
                 Text(
                     text = title,
                     color = titleColor,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = summary,
-                    color = summaryColor,
-                    fontSize = 14.sp
-                )
+                if (summary.isNotBlank()) {
+                    Text(
+                        text = summary,
+                        color = summaryColor,
+                        fontSize = 14.sp
+                    )
+                }
             }
 
             Surface(

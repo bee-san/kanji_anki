@@ -42,7 +42,7 @@ internal fun StudyPrimaryActionButton(
     leadingContent: @Composable RowScope.() -> Unit = {},
 ) {
     Button(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))
@@ -71,7 +71,7 @@ internal fun StudySecondaryActionButton(
     minHeight: Dp = 62.dp,
 ) {
     OutlinedButton(
-        onClick = onClick,
+        onClick = { withButtonTrace(label) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))

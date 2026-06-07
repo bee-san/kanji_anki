@@ -211,7 +211,14 @@ private fun assertWritingGuideText() {
 fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                val startup = MainActivityStartup(activity)
+                assertTrue(startup.shouldRunBackgroundStartupTasks(Intent()))
+                assertFalse(startup.shouldRunBackgroundStartupTasks(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)))
+
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
+                assertHasText(activity, "GitHub updater");
+
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, "update"));
                 assertHasText(activity, "GitHub updater");
 
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE));
@@ -504,7 +511,7 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
         assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
-        assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("Starts after first sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertTrue(SettingsTextCopy.autoSyncDetail(
@@ -631,7 +638,7 @@ private fun verifyHomeSyncFocusAndStreakText(activity: MainActivity) {
         assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
         assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
         assertEquals("All current", HomeTextCopy.focusHeadline(all));
-        assertEquals("1 left · target 4", HomeTextCopy.focusHeadline(focused));
+        assertEquals("1/4 left", HomeTextCopy.focusHeadline(focused));
 
         var none = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)
         var doneToday = StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L)
@@ -658,9 +665,9 @@ private fun verifyStudyTimeRankAndQueueText(activity: MainActivity) {
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
         assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));
 
-        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", emptyList<RecordsImportModels.Example>())));
+        assertEquals("Needs kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", emptyList<RecordsImportModels.Example>())));
         assertEquals(
-                "Shape mix-up made this a writing-practice target.",
+                "Shape mix-up; practice writing.",
                 FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", emptyList<RecordsImportModels.Example>()))
         );
         assertEquals("custom evidence", FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", emptyList<RecordsImportModels.Example>())));
@@ -679,10 +686,10 @@ private fun verifySourceEvidenceAndEmptyQueue(activity: MainActivity) {
         assertEquals("From 活動語 · missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(active, suspended))));
         assertEquals("From 活動語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(active))));
         assertEquals("Missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", listOf(suspended))));
-        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
+        assertEquals("From AnkiDroid", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", emptyList<RecordsImportModels.Example>())));
         seedRows(activity, listOf(row("空", "empty", "クウ", emptyList<RecordsImportModels.Example>())));
         activity.renderFocusQueue();
-        assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
+        waitForText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
     }
 
 private fun verifyDetailIdentityAndTimeline(activity: MainActivity, inventory: RecordsImportModels.KanjiInventoryItem, row: RecordsImportModels.DashboardRow) {
@@ -728,16 +735,16 @@ private fun verifyDetailPanels(activity: MainActivity, inventory: RecordsImportM
         assertEquals("", historicalIdentity.reading);
 
         var inventoryReason = browseDetail.detailReasonPanelModel(null, inventory)
-        assertTrue(inventoryReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertTrue(inventoryReason.lines.contains("Anki browser: kanji:語"));
+        assertTrue(inventoryReason.lines.contains("Inactive; kept in recovery history."));
+        assertTrue(inventoryReason.lines.contains("Anki search: kanji:語"));
 
         var historicalReason = browseDetail.detailReasonPanelModel(null, null)
-        assertTrue(historicalReason.lines.contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertFalse(historicalReason.lines.toString().contains("Anki browser:"));
+        assertTrue(historicalReason.lines.contains("Inactive; kept in recovery history."));
+        assertFalse(historicalReason.lines.toString().contains("Anki search:"));
 
         var activeReason = browseDetail.detailReasonPanelModel(row, inventory)
         assertTrue(activeReason.lines.contains("reason text"));
-        assertTrue(activeReason.lines.contains("Anki browser: 裂"));
+        assertTrue(activeReason.lines.contains("Anki search: 裂"));
     }
 
     @Test
@@ -766,16 +773,16 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
 
                 performClickableWithText(homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
-                assertHasText(activity, "No recent mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 performClickableWithText(homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
 
                 performClickableWithText(homeActionRowTestView(activity), "Settings");
-                assertHasText(activity, "Reminders & updates");
+                assertHasText(activity, "Automation");
 
                 fullWidthHomeButtonTestView(activity).performClick();
-                assertHasText(activity, "Kani");
+                waitForText(activity, "Kani");
             }
         }
     }
@@ -783,18 +790,21 @@ fun homeNavigationActionButtonsRenderDestinationScreens() {
     @Test
 fun renderHomeUsesSingleComposeScreenForEmptyAndActiveStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.renderHome();
-                assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
-                assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
+            lateinit var activity: MainActivity
+            scenario.onActivity { activity = it }
 
+            scenario.onActivity { activity.renderHome() }
+            waitForText(activity, HomeTextCopy.noKanjiQueuedTitle())
+            waitForText(activity, HomeTextCopy.syncAnkiDroidLabel())
+
+            scenario.onActivity {
                 seedRows(activity, listOf(row("裂", "split", "レツ", emptyList<RecordsImportModels.Example>())));
                 activity.renderHome();
-                assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
-                assertHasText(activity, HomeTextCopy.viewAllLabel());
-                assertHasText(activity, "裂");
-                assertHasText(activity, "split");
             }
+            waitForText(activity, MainActivityBase.LABEL_STUDY_NOW)
+            waitForText(activity, HomeTextCopy.viewAllLabel())
+            waitForText(activity, "裂")
+            waitForText(activity, "split")
         }
     }
 
@@ -803,21 +813,21 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.renderFocusQueue();
-                assertHasText(activity, "No kanji queued yet");
+                waitForText(activity, "No kanji queued");
                 activity.renderRecentMistakes();
-                assertHasText(activity, "No recent mistakes yet");
+                waitForText(activity, "No mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "", ""));
-                assertHasText(activity, "Kani is already reading AnkiDroid.");
+                assertHasText(activity, "Already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
                 assertHasText(activity, "AnkiDroid needs attention");
                 assertHasText(activity, "Provider unavailable.");
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
-                assertHasText(activity, "Try again after checking AnkiDroid permissions.");
+                assertHasText(activity, "Check AnkiDroid permissions, then retry.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Automatic workload: 2 items today"));
                 assertHasText(activity, "Sync complete");
@@ -840,7 +850,7 @@ fun gamesHostPathsRenderComposeResultAndUnavailableStates() {
                 assertHasText(activity, "Games");
 
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
-                assertHasText(activity, "Game not ready");
+                assertHasText(activity, "Needs more data");
 
                 seedRows(activity, listOf(
                         row("裂", "split", "レツ", emptyList<RecordsImportModels.Example>()),
@@ -1023,7 +1033,7 @@ fun studyDoneActionsStudyMoreAndFallbackPanelsExerciseRealUiBranches() {
                 activity.renderFocusDone(complete);
                 assertHasText(activity, "Study more new cards");
                 performClickableWithText(activity.findViewById(android.R.id.content), "Study more new cards");
-                assertHasText(activity, "How many extra new cards do you want to study now?");
+                assertHasText(activity, "How many extra new cards?");
                 performClickableWithText(activity.findViewById(android.R.id.content), "Cancel");
                 performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
@@ -1591,7 +1601,7 @@ fun flashcardButtonsAndGesturesPersistPassFailOnlyAfterReveal() {
                 assertNotNull(activity.flashcardActionBarState);
                 root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "Reveal");
-                performClickableWithText(root, MainActivityBase.LABEL_PASS);
+                performClickableWithText(root, "Pass");
                 var passStats = activity.store.reviewStatsSince(0L)
                 assertEquals(3, passStats.total);
                 assertEquals(1, passStats.good);
@@ -1645,18 +1655,29 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.expression);
         assertEquals("split word", activeExample.meaning);
+        val matureSupportThreshold = activity.settings().matureSupportThreshold
         val relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        var relearningRow = homeFocusQueueCardModel(activity, MainActivityBase.QueueEntry(activeRow, relearning), 1000L)
+        var relearningRow = homeFocusQueueCardModel(
+                activity,
+                MainActivityBase.QueueEntry(activeRow, relearning),
+                1000L,
+                matureSupportThreshold,
+        )
         assertTrue(relearningRow.tags.any { it.label == "relearning" })
         val learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .totalReviews(1)
                 .build();
-        var learningRow = homeFocusQueueCardModel(activity, MainActivityBase.QueueEntry(activeRow, learning), 1000L)
+        var learningRow = homeFocusQueueCardModel(
+                activity,
+                MainActivityBase.QueueEntry(activeRow, learning),
+                1000L,
+                matureSupportThreshold,
+        )
         assertTrue(learningRow.tags.any { it.label == "learning" })
         seedRows(activity, listOf(activeRow));
         activity.renderStudyForKanji("裂");
@@ -1667,8 +1688,8 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         assertEquals("裂", activity.activeBrowseQuery);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertHasText(activity, "Back to Browse Kanji");
-        assertHasText(activity, "Local inventory");
+        assertHasText(activity, "Back to Browse");
+        assertHasText(activity, "Local records");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing", false, "");
@@ -1677,18 +1698,18 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
 
 private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
         activity.renderRecentMistakes();
-        assertHasText(activity, "No recent mistakes yet");
+        waitForText(activity, "No mistakes yet");
         activity.store.saveReview(RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
-        assertContainsText(activity.findViewById(android.R.id.content), "Rated again");
+        waitForText(activity, "Rated again");
 
         val emptyTimeline = MainActivityHomeBrowseDetail(activity)
                 .recoveryTimelineModel(RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, emptyList<RecordsImportModels.KanjiTimelineEvent>()));
-        assertEquals("No active Anki evidence in the latest local sync.", emptyTimeline.supportText);
+        assertEquals("No active Anki evidence.", emptyTimeline.supportText);
     }
 
 private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: RecordsImportModels.DashboardRow) {
-        assertEquals("Kani is not currently working for you", StatsTextCopy.verdictTitle(false));
+        assertEquals("Waiting for evidence", StatsTextCopy.verdictTitle(false));
         val ladderOnly = StudyStatsStore.LadderHealthMetric(
                 Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 1),
                 1,
@@ -1702,8 +1723,8 @@ private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: Record
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
-        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study and sync for trends."));
+        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Tracking 1 active kanji"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 ladderOnly.totalActiveItems,
                 ladderOnly.promotionReadyCount,
@@ -1758,10 +1779,10 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionRiskCount,
                 busyLadder.totalActiveItems
         );
-        assertTrue(workingBody.contains("weak kanji are burning down"));
-        assertTrue(workingBody.contains("mature Anki cards have been gained"));
-        assertTrue(workingBody.contains("review-phase item is ready to climb"));
-        assertTrue(workingBody.contains("review-phase items with miss streaks"));
+        assertTrue(workingBody.contains("weak kanji improved"));
+        assertTrue(workingBody.contains("mature card gained"));
+        assertTrue(workingBody.contains("review items ready to climb"));
+        assertTrue(workingBody.contains("review item with a miss streak"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 busyLadder.totalActiveItems,
                 busyLadder.promotionReadyCount,
@@ -1769,7 +1790,7 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.demotionReadyCount,
                 busyLadder.ladderPromotionIntervalDays,
                 busyLadder.ladderDemotionFailStreak
-        ).contains("at the demotion threshold"));
+        ).contains("fall after 1 misses"));
         assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size)
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
@@ -1975,8 +1996,8 @@ fun browseAndDetailCopyAvoidMisleadingOrBlankRows() {
                 );
                 var browseDetail = MainActivityHomeBrowseDetail(activity)
                 var reason = browseDetail.detailReasonPanelModel(row, null)
-                assertTrue(reason.lines.contains("Current local practice evidence from AnkiDroid."));
-                assertTrue(reason.lines.get(1).contains("Anki browser: deck:Japanese"));
+                assertTrue(reason.lines.contains("Active practice evidence."));
+                assertTrue(reason.lines.get(1).contains("Anki search: deck:Japanese"));
 
                 var identity = browseDetail.detailIdentityModel(row, null, false)
                 assertEquals("split", identity.title);
@@ -2261,7 +2282,16 @@ private fun event(expression: String, reading: String): RecordsImportModels.Kanj
         );
     }
 
-private fun syncResult(success: Boolean, skipped: Boolean, dashboardRows: Int, importedSuspendedKanji: Int, message: String, adaptiveSummary: String): ManualSyncEngine.SyncResult {
+private fun syncResult(
+        success: Boolean,
+        skipped: Boolean,
+        dashboardRows: Int,
+        importedSuspendedKanji: Int,
+        message: String,
+        adaptiveSummary: String,
+        studyReadyCount: Int = dashboardRows,
+        adaptiveFocusText: String = adaptiveSummary.ifEmpty { "Adaptive focus is waiting for sync" },
+): ManualSyncEngine.SyncResult {
         try {
             val constructor = ManualSyncEngine.SyncResult::class.java.getDeclaredConstructor(
                     Boolean::class.javaPrimitiveType!!,
@@ -2272,7 +2302,10 @@ private fun syncResult(success: Boolean, skipped: Boolean, dashboardRows: Int, i
                     String::class.java
             )
             constructor.setAccessible(true)
-            return constructor.newInstance(success, skipped, dashboardRows, importedSuspendedKanji, message, adaptiveSummary)
+            return constructor.newInstance(success, skipped, dashboardRows, importedSuspendedKanji, message, adaptiveSummary).apply {
+                this.studyReadyCount = studyReadyCount
+                this.adaptiveFocusText = adaptiveFocusText
+            }
         } catch (error: ReflectiveOperationException) {
             throw AssertionError(error)
         }
@@ -2383,6 +2416,18 @@ private fun assertHasText(activity: MainActivity, text: String) {
         if (!containsText(root, text) && findDeviceTextNow(text) == null) {
             throw AssertionError("Missing text: " + text);
         }
+    }
+
+private fun waitForText(activity: MainActivity, text: String, timeoutMillis: Long = 5000L) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            if (containsText(root, text) || findDeviceTextNow(text) != null) {
+                return
+            }
+            Thread.sleep(100L)
+        }
+        assertHasText(activity, text)
     }
 
 private fun assertContainsText(root: View, text: String) {

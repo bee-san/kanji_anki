@@ -127,12 +127,6 @@ fun BrowseScreen(model: BrowseScreenModel) {
             fontWeight = FontWeight.Bold,
             style = browseNoFontPaddingStyle(34)
         )
-        Text(
-            text = HomeTextCopy.browseBody(),
-            modifier = Modifier.fillMaxWidth(),
-            color = BrowseMuted,
-            fontSize = 16.sp
-        )
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -143,7 +137,11 @@ fun BrowseScreen(model: BrowseScreenModel) {
             keyboardActions = KeyboardActions(onSearch = { runSearch() })
         )
         Button(
-            onClick = runSearch,
+            onClick = {
+                withButtonTrace("home-search") {
+                    runSearch()
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 58.dp),
@@ -255,7 +253,14 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
             .semantics {
                 contentDescription = browseKanjiRowDescription(model)
             }
-            .clickable(role = Role.Button, onClick = model.onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withButtonTrace("browse-kanji-${model.kanji}") {
+                        model.onClick()
+                    }
+                }
+            ),
         shape = BrowseCardShape,
         color = BrowseWhite,
         border = BorderStroke(1.dp, borderColor)
