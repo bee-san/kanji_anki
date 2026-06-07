@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
@@ -103,7 +104,11 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                         emptyStyle = HomeEmptyStateStyle.LegacyBand
                     )
                 } else {
-                    homeRecentMistakesPanelModel(home, data.mistakes, data.activeRows)
+                    homeRecentMistakesPanelModel(
+                        home,
+                        data.mistakes,
+                        StudyCollectionLookup.dashboardRowsByKanji(data.activeRows),
+                    )
                 }
                 val model = HomeRecentMistakesScreenModel(
                     title = HomeTextCopy.recentMistakesTitle(),

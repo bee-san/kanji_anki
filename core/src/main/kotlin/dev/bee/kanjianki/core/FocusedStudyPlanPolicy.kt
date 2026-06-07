@@ -9,16 +9,16 @@ object FocusedStudyPlanPolicy {
         nowMillis: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
         val focus = ArrayList<String>()
-        val safeRows = rows.orEmpty()
+        val rowsByKanji = StudyCollectionLookup.dashboardRowsByKanji(rows.orEmpty())
         for (kanji in requestedKanji.orEmpty()) {
-            if (StudyCollectionLookup.dashboardRowByKanji(safeRows, kanji) != null) {
+            if (rowsByKanji.containsKey(kanji)) {
                 focus.add(kanji)
             }
         }
         var remaining = 0
-        val safeItems = items.orEmpty()
+        val itemsByKanji = StudyCollectionLookup.studyItemsByKanji(items.orEmpty())
         for (kanji in focus) {
-            val item = StudyCollectionLookup.studyItemByKanji(safeItems, kanji)
+            val item = itemsByKanji[kanji]
             if (itemDueForFocus(item, nowMillis)) {
                 remaining++
             }
@@ -47,10 +47,10 @@ object FocusedStudyPlanPolicy {
             focus.add(row.kanji)
         }
         var remaining = 0
-        val safeItems = items.orEmpty()
+        val itemsByKanji = StudyCollectionLookup.studyItemsByKanji(items.orEmpty())
         val safeStudied = studiedToday.orEmpty()
         for (kanji in focus) {
-            val item = StudyCollectionLookup.studyItemByKanji(safeItems, kanji)
+            val item = itemsByKanji[kanji]
             if (!safeStudied.contains(kanji) || itemDueForFocus(item, nowMillis)) {
                 remaining++
             }

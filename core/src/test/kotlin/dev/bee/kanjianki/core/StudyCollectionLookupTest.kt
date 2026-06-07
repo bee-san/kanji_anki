@@ -26,6 +26,20 @@ class StudyCollectionLookupTest {
     }
 
     @Test
+    fun dashboardRowsByKanjiIndexesFirstMatchAndSkipsNulls() {
+        val expected = row("語")
+        val other = row("字")
+
+        val result = StudyCollectionLookup.dashboardRowsByKanji(
+            listOf(null, expected, other, row("語")),
+        )
+
+        assertSame(expected, result["語"])
+        assertSame(other, result["字"])
+        assertNull(result["未"])
+    }
+
+    @Test
     fun studyItemByKanjiReturnsMatchingItem() {
         val expected = item("語")
 
@@ -43,6 +57,20 @@ class StudyCollectionLookupTest {
         assertNull(StudyCollectionLookup.studyItemByKanji(null, "語"))
         assertNull(StudyCollectionLookup.studyItemByKanji(listOf(item("語")), null))
         assertNull(StudyCollectionLookup.studyItemByKanji(listOf<RecordsStudyModels.StudyItem?>(null), "語"))
+    }
+
+    @Test
+    fun studyItemsByKanjiIndexesFirstMatchAndSkipsNulls() {
+        val expected = item("語")
+        val other = item("字")
+
+        val result = StudyCollectionLookup.studyItemsByKanji(
+            listOf(null, expected, other, item("語")),
+        )
+
+        assertSame(expected, result["語"])
+        assertSame(other, result["字"])
+        assertNull(result["未"])
     }
 
     private fun row(kanji: String): RecordsImportModels.DashboardRow {
