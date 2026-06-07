@@ -1,8 +1,10 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
 import java.util.Locale
 import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
@@ -103,6 +105,67 @@ class MainActivityStudyMoreNewCardsLoadDataTest {
             String.format(
                 Locale.ROOT,
                 "study-more-new-cards-load-data baseline_ms=%.3f baseline_avg_us=%.3f hit_ms=%.3f hit_avg_us=%.6f",
+                baselineNanos / 1_000_000.0,
+                baselineNanos / baselineIterations.toDouble() / 1_000.0,
+                hitNanos / 1_000_000.0,
+                hitNanos / hitIterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
+    fun benchmarksCachedAvailabilityHitAgainstRecomputePath() {
+        val rows = listOf(dashboardRow("字A"), dashboardRow("字B"))
+        val existing = listOf(studyItem("字A"), studyItem("字B"))
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val now = 1_720_000_000_000L
+        val startOfDay = now - (now % 86_400_000L)
+        val baselineIterations = 20_000
+        val hitIterations = 500_000
+
+        val baselineNanos = measureNanoTime {
+            repeat(baselineIterations) {
+                assertNotNull(
+                    resolveStudyMoreNewCardsAvailability(
+                        snapshot = null,
+                        cachedAvailableCount = null,
+                        loadRows = { rows },
+                        loadExisting = { existing },
+                        countAvailable = { loadData ->
+                            BridgeScheduler().countExtraNewCardsAvailable(
+                                loadData.rows,
+                                loadData.existing,
+                                settings,
+                                now,
+                                startOfDay,
+                                ladder,
+                            )
+                        },
+                    ),
+                )
+            }
+        }
+
+        val snapshot = MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot(rows, existing)
+        val hitNanos = measureNanoTime {
+            repeat(hitIterations) {
+                assertNotNull(
+                    resolveStudyMoreNewCardsAvailability(
+                        snapshot = snapshot,
+                        cachedAvailableCount = 7,
+                        loadRows = { error("loadRows should not be called on cached availability hit") },
+                        loadExisting = { error("loadExisting should not be called on cached availability hit") },
+                        countAvailable = { error("countAvailable should not be called on cached availability hit") },
+                    ),
+                )
+            }
+        }
+
+        println(
+            String.format(
+                Locale.ROOT,
+                "study-more-new-cards-availability baseline_ms=%.3f baseline_avg_us=%.3f hit_ms=%.3f hit_avg_us=%.6f",
                 baselineNanos / 1_000_000.0,
                 baselineNanos / baselineIterations.toDouble() / 1_000.0,
                 hitNanos / 1_000_000.0,

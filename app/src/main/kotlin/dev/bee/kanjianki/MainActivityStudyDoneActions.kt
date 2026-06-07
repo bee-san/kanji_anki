@@ -16,6 +16,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private var renderedScreenModel: StudyDoneScreenModel? = null
     private var studyMoreDialog: StudyMoreNewCardsDialogModel? = null
     private var cachedStudyMoreNewCardsSnapshot: StudyMoreNewCardsSnapshot? = null
+    private var cachedStudyMoreNewCardsAvailability: Int? = null
 
     internal data class StudyMoreNewCardsSnapshot(
         val rows: List<RecordsImportModels.DashboardRow>,
@@ -181,27 +182,37 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
 
     fun availableStudyMoreNewCards(): Int {
         return withUiTrace("kani.study.more-new-cards.available") {
-            val loadData = resolveStudyMoreNewCardsLoadData(
+            val availability = resolveStudyMoreNewCardsAvailability(
                 cachedStudyMoreNewCardsSnapshot,
+                cachedStudyMoreNewCardsAvailability,
                 loadRows = { home.store.activeDashboardRows() },
                 loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
+                countAvailable = { loadData ->
+                    val now = System.currentTimeMillis()
+                    BridgeScheduler().countExtraNewCardsAvailable(
+                        loadData.rows,
+                        loadData.existing,
+                        home.settings(),
+                        now,
+                        home.startOfDay(now),
+                        home.studyLadderSettings(),
+                    )
+                },
             )
-            if (loadData == null) {
-                cachedStudyMoreNewCardsSnapshot = null
+            if (availability == null) {
+                clearStudyMoreNewCardsSnapshot()
                 return@withUiTrace 0
             }
             if (cachedStudyMoreNewCardsSnapshot == null) {
-                cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(loadData.rows, loadData.existing)
+                cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(
+                    availability.loadData.rows,
+                    availability.loadData.existing,
+                )
             }
-            val now = System.currentTimeMillis()
-            BridgeScheduler().countExtraNewCardsAvailable(
-                loadData.rows,
-                loadData.existing,
-                home.settings(),
-                now,
-                home.startOfDay(now),
-                home.studyLadderSettings(),
-            )
+            if (cachedStudyMoreNewCardsAvailability == null) {
+                cachedStudyMoreNewCardsAvailability = availability.availableCount
+            }
+            availability.availableCount
         }
     }
 
@@ -211,6 +222,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
 
     fun clearStudyMoreNewCardsSnapshot() {
         cachedStudyMoreNewCardsSnapshot = null
+        cachedStudyMoreNewCardsAvailability = null
     }
 
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
