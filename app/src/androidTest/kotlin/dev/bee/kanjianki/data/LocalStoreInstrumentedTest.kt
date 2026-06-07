@@ -336,6 +336,40 @@ class LocalStoreInstrumentedTest {
     }
 
     @Test
+    fun testKanjiInventorySearchFiltersSimilarKanjiAndBulkStudySelection() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val snapshot = RecordsSyncModels.CollectionSnapshot(
+                listOf(
+                        sourceKikuNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。"),
+                        sourceKikuNote(2L, "謎", "なぞ", "riddle", "謎を見た。")
+                ),
+                listOf(
+                        kikuCard(10L, 1L).build(),
+                        kikuCard(20L, 2L).build()
+                )
+        )
+        val index = SimilarKanjiIndex.parseTsv(StringReader("""
+                拉\t麺\tfixture
+                """))
+
+        store.saveSuccessfulSync(snapshot, emptyList(), emptyList(), settings, LocalStoreBase.SyncTiming(1000L, 2000L), null, index);
+
+        assertContainsKanji(store.searchKanjiInventory(""), "謎");
+        val similarOnly = store.searchKanjiInventory("", true)
+        assertEquals(listOf("拉", "麺"), similarOnly.map { it.kanji });
+        assertTrue(store.searchKanjiInventory("riddle", true).isEmpty());
+
+        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, true, 2500L);
+        assertTrue(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
+        assertTrue(requireNotNull(store.inventoryItemForKanji("麺")).suspended);
+        assertFalse(requireNotNull(store.inventoryItemForKanji("謎")).suspended);
+
+        store.setKanjiLocallySuspendedForKanji(similarOnly.map { it.kanji }, false, 3000L);
+        assertFalse(requireNotNull(store.inventoryItemForKanji("拉")).suspended);
+        assertFalse(requireNotNull(store.inventoryItemForKanji("麺")).suspended);
+    }
+
+    @Test
     fun testKanjiInventoryShortensLongReadingListsButKeepsSearchText() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val snapshot = RecordsSyncModels.CollectionSnapshot(

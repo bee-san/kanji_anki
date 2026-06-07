@@ -245,6 +245,28 @@ object HomeTextCopy {
     fun browseSearchButtonLabel(): String = "Search"
 
     @JvmStatic
+    fun browseSimilarFilterLabel(): String = "Similar kanji only"
+
+    @JvmStatic
+    fun browseStudySelectionSummary(selected: Int, total: Int): String {
+        val safeTotal = total.coerceAtLeast(0)
+        val safeSelected = selected.coerceIn(0, safeTotal)
+        if (safeTotal == 0 || safeSelected == 0) {
+            return "No kanji selected for study"
+        }
+        return "$safeSelected of $safeTotal selected for study"
+    }
+
+    @JvmStatic
+    fun browseSelectAllStudiedLabel(): String = "Select all shown"
+
+    @JvmStatic
+    fun browseDeselectAllStudiedLabel(): String = "Deselect all shown"
+
+    @JvmStatic
+    fun browseStudiedToggleLabel(kanji: String?): String = "Study this kanji"
+
+    @JvmStatic
     fun browseEmptyTitle(): String = "No local kanji found"
 
     @JvmStatic

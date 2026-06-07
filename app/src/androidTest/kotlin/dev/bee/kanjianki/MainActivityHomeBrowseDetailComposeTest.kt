@@ -1,6 +1,8 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -53,12 +55,21 @@ class MainActivityHomeBrowseDetailComposeTest {
         var searched = ""
         var homeClicked = false
         var clickedKanji = ""
+        var toggledFilterQuery = ""
+        var selectAllClicked = false
+        var deselectAllClicked = false
+        val studiedChanges = mutableListOf<Pair<String, Boolean>>()
 
         composeRule.setContent {
             BrowseScreen(
                 model = BrowseScreenModel(
                     initialQuery = " 裂 ",
                     resultHeading = "2 kanji",
+                    similarFilterActive = false,
+                    studySelectionSummary = "1 of 2 selected for study",
+                    onToggleSimilarFilter = { toggledFilterQuery = it },
+                    onSelectAllStudied = { selectAllClicked = true },
+                    onDeselectAllStudied = { deselectAllClicked = true },
                     rows = listOf(
                         BrowseKanjiRowModel(
                             kanji = "裂",
@@ -66,7 +77,9 @@ class MainActivityHomeBrowseDetailComposeTest {
                             readings = "レツ",
                             summary = "2 local sources · 1 example",
                             suspended = true,
-                            onClick = { clickedKanji = "裂" }
+                            studied = false,
+                            onClick = { clickedKanji = "裂" },
+                            onStudiedChange = { studiedChanges.add("裂" to it) }
                         ),
                         BrowseKanjiRowModel(
                             kanji = "謎",
@@ -74,7 +87,9 @@ class MainActivityHomeBrowseDetailComposeTest {
                             readings = "",
                             summary = "0 local sources · 1 example",
                             suspended = false,
-                            onClick = { clickedKanji = "謎" }
+                            studied = true,
+                            onClick = { clickedKanji = "謎" },
+                            onStudiedChange = { studiedChanges.add("謎" to it) }
                         )
                     ),
                     onHome = { homeClicked = true },
@@ -89,9 +104,24 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Similar kanji only").assertIsDisplayed()
+        composeRule.onNodeWithText("1 of 2 selected for study").assertIsDisplayed()
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).assertIsOff()
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("謎")).assertIsOn()
 
         composeRule.onNodeWithText("Search").performClick()
         assertEquals(" 裂 ", searched)
+
+        composeRule.onNodeWithTag(browseSimilarFilterTestTag()).performClick()
+        assertEquals(" 裂 ", toggledFilterQuery)
+
+        composeRule.onNodeWithTag(browseSelectAllStudiedTestTag()).performClick()
+        composeRule.onNodeWithTag(browseDeselectAllStudiedTestTag()).performClick()
+        assertTrue(selectAllClicked)
+        assertTrue(deselectAllClicked)
+
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).performClick()
+        assertEquals("裂" to true, studiedChanges.last())
 
         composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
         assertEquals("裂", clickedKanji)

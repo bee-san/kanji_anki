@@ -69,15 +69,30 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun searchKanjiInventory(query: String?): List<RecordsImportModels.KanjiInventoryItem> {
+        return searchKanjiInventory(query, false)
+    }
+
+    fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
         val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
-        var selection: String? = null
-        var args: Array<String>? = null
+        val clauses = ArrayList<String>()
+        val argsList = ArrayList<String>()
         if (!parsed.isEmpty()) {
-            selection = parsed.terms().joinToString(" AND ") { "search_text LIKE ?" }
-            args = parsed.terms().map { "%$it%" }.toTypedArray()
+            for (term in parsed.terms()) {
+                clauses.add("search_text LIKE ?")
+                argsList.add("%$term%")
+            }
         }
+        if (onlySimilarKanji) {
+            clauses.add(
+                "EXISTS (SELECT 1 FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE " +
+                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_A=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI OR " +
+                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_B=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
+            )
+        }
+        val selection = clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND ")
+        val args = argsList.takeIf { it.isNotEmpty() }?.toTypedArray()
         db.query(
             TABLE_KANJI_INVENTORY,
             null,
@@ -133,20 +148,45 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             return
         }
         writableDatabase.transaction {
-            if (suspended) {
-                val values = ContentValues()
-                values.put(COLUMN_KANJI, kanji)
-                values.put("suspended_at", nowMillis)
-                insertWithOnConflict(
-                    TABLE_LOCAL_KANJI_SUSPENSIONS,
-                    null,
-                    values,
-                    SQLiteDatabase.CONFLICT_REPLACE,
-                )
-                delete(TABLE_LEARNING_REPEATS, WHERE_KANJI, arrayOf(kanji))
-            } else {
-                delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, arrayOf(kanji))
+            setKanjiLocallySuspendedInTransaction(this, kanji, suspended, nowMillis)
+        }
+    }
+
+    fun setKanjiLocallySuspendedForKanji(kanji: Collection<String?>?, suspended: Boolean, nowMillis: Long) {
+        val normalized = kanji
+            .orEmpty()
+            .map { it.orEmpty() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+        if (normalized.isEmpty()) {
+            return
+        }
+        writableDatabase.transaction {
+            for (value in normalized) {
+                setKanjiLocallySuspendedInTransaction(this, value, suspended, nowMillis)
             }
+        }
+    }
+
+    private fun setKanjiLocallySuspendedInTransaction(
+        db: SQLiteDatabase,
+        kanji: String,
+        suspended: Boolean,
+        nowMillis: Long,
+    ) {
+        if (suspended) {
+            val values = ContentValues()
+            values.put(COLUMN_KANJI, kanji)
+            values.put("suspended_at", nowMillis)
+            db.insertWithOnConflict(
+                TABLE_LOCAL_KANJI_SUSPENSIONS,
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
+            db.delete(TABLE_LEARNING_REPEATS, WHERE_KANJI, arrayOf(kanji))
+        } else {
+            db.delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, arrayOf(kanji))
         }
     }
 

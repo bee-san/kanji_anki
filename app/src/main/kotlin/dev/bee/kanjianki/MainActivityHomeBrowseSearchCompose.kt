@@ -7,15 +7,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +45,10 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 
 internal fun browseKanjiRowTestTag(kanji: String): String = "browse-kanji-row-$kanji"
+internal fun browseKanjiStudiedToggleTestTag(kanji: String): String = "browse-kanji-studied-$kanji"
+internal fun browseSimilarFilterTestTag(): String = "browse-similar-filter"
+internal fun browseSelectAllStudiedTestTag(): String = "browse-select-all-studied"
+internal fun browseDeselectAllStudiedTestTag(): String = "browse-deselect-all-studied"
 
 private fun browseKanjiRowDescription(model: BrowseKanjiRowModel): String {
     return listOfNotNull(
@@ -48,6 +57,7 @@ private fun browseKanjiRowDescription(model: BrowseKanjiRowModel): String {
         model.meaning,
         model.readings.takeIf { it.isNotBlank() },
         model.summary,
+        if (model.studied) "selected for study" else "not selected for study",
         if (model.suspended) HomeTextCopy.suspendedChipLabel() else null,
     ).joinToString(", ")
 }
@@ -55,21 +65,34 @@ private fun browseKanjiRowDescription(model: BrowseKanjiRowModel): String {
 internal fun browseScreenModel(
     activity: MainActivityHome,
     query: String,
-    items: List<RecordsImportModels.KanjiInventoryItem>
+    items: List<RecordsImportModels.KanjiInventoryItem>,
+    onlySimilarKanji: Boolean = false,
 ): BrowseScreenModel {
-    val rows = items.map { item -> browseKanjiRowModel(activity, query, item) }
+    val rows = items.map { item -> browseKanjiRowModel(activity, query, onlySimilarKanji, item) }
     return BrowseScreenModel(
         initialQuery = query,
         resultHeading = HomeTextCopy.browseResultHeading(rows.size),
         rows = rows,
+        similarFilterActive = onlySimilarKanji,
+        studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(rows.count { it.studied }, rows.size),
+        onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
+        onSelectAllStudied = {
+            activity.store.setKanjiLocallySuspendedForKanji(items.map { it.kanji }, false, System.currentTimeMillis())
+            activity.renderBrowseKanji(query, onlySimilarKanji)
+        },
+        onDeselectAllStudied = {
+            activity.store.setKanjiLocallySuspendedForKanji(items.map { it.kanji }, true, System.currentTimeMillis())
+            activity.renderBrowseKanji(query, onlySimilarKanji)
+        },
         onHome = activity::renderHome,
-        onSearch = activity::renderBrowseKanji
+        onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji) }
     )
 }
 
 private fun browseKanjiRowModel(
     activity: MainActivityHome,
     browseQuery: String,
+    onlySimilarKanji: Boolean,
     item: RecordsImportModels.KanjiInventoryItem
 ): BrowseKanjiRowModel {
     return BrowseKanjiRowModel(
@@ -78,6 +101,11 @@ private fun browseKanjiRowModel(
         readings = item.readings,
         summary = HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount),
         suspended = item.suspended,
+        studied = !item.suspended,
+        onStudiedChange = { studied ->
+            activity.store.setKanjiLocallySuspended(item.kanji, !studied, System.currentTimeMillis())
+            activity.renderBrowseKanji(browseQuery, onlySimilarKanji)
+        },
         onClick = { activity.renderDetail(item.kanji, true, browseQuery) }
     )
 }
@@ -129,6 +157,7 @@ fun BrowseScreen(model: BrowseScreenModel) {
                 fontWeight = FontWeight.Bold
             )
         }
+        BrowseStudyControls(model = model, query = query)
         Text(
             text = model.resultHeading,
             color = BrowseInk,
@@ -143,6 +172,74 @@ fun BrowseScreen(model: BrowseScreenModel) {
                 model.rows.forEach { row ->
                     BrowseKanjiRow(model = row)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseStudyControls(model: BrowseScreenModel, query: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = { model.onToggleSimilarFilter(query) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .testTag(browseSimilarFilterTestTag()),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (model.similarFilterActive) BrowseTeal else BrowseWhite,
+                contentColor = if (model.similarFilterActive) BrowseWhite else BrowseTeal,
+            ),
+            border = BorderStroke(1.dp, BrowseTeal),
+        ) {
+            Text(
+                text = HomeTextCopy.browseSimilarFilterLabel(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Text(
+            text = model.studySelectionSummary,
+            color = BrowseMuted,
+            fontSize = 14.sp
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = model.onSelectAllStudied,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .testTag(browseSelectAllStudiedTestTag()),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, BrowseTeal),
+            ) {
+                Text(
+                    text = HomeTextCopy.browseSelectAllStudiedLabel(),
+                    color = BrowseTeal,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(
+                onClick = model.onDeselectAllStudied,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .testTag(browseDeselectAllStudiedTestTag()),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, BrowseCoral),
+            ) {
+                Text(
+                    text = HomeTextCopy.browseDeselectAllStudiedLabel(),
+                    color = BrowseCoral,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -217,6 +314,27 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
             }
             if (model.suspended) {
                 BrowseSearchChip(label = HomeTextCopy.suspendedChipLabel(), color = BrowseCoral)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Checkbox(
+                    checked = model.studied,
+                    onCheckedChange = model.onStudiedChange,
+                    modifier = Modifier
+                        .testTag(browseKanjiStudiedToggleTestTag(model.kanji))
+                        .semantics {
+                            contentDescription = HomeTextCopy.browseStudiedToggleLabel(model.kanji)
+                        },
+                    colors = CheckboxDefaults.colors(checkedColor = BrowseTeal)
+                )
+                Text(
+                    text = HomeTextCopy.browseStudiedToggleLabel(model.kanji),
+                    color = BrowseInk,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

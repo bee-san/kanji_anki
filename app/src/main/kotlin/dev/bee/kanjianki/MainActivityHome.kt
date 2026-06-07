@@ -20,6 +20,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
     @JvmField
     var activeBrowseQuery: String = ""
 
+    @JvmField
+    var activeBrowseSimilarOnly: Boolean = false
+
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
     private val asyncHomeRouteLoader by lazy {
@@ -328,7 +331,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderBrowseKanji(query: String?) {
-        browseDetail.renderBrowseKanji(query)
+        browseDetail.renderBrowseKanji(query, false)
+    }
+
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean) {
+        browseDetail.renderBrowseKanji(query, onlySimilarKanji)
     }
 
     fun <T> renderAsyncHomeRoute(
