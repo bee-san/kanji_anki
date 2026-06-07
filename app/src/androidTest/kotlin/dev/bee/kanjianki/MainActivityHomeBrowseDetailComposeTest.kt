@@ -7,9 +7,11 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -77,6 +79,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             meaning = "split",
                             readings = "レツ",
                             summary = "2 local sources · 1 example",
+                            contentDescription = "Browse kanji row, 裂, split, レツ, 2 local sources · 1 example, ${HomeTextCopy.suspendedChipLabel()}",
                             suspended = true,
                             studied = false,
                             onClick = { clickedKanji = "裂" },
@@ -87,6 +90,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             meaning = "Meaning not stored yet",
                             readings = "",
                             summary = "0 local sources · 1 example",
+                            contentDescription = "Browse kanji row, 謎, Meaning not stored yet, 0 local sources · 1 example",
                             suspended = false,
                             studied = true,
                             onClick = { clickedKanji = "謎" },
@@ -104,6 +108,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("split").assertIsDisplayed()
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Browse kanji row, 裂, split, レツ, 2 local sources · 1 example, ${HomeTextCopy.suspendedChipLabel()}").assertIsDisplayed()
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
         composeRule.onNodeWithText("Similar kanji only").assertIsDisplayed()
         composeRule.onNodeWithText("1 of 2 selected for study").assertIsDisplayed()
