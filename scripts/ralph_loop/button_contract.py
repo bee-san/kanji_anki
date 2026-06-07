@@ -259,7 +259,7 @@ def _labels(text: str) -> list[str]:
         "LABEL_STUDY_NOW": "Study now",
         "LABEL_PASS": "Pass",
         "LABEL_FAIL": "Fail",
-        "syncAnkiDroidLabel": "Sync with AnkiDroid",
+        "syncAnkiDroidLabel": "Sync AnkiDroid",
         "viewAllLabel": "View all >",
         "moveUpLabel": "Up",
         "moveDownLabel": "Down",

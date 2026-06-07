@@ -60,13 +60,13 @@ class ButtonContractTest(unittest.TestCase):
     def test_selector_click_evidence_stays_on_same_selector_statement(self) -> None:
         text = """
             compose.onNodeWithText("Study now").assertExists();
-            compose.onNodeWithText("Sync with AnkiDroid").performClick();
+            compose.onNodeWithText("Sync AnkiDroid").performClick();
         """
 
         selectors = button_contract._direct_selectors(text)
 
         self.assertNotIn(("Study now", 'onNodeWithText("Study now") + performClick'), selectors)
-        self.assertIn(("Sync with AnkiDroid", 'onNodeWithText("Sync with AnkiDroid") + performClick'), selectors)
+        self.assertIn(("Sync AnkiDroid", 'onNodeWithText("Sync AnkiDroid") + performClick'), selectors)
 
     def test_selector_click_evidence_stops_at_kotlin_statement_without_semicolon(self) -> None:
         text = """
@@ -639,7 +639,7 @@ class ButtonContractTest(unittest.TestCase):
                         package dev.bee.kanjianki
                         @Composable fun HomeScreen(model: HomeScreenModel) {
                             Button(onClick = model.onStudy) { Text("Study now") }
-                            Button(onClick = model.onSync) { Text("Sync with AnkiDroid") }
+                            Button(onClick = model.onSync) { Text("Sync AnkiDroid") }
                             Text("Browse Kanji", Modifier.clickable { model.onBrowse() })
                             Text("Focus queue")
                         }
@@ -668,7 +668,7 @@ class ButtonContractTest(unittest.TestCase):
                         class MainActivityHelperInstrumentedTest {
                             void clicks_core_controls() {
                                 compose.onNodeWithText("Study now").performClick();
-                                compose.onNodeWithText("Sync with AnkiDroid").performClick();
+                                compose.onNodeWithText("Sync AnkiDroid").performClick();
                                 compose.onNodeWithText("Pass").performClick();
                                 compose.onNodeWithText("Fail").performClick();
                             }

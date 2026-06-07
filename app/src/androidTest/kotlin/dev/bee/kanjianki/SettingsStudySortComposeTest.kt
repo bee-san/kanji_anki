@@ -68,6 +68,61 @@ class SettingsStudySortComposeTest {
     }
 
     @Test
+    fun rendersAllSortOptionsWithLiteralSelectorsAndSavesSelectedMode() {
+        val savedMode = AtomicReference<String>()
+
+        composeRule.setContent {
+            SettingsNewCardSortPanel(
+                model = SettingsNewCardSortPanelModel(
+                    title = SettingsTextCopy.newCardSortTitle(),
+                    body = SettingsTextCopy.newCardSortBody(),
+                    initialMode = RecordsBase.NEW_CARD_SORT_FREQUENCY,
+                    options = listOf(
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+                            RecordsBase.NEW_CARD_SORT_FREQUENCY,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+                        ),
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
+                            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
+                        ),
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                        ),
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
+                            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
+                        ),
+                        SettingsNewCardSortOptionModel(
+                            SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
+                            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY,
+                            SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
+                        ),
+                    ),
+                    saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
+                    onSave = SettingsNewCardSortSaver { savedMode.set(it) },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Frequency").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithText("Anki difficulty").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithText("Retrievability risk").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithText("Kani weakness").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithText("Balanced priority").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithText("Save new card sort").assertIsEnabled().performScrollTo().performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY, savedMode.get())
+        }
+    }
+
+    @Test
     fun updatesPreviewRowsForSelectedSortMode() {
         composeRule.setContent {
             SettingsNewCardSortPanel(
