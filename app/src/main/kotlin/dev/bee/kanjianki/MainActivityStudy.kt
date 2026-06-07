@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyExampleSelector
@@ -326,8 +327,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingCheck.recognizeWriting(recognizer, captured, sample, guide, target, token)
     }
 
-    fun submitReview(rating: String, override: Boolean) {
-        writingReview.submitReview(rating, override)
+    fun submitReview(
+        rating: String,
+        override: Boolean,
+        ladder: RecordsBase.StudyLadderSettings? = null,
+    ) {
+        writingReview.submitReview(rating, override, ladder)
     }
 
     fun completeActiveRepairStudyTask(key: String?, outcome: String?, answeredAt: Long) {

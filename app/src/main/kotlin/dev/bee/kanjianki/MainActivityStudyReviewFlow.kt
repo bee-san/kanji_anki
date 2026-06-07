@@ -13,7 +13,11 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal class MainActivityStudyReviewFlow(private val activity: MainActivityStudy) {
-    fun submitReview(rating: String, override: Boolean) {
+    fun submitReview(
+        rating: String,
+        override: Boolean,
+        ladder: RecordsBase.StudyLadderSettings? = null,
+    ) {
         val session = activity.activeSession ?: return
         if (activity.activeSimilarWritingRepair != null) {
             submitSimilarWritingRepair(rating)
@@ -26,7 +30,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             rating,
             override
         )
-        submitNormalReview(mappedReview.request())
+        submitNormalReview(mappedReview.request(), ladder)
     }
 
     fun submitSimilarWritingRepair(rating: String) {
@@ -52,16 +56,24 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
 
     fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
         val now = System.currentTimeMillis()
+        val ladder = activity.studyLadderSettings()
         val result = activity.store.submitSimilarChoice(
             card,
             selectedKanji,
             now,
-            activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
+            ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
         )
-        submitReview(if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+        submitReview(
+            if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
+            false,
+            ladder,
+        )
     }
 
-    fun submitNormalReview(request: RecordsSchedulerModels.ReviewRequest) {
+    fun submitNormalReview(
+        request: RecordsSchedulerModels.ReviewRequest,
+        ladder: RecordsBase.StudyLadderSettings? = null,
+    ) {
         val session = activity.activeSession!!
         val item = session.item ?: return
         val scheduler = BridgeScheduler()
@@ -80,7 +92,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             effectiveParameters,
             activity.settings(),
             activity.store.learningStepSettings(),
-            activity.studyLadderSettings()
+            ladder ?: activity.studyLadderSettings()
         )
         activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)
         var streak: StudyStatsStore.StudyStreak? = null
