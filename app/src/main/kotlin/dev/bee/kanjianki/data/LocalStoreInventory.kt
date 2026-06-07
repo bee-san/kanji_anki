@@ -14,6 +14,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     private var cachedLocallySuspendedKanji: Set<String>? = null
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+    private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
 
@@ -28,8 +29,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         clearKanjiInventoryAllCache()
     }
 
-    internal fun clearStudyItemsCache() {
+    internal override fun clearStudyItemsCache() {
         cachedStudyItems = null
+        cachedStudyItemsByKanji = null
     }
 
     internal override fun clearKanjiInventoryAllCache() {
@@ -297,10 +299,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
-        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct()
+        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct().sorted()
         if (distinctKanji.isEmpty()) {
             return emptyList()
         }
+
+        val cacheKey = distinctKanji.joinToString("\u0000")
+        cachedStudyItemsByKanji?.get(cacheKey)?.let { return it }
 
         val db = readableDatabase
         val placeholders = distinctKanji.joinToString(",") { "?" }
@@ -326,6 +331,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items[i] = current.withHasSimilarKanji(hasSimilar)
             }
         }
+        val caches = cachedStudyItemsByKanji ?: LinkedHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
+            cachedStudyItemsByKanji = it
+        }
+        caches[cacheKey] = items
         return items
     }
 
