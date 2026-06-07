@@ -17,10 +17,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
+    private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
+        clearTimelineCache()
     }
 
     internal fun clearLocallySuspendedCache() {
@@ -32,11 +34,17 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     internal override fun clearStudyItemsCache() {
         cachedStudyItems = null
         cachedStudyItemsByKanji = null
+        clearTimelineCache()
     }
 
     internal override fun clearKanjiInventoryAllCache() {
         cachedKanjiInventoryAll = null
         cachedKanjiInventorySearches = null
+        clearTimelineCache()
+    }
+
+    internal override fun clearTimelineCache() {
+        cachedTimelinesByKanji = null
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -253,6 +261,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun timelineForKanji(kanji: String): RecordsStudyModels.KanjiRecoveryTimeline {
+        if (kanji.isNotBlank()) {
+            cachedTimelinesByKanji?.get(kanji)?.let { return it }
+        }
+
         val db = readableDatabase
         val inventoryItem = readInventoryItem(db, kanji)
         val row = readDashboardRow(db, kanji)
@@ -273,7 +285,14 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             }
         }
         Collections.reverse(events)
-        return RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        val timeline = RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        if (kanji.isNotBlank()) {
+            val caches = cachedTimelinesByKanji ?: LinkedHashMap<String, RecordsStudyModels.KanjiRecoveryTimeline>().also {
+                cachedTimelinesByKanji = it
+            }
+            caches[kanji] = timeline
+        }
+        return timeline
     }
 
     fun studyItems(): List<RecordsStudyModels.StudyItem> {

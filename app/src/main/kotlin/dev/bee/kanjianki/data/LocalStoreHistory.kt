@@ -23,6 +23,8 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
 
     internal open fun clearStudyItemsCache() {}
 
+    internal open fun clearTimelineCache() {}
+
     private fun timeline(): LocalStoreTimeline = LocalStoreTimeline(this)
 
     private fun inventoryMaintenance(): LocalStoreInventoryMaintenance = LocalStoreInventoryMaintenance(this)
@@ -97,6 +99,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         dedupeKey: String,
     ) {
         timeline().appendReviewTimelineEvent(db, request, appliedRating, reviewedAt, dedupeKey)
+        clearKanjiInventoryAllCache()
     }
 
     override fun backfillKanjiInventory(db: SQLiteDatabase, nowMillis: Long, settings: RecordsSyncModels.Settings) {
