@@ -20,6 +20,9 @@ MODEL_FIELD_RE = re.compile(r"model\.([A-Za-z_][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0
 HANDLER_RE = re.compile(r"on(?:Click|CheckedChange|ValueChange)\s*=\s*(?:\{\s*)?([^,}\n]+)|\.clickable\s*\{\s*([^}\n]+)|\.toggleable\s*\([^)]*onValueChange\s*=\s*([^,)]+)")
 INTERACTIVE_RE = re.compile(r"\b(Button|IconButton|TextButton|OutlinedButton|FloatingActionButton|Switch|Checkbox|RadioButton|Slider|TextField|OutlinedTextField)\s*\(|\.(clickable|toggleable|selectable)\b")
 SELECTOR_RE = re.compile(r"onNodeWith(Text|Tag|ContentDescription)\(\s*\"([^\"]+)\"\s*\)")
+HELPER_SELECTOR_RE = re.compile(
+    r"onNodeWith(Text|Tag|ContentDescription)\(\s*([A-Za-z_][A-Za-z0-9_]*)\(\s*([^\)]*?)\s*\)\s*\)"
+)
 HELPER_CLICK_RE = re.compile(r"performClick(?:able)?WithText\([^;\n]*,\s*\"([^\"]+)\"\s*\)")
 PERFORM_CLICK_RE = re.compile(r"\.performClick\s*\(|\.performTouchInput\s*\{|performClick\s*\(")
 STATE_COVERAGE_RE = re.compile(r"\bassertIs(?:Not)?Enabled\b|\bisEnabled\s*\(", re.IGNORECASE)
@@ -248,6 +251,30 @@ def _source_info(root: Path, entry: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _helper_selector_label(helper_name: str, helper_args: str) -> str | None:
+    if not helper_name.endswith("TestTag"):
+        return None
+    prefix = _camel_to_kebab(helper_name[:-7])
+    args = helper_args.strip()
+    if not args:
+        return prefix
+    literal = _first_string_literal(args)
+    if literal is None:
+        return None
+    return f"{prefix}-{literal}"
+
+
+def _first_string_literal(value: str) -> str | None:
+    match = re.search(r'"([^"]+)"', value)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _camel_to_kebab(value: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "-", value).lower()
+
+
 def _labels(text: str) -> list[str]:
     labels: list[str] = []
     for match in LABEL_RE.finditer(text):
@@ -331,6 +358,13 @@ def _direct_selectors(text: str) -> list[tuple[str, str]]:
         trailer = _selector_statement_trailer(text, match)
         if PERFORM_CLICK_RE.search(trailer):
             selectors.append((label, f"onNodeWith{match.group(1)}(\"{label}\") + performClick"))
+    for match in HELPER_SELECTOR_RE.finditer(text):
+        label = _helper_selector_label(match.group(2), match.group(3))
+        if not label:
+            continue
+        trailer = _selector_statement_trailer(text, match)
+        if PERFORM_CLICK_RE.search(trailer):
+            selectors.append((label, f"onNodeWith{match.group(1)}(\"{label}\") + performClick"))
     for match in HELPER_CLICK_RE.finditer(text):
         label = match.group(1)
         selectors.append((label, f"performClickableWithText(\"{label}\")"))
@@ -341,6 +375,14 @@ def _state_selectors(text: str) -> list[tuple[str, str]]:
     selectors: list[tuple[str, str]] = []
     for match in SELECTOR_RE.finditer(text):
         label = match.group(2)
+        trailer = _selector_statement_trailer(text, match)
+        enabled_match = STATE_ASSERT_RE.search(trailer)
+        if enabled_match:
+            selectors.append((label, f"onNodeWith{match.group(1)}(\"{label}\") + {enabled_match.group(1)}"))
+    for match in HELPER_SELECTOR_RE.finditer(text):
+        label = _helper_selector_label(match.group(2), match.group(3))
+        if not label:
+            continue
         trailer = _selector_statement_trailer(text, match)
         enabled_match = STATE_ASSERT_RE.search(trailer)
         if enabled_match:
@@ -505,8 +547,10 @@ def _entry_covers_label(entry: str, label: str) -> bool:
 
 
 def _needs_enabled_disabled(seed: Seed, source: dict[str, object]) -> bool:
-    kinds = set(cast(list[str], source.get("interactive_kinds", [])))
-    return seed.id.startswith("settings") or bool(kinds & {"Switch", "Checkbox", "RadioButton", "Slider", "TextField", "OutlinedTextField"})
+    if seed.id.startswith("settings"):
+        return True
+    labels = {label.lower() for label in seed.expected_labels}
+    return bool(labels & {"on", "off", "up", "down", "enabled", "disabled", "checked", "unchecked"})
 
 
 def _has_enabled_disabled_coverage(

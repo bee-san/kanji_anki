@@ -150,7 +150,7 @@ class ButtonContractTest(unittest.TestCase):
                             void clicks_browse_and_recent_mistakes_controls() {
                                 compose.onNodeWithText("Home").performClick();
                                 compose.onNodeWithText("Search").performClick();
-                                compose.onNodeWithTag("browse-kanji-row-裂").performClick();
+                                compose.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick();
                                 compose.onNodeWithTag("home-recent-mistakes-card-裂").performClick();
                             }
                         }
@@ -189,6 +189,18 @@ class ButtonContractTest(unittest.TestCase):
         self.assertEqual(["home-recent-mistakes-card-裂"], cast(list[str], recent["labels"]))
         self.assertTrue(any("home-recent-mistakes-card-裂" in entry for entry in cast(list[str], recent["existing_tests"])))
         self.assertEqual([], cast(list[str], recent["missing_tests"]))
+
+    def test_helper_tag_selectors_support_click_and_state_assertions(self) -> None:
+        text = 'compose.onNodeWithTag(browseKanjiRowTestTag("裂")).assertIsEnabled().performClick()'
+
+        self.assertIn(
+            ('browse-kanji-row-裂', 'onNodeWithTag("browse-kanji-row-裂") + performClick'),
+            button_contract._direct_selectors(text),
+        )
+        self.assertIn(
+            ('browse-kanji-row-裂', 'onNodeWithTag("browse-kanji-row-裂") + assertIsEnabled'),
+            button_contract._state_selectors(text),
+        )
 
     def test_study_top_bar_actions_map_to_icon_button_clicks(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
