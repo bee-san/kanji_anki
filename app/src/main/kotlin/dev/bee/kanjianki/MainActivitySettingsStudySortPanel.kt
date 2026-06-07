@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import android.widget.Toast
 import dev.bee.kanjianki.core.NewCardSortPlanner
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -136,9 +137,16 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
     }
 
     private fun saveNewCardSort(mode: String) {
-        val request = activity.store.saveNewCardSortMode(mode)
-        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        val request = NewCardSortSettingsPolicy.saveRequest(mode)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.new-card-sort.save",
+            write = {
+                activity.store.saveNewCardSortMode(request.mode)
+            },
+        ) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 
     private companion object {

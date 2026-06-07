@@ -59,6 +59,19 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         )
     }
 
+    fun runSettingsWrite(
+        traceSection: String,
+        write: () -> Unit,
+        onComplete: () -> Unit,
+    ) {
+        io.execute {
+            withUiTrace(traceSection) {
+                write()
+            }
+            main.post(onComplete)
+        }
+    }
+
     fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
         return ankiSource().importFilterSettingsPanelModel(current)
     }

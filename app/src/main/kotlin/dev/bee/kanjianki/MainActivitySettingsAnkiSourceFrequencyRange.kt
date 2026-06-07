@@ -48,10 +48,16 @@ internal class MainActivitySettingsAnkiSourceFrequencyRange(
     }
 
     private fun saveFrequencyRange(rankRange: SettingsInputRules.RankRange) {
-        activity.store.putIntSetting(SUSPENDED_RANK_MIN_SETTING_KEY, rankRange.minRank)
-        activity.store.putIntSetting(SUSPENDED_RANK_MAX_SETTING_KEY, rankRange.maxRank)
-        Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.frequency-range.save",
+            write = {
+                activity.store.putIntSetting(SUSPENDED_RANK_MIN_SETTING_KEY, rankRange.minRank)
+                activity.store.putIntSetting(SUSPENDED_RANK_MAX_SETTING_KEY, rankRange.maxRank)
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show()
+            activity.renderSettings(true)
+        }
     }
 
     private companion object {

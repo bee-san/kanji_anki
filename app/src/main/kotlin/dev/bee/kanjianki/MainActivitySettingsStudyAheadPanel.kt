@@ -18,8 +18,14 @@ internal class MainActivitySettingsStudyAheadPanel(private val activity: MainAct
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
             return
         }
-        activity.store.saveStudyAheadMinutes(request.minutes)
-        Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.study-ahead.save",
+            write = {
+                activity.store.saveStudyAheadMinutes(request.minutes)
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 }
