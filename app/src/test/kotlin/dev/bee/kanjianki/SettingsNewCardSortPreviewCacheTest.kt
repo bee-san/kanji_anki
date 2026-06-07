@@ -1,7 +1,9 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsImportModels
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
@@ -13,6 +15,17 @@ class SettingsNewCardSortPreviewCacheTest {
     fun reusesPreviewRowsAndWarningsForTheSameDashboardRowSnapshot() {
         val rows = dashboardRows(120)
         val similarityChecks = AtomicInteger(0)
+        val baselineIterations = 25
+        val hitIterations = 500_000
+
+        val baselineNanos = measureNanoTime {
+            repeat(baselineIterations) {
+                SettingsNewCardSortPreviewCache.resolve(rows, null) { _, _ ->
+                    similarityChecks.incrementAndGet()
+                    true
+                }
+            }
+        }
 
         // Build the first snapshot with a similarity checker that always reports nearby pairs.
         val cachedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, null) { _, _ ->
@@ -23,10 +36,16 @@ class SettingsNewCardSortPreviewCacheTest {
 
         assertTrue(cachedSnapshot.previewWarningsByMode.isNotEmpty())
 
-        val reusedSnapshot = SettingsNewCardSortPreviewCache.resolve(rows, cachedSnapshot) { _, _ ->
-            error("cache hit should not rebuild preview warnings")
+        val hitNanos = measureNanoTime {
+            repeat(hitIterations) {
+                assertSame(
+                    cachedSnapshot,
+                    SettingsNewCardSortPreviewCache.resolve(rows, cachedSnapshot) { _, _ ->
+                        error("cache hit should not rebuild preview warnings")
+                    },
+                )
+            }
         }
-        assertSame(cachedSnapshot, reusedSnapshot)
         assertEquals(checksAfterBuild, similarityChecks.get())
 
         val changedRows = rows + dashboardRow(999)
@@ -36,6 +55,17 @@ class SettingsNewCardSortPreviewCacheTest {
         }
         assertNotSame(cachedSnapshot, rebuiltSnapshot)
         assertTrue(similarityChecks.get() > checksAfterBuild)
+
+        println(
+            String.format(
+                Locale.ROOT,
+                "settings-new-card-sort baseline_ms=%.3f baseline_avg_us=%.3f hit_ms=%.3f hit_avg_us=%.6f",
+                baselineNanos / 1_000_000.0,
+                baselineNanos / baselineIterations.toDouble() / 1_000.0,
+                hitNanos / 1_000_000.0,
+                hitNanos / hitIterations.toDouble() / 1_000.0,
+            ),
+        )
     }
 
     private fun dashboardRows(count: Int): List<RecordsImportModels.DashboardRow> {
