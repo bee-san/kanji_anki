@@ -15,6 +15,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedLocallySuspendedKanji: Set<String>? = null
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
@@ -24,6 +25,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     internal fun clearLocallySuspendedCache() {
         cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
+        clearKanjiInventoryAllCache()
     }
 
     internal fun clearStudyItemsCache() {
@@ -32,6 +34,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     internal override fun clearKanjiInventoryAllCache() {
         cachedKanjiInventoryAll = null
+        cachedKanjiInventorySearches = null
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -107,15 +110,21 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
-        if (parsed.isEmpty() && !onlySimilarKanji) {
-            cachedKanjiInventoryAll?.let { return it }
+        val terms = parsed.terms()
+        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) terms.joinToString("\u0000") else null
+        if (cacheKey == null) {
+            if (!onlySimilarKanji && terms.isEmpty()) {
+                cachedKanjiInventoryAll?.let { return it }
+            }
+        } else {
+            cachedKanjiInventorySearches?.get(cacheKey)?.let { return it }
         }
 
         val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
         val clauses = ArrayList<String>()
         val argsList = ArrayList<String>()
-        if (!parsed.isEmpty()) {
-            for (term in parsed.terms()) {
+        if (terms.isNotEmpty()) {
+            for (term in terms) {
                 clauses.add("search_text LIKE ?")
                 argsList.add("%$term%")
             }
@@ -143,8 +152,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(readInventoryItem(db, cursor))
             }
         }
-        if (parsed.isEmpty() && !onlySimilarKanji) {
+        if (!onlySimilarKanji && terms.isEmpty()) {
             cachedKanjiInventoryAll = out
+        } else if (!onlySimilarKanji) {
+            val searches = cachedKanjiInventorySearches ?: LinkedHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
+                cachedKanjiInventorySearches = it
+            }
+            searches[cacheKey!!] = out
         }
         return out
     }
