@@ -48,10 +48,10 @@ private fun homeRecentMistakesCardDescription(model: HomeRecentMistakesCardModel
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
     mistakes: List<StudyStatsStore.RecentMistake>,
-    rows: List<RecordsImportModels.DashboardRow>,
+    rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 ): HomeRecentMistakesPanelModel {
     val cards = mistakes.map { mistake ->
-        val row = home.findRow(rows, mistake.kanji)
+        val row = rowsByKanji[mistake.kanji]
         HomeRecentMistakesCardModel(
             kanji = mistake.kanji,
             title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
