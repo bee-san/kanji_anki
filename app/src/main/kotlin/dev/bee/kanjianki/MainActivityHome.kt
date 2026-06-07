@@ -81,6 +81,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             queuedEntries(rows, homeItems, now, homePlan)
         }
         val provider = gateway.status()
+        val matureSupportThreshold = settings().matureSupportThreshold
 
         return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
@@ -107,7 +108,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 else -> null
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
-                homeFocusQueueCardModel(this, entry, now, settings().matureSupportThreshold)
+                homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
             }
         )
     }
