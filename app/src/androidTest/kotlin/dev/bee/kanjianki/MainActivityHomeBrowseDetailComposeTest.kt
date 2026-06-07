@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -109,7 +110,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).assertIsOff()
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("謎")).assertIsOn()
 
-        composeRule.onNodeWithText("Search").performClick()
+        composeRule.onNodeWithText("Search").assertIsEnabled().performClick()
         assertEquals(" 裂 ", searched)
 
         composeRule.onNodeWithTag(browseSimilarFilterTestTag()).performClick()
@@ -123,10 +124,10 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).performClick()
         assertEquals("裂" to true, studiedChanges.last())
 
-        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
+        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).assertIsEnabled().performClick()
         assertEquals("裂", clickedKanji)
 
-        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Home").assertIsEnabled().performClick()
         assertTrue(homeClicked)
     }
 
