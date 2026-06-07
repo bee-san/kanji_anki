@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -90,13 +91,13 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Search").performClick()
+        composeRule.onNodeWithText("Search").assertIsEnabled().performClick()
         assertEquals(" 裂 ", searched)
 
-        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
+        composeRule.onNodeWithTag("browse-kanji-row-裂").assertIsEnabled().performClick()
         assertEquals("裂", clickedKanji)
 
-        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Home").assertIsEnabled().performClick()
         assertTrue(homeClicked)
     }
 

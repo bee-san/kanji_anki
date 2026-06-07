@@ -107,6 +107,88 @@ class ButtonContractTest(unittest.TestCase):
         self.assertEqual([], row["existing_tests"])
         self.assertIn('missing direct selector/click coverage for "Browse Kanji"', row["missing_tests"])
 
+    def test_browse_and_recent_mistake_rows_map_to_literal_selector_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture(
+                root,
+                {
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivityHomeBrowseSearchCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun BrowseScreen(model: BrowseScreenModel) {
+                            HomeFullWidthHomeButton(label = HomeTextCopy.homeLabel(), onClick = model.onHome)
+                            Button(onClick = { withButtonTrace(\"home-search\") { model.onSearch() } }) {
+                                Text(HomeTextCopy.browseSearchButtonLabel())
+                            }
+                            Surface(
+                                modifier = Modifier
+                                    .testTag(browseKanjiRowTestTag(\"裂\"))
+                                    .semantics { contentDescription = browseKanjiRowDescription(model) }
+                                    .clickable(role = Role.Button, onClick = { withButtonTrace(\"browse-kanji-裂\") { model.onRow() } })
+                            ) {
+                                Text(\"Browse kanji row\")
+                            }
+                        }
+                    """,
+                    "app/src/main/kotlin/dev/bee/kanjianki/HomeRecentMistakesCompose.kt": """
+                        package dev.bee.kanjianki
+                        @Composable fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
+                            Surface(
+                                modifier = Modifier
+                                    .testTag(homeRecentMistakesCardTestTag(\"裂\"))
+                                    .semantics { contentDescription = homeRecentMistakesCardDescription(model) }
+                                    .clickable(role = Role.Button, onClick = { withButtonTrace(\"recent-mistake-裂\") { model.onClick() } })
+                            ) {
+                                Text(\"Recent mistakes card\")
+                            }
+                        }
+                    """,
+                    "app/src/androidTest/java/dev/bee/kanjianki/BrowseAndMistakesComposeTest.java": """
+                        package dev.bee.kanjianki;
+                        class BrowseAndMistakesComposeTest {
+                            void clicks_browse_and_recent_mistakes_controls() {
+                                compose.onNodeWithText(\"Home\").performClick();
+                                compose.onNodeWithText(\"Search\").performClick();
+                                compose.onNodeWithTag(\"browse-kanji-row-裂\").performClick();
+                                compose.onNodeWithTag(\"home-recent-mistakes-card-裂\").performClick();
+                            }
+                        }
+                    """,
+                },
+            )
+            manifest_path = self._write_manifest(
+                root,
+                [
+                    "app/src/main/kotlin/dev/bee/kanjianki/MainActivityHomeBrowseSearchCompose.kt",
+                    "app/src/main/kotlin/dev/bee/kanjianki/HomeRecentMistakesCompose.kt",
+                ],
+            )
+
+            contract = button_contract.build_contract(root, manifest_path)
+
+        browse_home = self._row(contract, "browse-home-button")
+        self.assertEqual(["Home"], cast(list[str], browse_home["labels"]))
+        self.assertEqual(
+            ["app/src/androidTest/java/dev/bee/kanjianki/BrowseAndMistakesComposeTest.java:onNodeWithText(\"Home\") + performClick"],
+            cast(list[str], browse_home["existing_tests"]),
+        )
+        self.assertEqual([], cast(list[str], browse_home["missing_tests"]))
+
+        browse_search = self._row(contract, "browse-search-button")
+        self.assertEqual(["Search"], cast(list[str], browse_search["labels"]))
+        self.assertTrue(any("Search" in entry for entry in cast(list[str], browse_search["existing_tests"])))
+        self.assertEqual([], cast(list[str], browse_search["missing_tests"]))
+
+        browse_row = self._row(contract, "browse-kanji-row")
+        self.assertEqual(["browse-kanji-row-裂"], cast(list[str], browse_row["labels"]))
+        self.assertTrue(any("browse-kanji-row-裂" in entry for entry in cast(list[str], browse_row["existing_tests"])))
+        self.assertEqual([], cast(list[str], browse_row["missing_tests"]))
+
+        recent = self._row(contract, "home-recent-mistakes-card")
+        self.assertEqual(["home-recent-mistakes-card-裂"], cast(list[str], recent["labels"]))
+        self.assertTrue(any("home-recent-mistakes-card-裂" in entry for entry in cast(list[str], recent["existing_tests"])))
+        self.assertEqual([], cast(list[str], recent["missing_tests"]))
+
     def test_state_assertions_count_toward_state_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

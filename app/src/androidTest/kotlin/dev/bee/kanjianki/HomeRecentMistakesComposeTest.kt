@@ -2,7 +2,10 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -35,6 +38,33 @@ class HomeRecentMistakesComposeTest {
         composeRule.onNodeWithText("split; tear").assertIsDisplayed()
         composeRule.onNodeWithText("Rated AGAIN on May 19, 2026").assertIsDisplayed()
         composeRule.onNodeWithText("From phrase · missed card").assertIsDisplayed()
+    }
+
+    @Test
+    fun recentMistakeCardInvokesItsClickCallback() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomeRecentMistakesPanel(
+                model = HomeRecentMistakesPanelModel(
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
+                    cards = listOf(
+                        HomeRecentMistakesCardModel(
+                            kanji = "裂",
+                            title = "split; tear",
+                            subtitle = "Rated AGAIN on May 19, 2026",
+                            sourceEvidence = "From phrase · missed card",
+                            accentColor = androidx.compose.ui.graphics.Color(0xFFFF4C76),
+                            onClick = { clicked = true }
+                        )
+                    )
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag("home-recent-mistakes-card-裂").performClick()
+        assertTrue(clicked)
     }
 
     @Test
