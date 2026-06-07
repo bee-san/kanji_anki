@@ -180,22 +180,29 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     }
 
     fun availableStudyMoreNewCards(): Int {
-        val rows = home.store.activeDashboardRows()
-        if (rows.isEmpty()) {
-            cachedStudyMoreNewCardsSnapshot = null
-            return 0
+        return withUiTrace("kani.study.more-new-cards.available") {
+            val loadData = resolveStudyMoreNewCardsLoadData(
+                cachedStudyMoreNewCardsSnapshot,
+                loadRows = { home.store.activeDashboardRows() },
+                loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
+            )
+            if (loadData == null) {
+                cachedStudyMoreNewCardsSnapshot = null
+                return@withUiTrace 0
+            }
+            if (cachedStudyMoreNewCardsSnapshot == null) {
+                cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(loadData.rows, loadData.existing)
+            }
+            val now = System.currentTimeMillis()
+            BridgeScheduler().countExtraNewCardsAvailable(
+                loadData.rows,
+                loadData.existing,
+                home.settings(),
+                now,
+                home.startOfDay(now),
+                home.studyLadderSettings(),
+            )
         }
-        val now = System.currentTimeMillis()
-        val existing = home.store.studyItemsForKanji(rows.map { it.kanji })
-        cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(rows, existing)
-        return BridgeScheduler().countExtraNewCardsAvailable(
-            rows,
-            existing,
-            home.settings(),
-            now,
-            home.startOfDay(now),
-            home.studyLadderSettings(),
-        )
     }
 
     fun studyMoreNewCardsSnapshot(): StudyMoreNewCardsSnapshot? {
