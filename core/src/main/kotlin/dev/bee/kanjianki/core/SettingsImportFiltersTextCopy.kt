@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Start with suspended cards. Add other sources only when needed; leech tags are skipped."
+        return "Prefer suspended cards. Add other sources only if needed; leech tags stay skipped."
     }
 
     @JvmStatic
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani. Note type, rank, and threshold still apply."
+        return "Examples: is:suspended, rated:31:1, tag:kani. Filters still apply."
     }
 
     @JvmStatic
@@ -51,26 +51,26 @@ object SettingsImportFiltersTextCopy {
     fun minimumMatchingCardsLabel(): String = "Minimum matching cards per kanji"
 
     @JvmStatic
-    fun saveImportFiltersLabel(): String = "Save import filters"
+    fun saveImportFiltersLabel(): String = "Save filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Enter a browser query or turn it off."
+    fun browserQueryRequiredToast(): String = "Add a query or turn it off."
 
     @JvmStatic
-    fun importSourceRequiredToast(): String = "Turn on at least one import source."
+    fun importSourceRequiredToast(): String = "Enable at least one source."
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Filters saved. Sync again to rebuild practice."
+    fun importFiltersSavedToast(): String = "Saved. Sync to refresh practice."
 
     @JvmStatic
     fun presetsTitle(): String = "Presets"
 
     @JvmStatic
-    fun importPresetSavedToast(): String = "Preset saved. Sync again to rebuild practice."
+    fun importPresetSavedToast(): String = "Preset saved. Sync to refresh practice."
 
     @JvmStatic
     fun numericImportThresholdsToast(): String = "Use numeric import thresholds."
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, and cards 1-1000."
+    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, cards 1-1000."
 }
