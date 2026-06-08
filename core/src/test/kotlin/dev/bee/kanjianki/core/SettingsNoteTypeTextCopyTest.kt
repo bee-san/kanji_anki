@@ -10,7 +10,7 @@ class SettingsNoteTypeTextCopyTest {
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
         assertEquals("Default: Kiku. Map fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
         assertEquals("Field mappings", SettingsNoteTypeTextCopy.requiredFieldsTitle())
-        assertEquals("Map expression, reading, meaning, sentence, frequency, sort.", SettingsNoteTypeTextCopy.requiredFieldsBody())
+        assertEquals("Map the Anki fields Kani needs.", SettingsNoteTypeTextCopy.requiredFieldsBody())
         assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
         assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())

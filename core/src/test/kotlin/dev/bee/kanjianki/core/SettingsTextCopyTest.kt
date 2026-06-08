@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map expression, reading, meaning, sentence, frequency, sort.",
+                        "Map the Anki fields Kani needs.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
