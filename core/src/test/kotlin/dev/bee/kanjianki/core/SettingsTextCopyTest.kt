@@ -198,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Prefer suspended cards. Leech tags stay skipped.",
+                        "Prefer suspended cards. Skip leech tags.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Difficulty 1-10; lapses 1-100; cards 1-1000.",
                         "Kanji frequency range",
-                        "Jiten ranks from suspended cards. Default: 100-3000.",
+                        "Use suspended cards for Jiten ranks. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map expression, reading, meaning, sentence, frequency, and sort.",
+                        "Map expression, reading, meaning, sentence, frequency, sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
