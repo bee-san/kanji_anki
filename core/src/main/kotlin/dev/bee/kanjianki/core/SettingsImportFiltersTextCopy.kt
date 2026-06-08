@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani. Filters still apply."
+        return "Examples: is:suspended, rated:31:1, tag:kani."
     }
 
     @JvmStatic

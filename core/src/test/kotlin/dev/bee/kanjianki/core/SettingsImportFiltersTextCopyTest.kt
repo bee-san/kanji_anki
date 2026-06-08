@@ -19,7 +19,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Examples: is:suspended, rated:31:1, tag:kani. Filters still apply.",
+            "Examples: is:suspended, rated:31:1, tag:kani.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
