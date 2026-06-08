@@ -8,7 +8,7 @@ class SettingsLadderThresholdTextCopyTest {
     @Test
     fun ladderThresholdStringsStayStable() {
         assertEquals("Ladder movement", SettingsLadderThresholdTextCopy.ladderThresholdsTitle())
-        assertEquals("Due reviews move cards. Repeats stay practice-only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody())
+        assertEquals("Due reviews move cards. Repeats are practice-only.", SettingsLadderThresholdTextCopy.ladderThresholdsBody())
         assertEquals("Days to move up", SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel())
         assertEquals("Fails to move down", SettingsLadderThresholdTextCopy.failsToGoDownLabel())
         assertEquals("Use default movement rules", SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel())

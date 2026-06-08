@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New and relearning cards use short steps. Repeats stay practice-only.",
+                "New/relearning cards use short steps. Repeats are practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early; 0 turns it off. Learning/relearning delays still apply.",
+                "Show due reviews early; 0 disables it. Learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards. Repeats stay practice-only.",
+                        "Due reviews move cards. Repeats are practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
