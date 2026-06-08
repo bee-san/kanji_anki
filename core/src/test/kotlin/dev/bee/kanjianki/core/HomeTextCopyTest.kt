@@ -88,10 +88,10 @@ class HomeTextCopyTest {
         assertEquals("View all", HomeTextCopy.viewAllLabel())
         assertEquals("No kanji queued", HomeTextCopy.noKanjiQueuedTitle())
         assertEquals(
-            "Sync AnkiDroid to build the queue.",
+            "Sync AnkiDroid to add kanji.",
             HomeTextCopy.homeNoKanjiQueuedBody()
         )
-        assertEquals("Sync AnkiDroid to build the queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
+        assertEquals("Sync AnkiDroid to add kanji.", HomeTextCopy.focusQueueNoKanjiQueuedBody())
         assertEquals("Sync", HomeTextCopy.syncMetricLabel())
         assertEquals("Up to date", HomeTextCopy.syncMetricStatus(true))
         assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false))
@@ -126,7 +126,7 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani keeps suspended Basic cards on device. Turn on active cards to include them.",
+            "Kani keeps suspended Basic cards on device. Enable active cards to include them.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())

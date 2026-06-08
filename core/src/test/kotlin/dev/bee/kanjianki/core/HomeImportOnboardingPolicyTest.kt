@@ -43,9 +43,10 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.READY_FIRST_SYNC, ready.state())
         assertEquals("Sync cards", ready.primaryActionLabel())
-        assertTrue(ready.body().contains("keeps suspended Basic cards on device"))
-        assertTrue(ready.body().contains("Turn on active cards to include them"))
-        assertTrue(ready.body().contains("Tap Sync cards to start"))
+        assertEquals(
+            "Kani keeps suspended Basic cards on device. Enable active cards to include them.",
+            ready.body()
+        )
     }
 
     @Test

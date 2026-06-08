@@ -88,7 +88,7 @@ object HomeImportOnboardingPolicy {
         }
         return Plan(
             State.READY_FIRST_SYNC,
-            HomeTextCopy.syncDialogMessage(settings) + " Tap Sync cards to start.",
+            HomeTextCopy.syncDialogMessage(settings),
             "Sync cards",
         )
     }
