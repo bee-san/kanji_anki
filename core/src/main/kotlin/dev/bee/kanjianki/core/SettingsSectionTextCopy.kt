@@ -15,13 +15,13 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = localizedText("New cards, timing, workload, ladder.", "新規カード、タイミング、負荷、ラダー。")
+    fun settingsStudyBehaviorBody(): String = localizedText("Cards, timing, workload, ladder.", "カード、タイミング、負荷、ラダー。")
 
     @JvmStatic
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = localizedText("Reminders and update checks.", "リマインダーと更新確認。")
+    fun settingsAutomationBody(): String = localizedText("Reminders, updates.", "リマインダー、更新。")
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
@@ -30,10 +30,10 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataBody(): String = localizedText("Dictionaries, stroke data, fonts, credits.", "辞書、ストロークデータ、フォント、クレジット。")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = localizedText("Settings overview", "設定の概要")
+    fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
 
     @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Choose a section to edit.", "編集するセクションを選んでください。")
+    fun settingsHeroBody(): String = localizedText("Pick a section.", "セクションを選択。")
 
     @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")

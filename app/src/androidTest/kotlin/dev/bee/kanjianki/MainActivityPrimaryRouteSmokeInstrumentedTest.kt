@@ -64,7 +64,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderSettings() }
             assertVisible(MainActivityBase.NAV_SETTINGS)
-            assertVisible("Settings overview")
+            assertVisible("Overview")
             assertVisible("Note type")
 
             scenario.onActivity { activity -> activity.renderBrowseKanji("裂") }
