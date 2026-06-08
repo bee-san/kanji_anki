@@ -25,7 +25,7 @@ class SettingsAutoSyncComposeTest {
                     title = SettingsTextCopy.dailyAnkiSyncTitle(),
                     status = SettingsTextCopy.autoSyncStatus(true, true, "06:45"),
                     statusColor = MainActivityUiSupport.TEAL,
-                    detail = "Last successful sync yesterday. Next sync tomorrow.",
+                    detail = "Last sync: yesterday. Next: tomorrow.",
                     actionLabel = SettingsTextCopy.turnOffDailySyncLabel(),
                     primaryAction = false,
                     onAction = SettingsAutoSyncAction { toggled = true }
@@ -35,7 +35,7 @@ class SettingsAutoSyncComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.dailyAnkiSyncTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoSyncStatus(true, true, "06:45")).assertIsDisplayed()
-        composeRule.onNodeWithText("Last successful sync yesterday. Next sync tomorrow.").assertIsDisplayed()
+        composeRule.onNodeWithText("Last sync: yesterday. Next: tomorrow.").assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.turnOffDailySyncLabel()).performClick()
 
         composeRule.runOnIdle {
@@ -51,7 +51,7 @@ class SettingsAutoSyncComposeTest {
                     title = SettingsTextCopy.dailyAnkiSyncTitle(),
                     status = SettingsTextCopy.autoSyncStatus(false, false, "00:00"),
                     statusColor = MainActivityUiSupport.MUTED,
-                    detail = "Manual sync once, then Kani will keep itself refreshed once per day.",
+                    detail = "Sync once. Kani handles daily syncs.",
                     actionLabel = null,
                     primaryAction = false,
                     onAction = null

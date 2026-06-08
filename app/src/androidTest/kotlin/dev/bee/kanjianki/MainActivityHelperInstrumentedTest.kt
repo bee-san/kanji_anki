@@ -520,21 +520,21 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
                 DateTextPolicy.shortDateTime(enabled.lastSuccessAt),
                 DateTextPolicy.shortDateTime(enabled.lastAttemptAt),
                 DateTextPolicy.shortDateTime(enabled.nextRunAt)
-        ).contains("Last successful sync"));
+        ).contains("Last sync:"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 disabled.configured,
                 disabled.enabled,
                 "",
                 DateTextPolicy.shortDateTime(disabled.lastAttemptAt),
                 ""
-        ).contains("Last sync attempt"));
+        ).contains("Last attempt:"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 enabledNoHistory.configured,
                 enabledNoHistory.enabled,
                 "",
                 "",
                 ""
-        ).contains("Scheduled once"));
+        ).contains("Scheduled daily"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 disabledNoHistory.configured,
                 disabledNoHistory.enabled,

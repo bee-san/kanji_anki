@@ -140,11 +140,11 @@ class SettingsTextCopyTest {
                         "Starts after first sync",
                         "On around 07:30",
                         "Off",
-                        "Sync once; Kani handles daily refreshes.",
-                        "Scheduled daily; Android may batch it.",
-                        "Daily sync is paused.",
-                        "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",
-                        "Last successful sync yesterday. Last sync attempt today.",
+                        "Sync once. Kani handles daily syncs.",
+                        "Scheduled daily. Android may delay it.",
+                        "Daily sync paused.",
+                        "Last sync: yesterday. Last attempt: today. Next: tomorrow.",
+                        "Last sync: yesterday. Last attempt: today.",
                 ),
                 listOf(
                         SettingsTextCopy.matchingCardsStatusLabel(),
@@ -188,7 +188,7 @@ class SettingsTextCopyTest {
             assertTrue(body, body.length <= 100)
         }
 
-        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("Enable notifications"))
+        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("notifications"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
         assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"))
     }
@@ -493,7 +493,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Android may batch reminders.",
+                "Android may delay reminders.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -507,12 +507,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Enable notifications to see this reminder.",
+                "Turn on notifications to get this reminder.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Grant notification permission first.",
+                "Grant notification permission.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
