@@ -94,7 +94,10 @@ private fun ReminderPresetGrid(
     presets: List<SettingsReminderPresetModel>,
     onSelect: (Int, Int) -> Unit,
 ) {
-    presets.chunked(2).forEachIndexed { rowIndex, rowPresets ->
+    val presetRows = remember(presets) {
+        presets.chunked(2)
+    }
+    presetRows.forEachIndexed { rowIndex, rowPresets ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
