@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 
 private val StudyLadderInk = Color(0xFF2D1635)
 private val StudyLadderMuted = Color(0xFF6C5674)
@@ -79,7 +78,7 @@ fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
                 }
             }
             Button(
-                onClick = { withUiTrace("kani.button.${_settingsTraceSlug(model.restoreLabel)}") { model.onRestore.run() } },
+                onClick = { withUiTrace(model.restoreTraceSection) { model.onRestore.run() } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 54.dp)
@@ -127,6 +126,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.toggleDescription,
                 enabled = true,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.toggleTraceSection,
                 onClick = { rung.onToggle.run() }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -135,6 +135,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.moveUpDescription,
                 enabled = rung.canMoveUp,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.moveUpTraceSection,
                 onClick = { rung.onMoveUp.run() }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -143,6 +144,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.moveDownDescription,
                 enabled = rung.canMoveDown,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.moveDownTraceSection,
                 onClick = { rung.onMoveDown.run() }
             )
         }
@@ -155,10 +157,11 @@ private fun StudyLadderOutlinedButton(
     description: String,
     enabled: Boolean,
     modifier: Modifier,
+    traceSection: String,
     onClick: () -> Unit,
 ) {
     OutlinedButton(
-        onClick = { withUiTrace("kani.button.${_settingsTraceSlug(label)}") { onClick() } },
+        onClick = { withUiTrace(traceSection) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .heightIn(min = 48.dp)
@@ -181,11 +184,3 @@ private fun StudyLadderOutlinedButton(
     }
 }
 
-private fun _settingsTraceSlug(value: String): String {
-    return value
-        .lowercase(Locale.getDefault())
-        .replace("\\s+".toRegex(), "-")
-        .replace("[^a-z0-9\\-]".toRegex(), "")
-        .trim('-')
-        .ifEmpty { "button" }
-}

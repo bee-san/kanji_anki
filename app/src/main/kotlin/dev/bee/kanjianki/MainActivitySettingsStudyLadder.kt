@@ -16,6 +16,7 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
             },
             restoreLabel = restoreLabel,
             restoreDescription = restoreLabel,
+            restoreTraceSection = settingsButtonTraceSection(restoreLabel),
             onRestore = SettingsStudyLadderAction { restoreDefaultLadderSettings() }
         )
     }
@@ -58,6 +59,9 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
             toggleDescription = toggleDescription(label, enabled),
             moveUpDescription = ladderActionDescription(moveUpLabel, label),
             moveDownDescription = ladderActionDescription(moveDownLabel, label),
+            toggleTraceSection = settingsButtonTraceSection(label),
+            moveUpTraceSection = settingsButtonTraceSection(moveUpLabel),
+            moveDownTraceSection = settingsButtonTraceSection(moveDownLabel),
             onToggle = SettingsStudyLadderAction { toggleLadderRung(ladder, rung) },
             onMoveUp = SettingsStudyLadderAction { moveRung(ladder, rung, -1) },
             onMoveDown = SettingsStudyLadderAction { moveRung(ladder, rung, 1) }
@@ -101,6 +105,10 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
     }
 
     private companion object {
+        fun settingsButtonTraceSection(label: String): String {
+            return "kani.button.${traceToken(label)}"
+        }
+
         fun toggleDescription(rungLabel: String, enabled: Boolean): String {
             return (if (enabled) "Turn off " else "Turn on ") + rungLabel
         }

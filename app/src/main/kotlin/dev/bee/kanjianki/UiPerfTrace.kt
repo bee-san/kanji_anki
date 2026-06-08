@@ -58,7 +58,7 @@ internal fun <T> withAsyncLoadTrace(route: String, phase: String, action: () -> 
     return withUiTrace("kani.${traceToken(phase)}.${traceToken(route)}", action)
 }
 
-private fun traceToken(value: String): String {
+internal fun traceToken(value: String): String {
     val trimmed = value.trim()
     if (trimmed.isEmpty()) {
         return "unknown"
