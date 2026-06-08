@@ -687,7 +687,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and app updates.",
+            "Reminders and update checks.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
@@ -829,7 +829,7 @@ class ComposeScreenModelsTest {
         assertEquals("Fields, filters, range, and sync.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
-        assertEquals("Reminders and app updates.", advanced.summary)
+        assertEquals("Reminders and update checks.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals("Display & data", referenceData.title)
         assertEquals("Dictionaries, stroke data, fonts, and credits.", referenceData.summary)
