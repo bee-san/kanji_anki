@@ -160,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Android may delay this reminder."
+        return "Pick a time. Android may delay it."
     }
 
     @JvmStatic
