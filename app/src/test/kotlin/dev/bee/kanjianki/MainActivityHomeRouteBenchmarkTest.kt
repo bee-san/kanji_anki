@@ -1,9 +1,13 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.graphics.Color as ComposeColor
+import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.FocusQueueCopy
+import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.HomeDeckOverview
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
-import dev.bee.kanjianki.core.FocusQueuePolicy
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -12,6 +16,7 @@ import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.util.Locale
 import kotlin.system.measureNanoTime
@@ -67,6 +72,98 @@ class MainActivityHomeRouteBenchmarkTest {
             String.format(
                 Locale.ROOT,
                 "focus-queue-row-lookup legacy_ms=%.3f legacy_avg_us=%.3f optimized_ms=%.3f optimized_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                optimizedNanos / 1_000_000.0,
+                optimizedNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
+    fun benchmarksFocusQueuePanelModelAgainstLegacyCardListBuild() {
+        val nowMillis = 1_725_000_000_000L
+        val rows = benchmarkRows(192)
+        val items = benchmarkStudyItems(rows, nowMillis)
+        val plan = RecordsSchedulerModels.AdaptiveLoadPlan(
+            workloadPercent = 55,
+            target = 48,
+            remaining = 18,
+            focusKanji = rows.take(48).map { it.kanji },
+            newAdmissionLimit = 12,
+            allKanjiMode = false,
+            status = "active",
+        )
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val studyAheadMillis = 7 * 24 * 60 * 60 * 1_000L
+        val entries = FocusQueuePolicy.queuedEntries(rows, items, nowMillis, studyAheadMillis, plan, ladder)
+            .map { MainActivityBase.QueueEntry(it.row, it.item) }
+        val matureSupportThreshold = 7
+        val iterations = 2_000
+
+        val legacySample = legacyHomeFocusQueuePanelModel(
+            rows = rows,
+            entries = entries,
+            nowMillis = nowMillis,
+            plan = plan,
+            matureSupportThreshold = matureSupportThreshold,
+        ).cards.map { card -> card.kanji to card.tags.map { tag -> tag.label } }
+        val optimizedSample = homeFocusQueuePanelModel(
+            rows = rows,
+            entries = entries,
+            nowMillis = nowMillis,
+            plan = plan,
+            matureSupportThreshold = matureSupportThreshold,
+            onCardClick = {},
+        ).cards.map { card -> card.kanji to card.tags.map { tag -> tag.label } }
+        assertEquals(legacySample, optimizedSample)
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                val model = legacyHomeFocusQueuePanelModel(
+                    rows = rows,
+                    entries = entries,
+                    nowMillis = nowMillis,
+                    plan = plan,
+                    matureSupportThreshold = matureSupportThreshold,
+                )
+                for (card in model.cards) {
+                    legacyChecksum += card.kanji.length
+                    legacyChecksum += card.meaning.length
+                    legacyChecksum += card.reasonLine.length
+                    legacyChecksum += card.body.length
+                    legacyChecksum += card.tags.size
+                }
+            }
+        }
+
+        var optimizedChecksum = 0
+        val optimizedNanos = measureNanoTime {
+            repeat(iterations) {
+                val model = homeFocusQueuePanelModel(
+                    rows = rows,
+                    entries = entries,
+                    nowMillis = nowMillis,
+                    plan = plan,
+                    matureSupportThreshold = matureSupportThreshold,
+                    onCardClick = {},
+                )
+                for (card in model.cards) {
+                    optimizedChecksum += card.kanji.length
+                    optimizedChecksum += card.meaning.length
+                    optimizedChecksum += card.reasonLine.length
+                    optimizedChecksum += card.body.length
+                    optimizedChecksum += card.tags.size
+                }
+            }
+        }
+
+        assertEquals(legacyChecksum, optimizedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "focus-queue-panel-model legacy_ms=%.3f legacy_avg_us=%.3f optimized_ms=%.3f optimized_avg_us=%.3f",
                 legacyNanos / 1_000_000.0,
                 legacyNanos / iterations.toDouble() / 1_000.0,
                 optimizedNanos / 1_000_000.0,
@@ -331,6 +428,61 @@ class MainActivityHomeRouteBenchmarkTest {
                 listOf(example("example-$kanji")),
             )
         }
+    }
+
+    private fun legacyHomeFocusQueuePanelModel(
+        rows: List<RecordsImportModels.DashboardRow>,
+        entries: List<MainActivityBase.QueueEntry>,
+        nowMillis: Long,
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        matureSupportThreshold: Int,
+    ): HomeFocusQueuePanelModel {
+        val cards = entries.map { entry ->
+            legacyHomeFocusQueueCardModel(
+                entry = entry,
+                nowMillis = nowMillis,
+                matureSupportThreshold = matureSupportThreshold,
+                onCardClick = {},
+            )
+        }
+        return HomeFocusQueuePanelModel(
+            planText = AdaptiveFocusCopy.adaptiveFocusText(plan),
+            emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
+            emptyBody = if (rows.isEmpty()) HomeTextCopy.focusQueueNoKanjiQueuedBody() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY,
+            showSyncButton = rows.isEmpty(),
+            cards = cards,
+        )
+    }
+
+    private fun legacyHomeFocusQueueCardModel(
+        entry: MainActivityBase.QueueEntry,
+        nowMillis: Long,
+        matureSupportThreshold: Int,
+        onCardClick: (String) -> Unit,
+    ): HomeFocusQueueCardModel {
+        val row = entry.row
+        val item = entry.item
+        return HomeFocusQueueCardModel(
+            kanji = row.kanji,
+            meaning = StudyTextCopy.rowMeaning(row),
+            sourceEvidence = FocusQueueCopy.sourceEvidenceText(row),
+            reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold),
+            body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
+            tags = buildList {
+                add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
+                if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
+                    add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), ComposeColor(MainActivityUiSupport.CORAL)))
+                } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
+                    add(HomeFocusQueueTagModel(MainActivityBase.STATE_LEARNING, ComposeColor(MainActivityUiSupport.TEAL)))
+                }
+            },
+            accentColor = when (FocusQueuePolicy.rowTone(item, nowMillis)) {
+                FocusQueuePolicy.QueueTone.DUE -> ComposeColor(0xFFFF4C76)
+                FocusQueuePolicy.QueueTone.LEARNING -> ComposeColor(0xFF6E5CE6)
+                FocusQueuePolicy.QueueTone.RESTING -> ComposeColor(0xFFF6CAE1)
+            },
+            onClick = { onCardClick(row.kanji) },
+        )
     }
 
     private fun benchmarkStudyItems(

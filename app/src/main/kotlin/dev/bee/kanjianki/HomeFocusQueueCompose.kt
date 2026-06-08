@@ -47,12 +47,15 @@ internal fun homeFocusQueuePanelModel(
     matureSupportThreshold: Int,
     onCardClick: (String) -> Unit,
 ): HomeFocusQueuePanelModel {
-    val cards = entries.map {
-        homeFocusQueueCardModel(
-            entry = it,
-            nowMillis = nowMillis,
-            matureSupportThreshold = matureSupportThreshold,
-            onCardClick = onCardClick,
+    val cards = ArrayList<HomeFocusQueueCardModel>(entries.size)
+    for (entry in entries) {
+        cards.add(
+            homeFocusQueueCardModel(
+                entry = entry,
+                nowMillis = nowMillis,
+                matureSupportThreshold = matureSupportThreshold,
+                onCardClick = onCardClick,
+            )
         )
     }
     return HomeFocusQueuePanelModel(
@@ -92,7 +95,7 @@ internal fun homeFocusQueueCardModel(
         sourceEvidence = FocusQueueCopy.sourceEvidenceText(row),
         reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold),
         body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
-        tags = buildList {
+        tags = ArrayList<HomeFocusQueueTagModel>(2).apply {
             add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
             if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
                 add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), ComposeColor(MainActivityUiSupport.CORAL)))
