@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show due reviews early. Learning delays still apply."
+        return "Set how early due reviews appear. Learning delays still wait."
     }
 
     @JvmStatic
@@ -19,7 +19,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadMinutesLabel(): String {
-        return String.format(Locale.ROOT, "Minutes (%s)", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Minutes early (%s)", studyAheadMinutesRange())
     }
 
     @JvmStatic
@@ -34,12 +34,12 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadWholeNumberErrorText(): String {
-        return String.format(Locale.ROOT, "Use whole minutes (%s).", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Enter whole minutes (%s).", studyAheadMinutesRange())
     }
 
     @JvmStatic
     fun studyAheadOutOfRangeErrorText(): String {
-        return String.format(Locale.ROOT, "0 turns it off. Max %s.", studyAheadMaxDescription())
+        return String.format(Locale.ROOT, "Use 0 to turn off. Max %s.", studyAheadMaxDescription())
     }
 
     @JvmStatic
