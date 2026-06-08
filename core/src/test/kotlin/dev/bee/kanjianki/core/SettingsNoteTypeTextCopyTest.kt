@@ -5,13 +5,16 @@ import org.junit.Test
 
 class SettingsNoteTypeTextCopyTest {
     @Test
-    fun noteTypeHelpersPreserveFormatting() {
+    fun noteTypeHelpersKeepLabelsReadable() {
         assertEquals("Note type setup", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
+        assertEquals("Using Custom Mining", SettingsNoteTypeTextCopy.noteTypeUsingText("  Custom Mining  "))
+        assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText(null))
+        assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText("   "))
         assertEquals("Default: Kiku. Map fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
         assertEquals("Field mappings", SettingsNoteTypeTextCopy.requiredFieldsTitle())
         assertEquals("Map the Anki fields Kani needs.", SettingsNoteTypeTextCopy.requiredFieldsBody())
-        assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
+        assertEquals("Kanji field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
         assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())
         assertEquals("Sentence field", SettingsNoteTypeTextCopy.sentenceFieldLabel())
