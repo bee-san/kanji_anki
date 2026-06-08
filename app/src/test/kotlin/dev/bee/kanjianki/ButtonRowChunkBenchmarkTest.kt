@@ -7,19 +7,19 @@ import org.junit.Test
 
 class ButtonRowChunkBenchmarkTest {
     @Test
-    fun benchmarksHomeActionRowChunkingAgainstPrebuiltRows() {
+    fun benchmarksStudyChoiceRowChunkingAgainstPrebuiltRows() {
         benchmarkRowChunking(
-            label = "home-action-row-chunking",
-            values = List(9) { index -> "home-action-$index" },
+            label = "study-choice-row-chunking",
+            values = List(17) { index -> "choice-$index" },
             iterations = 500_000,
         )
     }
 
     @Test
-    fun benchmarksStudyChoiceRowChunkingAgainstPrebuiltRows() {
+    fun benchmarksHomeActionRowChunkingAgainstPrebuiltRows() {
         benchmarkRowChunking(
-            label = "study-choice-row-chunking",
-            values = List(17) { index -> "choice-$index" },
+            label = "home-action-row-chunking",
+            values = List(9) { index -> "home-action-$index" },
             iterations = 500_000,
         )
     }

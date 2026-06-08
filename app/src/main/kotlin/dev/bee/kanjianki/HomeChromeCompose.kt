@@ -41,9 +41,7 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
 
 @Composable
 fun HomeActionGrid(actions: List<HomeActionModel>) {
-    val actionRows = remember(actions) {
-        actions.chunked(2)
-    }
+    val actionRows = actions.chunked(2)
     Column(
         modifier = Modifier
             .fillMaxWidth()

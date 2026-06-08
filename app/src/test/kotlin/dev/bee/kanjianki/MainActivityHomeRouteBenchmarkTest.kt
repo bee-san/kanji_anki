@@ -244,6 +244,46 @@ class MainActivityHomeRouteBenchmarkTest {
     }
 
     @Test
+    fun benchmarksHomeMetricTraceSectionAgainstRepeatedTokenization() {
+        val metric = HomeMetricModel(
+            iconRes = R.drawable.ic_sync_24,
+            accent = MainActivityUiSupport.TEAL,
+            label = "Sync",
+            value = "Sync now",
+            body = null,
+            onClick = {},
+        )
+        val precomputedTraceSection = metric.traceSection
+        val iterations = 500_000
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                legacyChecksum += buttonTraceSection("Home metric ${metric.label}").length
+            }
+        }
+
+        var precomputedChecksum = 0
+        val precomputedNanos = measureNanoTime {
+            repeat(iterations) {
+                precomputedChecksum += precomputedTraceSection.length
+            }
+        }
+
+        assertEquals(legacyChecksum, precomputedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "home-metric-trace-section legacy_ms=%.3f legacy_avg_us=%.3f precomputed_ms=%.3f precomputed_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                precomputedNanos / 1_000_000.0,
+                precomputedNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
     fun benchmarksHomeSectionHeaderTraceSectionAgainstRepeatedTokenization() {
         val label = "View all"
         val precomputedTraceSection = buttonTraceSection("home-section-header-$label")

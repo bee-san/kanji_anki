@@ -127,7 +127,7 @@ fun HomeMetricCard(
                 Modifier.clickable(
                     role = Role.Button,
                     onClick = {
-                        withButtonTrace("Home metric ${model.label}") {
+                        withButtonTrace(model.traceSection) {
                             action()
                         }
                     }

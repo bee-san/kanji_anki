@@ -7,4 +7,5 @@ data class HomeMetricModel(
     val value: String,
     val body: String?,
     val onClick: (() -> Unit)?,
+    val traceSection: String = buttonTraceSection("Home metric $label"),
 )
