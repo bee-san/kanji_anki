@@ -38,7 +38,9 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Version " + versionName.toString() + ". Checks for verified app updates."
+        val version = versionText(versionName)
+        val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
+        return "$versionLine. Verified updates only."
     }
 
     @JvmStatic
@@ -74,7 +76,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Allow app installs to update."
+        return "Allow app installs to update Kani."
     }
 
     @JvmStatic
@@ -97,7 +99,7 @@ object SettingsAutomationTextCopy {
             return "Starts after first sync"
         }
         if (enabled) {
-            return "On around $displayTime"
+            return timedStatus("On around", "On", displayTime)
         }
         return "Off"
     }
@@ -111,7 +113,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once. Kani handles daily syncs."
+            return "Sync once to start daily sync."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
@@ -121,7 +123,7 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled daily. Android may delay it."
+                "Runs daily; Android may delay it."
             } else {
                 "Daily sync paused."
             }
@@ -150,7 +152,7 @@ object SettingsAutomationTextCopy {
             return "Blocked: notifications off"
         }
         if (enabled) {
-            return "Daily around $displayTime"
+            return timedStatus("Daily around", "Daily", displayTime)
         }
         return "Off"
     }
@@ -160,7 +162,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Pick a time. Android may delay it."
+        return "Pick a reminder time; Android may delay it."
     }
 
     @JvmStatic
@@ -186,7 +188,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to get this reminder."
+        return "Turn on notifications for reminders."
     }
 
     @JvmStatic
@@ -194,7 +196,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Grant notification permission."
+        return "Allow notifications for reminders."
     }
 
     @JvmStatic
@@ -216,6 +218,14 @@ object SettingsAutomationTextCopy {
         if (value != null && value.isNotEmpty()) {
             details.add(prefix + value)
         }
+    }
+
+    private fun timedStatus(prefix: String, fallback: String, displayTime: String?): String {
+        val time = displayTime?.javaTrim()
+        if (time == null || time.isEmpty()) {
+            return fallback
+        }
+        return "$prefix $time"
     }
 
     private fun String.javaTrim(): String {
