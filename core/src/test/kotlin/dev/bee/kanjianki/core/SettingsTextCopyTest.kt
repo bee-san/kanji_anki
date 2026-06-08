@@ -409,7 +409,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay unchanged.",
                         "Jiten-rank retention ranges",
-                        "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
+                        "Optional: one range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -423,7 +423,7 @@ class SettingsTextCopyTest {
                         "Always available rung enabled",
                         "Conditional rung enabled",
                         "Study ladder",
-                        "Choose rungs and order. Keep one always-available rung on."
+                        "Choose rungs and order. Keep one enabled."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),

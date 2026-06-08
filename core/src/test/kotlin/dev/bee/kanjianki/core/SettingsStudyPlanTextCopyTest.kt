@@ -30,15 +30,15 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Choose how new cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
-            "Heads up: visually similar kanji appear close together in this preview: 人/入, 土/士.",
+            "Similar kanji stay close in this preview: 人/入, 土/士.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(listOf("人/入", "土/士")),
         )
         assertEquals(
-            "Heads up: visually similar kanji appear close together in this preview.",
+            "Similar kanji stay close in this preview.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Limit how many new cards Kani can show each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Limit daily new cards.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
@@ -49,7 +49,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("Optional: one range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
