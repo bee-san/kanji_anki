@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import java.util.Locale
 
 class SettingsSummaryTextCopyTest {
     @Test
@@ -16,6 +17,23 @@ class SettingsSummaryTextCopyTest {
         assertEquals("4 suspended cards archived, 2 rare kanji added; active cards remain optional", SettingsSummaryTextCopy.syncStatusHeadline(true, "ignored", 4, 2))
         assertThrows(NullPointerException::class.java) { SettingsSummaryTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsSummaryTextCopy.matchingCardsSummary(null) }
+    }
+
+    @Test
+    fun summaryHelpersTranslateToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("漢字ごとに3枚の一致カード", SettingsSummaryTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
+            assertEquals("有効＋停止＋タグ付き＋弱い＋ブラウザ検索、漢字ごとに3枚の一致カード", SettingsSummaryTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+            assertEquals("インポート元が選択されていません", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+            assertEquals("同期できません: No provider", SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0))
+            assertEquals("同期できません: 不明なエラー", SettingsSummaryTextCopy.syncStatusHeadline(false, null, 0, 0))
+            assertEquals("4枚の停止カードを保存、2字のレア漢字を追加。アクティブカードはそのまま", SettingsSummaryTextCopy.syncStatusHeadline(true, "ignored", 4, 2))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }
 
