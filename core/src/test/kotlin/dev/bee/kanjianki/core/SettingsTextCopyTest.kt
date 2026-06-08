@@ -385,7 +385,7 @@ class SettingsTextCopyTest {
         assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Balances Kani weakness, Anki risk, missed examples, and frequency.",
+                "Balances Kani weakness, Anki risk, misses, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
@@ -409,7 +409,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay unchanged.",
                         "Jiten-rank retention ranges",
-                        "One range per line, like 1-500=95%. Other kanji use global retention.",
+                        "One range per line, like 1-500=95%. Global retention for other kanji.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
