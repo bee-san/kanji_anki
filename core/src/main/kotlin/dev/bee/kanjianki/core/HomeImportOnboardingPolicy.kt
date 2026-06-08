@@ -43,7 +43,7 @@ object HomeImportOnboardingPolicy {
         if (!providerInstalled) {
             return Plan(
                 State.INSTALL_ANKIDROID,
-                "Install AnkiDroid first, then return to Kani to import your local kanji cards.",
+                "Install AnkiDroid, then return to Kani to import your local kanji cards.",
                 "Install AnkiDroid",
             )
         }
@@ -57,7 +57,7 @@ object HomeImportOnboardingPolicy {
         if (!settings.hasImportSourceEnabled()) {
             return Plan(
                 State.CHOOSE_SOURCE,
-                "Choose AnkiDroid import sources before the first sync: enable suspended, active, tagged, weak, or browser-query import.",
+                "Choose import sources before the first sync: suspended, active, tagged, weak, or browser-query cards.",
                 "Review import settings",
             )
         }
@@ -66,7 +66,7 @@ object HomeImportOnboardingPolicy {
             val sync = lastSync ?: LastSync(null, 0, null)
             return Plan(
                 State.SYNCED,
-                "Last sync completed with " + StudyTextCopy.countText(sync.importedKanji, "kanji ready", "kanji ready") + ". " + sourceAndModelLine(settings),
+                "Last sync imported " + StudyTextCopy.countText(sync.importedKanji, "kanji", "kanji") + ". " + sourceAndModelLine(settings),
                 "Sync again",
             )
         }
@@ -76,19 +76,19 @@ object HomeImportOnboardingPolicy {
             if (error.lowercase(Locale.ROOT).contains("permission")) {
                 return Plan(
                     State.RECOVER_PERMISSION,
-                    "Kani could not read AnkiDroid because of permission: $error. Grant the local AnkiDroid database permission, then try sync again.",
+                    "Kani couldn't read AnkiDroid because of permission: $error. Grant database access, then try syncing again.",
                     "Fix permission",
                 )
             }
             return Plan(
                 State.RECOVER_SYNC,
-                "The last AnkiDroid sync failed: $error. Check deck/source selection and try sync again.",
+                "Last sync failed: $error. Check source settings, then try again.",
                 "Try sync again",
             )
         }
         return Plan(
             State.READY_FIRST_SYNC,
-            HomeTextCopy.syncDialogMessage(settings) + " Reads local data after you confirm.",
+            HomeTextCopy.syncDialogMessage(settings) + " Kani reads local data after you confirm.",
             "Sync cards",
         )
     }
@@ -96,17 +96,17 @@ object HomeImportOnboardingPolicy {
     @JvmStatic
     fun sourceAndModelLine(settings: RecordsSyncModels.Settings): String {
         val browser = if (settings.browserQueryImportEnabled()) {
-            " Deck/source query: ${settings.normalizedBrowserQuery()}."
+            " Query: ${settings.normalizedBrowserQuery()}."
         } else {
             ""
         }
         val sources = importSources(settings)
-        return "Using note type ${settings.modelName}; source selection: ${if (sources.isEmpty()) "none" else sources}." + browser
+        return "Note type ${settings.modelName}. Sources: ${if (sources.isEmpty()) "none" else sources}." + browser
     }
 
     private fun permissionBody(permissionName: String?): String {
         val permission = if (permissionName.isNullOrEmpty()) "AnkiDroid database" else permissionName
-        return "Kani needs the $permission permission to read your local AnkiDroid decks. This stays on your device and does not upload your AnkiDroid data."
+        return "Kani needs the $permission permission to read your local AnkiDroid decks. Data stays on your device."
     }
 
     private fun importSources(settings: RecordsSyncModels.Settings): String {
