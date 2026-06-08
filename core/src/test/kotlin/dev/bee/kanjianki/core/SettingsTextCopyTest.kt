@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Map fields below.",
+                        "Default: Kiku. Map the fields below.",
                         "Field mappings"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map expression, reading, meaning, sentence, frequency, and sort.",
+                        "Map the expression, reading, meaning, sentence, frequency, and sort fields.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New and relearning cards use short steps. Repeats stay practice-only.",
+                "New/relearning cards use short steps. Repeats are practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early; 0 turns it off. Learning/relearning delays still apply.",
+                "Show due reviews early; 0 disables it. Learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -409,7 +409,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay unchanged.",
                         "Jiten-rank retention ranges",
-                        "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention.",
+                        "Optional: one range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -423,7 +423,7 @@ class SettingsTextCopyTest {
                         "Always available rung enabled",
                         "Conditional rung enabled",
                         "Study ladder",
-                        "Choose rungs and order. Keep one always-available rung on."
+                        "Choose rungs and order. Keep one enabled."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards. Repeats stay practice-only.",
+                        "Due reviews move cards. Repeats are practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",

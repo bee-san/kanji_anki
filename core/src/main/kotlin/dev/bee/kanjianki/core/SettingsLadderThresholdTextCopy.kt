@@ -6,7 +6,7 @@ object SettingsLadderThresholdTextCopy {
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Due reviews move cards. Repeats stay practice-only."
+        return "Due reviews move cards. Repeats are practice-only."
     }
 
     @JvmStatic

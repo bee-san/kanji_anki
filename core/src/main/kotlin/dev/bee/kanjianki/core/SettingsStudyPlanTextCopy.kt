@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit how many new cards Kani can show each day."
+    fun deckLimitsBody(): String = "Limit daily new cards."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Daily new card limit"
@@ -140,7 +140,7 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortConfusablePreviewWarning(examples: List<String>): String {
         val suffix = if (examples.isEmpty()) "" else ": " + examples.joinToString(", ")
-        return "Heads up: visually similar kanji appear close together in this preview$suffix."
+        return "Similar kanji stay close in this preview$suffix."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention."
+        return "Optional: one range per line, like 1-500=95%. Other kanji use global retention."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose rungs and order. Keep one always-available rung on."
+        return "Choose rungs and order. Keep one enabled."
     }
 
     @JvmStatic

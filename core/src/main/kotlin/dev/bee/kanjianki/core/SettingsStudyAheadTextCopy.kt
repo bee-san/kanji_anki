@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show due reviews early; 0 turns it off. Learning/relearning delays still apply."
+        return "Show due reviews early; 0 disables it. Learning/relearning delays still apply."
     }
 
     @JvmStatic

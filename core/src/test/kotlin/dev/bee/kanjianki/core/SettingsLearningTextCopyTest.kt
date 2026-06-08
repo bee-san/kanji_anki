@@ -8,7 +8,7 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "New and relearning cards use short steps. Repeats stay practice-only.",
+            "New/relearning cards use short steps. Repeats are practice-only.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
         assertEquals("Relearning", SettingsLearningTextCopy.reviewMissesLabel())

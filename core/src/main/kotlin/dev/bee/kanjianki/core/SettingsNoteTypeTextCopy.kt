@@ -9,7 +9,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. Map fields below."
+        return "Default: Kiku. Map the fields below."
     }
 
     @JvmStatic
@@ -17,7 +17,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map expression, reading, meaning, sentence, frequency, and sort."
+        return "Map the expression, reading, meaning, sentence, frequency, and sort fields."
     }
 
     @JvmStatic
