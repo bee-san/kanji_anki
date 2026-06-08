@@ -9,9 +9,9 @@ import org.junit.Test
 class SettingsTextCopyTest {
     @Test
     fun importSummariesPreserveSourceAndMatchingCopy() {
-        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("1 matching card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
-        assertEquals("active + suspended + tagged + weak + browser query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("1 card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
+        assertEquals("active + suspended + tagged + weak + browser query; 3 cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
         assertEquals("No import sources selected", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
@@ -30,7 +30,7 @@ class SettingsTextCopyTest {
                         "Verified APK ready",
                         "Daily checks on",
                         "Manual checks",
-                        "4 suspended cards archived, 2 rare kanji added; active cards remain optional",
+                        "4 suspended cards archived, 2 rare kanji added",
                         "Sync blocked: No provider",
                         "Sync blocked: unknown error",
                         "unknown version",
