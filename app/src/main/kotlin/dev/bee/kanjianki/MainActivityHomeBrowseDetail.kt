@@ -12,6 +12,57 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
 
+internal fun browseTimelineToneColor(tone: TimelineCopy.Tone): Int {
+    if (tone == TimelineCopy.Tone.POSITIVE) {
+        return MainActivityBase.TEAL
+    }
+    if (tone == TimelineCopy.Tone.WARNING) {
+        return MainActivityBase.CORAL
+    }
+    return MainActivityBase.BLUE
+}
+
+internal fun browseTimelineEventModels(
+    timeline: RecordsStudyModels.KanjiRecoveryTimeline,
+): List<MainActivityHomeBrowseDetail.BrowseTimelineEventModel> {
+    val events = timeline.events
+    if (events.isEmpty()) {
+        return emptyList()
+    }
+    val models = ArrayList<MainActivityHomeBrowseDetail.BrowseTimelineEventModel>(events.size)
+    for (event in events) {
+        models.add(
+            MainActivityHomeBrowseDetail.BrowseTimelineEventModel(
+                DateTextPolicy.timelineDate(event.occurredAtMillis),
+                event.title,
+                event.detail,
+                TimelineCopy.sourceLine(event),
+                browseTimelineToneColor(TimelineCopy.eventTone(event.eventType))
+            )
+        )
+    }
+    return models
+}
+
+internal fun browseExampleModels(examples: List<RecordsImportModels.Example>): List<BrowseExampleCardModel> {
+    if (examples.isEmpty()) {
+        return emptyList()
+    }
+    val models = ArrayList<BrowseExampleCardModel>(examples.size)
+    for (example in examples) {
+        models.add(
+            BrowseExampleCardModel(
+                HomeTextCopy.exampleSourceLabel(example),
+                HomeTextCopy.exampleExpressionLine(example),
+                example.sentence,
+                HomeTextCopy.exampleMeaningLine(example),
+                if (MainActivityBase.SOURCE_SUSPENDED == example.sourceType) MainActivityBase.CORAL else MainActivityBase.TEAL,
+            )
+        )
+    }
+    return models
+}
+
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
         val model: BrowseScreenModel,
@@ -207,15 +258,6 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     fun recoveryTimelineModel(timeline: RecordsStudyModels.KanjiRecoveryTimeline): BrowseTimelinePanelsModel {
         val row = timeline.currentRow
         val now = System.currentTimeMillis()
-        val events = timeline.events.map { event ->
-            BrowseTimelineEventModel(
-                DateTextPolicy.timelineDate(event.occurredAtMillis),
-                event.title,
-                event.detail,
-                TimelineCopy.sourceLine(event),
-                timelineToneColor(TimelineCopy.eventTone(event.eventType))
-            )
-        }
         return BrowseTimelinePanelsModel(
             HomeTextCopy.recoveryTimelineTitle(),
             TimelineCopy.statusText(timeline, now),
@@ -225,23 +267,21 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             } else {
                 HomeTextCopy.noActiveEvidenceText()
             },
-            events,
+            browseTimelineEventModels(timeline),
             if (timeline.events.isEmpty()) HomeTextCopy.timelineEmptyText() else null
         )
     }
 
+    internal fun recoveryTimelineEventModels(timeline: RecordsStudyModels.KanjiRecoveryTimeline): List<BrowseTimelineEventModel> {
+        return browseTimelineEventModels(timeline)
+    }
+
     fun timelineToneColor(tone: TimelineCopy.Tone): Int {
-        if (tone == TimelineCopy.Tone.POSITIVE) {
-            return MainActivityBase.TEAL
-        }
-        if (tone == TimelineCopy.Tone.WARNING) {
-            return MainActivityBase.CORAL
-        }
-        return MainActivityBase.BLUE
+        return browseTimelineToneColor(tone)
     }
 
     fun exampleModels(examples: List<RecordsImportModels.Example>): List<BrowseExampleCardModel> {
-        return examples.map(::exampleModel)
+        return browseExampleModels(examples)
     }
 
     fun exampleModel(example: RecordsImportModels.Example): BrowseExampleCardModel {
