@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "New cards per day"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Cap new kanji added each day."
+    fun deckLimitsBody(): String = "Limit daily new cards."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "New-card limit"
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "New cards only; due reviews and repeats stay first."
+        return "Choose new-card order. Due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Use 1-500=95%. Other ranks use the global target."
+        return "One range per line, like 1-500=95%. Others use global retention."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Pick practice order. Keep one always-available rung on."
+        return "Order the rungs. Keep one enabled."
     }
 
     @JvmStatic

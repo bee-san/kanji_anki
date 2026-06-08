@@ -348,7 +348,7 @@ class SettingsTextCopyTest {
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save max items", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Choose count yourself", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Pick today's item count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
@@ -394,7 +394,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "New cards only; due reviews and repeats stay first.",
+                "Choose new-card order. Due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -409,9 +409,9 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "Review retention",
-                        "FSRS stays local; due dates stay unchanged.",
-                        "Retention by Jiten rank",
-                        "Use 1-500=95%. Other ranks use the global target.",
+                        "FSRS stays local. Anki due dates stay unchanged.",
+                        "Jiten-rank retention ranges",
+                        "One range per line, like 1-500=95%. Others use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -425,7 +425,7 @@ class SettingsTextCopyTest {
                         "On: always available",
                         "On when similar kanji exist",
                         "Study ladder",
-                        "Pick practice order. Keep one always-available rung on.",
+                        "Order the rungs. Keep one enabled."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),

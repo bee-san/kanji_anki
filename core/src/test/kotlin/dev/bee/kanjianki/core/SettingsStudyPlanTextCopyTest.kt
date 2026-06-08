@@ -6,11 +6,11 @@ import org.junit.Test
 class SettingsStudyPlanTextCopyTest {
     @Test
     fun workloadAndSortHelpersPreserveFormatting() {
-        assertEquals("Today's study load", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
+        assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
         assertEquals("Save max items", SettingsStudyPlanTextCopy.saveMaximumLabel())
-        assertEquals("Choose count yourself", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Let Kani pick today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Pick today's item count. Due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
+        assertEquals("Kani picks today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
+        assertEquals("Set today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
@@ -29,7 +29,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("New cards only; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("Choose new-card order. Due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Similar kanji stay close on this screen: 人/入, 土/士.",
@@ -39,10 +39,10 @@ class SettingsStudyPlanTextCopyTest {
             "Similar kanji stay close on this screen.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
-        assertEquals("New cards per day", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Cap new kanji added each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
-        assertEquals("New-card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
-        assertEquals("Save daily limit", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
+        assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
+        assertEquals("Limit daily new cards.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
+        assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
@@ -50,8 +50,8 @@ class SettingsStudyPlanTextCopyTest {
             "FSRS stays local; due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
-        assertEquals("Retention by Jiten rank", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("Use 1-500=95%. Other ranks use the global target.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
+        assertEquals("One range per line, like 1-500=95%. Others use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))

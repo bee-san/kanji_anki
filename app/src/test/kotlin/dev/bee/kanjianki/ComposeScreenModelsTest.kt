@@ -1185,9 +1185,9 @@ class ComposeScreenModelsTest {
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
             saveMaximumLabel = "Save max items",
-            manualWorkloadLabel = "Choose count yourself",
-            saveWorkloadLabel = "Save study load",
-            automaticParetoLabel = "Let Kani pick",
+            manualWorkloadLabel = "Set workload manually",
+            saveWorkloadLabel = "Save workload",
+            automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
             onEnableManual = enableManual,
             onSaveWorkload = saveWorkload,
@@ -1203,9 +1203,9 @@ class ComposeScreenModelsTest {
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
         assertEquals("Save max items", model.saveMaximumLabel)
-        assertEquals("Choose count yourself", model.manualWorkloadLabel)
-        assertEquals("Save study load", model.saveWorkloadLabel)
-        assertEquals("Let Kani pick", model.automaticParetoLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
+        assertEquals("Save workload", model.saveWorkloadLabel)
+        assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
         assertSame(enableManual, model.onEnableManual)
         assertSame(saveWorkload, model.onSaveWorkload)
