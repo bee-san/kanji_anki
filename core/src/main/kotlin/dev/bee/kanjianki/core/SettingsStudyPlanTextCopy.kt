@@ -207,9 +207,11 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
-        val status = if (ladder.isEnabled(rung)) "on" else "off"
-        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "Conditional rung" else "Always available rung"
-        return "$kind $status"
+        val enabled = ladder.isEnabled(rung)
+        if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
+            return if (enabled) "On when similar kanji exist" else "Off: similar kanji skipped"
+        }
+        return if (enabled) "On: always available" else "Off: skipped"
     }
 
     @JvmStatic
