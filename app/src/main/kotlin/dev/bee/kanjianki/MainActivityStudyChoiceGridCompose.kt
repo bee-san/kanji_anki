@@ -49,20 +49,28 @@ internal fun KanjiChoiceGrid(
     feedbackForChoice: (String) -> KanjiChoiceFeedback? = { null },
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        choices.chunked(2).forEach { rowChoices ->
+        choices.forEachTwoColumnRowIndexed { _, first, second ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                rowChoices.forEach { glyph ->
+                SimilarChoiceButton(
+                    glyph = first,
+                    enabled = enabled,
+                    feedback = feedbackForChoice(first),
+                    onClick = { onChoice(first) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .choiceCellSpacing()
+                )
+                if (second != null) {
                     SimilarChoiceButton(
-                        glyph = glyph,
+                        glyph = second,
                         enabled = enabled,
-                        feedback = feedbackForChoice(glyph),
-                        onClick = { onChoice(glyph) },
+                        feedback = feedbackForChoice(second),
+                        onClick = { onChoice(second) },
                         modifier = Modifier
                             .weight(1f)
                             .choiceCellSpacing()
                     )
-                }
-                if (balanceLastRow && rowChoices.size == 1) {
+                } else if (balanceLastRow) {
                     Spacer(
                         modifier = Modifier
                             .weight(1f)

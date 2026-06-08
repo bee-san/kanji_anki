@@ -4,6 +4,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,19 +48,22 @@ fun HomeActionGrid(actions: List<HomeActionModel>) {
             .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        actions.chunked(2).forEach { rowActions ->
+        actions.forEachTwoColumnRowIndexed { _, first, second ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                rowActions.forEach { action ->
+                HomeActionButton(
+                    action = first,
+                    modifier = Modifier.weight(1f)
+                )
+                if (second != null) {
                     HomeActionButton(
-                        action = action,
+                        action = second,
                         modifier = Modifier.weight(1f)
                     )
-                }
-                if (rowActions.size == 1) {
-                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

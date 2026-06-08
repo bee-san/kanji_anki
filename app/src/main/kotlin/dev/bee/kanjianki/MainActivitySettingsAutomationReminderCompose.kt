@@ -94,18 +94,23 @@ private fun ReminderPresetGrid(
     presets: List<SettingsReminderPresetModel>,
     onSelect: (Int, Int) -> Unit,
 ) {
-    presets.chunked(2).forEachIndexed { rowIndex, rowPresets ->
+    presets.forEachTwoColumnRowIndexed { rowIndex, first, second ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(reminderPresetRowTestTag(rowIndex)),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            rowPresets.forEach { preset ->
+            ReminderOutlinedButton(
+                label = SettingsTextCopy.reminderPresetButtonLabel(first.label, first.hour, first.minute),
+                modifier = Modifier.weight(1f),
+                onClick = { onSelect(first.hour, first.minute) }
+            )
+            if (second != null) {
                 ReminderOutlinedButton(
-                    label = SettingsTextCopy.reminderPresetButtonLabel(preset.label, preset.hour, preset.minute),
+                    label = SettingsTextCopy.reminderPresetButtonLabel(second.label, second.hour, second.minute),
                     modifier = Modifier.weight(1f),
-                    onClick = { onSelect(preset.hour, preset.minute) }
+                    onClick = { onSelect(second.hour, second.minute) }
                 )
             }
         }
