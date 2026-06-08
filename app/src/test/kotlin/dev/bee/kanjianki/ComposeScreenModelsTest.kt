@@ -209,7 +209,7 @@ class ComposeScreenModelsTest {
         val onSync = {}
         val onStudy = {}
         val onFocus = {}
-        val action = HomeActionModel("Stats", R.drawable.ic_stats_24) {}
+        val action = HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})
         val coral = 0xFFFF4C76.toInt()
         val metric = HomeMetricModel(R.drawable.ic_target_24, coral, "Focus", "2", "Ready", null)
 
@@ -242,6 +242,7 @@ class ComposeScreenModelsTest {
         assertSame(onSync, model.onSync)
         assertSame(onStudy, model.onStudy)
         assertEquals(listOf(action), model.actions)
+        assertEquals(buttonTraceSection("home-action-Stats"), action.traceSection)
         assertEquals("Focus queue", model.focusTitle)
         assertEquals("View all", model.focusActionLabel)
         assertSame(onFocus, model.onFocusAction)

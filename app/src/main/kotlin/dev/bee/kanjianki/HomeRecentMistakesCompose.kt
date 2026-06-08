@@ -73,7 +73,8 @@ internal fun homeRecentMistakesPanelModel(
             ),
             sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
             accentColor = recentMistakeAccentColor(mistake.rating),
-            onClick = { onCardClick(mistake.kanji) }
+            onClick = { onCardClick(mistake.kanji) },
+            traceSection = buttonTraceSection("recent-mistake-${mistake.kanji}"),
         )
     }
     return HomeRecentMistakesPanelModel(
@@ -123,7 +124,7 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
             .clickable(
                 role = Role.Button,
                 onClick = {
-                    withButtonTrace("recent-mistake-${model.kanji}") {
+                    withUiTrace(model.traceSection) {
                         model.onClick()
                     }
                 }

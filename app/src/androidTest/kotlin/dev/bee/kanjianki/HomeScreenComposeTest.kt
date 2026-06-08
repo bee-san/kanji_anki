@@ -72,7 +72,7 @@ class HomeScreenComposeTest {
                     deckOverviewRows = listOf("Due 2", "New 1"),
                     focusActionLabel = "View all >",
                     onFocusAction = { focusClicked = true },
-                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) { actionClicked = true }),
+                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = { actionClicked = true })),
                     previewCards = listOf(
                         HomeFocusQueueCardModel(
                             kanji = "裂",
@@ -124,7 +124,7 @@ class HomeScreenComposeTest {
         onFocusAction: (() -> Unit)? = null,
         emptyTitle: String? = null,
         emptyBody: String? = null,
-        actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) {}),
+        actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})),
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
         syncMetricBody: String = "Ready",
     ): HomeScreenModel {

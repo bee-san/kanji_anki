@@ -46,19 +46,23 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
     }
 }
 
+internal fun buttonTraceSection(label: String): String {
+    return "kani.button.${traceToken(label)}"
+}
+
 internal fun withRouteTrace(route: String, action: () -> Unit) {
     withUiTrace("kani.route.${traceToken(route)}", action)
 }
 
 internal fun withButtonTrace(label: String, action: () -> Unit) {
-    withUiTrace("kani.button.${traceToken(label)}", action)
+    withUiTrace(buttonTraceSection(label), action)
 }
 
 internal fun <T> withAsyncLoadTrace(route: String, phase: String, action: () -> T): T {
     return withUiTrace("kani.${traceToken(phase)}.${traceToken(route)}", action)
 }
 
-private fun traceToken(value: String): String {
+internal fun traceToken(value: String): String {
     val trimmed = value.trim()
     if (trimmed.isEmpty()) {
         return "unknown"

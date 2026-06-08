@@ -9,6 +9,7 @@ data class HomeRecentMistakesCardModel(
     val sourceEvidence: String?,
     val accentColor: ComposeColor,
     val onClick: () -> Unit,
+    val traceSection: String = "",
 )
 
 data class HomeRecentMistakesPanelModel(
