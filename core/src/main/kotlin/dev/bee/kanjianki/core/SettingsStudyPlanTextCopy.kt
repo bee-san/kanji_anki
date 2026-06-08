@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's workload. Anki due dates stay fixed."
+        return "Kani picks today's workload. Review due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's workload. Anki due dates stay fixed."
+        return "Set today's workload. Review due dates stay fixed."
     }
 
     @JvmStatic
@@ -148,7 +148,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "FSRS stays local. Anki due dates stay unchanged."
+        return "FSRS stays local. Review due dates stay unchanged."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose rung order. Keep one on."
+        return "Choose rung order. Keep one enabled."
     }
 
     @JvmStatic
@@ -197,7 +197,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep one always-available rung on."
+        return "Keep one rung enabled."
     }
 
     @JvmStatic
