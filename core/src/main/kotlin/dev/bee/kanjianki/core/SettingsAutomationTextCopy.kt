@@ -38,7 +38,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Version " + versionName.toString() + ". Checks releases and verifies the APK."
+        return "Version " + versionName.toString() + ". Checks for verified app updates."
     }
 
     @JvmStatic
@@ -74,7 +74,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Android needs permission to install updates."
+        return "Allow app installs to update."
     }
 
     @JvmStatic
@@ -142,7 +142,7 @@ object SettingsAutomationTextCopy {
     fun appUpdatesTitle(): String = "App updates"
 
     @JvmStatic
-    fun openUpdaterLabel(): String = "Open updater"
+    fun openUpdaterLabel(): String = "Manage updates"
 
     @JvmStatic
     fun reminderStatus(enabled: Boolean, blocked: Boolean, displayTime: String?): String {
