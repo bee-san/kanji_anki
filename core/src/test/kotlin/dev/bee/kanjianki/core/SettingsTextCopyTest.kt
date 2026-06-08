@@ -392,7 +392,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose new-card order. Due reviews and repeats stay first.",
+                "Pick new-card order. Due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -407,9 +407,9 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "Review retention",
-                        "FSRS stays local. Anki due dates stay unchanged.",
+                        "FSRS stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
-                        "One range per line, like 1-500=95%. Others use global retention.",
+                        "One range per line, e.g. 1-500=95%. Others use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",

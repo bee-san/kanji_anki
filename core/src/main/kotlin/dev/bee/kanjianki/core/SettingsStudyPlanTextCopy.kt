@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose new-card order. Due reviews and repeats stay first."
+        return "Pick new-card order. Due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -148,7 +148,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "FSRS stays local; due dates stay unchanged."
+        return "FSRS stays local. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, like 1-500=95%. Others use global retention."
+        return "One range per line, e.g. 1-500=95%. Others use global retention."
     }
 
     @JvmStatic
