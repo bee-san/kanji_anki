@@ -544,8 +544,9 @@ fun testConfiguredDailySyncSettingsScreenCanPauseAndResume() {
             waitForText(scenario, "Daily sync");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On around 06:30");
-                assertHasText(activity, "Last successful sync");
-                assertHasText(activity, "Next sync");
+                assertHasText(activity, "Last sync:");
+                assertHasText(activity, "Last attempt:");
+                assertHasText(activity, "Next:");
                 assertHasText(activity, "Turn off daily sync");
             }
 

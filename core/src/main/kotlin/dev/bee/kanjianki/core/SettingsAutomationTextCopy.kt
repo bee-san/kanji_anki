@@ -111,19 +111,19 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once; Kani handles daily refreshes."
+            return "Sync once. Kani handles daily syncs."
         }
         val details = ArrayList<String>()
-        addDetail(details, "Last successful sync ", lastSuccessText)
-        addDetail(details, "Last sync attempt ", lastAttemptText)
+        addDetail(details, "Last sync: ", lastSuccessText)
+        addDetail(details, "Last attempt: ", lastAttemptText)
         if (enabled) {
-            addDetail(details, "Next sync ", nextRunText)
+            addDetail(details, "Next: ", nextRunText)
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled daily; Android may batch it."
+                "Scheduled daily. Android may delay it."
             } else {
-                "Daily sync is paused."
+                "Daily sync paused."
             }
         }
         return details.joinToString(". ") + "."
@@ -160,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Android may batch reminders."
+        return "Android may delay reminders."
     }
 
     @JvmStatic
@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Enable notifications to see this reminder."
+        return "Turn on notifications to get this reminder."
     }
 
     @JvmStatic
@@ -194,7 +194,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Grant notification permission first."
+        return "Grant notification permission."
     }
 
     @JvmStatic
