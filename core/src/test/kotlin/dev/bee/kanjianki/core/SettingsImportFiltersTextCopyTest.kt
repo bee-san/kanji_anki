@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Prefer suspended cards. Skip leech tags.",
+            "Choose sources. Leech tags stay out.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())

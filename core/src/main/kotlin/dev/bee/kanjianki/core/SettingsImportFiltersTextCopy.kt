@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Prefer suspended cards. Skip leech tags."
+        return "Choose sources. Leech tags stay out."
     }
 
     @JvmStatic
