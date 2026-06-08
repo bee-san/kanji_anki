@@ -44,8 +44,8 @@ class HomeImportOnboardingPolicyTest {
         assertEquals(HomeImportOnboardingPolicy.State.READY_FIRST_SYNC, ready.state())
         assertEquals("Sync cards", ready.primaryActionLabel())
         assertTrue(ready.body().contains("keeps suspended Basic cards on device"))
-        assertTrue(ready.body().contains("Active cards are included only when the filter is on"))
-        assertTrue(ready.body().contains("Kani reads local data after you confirm"))
+        assertTrue(ready.body().contains("Turn on active cards to include them"))
+        assertTrue(ready.body().contains("Tap Sync cards to start"))
     }
 
     @Test
@@ -60,8 +60,7 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.CHOOSE_SOURCE, noSources.state())
         assertEquals("Review import settings", noSources.primaryActionLabel())
-        assertTrue(noSources.body().contains("Choose import sources before the first sync"))
-        assertTrue(noSources.body().contains("suspended, active, tagged, weak, or browser-query cards"))
+        assertTrue(noSources.body().contains("Choose import sources before the first sync."))
     }
 
     @Test
