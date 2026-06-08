@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how new cards enter study; due reviews and repeats stay first."
+        return "Choose how new cards enter study. Due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, like 1-500=95%. Global retention for other kanji."
+        return "One range per line, e.g. 1-500=95%. Others use global retention."
     }
 
     @JvmStatic

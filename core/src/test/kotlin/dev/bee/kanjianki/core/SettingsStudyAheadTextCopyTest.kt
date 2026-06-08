@@ -16,7 +16,7 @@ class SettingsStudyAheadTextCopyTest {
         assertEquals("1440 minutes (24h)", SettingsStudyAheadTextCopy.studyAheadMaxDescription())
         assertEquals("Use whole minutes (0-1440).", SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText())
         assertEquals(
-            "0 disables it. Max 1440 minutes (24h).",
+            "0 turns it off. Max 1440 minutes (24h).",
             SettingsStudyAheadTextCopy.studyAheadOutOfRangeErrorText(),
         )
     }
