@@ -912,7 +912,7 @@ class ComposeScreenModelsTest {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
         val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Jiten frequency first.")
-        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Cards most likely to be forgotten first.")
+        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Most-forgotten cards first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
             body = "Choose how Kani admits new problem kanji.",

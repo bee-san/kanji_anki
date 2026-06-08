@@ -334,7 +334,7 @@ class SettingsTextCopyTest {
         assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9))
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1))
-        assertEquals("Automatic workload: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Automatic workload: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null))
         assertEquals(
                 "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's workload. Anki due dates stay the same.",
+                "Kani picks today's workload. Anki due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save item limit", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's workload. Anki due dates stay the same.",
+                "Set today's workload. Anki due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early. 0 turns it off. Learning/relearning delays still apply.",
+                "Show due reviews early. 0 turns it off. Learning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -381,11 +381,11 @@ class SettingsTextCopyTest {
         assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
         assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
-        assertEquals("Harder Anki cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
-        assertEquals("Cards most likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
-        assertEquals("Kanji with weaker Kani history first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
+        assertEquals("Harder cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
+        assertEquals("Most-forgotten cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Weaker Kani cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Balances Kani weakness, Anki risk, misses, and frequency.",
+                "Balances weakness, risk, misses, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
@@ -531,7 +531,7 @@ class SettingsTextCopyTest {
         assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
         assertEquals("Use whole minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
-        assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
+        assertEquals("0 disables it. Max 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
     }
 
     private fun settings(
