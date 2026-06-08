@@ -27,7 +27,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(0, source.liveReads)
         assertEquals(0, source.activeRowsReads)
         assertTrue(data.mistakes.isEmpty())
-        assertTrue(data.activeRows.isEmpty())
+        assertTrue(data.rowsByKanji.isEmpty())
     }
 
     @Test
@@ -46,7 +46,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(0, source.liveReads)
         assertEquals(1, source.activeRowsReads)
         assertEquals("痛", data.mistakes.single().kanji)
-        assertTrue(data.activeRows.isEmpty())
+        assertTrue(data.rowsByKanji.isEmpty())
     }
 
     @Test
@@ -67,7 +67,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(1, source.liveReads)
         assertEquals(1, source.activeRowsReads)
         assertEquals("落", data.mistakes.single().kanji)
-        assertTrue(data.activeRows.isEmpty())
+        assertTrue(data.rowsByKanji.isEmpty())
     }
 
     private class CountingRecentMistakesRouteDataSource : RecentMistakesRouteDataSource {
