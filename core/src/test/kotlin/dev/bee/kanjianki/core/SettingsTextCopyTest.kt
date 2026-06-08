@@ -140,7 +140,7 @@ class SettingsTextCopyTest {
                         "Starts after first sync",
                         "On around 07:30",
                         "Off",
-                        "Sync once; then Kani refreshes daily.",
+                        "Sync once; Kani handles daily refreshes.",
                         "Scheduled daily; Android may batch it.",
                         "Daily sync is paused.",
                         "Last successful sync yesterday. Last sync attempt today. Next sync tomorrow.",

@@ -32,7 +32,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("After first sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
         assertEquals("Ready to install", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
         assertEquals("Starts after first sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
-        assertEquals("Sync once; then Kani refreshes daily.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
+        assertEquals("Sync once; Kani handles daily refreshes.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
         assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel())

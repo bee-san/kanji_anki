@@ -111,7 +111,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once; then Kani refreshes daily."
+            return "Sync once; Kani handles daily refreshes."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last successful sync ", lastSuccessText)
