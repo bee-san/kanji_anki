@@ -140,7 +140,7 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortConfusablePreviewWarning(examples: List<String>): String {
         val suffix = if (examples.isEmpty()) "" else ": " + examples.joinToString(", ")
-        return "Similar kanji stay close on this screen$suffix."
+        return "Similar kanji stay close$suffix."
     }
 
     @JvmStatic
