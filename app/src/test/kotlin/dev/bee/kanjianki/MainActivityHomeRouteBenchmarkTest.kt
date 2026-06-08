@@ -133,6 +133,39 @@ class MainActivityHomeRouteBenchmarkTest {
         )
     }
 
+    @Test
+    fun benchmarksRecentMistakeTraceSectionAgainstRepeatedTokenization() {
+        val label = "recent-mistake-裂"
+        val precomputedTraceSection = buttonTraceSection(label)
+        val iterations = 500_000
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                legacyChecksum += buttonTraceSection(label).length
+            }
+        }
+
+        var precomputedChecksum = 0
+        val precomputedNanos = measureNanoTime {
+            repeat(iterations) {
+                precomputedChecksum += precomputedTraceSection.length
+            }
+        }
+
+        assertEquals(legacyChecksum, precomputedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "recent-mistake-trace-section legacy_ms=%.3f legacy_avg_us=%.3f precomputed_ms=%.3f precomputed_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                precomputedNanos / 1_000_000.0,
+                precomputedNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
     private fun legacyQueuedEntries(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
