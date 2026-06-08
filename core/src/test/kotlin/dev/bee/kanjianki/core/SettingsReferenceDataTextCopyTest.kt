@@ -6,31 +6,31 @@ import org.junit.Test
 class SettingsReferenceDataTextCopyTest {
     @Test
     fun referenceDataHelpersPreserveFormatting() {
-        assertEquals("Jiten rank range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
+        assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Import ranks 100-3000 by default.",
+            "Use suspended cards. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
-        assertEquals("Most frequent rank", SettingsReferenceDataTextCopy.minRankLabel())
-        assertEquals("Least frequent rank", SettingsReferenceDataTextCopy.maxRankLabel())
-        assertEquals("Most frequent", SettingsReferenceDataTextCopy.minimumRankLabel())
-        assertEquals("Least frequent", SettingsReferenceDataTextCopy.maximumRankLabel())
-        assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
-        assertEquals("Enter rank numbers.", SettingsReferenceDataTextCopy.numericRanksToast())
-        assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
+        assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
+        assertEquals("Max rank", SettingsReferenceDataTextCopy.maxRankLabel())
+        assertEquals("Minimum rank", SettingsReferenceDataTextCopy.minimumRankLabel())
+        assertEquals("Maximum rank", SettingsReferenceDataTextCopy.maximumRankLabel())
+        assertEquals("Save frequency range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
+        assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
+        assertEquals("Use ranks from 1 to 20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Ranks saved. Sync to refresh practice.",
+            "Range saved. Sync to rebuild practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "View dictionary, stroke, and font credits.",
+            "KANJIDIC2, Jiten, KanjiVG, font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
-        assertEquals("View licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
+        assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Bundled dictionary, stroke, and font credits.",
+            "Bundled dictionary and stroke data.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())

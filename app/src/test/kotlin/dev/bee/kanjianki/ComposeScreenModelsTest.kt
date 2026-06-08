@@ -677,22 +677,22 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Set fields, filters, rank range, and sync.",
+            "Fields, filters, range, sync.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Set card order, timing, study load, and ladder.",
+            "New cards, timing, workload, ladder.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Set reminders, sync, and update checks.",
+            "Reminders, sync, updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Review dictionaries, stroke data, fonts, and credits.",
+            "Dictionaries, stroke data, fonts, credits.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -746,7 +746,7 @@ class ComposeScreenModelsTest {
             onSave = SettingsImportFilterAction {},
         )
         val frequency = SettingsFrequencyRangePanelModel(
-            title = "Jiten rank range",
+            title = "Kanji frequency range",
             body = "Ranks",
             selectedRanks = intArrayOf(1, 500),
             minRankLabel = "Min",
@@ -802,7 +802,7 @@ class ComposeScreenModelsTest {
                 onToggleAutomaticUpdates = {},
                 automaticUpdatesToggleLabel = "Enable",
             ),
-            openUpdaterLabel = "Manage updates",
+            openUpdaterLabel = "Open updater",
             onOpenUpdater = {},
         )
 
@@ -826,16 +826,16 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("Set fields, filters, rank range, and sync.", importSync.summary)
+        assertEquals("Fields, filters, range, sync.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
-        assertEquals("Set reminders, sync, and update checks.", advanced.summary)
+        assertEquals("Reminders, sync, updates.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals("Display & data", referenceData.title)
-        assertEquals("Review dictionaries, stroke data, fonts, and credits.", referenceData.summary)
+        assertEquals("Dictionaries, stroke data, fonts, credits.", referenceData.summary)
         assertEquals("1 card", referenceData.panelCount)
         assertEquals("Study settings", collapsedBehavior.title)
-        assertEquals("Set card order, timing, study load, and ladder.", collapsedBehavior.summary)
+        assertEquals("New cards, timing, workload, ladder.", collapsedBehavior.summary)
         assertEquals("8 cards", collapsedBehavior.panelCount)
         assertTrue(collapsedBehavior.panels.isEmpty())
 
@@ -911,7 +911,7 @@ class ComposeScreenModelsTest {
     fun newCardSortModelKeepsOptionsAndSaverContract() {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
-        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Most frequent kanji first.")
+        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Jiten frequency first.")
         val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Most-forgotten cards first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
@@ -924,7 +924,7 @@ class ComposeScreenModelsTest {
 
         assertEquals("Frequency", frequency.label)
         assertEquals("frequency", frequency.mode)
-        assertEquals("Most frequent kanji first.", frequency.description)
+        assertEquals("Jiten frequency first.", frequency.description)
         assertEquals("New card order", model.title)
         assertEquals("Choose how Kani admits new problem kanji.", model.body)
         assertEquals("frequency", model.initialMode)
@@ -1068,26 +1068,26 @@ class ComposeScreenModelsTest {
         val model = SettingsLadderThresholdPanelModel(
             title = "Ladder movement",
             body = "Tune rung movement.",
-            promotionDaysLabel = "Review days to move up",
+            promotionDaysLabel = "Days to move up",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Misses to move down",
+            failStreakLabel = "Fails to move down",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use default rules",
+            defaultsLabel = "Use default movement rules",
             saveLabel = "Save movement rules",
             onSave = save,
         )
 
         assertEquals("Ladder movement", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("Review days to move up", model.promotionDaysLabel)
+        assertEquals("Days to move up", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Misses to move down", model.failStreakLabel)
+        assertEquals("Fails to move down", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use default rules", model.defaultsLabel)
+        assertEquals("Use default movement rules", model.defaultsLabel)
         assertEquals("Save movement rules", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
@@ -1113,7 +1113,7 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Overview", model.cockpitLabel)
+        assertEquals("Settings overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
         assertEquals("Note type", model.rows[0][0].label)
@@ -1122,7 +1122,7 @@ class ComposeScreenModelsTest {
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
         assertEquals("Daily reminder", model.rows[1][1].label)
-        assertEquals("Notifications blocked", model.rows[1][1].value)
+        assertEquals("Notifications off", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
         assertEquals("Daily sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
@@ -1130,7 +1130,7 @@ class ComposeScreenModelsTest {
         assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Ready to install", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
-        assertEquals("Min cards per kanji", model.rows[3][0].label)
+        assertEquals("Cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
     }
 
@@ -1176,9 +1176,9 @@ class ComposeScreenModelsTest {
         val saveWorkload = SettingsWorkloadAction { calls.add("saveWorkload") }
         val enableAutomatic = SettingsWorkloadAction { calls.add("enableAutomatic") }
         val model = SettingsWorkloadPanelModel(
-            title = "Today's study load",
+            title = "Daily workload",
             autoMode = true,
-            autoStatus = "Kani plan",
+            autoStatus = "Automatic workload",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
@@ -1194,9 +1194,9 @@ class ComposeScreenModelsTest {
             onEnableAutomatic = enableAutomatic,
         )
 
-        assertEquals("Today's study load", model.title)
+        assertEquals("Daily workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Kani plan", model.autoStatus)
+        assertEquals("Automatic workload", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
@@ -1305,7 +1305,7 @@ class ComposeScreenModelsTest {
         )
         val overview = SettingsUpdateOverviewPanelModel(
             panel = panel,
-            openUpdaterLabel = "Manage updates",
+            openUpdaterLabel = "Open updater",
             onOpenUpdater = openUpdater,
         )
 
@@ -1325,7 +1325,7 @@ class ComposeScreenModelsTest {
         assertSame(toggle, panel.onToggleAutomaticUpdates)
         assertEquals("Turn off automatic checks", panel.automaticUpdatesToggleLabel)
         assertSame(panel, overview.panel)
-        assertEquals("Manage updates", overview.openUpdaterLabel)
+        assertEquals("Open updater", overview.openUpdaterLabel)
         assertSame(openUpdater, overview.onOpenUpdater)
         panel.onInstallVerifiedUpdate()
         panel.onOpenInstallSettings()

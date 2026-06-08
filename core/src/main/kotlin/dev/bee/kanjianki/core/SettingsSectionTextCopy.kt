@@ -9,31 +9,31 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = localizedText("Set fields, filters, rank range, and sync.", "フィールド、フィルター、ランク範囲、同期を設定。")
+    fun settingsAnkiSourceBody(): String = localizedText("Fields, filters, range, sync.", "フィールド、フィルター、範囲、同期。")
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = localizedText("Set card order, timing, study load, and ladder.", "カード順、タイミング、負荷、ラダーを設定。")
+    fun settingsStudyBehaviorBody(): String = localizedText("New cards, timing, workload, ladder.", "新規カード、タイミング、負荷、ラダー。")
 
     @JvmStatic
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = localizedText("Set reminders, sync, and update checks.", "リマインダー、同期、更新確認を設定。")
+    fun settingsAutomationBody(): String = localizedText("Reminders, sync, updates.", "リマインダー、同期、更新。")
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = localizedText("Review dictionaries, stroke data, fonts, and credits.", "辞書、ストロークデータ、フォント、クレジットを確認。")
+    fun settingsReferenceDataBody(): String = localizedText("Dictionaries, stroke data, fonts, credits.", "辞書、ストロークデータ、フォント、クレジット。")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
+    fun settingsCockpitLabel(): String = localizedText("Settings overview", "設定の概要")
 
     @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Pick a section to adjust.", "調整するセクションを選択。")
+    fun settingsHeroBody(): String = localizedText("Choose a section to edit.", "編集するセクションを選んでください。")
 
     @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
@@ -42,7 +42,7 @@ object SettingsSectionTextCopy {
     fun importFiltersStatusLabel(): String = localizedText("Import filters", "インポートフィルター")
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = localizedText("Jiten rank range", "Jitenランク範囲")
+    fun importRanksStatusLabel(): String = localizedText("Suspended card range", "停止カードの範囲")
 
     @JvmStatic
     fun reminderStatusLabel(): String = localizedText("Daily reminder", "毎日のリマインダー")
@@ -54,7 +54,7 @@ object SettingsSectionTextCopy {
     fun updatesStatusLabel(): String = localizedText("App updates", "アプリ更新")
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = localizedText("Min cards per kanji", "漢字ごとの最小カード数")
+    fun matchingCardsStatusLabel(): String = localizedText("Cards per kanji", "漢字ごとのカード数")
 
     @JvmStatic
     fun statusPillDescription(label: String, value: String): String =
