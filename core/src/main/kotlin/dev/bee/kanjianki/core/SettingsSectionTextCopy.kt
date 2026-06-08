@@ -21,7 +21,7 @@ object SettingsSectionTextCopy {
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = localizedText("Reminders and app updates.", "リマインダーとアプリ更新。")
+    fun settingsAutomationBody(): String = localizedText("Reminders and update checks.", "リマインダーと更新確認。")
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
@@ -33,7 +33,7 @@ object SettingsSectionTextCopy {
     fun settingsCockpitLabel(): String = localizedText("Settings overview", "設定の概要")
 
     @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Pick a section.", "セクションを選んでください。")
+    fun settingsHeroBody(): String = localizedText("Choose a section to edit.", "編集するセクションを選んでください。")
 
     @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
