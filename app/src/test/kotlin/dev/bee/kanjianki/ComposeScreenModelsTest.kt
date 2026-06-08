@@ -677,12 +677,12 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Fields, filters, range, and sync.",
+            "Fields, filters, range, sync.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "New cards, timing, workload, and ladder.",
+            "New cards, timing, workload, ladder.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -692,7 +692,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Dictionaries, stroke data, fonts, and credits.",
+            "Dictionaries, stroke data, fonts, credits.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -826,16 +826,16 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("Fields, filters, range, and sync.", importSync.summary)
+        assertEquals("Fields, filters, range, sync.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
         assertEquals("Reminders and update checks.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals("Display & data", referenceData.title)
-        assertEquals("Dictionaries, stroke data, fonts, and credits.", referenceData.summary)
+        assertEquals("Dictionaries, stroke data, fonts, credits.", referenceData.summary)
         assertEquals("1 card", referenceData.panelCount)
         assertEquals("Study settings", collapsedBehavior.title)
-        assertEquals("New cards, timing, workload, and ladder.", collapsedBehavior.summary)
+        assertEquals("New cards, timing, workload, ladder.", collapsedBehavior.summary)
         assertEquals("8 cards", collapsedBehavior.panelCount)
         assertTrue(collapsedBehavior.panels.isEmpty())
 
