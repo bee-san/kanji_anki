@@ -493,7 +493,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Android may delay reminders.",
+                "Android may delay this reminder.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))

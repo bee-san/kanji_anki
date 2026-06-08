@@ -40,7 +40,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Open updater", SettingsAutomationTextCopy.openUpdaterLabel())
         assertEquals("Blocked: notifications off", SettingsAutomationTextCopy.reminderStatus(true, true, "21:05"))
         assertEquals("Daily reminder", SettingsAutomationTextCopy.dailyReminderTitle())
-        assertEquals("Android may delay reminders.", SettingsAutomationTextCopy.dailyReminderBody())
+        assertEquals("Android may delay this reminder.", SettingsAutomationTextCopy.dailyReminderBody())
         assertEquals("Morning", SettingsAutomationTextCopy.morningReminderPresetLabel())
         assertEquals("Lunch", SettingsAutomationTextCopy.lunchReminderPresetLabel())
         assertEquals("Evening", SettingsAutomationTextCopy.eveningReminderPresetLabel())
