@@ -26,7 +26,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Note tags", SettingsImportFiltersTextCopy.ankiNoteTagsLabel())
         assertEquals("FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel())
         assertEquals("Lapses", SettingsImportFiltersTextCopy.lapsesLabel())
-        assertEquals("Minimum matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
+        assertEquals("Min cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
         assertEquals("Add a query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Enable at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
@@ -34,6 +34,6 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
         assertEquals("Preset saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importPresetSavedToast())
         assertEquals("Use numeric import thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
-        assertEquals("Use difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
+        assertEquals("Difficulty 1-10; lapses 1-100; cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
     }
 }

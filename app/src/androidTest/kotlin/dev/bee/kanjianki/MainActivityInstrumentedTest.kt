@@ -2790,7 +2790,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Suspended cards",
                 "Tagged cards",
                 "Weak cards",
-                "Minimum matching cards per kanji",
+                SettingsTextCopy.minimumMatchingCardsLabel(),
                 "Suspended card range",
                 "Default: 100-3000",
                 "Min rank",

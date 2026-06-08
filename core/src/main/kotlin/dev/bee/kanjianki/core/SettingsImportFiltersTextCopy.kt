@@ -48,7 +48,7 @@ object SettingsImportFiltersTextCopy {
     fun lapsesLabel(): String = "Lapses"
 
     @JvmStatic
-    fun minimumMatchingCardsLabel(): String = "Minimum matching cards per kanji"
+    fun minimumMatchingCardsLabel(): String = "Min cards per kanji"
 
     @JvmStatic
     fun saveImportFiltersLabel(): String = "Save filters"
@@ -72,5 +72,5 @@ object SettingsImportFiltersTextCopy {
     fun numericImportThresholdsToast(): String = "Use numeric import thresholds."
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, cards 1-1000."
+    fun importThresholdRangeToast(): String = "Difficulty 1-10; lapses 1-100; cards 1-1000."
 }
