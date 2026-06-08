@@ -5,26 +5,23 @@ object SettingsNoteTypeTextCopy {
     fun noteTypeFieldsTitle(): String = "Note type"
 
     @JvmStatic
-    fun noteTypeUsingText(modelName: String?): String {
-        val displayName = modelName?.trim().orEmpty()
-        return if (displayName.isEmpty()) "Choose a note type" else "Using $displayName"
-    }
+    fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Choose fields or keep Kiku defaults."
+        return "Default: Kiku. Map fields."
     }
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Required field"
+    fun requiredFieldsTitle(): String = "Fields"
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Set the field that contains each kanji."
+        return "Map expression, reading, meaning, sentence, frequency, sort."
     }
 
     @JvmStatic
-    fun expressionFieldLabel(): String = "Kanji field"
+    fun expressionFieldLabel(): String = "Expression field"
 
     @JvmStatic
     fun readingFieldLabel(): String = "Reading field"
@@ -42,10 +39,10 @@ object SettingsNoteTypeTextCopy {
     fun frequencySortFieldLabel(): String = "Frequency sort field"
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose from AnkiDroid"
+    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
 
     @JvmStatic
-    fun useKikuLabel(): String = "Use Kiku defaults"
+    fun useKikuLabel(): String = "Use Kiku"
 
     @JvmStatic
     fun saveNoteTypeLabel(): String = "Save note type"

@@ -6,9 +6,9 @@ import org.junit.Test
 class SettingsReferenceDataTextCopyTest {
     @Test
     fun referenceDataHelpersPreserveFormatting() {
-        assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
+        assertEquals("Frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Use suspended cards. Default: 100-3000.",
+            "Suspended cards. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -17,7 +17,7 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Maximum rank", SettingsReferenceDataTextCopy.maximumRankLabel())
         assertEquals("Save frequency range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
         assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
-        assertEquals("Use ranks from 1 to 20000.", SettingsReferenceDataTextCopy.rankRangeToast())
+        assertEquals("Ranks must be 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
             "Range saved. Sync to rebuild practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),

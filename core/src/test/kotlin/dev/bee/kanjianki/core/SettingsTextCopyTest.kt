@@ -219,8 +219,8 @@ class SettingsTextCopyTest {
                         "Preset saved. Sync to refresh practice.",
                         "Use numeric import thresholds.",
                         "Difficulty 1-10; lapses 1-100; cards 1-1000.",
-                        "Kanji frequency range",
-                        "Use suspended cards. Default: 100-3000.",
+                        "Frequency range",
+                        "Suspended cards. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -257,7 +257,7 @@ class SettingsTextCopyTest {
                         "Maximum rank",
                         "Save frequency range",
                         "Enter numeric ranks.",
-                        "Use ranks from 1 to 20000.",
+                        "Ranks must be 1-20000.",
                         "Range saved. Sync to rebuild practice.",
                         "Offline data licenses",
                         "KANJIDIC2, Jiten, KanjiVG, font credits.",
@@ -267,10 +267,10 @@ class SettingsTextCopyTest {
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
-                        "Note type setup",
+                        "Note type",
                         "Using Kiku",
-                        "Default: Kiku. Map fields below.",
-                        "Field mappings"
+                        "Default: Kiku. Map fields.",
+                        "Fields"
                 ),
                 listOf(
                         SettingsTextCopy.minRankLabel(),
