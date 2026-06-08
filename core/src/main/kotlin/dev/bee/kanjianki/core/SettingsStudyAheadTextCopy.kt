@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show due reviews early. 0 turns it off. Learning delays still apply."
+        return "Show due reviews early. Learning delays still apply. 0 turns it off."
     }
 
     @JvmStatic
@@ -39,7 +39,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadOutOfRangeErrorText(): String {
-        return String.format(Locale.ROOT, "0 disables it. Max %s.", studyAheadMaxDescription())
+        return String.format(Locale.ROOT, "0 turns it off. Max %s.", studyAheadMaxDescription())
     }
 
     @JvmStatic
