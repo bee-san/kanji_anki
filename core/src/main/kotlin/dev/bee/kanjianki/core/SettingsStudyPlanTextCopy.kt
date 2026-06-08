@@ -140,7 +140,7 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortConfusablePreviewWarning(examples: List<String>): String {
         val suffix = if (examples.isEmpty()) "" else ": " + examples.joinToString(", ")
-        return "Similar kanji stay close in this preview$suffix."
+        return "Similar kanji stay close on this screen$suffix."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose rung order. Keep one enabled."
+        return "Choose rung order. Keep one on."
     }
 
     @JvmStatic
@@ -207,7 +207,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
-        val status = if (ladder.isEnabled(rung)) "enabled" else "disabled"
+        val status = if (ladder.isEnabled(rung)) "on" else "off"
         val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "Conditional rung" else "Always available rung"
         return "$kind $status"
     }

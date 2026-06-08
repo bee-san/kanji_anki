@@ -32,11 +32,11 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Choose how new cards enter study; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
-            "Similar kanji stay close in this preview: 人/入, 土/士.",
+            "Similar kanji stay close on this screen: 人/入, 土/士.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(listOf("人/入", "土/士")),
         )
         assertEquals(
-            "Similar kanji stay close in this preview.",
+            "Similar kanji stay close on this screen.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
@@ -60,7 +60,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
         assertEquals("Write kanji off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
-            "Conditional rung enabled",
+            "Conditional rung on",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, true),
                 RecordsBase.LadderRung.SIMILAR_KANJI,

@@ -22,7 +22,7 @@ object SettingsAutomationTextCopy {
         if (hasPendingUpdate) {
             return "Ready to install"
         }
-        return if (enabled) "Daily checks on" else "Manual checks"
+        return if (enabled) "On: daily checks" else "Off"
     }
 
     @JvmStatic

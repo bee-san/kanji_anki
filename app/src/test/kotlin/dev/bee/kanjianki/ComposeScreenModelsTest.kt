@@ -1148,7 +1148,7 @@ class ComposeScreenModelsTest {
         assertEquals(0xFF6C5674.toInt(), model.rows[1][1].valueColor)
         assertEquals("Off", model.rows[2][0].value)
         assertEquals(0xFF6C5674.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Manual checks", model.rows[2][1].value)
+        assertEquals("Off", model.rows[2][1].value)
         assertEquals(0xFFDA3A7A.toInt(), model.rows[2][1].valueColor)
     }
 

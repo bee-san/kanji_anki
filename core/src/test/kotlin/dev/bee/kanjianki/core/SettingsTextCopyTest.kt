@@ -28,8 +28,8 @@ class SettingsTextCopyTest {
                         "07:30",
                         "Off",
                         "Ready to install",
-                        "Daily checks on",
-                        "Manual checks",
+                        "On: daily checks",
+                        "Off",
                         "4 suspended cards archived, 2 rare kanji added",
                         "Sync blocked: No provider",
                         "Sync blocked: unknown error",
@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New/relearning cards use short steps. Repeats are practice-only.",
+                "New and relearning cards use short steps. Repeats stay practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
@@ -420,10 +420,10 @@ class SettingsTextCopyTest {
                         "Kanji -> meaning",
                         "Font -> meaning",
                         "Word -> reading",
-                        "Always available rung enabled",
-                        "Conditional rung enabled",
+                        "Always available rung on",
+                        "Conditional rung on",
                         "Study ladder",
-                        "Choose rung order. Keep one enabled."
+                        "Choose rung order. Keep one on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards. Repeats are practice-only.",
+                        "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
