@@ -62,20 +62,24 @@ internal fun homeRecentMistakesPanelModel(
     rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
     onCardClick: (String) -> Unit,
 ): HomeRecentMistakesPanelModel {
-    val cards = mistakes.map { mistake ->
-        val row = rowsByKanji[mistake.kanji]
-        HomeRecentMistakesCardModel(
-            kanji = mistake.kanji,
-            title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
-            subtitle = HomeTextCopy.recentMistakeSubtitle(
-                mistake.rating,
-                DateTextPolicy.timelineDate(mistake.reviewedAtMillis)
-            ),
-            sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
-            accentColor = recentMistakeAccentColor(mistake.rating),
-            onClick = { onCardClick(mistake.kanji) },
-            traceSection = buttonTraceSection("recent-mistake-${mistake.kanji}"),
-        )
+    val cards = buildList(mistakes.size) {
+        mistakes.forEach { mistake ->
+            val row = rowsByKanji[mistake.kanji]
+            add(
+                HomeRecentMistakesCardModel(
+                    kanji = mistake.kanji,
+                    title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
+                    subtitle = HomeTextCopy.recentMistakeSubtitle(
+                        mistake.rating,
+                        DateTextPolicy.timelineDate(mistake.reviewedAtMillis)
+                    ),
+                    sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
+                    accentColor = recentMistakeAccentColor(mistake.rating),
+                    onClick = { onCardClick(mistake.kanji) },
+                    traceSection = buttonTraceSection("recent-mistake-${mistake.kanji}"),
+                )
+            )
+        }
     }
     return HomeRecentMistakesPanelModel(
         emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
