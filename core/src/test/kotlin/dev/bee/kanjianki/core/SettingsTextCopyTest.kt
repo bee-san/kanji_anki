@@ -356,7 +356,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New/relearning cards use short steps. Repeats are practice-only.",
+                "New and relearning cards use short steps. Repeats stay practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
@@ -460,7 +460,7 @@ class SettingsTextCopyTest {
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",
-                        "Due reviews move cards. Repeats are practice-only.",
+                        "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
