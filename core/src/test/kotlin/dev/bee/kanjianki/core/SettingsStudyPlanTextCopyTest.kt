@@ -62,9 +62,30 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
         assertEquals("Write kanji off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
-            "Conditional rung on",
+            "On: always available",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults(),
+                RecordsBase.LadderRung.WRITE_KANJI,
+            ),
+        )
+        assertEquals(
+            "Off: skipped",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.WRITE_KANJI, false),
+                RecordsBase.LadderRung.WRITE_KANJI,
+            ),
+        )
+        assertEquals(
+            "On when similar kanji exist",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, true),
+                RecordsBase.LadderRung.SIMILAR_KANJI,
+            ),
+        )
+        assertEquals(
+            "Off: similar kanji skipped",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false),
                 RecordsBase.LadderRung.SIMILAR_KANJI,
             ),
         )
