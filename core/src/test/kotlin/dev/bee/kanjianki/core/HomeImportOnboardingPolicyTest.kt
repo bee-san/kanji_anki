@@ -31,7 +31,7 @@ class HomeImportOnboardingPolicyTest {
         assertEquals(HomeImportOnboardingPolicy.State.GRANT_PERMISSION, needsPermission.state())
         assertEquals("Grant permission", needsPermission.primaryActionLabel())
         assertTrue(needsPermission.body().contains("read your local AnkiDroid decks"))
-        assertTrue(needsPermission.body().contains("does not upload"))
+        assertTrue(needsPermission.body().contains("Data stays on your device"))
 
         val ready = HomeImportOnboardingPolicy.plan(
             true,
@@ -43,9 +43,9 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.READY_FIRST_SYNC, ready.state())
         assertEquals("Sync cards", ready.primaryActionLabel())
-        assertTrue(ready.body().contains("archives suspended Basic cards locally"))
-        assertTrue(ready.body().contains("active cards only when the filter is on"))
-        assertTrue(ready.body().contains("Reads local data after you confirm"))
+        assertTrue(ready.body().contains("keeps suspended Basic cards on device"))
+        assertTrue(ready.body().contains("Active cards are included only when the filter is on"))
+        assertTrue(ready.body().contains("Kani reads local data after you confirm"))
     }
 
     @Test
@@ -60,8 +60,8 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.CHOOSE_SOURCE, noSources.state())
         assertEquals("Review import settings", noSources.primaryActionLabel())
-        assertTrue(noSources.body().contains("Choose AnkiDroid import sources"))
-        assertTrue(noSources.body().contains("enable suspended, active, tagged, weak, or browser-query import"))
+        assertTrue(noSources.body().contains("Choose import sources before the first sync"))
+        assertTrue(noSources.body().contains("suspended, active, tagged, weak, or browser-query cards"))
     }
 
     @Test
@@ -77,7 +77,7 @@ class HomeImportOnboardingPolicyTest {
         assertEquals(HomeImportOnboardingPolicy.State.RECOVER_PERMISSION, permissionFailure.state())
         assertEquals("Fix permission", permissionFailure.primaryActionLabel())
         assertTrue(permissionFailure.body().contains("permission"))
-        assertTrue(permissionFailure.body().contains("try sync again"))
+        assertTrue(permissionFailure.body().contains("try syncing again"))
 
         val retryFailure = HomeImportOnboardingPolicy.plan(
             true,
@@ -101,8 +101,9 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.SYNCED, success.state())
         assertEquals("Sync again", success.primaryActionLabel())
-        assertTrue(success.body().contains("7 kanji ready"))
-        assertTrue(success.body().contains("source selection: suspended cards + tagged cards + weak cards + browser query"))
+        assertTrue(success.body().contains("Last sync imported 7 kanji"))
+        assertTrue(success.body().contains("Note type Basic. Sources: suspended cards + tagged cards + weak cards + browser query"))
+        assertTrue(success.body().contains("Query: deck:Japanese"))
     }
 
     private fun settings(

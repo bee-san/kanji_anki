@@ -126,7 +126,7 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani archives suspended Basic cards locally and uses active cards only when the filter is on.",
+            "Kani keeps suspended Basic cards on device. Active cards are included only when the filter is on.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())
@@ -145,8 +145,8 @@ class HomeTextCopyTest {
             "2 candidates from Anki. Auto Pareto: 2 items today.",
             HomeTextCopy.syncCandidateSummary(2, "Auto Pareto: 2 items today")
         )
-        assertEquals("1 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(1))
-        assertEquals("4 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(4))
+        assertEquals("1 suspended kanji imported", HomeTextCopy.importedSuspendedKanjiText(1))
+        assertEquals("4 suspended kanji imported", HomeTextCopy.importedSuspendedKanjiText(4))
         assertEquals("AnkiDroid needs attention", HomeTextCopy.syncNeedsAttentionTitle())
         assertEquals("Could not read AnkiDroid", HomeTextCopy.syncReadErrorTitle())
         assertEquals("Check AnkiDroid permissions, then retry.", HomeTextCopy.syncFailureFallback())

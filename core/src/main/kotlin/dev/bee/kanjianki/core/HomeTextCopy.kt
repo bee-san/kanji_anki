@@ -168,8 +168,7 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani archives suspended ${safeSettings.modelName} cards locally and uses " +
-            "active cards only when the filter is on."
+        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Active cards are included only when the filter is on."
     }
 
     @JvmStatic
@@ -204,7 +203,7 @@ object HomeTextCopy {
 
     @JvmStatic
     fun importedSuspendedKanjiText(count: Int): String =
-        StudyTextCopy.countText(count, "new archived suspended kanji added", "new archived suspended kanji added")
+        StudyTextCopy.countText(count, "suspended kanji imported", "suspended kanji imported")
 
     @JvmStatic
     fun syncNeedsAttentionTitle(): String = "AnkiDroid needs attention"
