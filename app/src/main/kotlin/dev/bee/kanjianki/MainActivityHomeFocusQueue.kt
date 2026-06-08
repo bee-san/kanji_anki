@@ -7,7 +7,6 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.HomeTextCopy
-import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
@@ -22,7 +21,7 @@ internal interface RecentMistakesRouteDataSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
-    fun activeDashboardRows(): List<RecordsImportModels.DashboardRow>
+    fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow>
 }
 
 internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): RecentMistakesRouteData {
@@ -35,7 +34,7 @@ internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): Rec
     val rowsByKanji = if (mistakes.isEmpty()) {
         emptyMap()
     } else {
-        StudyCollectionLookup.dashboardRowsByKanji(source.activeDashboardRows())
+        source.activeDashboardRowsByKanji()
     }
     return RecentMistakesRouteData(mistakes, rowsByKanji)
 }
@@ -99,8 +98,8 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                             return home.store.recentMistakes(limit)
                         }
 
-                        override fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
-                            return home.store.activeDashboardRows()
+                        override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
+                            return home.store.activeDashboardRowsByKanji()
                         }
                     }
                 )

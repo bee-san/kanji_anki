@@ -7,11 +7,13 @@ import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyCollectionLookup
 import java.util.Collections
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
     private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    private var cachedActiveDashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow>? = null
     private var cachedLocallySuspendedKanji: Set<String>? = null
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
     private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
@@ -23,12 +25,14 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
+        cachedActiveDashboardRowsByKanji = null
         clearTimelineCache()
     }
 
     internal fun clearLocallySuspendedCache() {
         cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
+        cachedActiveDashboardRowsByKanji = null
         clearKanjiInventoryAllCache()
     }
 
@@ -108,6 +112,21 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
         cachedActiveDashboardRows = out
         return out
+    }
+
+    fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
+        cachedActiveDashboardRowsByKanji?.let { return it }
+
+        val rows = activeDashboardRows()
+        if (rows.isEmpty()) {
+            val empty = emptyMap<String, RecordsImportModels.DashboardRow>()
+            cachedActiveDashboardRowsByKanji = empty
+            return empty
+        }
+
+        val rowsByKanji = Collections.unmodifiableMap(StudyCollectionLookup.dashboardRowsByKanji(rows))
+        cachedActiveDashboardRowsByKanji = rowsByKanji
+        return rowsByKanji
     }
 
     fun rowForKanji(kanji: String?): RecordsImportModels.DashboardRow? {

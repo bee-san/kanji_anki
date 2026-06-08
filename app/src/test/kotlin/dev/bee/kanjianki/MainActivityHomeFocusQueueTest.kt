@@ -25,7 +25,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(1, source.cachedReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.liveReads)
-        assertEquals(0, source.activeRowsReads)
+        assertEquals(0, source.activeRowsByKanjiReads)
         assertTrue(data.mistakes.isEmpty())
         assertTrue(data.rowsByKanji.isEmpty())
     }
@@ -44,7 +44,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(1, source.cachedReads)
         assertEquals(1, source.latestReads)
         assertEquals(0, source.liveReads)
-        assertEquals(1, source.activeRowsReads)
+        assertEquals(1, source.activeRowsByKanjiReads)
         assertEquals("痛", data.mistakes.single().kanji)
         assertTrue(data.rowsByKanji.isEmpty())
     }
@@ -65,7 +65,7 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(0, source.latestReads)
         assertEquals(listOf(STATS_RECENT_MISTAKE_LIMIT), source.liveMistakeLimits)
         assertEquals(1, source.liveReads)
-        assertEquals(1, source.activeRowsReads)
+        assertEquals(1, source.activeRowsByKanjiReads)
         assertEquals("落", data.mistakes.single().kanji)
         assertTrue(data.rowsByKanji.isEmpty())
     }
@@ -77,7 +77,7 @@ class MainActivityHomeFocusQueueTest {
         var cachedReads = 0
         var latestReads = 0
         var liveReads = 0
-        var activeRowsReads = 0
+        var activeRowsByKanjiReads = 0
         val liveMistakeLimits = mutableListOf<Int>()
 
         constructor(
@@ -106,9 +106,9 @@ class MainActivityHomeFocusQueueTest {
             return liveMistakes
         }
 
-        override fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
-            activeRowsReads += 1
-            return emptyList()
+        override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
+            activeRowsByKanjiReads += 1
+            return emptyMap()
         }
     }
 
