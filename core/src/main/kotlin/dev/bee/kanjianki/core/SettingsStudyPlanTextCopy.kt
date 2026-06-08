@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's workload. Anki due dates stay the same."
+        return "Kani picks today's workload. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's workload. Anki due dates stay the same."
+        return "Set today's workload. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -68,7 +68,7 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Automatic workload: waiting for problem kanji"
+            return "Automatic workload: waiting for cards"
         }
         return "Automatic workload: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
     }
@@ -108,10 +108,10 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortDescription(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances Kani weakness, Anki risk, misses, and frequency."
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder cards first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Most-forgotten cards first."
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Weaker Kani cards first."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances weakness, risk, misses, and frequency."
             else -> "Jiten frequency first."
         }
     }
