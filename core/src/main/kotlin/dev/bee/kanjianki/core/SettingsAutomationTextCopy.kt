@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to show this reminder."
+        return "Enable notifications to see this reminder."
     }
 
     @JvmStatic

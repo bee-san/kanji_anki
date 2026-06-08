@@ -12,7 +12,7 @@ class SettingsTextCopyTest {
         assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1 card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3 cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("No import sources selected", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Pick at least one source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
@@ -188,7 +188,7 @@ class SettingsTextCopyTest {
             assertTrue(body, body.length <= 100)
         }
 
-        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("show this reminder"))
+        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("Enable notifications"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
         assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"))
     }
@@ -507,7 +507,7 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Turn on notifications to show this reminder.",
+                "Enable notifications to see this reminder.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
