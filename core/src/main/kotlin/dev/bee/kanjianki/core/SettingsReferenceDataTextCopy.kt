@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Suspend cards by Jiten rank. Default 100-3000."
+        return "Choose Jiten ranks to suspend. Default: 100-3000."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Ranks must be 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Saved. Sync to update practice."
+    fun frequencyRangeSavedToast(): String = "Saved. Sync to refresh practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
