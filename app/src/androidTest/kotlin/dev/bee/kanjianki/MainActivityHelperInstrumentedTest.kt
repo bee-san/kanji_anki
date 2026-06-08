@@ -216,10 +216,10 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 assertFalse(startup.shouldRunBackgroundStartupTasks(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)))
 
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
-                assertHasText(activity, "GitHub updater");
+                assertHasText(activity, "App updates");
 
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, "update"));
-                assertHasText(activity, "GitHub updater");
+                assertHasText(activity, "App updates");
 
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE));
                 assertHasText(activity, "Browse Kanji");

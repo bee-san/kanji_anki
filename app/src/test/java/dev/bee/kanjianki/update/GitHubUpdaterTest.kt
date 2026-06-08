@@ -374,7 +374,7 @@ class GitHubUpdaterTest {
 
         assertTrue(mapped.pendingUserAction())
         assertFalse(mapped.success())
-        assertEquals("Android needs confirmation to finish installing.", mapped.message())
+        assertEquals("Android needs permission to finish installing.", mapped.message())
     }
 
     @Test

@@ -29,7 +29,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                         ),
                         listOf(
                             SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()),
-                            SettingsAutomationHeroPillModel("App updates", "Pending verified APK", 0xFFFF4C76.toInt())
+                            SettingsAutomationHeroPillModel("App updates", "Ready to install", 0xFFFF4C76.toInt())
                         ),
                         listOf(
                             SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())

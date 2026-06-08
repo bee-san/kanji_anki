@@ -1112,7 +1112,7 @@ class ComposeScreenModelsTest {
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
         assertEquals("App updates", model.rows[2][1].label)
-        assertEquals("Verified APK ready", model.rows[2][1].value)
+        assertEquals("Ready to install", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
         assertEquals("Cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
@@ -1272,7 +1272,7 @@ class ComposeScreenModelsTest {
         val permissionColor = ComposeColor(0xFF00AEB5)
         val panel = SettingsUpdatePanelModel(
             title = "App updates",
-            statusLine = "Verified APK ready",
+            statusLine = "Ready to install",
             statusColor = statusColor,
             lastCheckLine = "Checked today",
             lastResultLine = "No errors",
@@ -1294,7 +1294,7 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("App updates", panel.title)
-        assertEquals("Verified APK ready", panel.statusLine)
+        assertEquals("Ready to install", panel.statusLine)
         assertEquals(statusColor, panel.statusColor)
         assertEquals("Checked today", panel.lastCheckLine)
         assertEquals("No errors", panel.lastResultLine)
