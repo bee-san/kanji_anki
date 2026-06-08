@@ -793,7 +793,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
                     "Android needs permission to finish installing.",
                     "v9.9.9",
                     "kani-test.apk",
-                    "Android needs permission to install updates."
+                    SettingsTextCopy.pendingUpdateFallback()
             );
         }
         MainActivityRuntimeOverrides.setInstallPermission(true);
@@ -805,7 +805,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "Permission granted");
                 assertHasText(activity, "Install verified update");
-                assertHasText(activity, "Android needs permission to install updates.");
+                assertHasText(activity, SettingsTextCopy.pendingUpdateFallback());
             }
         }
 
@@ -817,7 +817,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "Permission granted")
                 assertHasText(activity, "Install verified update")
-                assertHasText(activity, "Android needs permission to install updates.")
+                assertHasText(activity, SettingsTextCopy.pendingUpdateFallback())
             }
             clickText(scenario, "Install verified update")
             waitForText(scenario, "Last result: APK metadata could not be read. Install blocked.")

@@ -74,7 +74,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Android needs permission to install updates."
+        return "Allow app installs to update."
     }
 
     @JvmStatic

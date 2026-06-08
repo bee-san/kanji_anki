@@ -86,7 +86,7 @@ class SettingsTextCopyTest {
                         "Permission granted",
                         "Permission missing",
                         "Ready to install: 0.4.33",
-                        "Android needs permission to install updates.",
+                        "Allow app installs to update.",
                         "Install verified update",
                         "Allow app installs",
                         "Turn off updates",

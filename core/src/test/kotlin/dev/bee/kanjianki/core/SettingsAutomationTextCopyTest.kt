@@ -19,7 +19,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
         assertEquals("Permission granted", SettingsAutomationTextCopy.installPermissionLine(true))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
-        assertEquals("Android needs permission to install updates.", SettingsAutomationTextCopy.pendingUpdateFallback())
+        assertEquals("Allow app installs to update.", SettingsAutomationTextCopy.pendingUpdateFallback())
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
         assertEquals("Allow app installs", SettingsAutomationTextCopy.setupAppInstallsLabel())
         assertEquals("Turn off updates", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
