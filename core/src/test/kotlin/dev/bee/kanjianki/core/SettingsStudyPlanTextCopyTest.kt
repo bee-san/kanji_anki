@@ -7,10 +7,10 @@ class SettingsStudyPlanTextCopyTest {
     @Test
     fun workloadAndSortHelpersPreserveFormatting() {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
-        assertEquals("Save item limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
-        assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Kani picks today's workload. Review due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Set today's workload. Review due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Save limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
+        assertEquals("Choose workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
+        assertEquals("Kani chooses today's item count. Review due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
+        assertEquals("Choose today's item count. Review due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
@@ -40,7 +40,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Cap daily new cards.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Limit new cards per day.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
