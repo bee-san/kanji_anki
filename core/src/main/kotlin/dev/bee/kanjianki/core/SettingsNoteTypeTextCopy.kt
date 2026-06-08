@@ -5,7 +5,10 @@ object SettingsNoteTypeTextCopy {
     fun noteTypeFieldsTitle(): String = "Note type setup"
 
     @JvmStatic
-    fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
+    fun noteTypeUsingText(modelName: String?): String {
+        val displayName = modelName?.trim().orEmpty()
+        return if (displayName.isEmpty()) "No note type selected" else "Using $displayName"
+    }
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
@@ -21,7 +24,7 @@ object SettingsNoteTypeTextCopy {
     }
 
     @JvmStatic
-    fun expressionFieldLabel(): String = "Expression field"
+    fun expressionFieldLabel(): String = "Kanji field"
 
     @JvmStatic
     fun readingFieldLabel(): String = "Reading field"
