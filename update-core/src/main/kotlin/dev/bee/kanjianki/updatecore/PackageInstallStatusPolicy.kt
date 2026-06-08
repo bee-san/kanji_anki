@@ -18,7 +18,7 @@ object PackageInstallStatusPolicy {
             return InstallCallback(false, true, "Install finished.")
         }
         if (status == STATUS_PENDING_USER_ACTION) {
-            return InstallCallback(true, false, "Android needs confirmation to finish installing.")
+            return InstallCallback(true, false, "Android needs permission to finish installing.")
         }
         val suffix = if (message.isNullOrBlank()) "" else ": ${message.trim()}"
         return InstallCallback(false, false, "Install failed$suffix.")

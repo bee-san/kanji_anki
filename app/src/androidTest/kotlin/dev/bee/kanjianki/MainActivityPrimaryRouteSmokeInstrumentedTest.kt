@@ -85,8 +85,8 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisible("Meaning Pop")
 
             scenario.onActivity { it.renderUpdate() }
-            assertVisible("GitHub updater")
-            assertVisible("Check for update")
+            assertVisible("App updates")
+            assertVisible("Check for updates")
         }
     }
 

@@ -8,20 +8,20 @@ class SettingsAutomationTextCopyTest {
     fun updateHelpersPreserveFormatting() {
         assertEquals("unknown version", SettingsAutomationTextCopy.versionText(null))
         assertEquals("0.4.33", SettingsAutomationTextCopy.versionText("v0.4.33"))
-        assertEquals("GitHub updater", SettingsAutomationTextCopy.updatePageTitle())
+        assertEquals("App updates", SettingsAutomationTextCopy.updatePageTitle())
         assertEquals(
-            "Version 1.2.3. Checks releases, then verifies the APK.",
+            "Version 1.2.3. Checks GitHub releases and verifies the APK.",
             SettingsAutomationTextCopy.updatePageBody("1.2.3"),
         )
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
         assertEquals("On: daily checks", SettingsAutomationTextCopy.autoUpdatePanelStatus(true))
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("not yet"))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
-        assertEquals("Install permission: Ready", SettingsAutomationTextCopy.installPermissionLine(true))
-        assertEquals("Verified APK ready: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
-        assertEquals("Android needs confirmation to install updates.", SettingsAutomationTextCopy.pendingUpdateFallback())
+        assertEquals("Install permission: Granted", SettingsAutomationTextCopy.installPermissionLine(true))
+        assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
+        assertEquals("Android needs permission to install updates.", SettingsAutomationTextCopy.pendingUpdateFallback())
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
-        assertEquals("Set up app installs", SettingsAutomationTextCopy.setupAppInstallsLabel())
+        assertEquals("Allow app installs", SettingsAutomationTextCopy.setupAppInstallsLabel())
         assertEquals("Turn off updates", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
         assertEquals("Back to settings", SettingsAutomationTextCopy.backToSettingsLabel())
     }
@@ -30,7 +30,7 @@ class SettingsAutomationTextCopyTest {
     fun automationHelpersPreserveStatusCopy() {
         assertEquals("Notifications off", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
         assertEquals("After first sync", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
-        assertEquals("Verified APK ready", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
+        assertEquals("Ready to install", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
         assertEquals("Starts after first sync", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("Sync once; then Kani refreshes daily.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
         assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())

@@ -139,7 +139,7 @@ class UpdateFlowInstrumentedTest {
 
         LocalStore(context).use { store ->
             val status = store.autoUpdateStatus()
-            assertEquals("Android needs confirmation to finish installing.", status.lastResult)
+            assertEquals("Android needs permission to finish installing.", status.lastResult)
             assertEquals("v2.0.0", status.lastVersion)
             assertEquals("waiting.apk", status.pendingApkName)
             assertTrue(status.hasPendingUpdate())

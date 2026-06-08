@@ -20,7 +20,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsUpdateSummary(hasPendingUpdate: Boolean, enabled: Boolean): String {
         if (hasPendingUpdate) {
-            return "Verified APK ready"
+            return "Ready to install"
         }
         return if (enabled) "Daily checks on" else "Manual checks"
     }
@@ -34,18 +34,18 @@ object SettingsAutomationTextCopy {
     }
 
     @JvmStatic
-    fun updatePageTitle(): String = "GitHub updater"
+    fun updatePageTitle(): String = "App updates"
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Version " + versionName.toString() + ". Checks releases, then verifies the APK."
+        return "Version " + versionName.toString() + ". Checks GitHub releases and verifies the APK."
     }
 
     @JvmStatic
     fun automaticUpdatesTitle(): String = "Automatic updates"
 
     @JvmStatic
-    fun checkForUpdateLabel(): String = "Check for update"
+    fun checkForUpdateLabel(): String = "Check for updates"
 
     @JvmStatic
     fun autoUpdatePanelStatus(enabled: Boolean): String {
@@ -64,24 +64,24 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return "Install permission: " + if (canInstall) "Ready" else "Missing"
+        return "Install permission: " + if (canInstall) "Granted" else "Missing"
     }
 
     @JvmStatic
     fun verifiedApkReadyLine(version: String?): String {
-        return "Verified APK ready: " + versionText(version)
+        return "Ready to install: " + versionText(version)
     }
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Android needs confirmation to install updates."
+        return "Android needs permission to install updates."
     }
 
     @JvmStatic
     fun installVerifiedUpdateLabel(): String = "Install verified update"
 
     @JvmStatic
-    fun setupAppInstallsLabel(): String = "Set up app installs"
+    fun setupAppInstallsLabel(): String = "Allow app installs"
 
     @JvmStatic
     fun automaticUpdatesToggleLabel(enabled: Boolean): String {

@@ -243,8 +243,8 @@ fun testNavigationSettingsAndEmptyStates() {
             clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
-            waitForText(scenario, "GitHub updater");
-            scenario.onActivity { activity -> assertHasTexts(activity, "GitHub updater", "Back to settings", "Home", "Current version", "Check for update") }
+            waitForText(scenario, "App updates");
+            scenario.onActivity { activity -> assertHasTexts(activity, "App updates", "Back to settings", "Home", "Current version", "Check for updates") }
         }
     }
 
@@ -769,7 +769,7 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
                 assertHasText(activity, "On: daily checks");
                 assertHasText(activity, "Last check: not yet");
                 assertHasText(activity, "Install permission: Missing");
-                assertHasText(activity, "Set up app installs");
+                assertHasText(activity, "Allow app installs");
                 assertHasText(activity, "Turn off updates");
             }
             clickText(scenario, "Turn off updates");
@@ -789,10 +789,10 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
         LocalStore(context).use { store ->
             store.recordAutoUpdateResult(
                     System.currentTimeMillis(),
-                    "Android needs confirmation to finish installing.",
+                    "Android needs permission to finish installing.",
                     "v9.9.9",
                     "kani-test.apk",
-                    "Android needs confirmation to install updates."
+                    "Android needs permission to install updates."
             );
         }
         MainActivityRuntimeOverrides.setInstallPermission(true);
@@ -800,11 +800,11 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             clickText(scenario, "Automation");
-            waitForText(scenario, "Verified APK ready: 9.9.9");
+            waitForText(scenario, "Ready to install: 9.9.9");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Ready");
+                assertHasText(activity, "Install permission: Granted");
                 assertHasText(activity, "Install verified update");
-                assertHasText(activity, "Android needs confirmation to install updates.");
+                assertHasText(activity, "Android needs permission to install updates.");
             }
         }
 
@@ -812,11 +812,11 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
         val scenario = ActivityScenario.launch<MainActivity>(openUpdate)
         try {
-            waitForText(scenario, "Verified APK ready: 9.9.9")
+            waitForText(scenario, "Ready to install: 9.9.9")
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Ready")
+                assertHasText(activity, "Install permission: Granted")
                 assertHasText(activity, "Install verified update")
-                assertHasText(activity, "Android needs confirmation to install updates.")
+                assertHasText(activity, "Android needs permission to install updates.")
             }
             clickText(scenario, "Install verified update")
             waitForText(scenario, "Last result: APK metadata could not be read. Install blocked.")
