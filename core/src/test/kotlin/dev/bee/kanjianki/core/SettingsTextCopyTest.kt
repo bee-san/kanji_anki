@@ -190,7 +190,7 @@ class SettingsTextCopyTest {
 
         assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("notifications"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
-        assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"))
+        assertEquals("Keep one rung enabled.", SettingsTextCopy.keepAlwaysAvailableRungToast())
     }
 
     @Test
@@ -456,7 +456,7 @@ class SettingsTextCopyTest {
                         "Down",
                         "Restore defaults",
                         "Ladder restored.",
-                        "Keep one always-available rung on.",
+                        "Keep one rung enabled.",
                         "Write kanji off.",
                         "Write kanji on.",
                         "Ladder movement",

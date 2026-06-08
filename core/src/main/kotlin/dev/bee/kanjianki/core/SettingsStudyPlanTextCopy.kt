@@ -197,7 +197,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep one always-available rung on."
+        return "Keep one rung enabled."
     }
 
     @JvmStatic
