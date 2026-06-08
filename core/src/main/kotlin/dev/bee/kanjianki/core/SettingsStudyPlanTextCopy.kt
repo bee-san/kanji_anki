@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's workload; Anki due dates stay the same."
+        return "Kani picks today's workload. Anki due dates stay the same."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's workload; Anki due dates stay the same."
+        return "Set today's workload. Anki due dates stay the same."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Optional: one range per line, like 1-500=95%. Other kanji use global retention."
+        return "One range per line, like 1-500=95%. Other kanji use global retention."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose rungs and order. Keep one enabled."
+        return "Choose rung order. Keep one enabled."
     }
 
     @JvmStatic

@@ -342,13 +342,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's workload; Anki due dates stay the same.",
+                "Kani picks today's workload. Anki due dates stay the same.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save item limit", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's workload; Anki due dates stay the same.",
+                "Set today's workload. Anki due dates stay the same.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early; 0 disables it. Learning/relearning delays still apply.",
+                "Show due reviews early. 0 turns it off. Learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -409,7 +409,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay unchanged.",
                         "Jiten-rank retention ranges",
-                        "Optional: one range per line, like 1-500=95%. Other kanji use global retention.",
+                        "One range per line, like 1-500=95%. Other kanji use global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -423,7 +423,7 @@ class SettingsTextCopyTest {
                         "Always available rung enabled",
                         "Conditional rung enabled",
                         "Study ladder",
-                        "Choose rungs and order. Keep one enabled."
+                        "Choose rung order. Keep one enabled."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
