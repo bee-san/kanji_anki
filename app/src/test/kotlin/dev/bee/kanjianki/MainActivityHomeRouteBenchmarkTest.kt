@@ -166,6 +166,72 @@ class MainActivityHomeRouteBenchmarkTest {
         )
     }
 
+    @Test
+    fun benchmarksHomeActionTraceSectionAgainstRepeatedTokenization() {
+        val action = HomeActionModel("Browse", R.drawable.ic_book_24, onClick = {})
+        val precomputedTraceSection = action.traceSection
+        val iterations = 500_000
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                legacyChecksum += buttonTraceSection("home-action-${action.label}").length
+            }
+        }
+
+        var precomputedChecksum = 0
+        val precomputedNanos = measureNanoTime {
+            repeat(iterations) {
+                precomputedChecksum += precomputedTraceSection.length
+            }
+        }
+
+        assertEquals(legacyChecksum, precomputedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "home-action-trace-section legacy_ms=%.3f legacy_avg_us=%.3f precomputed_ms=%.3f precomputed_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                precomputedNanos / 1_000_000.0,
+                precomputedNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
+    fun benchmarksHomeSectionHeaderTraceSectionAgainstRepeatedTokenization() {
+        val label = "View all"
+        val precomputedTraceSection = buttonTraceSection("home-section-header-$label")
+        val iterations = 500_000
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                legacyChecksum += buttonTraceSection("home-section-header-$label").length
+            }
+        }
+
+        var precomputedChecksum = 0
+        val precomputedNanos = measureNanoTime {
+            repeat(iterations) {
+                precomputedChecksum += precomputedTraceSection.length
+            }
+        }
+
+        assertEquals(legacyChecksum, precomputedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "home-section-header-trace-section legacy_ms=%.3f legacy_avg_us=%.3f precomputed_ms=%.3f precomputed_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                precomputedNanos / 1_000_000.0,
+                precomputedNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
     private fun legacyQueuedEntries(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,

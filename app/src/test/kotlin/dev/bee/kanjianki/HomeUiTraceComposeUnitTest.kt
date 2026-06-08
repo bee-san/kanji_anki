@@ -83,9 +83,9 @@ class HomeUiTraceComposeUnitTest {
             Column {
                 HomeActionGrid(
                     actions = listOf(
-                        HomeActionModel("Browse", R.drawable.ic_book_24) { clicked += "Browse" },
-                        HomeActionModel("Stats", R.drawable.ic_stats_24) { clicked += "Stats" },
-                        HomeActionModel("Settings", R.drawable.ic_settings_24) { clicked += "Settings" },
+                        HomeActionModel("Browse", R.drawable.ic_book_24, onClick = { clicked += "Browse" }),
+                        HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = { clicked += "Stats" }),
+                        HomeActionModel("Settings", R.drawable.ic_settings_24, onClick = { clicked += "Settings" }),
                     )
                 )
                 HomeSectionHeader(
