@@ -15,7 +15,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.setContent {
             SettingsAutomationHero(
                 model = SettingsAutomationHeroModel(
-                    cockpitLabel = "Settings overview",
+                    cockpitLabel = "Overview",
                     title = "Settings",
                     body = "Sync, retention, and import controls live here.",
                     rows = listOf(
@@ -39,7 +39,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Settings overview").assertIsDisplayed()
+        composeRule.onNodeWithText("Overview").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()

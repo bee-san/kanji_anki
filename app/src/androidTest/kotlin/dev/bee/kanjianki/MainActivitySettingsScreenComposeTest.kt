@@ -25,7 +25,7 @@ class MainActivitySettingsScreenComposeTest {
                     homeLabel = "Home",
                     onHome = Runnable {},
                     hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Settings overview",
+                        cockpitLabel = "Overview",
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
@@ -80,7 +80,7 @@ class MainActivitySettingsScreenComposeTest {
                     homeLabel = "Home",
                     onHome = Runnable { homeClicked = true },
                     hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Settings overview",
+                        cockpitLabel = "Overview",
                         title = "Settings",
                         body = "Configure Kani behavior.",
                         rows = listOf(
