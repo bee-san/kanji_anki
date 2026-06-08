@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Jiten ranks imported from suspended cards. Default: 100-3000.",
+            "Jiten ranks from suspended cards. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -24,7 +24,7 @@ class SettingsReferenceDataTextCopyTest {
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "KANJIDIC2, Jiten, KanjiVG, and font credits.",
+            "KANJIDIC2, Jiten, KanjiVG, font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())

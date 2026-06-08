@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Jiten ranks imported from suspended cards. Default: 100-3000."
+        return "Jiten ranks from suspended cards. Default: 100-3000."
     }
 
     @JvmStatic
@@ -38,7 +38,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "KANJIDIC2, Jiten, KanjiVG, and font credits."
+        return "KANJIDIC2, Jiten, KanjiVG, font credits."
     }
 
     @JvmStatic

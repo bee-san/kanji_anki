@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Kanji frequency range",
-                        "Jiten ranks imported from suspended cards. Default: 100-3000.",
+                        "Jiten ranks from suspended cards. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -260,7 +260,7 @@ class SettingsTextCopyTest {
                         "Use ranks from 1 to 20000.",
                         "Range saved. Sync again to rebuild practice.",
                         "Offline data licenses",
-                        "KANJIDIC2, Jiten, KanjiVG, and font credits.",
+                        "KANJIDIC2, Jiten, KanjiVG, font credits.",
                         "Open data licenses",
                         "Data licenses",
                         "Bundled dictionary and stroke data.",
