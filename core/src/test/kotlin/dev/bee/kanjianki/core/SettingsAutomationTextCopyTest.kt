@@ -10,7 +10,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("0.4.33", SettingsAutomationTextCopy.versionText("v0.4.33"))
         assertEquals("App updates", SettingsAutomationTextCopy.updatePageTitle())
         assertEquals(
-            "Version 1.2.3. Checks GitHub releases and verifies the APK.",
+            "Version 1.2.3. Checks releases and verifies the APK.",
             SettingsAutomationTextCopy.updatePageBody("1.2.3"),
         )
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
@@ -40,7 +40,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Open updater", SettingsAutomationTextCopy.openUpdaterLabel())
         assertEquals("Blocked: notifications off", SettingsAutomationTextCopy.reminderStatus(true, true, "21:05"))
         assertEquals("Daily reminder", SettingsAutomationTextCopy.dailyReminderTitle())
-        assertEquals("Daily reminders; Android may batch them.", SettingsAutomationTextCopy.dailyReminderBody())
+        assertEquals("Android may batch reminders.", SettingsAutomationTextCopy.dailyReminderBody())
         assertEquals("Morning", SettingsAutomationTextCopy.morningReminderPresetLabel())
         assertEquals("Lunch", SettingsAutomationTextCopy.lunchReminderPresetLabel())
         assertEquals("Evening", SettingsAutomationTextCopy.eveningReminderPresetLabel())
@@ -48,7 +48,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Save reminder", SettingsAutomationTextCopy.saveReminderLabel())
         assertEquals("Enable reminder", SettingsAutomationTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsAutomationTextCopy.turnOffReminderLabel())
-        assertEquals("Turn on Android notifications to show this reminder.", SettingsAutomationTextCopy.notificationsBlockedBody())
+        assertEquals("Turn on notifications to show this reminder.", SettingsAutomationTextCopy.notificationsBlockedBody())
         assertEquals("Open notification settings", SettingsAutomationTextCopy.openNotificationSettingsLabel())
         assertEquals("Grant notification permission first.", SettingsAutomationTextCopy.notificationPermissionBody())
         assertEquals("21:05", SettingsAutomationTextCopy.reminderTime(21, 5))

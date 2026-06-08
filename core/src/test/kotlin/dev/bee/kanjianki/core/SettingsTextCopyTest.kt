@@ -76,7 +76,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "App updates",
-                        "Version 1.2.3. Checks GitHub releases and verifies the APK.",
+                        "Version 1.2.3. Checks releases and verifies the APK.",
                         "Automatic updates",
                         "Check for updates",
                         "On: daily checks",
@@ -220,7 +220,7 @@ class SettingsTextCopyTest {
                         "Use numeric import thresholds.",
                         "Use difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Kanji frequency range",
-                        "Jiten ranks imported from suspended cards. Default: 100-3000.",
+                        "Jiten ranks from suspended cards. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -260,7 +260,7 @@ class SettingsTextCopyTest {
                         "Use ranks from 1 to 20000.",
                         "Range saved. Sync again to rebuild practice.",
                         "Offline data licenses",
-                        "KANJIDIC2, Jiten, KanjiVG, and font credits.",
+                        "KANJIDIC2, Jiten, KanjiVG, font credits.",
                         "Open data licenses",
                         "Data licenses",
                         "Bundled dictionary and stroke data.",
@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Map the fields below.",
+                        "Default: Kiku. Map fields below.",
                         "Field mappings"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map expression, reading, meaning, sentence, frequency, and frequency sort.",
+                        "Map expression, reading, meaning, sentence, frequency, and sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -366,7 +366,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early. 0 turns it off; learning/relearning delays still apply.",
+                "Show due reviews early; 0 turns it off. Learning/relearning delays still apply.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -493,7 +493,7 @@ class SettingsTextCopyTest {
     fun reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle())
         assertEquals(
-                "Daily reminders; Android may batch them.",
+                "Android may batch reminders.",
                 SettingsTextCopy.dailyReminderBody()
         )
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
@@ -507,7 +507,7 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Turn on Android notifications to show this reminder.",
+                "Turn on notifications to show this reminder.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
