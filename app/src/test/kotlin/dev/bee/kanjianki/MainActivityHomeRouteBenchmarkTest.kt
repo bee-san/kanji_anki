@@ -1,6 +1,8 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.HomeDeckOverview
+import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -8,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.util.Locale
@@ -129,6 +132,47 @@ class MainActivityHomeRouteBenchmarkTest {
                 legacyNanos / iterations.toDouble() / 1_000.0,
                 prebuiltNanos / 1_000_000.0,
                 prebuiltNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
+    fun benchmarksHomeDeckOverviewAgainstLegacyActiveFamilyScan() {
+        val nowMillis = 1_725_000_000_000L
+        val rows = benchmarkRows(256)
+        val studyItems = benchmarkHomeDeckOverviewStudyItems(rows, nowMillis)
+        val suspendedKanji = rows.filterIndexed { index, _ -> index % 5 == 0 }.map { it.kanji }.toSet()
+        val iterations = 1_500
+
+        val legacySample = legacyHomeDeckOverview(studyItems, rows, nowMillis, suspendedKanji)
+        val optimizedSample = HomeDeckOverviewPolicy.from(studyItems, rows, nowMillis, suspendedKanji)
+        assertEquals(legacySample, optimizedSample)
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                val overview = legacyHomeDeckOverview(studyItems, rows, nowMillis, suspendedKanji)
+                legacyChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount + overview.buriedCount
+            }
+        }
+
+        var optimizedChecksum = 0
+        val optimizedNanos = measureNanoTime {
+            repeat(iterations) {
+                val overview = HomeDeckOverviewPolicy.from(studyItems, rows, nowMillis, suspendedKanji)
+                optimizedChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount + overview.buriedCount
+            }
+        }
+
+        assertEquals(legacyChecksum, optimizedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "home-deck-overview legacy_ms=%.3f legacy_avg_us=%.3f optimized_ms=%.3f optimized_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                optimizedNanos / 1_000_000.0,
+                optimizedNanos / iterations.toDouble() / 1_000.0,
             ),
         )
     }
@@ -324,6 +368,108 @@ class MainActivityHomeRouteBenchmarkTest {
                 1_725_000_000_000L + index * 60_000L,
             )
         }
+    }
+
+    private fun benchmarkHomeDeckOverviewStudyItems(
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+    ): List<RecordsStudyModels.StudyItem> {
+        return rows.mapIndexed { index, row ->
+            val state = when (index % 4) {
+                0 -> StudyLadderRules.STATE_REVIEW
+                1 -> StudyLadderRules.STATE_NEW
+                else -> StudyLadderRules.STATE_LEARNING
+            }
+            val phase = if (index % 4 == 2) {
+                RecordsBase.SchedulerPhase.NEW_LEARNING
+            } else {
+                RecordsBase.SchedulerPhase.RELEARNING
+            }
+            val builder = RecordsStudyModels.StudyItem(
+                row.kanji,
+                state,
+                if (index % 4 == 0) nowMillis - 86_400_000L else nowMillis + 86_400_000L,
+                1.0 + index,
+                2.0,
+                1,
+                0,
+                0,
+                0,
+                "",
+                nowMillis,
+            ).copyBuilder()
+                .phase(phase)
+
+            if (index % 2 == 0) {
+                builder.answerSignature(StudyQueueSeeder.answerSignature(row))
+            } else {
+                builder.answerSignature("")
+            }
+            if (index % 7 == 0) {
+                builder.suppressedByTaskType("sync")
+            }
+            builder.build()
+        }
+    }
+
+    private fun legacyHomeDeckOverview(
+        studyItems: List<RecordsStudyModels.StudyItem>,
+        dashboardRows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        locallySuspendedKanji: Set<String>,
+    ): HomeDeckOverview {
+        val activeFamilyKeys = dashboardRows
+            .asSequence()
+            .map { StudyQueueSeeder.rowFamilyKey(it) }
+            .toHashSet()
+        val activeRows = dashboardRows
+            .asSequence()
+            .map { it.kanji }
+            .toHashSet()
+
+        var dueCount = 0
+        var newCount = 0
+        var learningCount = 0
+        var relearningCount = 0
+        var buriedCount = 0
+
+        for (item in studyItems) {
+            if (!legacyIsActiveStudyItem(item, activeFamilyKeys, activeRows)) {
+                continue
+            }
+            if (item.suppressedByTaskType.isNotEmpty()) {
+                buriedCount++
+                continue
+            }
+            when {
+                item.state == StudyLadderRules.STATE_REVIEW && item.dueAtMillis <= nowMillis -> dueCount++
+                item.state == StudyLadderRules.STATE_NEW -> newCount++
+                item.state == StudyLadderRules.STATE_LEARNING && item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING -> learningCount++
+                item.state == StudyLadderRules.STATE_LEARNING && item.phase == RecordsBase.SchedulerPhase.RELEARNING -> relearningCount++
+            }
+        }
+
+        val suspendedCount = locallySuspendedKanji.count { it in activeRows }
+
+        return HomeDeckOverview(
+            dueCount = dueCount,
+            newCount = newCount,
+            learningCount = learningCount,
+            relearningCount = relearningCount,
+            suspendedCount = suspendedCount,
+            buriedCount = buriedCount,
+        )
+    }
+
+    private fun legacyIsActiveStudyItem(
+        item: RecordsStudyModels.StudyItem,
+        activeFamilyKeys: Set<String>,
+        activeRows: Set<String>,
+    ): Boolean {
+        if (StudyQueueSeeder.familyKey(item) in activeFamilyKeys) {
+            return true
+        }
+        return item.answerSignature.isEmpty() && item.kanji in activeRows
     }
 
     private fun example(expression: String): RecordsImportModels.Example {
