@@ -9,6 +9,8 @@ import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
+private val LADDER_RUNGS = RecordsBase.LadderRung.values()
+
 internal interface StatsScreenStatsSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
@@ -177,14 +179,7 @@ private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): Stats
             stats.weakKanjiImproved.averageBeforeWeakness,
             stats.weakKanjiImproved.averageAfterWeakness
         ),
-        lines = weaknessImprovementExamples(stats.weakKanjiImproved).map {
-            StatsLineModel(
-                text = it,
-                color = STATS_INK_COLOR,
-                bold = true,
-                sizeSp = 17
-            )
-        },
+        lines = statsWeaknessImprovementLines(stats.weakKanjiImproved),
         strokeColor = STATS_TEAL_COLOR
     )
 }
@@ -202,14 +197,7 @@ private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): Stat
             "kanji gained first mature support",
             "kanji gained first mature support"
         ) + ".",
-        lines = supportGainExamples(stats.matureSupportGained).map {
-            StatsLineModel(
-                text = it,
-                color = STATS_INK_COLOR,
-                bold = true,
-                sizeSp = 17
-            )
-        },
+        lines = statsSupportGainLines(stats.matureSupportGained),
         strokeColor = STATS_BLUE_COLOR
     )
 }
@@ -254,62 +242,20 @@ private fun recentMistakesCard(
     mistakes: List<StudyStatsStore.RecentMistake>,
     nowMillis: Long,
 ): StatsCardModel {
-    val rows = mistakes.take(5)
+    val lines = statsRecentMistakeLines(mistakes, nowMillis)
+    val count = minOf(5, mistakes.size)
     return outcomeCard(
         title = "Recent mistakes",
-        summary = StudyTextCopy.countText(rows.size, "recent mistake", "recent mistakes"),
-        body = StatsTextCopy.recentMistakesBody(rows.isNotEmpty()),
-        lines = rows.map { mistake ->
-            StatsLineModel(
-                text = StatsTextCopy.recentMistakeRowText(
-                    mistake.kanji,
-                    mistake.rating,
-                    mistake.reviewedAtMillis,
-                    nowMillis
-                ),
-                color = STATS_INK_COLOR,
-                bold = true,
-                sizeSp = 16
-            )
-        },
+        summary = StudyTextCopy.countText(count, "recent mistake", "recent mistakes"),
+        body = StatsTextCopy.recentMistakesBody(lines.isNotEmpty()),
+        lines = lines,
         strokeColor = STATS_CORAL_COLOR
     )
 }
 
 private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel {
     val rows = if (report == null) emptyList() else notHelpingRows(report)
-    val details = buildList {
-        rows.take(5).forEach { row ->
-            add(
-                StatsLineModel(
-                    text = StatsTextCopy.notHelpingRowText(
-                        row.kanji,
-                        row.reviewCount,
-                        row.sameCardCount,
-                        row.retentionDelta,
-                        row.difficultyDelta
-                    ),
-                    color = STATS_INK_COLOR,
-                    bold = true,
-                    sizeSp = 16
-                )
-            )
-        }
-        if (rows.isNotEmpty() && report != null && report.needsMoreCardsCount > 0) {
-            add(
-                StatsLineModel(
-                    text = StudyTextCopy.countText(
-                        report.needsMoreCardsCount,
-                        "kanji still needs more Anki evidence",
-                        "kanji still need more Anki evidence"
-                    ) + ".",
-                    color = STATS_MUTED_COLOR,
-                    bold = false,
-                    sizeSp = 15
-                )
-            )
-        }
-    }
+    val details = statsNotHelpingLines(rows, report)
     return StatsCardModel(
         title = "Needs attention",
         summary = StudyTextCopy.countText(rows.size, "kanji with enough evidence", "kanji with enough evidence"),
@@ -338,14 +284,7 @@ private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsC
             metric.ladderPromotionIntervalDays,
             metric.ladderDemotionFailStreak
         ),
-        lines = ladderDistributionRows(metric).map {
-            StatsLineModel(
-                text = it,
-                color = STATS_INK_COLOR,
-                bold = false,
-                sizeSp = 16
-            )
-        },
+        lines = statsLadderDistributionLines(metric),
         strokeColor = STATS_GOLD_COLOR
     )
 }
@@ -354,30 +293,142 @@ private fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpac
     return KanjiImpactAnalyzer.notHelpingRows(report)
 }
 
-private fun ladderDistributionRows(metric: StudyStatsStore.LadderHealthMetric): List<String> {
-    return RecordsBase.LadderRung.values().map { rung ->
-        StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung))
+internal fun statsLadderDistributionLines(metric: StudyStatsStore.LadderHealthMetric): List<StatsLineModel> {
+    if (LADDER_RUNGS.isEmpty()) {
+        return emptyList()
     }
-}
-
-private fun weaknessImprovementExamples(metric: StudyStatsStore.WeakKanjiImprovedMetric): List<String> {
-    return metric.examples.take(3).map { example ->
-        StatsTextCopy.weaknessImprovementExample(
-            example.kanji,
-            example.beforeWeakness,
-            example.afterWeakness
+    val rows = ArrayList<StatsLineModel>(LADDER_RUNGS.size)
+    for (rung in LADDER_RUNGS) {
+        rows.add(
+            StatsLineModel(
+                text = StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung)),
+                color = STATS_INK_COLOR,
+                bold = false,
+                sizeSp = 16,
+            )
         )
     }
+    return rows
 }
 
-private fun supportGainExamples(metric: StudyStatsStore.MatureSupportGainedMetric): List<String> {
-    return metric.examples.map { example ->
-        StatsTextCopy.supportGainExample(
-            example.kanji,
-            example.beforeMatureSupport,
-            example.afterMatureSupport
+internal fun statsWeaknessImprovementLines(metric: StudyStatsStore.WeakKanjiImprovedMetric): List<StatsLineModel> {
+    val examples = metric.examples
+    if (examples.isEmpty()) {
+        return emptyList()
+    }
+    val limit = minOf(3, examples.size)
+    val rows = ArrayList<StatsLineModel>(limit)
+    for (index in 0 until limit) {
+        val example = examples[index]
+        rows.add(
+            StatsLineModel(
+                text = StatsTextCopy.weaknessImprovementExample(
+                    example.kanji,
+                    example.beforeWeakness,
+                    example.afterWeakness,
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 17,
+            )
         )
     }
+    return rows
+}
+
+internal fun statsSupportGainLines(metric: StudyStatsStore.MatureSupportGainedMetric): List<StatsLineModel> {
+    val examples = metric.examples
+    if (examples.isEmpty()) {
+        return emptyList()
+    }
+    val rows = ArrayList<StatsLineModel>(examples.size)
+    for (example in examples) {
+        rows.add(
+            StatsLineModel(
+                text = StatsTextCopy.supportGainExample(
+                    example.kanji,
+                    example.beforeMatureSupport,
+                    example.afterMatureSupport,
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 17,
+            )
+        )
+    }
+    return rows
+}
+
+internal fun statsRecentMistakeLines(
+    mistakes: List<StudyStatsStore.RecentMistake>,
+    nowMillis: Long,
+): List<StatsLineModel> {
+    if (mistakes.isEmpty()) {
+        return emptyList()
+    }
+    val limit = minOf(5, mistakes.size)
+    val rows = ArrayList<StatsLineModel>(limit)
+    for (index in 0 until limit) {
+        val mistake = mistakes[index]
+        rows.add(
+            StatsLineModel(
+                text = StatsTextCopy.recentMistakeRowText(
+                    mistake.kanji,
+                    mistake.rating,
+                    mistake.reviewedAtMillis,
+                    nowMillis,
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16,
+            )
+        )
+    }
+    return rows
+}
+
+internal fun statsNotHelpingLines(
+    rows: List<KanjiImpactAnalyzer.Row>,
+    report: KanjiImpactAnalyzer.Report?,
+): List<StatsLineModel> {
+    if (rows.isEmpty()) {
+        return emptyList()
+    }
+    val limit = minOf(5, rows.size)
+    val extraLine = report != null && report.needsMoreCardsCount > 0
+    val details = ArrayList<StatsLineModel>(limit + if (extraLine) 1 else 0)
+    for (index in 0 until limit) {
+        val row = rows[index]
+        details.add(
+            StatsLineModel(
+                text = StatsTextCopy.notHelpingRowText(
+                    row.kanji,
+                    row.reviewCount,
+                    row.sameCardCount,
+                    row.retentionDelta,
+                    row.difficultyDelta,
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16,
+            )
+        )
+    }
+    if (extraLine) {
+        details.add(
+            StatsLineModel(
+                text = StudyTextCopy.countText(
+                    report!!.needsMoreCardsCount,
+                    "kanji still needs more Anki evidence",
+                    "kanji still need more Anki evidence",
+                ) + ".",
+                color = STATS_MUTED_COLOR,
+                bold = false,
+                sizeSp = 15,
+            )
+        )
+    }
+    return details
 }
 
 private fun studyTimeCard(stats: StudyStatsStore.StudyTaskTimeStats): StatsCardModel {
