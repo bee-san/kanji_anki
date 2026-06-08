@@ -6,11 +6,11 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "New and relearning cards use short steps. Repeats stay practice-only."
+        return "Set waits for new cards and review misses. Repeats stay practice-only."
     }
 
     @JvmStatic
-    fun reviewMissesLabel(): String = "Relearning"
+    fun reviewMissesLabel(): String = "Review misses"
 
     @JvmStatic
     fun ankiDefaultLabel(): String = "Anki default"
