@@ -5,13 +5,13 @@ object UpdateRunScreenCopy {
     fun forRun(cachedPending: Boolean): Copy {
         if (cachedPending) {
             return Copy(
-                "Starting installer",
-                "Preparing verified APK",
+                "Preparing installer",
+                "Verifying APK",
             )
         }
         return Copy(
-            "Checking release",
-            "Checking GitHub Releases",
+            "Checking for updates",
+            "Checking releases",
         )
     }
 
