@@ -188,7 +188,7 @@ class SettingsTextCopyTest {
             assertTrue(body, body.length <= 100)
         }
 
-        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("cannot appear"))
+        assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("show this reminder"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
         assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("always-available rung"))
     }
@@ -507,12 +507,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Android notifications are off; this reminder cannot appear.",
+                "Turn on Android notifications to show this reminder.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Allow notification permission before turning this on.",
+                "Grant notification permission first.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
