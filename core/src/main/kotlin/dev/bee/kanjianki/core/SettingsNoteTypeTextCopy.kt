@@ -17,7 +17,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map expression, reading, meaning, sentence, frequency, and sort."
+        return "Map expression, reading, meaning, sentence, frequency, sort."
     }
 
     @JvmStatic

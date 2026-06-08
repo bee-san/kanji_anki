@@ -499,7 +499,7 @@ private fun verifyImportSourceSummaries(activity: MainActivity) {
         ));
         assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, listOf("leeches"), true, true, "deck:Kiku")));
         assertTrue(SettingsTextCopy.settingsImportSummary(settings(true, true, true, listOf("leeches"), true, true, "deck:Kiku")).contains("tagged"));
-        assertEquals("No import sources selected", SettingsTextCopy.settingsImportSummary(settings(false, false, false, emptyList<String>(), false, false, "")));
+        assertEquals("Pick at least one source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, emptyList<String>(), false, false, "")));
     }
 
 private fun verifyAutoSyncSummaries(activity: MainActivity) {

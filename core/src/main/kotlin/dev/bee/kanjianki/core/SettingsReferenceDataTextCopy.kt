@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Jiten ranks from suspended cards. Default: 100-3000."
+        return "Use suspended cards for Jiten ranks. Default: 100-3000."
     }
 
     @JvmStatic

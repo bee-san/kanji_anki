@@ -97,7 +97,7 @@ internal fun settingsAutomationCategoryModel(
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_AUTOMATION,
         title = SettingsTextCopy.settingsAutomationTitle(),
-        summary = "",
+        summary = SettingsTextCopy.settingsAutomationBody(),
         iconRes = R.drawable.ic_sync_24,
         expanded = expanded,
         onToggle = onToggle,
@@ -129,7 +129,7 @@ internal fun settingsReferenceDataCategoryModel(
     return settingsCategorySectionModel(
         sectionKey = SETTINGS_SECTION_REFERENCE_DATA,
         title = SettingsTextCopy.settingsReferenceDataTitle(),
-        summary = "",
+        summary = SettingsTextCopy.settingsReferenceDataBody(),
         iconRes = R.drawable.ic_sparkle_24,
         expanded = expanded,
         onToggle = onToggle,

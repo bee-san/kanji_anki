@@ -111,7 +111,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once; then Kani refreshes daily."
+            return "Sync once; Kani handles daily refreshes."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last successful sync ", lastSuccessText)
@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to show this reminder."
+        return "Enable notifications to see this reminder."
     }
 
     @JvmStatic

@@ -49,7 +49,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("Optional: one range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("One range per line, like 1-500=95%. Other kanji use global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
