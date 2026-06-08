@@ -126,7 +126,7 @@ class HomeTextCopyTest {
 
         assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle())
         assertEquals(
-            "Kani keeps suspended Basic cards on device. Active cards are included only when the filter is on.",
+            "Kani keeps suspended Basic cards on device. Turn on active cards to include them.",
             HomeTextCopy.syncDialogMessage(settings)
         )
         assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel())

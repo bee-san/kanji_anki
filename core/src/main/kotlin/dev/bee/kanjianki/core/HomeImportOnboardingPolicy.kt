@@ -57,7 +57,7 @@ object HomeImportOnboardingPolicy {
         if (!settings.hasImportSourceEnabled()) {
             return Plan(
                 State.CHOOSE_SOURCE,
-                "Choose import sources before the first sync: suspended, active, tagged, weak, or browser-query cards.",
+                "Choose import sources before the first sync.",
                 "Review import settings",
             )
         }
@@ -88,7 +88,7 @@ object HomeImportOnboardingPolicy {
         }
         return Plan(
             State.READY_FIRST_SYNC,
-            HomeTextCopy.syncDialogMessage(settings) + " Kani reads local data after you confirm.",
+            HomeTextCopy.syncDialogMessage(settings) + " Tap Sync cards to start.",
             "Sync cards",
         )
     }

@@ -33,7 +33,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             studyDoneScreenModel(
                 "Nothing due now",
                 "All caught up",
-                "Your active kanji are resting. Sync if AnkiDroid has new cards, or return when reviews are due.",
+                "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
                 emptyList(),
                 false,
                 true,

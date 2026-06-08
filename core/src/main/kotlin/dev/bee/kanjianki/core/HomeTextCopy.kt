@@ -168,7 +168,7 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Active cards are included only when the filter is on."
+        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Turn on active cards to include them."
     }
 
     @JvmStatic

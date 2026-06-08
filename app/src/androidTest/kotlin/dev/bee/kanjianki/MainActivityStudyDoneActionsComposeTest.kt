@@ -189,7 +189,7 @@ class MainActivityStudyDoneActionsComposeTest {
                     modeLabel = MainActivityBase.LABEL_PRACTICE,
                     title = "Nothing due now",
                     headline = "All caught up",
-                    body = "Your active kanji are resting.",
+                    body = "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
                     summaryLines = emptyList(),
                     showDoneActions = false,
                     availableStudyMoreNewCards = 0,
