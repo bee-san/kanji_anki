@@ -198,7 +198,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Prefer suspended cards. Add other sources only if needed; leech tags stay skipped.",
+                        "Prefer suspended cards. Leech tags stay skipped.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
