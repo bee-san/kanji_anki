@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class SettingsSectionTextCopyTest {
     @Test
@@ -28,5 +29,40 @@ class SettingsSectionTextCopyTest {
         assertEquals("Expand Automation", SettingsSectionTextCopy.categoryToggleDescription(false, "Automation"))
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+    }
+
+    @Test
+    fun sectionLabelsTranslateToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("インポートと同期", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+            assertEquals("フィールド、フィルター、範囲、同期。", SettingsSectionTextCopy.settingsAnkiSourceBody())
+            assertEquals("学習設定", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
+            assertEquals("新規カード、学習タイミング、負荷、ラダー制御。", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+            assertEquals("自動化", SettingsSectionTextCopy.settingsAutomationTitle())
+            assertEquals("リマインダーと更新。", SettingsSectionTextCopy.settingsAutomationBody())
+            assertEquals("表示とデータ", SettingsSectionTextCopy.settingsReferenceDataTitle())
+            assertEquals("辞書、ストロークデータ、フォント、クレジット。", SettingsSectionTextCopy.settingsReferenceDataBody())
+            assertEquals("設定の概要", SettingsSectionTextCopy.settingsCockpitLabel())
+            assertEquals("セクションを選択してください。", SettingsSectionTextCopy.settingsHeroBody())
+            assertEquals("ノートタイプ", SettingsSectionTextCopy.noteTypeStatusLabel())
+            assertEquals("インポートフィルター", SettingsSectionTextCopy.importFiltersStatusLabel())
+            assertEquals("停止カードの範囲", SettingsSectionTextCopy.importRanksStatusLabel())
+            assertEquals("毎日のリマインダー", SettingsSectionTextCopy.reminderStatusLabel())
+            assertEquals("毎日の同期", SettingsSectionTextCopy.dailySyncStatusLabel())
+            assertEquals("アプリ更新", SettingsSectionTextCopy.updatesStatusLabel())
+            assertEquals("漢字ごとのカード数", SettingsSectionTextCopy.matchingCardsStatusLabel())
+            assertEquals("毎日のリマインダー：Off", SettingsSectionTextCopy.statusPillDescription(SettingsSectionTextCopy.reminderStatusLabel(), "Off"))
+            assertEquals("学習設定を折りたたむ", SettingsSectionTextCopy.categoryToggleDescription(true, SettingsSectionTextCopy.settingsStudyBehaviorTitle()))
+            assertEquals("自動化を展開する", SettingsSectionTextCopy.categoryToggleDescription(false, SettingsSectionTextCopy.settingsAutomationTitle()))
+            assertEquals("展開済み", SettingsSectionTextCopy.categoryStateDescription(true))
+            assertEquals("折りたたみ済み", SettingsSectionTextCopy.categoryStateDescription(false))
+            assertEquals("1枚", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
+            assertEquals("2枚", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }

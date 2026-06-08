@@ -1,70 +1,88 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsSectionTextCopy {
-    @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import & sync"
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "Fields, filters, range, and sync."
+    fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Study settings"
+    fun settingsAnkiSourceBody(): String = localizedText("Fields, filters, range, and sync.", "フィールド、フィルター、範囲、同期。")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "New cards, timing, workload, and ladder controls."
+    fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Automation"
+    fun settingsStudyBehaviorBody(): String = localizedText("New cards, timing, workload, and ladder controls.", "新規カード、学習タイミング、負荷、ラダー制御。")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and updates."
+    fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Display & data"
+    fun settingsAutomationBody(): String = localizedText("Reminders and updates.", "リマインダーと更新。")
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Dictionaries, stroke data, fonts, and credits."
+    fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = "Settings overview"
+    fun settingsReferenceDataBody(): String = localizedText("Dictionaries, stroke data, fonts, and credits.", "辞書、ストロークデータ、フォント、クレジット。")
 
     @JvmStatic
-    fun settingsHeroBody(): String {
-        return "Choose a section."
-    }
+    fun settingsCockpitLabel(): String = localizedText("Settings overview", "設定の概要")
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Note type"
+    fun settingsHeroBody(): String = localizedText("Choose a section.", "セクションを選択してください。")
 
     @JvmStatic
-    fun importFiltersStatusLabel(): String = "Import filters"
+    fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Suspended card range"
+    fun importFiltersStatusLabel(): String = localizedText("Import filters", "インポートフィルター")
 
     @JvmStatic
-    fun reminderStatusLabel(): String = "Daily reminder"
+    fun importRanksStatusLabel(): String = localizedText("Suspended card range", "停止カードの範囲")
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily sync"
+    fun reminderStatusLabel(): String = localizedText("Daily reminder", "毎日のリマインダー")
 
     @JvmStatic
-    fun updatesStatusLabel(): String = "App updates"
+    fun dailySyncStatusLabel(): String = localizedText("Daily sync", "毎日の同期")
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = "Cards per kanji"
+    fun updatesStatusLabel(): String = localizedText("App updates", "アプリ更新")
 
     @JvmStatic
-    fun statusPillDescription(label: String, value: String): String = "$label: $value"
+    fun matchingCardsStatusLabel(): String = localizedText("Cards per kanji", "漢字ごとのカード数")
+
+    @JvmStatic
+    fun statusPillDescription(label: String, value: String): String =
+        if (isJapaneseLocale()) "$label：$value" else "$label: $value"
 
     @JvmStatic
     fun categoryToggleDescription(expanded: Boolean, title: String): String {
-        return (if (expanded) "Collapse " else "Expand ") + title
+        return if (isJapaneseLocale()) {
+            title + if (expanded) "を折りたたむ" else "を展開する"
+        } else {
+            (if (expanded) "Collapse " else "Expand ") + title
+        }
     }
 
     @JvmStatic
-    fun categoryStateDescription(expanded: Boolean): String = if (expanded) "Expanded" else "Collapsed"
+    fun categoryStateDescription(expanded: Boolean): String =
+        if (isJapaneseLocale()) if (expanded) "展開済み" else "折りたたみ済み" else if (expanded) "Expanded" else "Collapsed"
 
     @JvmStatic
-    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " card" else " cards"
+    fun settingsCategoryPanelCount(panels: Int): String =
+        if (isJapaneseLocale()) {
+            "${panels}枚"
+        } else {
+            panels.toString() + if (panels == 1) " card" else " cards"
+        }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
