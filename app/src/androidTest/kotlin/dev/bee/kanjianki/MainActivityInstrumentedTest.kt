@@ -242,7 +242,7 @@ fun testNavigationSettingsAndEmptyStates() {
             scenario.onActivity { activity -> assertCollapsedSettingsScreen(activity) }
             clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
-            clickText(scenario, "Open updater");
+            clickText(scenario, SettingsTextCopy.openUpdaterLabel());
             waitForText(scenario, "App updates");
             scenario.onActivity { activity -> assertHasTexts(activity, "App updates", "Back to settings", "Home", "Current version", "Check for updates") }
         }

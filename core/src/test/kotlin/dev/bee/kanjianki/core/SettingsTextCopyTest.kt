@@ -76,7 +76,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "App updates",
-                        "Version 1.2.3. Checks releases and verifies the APK.",
+                        "Version 1.2.3. Checks for verified app updates.",
                         "Automatic updates",
                         "Check for updates",
                         "On: daily checks",
@@ -522,7 +522,7 @@ class SettingsTextCopyTest {
         assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel())
         assertEquals("App updates", SettingsTextCopy.appUpdatesTitle())
-        assertEquals("Open updater", SettingsTextCopy.openUpdaterLabel())
+        assertEquals("Manage updates", SettingsTextCopy.openUpdaterLabel())
     }
 
     @Test

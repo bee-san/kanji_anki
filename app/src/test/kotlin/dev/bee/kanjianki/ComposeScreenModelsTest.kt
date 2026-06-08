@@ -802,7 +802,7 @@ class ComposeScreenModelsTest {
                 onToggleAutomaticUpdates = {},
                 automaticUpdatesToggleLabel = "Enable",
             ),
-            openUpdaterLabel = "Open updater",
+            openUpdaterLabel = "Manage updates",
             onOpenUpdater = {},
         )
 
@@ -1305,7 +1305,7 @@ class ComposeScreenModelsTest {
         )
         val overview = SettingsUpdateOverviewPanelModel(
             panel = panel,
-            openUpdaterLabel = "Open updater",
+            openUpdaterLabel = "Manage updates",
             onOpenUpdater = openUpdater,
         )
 
@@ -1325,7 +1325,7 @@ class ComposeScreenModelsTest {
         assertSame(toggle, panel.onToggleAutomaticUpdates)
         assertEquals("Turn off automatic checks", panel.automaticUpdatesToggleLabel)
         assertSame(panel, overview.panel)
-        assertEquals("Open updater", overview.openUpdaterLabel)
+        assertEquals("Manage updates", overview.openUpdaterLabel)
         assertSame(openUpdater, overview.onOpenUpdater)
         panel.onInstallVerifiedUpdate()
         panel.onOpenInstallSettings()

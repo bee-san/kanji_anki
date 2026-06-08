@@ -10,7 +10,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("0.4.33", SettingsAutomationTextCopy.versionText("v0.4.33"))
         assertEquals("App updates", SettingsAutomationTextCopy.updatePageTitle())
         assertEquals(
-            "Version 1.2.3. Checks releases and verifies the APK.",
+            "Version 1.2.3. Checks for verified app updates.",
             SettingsAutomationTextCopy.updatePageBody("1.2.3"),
         )
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
@@ -37,7 +37,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel())
         assertEquals("App updates", SettingsAutomationTextCopy.appUpdatesTitle())
-        assertEquals("Open updater", SettingsAutomationTextCopy.openUpdaterLabel())
+        assertEquals("Manage updates", SettingsAutomationTextCopy.openUpdaterLabel())
         assertEquals("Blocked: notifications off", SettingsAutomationTextCopy.reminderStatus(true, true, "21:05"))
         assertEquals("Daily reminder", SettingsAutomationTextCopy.dailyReminderTitle())
         assertEquals("Pick a time. Android may delay it.", SettingsAutomationTextCopy.dailyReminderBody())
