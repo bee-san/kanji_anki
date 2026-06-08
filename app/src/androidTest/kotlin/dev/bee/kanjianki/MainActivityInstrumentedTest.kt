@@ -768,7 +768,7 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
             scenario.onActivity { activity ->
                 assertHasText(activity, "On: daily checks");
                 assertHasText(activity, "Last check: not yet");
-                assertHasText(activity, "Install permission: Missing");
+                assertHasText(activity, "Permission missing");
                 assertHasText(activity, "Allow app installs");
                 assertHasText(activity, "Turn off updates");
             }
@@ -802,7 +802,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             clickText(scenario, "Automation");
             waitForText(scenario, "Ready to install: 9.9.9");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Granted");
+                assertHasText(activity, "Permission granted");
                 assertHasText(activity, "Install verified update");
                 assertHasText(activity, "Android needs permission to install updates.");
             }
@@ -814,7 +814,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
         try {
             waitForText(scenario, "Ready to install: 9.9.9")
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Granted")
+                assertHasText(activity, "Permission granted")
                 assertHasText(activity, "Install verified update")
                 assertHasText(activity, "Android needs permission to install updates.")
             }
