@@ -46,6 +46,30 @@ class HomeSecondaryScreensComposeTest {
     }
 
     @Test
+    fun focusQueueScreenRendersActivePracticeEmptyState() {
+        composeRule.setContent {
+            HomeFocusQueueScreen(
+                HomeFocusQueueScreenModel(
+                    title = "Focus queue",
+                    homeLabel = "Home",
+                    onHome = {},
+                    queue = HomeFocusQueuePanelModel(
+                        planText = "Adaptive focus is ready",
+                        emptyTitle = MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
+                        emptyBody = MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY,
+                        showSyncButton = false,
+                        cards = emptyList()
+                    ),
+                    onSync = {}
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE).assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY).assertIsDisplayed()
+    }
+
+    @Test
     fun recentMistakesScreenRendersHeaderAndCards() {
         var homeClicked = false
         var cardClicked = false

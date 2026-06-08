@@ -8,15 +8,15 @@ class UpdateRunScreenCopyTest {
     fun cachedPendingRunPreservesInstallerCopy() {
         val copy = UpdateRunScreenCopy.forRun(true)
 
-        assertEquals("Starting installer", copy.title())
-        assertEquals("Preparing verified APK", copy.progressLabel())
+        assertEquals("Preparing installer", copy.title())
+        assertEquals("Verifying APK", copy.progressLabel())
     }
 
     @Test
     fun manualRunPreservesReleaseCheckCopy() {
         val copy = UpdateRunScreenCopy.forRun(false)
 
-        assertEquals("Checking release", copy.title())
-        assertEquals("Checking GitHub Releases", copy.progressLabel())
+        assertEquals("Checking for updates", copy.title())
+        assertEquals("Checking releases", copy.progressLabel())
     }
 }

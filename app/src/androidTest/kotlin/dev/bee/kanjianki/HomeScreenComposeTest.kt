@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -33,7 +34,7 @@ class HomeScreenComposeTest {
                     onSync = { syncClicked = true },
                     syncMetricBody = "AnkiDroid",
                     emptyTitle = "No kanji queued",
-                    emptyBody = "Sync AnkiDroid to find problem cards."
+                    emptyBody = HomeTextCopy.homeNoKanjiQueuedBody()
                 )
             )
         }
@@ -43,6 +44,7 @@ class HomeScreenComposeTest {
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
         composeRule.onAllNodesWithText("View all").assertCountEquals(0)
         composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.homeNoKanjiQueuedBody()).assertIsDisplayed()
         composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync with AnkiDroid"))
             .assertIsDisplayed()
             .assertHasClickAction()
