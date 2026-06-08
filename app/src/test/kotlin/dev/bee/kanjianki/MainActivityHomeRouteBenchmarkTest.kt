@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.FocusQueueCopy
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.HomeDeckOverview
@@ -229,6 +230,102 @@ class MainActivityHomeRouteBenchmarkTest {
                 legacyNanos / iterations.toDouble() / 1_000.0,
                 prebuiltNanos / 1_000_000.0,
                 prebuiltNanos / iterations.toDouble() / 1_000.0,
+            ),
+        )
+    }
+
+    @Test
+    fun benchmarksRecentMistakesCardBuildAgainstLegacyMapConstruction() {
+        val rows = benchmarkRows(256)
+        val mistakes = benchmarkRecentMistakes(96)
+        val rowsByKanji = StudyCollectionLookup.dashboardRowsByKanji(rows)
+        val iterations = 5_000
+
+        fun recentMistakeAccentColor(rating: String): ComposeColor {
+            return when (rating) {
+                StudyRatings.AGAIN -> ComposeColor(0xFFFF4C76)
+                StudyRatings.HARD -> ComposeColor(0xFFF0B548)
+                else -> ComposeColor(0xFFF6CAE1)
+            }
+        }
+
+        fun legacyRecentMistakesPanelModel(
+            mistakes: List<StudyStatsStore.RecentMistake>,
+            rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
+            onCardClick: (String) -> Unit,
+        ): HomeRecentMistakesPanelModel {
+            val cards = mistakes.map { mistake ->
+                val row = rowsByKanji[mistake.kanji]
+                HomeRecentMistakesCardModel(
+                    kanji = mistake.kanji,
+                    title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
+                    subtitle = HomeTextCopy.recentMistakeSubtitle(
+                        mistake.rating,
+                        DateTextPolicy.timelineDate(mistake.reviewedAtMillis)
+                    ),
+                    sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
+                    accentColor = recentMistakeAccentColor(mistake.rating),
+                    onClick = { onCardClick(mistake.kanji) },
+                    traceSection = buttonTraceSection("recent-mistake-${mistake.kanji}"),
+                )
+            }
+            return HomeRecentMistakesPanelModel(
+                emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
+                emptyBody = HomeTextCopy.noRecentMistakesBody(),
+                cards = cards,
+            )
+        }
+
+        val legacySample = legacyRecentMistakesPanelModel(
+            mistakes = mistakes,
+            rowsByKanji = rowsByKanji,
+            onCardClick = {},
+        ).cards.map { it.kanji }
+        val optimizedSample = homeRecentMistakesPanelModel(
+            mistakes = mistakes,
+            rowsByKanji = rowsByKanji,
+            onCardClick = {},
+        ).cards.map { it.kanji }
+        assertEquals(false, legacySample.isEmpty())
+        assertEquals(legacySample, optimizedSample)
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                val model = legacyRecentMistakesPanelModel(
+                    mistakes = mistakes,
+                    rowsByKanji = rowsByKanji,
+                    onCardClick = {},
+                )
+                legacyChecksum += model.cards.fold(0) { acc, card ->
+                    acc + card.kanji.length + card.title.length + card.subtitle.length
+                }
+            }
+        }
+
+        var optimizedChecksum = 0
+        val optimizedNanos = measureNanoTime {
+            repeat(iterations) {
+                val model = homeRecentMistakesPanelModel(
+                    mistakes = mistakes,
+                    rowsByKanji = rowsByKanji,
+                    onCardClick = {},
+                )
+                optimizedChecksum += model.cards.fold(0) { acc, card ->
+                    acc + card.kanji.length + card.title.length + card.subtitle.length
+                }
+            }
+        }
+
+        assertEquals(legacyChecksum, optimizedChecksum)
+        println(
+            String.format(
+                Locale.ROOT,
+                "recent-mistakes-card-build legacy_ms=%.3f legacy_avg_us=%.3f optimized_ms=%.3f optimized_avg_us=%.3f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble() / 1_000.0,
+                optimizedNanos / 1_000_000.0,
+                optimizedNanos / iterations.toDouble() / 1_000.0,
             ),
         )
     }
