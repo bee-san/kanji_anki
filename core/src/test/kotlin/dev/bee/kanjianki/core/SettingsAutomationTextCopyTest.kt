@@ -17,7 +17,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("On: daily checks", SettingsAutomationTextCopy.autoUpdatePanelStatus(true))
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("not yet"))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
-        assertEquals("Install permission: Granted", SettingsAutomationTextCopy.installPermissionLine(true))
+        assertEquals("Permission granted", SettingsAutomationTextCopy.installPermissionLine(true))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
         assertEquals("Android needs permission to install updates.", SettingsAutomationTextCopy.pendingUpdateFallback())
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())

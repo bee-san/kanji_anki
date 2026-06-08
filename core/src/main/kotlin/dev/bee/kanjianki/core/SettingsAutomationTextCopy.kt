@@ -64,7 +64,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return "Install permission: " + if (canInstall) "Granted" else "Missing"
+        return "Permission " + if (canInstall) "granted" else "missing"
     }
 
     @JvmStatic
