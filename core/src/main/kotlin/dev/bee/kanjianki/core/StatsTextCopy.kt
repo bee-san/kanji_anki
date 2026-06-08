@@ -31,7 +31,7 @@ object StatsTextCopy {
         totalActiveItems: Int,
     ): String {
         if (!hasStats) {
-            return "Study and sync for trends."
+            return "Study and sync to see trends."
         }
         if (working) {
             return workingVerdictBody(
@@ -207,7 +207,7 @@ object StatsTextCopy {
         manualOverrides: Int,
     ): String {
         if (totalReviews <= 0) {
-            return "Study and sync to start measuring impact."
+            return "Study and sync to see impact."
         }
         val reviewSummary =
             StudyTextCopy.countText(totalReviews, "review", "reviews") +
@@ -229,9 +229,9 @@ object StatsTextCopy {
     @JvmStatic
     fun recentMistakesBody(hasMistakes: Boolean): String {
         return if (hasMistakes) {
-            "Recent misses worth another pass."
+            "Recent misses worth another look."
         } else {
-            "No recent mistakes right now."
+            "No recent mistakes."
         }
     }
 

@@ -24,7 +24,7 @@ class StatsTextCopyTest {
     @Test
     fun verdictBodyKeepsEmptyAndLadderOnlyCopyBrief() {
         assertEquals(
-            "Study and sync for trends.",
+            "Study and sync to see trends.",
             StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0)
         )
         assertEquals(
@@ -118,7 +118,7 @@ class StatsTextCopyTest {
             StatsTextCopy.studyStreakBody(9, true, 8, 3_600_000L, 4_500_000L)
         )
         assertEquals(
-            "Study and sync to start measuring impact.",
+            "Study and sync to see impact.",
             StatsTextCopy.studyImpactBody(0, 0, 0, 0, 0, 0)
         )
         assertEquals(
@@ -126,11 +126,11 @@ class StatsTextCopyTest {
             StatsTextCopy.studyImpactBody(12, 4, 6, 4, 2, 1)
         )
         assertEquals(
-            "No recent mistakes right now.",
+            "No recent mistakes.",
             StatsTextCopy.recentMistakesBody(false)
         )
         assertEquals(
-            "Recent misses worth another pass.",
+            "Recent misses worth another look.",
             StatsTextCopy.recentMistakesBody(true)
         )
         assertEquals(

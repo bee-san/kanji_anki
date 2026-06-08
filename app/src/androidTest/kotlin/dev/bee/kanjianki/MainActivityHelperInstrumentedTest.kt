@@ -1723,7 +1723,7 @@ private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: Record
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study and sync for trends."));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study and sync to see trends."));
         assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Tracking 1 active kanji"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 ladderOnly.totalActiveItems,
