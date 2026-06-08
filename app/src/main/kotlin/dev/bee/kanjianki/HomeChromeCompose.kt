@@ -41,13 +41,16 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
 
 @Composable
 fun HomeActionGrid(actions: List<HomeActionModel>) {
+    val actionRows = remember(actions) {
+        actions.chunked(2)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        actions.chunked(2).forEach { rowActions ->
+        actionRows.forEach { rowActions ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)

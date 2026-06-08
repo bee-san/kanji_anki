@@ -14,6 +14,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -48,8 +49,11 @@ internal fun KanjiChoiceGrid(
     onChoice: (String) -> Unit,
     feedbackForChoice: (String) -> KanjiChoiceFeedback? = { null },
 ) {
+    val choiceRows = remember(choices) {
+        choices.chunked(2)
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
-        choices.chunked(2).forEach { rowChoices ->
+        choiceRows.forEach { rowChoices ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 rowChoices.forEach { glyph ->
                     SimilarChoiceButton(
