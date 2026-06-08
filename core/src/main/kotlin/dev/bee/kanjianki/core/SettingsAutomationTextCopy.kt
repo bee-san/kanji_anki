@@ -38,7 +38,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
-        return "Version " + versionName.toString() + ". Checks GitHub releases and verifies the APK."
+        return "Version " + versionName.toString() + ". Checks releases and verifies the APK."
     }
 
     @JvmStatic
@@ -160,7 +160,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Daily reminders; Android may batch them."
+        return "Android may batch reminders."
     }
 
     @JvmStatic
@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on Android notifications to show this reminder."
+        return "Turn on notifications to show this reminder."
     }
 
     @JvmStatic
