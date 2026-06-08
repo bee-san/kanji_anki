@@ -8,10 +8,10 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "New and relearning cards use short steps. Repeats stay practice-only.",
+            "Set waits for new cards and review misses. Repeats stay practice-only.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
-        assertEquals("Relearning", SettingsLearningTextCopy.reviewMissesLabel())
+        assertEquals("Review misses", SettingsLearningTextCopy.reviewMissesLabel())
         assertEquals("Anki default", SettingsLearningTextCopy.ankiDefaultLabel())
         assertEquals("Use new-card steps", SettingsLearningTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsLearningTextCopy.saveLearningStepsLabel())
