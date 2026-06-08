@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type setup",
                         "Using Kiku",
-                        "Default: Kiku. Map the fields below.",
+                        "Default: Kiku. Map fields below.",
                         "Field mappings"
                 ),
                 listOf(
@@ -297,7 +297,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map the expression, reading, meaning, sentence, frequency, and sort fields.",
+                        "Map expression, reading, meaning, sentence, frequency, and sort.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -308,8 +308,8 @@ class SettingsTextCopyTest {
                         "Use Kiku",
                         "Save note type",
                         "Enter a note type name.",
-                        "Choose the field that contains kanji.",
-                        "Note type saved. Sync again to rebuild practice."
+                        "Choose the kanji field.",
+                        "Saved. Sync to rebuild practice."
                 ),
                 listOf(
                         SettingsTextCopy.requiredFieldsBody(),

@@ -9,7 +9,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. Map the fields below."
+        return "Default: Kiku. Map fields below."
     }
 
     @JvmStatic
@@ -17,7 +17,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map the expression, reading, meaning, sentence, frequency, and sort fields."
+        return "Map expression, reading, meaning, sentence, frequency, and sort."
     }
 
     @JvmStatic
@@ -51,8 +51,8 @@ object SettingsNoteTypeTextCopy {
     fun noteTypeRequiredToast(): String = "Enter a note type name."
 
     @JvmStatic
-    fun expressionFieldRequiredToast(): String = "Choose the field that contains kanji."
+    fun expressionFieldRequiredToast(): String = "Choose the kanji field."
 
     @JvmStatic
-    fun noteTypeSavedToast(): String = "Note type saved. Sync again to rebuild practice."
+    fun noteTypeSavedToast(): String = "Saved. Sync to rebuild practice."
 }
