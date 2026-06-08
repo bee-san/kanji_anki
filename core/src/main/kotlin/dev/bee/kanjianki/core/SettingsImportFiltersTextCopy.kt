@@ -6,23 +6,23 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Choose sources. Leech tags stay out."
+        return "Choose import sources. Leech tags stay excluded."
     }
 
     @JvmStatic
-    fun activeCardsLabel(): String = "Active cards"
+    fun activeCardsLabel(): String = "Include active cards"
 
     @JvmStatic
-    fun suspendedCardsLabel(): String = "Suspended cards"
+    fun suspendedCardsLabel(): String = "Include suspended cards"
 
     @JvmStatic
-    fun taggedCardsLabel(): String = "Tagged cards"
+    fun taggedCardsLabel(): String = "Include tagged cards"
 
     @JvmStatic
-    fun weakCardsLabel(): String = "Weak cards"
+    fun weakCardsLabel(): String = "Include weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Use browser query"
+    fun browserQueryLabel(): String = "Include browser query"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani."
+        return "Try is:suspended, rated:31:1, or tag:kani."
     }
 
     @JvmStatic
@@ -42,25 +42,25 @@ object SettingsImportFiltersTextCopy {
     fun ankiNoteTagsLabel(): String = "Note tags"
 
     @JvmStatic
-    fun fsrsDifficultyLabel(): String = "FSRS difficulty"
+    fun fsrsDifficultyLabel(): String = "Minimum FSRS difficulty"
 
     @JvmStatic
-    fun lapsesLabel(): String = "Lapses"
+    fun lapsesLabel(): String = "Minimum lapses"
 
     @JvmStatic
-    fun minimumMatchingCardsLabel(): String = "Min cards per kanji"
+    fun minimumMatchingCardsLabel(): String = "Cards per kanji"
 
     @JvmStatic
-    fun saveImportFiltersLabel(): String = "Save filters"
+    fun saveImportFiltersLabel(): String = "Save import filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Add a query or turn it off."
+    fun browserQueryRequiredToast(): String = "Add a browser query or turn it off."
 
     @JvmStatic
-    fun importSourceRequiredToast(): String = "Enable at least one source."
+    fun importSourceRequiredToast(): String = "Choose at least one source."
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Saved. Sync to refresh practice."
+    fun importFiltersSavedToast(): String = "Filters saved. Sync to refresh practice."
 
     @JvmStatic
     fun presetsTitle(): String = "Presets"
@@ -69,8 +69,8 @@ object SettingsImportFiltersTextCopy {
     fun importPresetSavedToast(): String = "Preset saved. Sync to refresh practice."
 
     @JvmStatic
-    fun numericImportThresholdsToast(): String = "Use numeric import thresholds."
+    fun numericImportThresholdsToast(): String = "Enter numeric thresholds."
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Difficulty 1-10; lapses 1-100; cards 1-1000."
+    fun importThresholdRangeToast(): String = "Difficulty 1-10, lapses 1-100, cards 1-1000."
 }
