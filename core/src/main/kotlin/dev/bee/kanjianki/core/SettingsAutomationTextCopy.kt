@@ -186,7 +186,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Android notifications are off; this reminder cannot appear."
+        return "Turn on Android notifications to show this reminder."
     }
 
     @JvmStatic
@@ -194,7 +194,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notification permission before turning this on."
+        return "Grant notification permission first."
     }
 
     @JvmStatic

@@ -497,7 +497,7 @@ private fun verifyImportSourceSummaries(activity: MainActivity) {
                 emptyList<String>(),
                 "deck:Kiku"
         ));
-        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, listOf("leeches"), true, true, "deck:Kiku")));
+        assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, listOf("leeches"), true, true, "deck:Kiku")));
         assertTrue(SettingsTextCopy.settingsImportSummary(settings(true, true, true, listOf("leeches"), true, true, "deck:Kiku")).contains("tagged"));
         assertEquals("No import sources selected", SettingsTextCopy.settingsImportSummary(settings(false, false, false, emptyList<String>(), false, false, "")));
     }

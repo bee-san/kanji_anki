@@ -41,9 +41,9 @@ object SettingsSummaryTextCopy {
         val safeSettings = settings ?: throw NullPointerException("settings")
         val count = safeSettings.importMinMatchingCardsPerKanji
         return if (isJapaneseLocale()) {
-            "漢字ごとに${count}枚の一致カード"
+            "漢字ごとに${count}枚"
         } else {
-            count.toString() + if (count == 1) " matching card per kanji" else " matching cards per kanji"
+            count.toString() + if (count == 1) " card per kanji" else " cards per kanji"
         }
     }
 
@@ -60,14 +60,14 @@ object SettingsSummaryTextCopy {
         return if (isJapaneseLocale()) {
             String.format(
                 Locale.ROOT,
-                "%d枚の停止カードを保存、%d字のレア漢字を追加。アクティブカードはそのまま",
+                "%d枚の停止カードを保存、%d字のレア漢字を追加",
                 suspendedCards,
                 importedKanji,
             )
         } else {
             String.format(
                 Locale.ROOT,
-                "%d suspended cards archived, %d rare kanji added; active cards remain optional",
+                "%d suspended cards archived, %d rare kanji added",
                 suspendedCards,
                 importedKanji,
             )
