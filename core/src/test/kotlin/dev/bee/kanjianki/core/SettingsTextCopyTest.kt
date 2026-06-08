@@ -420,10 +420,10 @@ class SettingsTextCopyTest {
                         "Kanji -> meaning",
                         "Font -> meaning",
                         "Word -> reading",
-                        "Always available rung enabled",
-                        "Conditional rung enabled",
+                        "Always available rung on",
+                        "Conditional rung on",
                         "Study ladder",
-                        "Choose rung order. Keep one enabled."
+                        "Choose rung order. Keep one on."
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
