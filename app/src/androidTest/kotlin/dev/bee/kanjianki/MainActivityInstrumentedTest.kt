@@ -2128,7 +2128,7 @@ fun testLastSyncHeadlineInvitesAndStartsManualSync() {
                 assertHasText(activity, "Sync");
                 assertHasText(activity, syncValue);
                 assertNoText(activity, "active cards checked");
-                assertNoText(activity, "suspended cards archived");
+                assertNoText(activity, "suspended archived");
                 assertNoText(activity, "Study starts with recall");
                 assertNoText(activity, "Sync once to find");
             }

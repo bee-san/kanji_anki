@@ -2018,7 +2018,7 @@ class LocalStoreInstrumentedTest {
                 failedSync.errorMessage,
                 failedSync.suspendedCards,
                 failedSync.importedKanji
-        ).contains("Sync blocked: No provider"));
+        ).contains("Sync failed: No provider"));
         saveSingleRowSync(row("確", 0), emptyList(), 3000L);
         val latestSync = requireNotNull(store.latestSync())
         assertTrue(SettingsTextCopy.syncStatusHeadline(
@@ -2026,7 +2026,7 @@ class LocalStoreInstrumentedTest {
                 latestSync.errorMessage,
                 latestSync.suspendedCards,
                 latestSync.importedKanji
-        ).contains("rare kanji added"));
+        ).contains("kanji added"));
     }
 
     @Test

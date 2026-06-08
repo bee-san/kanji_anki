@@ -27,7 +27,7 @@ object SettingsSummaryTextCopy {
             sources.add(localizedText("browser query", "ブラウザ検索"))
         }
         if (sources.isEmpty()) {
-            return localizedText("Pick at least one source", "インポート元を選んでください")
+            return localizedText("Choose an import source", "インポート元を選んでください")
         }
         return if (isJapaneseLocale()) {
             sources.joinToString("＋") + "、" + matchingCardsSummary(safeSettings)
@@ -52,24 +52,24 @@ object SettingsSummaryTextCopy {
         if (!success) {
             val safeErrorMessage = errorMessage?.takeIf { it.isNotBlank() } ?: localizedText("unknown error", "不明なエラー")
             return if (isJapaneseLocale()) {
-                "同期できません: $safeErrorMessage"
+                "同期に失敗: $safeErrorMessage"
             } else {
-                "Sync blocked: $safeErrorMessage"
+                "Sync failed: $safeErrorMessage"
             }
         }
         return if (isJapaneseLocale()) {
             String.format(
                 Locale.ROOT,
-                "%d枚の停止カードを保存、%d字のレア漢字を追加",
-                suspendedCards,
+                "%d字を追加、%d枚の停止カードを保存",
                 importedKanji,
+                suspendedCards,
             )
         } else {
             String.format(
                 Locale.ROOT,
-                "%d suspended cards archived, %d rare kanji added",
-                suspendedCards,
+                "%d kanji added; %d suspended archived",
                 importedKanji,
+                suspendedCards,
             )
         }
     }
