@@ -358,10 +358,10 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New and relearning cards use short steps. Repeats stay practice-only.",
+                "Set waits for new cards and review misses. Repeats stay practice-only.",
                 SettingsTextCopy.learningStepsBody()
         )
-        assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
+        assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel())
         assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel())
         assertEquals("Use new-card steps", SettingsTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
