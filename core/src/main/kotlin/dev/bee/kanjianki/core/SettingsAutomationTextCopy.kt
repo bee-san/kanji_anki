@@ -205,7 +205,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notification permission for reminders."
+        return "Save to allow reminder notifications."
     }
 
     @JvmStatic

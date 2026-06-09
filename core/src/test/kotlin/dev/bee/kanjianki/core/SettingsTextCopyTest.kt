@@ -193,7 +193,7 @@ class SettingsTextCopyTest {
         }
 
         assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("notifications"))
-        assertTrue(SettingsTextCopy.notificationPermissionBody().contains("permission"))
+        assertTrue(SettingsTextCopy.notificationPermissionBody().contains("Save"))
         assertTrue(SettingsTextCopy.keepAlwaysAvailableRungToast().contains("rung always on"))
     }
 
@@ -518,7 +518,7 @@ class SettingsTextCopyTest {
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Allow notification permission for reminders.",
+                "Save to allow reminder notifications.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
