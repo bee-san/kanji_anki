@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show soon-due reviews. Learning waits stay fixed."
+        return "Review soon-due cards. Learning waits stay fixed."
     }
 
     @JvmStatic

@@ -7,7 +7,7 @@ class SettingsStudyAheadTextCopyTest {
     @Test
     fun studyAheadStringsStayStable() {
         assertEquals("Study ahead", SettingsStudyAheadTextCopy.studyAheadTitle())
-        assertEquals("Show soon-due reviews. Learning waits stay fixed.", SettingsStudyAheadTextCopy.studyAheadBody())
+        assertEquals("Review soon-due cards. Learning waits stay fixed.", SettingsStudyAheadTextCopy.studyAheadBody())
         assertEquals("Save study ahead", SettingsStudyAheadTextCopy.saveStudyAheadLabel())
         assertEquals("Study ahead saved.", SettingsStudyAheadTextCopy.studyAheadSavedToast())
         assertEquals("Minutes ahead (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel())
