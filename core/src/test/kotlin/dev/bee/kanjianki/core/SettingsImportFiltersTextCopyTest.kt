@@ -8,18 +8,18 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Turn on import sources. Leech tags stay excluded.",
+            "Choose which Anki cards to import. Leeches stay excluded.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Include active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
         assertEquals("Include suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
         assertEquals("Include tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
         assertEquals("Include weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Include browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Use browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Try is:suspended, rated:31:1, or tag:kani.",
+            "Examples: is:suspended, rated:31:1, tag:kani.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
