@@ -677,7 +677,7 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Fields, filters, range, sync.",
+            "Sources, filters, range, sync.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
@@ -692,7 +692,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Dictionaries, stroke data, fonts, credits.",
+            "Dictionaries, strokes, fonts, credits.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -826,13 +826,13 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("Fields, filters, range, sync.", importSync.summary)
+        assertEquals("Sources, filters, range, sync.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
         assertEquals("Reminders, sync, updates.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals("Display & data", referenceData.title)
-        assertEquals("Dictionaries, stroke data, fonts, credits.", referenceData.summary)
+        assertEquals("Dictionaries, strokes, fonts, credits.", referenceData.summary)
         assertEquals("1 card", referenceData.panelCount)
         assertEquals("Study settings", collapsedBehavior.title)
         assertEquals("New cards, timing, workload, ladder.", collapsedBehavior.summary)
@@ -1113,7 +1113,7 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings overview", model.cockpitLabel)
+        assertEquals("Overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
         assertEquals("Note type", model.rows[0][0].label)
