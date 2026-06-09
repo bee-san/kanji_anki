@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Choose how early reviews appear. Learning waits stay fixed."
+        return "Move reviews earlier. Learning waits stay fixed."
     }
 
     @JvmStatic
@@ -34,7 +34,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadWholeNumberErrorText(): String {
-        return String.format(Locale.ROOT, "Enter whole minutes from %s.", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Use whole minutes from %s.", studyAheadMinutesRange())
     }
 
     @JvmStatic
