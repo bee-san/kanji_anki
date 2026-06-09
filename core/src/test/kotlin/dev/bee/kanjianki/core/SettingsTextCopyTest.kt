@@ -358,7 +358,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "Set repeat waits. Due reviews still move the ladder.",
+                "Set wait times. Due reviews still move the ladder.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("After missed reviews", SettingsTextCopy.reviewMissesLabel())
