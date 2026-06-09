@@ -548,9 +548,9 @@ private fun verifyWorkloadAndReminderSummaries(activity: MainActivity) {
         assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
-        assertEquals("Automatic workload: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
+        assertEquals("Kani plan: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
-                "Automatic workload: 2 items today",
+                "Kani plan: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         );
         assertEquals("Notifications blocked", SettingsTextCopy.reminderStatus(true, true, "21:05"));
@@ -829,7 +829,7 @@ fun homeSyncResultRenderersCoverEmptyAndTerminalStates() {
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
                 assertHasText(activity, "Check AnkiDroid permissions, then retry.");
 
-                activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Automatic workload: 2 items today"));
+                activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Kani plan: 2 items today"));
                 assertHasText(activity, "Sync complete");
                 assertHasText(activity, "Cleanup finished.");
 

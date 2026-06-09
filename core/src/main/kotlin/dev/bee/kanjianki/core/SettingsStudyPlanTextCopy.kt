@@ -4,34 +4,34 @@ import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
     @JvmStatic
-    fun deckLimitsTitle(): String = "Daily limits"
+    fun deckLimitsTitle(): String = "New cards per day"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Cap new cards each day."
+    fun deckLimitsBody(): String = "Limit new kanji added each day."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "Daily new card limit"
+    fun newCardsPerDayLabel(): String = "New cards each day"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save daily limits"
+    fun saveDeckLimitsLabel(): String = "Save new-card limit"
 
     @JvmStatic
-    fun dailyWorkloadTitle(): String = "Daily workload"
+    fun dailyWorkloadTitle(): String = "Today's workload"
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani sets today's count. Due dates stay fixed."
+        return "Kani chooses today's count. Due dates stay fixed."
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save limit"
+    fun saveMaximumLabel(): String = "Save maximum"
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Set workload manually"
+    fun manualWorkloadLabel(): String = "Choose workload manually"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Pick today's count. Due dates stay fixed."
+        return "Set today's item count. Due dates stay fixed."
     }
 
     @JvmStatic
@@ -40,10 +40,10 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun saveWorkloadLabel(): String = "Save workload"
+    fun saveWorkloadLabel(): String = "Save today's workload"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Use automatic workload"
+    fun automaticParetoLabel(): String = "Let Kani choose"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
@@ -68,9 +68,9 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Automatic workload: waiting for cards"
+            return "Kani plan: waiting for cards"
         }
-        return "Automatic workload: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        return "Kani plan: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
     }
 
     private fun workloadStatusLabel(snappedWorkloadPercent: Int): String {

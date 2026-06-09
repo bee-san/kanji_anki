@@ -327,7 +327,7 @@ private fun setNavigationWorkloadControls(scenario: ActivityScenario<MainActivit
         ));
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
         waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
-        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
         clickText(scenario, SettingsTextCopy.automaticParetoLabel());
         waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
@@ -356,7 +356,7 @@ fun setFrequencyRangeInputs(minRank: String, maxRank: String) {
 
 private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
         scenario.onActivity { activity ->
-            assertHasText(activity, "Daily workload");
+            assertHasText(activity, SettingsTextCopy.dailyWorkloadTitle());
             assertHasText(activity, SettingsTextCopy.autoWorkloadStatusText(null));
             assertHasText(activity, SettingsTextCopy.manualWorkloadLabel());
             assertHasText(activity, "Review retention");
@@ -495,7 +495,7 @@ private fun configureManualWorkload(scenario: ActivityScenario<MainActivity>) {
         ));
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
         waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
-        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
     }
 
 private fun verifyWorkloadAutoActions(scenario: ActivityScenario<MainActivity>) {
@@ -2798,7 +2798,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 SettingsTextCopy.maxRankLabel()
         );
         assertImportFilterDefaultState();
-        assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
+        assertNoTexts(activity, SettingsTextCopy.dailyWorkloadTitle(), "Daily reminder", "App updates");
     }
 
 fun assertImportFilterDefaultState() {
