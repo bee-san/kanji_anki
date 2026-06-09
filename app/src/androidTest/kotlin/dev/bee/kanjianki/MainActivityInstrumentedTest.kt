@@ -362,8 +362,8 @@ private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
             assertHasText(activity, "Ladder movement");
-            assertHasText(activity, "Days to move up");
-            assertHasText(activity, "Fails to move down");
+            assertHasText(activity, "Review days to move up");
+            assertHasText(activity, "Misses to move down");
         }
     }
 

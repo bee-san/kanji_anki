@@ -6,17 +6,17 @@ object SettingsLadderThresholdTextCopy {
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Due reviews move cards. Repeats stay practice-only."
+        return "Due reviews move cards; learning repeats stay practice-only."
     }
 
     @JvmStatic
-    fun fsrsDaysToGoUpLabel(): String = "Days to move up"
+    fun fsrsDaysToGoUpLabel(): String = "Review days to move up"
 
     @JvmStatic
-    fun failsToGoDownLabel(): String = "Fails to move down"
+    fun failsToGoDownLabel(): String = "Misses to move down"
 
     @JvmStatic
-    fun useDefaultLadderThresholdsLabel(): String = "Use default movement rules"
+    fun useDefaultLadderThresholdsLabel(): String = "Use default rules"
 
     @JvmStatic
     fun saveLadderThresholdsLabel(): String = "Save movement rules"
