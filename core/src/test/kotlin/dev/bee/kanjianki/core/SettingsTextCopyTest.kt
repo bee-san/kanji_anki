@@ -221,7 +221,7 @@ class SettingsTextCopyTest {
                         "Enter numeric thresholds.",
                         "Difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Frequency range",
-                        "Suspended cards: 100-3000.",
+                        "Pick suspended-card frequency ranks.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),

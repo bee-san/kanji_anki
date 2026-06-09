@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Suspended cards: 100-3000."
+        return "Pick suspended-card frequency ranks."
     }
 
     @JvmStatic

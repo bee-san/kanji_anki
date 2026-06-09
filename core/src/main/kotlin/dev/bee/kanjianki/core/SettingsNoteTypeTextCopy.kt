@@ -5,7 +5,13 @@ object SettingsNoteTypeTextCopy {
     fun noteTypeFieldsTitle(): String = "Note type"
 
     @JvmStatic
-    fun noteTypeUsingText(modelName: String?): String = "Using " + modelName.toString()
+    fun noteTypeUsingText(modelName: String?): String {
+        val safeModelName = modelName?.javaTrim() ?: ""
+        if (safeModelName.isEmpty()) {
+            return "No note type selected"
+        }
+        return "Using $safeModelName"
+    }
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
@@ -55,4 +61,8 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeSavedToast(): String = "Saved. Sync to rebuild cards."
+
+    private fun String.javaTrim(): String {
+        return trim { it <= ' ' }
+    }
 }
