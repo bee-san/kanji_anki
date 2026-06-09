@@ -24,6 +24,21 @@ class MainActivityHomeBrowseSearchComposeTest {
     }
 
     @Test
+    fun browseKanjiRowDescriptionIsActionOrientedAndConcise() {
+        assertEquals(
+            "Open details for 裂, split, レツ, 2 local sources · 1 example, SUSPENDED, not selected",
+            browseKanjiRowDescription(
+                kanji = "裂",
+                meaning = "split",
+                readings = "レツ",
+                summary = "2 local sources · 1 example",
+                studied = false,
+                suspended = true,
+            )
+        )
+    }
+
+    @Test
     fun benchmarksSinglePassBrowseSelectionStateAgainstLegacyTwoPassPath() {
         val items = List(512) { index ->
             inventoryItem(
