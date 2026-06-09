@@ -4,7 +4,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Notifications blocked"
+            return "Notifications off"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Run sync first"
+            return "After first sync"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -40,7 +40,7 @@ object SettingsAutomationTextCopy {
     fun updatePageBody(versionName: String?): String {
         val version = versionText(versionName)
         val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
-        return "$versionLine. Verified updates only."
+        return "$versionLine. Checks releases and verifies the APK."
     }
 
     @JvmStatic
@@ -66,7 +66,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return if (canInstall) "Installs allowed" else "Installs blocked"
+        return if (canInstall) "Permission granted" else "Permission missing"
     }
 
     @JvmStatic
@@ -76,7 +76,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Allow app installs, then install."
+        return "Android needs permission to install updates."
     }
 
     @JvmStatic
@@ -96,7 +96,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Run sync first"
+            return "Starts after first sync"
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -113,7 +113,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Run sync once to enable daily sync."
+            return "Sync once. Kani handles daily syncs."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
@@ -123,7 +123,7 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Runs daily; Android may delay sync."
+                "Scheduled daily. Android may delay it."
             } else {
                 "Daily sync paused."
             }
@@ -144,12 +144,12 @@ object SettingsAutomationTextCopy {
     fun appUpdatesTitle(): String = "App updates"
 
     @JvmStatic
-    fun openUpdaterLabel(): String = "Manage updates"
+    fun openUpdaterLabel(): String = "Open updater"
 
     @JvmStatic
     fun reminderStatus(enabled: Boolean, blocked: Boolean, displayTime: String?): String {
         if (blocked) {
-            return "Notifications blocked"
+            return "Blocked: notifications off"
         }
         if (enabled) {
             return timedStatus("Daily around", "Daily", displayTime)
@@ -162,7 +162,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Pick a time. Android may delay it."
+        return "Android may delay reminders."
     }
 
     @JvmStatic
@@ -188,7 +188,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to get reminders."
+        return "Turn on notifications to get this reminder."
     }
 
     @JvmStatic
@@ -196,7 +196,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notifications to save reminders."
+        return "Grant notification permission."
     }
 
     @JvmStatic

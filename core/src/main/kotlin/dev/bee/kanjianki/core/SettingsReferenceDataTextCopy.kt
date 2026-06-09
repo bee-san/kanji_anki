@@ -2,53 +2,53 @@ package dev.bee.kanjianki.core
 
 object SettingsReferenceDataTextCopy {
     @JvmStatic
-    fun frequencyRangeTitle(): String = "Jiten rank range"
+    fun frequencyRangeTitle(): String = "Frequency range"
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Import ranks 100-3000 by default."
+        return "Suspended cards: 100-3000."
     }
 
     @JvmStatic
-    fun minRankLabel(): String = "Most frequent rank"
+    fun minRankLabel(): String = "Min rank"
 
     @JvmStatic
-    fun maxRankLabel(): String = "Least frequent rank"
+    fun maxRankLabel(): String = "Max rank"
 
     @JvmStatic
-    fun minimumRankLabel(): String = "Most frequent"
+    fun minimumRankLabel(): String = "Minimum rank"
 
     @JvmStatic
-    fun maximumRankLabel(): String = "Least frequent"
+    fun maximumRankLabel(): String = "Maximum rank"
 
     @JvmStatic
-    fun saveFrequencyRangeLabel(): String = "Save rank range"
+    fun saveFrequencyRangeLabel(): String = "Save frequency range"
 
     @JvmStatic
-    fun numericRanksToast(): String = "Enter rank numbers."
+    fun numericRanksToast(): String = "Enter numeric ranks."
 
     @JvmStatic
-    fun rankRangeToast(): String = "Use ranks 1-20000."
+    fun rankRangeToast(): String = "Ranks must be 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Ranks saved. Sync to refresh practice."
+    fun frequencyRangeSavedToast(): String = "Range saved. Sync to rebuild cards."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "View dictionary, stroke, and font credits."
+        return "KANJIDIC2, Jiten, KanjiVG, font credits."
     }
 
     @JvmStatic
-    fun openDataLicensesLabel(): String = "View licenses"
+    fun openDataLicensesLabel(): String = "Open data licenses"
 
     @JvmStatic
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Bundled dictionary, stroke, and font credits."
+    fun dataLicensesBody(): String = "Bundled dictionary and stroke data."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"

@@ -24,7 +24,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("Import filters", "1-20 / 4", 0xFF00AEB5.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Jiten rank range", "1-100", 0xFF00AEB5.toInt()),
+                            SettingsAutomationHeroPillModel("Frequency range", "1-100", 0xFF00AEB5.toInt()),
                             SettingsAutomationHeroPillModel("Daily reminder", "Daily around 21:05", 0xFF6E6E78.toInt())
                         ),
                         listOf(
@@ -32,7 +32,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("App updates", "Ready to install", 0xFFFF4C76.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Min cards per kanji", "Kiku only", 0xFF7A245D.toInt())
+                            SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())
                         )
                     )
                 )
@@ -45,11 +45,11 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()
         composeRule.onNodeWithText("Import filters").assertIsDisplayed()
         composeRule.onNodeWithText("1-20 / 4").assertIsDisplayed()
-        composeRule.onNodeWithText("Jiten rank range").assertIsDisplayed()
+        composeRule.onNodeWithText("Frequency range").assertIsDisplayed()
         composeRule.onNodeWithText("Daily reminder").assertIsDisplayed()
         composeRule.onNodeWithText("Daily sync").assertIsDisplayed()
         composeRule.onNodeWithText("App updates").assertIsDisplayed()
-        composeRule.onNodeWithText("Min cards per kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("Cards per kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku only").assertIsDisplayed()
     }
 }
