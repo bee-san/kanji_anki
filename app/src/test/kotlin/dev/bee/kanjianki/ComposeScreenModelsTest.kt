@@ -1176,36 +1176,36 @@ class ComposeScreenModelsTest {
         val saveWorkload = SettingsWorkloadAction { calls.add("saveWorkload") }
         val enableAutomatic = SettingsWorkloadAction { calls.add("enableAutomatic") }
         val model = SettingsWorkloadPanelModel(
-            title = "Daily workload",
+            title = "Today's workload",
             autoMode = true,
-            autoStatus = "Automatic workload",
+            autoStatus = "Kani plan",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
-            saveMaximumLabel = "Save limit",
-            manualWorkloadLabel = "Set workload manually",
-            saveWorkloadLabel = "Save workload",
-            automaticParetoLabel = "Use automatic workload",
+            saveMaximumLabel = "Save maximum",
+            manualWorkloadLabel = "Choose workload manually",
+            saveWorkloadLabel = "Save today's workload",
+            automaticParetoLabel = "Let Kani choose",
             onSaveMaximum = saveMaximum,
             onEnableManual = enableManual,
             onSaveWorkload = saveWorkload,
             onEnableAutomatic = enableAutomatic,
         )
 
-        assertEquals("Daily workload", model.title)
+        assertEquals("Today's workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Automatic workload", model.autoStatus)
+        assertEquals("Kani plan", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
-        assertEquals("Save limit", model.saveMaximumLabel)
-        assertEquals("Set workload manually", model.manualWorkloadLabel)
-        assertEquals("Save workload", model.saveWorkloadLabel)
-        assertEquals("Use automatic workload", model.automaticParetoLabel)
+        assertEquals("Save maximum", model.saveMaximumLabel)
+        assertEquals("Choose workload manually", model.manualWorkloadLabel)
+        assertEquals("Save today's workload", model.saveWorkloadLabel)
+        assertEquals("Let Kani choose", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
         assertSame(enableManual, model.onEnableManual)
         assertSame(saveWorkload, model.onSaveWorkload)

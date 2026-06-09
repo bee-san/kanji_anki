@@ -336,26 +336,26 @@ class SettingsTextCopyTest {
         assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5))
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9))
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1))
-        assertEquals("Automatic workload: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Kani plan: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null))
         assertEquals(
-                "Automatic workload: 2 items today",
+                "Kani plan: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         )
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
-        assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
+        assertEquals("Today's workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani sets today's count. Due dates stay fixed.",
+                "Kani chooses today's count. Due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
-        assertEquals("Save limit", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
+        assertEquals("Choose workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Pick today's count. Due dates stay fixed.",
+                "Set today's item count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
-        assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
-        assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
+        assertEquals("Save today's workload", SettingsTextCopy.saveWorkloadLabel())
+        assertEquals("Let Kani choose", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
                 "Set repeat waits. Due reviews still move the ladder.",

@@ -1,10 +1,10 @@
 package dev.bee.kanjianki.core
 
 object WorkloadSettingsPolicy {
-    const val MAXIMUM_SAVED_MESSAGE: String = "Item limit saved."
-    const val MANUAL_ENABLED_MESSAGE: String = "Manual workload enabled."
-    const val AUTOMATIC_ENABLED_MESSAGE: String = "Automatic workload enabled."
-    const val WORKLOAD_SAVED_MESSAGE: String = "Workload saved. Study uses the new adaptive focus."
+    const val MAXIMUM_SAVED_MESSAGE: String = "Maximum saved."
+    const val MANUAL_ENABLED_MESSAGE: String = "Manual workload ready."
+    const val AUTOMATIC_ENABLED_MESSAGE: String = "Kani will choose today's workload."
+    const val WORKLOAD_SAVED_MESSAGE: String = "Today's workload saved."
 
     @JvmStatic
     fun saveMaximum(maxItems: Int): SaveRequest {

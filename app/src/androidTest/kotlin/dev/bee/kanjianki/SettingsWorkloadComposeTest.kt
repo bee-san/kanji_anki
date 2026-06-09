@@ -109,7 +109,7 @@ class SettingsWorkloadComposeTest {
         return SettingsWorkloadPanelModel(
             title = SettingsTextCopy.dailyWorkloadTitle(),
             autoMode = autoMode,
-            autoStatus = "Automatic workload: waiting for cards",
+            autoStatus = SettingsTextCopy.autoWorkloadStatusText(null),
             automaticBody = SettingsTextCopy.automaticWorkloadBody(),
             manualBody = SettingsTextCopy.manualWorkloadBody(),
             selectedWorkloadPercent = selectedWorkload,

@@ -6,17 +6,17 @@ import org.junit.Test
 class SettingsStudyPlanTextCopyTest {
     @Test
     fun workloadAndSortHelpersPreserveFormatting() {
-        assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
-        assertEquals("Save limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
-        assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Kani sets today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Pick today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Today's workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
+        assertEquals("Save maximum", SettingsStudyPlanTextCopy.saveMaximumLabel())
+        assertEquals("Choose workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
+        assertEquals("Kani chooses today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
+        assertEquals("Set today's item count. Due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
         assertEquals("More: up to 17 items", SettingsStudyPlanTextCopy.workloadStatusText(80, 20))
         assertEquals("Maximum: 1 item", SettingsStudyPlanTextCopy.maxItemsStatusText(0))
-        assertEquals("Automatic workload: waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Kani plan: waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
@@ -39,10 +39,10 @@ class SettingsStudyPlanTextCopyTest {
             "Similar kanji stay close on this screen.",
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
-        assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Cap new cards each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
-        assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
-        assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
+        assertEquals("New cards per day", SettingsStudyPlanTextCopy.deckLimitsTitle())
+        assertEquals("Limit new kanji added each day.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("New cards each day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
+        assertEquals("Save new-card limit", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
