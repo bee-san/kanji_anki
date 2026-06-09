@@ -911,7 +911,7 @@ class ComposeScreenModelsTest {
     fun newCardSortModelKeepsOptionsAndSaverContract() {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
-        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Jiten frequency first.")
+        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Most frequent Jiten ranks first.")
         val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Most-forgotten cards first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
@@ -924,7 +924,7 @@ class ComposeScreenModelsTest {
 
         assertEquals("Frequency", frequency.label)
         assertEquals("frequency", frequency.mode)
-        assertEquals("Jiten frequency first.", frequency.description)
+        assertEquals("Most frequent Jiten ranks first.", frequency.description)
         assertEquals("New card order", model.title)
         assertEquals("Choose how Kani admits new problem kanji.", model.body)
         assertEquals("frequency", model.initialMode)
@@ -1185,7 +1185,7 @@ class ComposeScreenModelsTest {
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
             saveMaximumLabel = "Save limit",
-            manualWorkloadLabel = "Choose workload manually",
+            manualWorkloadLabel = "Set workload manually",
             saveWorkloadLabel = "Save workload",
             automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
@@ -1203,7 +1203,7 @@ class ComposeScreenModelsTest {
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
         assertEquals("Save limit", model.saveMaximumLabel)
-        assertEquals("Choose workload manually", model.manualWorkloadLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
         assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)

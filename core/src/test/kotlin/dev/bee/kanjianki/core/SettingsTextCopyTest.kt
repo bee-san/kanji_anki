@@ -344,13 +344,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani chooses today's item count. Review due dates stay fixed.",
+                "Kani picks today's count. Review due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save limit", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Choose workload manually", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's item count. Review due dates stay fixed.",
+                "Choose today's count. Review due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -382,7 +382,7 @@ class SettingsTextCopyTest {
         assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
-        assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals("Most frequent Jiten ranks first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Harder cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
         assertEquals("Most-forgotten cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Weaker Kani cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
@@ -394,7 +394,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose how new cards enter study. Due reviews and repeats stay first.",
+                "Choose new-card order. Due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -410,8 +410,8 @@ class SettingsTextCopyTest {
                         "Desired retention: 95%",
                         "Review retention",
                         "FSRS stays local. Review due dates stay unchanged.",
-                        "Jiten-rank retention ranges",
-                        "One range per line, e.g. 1-500=95%. Others use global retention.",
+                        "Retention by Jiten rank",
+                        "One range per line, e.g. 1-500=95%. Other ranks use the global target.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -425,7 +425,7 @@ class SettingsTextCopyTest {
                         "On: always available",
                         "On when similar kanji exist",
                         "Study ladder",
-                        "Choose rung order. Keep one enabled.",
+                        "Order practice types. Keep one enabled.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),

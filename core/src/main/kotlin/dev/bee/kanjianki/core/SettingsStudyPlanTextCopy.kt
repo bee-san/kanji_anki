@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit new cards per day."
+    fun deckLimitsBody(): String = "Cap new cards each day."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Daily new card limit"
@@ -20,18 +20,18 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani chooses today's item count. Review due dates stay fixed."
+        return "Kani picks today's count. Review due dates stay fixed."
     }
 
     @JvmStatic
     fun saveMaximumLabel(): String = "Save limit"
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Choose workload manually"
+    fun manualWorkloadLabel(): String = "Set workload manually"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Choose today's item count. Review due dates stay fixed."
+        return "Choose today's count. Review due dates stay fixed."
     }
 
     @JvmStatic
@@ -112,7 +112,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Most-forgotten cards first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Weaker Kani cards first."
             RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances weakness, risk, misses, and frequency."
-            else -> "Jiten frequency first."
+            else -> "Most frequent Jiten ranks first."
         }
     }
 
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how new cards enter study. Due reviews and repeats stay first."
+        return "Choose new-card order. Due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -152,11 +152,11 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
+    fun useJitenRankRetentionRangesLabel(): String = "Retention by Jiten rank"
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, e.g. 1-500=95%. Others use global retention."
+        return "One range per line, e.g. 1-500=95%. Other ranks use the global target."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose rung order. Keep one enabled."
+        return "Order practice types. Keep one enabled."
     }
 
     @JvmStatic
