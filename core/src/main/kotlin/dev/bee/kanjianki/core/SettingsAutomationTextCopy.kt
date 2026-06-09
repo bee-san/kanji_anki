@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "After first sync"
+            return "Sync once first"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -105,7 +105,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Starts after first sync"
+            return "Sync once first"
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -122,7 +122,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once. Kani handles daily syncs."
+            return "Sync once to schedule daily syncs."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
