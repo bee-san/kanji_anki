@@ -197,7 +197,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to receive reminders."
+        return "Turn on notifications for reminders."
     }
 
     @JvmStatic
@@ -205,7 +205,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Save to allow reminder notifications."
+        return "Save to allow reminders."
     }
 
     @JvmStatic
