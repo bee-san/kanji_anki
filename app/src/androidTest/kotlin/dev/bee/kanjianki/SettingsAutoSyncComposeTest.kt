@@ -51,7 +51,7 @@ class SettingsAutoSyncComposeTest {
                     title = SettingsTextCopy.dailyAnkiSyncTitle(),
                     status = SettingsTextCopy.autoSyncStatus(false, false, "00:00"),
                     statusColor = MainActivityUiSupport.MUTED,
-                    detail = "Sync once. Kani handles daily syncs.",
+                    detail = SettingsTextCopy.autoSyncDetail(false, false, "", "", ""),
                     actionLabel = null,
                     primaryAction = false,
                     onAction = null
