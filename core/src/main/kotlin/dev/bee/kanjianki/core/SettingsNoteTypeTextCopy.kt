@@ -12,15 +12,15 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Use Kiku or map custom fields."
+        return "Use Kiku defaults or map custom fields."
     }
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Field mappings"
+    fun requiredFieldsTitle(): String = "Required fields"
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map the fields Kani needs."
+        return "Choose the fields Kani reads."
     }
 
     @JvmStatic
@@ -42,10 +42,10 @@ object SettingsNoteTypeTextCopy {
     fun frequencySortFieldLabel(): String = "Frequency sort field"
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
+    fun chooseFromAnkiDroidLabel(): String = "Choose from AnkiDroid"
 
     @JvmStatic
-    fun useKikuLabel(): String = "Use Kiku"
+    fun useKikuLabel(): String = "Use Kiku defaults"
 
     @JvmStatic
     fun saveNoteTypeLabel(): String = "Save note type"
