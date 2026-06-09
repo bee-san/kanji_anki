@@ -12,7 +12,7 @@ class SettingsTextCopyTest {
         assertEquals("3+ cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1+ card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3+ cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Pick import sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Choose import sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
@@ -38,13 +38,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "Sources, filters, range, sync.",
+                        "Choose sources, filters, and range.",
                         "Study settings",
-                        "New cards, timing, workload, ladder.",
+                        "Set new cards, timing, workload, and ladder.",
                         "Automation",
-                        "Reminders, sync, updates.",
+                        "Set reminders, sync, and updates.",
                         "Display & data",
-                        "Dictionaries, strokes, fonts, credits.",
+                        "Manage dictionaries, strokes, fonts, and credits.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -95,7 +95,7 @@ class SettingsTextCopyTest {
                         "Turn on updates",
                         "Back to settings",
                         "Overview",
-                        "Pick a section.",
+                        "Choose a section to edit.",
                         "Note type",
                         "Import filters",
                         "Suspended card range",
