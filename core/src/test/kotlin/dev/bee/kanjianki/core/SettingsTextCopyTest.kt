@@ -200,12 +200,12 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Pick sources, save, then sync. Leeches stay excluded.",
-                        "Include active cards",
-                        "Include suspended cards",
-                        "Include tagged cards",
-                        "Include weak cards",
-                        "Include browser query results",
+                        "Pick sources, save, then sync.",
+                        "Active cards",
+                        "Suspended cards",
+                        "Tagged cards",
+                        "Weak cards",
+                        "Browser query results",
                         "deck:Japanese tag:kani",
                         "Browser query",
                         "tag1, tag2",

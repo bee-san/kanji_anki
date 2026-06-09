@@ -6,23 +6,23 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Pick sources, save, then sync. Leeches stay excluded."
+        return "Pick sources, save, then sync."
     }
 
     @JvmStatic
-    fun activeCardsLabel(): String = "Include active cards"
+    fun activeCardsLabel(): String = "Active cards"
 
     @JvmStatic
-    fun suspendedCardsLabel(): String = "Include suspended cards"
+    fun suspendedCardsLabel(): String = "Suspended cards"
 
     @JvmStatic
-    fun taggedCardsLabel(): String = "Include tagged cards"
+    fun taggedCardsLabel(): String = "Tagged cards"
 
     @JvmStatic
-    fun weakCardsLabel(): String = "Include weak cards"
+    fun weakCardsLabel(): String = "Weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Include browser query results"
+    fun browserQueryLabel(): String = "Browser query results"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
