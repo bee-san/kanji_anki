@@ -22,17 +22,17 @@ object SettingsImportFiltersTextCopy {
     fun weakCardsLabel(): String = "Weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Browser query results"
+    fun browserQueryLabel(): String = "Anki search results"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
 
     @JvmStatic
-    fun ankiBrowserQueryLabel(): String = "Browser query"
+    fun ankiBrowserQueryLabel(): String = "Anki search"
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani."
+        return "Examples: is:suspended, tag:kani."
     }
 
     @JvmStatic
@@ -54,23 +54,23 @@ object SettingsImportFiltersTextCopy {
     fun saveImportFiltersLabel(): String = "Save import filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Add a browser query or turn it off."
+    fun browserQueryRequiredToast(): String = "Add an Anki search or turn it off."
 
     @JvmStatic
     fun importSourceRequiredToast(): String = "Turn on at least one source."
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Filters saved. Sync to refresh practice."
+    fun importFiltersSavedToast(): String = "Saved. Sync to refresh practice."
 
     @JvmStatic
     fun presetsTitle(): String = "Presets"
 
     @JvmStatic
-    fun importPresetSavedToast(): String = "Preset saved. Sync to refresh practice."
+    fun importPresetSavedToast(): String = "Preset saved. Sync to refresh."
 
     @JvmStatic
-    fun numericImportThresholdsToast(): String = "Enter numeric thresholds."
+    fun numericImportThresholdsToast(): String = "Use numbers for thresholds."
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Difficulty 1-10, lapses 1-100, cards 1-1000."
+    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, cards 1-1000."
 }

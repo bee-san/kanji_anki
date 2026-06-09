@@ -15,11 +15,11 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
         assertEquals("Tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
         assertEquals("Weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Browser query results", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Anki search results", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
-        assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
+        assertEquals("Anki search", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Examples: is:suspended, rated:31:1, tag:kani.",
+            "Examples: is:suspended, tag:kani.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
@@ -28,12 +28,12 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Minimum lapses", SettingsImportFiltersTextCopy.lapsesLabel())
         assertEquals("Matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
-        assertEquals("Add a browser query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
+        assertEquals("Add an Anki search or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Turn on at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
-        assertEquals("Filters saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
+        assertEquals("Saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
-        assertEquals("Preset saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importPresetSavedToast())
-        assertEquals("Enter numeric thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
-        assertEquals("Difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
+        assertEquals("Preset saved. Sync to refresh.", SettingsImportFiltersTextCopy.importPresetSavedToast())
+        assertEquals("Use numbers for thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
+        assertEquals("Use difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
     }
 }
