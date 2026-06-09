@@ -15,7 +15,7 @@ object SettingsSectionTextCopy {
     fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = localizedText("Set card order, timing, workload, and ladder.", "カード順、タイミング、負荷、ラダーを設定。")
+    fun settingsStudyBehaviorBody(): String = localizedText("Set card order, timing, study load, and ladder.", "カード順、タイミング、負荷、ラダーを設定。")
 
     @JvmStatic
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")

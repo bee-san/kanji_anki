@@ -7,31 +7,31 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "New cards per day"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit new kanji added each day."
+    fun deckLimitsBody(): String = "Cap new kanji added each day."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "New cards each day"
+    fun newCardsPerDayLabel(): String = "New-card limit"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save new-card limit"
+    fun saveDeckLimitsLabel(): String = "Save daily limit"
 
     @JvmStatic
-    fun dailyWorkloadTitle(): String = "Today's workload"
+    fun dailyWorkloadTitle(): String = "Today's study load"
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani chooses today's count. Due dates stay fixed."
+        return "Let Kani pick today's count. Due dates stay fixed."
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save maximum"
+    fun saveMaximumLabel(): String = "Save max items"
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Choose workload manually"
+    fun manualWorkloadLabel(): String = "Choose count yourself"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's item count. Due dates stay fixed."
+        return "Pick today's item count. Due dates stay fixed."
     }
 
     @JvmStatic
@@ -40,10 +40,10 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun saveWorkloadLabel(): String = "Save today's workload"
+    fun saveWorkloadLabel(): String = "Save study load"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Let Kani choose"
+    fun automaticParetoLabel(): String = "Let Kani pick"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
@@ -112,7 +112,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Most-forgotten cards first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Weaker Kani cards first."
             RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances weakness, risk, misses, and frequency."
-            else -> "Most frequent Jiten ranks first."
+            else -> "Most frequent kanji first."
         }
     }
 
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line: 1-500=95%. Other ranks use the global target."
+        return "Use 1-500=95%. Other ranks use the global target."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose practice order. Keep at least one rung enabled."
+        return "Pick practice order. Keep one always-available rung on."
     }
 
     @JvmStatic
@@ -197,7 +197,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep at least one rung on."
+        return "Keep one always-available rung on."
     }
 
     @JvmStatic
