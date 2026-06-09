@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "After first sync"
+            return "Sync once to start"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -96,7 +96,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Starts after first sync"
+            return "Sync once to start"
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -123,7 +123,7 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Runs daily; Android may delay it."
+                "Runs daily; Android may delay sync."
             } else {
                 "Daily sync paused."
             }
@@ -149,7 +149,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun reminderStatus(enabled: Boolean, blocked: Boolean, displayTime: String?): String {
         if (blocked) {
-            return "Blocked: notifications off"
+            return "Notifications off"
         }
         if (enabled) {
             return timedStatus("Daily around", "Daily", displayTime)
@@ -162,7 +162,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Pick a reminder time; Android may delay it."
+        return "Choose a time; Android may delay reminders."
     }
 
     @JvmStatic
@@ -188,7 +188,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications for reminders."
+        return "Turn on notifications to get reminders."
     }
 
     @JvmStatic
@@ -196,7 +196,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notifications for reminders."
+        return "Allow notifications to get reminders."
     }
 
     @JvmStatic
