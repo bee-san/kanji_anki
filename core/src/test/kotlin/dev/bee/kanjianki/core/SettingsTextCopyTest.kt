@@ -271,8 +271,8 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type",
                         "Using Kiku",
-                        "Use Kiku defaults or map custom fields.",
-                        "Required fields"
+                        "Choose fields or keep Kiku defaults.",
+                        "Required field"
                 ),
                 listOf(
                         SettingsTextCopy.minRankLabel(),
@@ -299,7 +299,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Choose the fields Kani reads.",
+                        "Set the field that contains each kanji.",
                         "Kanji field",
                         "Reading field",
                         "Meaning field",
