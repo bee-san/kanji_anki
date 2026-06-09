@@ -76,7 +76,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "App updates",
-                        "Version 1.2.3. Check for verified updates.",
+                        "Version 1.2.3. Check updates.",
                         "Automatic updates",
                         "Check for updates",
                         "Daily checks enabled",
@@ -86,7 +86,7 @@ class SettingsTextCopyTest {
                         "App installs allowed",
                         "App installs need permission",
                         "Ready to install: 0.4.33",
-                        "Choose the next update action.",
+                        "Pick the next update action.",
                         "Install verified update to continue.",
                         "Allow app installs to continue.",
                         "Install verified update",

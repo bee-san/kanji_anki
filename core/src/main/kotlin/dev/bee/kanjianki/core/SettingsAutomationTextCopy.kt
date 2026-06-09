@@ -40,7 +40,7 @@ object SettingsAutomationTextCopy {
     fun updatePageBody(versionName: String?): String {
         val version = versionText(versionName)
         val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
-        return "$versionLine. Check for verified updates."
+        return "$versionLine. Check updates."
     }
 
     @JvmStatic
@@ -76,7 +76,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Choose the next update action."
+        return "Pick the next update action."
     }
 
     @JvmStatic
