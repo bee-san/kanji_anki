@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Pick suspended-card frequency ranks."
+        return "Limit suspended cards by Jiten rank."
     }
 
     @JvmStatic
@@ -38,7 +38,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "KANJIDIC2, Jiten, KanjiVG, font credits."
+        return "Dictionary, stroke, and font credits."
     }
 
     @JvmStatic
@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Bundled dictionary and stroke data."
+    fun dataLicensesBody(): String = "Dictionary, stroke, and font attributions."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"
