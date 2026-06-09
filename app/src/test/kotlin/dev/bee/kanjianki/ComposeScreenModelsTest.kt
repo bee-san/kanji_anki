@@ -1130,7 +1130,7 @@ class ComposeScreenModelsTest {
         assertEquals("App updates", model.rows[2][1].label)
         assertEquals("Ready to install", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
-        assertEquals("Cards per kanji", model.rows[3][0].label)
+        assertEquals("Min cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
     }
 

@@ -27,7 +27,7 @@ object SettingsSummaryTextCopy {
             sources.add(localizedText("browser query", "ブラウザ検索"))
         }
         if (sources.isEmpty()) {
-            return localizedText("Turn on an import source", "インポート元を有効にしてください")
+            return localizedText("Choose an import source", "インポート元を選んでください")
         }
         return if (isJapaneseLocale()) {
             sources.joinToString("＋") + "、" + matchingCardsSummary(safeSettings)
@@ -41,9 +41,9 @@ object SettingsSummaryTextCopy {
         val safeSettings = settings ?: throw NullPointerException("settings")
         val count = safeSettings.importMinMatchingCardsPerKanji
         return if (isJapaneseLocale()) {
-            "漢字ごとに${count}枚"
+            "漢字ごとに${count}枚以上"
         } else {
-            count.toString() + if (count == 1) " card per kanji" else " cards per kanji"
+            count.toString() + if (count == 1) "+ card per kanji" else "+ cards per kanji"
         }
     }
 
@@ -60,14 +60,14 @@ object SettingsSummaryTextCopy {
         return if (isJapaneseLocale()) {
             String.format(
                 Locale.ROOT,
-                "%d字を追加、%d枚の停止カードを保存",
+                "%d字を同期、停止%d枚を保存",
                 importedKanji,
                 suspendedCards,
             )
         } else {
             String.format(
                 Locale.ROOT,
-                "%d kanji added; %d suspended archived",
+                "%d kanji synced; %d suspended saved",
                 importedKanji,
                 suspendedCards,
             )

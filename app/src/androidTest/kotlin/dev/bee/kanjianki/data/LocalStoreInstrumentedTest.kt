@@ -2026,7 +2026,7 @@ class LocalStoreInstrumentedTest {
                 latestSync.errorMessage,
                 latestSync.suspendedCards,
                 latestSync.importedKanji
-        ).contains("kanji added"));
+        ).contains("kanji synced"));
     }
 
     @Test
