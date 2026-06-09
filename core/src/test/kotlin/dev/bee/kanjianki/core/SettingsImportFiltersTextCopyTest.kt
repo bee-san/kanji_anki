@@ -8,14 +8,14 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Pick sources, save, then sync. Leeches stay excluded.",
+            "Pick sources, save, then sync.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
-        assertEquals("Include active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
-        assertEquals("Include suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
-        assertEquals("Include tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
-        assertEquals("Include weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Include browser query results", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
+        assertEquals("Suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
+        assertEquals("Tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
+        assertEquals("Weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
+        assertEquals("Browser query results", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
