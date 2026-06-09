@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Sync once to schedule daily syncs."
+            return "Sync once to enable daily syncs."
         }
         return if (enabled) displayTime else "Off"
     }
@@ -105,7 +105,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Sync once to schedule daily syncs."
+            return "Sync once to enable daily syncs."
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -122,7 +122,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once to schedule daily syncs."
+            return "Sync once to enable daily syncs."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
@@ -132,7 +132,7 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled daily. Android may delay it."
+                "Daily sync scheduled. Android may delay it."
             } else {
                 "Daily sync paused."
             }

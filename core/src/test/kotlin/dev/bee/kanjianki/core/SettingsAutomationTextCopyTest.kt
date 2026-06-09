@@ -38,11 +38,11 @@ class SettingsAutomationTextCopyTest {
     @Test
     fun automationHelpersPreserveStatusCopy() {
         assertEquals("Notifications blocked", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
-        assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
+        assertEquals("Sync once to enable daily syncs.", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
         assertEquals("Ready to install", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
-        assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
+        assertEquals("Sync once to enable daily syncs.", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("On", SettingsAutomationTextCopy.autoSyncStatus(true, true, null))
-        assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
+        assertEquals("Sync once to enable daily syncs.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
         assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel())
