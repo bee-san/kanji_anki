@@ -6,11 +6,11 @@ object SettingsLadderThresholdTextCopy {
 
     @JvmStatic
     fun ladderThresholdsBody(): String {
-        return "Due reviews move cards; learning repeats stay practice-only."
+        return "Due reviews move cards; repeats stay practice-only."
     }
 
     @JvmStatic
-    fun fsrsDaysToGoUpLabel(): String = "Review days to move up"
+    fun fsrsDaysToGoUpLabel(): String = "Days to move up"
 
     @JvmStatic
     fun failsToGoDownLabel(): String = "Misses to move down"
