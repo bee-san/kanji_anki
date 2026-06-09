@@ -96,7 +96,7 @@ class SettingsTextCopyTest {
                         "Choose a section.",
                         "Note type",
                         "Import filters",
-                        "Suspended card range",
+                        "Jiten rank range",
                         "Daily reminder",
                         "Daily sync",
                         "App updates"
@@ -221,8 +221,8 @@ class SettingsTextCopyTest {
                         "Preset saved. Sync to refresh practice.",
                         "Enter numeric thresholds.",
                         "Difficulty 1-10, lapses 1-100, cards 1-1000.",
-                        "Kanji frequency range",
-                        "Choose Jiten ranks to suspend. Default: 100-3000.",
+                        "Jiten rank range",
+                        "Import kanji within these Jiten ranks. Default: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -253,14 +253,14 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Min rank",
-                        "Max rank",
-                        "Minimum rank",
-                        "Maximum rank",
-                        "Save frequency range",
-                        "Enter numeric ranks.",
-                        "Ranks must be 1-20000.",
-                        "Saved. Sync to refresh practice.",
+                        "Most frequent rank",
+                        "Least frequent rank",
+                        "Most frequent",
+                        "Least frequent",
+                        "Save rank range",
+                        "Enter rank numbers.",
+                        "Use ranks 1-20000.",
+                        "Rank range saved. Sync to refresh practice.",
                         "Offline data licenses",
                         "Review KANJIDIC2, Jiten, KanjiVG, and font credits.",
                         "Open data licenses",

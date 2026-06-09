@@ -42,7 +42,7 @@ object SettingsSectionTextCopy {
     fun importFiltersStatusLabel(): String = localizedText("Import filters", "インポートフィルター")
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = localizedText("Suspended card range", "停止カードの範囲")
+    fun importRanksStatusLabel(): String = localizedText("Jiten rank range", "Jitenランク範囲")
 
     @JvmStatic
     fun reminderStatusLabel(): String = localizedText("Daily reminder", "毎日のリマインダー")

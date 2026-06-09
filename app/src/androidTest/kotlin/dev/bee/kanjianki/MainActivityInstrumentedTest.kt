@@ -253,7 +253,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
-            clickText(scenario, "Save frequency range");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study settings");
             verifyStudyBehaviorPanel(scenario);
@@ -301,7 +301,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
-            clickText(scenario, "Save frequency range");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study settings");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -2792,10 +2792,10 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 SettingsTextCopy.taggedCardsLabel(),
                 SettingsTextCopy.weakCardsLabel(),
                 SettingsTextCopy.minimumMatchingCardsLabel(),
-                "Suspended card range",
+                SettingsTextCopy.importRanksStatusLabel(),
                 "Default: 100-3000",
-                "Min rank",
-                "Max rank"
+                SettingsTextCopy.minRankLabel(),
+                SettingsTextCopy.maxRankLabel()
         );
         assertImportFilterDefaultState();
         assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
