@@ -12,15 +12,15 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Use Kiku defaults or map custom fields."
+        return "Choose fields or keep Kiku defaults."
     }
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Required fields"
+    fun requiredFieldsTitle(): String = "Required field"
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Choose the fields Kani reads."
+        return "Set the field that contains each kanji."
     }
 
     @JvmStatic
