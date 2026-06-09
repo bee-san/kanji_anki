@@ -245,16 +245,19 @@ object HomeTextCopy {
         val safeTotal = total.coerceAtLeast(0)
         val safeSelected = selected.coerceIn(0, safeTotal)
         if (safeTotal == 0 || safeSelected == 0) {
-            return "No kanji selected for study"
+            return "None selected"
         }
-        return "$safeSelected of $safeTotal selected for study"
+        if (safeSelected == safeTotal) {
+            return "All selected"
+        }
+        return "$safeSelected of $safeTotal selected"
     }
 
     @JvmStatic
-    fun browseSelectAllStudiedLabel(): String = "Select all shown"
+    fun browseSelectAllStudiedLabel(): String = "Select all"
 
     @JvmStatic
-    fun browseDeselectAllStudiedLabel(): String = "Deselect all shown"
+    fun browseDeselectAllStudiedLabel(): String = "Clear all"
 
     @JvmStatic
     fun browseStudiedToggleLabel(kanji: String?): String = "Study this kanji"

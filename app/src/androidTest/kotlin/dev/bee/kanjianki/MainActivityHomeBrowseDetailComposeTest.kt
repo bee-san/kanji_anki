@@ -69,7 +69,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                     initialQuery = " 裂 ",
                     resultHeading = "2 kanji",
                     similarFilterActive = false,
-                    studySelectionSummary = "1 of 2 selected for study",
+                    studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(1, 2),
                     onToggleSimilarFilter = { toggledFilterQuery = it },
                     onSelectAllStudied = { selectAllClicked = true },
                     onDeselectAllStudied = { deselectAllClicked = true },
@@ -79,7 +79,14 @@ class MainActivityHomeBrowseDetailComposeTest {
                             meaning = "split",
                             readings = "レツ",
                             summary = "2 local sources · 1 example",
-                            contentDescription = "Browse kanji row, 裂, split, レツ, 2 local sources · 1 example, ${HomeTextCopy.suspendedChipLabel()}",
+                            contentDescription = browseKanjiRowDescription(
+                                kanji = "裂",
+                                meaning = "split",
+                                readings = "レツ",
+                                summary = "2 local sources · 1 example",
+                                studied = false,
+                                suspended = true,
+                            ),
                             suspended = true,
                             studied = false,
                             onClick = { clickedKanji = "裂" },
@@ -90,7 +97,14 @@ class MainActivityHomeBrowseDetailComposeTest {
                             meaning = "Meaning not stored yet",
                             readings = "",
                             summary = "0 local sources · 1 example",
-                            contentDescription = "Browse kanji row, 謎, Meaning not stored yet, 0 local sources · 1 example",
+                            contentDescription = browseKanjiRowDescription(
+                                kanji = "謎",
+                                meaning = "Meaning not stored yet",
+                                readings = "",
+                                summary = "0 local sources · 1 example",
+                                studied = true,
+                                suspended = false,
+                            ),
                             suspended = false,
                             studied = true,
                             onClick = { clickedKanji = "謎" },
@@ -108,10 +122,19 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("split").assertIsDisplayed()
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Browse kanji row, 裂, split, レツ, 2 local sources · 1 example, ${HomeTextCopy.suspendedChipLabel()}").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(
+            browseKanjiRowDescription(
+                kanji = "裂",
+                meaning = "split",
+                readings = "レツ",
+                summary = "2 local sources · 1 example",
+                studied = false,
+                suspended = true,
+            )
+        ).assertIsDisplayed()
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Similar kanji only").assertIsDisplayed()
-        composeRule.onNodeWithText("1 of 2 selected for study").assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.browseSimilarFilterLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.browseStudySelectionSummary(1, 2)).assertIsDisplayed()
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).assertIsOff()
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("謎")).assertIsOn()
 

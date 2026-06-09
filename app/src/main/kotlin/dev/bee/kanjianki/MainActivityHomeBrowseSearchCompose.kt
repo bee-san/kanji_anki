@@ -50,7 +50,7 @@ internal fun browseSimilarFilterTestTag(): String = "browse-similar-filter"
 internal fun browseSelectAllStudiedTestTag(): String = "browse-select-all-studied"
 internal fun browseDeselectAllStudiedTestTag(): String = "browse-deselect-all-studied"
 
-private fun browseKanjiRowDescription(
+internal fun browseKanjiRowDescription(
     kanji: String,
     meaning: String,
     readings: String,
@@ -59,13 +59,12 @@ private fun browseKanjiRowDescription(
     suspended: Boolean,
 ): String {
     return listOfNotNull(
-        "Browse kanji row",
-        kanji,
+        "Open details for $kanji",
         meaning,
         readings.takeIf { it.isNotBlank() },
         summary,
-        if (studied) "selected for study" else "not selected for study",
         if (suspended) HomeTextCopy.suspendedChipLabel() else null,
+        if (studied) "selected" else "not selected",
     ).joinToString(", ")
 }
 
