@@ -18,7 +18,7 @@ class SettingsAutomationTextCopyTest {
             SettingsAutomationTextCopy.updatePageBody(null),
         )
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
-        assertEquals("On: daily checks", SettingsAutomationTextCopy.autoUpdatePanelStatus(true))
+        assertEquals("Daily checks enabled", SettingsAutomationTextCopy.autoUpdatePanelStatus(true))
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("not yet"))
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("  "))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
@@ -26,8 +26,8 @@ class SettingsAutomationTextCopyTest {
         assertEquals("App installs allowed", SettingsAutomationTextCopy.installPermissionLine(true))
         assertEquals("App installs need permission", SettingsAutomationTextCopy.installPermissionLine(false))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
-        assertEquals("Pick the next update action.", SettingsAutomationTextCopy.pendingUpdateFallback())
-        assertEquals("Tap Install verified update to continue.", SettingsAutomationTextCopy.pendingUpdateFallback(true))
+        assertEquals("Choose the next update action.", SettingsAutomationTextCopy.pendingUpdateFallback())
+        assertEquals("Install verified update to continue.", SettingsAutomationTextCopy.pendingUpdateFallback(true))
         assertEquals("Allow app installs to continue.", SettingsAutomationTextCopy.pendingUpdateFallback(false))
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
         assertEquals("Allow app installs", SettingsAutomationTextCopy.setupAppInstallsLabel())
@@ -38,9 +38,9 @@ class SettingsAutomationTextCopyTest {
     @Test
     fun automationHelpersPreserveStatusCopy() {
         assertEquals("Notifications blocked", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
-        assertEquals("Sync once first", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
+        assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.settingsAutoSyncSummary(false, true, "07:30"))
         assertEquals("Ready to install", SettingsAutomationTextCopy.settingsUpdateSummary(true, false))
-        assertEquals("Sync once first", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
+        assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("On", SettingsAutomationTextCopy.autoSyncStatus(true, true, null))
         assertEquals("Sync once to schedule daily syncs.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
         assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())

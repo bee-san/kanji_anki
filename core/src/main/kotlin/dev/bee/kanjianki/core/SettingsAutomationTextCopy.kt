@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Sync once first"
+            return "Sync once to schedule daily syncs."
         }
         return if (enabled) displayTime else "Off"
     }
@@ -22,7 +22,7 @@ object SettingsAutomationTextCopy {
         if (hasPendingUpdate) {
             return "Ready to install"
         }
-        return if (enabled) "On: daily checks" else "Off"
+        return if (enabled) "Daily checks enabled" else "Off"
     }
 
     @JvmStatic
@@ -51,7 +51,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun autoUpdatePanelStatus(enabled: Boolean): String {
-        return if (enabled) "On: daily checks" else "Off"
+        return if (enabled) "Daily checks enabled" else "Off"
     }
 
     @JvmStatic
@@ -76,13 +76,13 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Pick the next update action."
+        return "Choose the next update action."
     }
 
     @JvmStatic
     fun pendingUpdateFallback(canInstall: Boolean): String {
         return if (canInstall) {
-            "Tap Install verified update to continue."
+            "Install verified update to continue."
         } else {
             "Allow app installs to continue."
         }
@@ -105,7 +105,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Sync once first"
+            return "Sync once to schedule daily syncs."
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)

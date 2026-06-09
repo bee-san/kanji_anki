@@ -767,7 +767,7 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
             clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             scenario.onActivity { activity ->
-                assertHasText(activity, "On: daily checks");
+                assertHasText(activity, "Daily checks enabled");
                 assertHasText(activity, "Last check: not yet");
                 assertHasText(activity, "Permission missing");
                 assertHasText(activity, "Allow app installs");
@@ -776,7 +776,7 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
             clickText(scenario, "Turn off updates");
             waitForText(scenario, "Off");
             clickText(scenario, "Turn on updates");
-            waitForText(scenario, "On: daily checks");
+            waitForText(scenario, "Daily checks enabled");
         }
     }
 
