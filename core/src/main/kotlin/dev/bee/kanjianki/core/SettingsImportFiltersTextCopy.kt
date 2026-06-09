@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Pick sources, save, then sync to refresh practice."
+        return "Pick sources, save, sync."
     }
 
     @JvmStatic
@@ -54,13 +54,13 @@ object SettingsImportFiltersTextCopy {
     fun saveImportFiltersLabel(): String = "Save import filters"
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Add an Anki search or turn it off."
+    fun browserQueryRequiredToast(): String = "Add a search or turn it off."
 
     @JvmStatic
     fun importSourceRequiredToast(): String = "Turn on at least one source."
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Saved. Sync to refresh practice."
+    fun importFiltersSavedToast(): String = "Saved. Sync to refresh."
 
     @JvmStatic
     fun presetsTitle(): String = "Presets"
@@ -69,7 +69,7 @@ object SettingsImportFiltersTextCopy {
     fun importPresetSavedToast(): String = "Preset saved. Sync to refresh."
 
     @JvmStatic
-    fun numericImportThresholdsToast(): String = "Use numbers for thresholds."
+    fun numericImportThresholdsToast(): String = "Use numeric thresholds."
 
     @JvmStatic
     fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, cards 1-1000."
