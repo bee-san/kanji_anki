@@ -2,11 +2,11 @@ package dev.bee.kanjianki.core
 
 object SettingsReferenceDataTextCopy {
     @JvmStatic
-    fun frequencyRangeTitle(): String = "Frequency range"
+    fun frequencyRangeTitle(): String = "Suspended card range"
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Limit suspended cards by Jiten rank."
+        return "Set Jiten ranks for suspended cards, then sync."
     }
 
     @JvmStatic
@@ -22,16 +22,16 @@ object SettingsReferenceDataTextCopy {
     fun maximumRankLabel(): String = "Maximum rank"
 
     @JvmStatic
-    fun saveFrequencyRangeLabel(): String = "Save frequency range"
+    fun saveFrequencyRangeLabel(): String = "Save rank range"
 
     @JvmStatic
-    fun numericRanksToast(): String = "Enter numeric ranks."
+    fun numericRanksToast(): String = "Use numbers for ranks."
 
     @JvmStatic
-    fun rankRangeToast(): String = "Ranks must be 1-20000."
+    fun rankRangeToast(): String = "Use ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Range saved. Sync to rebuild cards."
+    fun frequencyRangeSavedToast(): String = "Range saved. Sync to refresh practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
