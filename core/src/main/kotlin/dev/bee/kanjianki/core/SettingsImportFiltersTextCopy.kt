@@ -72,5 +72,5 @@ object SettingsImportFiltersTextCopy {
     fun numericImportThresholdsToast(): String = "Use numeric thresholds."
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, cards 1-1000."
+    fun importThresholdRangeToast(): String = "Difficulty 1-10. Lapses 1-100. Cards 1-1000."
 }

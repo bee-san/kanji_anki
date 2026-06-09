@@ -34,6 +34,6 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
         assertEquals("Preset saved. Sync to refresh.", SettingsImportFiltersTextCopy.importPresetSavedToast())
         assertEquals("Use numeric thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
-        assertEquals("Use difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
+        assertEquals("Difficulty 1-10. Lapses 1-100. Cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
     }
 }

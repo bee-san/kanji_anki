@@ -223,7 +223,7 @@ class SettingsTextCopyTest {
                         "Presets",
                         "Preset saved. Sync to refresh.",
                         "Use numeric thresholds.",
-                        "Use difficulty 1-10, lapses 1-100, cards 1-1000.",
+                        "Difficulty 1-10. Lapses 1-100. Cards 1-1000.",
                         "Suspended card range",
                         "Set suspended-card ranks, then sync.",
                 ),
