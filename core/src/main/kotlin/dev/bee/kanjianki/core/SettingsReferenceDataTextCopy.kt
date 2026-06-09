@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Dictionary, stroke, and font attributions."
+    fun dataLicensesBody(): String = "Dictionary, stroke, and font credits."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"

@@ -30,7 +30,7 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Dictionary, stroke, and font attributions.",
+            "Dictionary, stroke, and font credits.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())

@@ -269,7 +269,7 @@ class SettingsTextCopyTest {
                         "Dictionary, stroke, and font credits.",
                         "Open data licenses",
                         "Data licenses",
-                        "Dictionary, stroke, and font attributions.",
+                        "Dictionary, stroke, and font credits.",
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
