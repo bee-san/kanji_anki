@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Pick sources, save, then sync.",
+            "Pick sources, save, then sync to refresh practice.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
@@ -19,7 +19,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Anki search", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Examples: is:suspended, tag:kani.",
+            "Try is:suspended or tag:kani.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())

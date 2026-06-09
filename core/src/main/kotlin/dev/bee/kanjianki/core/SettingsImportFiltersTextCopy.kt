@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Pick sources, save, then sync."
+        return "Pick sources, save, then sync to refresh practice."
     }
 
     @JvmStatic
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, tag:kani."
+        return "Try is:suspended or tag:kani."
     }
 
     @JvmStatic
