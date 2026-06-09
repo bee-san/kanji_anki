@@ -6,20 +6,20 @@ import org.junit.Test
 class SettingsReferenceDataTextCopyTest {
     @Test
     fun referenceDataHelpersPreserveFormatting() {
-        assertEquals("Frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
+        assertEquals("Suspended card range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Limit suspended cards by Jiten rank.",
+            "Set Jiten ranks for suspended cards, then sync.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
         assertEquals("Max rank", SettingsReferenceDataTextCopy.maxRankLabel())
         assertEquals("Minimum rank", SettingsReferenceDataTextCopy.minimumRankLabel())
         assertEquals("Maximum rank", SettingsReferenceDataTextCopy.maximumRankLabel())
-        assertEquals("Save frequency range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
-        assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
-        assertEquals("Ranks must be 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
+        assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
+        assertEquals("Use numbers for ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
+        assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Range saved. Sync to rebuild cards.",
+            "Range saved. Sync to refresh practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
