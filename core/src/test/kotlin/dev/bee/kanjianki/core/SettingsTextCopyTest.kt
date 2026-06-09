@@ -21,7 +21,7 @@ class SettingsTextCopyTest {
     fun settingsStatusSummariesPreserveAutomationCopy() {
         assertEquals(
                 listOf(
-                        "Notifications off",
+                        "Notifications blocked",
                         "21:05",
                         "Off",
                         "After first sync",
@@ -502,7 +502,7 @@ class SettingsTextCopyTest {
                 "Android may delay reminders.",
                 SettingsTextCopy.dailyReminderBody()
         )
-        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"))
+        assertEquals("Blocked: notifications disabled", SettingsTextCopy.reminderStatus(true, true, "21:05"))
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"))
         assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"))
         assertEquals("Morning", SettingsTextCopy.morningReminderPresetLabel())
@@ -513,12 +513,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Turn on notifications to get this reminder.",
+                "Turn on notifications to receive reminders.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Grant notification permission.",
+                "Allow notification permission for reminders.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
