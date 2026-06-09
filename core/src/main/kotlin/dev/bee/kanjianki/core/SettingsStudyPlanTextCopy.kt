@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, e.g. 1-500=95%. Use the retention slider."
+        return "One range per line, e.g. 1-500=95%."
     }
 
     @JvmStatic

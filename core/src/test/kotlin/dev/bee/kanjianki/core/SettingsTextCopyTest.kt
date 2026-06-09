@@ -12,7 +12,7 @@ class SettingsTextCopyTest {
         assertEquals("3+ cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1+ card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3+ cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Choose an import source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Pick import sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
@@ -207,7 +207,7 @@ class SettingsTextCopyTest {
                         "Suspended cards",
                         "Tagged cards",
                         "Weak cards",
-                        "Anki search results",
+                        "Browser query",
                         "deck:Japanese tag:kani",
                         "Anki search",
                         "Try is:suspended or tag:kani.",
@@ -415,7 +415,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
-                        "One range per line, e.g. 1-500=95%. Use the retention slider.",
+                        "One range per line, e.g. 1-500=95%.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
