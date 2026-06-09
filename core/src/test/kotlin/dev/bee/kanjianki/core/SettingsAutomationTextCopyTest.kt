@@ -59,7 +59,7 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Save reminder", SettingsAutomationTextCopy.saveReminderLabel())
         assertEquals("Enable reminder", SettingsAutomationTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsAutomationTextCopy.turnOffReminderLabel())
-        assertEquals("Turn on notifications for reminders.", SettingsAutomationTextCopy.notificationsBlockedBody())
+        assertEquals("Enable reminder notifications.", SettingsAutomationTextCopy.notificationsBlockedBody())
         assertEquals("Open notification settings", SettingsAutomationTextCopy.openNotificationSettingsLabel())
         assertEquals("Save to allow reminders.", SettingsAutomationTextCopy.notificationPermissionBody())
         assertEquals("21:05", SettingsAutomationTextCopy.reminderTime(21, 5))
