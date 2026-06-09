@@ -56,11 +56,11 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Order practice types. Keep one enabled.", SettingsStudyPlanTextCopy.studyLadderBody())
-        assertEquals("Keep one rung enabled.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
+        assertEquals("Choose practice order. Keep at least one rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Keep at least one rung on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
-        assertEquals("Write kanji off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
+        assertEquals("Write kanji turned off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
             "On: always available",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
