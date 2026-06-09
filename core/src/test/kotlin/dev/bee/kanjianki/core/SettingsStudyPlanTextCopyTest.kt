@@ -10,7 +10,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Save workload", SettingsStudyPlanTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
         assertEquals("Kani picks today's count. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Choose today's count. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Set today's count. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
@@ -28,14 +28,14 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Balanced mix", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
         assertEquals("Jiten frequency first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Higher Anki difficulty first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
-        assertEquals("Cards likely to be forgotten first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Cards likely forgotten first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Cards missed in Kani first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-            "Balances misses, forgetting risk, and frequency.",
+            "Balances misses, risk, and frequency.",
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("Pick new-card order. Due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("Set card order. Reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Similar kanji stay close: 人/入, 土/士.",
@@ -57,12 +57,12 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("One range per line, e.g. 1-500=95%. Everything else uses global retention.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("One range per line, e.g. 1-500=95%. Use the retention slider.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Set practice order. Leave at least one rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Set practice order. Keep one rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
         assertEquals("Leave one rung always on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))

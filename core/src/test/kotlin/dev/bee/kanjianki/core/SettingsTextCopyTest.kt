@@ -354,7 +354,7 @@ class SettingsTextCopyTest {
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's count. Anki due dates stay fixed.",
+                "Set today's count. Anki due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -388,17 +388,17 @@ class SettingsTextCopyTest {
         assertEquals("Balanced mix", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
         assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Higher Anki difficulty first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
-        assertEquals("Cards likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Cards likely forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Cards missed in Kani first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Balances misses, forgetting risk, and frequency.",
+                "Balances misses, risk, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Pick new-card order. Due reviews and repeats stay first.",
+                "Set card order. Reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -415,7 +415,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
-                        "One range per line, e.g. 1-500=95%. Everything else uses global retention.",
+                        "One range per line, e.g. 1-500=95%. Use the retention slider.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -429,7 +429,7 @@ class SettingsTextCopyTest {
                         "Included in study",
                         "Included when similar kanji exist",
                         "Study ladder",
-                        "Set practice order. Leave at least one rung on.",
+                        "Set practice order. Keep one rung on.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),

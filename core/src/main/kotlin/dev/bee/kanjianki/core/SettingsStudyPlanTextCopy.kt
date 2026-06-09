@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Choose today's count. Anki due dates stay fixed."
+        return "Set today's count. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -109,9 +109,9 @@ object SettingsStudyPlanTextCopy {
     fun newCardSortDescription(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
             RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Higher Anki difficulty first."
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards likely to be forgotten first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards likely forgotten first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Cards missed in Kani first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances misses, forgetting risk, and frequency."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances misses, risk, and frequency."
             else -> "Jiten frequency first."
         }
     }
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Pick new-card order. Due reviews and repeats stay first."
+        return "Set card order. Reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, e.g. 1-500=95%. Everything else uses global retention."
+        return "One range per line, e.g. 1-500=95%. Use the retention slider."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Set practice order. Leave at least one rung on."
+        return "Set practice order. Keep one rung on."
     }
 
     @JvmStatic
