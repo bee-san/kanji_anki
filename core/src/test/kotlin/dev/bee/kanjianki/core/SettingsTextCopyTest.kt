@@ -200,7 +200,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Turn on import sources. Leech tags stay excluded.",
+                        "Choose which Anki cards to import. Leeches stay excluded.",
                         "Include active cards",
                         "Include suspended cards",
                         "Include tagged cards",

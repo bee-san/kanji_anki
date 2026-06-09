@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Turn on import sources. Leech tags stay excluded."
+        return "Choose which Anki cards to import. Leeches stay excluded."
     }
 
     @JvmStatic
@@ -32,7 +32,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun ankiBrowserQueryHelperText(): String {
-        return "Try is:suspended, rated:31:1, or tag:kani."
+        return "Examples: is:suspended, rated:31:1, tag:kani."
     }
 
     @JvmStatic
