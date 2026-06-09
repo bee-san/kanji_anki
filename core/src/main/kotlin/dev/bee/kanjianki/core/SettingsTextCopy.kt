@@ -78,6 +78,9 @@ object SettingsTextCopy {
     fun pendingUpdateFallback(): String = SettingsAutomationTextCopy.pendingUpdateFallback()
 
     @JvmStatic
+    fun pendingUpdateFallback(canInstall: Boolean): String = SettingsAutomationTextCopy.pendingUpdateFallback(canInstall)
+
+    @JvmStatic
     fun installVerifiedUpdateLabel(): String = SettingsAutomationTextCopy.installVerifiedUpdateLabel()
 
     @JvmStatic
