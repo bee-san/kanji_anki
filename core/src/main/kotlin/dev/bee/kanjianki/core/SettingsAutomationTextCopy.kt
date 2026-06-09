@@ -56,17 +56,17 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun autoUpdateLastCheckLine(lastCheckText: String?): String {
-        return "Last check: " + lastCheckText.toString()
+        return "Last check: " + displayValue(lastCheckText, "not yet")
     }
 
     @JvmStatic
     fun autoUpdateLastResultLine(lastResult: String?): String {
-        return "Last result: " + lastResult.toString()
+        return "Last result: " + displayValue(lastResult, "No checks yet")
     }
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return "Permission " + if (canInstall) "granted" else "missing"
+        return if (canInstall) "App installs allowed" else "App installs blocked"
     }
 
     @JvmStatic
@@ -211,7 +211,12 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun reminderPresetButtonLabel(label: String?, hour: Int, minute: Int): String {
-        return label.toString() + " " + reminderTime(hour, minute)
+        val time = reminderTime(hour, minute)
+        val safeLabel = label?.javaTrim()
+        if (safeLabel == null || safeLabel.isEmpty()) {
+            return time
+        }
+        return "$safeLabel $time"
     }
 
     private fun addDetail(details: MutableList<String>, prefix: String, value: String?) {
@@ -226,6 +231,14 @@ object SettingsAutomationTextCopy {
             return fallback
         }
         return "$prefix $time"
+    }
+
+    private fun displayValue(value: String?, fallback: String): String {
+        val text = value?.javaTrim()
+        if (text == null || text.isEmpty()) {
+            return fallback
+        }
+        return text
     }
 
     private fun String.javaTrim(): String {

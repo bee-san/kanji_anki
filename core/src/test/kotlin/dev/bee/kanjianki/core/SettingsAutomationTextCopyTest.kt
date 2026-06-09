@@ -20,8 +20,11 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
         assertEquals("On: daily checks", SettingsAutomationTextCopy.autoUpdatePanelStatus(true))
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("not yet"))
+        assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("  "))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
-        assertEquals("Permission granted", SettingsAutomationTextCopy.installPermissionLine(true))
+        assertEquals("Last result: No checks yet", SettingsAutomationTextCopy.autoUpdateLastResultLine(null))
+        assertEquals("App installs allowed", SettingsAutomationTextCopy.installPermissionLine(true))
+        assertEquals("App installs blocked", SettingsAutomationTextCopy.installPermissionLine(false))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
         assertEquals("Allow app installs to update Kani.", SettingsAutomationTextCopy.pendingUpdateFallback())
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
@@ -60,5 +63,6 @@ class SettingsAutomationTextCopyTest {
         assertEquals("21:05", SettingsAutomationTextCopy.reminderTime(21, 5))
         assertEquals("Reminder time: 21:05", SettingsAutomationTextCopy.reminderTimeButtonLabel(21, 5))
         assertEquals("Night 21:05", SettingsAutomationTextCopy.reminderPresetButtonLabel("Night", 21, 5))
+        assertEquals("21:05", SettingsAutomationTextCopy.reminderPresetButtonLabel("  ", 21, 5))
     }
 }
