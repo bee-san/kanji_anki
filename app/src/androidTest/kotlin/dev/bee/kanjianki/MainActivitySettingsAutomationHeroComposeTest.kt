@@ -32,7 +32,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                             SettingsAutomationHeroPillModel("App updates", "Ready to install", 0xFFFF4C76.toInt())
                         ),
                         listOf(
-                            SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())
+                            SettingsAutomationHeroPillModel("Min cards per kanji", "Kiku only", 0xFF7A245D.toInt())
                         )
                     )
                 )
@@ -49,7 +49,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
         composeRule.onNodeWithText("Daily reminder").assertIsDisplayed()
         composeRule.onNodeWithText("Daily sync").assertIsDisplayed()
         composeRule.onNodeWithText("App updates").assertIsDisplayed()
-        composeRule.onNodeWithText("Cards per kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("Min cards per kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku only").assertIsDisplayed()
     }
 }

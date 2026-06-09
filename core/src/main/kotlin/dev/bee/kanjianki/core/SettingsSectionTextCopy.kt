@@ -54,7 +54,7 @@ object SettingsSectionTextCopy {
     fun updatesStatusLabel(): String = localizedText("App updates", "アプリ更新")
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = localizedText("Cards per kanji", "漢字ごとのカード数")
+    fun matchingCardsStatusLabel(): String = localizedText("Min cards per kanji", "漢字ごとの最小カード数")
 
     @JvmStatic
     fun statusPillDescription(label: String, value: String): String =

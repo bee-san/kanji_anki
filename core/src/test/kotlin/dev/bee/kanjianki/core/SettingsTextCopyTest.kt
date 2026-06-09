@@ -131,7 +131,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Cards per kanji",
+                        "Min cards per kanji",
                         "Reminder: Off",
                         "Collapse Study settings",
                         "Expand Automation",
