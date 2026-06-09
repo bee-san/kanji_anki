@@ -2,17 +2,17 @@ package dev.bee.kanjianki.core
 
 object SettingsNoteTypeTextCopy {
     @JvmStatic
-    fun noteTypeFieldsTitle(): String = "Note type setup"
+    fun noteTypeFieldsTitle(): String = "Note type"
 
     @JvmStatic
     fun noteTypeUsingText(modelName: String?): String {
         val displayName = modelName?.trim().orEmpty()
-        return if (displayName.isEmpty()) "No note type selected" else "Using $displayName"
+        return if (displayName.isEmpty()) "Choose a note type" else "Using $displayName"
     }
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. Map fields below."
+        return "Use Kiku or map custom fields."
     }
 
     @JvmStatic
@@ -20,7 +20,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map the Anki fields Kani needs."
+        return "Map the fields Kani needs."
     }
 
     @JvmStatic

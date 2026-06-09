@@ -6,14 +6,14 @@ import org.junit.Test
 class SettingsNoteTypeTextCopyTest {
     @Test
     fun noteTypeHelpersKeepLabelsReadable() {
-        assertEquals("Note type setup", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
+        assertEquals("Note type", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
         assertEquals("Using Custom Mining", SettingsNoteTypeTextCopy.noteTypeUsingText("  Custom Mining  "))
-        assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText(null))
-        assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText("   "))
-        assertEquals("Default: Kiku. Map fields below.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
+        assertEquals("Choose a note type", SettingsNoteTypeTextCopy.noteTypeUsingText(null))
+        assertEquals("Choose a note type", SettingsNoteTypeTextCopy.noteTypeUsingText("   "))
+        assertEquals("Use Kiku or map custom fields.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
         assertEquals("Field mappings", SettingsNoteTypeTextCopy.requiredFieldsTitle())
-        assertEquals("Map the Anki fields Kani needs.", SettingsNoteTypeTextCopy.requiredFieldsBody())
+        assertEquals("Map the fields Kani needs.", SettingsNoteTypeTextCopy.requiredFieldsBody())
         assertEquals("Kanji field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
         assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())
