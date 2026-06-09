@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Set Jiten ranks to import. Default: 100-3000."
+        return "Import ranks 100-3000 by default."
     }
 
     @JvmStatic
@@ -22,7 +22,7 @@ object SettingsReferenceDataTextCopy {
     fun maximumRankLabel(): String = "Least frequent"
 
     @JvmStatic
-    fun saveFrequencyRangeLabel(): String = "Save ranks"
+    fun saveFrequencyRangeLabel(): String = "Save rank range"
 
     @JvmStatic
     fun numericRanksToast(): String = "Enter rank numbers."
@@ -38,17 +38,17 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "Open KANJIDIC2, Jiten, KanjiVG, and font credits."
+        return "View dictionary, stroke, and font credits."
     }
 
     @JvmStatic
-    fun openDataLicensesLabel(): String = "Open data licenses"
+    fun openDataLicensesLabel(): String = "View licenses"
 
     @JvmStatic
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Credits for bundled dictionaries, stroke data, and fonts."
+    fun dataLicensesBody(): String = "Bundled dictionary, stroke, and font credits."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"

@@ -8,14 +8,14 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Jiten rank range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Set Jiten ranks to import. Default: 100-3000.",
+            "Import ranks 100-3000 by default.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Most frequent rank", SettingsReferenceDataTextCopy.minRankLabel())
         assertEquals("Least frequent rank", SettingsReferenceDataTextCopy.maxRankLabel())
         assertEquals("Most frequent", SettingsReferenceDataTextCopy.minimumRankLabel())
         assertEquals("Least frequent", SettingsReferenceDataTextCopy.maximumRankLabel())
-        assertEquals("Save ranks", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
+        assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
         assertEquals("Enter rank numbers.", SettingsReferenceDataTextCopy.numericRanksToast())
         assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
@@ -24,13 +24,13 @@ class SettingsReferenceDataTextCopyTest {
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "Open KANJIDIC2, Jiten, KanjiVG, and font credits.",
+            "View dictionary, stroke, and font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
-        assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
+        assertEquals("View licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Credits for bundled dictionaries, stroke data, and fonts.",
+            "Bundled dictionary, stroke, and font credits.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())
