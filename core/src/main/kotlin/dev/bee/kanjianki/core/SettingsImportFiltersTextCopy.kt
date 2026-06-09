@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Choose which Anki cards to import. Leeches stay excluded."
+        return "Pick sources, save, then sync. Leeches stay excluded."
     }
 
     @JvmStatic
@@ -22,7 +22,7 @@ object SettingsImportFiltersTextCopy {
     fun weakCardsLabel(): String = "Include weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Use browser query"
+    fun browserQueryLabel(): String = "Include browser query results"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
@@ -39,7 +39,7 @@ object SettingsImportFiltersTextCopy {
     fun ankiNoteTagsHint(): String = "tag1, tag2"
 
     @JvmStatic
-    fun ankiNoteTagsLabel(): String = "Note tags"
+    fun ankiNoteTagsLabel(): String = "Tags to include"
 
     @JvmStatic
     fun fsrsDifficultyLabel(): String = "Minimum FSRS difficulty"
@@ -48,7 +48,7 @@ object SettingsImportFiltersTextCopy {
     fun lapsesLabel(): String = "Minimum lapses"
 
     @JvmStatic
-    fun minimumMatchingCardsLabel(): String = "Cards per kanji"
+    fun minimumMatchingCardsLabel(): String = "Matching cards per kanji"
 
     @JvmStatic
     fun saveImportFiltersLabel(): String = "Save import filters"
