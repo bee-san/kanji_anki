@@ -108,9 +108,9 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortDescription(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Higher Anki difficulty first."
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards likely forgotten first."
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Cards missed in Kani first."
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder cards first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Likely forgotten first."
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Missed in Kani first."
             RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances misses, risk, and frequency."
             else -> "Jiten frequency first."
         }
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Set card order. Reviews and repeats stay first."
+        return "Choose the order. Reviews and repeats stay first."
     }
 
     @JvmStatic
