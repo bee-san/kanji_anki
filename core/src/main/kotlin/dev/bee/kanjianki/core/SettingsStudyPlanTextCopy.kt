@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Order the rungs. Keep one enabled."
+        return "Set practice order. Leave one rung always on."
     }
 
     @JvmStatic
@@ -197,7 +197,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep one always-available rung on."
+        return "Leave one rung always on."
     }
 
     @JvmStatic
@@ -209,9 +209,9 @@ object SettingsStudyPlanTextCopy {
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
         val enabled = ladder.isEnabled(rung)
         if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
-            return if (enabled) "Conditional rung on" else "Off: similar kanji skipped"
+            return if (enabled) "On when similar kanji exist" else "Off: similar kanji skipped"
         }
-        return if (enabled) "Always available rung on" else "Off: skipped"
+        return if (enabled) "On by default" else "Off: skipped"
     }
 
     @JvmStatic

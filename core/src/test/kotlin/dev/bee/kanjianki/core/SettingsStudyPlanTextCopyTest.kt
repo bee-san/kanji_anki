@@ -56,13 +56,13 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Order the rungs. Keep one enabled.", SettingsStudyPlanTextCopy.studyLadderBody())
-        assertEquals("Keep one always-available rung on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
+        assertEquals("Set practice order. Leave one rung always on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Leave one rung always on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
         assertEquals("Write kanji turned off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
-            "Always available rung on",
+            "On by default",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults(),
                 RecordsBase.LadderRung.WRITE_KANJI,
@@ -76,7 +76,7 @@ class SettingsStudyPlanTextCopyTest {
             ),
         )
         assertEquals(
-            "Conditional rung on",
+            "On when similar kanji exist",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, true),
                 RecordsBase.LadderRung.SIMILAR_KANJI,
