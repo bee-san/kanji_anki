@@ -4,34 +4,34 @@ import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
     @JvmStatic
-    fun deckLimitsTitle(): String = "New cards per day"
+    fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
     fun deckLimitsBody(): String = "Limit daily new cards."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "New-card limit"
+    fun newCardsPerDayLabel(): String = "Daily new card limit"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save daily limit"
+    fun saveDeckLimitsLabel(): String = "Save daily limits"
 
     @JvmStatic
-    fun dailyWorkloadTitle(): String = "Today's study load"
+    fun dailyWorkloadTitle(): String = "Daily workload"
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Let Kani pick today's count. Due dates stay fixed."
+        return "Kani picks today's workload. Anki due dates stay fixed."
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save max items"
+    fun saveMaximumLabel(): String = "Save workload"
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Choose count yourself"
+    fun manualWorkloadLabel(): String = "Set workload manually"
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Pick today's item count. Due dates stay fixed."
+        return "Set today's workload. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -40,10 +40,10 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun saveWorkloadLabel(): String = "Save study load"
+    fun saveWorkloadLabel(): String = "Save workload"
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Let Kani pick"
+    fun automaticParetoLabel(): String = "Use automatic workload"
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
@@ -68,9 +68,9 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Kani plan: waiting for cards"
+            return "Automatic workload: waiting for cards"
         }
-        return "Kani plan: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        return "Automatic workload: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
     }
 
     private fun workloadStatusLabel(snappedWorkloadPercent: Int): String {
@@ -112,7 +112,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Most-forgotten cards first."
             RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Weaker Kani cards first."
             RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances weakness, risk, misses, and frequency."
-            else -> "Most frequent kanji first."
+            else -> "Jiten frequency first."
         }
     }
 
@@ -152,7 +152,7 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Retention by Jiten rank"
+    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
@@ -209,9 +209,9 @@ object SettingsStudyPlanTextCopy {
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
         val enabled = ladder.isEnabled(rung)
         if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
-            return if (enabled) "On when similar kanji exist" else "Off: similar kanji skipped"
+            return if (enabled) "Conditional rung on" else "Off: similar kanji skipped"
         }
-        return if (enabled) "On: always available" else "Off: skipped"
+        return if (enabled) "Always available rung on" else "Off: skipped"
     }
 
     @JvmStatic

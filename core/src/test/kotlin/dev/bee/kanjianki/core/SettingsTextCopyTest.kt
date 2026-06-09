@@ -9,10 +9,10 @@ import org.junit.Test
 class SettingsTextCopyTest {
     @Test
     fun importSummariesPreserveSourceAndMatchingCopy() {
-        assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("1 card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
-        assertEquals("active + suspended + tagged + weak + browser query; 3 cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Pick at least one source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("3+ cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("1+ card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
+        assertEquals("active + suspended + tagged + weak + browser query; 3+ cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
+        assertEquals("Choose an import source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
@@ -198,27 +198,28 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Prefer suspended cards. Skip leech tags.",
-                        "Active cards",
-                        "Suspended cards",
-                        "Tagged cards",
-                        "Weak cards",
-                        "Use browser query",
+                        "Pick sources, save, then sync. Leeches stay excluded.",
+                        "Include active cards",
+                        "Include suspended cards",
+                        "Include tagged cards",
+                        "Include weak cards",
+                        "Include browser query results",
                         "deck:Japanese tag:kani",
                         "Browser query",
+                        "Examples: is:suspended, rated:31:1, tag:kani.",
                         "tag1, tag2",
-                        "Note tags",
-                        "FSRS difficulty",
-                        "Lapses",
-                        "Min cards per kanji",
-                        "Save filters",
-                        "Add a query or turn it off.",
-                        "Enable at least one source.",
-                        "Saved. Sync to refresh practice.",
+                        "Tags to include",
+                        "Minimum FSRS difficulty",
+                        "Minimum lapses",
+                        "Matching cards per kanji",
+                        "Save import filters",
+                        "Add a browser query or turn it off.",
+                        "Turn on at least one source.",
+                        "Filters saved. Sync to refresh practice.",
                         "Presets",
                         "Preset saved. Sync to refresh practice.",
-                        "Use numeric import thresholds.",
-                        "Difficulty 1-10; lapses 1-100; cards 1-1000.",
+                        "Enter numeric thresholds.",
+                        "Difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Frequency range",
                         "Suspended cards. Default: 100-3000.",
                 ),
@@ -232,6 +233,7 @@ class SettingsTextCopyTest {
                         SettingsTextCopy.browserQueryLabel(),
                         SettingsTextCopy.ankiBrowserQueryHint(),
                         SettingsTextCopy.ankiBrowserQueryLabel(),
+                        SettingsTextCopy.ankiBrowserQueryHelperText(),
                         SettingsTextCopy.ankiNoteTagsHint(),
                         SettingsTextCopy.ankiNoteTagsLabel(),
                         SettingsTextCopy.fsrsDifficultyLabel(),
@@ -345,7 +347,7 @@ class SettingsTextCopyTest {
                 "Kani picks today's workload. Anki due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
-        assertEquals("Save max items", SettingsTextCopy.saveMaximumLabel())
+        assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
                 "Set today's workload. Anki due dates stay fixed.",
@@ -356,17 +358,17 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "New and relearning cards use short steps. Repeats stay practice-only.",
+                "Set repeat waits. Due reviews still move the ladder.",
                 SettingsTextCopy.learningStepsBody()
         )
-        assertEquals("Relearning", SettingsTextCopy.reviewMissesLabel())
-        assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel())
-        assertEquals("Use new-card steps", SettingsTextCopy.sameLearningStepsLabel())
+        assertEquals("After missed reviews", SettingsTextCopy.reviewMissesLabel())
+        assertEquals("Use Anki defaults", SettingsTextCopy.ankiDefaultLabel())
+        assertEquals("Copy new-card steps", SettingsTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early. Learning delays still apply.",
+                "Show soon-due reviews. Learning waits stay fixed.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
@@ -457,8 +459,8 @@ class SettingsTextCopyTest {
                         "Restore defaults",
                         "Ladder restored.",
                         "Keep one always-available rung on.",
-                        "Write kanji off.",
-                        "Write kanji on.",
+                        "Write kanji turned off.",
+                        "Write kanji turned on.",
                         "Ladder movement",
                         "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",
@@ -527,10 +529,10 @@ class SettingsTextCopyTest {
 
     @Test
     fun studyAheadCopyPreservesLabelsAndValidationMessages() {
-        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
+        assertEquals("Minutes ahead (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
         assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
-        assertEquals("Use whole minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
+        assertEquals("Enter whole minutes from 0-1440.", SettingsTextCopy.studyAheadWholeNumberErrorText())
         assertEquals("Use 0-1440 minutes. 0 turns it off.", SettingsTextCopy.studyAheadOutOfRangeErrorText())
     }
 

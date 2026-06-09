@@ -508,10 +508,10 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
         var disabled = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L)
         var enabledNoHistory = LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L)
         var disabledNoHistory = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
-        assertEquals("Run sync first", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
-        assertEquals("Run sync first", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("Starts after first sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertTrue(SettingsTextCopy.autoSyncDetail(
@@ -534,7 +534,7 @@ private fun verifyAutoSyncSummaries(activity: MainActivity) {
                 "",
                 "",
                 ""
-        ).contains("Runs daily"));
+        ).contains("Scheduled daily"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 disabledNoHistory.configured,
                 disabledNoHistory.enabled,
@@ -548,12 +548,12 @@ private fun verifyWorkloadAndReminderSummaries(activity: MainActivity) {
         assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
-        assertEquals("Kani plan: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
+        assertEquals("Automatic workload: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
-                "Kani plan: 2 items today",
+                "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         );
-        assertEquals("Notifications blocked", SettingsTextCopy.reminderStatus(true, true, "21:05"));
+        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
         assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));

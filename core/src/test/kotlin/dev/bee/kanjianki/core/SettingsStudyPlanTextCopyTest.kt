@@ -7,7 +7,7 @@ class SettingsStudyPlanTextCopyTest {
     @Test
     fun workloadAndSortHelpersPreserveFormatting() {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
-        assertEquals("Save max items", SettingsStudyPlanTextCopy.saveMaximumLabel())
+        assertEquals("Save workload", SettingsStudyPlanTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
         assertEquals("Kani picks today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
         assertEquals("Set today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
@@ -16,11 +16,11 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
         assertEquals("More: up to 17 items", SettingsStudyPlanTextCopy.workloadStatusText(80, 20))
         assertEquals("Maximum: 1 item", SettingsStudyPlanTextCopy.maxItemsStatusText(0))
-        assertEquals("Kani plan: waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Automatic workload: waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
-        assertEquals("Most frequent kanji first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals("Jiten frequency first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Harder cards first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
         assertEquals("Most-forgotten cards first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Weaker Kani cards first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
@@ -56,13 +56,13 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Pick practice order. Keep one always-available rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Order the rungs. Keep one enabled.", SettingsStudyPlanTextCopy.studyLadderBody())
         assertEquals("Keep one always-available rung on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
         assertEquals("Write kanji turned off.", SettingsStudyPlanTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true))
         assertEquals(
-            "On: always available",
+            "Always available rung on",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults(),
                 RecordsBase.LadderRung.WRITE_KANJI,
@@ -76,7 +76,7 @@ class SettingsStudyPlanTextCopyTest {
             ),
         )
         assertEquals(
-            "On when similar kanji exist",
+            "Conditional rung on",
             SettingsStudyPlanTextCopy.ladderRungSubtitle(
                 RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, true),
                 RecordsBase.LadderRung.SIMILAR_KANJI,

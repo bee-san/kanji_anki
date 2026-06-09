@@ -52,24 +52,24 @@ object SettingsSummaryTextCopy {
         if (!success) {
             val safeErrorMessage = errorMessage?.takeIf { it.isNotBlank() } ?: localizedText("unknown error", "不明なエラー")
             return if (isJapaneseLocale()) {
-                "同期に失敗: $safeErrorMessage"
+                "同期ブロック: $safeErrorMessage"
             } else {
-                "Sync failed: $safeErrorMessage"
+                "Sync blocked: $safeErrorMessage"
             }
         }
         return if (isJapaneseLocale()) {
             String.format(
                 Locale.ROOT,
-                "%d字を同期、停止%d枚を保存",
-                importedKanji,
+                "%d件の停止カードをアーカイブ、%d件の珍しい漢字を追加",
                 suspendedCards,
+                importedKanji,
             )
         } else {
             String.format(
                 Locale.ROOT,
-                "%d kanji synced; %d suspended saved",
-                importedKanji,
+                "%d suspended cards archived, %d rare kanji added",
                 suspendedCards,
+                importedKanji,
             )
         }
     }
