@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Sync once to start"
+            return "Run sync first"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -61,12 +61,12 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun autoUpdateLastResultLine(lastResult: String?): String {
-        return "Last result: " + displayValue(lastResult, "No checks yet")
+        return "Last result: " + displayValue(lastResult, "not yet")
     }
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return if (canInstall) "App installs allowed" else "App installs blocked"
+        return if (canInstall) "Installs allowed" else "Installs blocked"
     }
 
     @JvmStatic
@@ -76,7 +76,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Allow app installs to update Kani."
+        return "Allow app installs, then install."
     }
 
     @JvmStatic
@@ -96,7 +96,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Sync once to start"
+            return "Run sync first"
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -113,7 +113,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once to start daily sync."
+            return "Run sync once to enable daily sync."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
@@ -162,7 +162,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Pick a time; Android may delay delivery."
+        return "Pick a time. Android may delay it."
     }
 
     @JvmStatic
@@ -188,7 +188,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications for reminders."
+        return "Turn on notifications to get reminders."
     }
 
     @JvmStatic
@@ -196,7 +196,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notifications for reminders."
+        return "Allow notifications to save reminders."
     }
 
     @JvmStatic
