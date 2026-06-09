@@ -4,7 +4,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Notifications off"
+            return "Notifications blocked"
         }
         return if (enabled) displayTime else "Off"
     }
@@ -149,7 +149,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun reminderStatus(enabled: Boolean, blocked: Boolean, displayTime: String?): String {
         if (blocked) {
-            return "Notifications off"
+            return "Notifications blocked"
         }
         if (enabled) {
             return timedStatus("Daily around", "Daily", displayTime)
@@ -162,7 +162,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Choose a time; Android may delay reminders."
+        return "Pick a time; Android may delay delivery."
     }
 
     @JvmStatic
@@ -188,7 +188,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on notifications to get reminders."
+        return "Turn on notifications for reminders."
     }
 
     @JvmStatic
@@ -196,7 +196,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Allow notifications to get reminders."
+        return "Allow notifications for reminders."
     }
 
     @JvmStatic
