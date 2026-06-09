@@ -6,7 +6,7 @@ object SettingsImportFiltersTextCopy {
 
     @JvmStatic
     fun importFiltersBody(): String {
-        return "Choose import sources. Leech tags stay excluded."
+        return "Turn on import sources. Leech tags stay excluded."
     }
 
     @JvmStatic
@@ -57,7 +57,7 @@ object SettingsImportFiltersTextCopy {
     fun browserQueryRequiredToast(): String = "Add a browser query or turn it off."
 
     @JvmStatic
-    fun importSourceRequiredToast(): String = "Choose at least one source."
+    fun importSourceRequiredToast(): String = "Turn on at least one source."
 
     @JvmStatic
     fun importFiltersSavedToast(): String = "Filters saved. Sync to refresh practice."

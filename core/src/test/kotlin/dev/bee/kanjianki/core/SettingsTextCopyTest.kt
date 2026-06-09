@@ -12,7 +12,7 @@ class SettingsTextCopyTest {
         assertEquals("3 cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1 card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3 cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Choose an import source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Turn on an import source", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
@@ -200,7 +200,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Choose import sources. Leech tags stay excluded.",
+                        "Turn on import sources. Leech tags stay excluded.",
                         "Include active cards",
                         "Include suspended cards",
                         "Include tagged cards",
@@ -215,7 +215,7 @@ class SettingsTextCopyTest {
                         "Cards per kanji",
                         "Save import filters",
                         "Add a browser query or turn it off.",
-                        "Choose at least one source.",
+                        "Turn on at least one source.",
                         "Filters saved. Sync to refresh practice.",
                         "Presets",
                         "Preset saved. Sync to refresh practice.",

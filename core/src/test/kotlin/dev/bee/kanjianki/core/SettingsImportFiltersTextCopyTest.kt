@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Choose import sources. Leech tags stay excluded.",
+            "Turn on import sources. Leech tags stay excluded.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Include active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
@@ -29,7 +29,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
         assertEquals("Add a browser query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
-        assertEquals("Choose at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
+        assertEquals("Turn on at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
         assertEquals("Filters saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
         assertEquals("Preset saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importPresetSavedToast())

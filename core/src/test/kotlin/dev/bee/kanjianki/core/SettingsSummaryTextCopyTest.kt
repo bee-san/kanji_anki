@@ -11,7 +11,7 @@ class SettingsSummaryTextCopyTest {
         assertEquals("3 cards per kanji", SettingsSummaryTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1 card per kanji", SettingsSummaryTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3 cards per kanji", SettingsSummaryTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Choose an import source", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Turn on an import source", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertEquals("Sync failed: No provider", SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0))
         assertEquals("Sync failed: unknown error", SettingsSummaryTextCopy.syncStatusHeadline(false, null, 0, 0))
         assertEquals("2 kanji added; 4 suspended archived", SettingsSummaryTextCopy.syncStatusHeadline(true, "ignored", 4, 2))
@@ -27,7 +27,7 @@ class SettingsSummaryTextCopyTest {
 
             assertEquals("漢字ごとに3枚", SettingsSummaryTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
             assertEquals("有効＋停止＋タグ付き＋弱い＋ブラウザ検索、漢字ごとに3枚", SettingsSummaryTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-            assertEquals("インポート元を選んでください", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+            assertEquals("インポート元を有効にしてください", SettingsSummaryTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
             assertEquals("同期に失敗: No provider", SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0))
             assertEquals("同期に失敗: 不明なエラー", SettingsSummaryTextCopy.syncStatusHeadline(false, null, 0, 0))
             assertEquals("2字を追加、4枚の停止カードを保存", SettingsSummaryTextCopy.syncStatusHeadline(true, "ignored", 4, 2))
