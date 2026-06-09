@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's count. Review due dates stay fixed."
+        return "Kani sets today's count. Due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Choose today's count. Review due dates stay fixed."
+        return "Pick today's count. Due dates stay fixed."
     }
 
     @JvmStatic
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose new-card order. Due reviews and repeats stay first."
+        return "New cards only; due reviews and repeats stay first."
     }
 
     @JvmStatic
@@ -148,7 +148,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "FSRS stays local. Review due dates stay unchanged."
+        return "FSRS stays local; due dates stay unchanged."
     }
 
     @JvmStatic
@@ -156,7 +156,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "One range per line, e.g. 1-500=95%. Other ranks use the global target."
+        return "One range per line: 1-500=95%. Other ranks use the global target."
     }
 
     @JvmStatic
@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Choose practice order. Keep at least one rung on."
+        return "Choose practice order. Keep at least one rung enabled."
     }
 
     @JvmStatic

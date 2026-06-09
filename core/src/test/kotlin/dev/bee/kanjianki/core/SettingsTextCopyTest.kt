@@ -344,13 +344,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's count. Review due dates stay fixed.",
+                "Kani sets today's count. Due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save limit", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's count. Review due dates stay fixed.",
+                "Pick today's count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -394,7 +394,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose new-card order. Due reviews and repeats stay first.",
+                "New cards only; due reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -409,9 +409,9 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "Review retention",
-                        "FSRS stays local. Review due dates stay unchanged.",
+                        "FSRS stays local; due dates stay unchanged.",
                         "Retention by Jiten rank",
-                        "One range per line, e.g. 1-500=95%. Other ranks use the global target.",
+                        "One range per line: 1-500=95%. Other ranks use the global target.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -425,7 +425,7 @@ class SettingsTextCopyTest {
                         "On: always available",
                         "On when similar kanji exist",
                         "Study ladder",
-                        "Choose practice order. Keep at least one rung on.",
+                        "Choose practice order. Keep at least one rung enabled.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
