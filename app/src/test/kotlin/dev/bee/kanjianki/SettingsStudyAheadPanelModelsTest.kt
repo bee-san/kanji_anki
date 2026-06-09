@@ -11,9 +11,10 @@ class SettingsStudyAheadPanelModelsTest {
         val model = SettingsStudyAheadPanelModels.create(30) { minutesText = it }
 
         assertEquals("Study ahead", model.title)
-        assertEquals("Minutes (0-1440)", model.minutesLabel)
+        assertEquals("Include reviews before due. Learning steps keep their waits.", model.body)
+        assertEquals("Minutes ahead (0-1440)", model.minutesLabel)
         assertEquals("30", model.initialMinutesText)
-        assertEquals("Save study ahead", model.saveLabel)
+        assertEquals("Save study-ahead window", model.saveLabel)
 
         model.onSave.save("45")
         assertEquals("45", minutesText)
