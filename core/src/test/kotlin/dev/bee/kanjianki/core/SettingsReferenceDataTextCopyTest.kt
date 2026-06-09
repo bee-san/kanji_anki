@@ -24,13 +24,13 @@ class SettingsReferenceDataTextCopyTest {
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
         assertEquals(
-            "Review KANJIDIC2, Jiten, KanjiVG, and font credits.",
+            "Open KANJIDIC2, Jiten, KanjiVG, and font credits.",
             SettingsReferenceDataTextCopy.offlineDataLicensesBody(),
         )
         assertEquals("Open data licenses", SettingsReferenceDataTextCopy.openDataLicensesLabel())
         assertEquals("Data licenses", SettingsReferenceDataTextCopy.dataLicensesTitle())
         assertEquals(
-            "Bundled dictionaries, stroke data, and fonts.",
+            "Credits for bundled dictionaries, stroke data, and fonts.",
             SettingsReferenceDataTextCopy.dataLicensesBody(),
         )
         assertEquals("Dictionary data", SettingsReferenceDataTextCopy.dictionaryDataTitle())
