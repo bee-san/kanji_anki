@@ -368,10 +368,10 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Show due reviews early. Learning steps still wait.",
+                "Include reviews before due. Learning steps keep their waits.",
                 SettingsTextCopy.studyAheadBody()
         )
-        assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel())
+        assertEquals("Save study-ahead window", SettingsTextCopy.saveStudyAheadLabel())
         assertEquals("Study ahead saved.", SettingsTextCopy.studyAheadSavedToast())
     }
 
@@ -530,11 +530,11 @@ class SettingsTextCopyTest {
 
     @Test
     fun studyAheadCopyPreservesLabelsAndValidationMessages() {
-        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
+        assertEquals("Minutes ahead (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
         assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
-        assertEquals("Use whole minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())
-        assertEquals("0 turns it off. Max 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
+        assertEquals("Use whole minutes from 0-1440.", SettingsTextCopy.studyAheadWholeNumberErrorText())
+        assertEquals("Use 0 to turn off. Max 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText())
     }
 
     private fun settings(
