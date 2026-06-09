@@ -36,6 +36,11 @@ fun ReferenceDataLinkPanel(model: SettingsReferenceDataLinkModel) {
             fontSize = 23.sp,
             fontWeight = FontWeight.Bold
         )
+        Text(
+            text = model.body,
+            color = Muted,
+            fontSize = 15.sp
+        )
         SettingsSecondaryButton(
             label = model.actionLabel,
             onClick = { model.onAction.run() }
@@ -73,6 +78,11 @@ fun DataSourcesIntro(model: SettingsReferenceDataIntroModel) {
             color = Ink,
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = model.body,
+            color = Muted,
+            fontSize = 15.sp
         )
     }
 }

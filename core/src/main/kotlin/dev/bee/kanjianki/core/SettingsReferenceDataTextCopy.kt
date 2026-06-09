@@ -38,7 +38,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun offlineDataLicensesBody(): String {
-        return "Review KANJIDIC2, Jiten, KanjiVG, and font credits."
+        return "Open KANJIDIC2, Jiten, KanjiVG, and font credits."
     }
 
     @JvmStatic
@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Bundled dictionaries, stroke data, and fonts."
+    fun dataLicensesBody(): String = "Credits for bundled dictionaries, stroke data, and fonts."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"
