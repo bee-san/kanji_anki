@@ -42,7 +42,7 @@ internal fun settingsUpdatePanelModel(
         },
         pendingMessageLine = if (status.hasPendingUpdate()) {
             if (status.pendingMessage.isEmpty()) {
-                SettingsTextCopy.pendingUpdateFallback()
+                SettingsTextCopy.pendingUpdateFallback(canInstallUpdates)
             } else {
                 status.pendingMessage
             }

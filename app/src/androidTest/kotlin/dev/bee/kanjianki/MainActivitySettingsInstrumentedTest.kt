@@ -270,6 +270,10 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.automaticUpdatesTitle()
                     )
                     assertFalse(missingPermission.canInstallUpdates)
+                    assertEquals(
+                        SettingsTextCopy.pendingUpdateFallback(false),
+                        missingPermission.pendingMessageLine
+                    )
 
                     MainActivityRuntimeOverrides.setInstallPermission(true)
                     val readyUpdate = settingsUpdatePanelModel(
@@ -277,6 +281,10 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.automaticUpdatesTitle()
                     )
                     assertTrue(readyUpdate.canInstallUpdates)
+                    assertEquals(
+                        SettingsTextCopy.pendingUpdateFallback(true),
+                        readyUpdate.pendingMessageLine
+                    )
 
                     activity.store.saveAutoUpdateEnabled(false)
                     val updateOff = settingsUpdatePanelModel(

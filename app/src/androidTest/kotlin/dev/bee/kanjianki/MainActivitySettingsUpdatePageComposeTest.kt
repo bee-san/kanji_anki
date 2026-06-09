@@ -41,7 +41,7 @@ class MainActivitySettingsUpdatePageComposeTest {
                         installPermissionColor = ComposeColor(0xFF00AEB5),
                         hasPendingUpdate = true,
                         pendingVersionLine = SettingsTextCopy.verifiedApkReadyLine("v0.4.34"),
-                        pendingMessageLine = SettingsTextCopy.pendingUpdateFallback(),
+                        pendingMessageLine = SettingsTextCopy.pendingUpdateFallback(true),
                         canInstallUpdates = true,
                         onInstallVerifiedUpdate = { installClicked = true },
                         onOpenInstallSettings = {},
@@ -61,7 +61,7 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateLastResultLine("APK verified. Android installer started.")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installPermissionLine(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.verifiedApkReadyLine("v0.4.34")).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).assertIsDisplayed()

@@ -76,7 +76,16 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Android needs permission to install updates."
+        return "Pick the next update action."
+    }
+
+    @JvmStatic
+    fun pendingUpdateFallback(canInstall: Boolean): String {
+        return if (canInstall) {
+            "Tap Install verified update to continue."
+        } else {
+            "Allow app installs to continue."
+        }
     }
 
     @JvmStatic
