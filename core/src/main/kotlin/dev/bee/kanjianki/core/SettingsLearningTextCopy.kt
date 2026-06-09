@@ -6,11 +6,11 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "Set wait times. Due reviews still move the ladder."
+        return "Set waits for new and missed cards. Due reviews move the ladder."
     }
 
     @JvmStatic
-    fun reviewMissesLabel(): String = "After missed reviews"
+    fun reviewMissesLabel(): String = "Missed reviews"
 
     @JvmStatic
     fun ankiDefaultLabel(): String = "Use Anki defaults"
