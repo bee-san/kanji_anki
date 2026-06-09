@@ -97,10 +97,10 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortLabel(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty"
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk"
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness"
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balanced priority"
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Hardest first"
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Forgetting risk"
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani misses"
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balanced mix"
             else -> "Frequency"
         }
     }
@@ -108,10 +108,10 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun newCardSortDescription(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder cards first."
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Most-forgotten cards first."
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Weaker Kani cards first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances weakness, risk, misses, and frequency."
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Higher Anki difficulty first."
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards likely to be forgotten first."
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Cards missed in Kani first."
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances misses, forgetting risk, and frequency."
             else -> "Jiten frequency first."
         }
     }
