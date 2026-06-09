@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Review soon-due cards. Learning waits stay fixed."
+        return "Choose how early reviews appear. Learning waits stay fixed."
     }
 
     @JvmStatic
@@ -19,7 +19,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadMinutesLabel(): String {
-        return String.format(Locale.ROOT, "Minutes ahead (%s)", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Look-ahead minutes (%s)", studyAheadMinutesRange())
     }
 
     @JvmStatic
