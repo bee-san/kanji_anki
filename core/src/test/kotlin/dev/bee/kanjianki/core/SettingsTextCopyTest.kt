@@ -264,7 +264,7 @@ class SettingsTextCopyTest {
                         "Save rank range",
                         "Use numbers for ranks.",
                         "Use ranks 1-20000.",
-                        "Range saved. Sync to refresh practice.",
+                        "Saved. Sync to refresh.",
                         "Offline data licenses",
                         "Dictionary, stroke, and font credits.",
                         "Open data licenses",

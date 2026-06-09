@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Range saved. Sync to refresh practice."
+    fun frequencyRangeSavedToast(): String = "Saved. Sync to refresh."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"

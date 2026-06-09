@@ -19,7 +19,7 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Use numbers for ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
         assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Range saved. Sync to refresh practice.",
+            "Saved. Sync to refresh.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
