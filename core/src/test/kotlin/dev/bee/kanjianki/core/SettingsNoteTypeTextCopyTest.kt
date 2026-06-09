@@ -22,6 +22,6 @@ class SettingsNoteTypeTextCopyTest {
         assertEquals("Save note type", SettingsNoteTypeTextCopy.saveNoteTypeLabel())
         assertEquals("Enter a note type name.", SettingsNoteTypeTextCopy.noteTypeRequiredToast())
         assertEquals("Choose the kanji field.", SettingsNoteTypeTextCopy.expressionFieldRequiredToast())
-        assertEquals("Saved. Sync to rebuild practice.", SettingsNoteTypeTextCopy.noteTypeSavedToast())
+        assertEquals("Saved. Sync to rebuild cards.", SettingsNoteTypeTextCopy.noteTypeSavedToast())
     }
 }

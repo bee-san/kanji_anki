@@ -221,7 +221,7 @@ class SettingsTextCopyTest {
                         "Enter numeric thresholds.",
                         "Difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Frequency range",
-                        "Suspended cards. Default: 100-3000.",
+                        "Suspended cards: 100-3000.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -260,7 +260,7 @@ class SettingsTextCopyTest {
                         "Save frequency range",
                         "Enter numeric ranks.",
                         "Ranks must be 1-20000.",
-                        "Range saved. Sync to rebuild practice.",
+                        "Range saved. Sync to rebuild cards.",
                         "Offline data licenses",
                         "KANJIDIC2, Jiten, KanjiVG, font credits.",
                         "Open data licenses",
@@ -311,7 +311,7 @@ class SettingsTextCopyTest {
                         "Save note type",
                         "Enter a note type name.",
                         "Choose the kanji field.",
-                        "Saved. Sync to rebuild practice."
+                        "Saved. Sync to rebuild cards."
                 ),
                 listOf(
                         SettingsTextCopy.requiredFieldsBody(),

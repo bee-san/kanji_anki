@@ -54,5 +54,5 @@ object SettingsNoteTypeTextCopy {
     fun expressionFieldRequiredToast(): String = "Choose the kanji field."
 
     @JvmStatic
-    fun noteTypeSavedToast(): String = "Saved. Sync to rebuild practice."
+    fun noteTypeSavedToast(): String = "Saved. Sync to rebuild cards."
 }
