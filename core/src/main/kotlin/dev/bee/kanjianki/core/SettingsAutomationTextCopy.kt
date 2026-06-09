@@ -40,7 +40,7 @@ object SettingsAutomationTextCopy {
     fun updatePageBody(versionName: String?): String {
         val version = versionText(versionName)
         val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
-        return "$versionLine. Checks releases and verifies the APK."
+        return "$versionLine. Check for verified updates."
     }
 
     @JvmStatic
@@ -66,7 +66,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return if (canInstall) "Permission granted" else "Permission missing"
+        return if (canInstall) "App installs allowed" else "App installs need permission"
     }
 
     @JvmStatic
