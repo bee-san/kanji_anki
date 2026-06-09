@@ -83,8 +83,8 @@ class SettingsTextCopyTest {
                         "Off",
                         "Last check: not yet",
                         "Last result: none",
-                        "Permission granted",
-                        "Permission missing",
+                        "App installs allowed",
+                        "App installs blocked",
                         "Ready to install: 0.4.33",
                         "Allow app installs to update Kani.",
                         "Install verified update",
@@ -521,6 +521,7 @@ class SettingsTextCopyTest {
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5))
         assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5))
+        assertEquals("21:05", SettingsTextCopy.reminderPresetButtonLabel(null, 21, 5))
         assertEquals("Daily sync", SettingsTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel())
