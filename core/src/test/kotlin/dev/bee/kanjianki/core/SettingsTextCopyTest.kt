@@ -348,7 +348,7 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani sets today's count. Anki due dates stay fixed.",
+                "Kani picks today's count. Anki due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
@@ -415,7 +415,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
-                        "One range per line, e.g. 1-500=95%. Others use global retention.",
+                        "One range per line, e.g. 1-500=95%. Everything else uses global retention.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -429,7 +429,7 @@ class SettingsTextCopyTest {
                         "Included in study",
                         "Included when similar kanji exist",
                         "Study ladder",
-                        "Set practice order. Leave one rung always on.",
+                        "Set practice order. Leave at least one rung on.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
