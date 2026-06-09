@@ -8,32 +8,32 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Choose sources. Leech tags stay out.",
+            "Choose import sources. Leech tags stay excluded.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
-        assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
-        assertEquals("Suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
-        assertEquals("Tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
-        assertEquals("Weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Use browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Include active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
+        assertEquals("Include suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
+        assertEquals("Include tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
+        assertEquals("Include weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
+        assertEquals("Include browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Browser query", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(
-            "Examples: is:suspended, rated:31:1, tag:kani.",
+            "Try is:suspended, rated:31:1, or tag:kani.",
             SettingsImportFiltersTextCopy.ankiBrowserQueryHelperText(),
         )
         assertEquals("tag1, tag2", SettingsImportFiltersTextCopy.ankiNoteTagsHint())
         assertEquals("Note tags", SettingsImportFiltersTextCopy.ankiNoteTagsLabel())
-        assertEquals("FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel())
-        assertEquals("Lapses", SettingsImportFiltersTextCopy.lapsesLabel())
-        assertEquals("Min cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
-        assertEquals("Save filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
-        assertEquals("Add a query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
-        assertEquals("Enable at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
-        assertEquals("Saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
+        assertEquals("Minimum FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel())
+        assertEquals("Minimum lapses", SettingsImportFiltersTextCopy.lapsesLabel())
+        assertEquals("Cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
+        assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
+        assertEquals("Add a browser query or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
+        assertEquals("Choose at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
+        assertEquals("Filters saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
         assertEquals("Preset saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importPresetSavedToast())
-        assertEquals("Use numeric import thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
-        assertEquals("Difficulty 1-10; lapses 1-100; cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
+        assertEquals("Enter numeric thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
+        assertEquals("Difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
     }
 }
