@@ -30,7 +30,7 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataBody(): String = localizedText("Dictionaries, strokes, fonts, credits.", "辞書、ストローク、フォント、クレジット。")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = localizedText("Settings overview", "設定の概要")
+    fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
 
     @JvmStatic
     fun settingsHeroBody(): String = localizedText("Pick a section.", "セクションを選んでください。")

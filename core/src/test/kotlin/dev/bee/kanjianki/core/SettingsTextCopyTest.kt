@@ -94,7 +94,7 @@ class SettingsTextCopyTest {
                         "Turn off updates",
                         "Turn on updates",
                         "Back to settings",
-                        "Settings overview",
+                        "Overview",
                         "Pick a section.",
                         "Note type",
                         "Import filters",

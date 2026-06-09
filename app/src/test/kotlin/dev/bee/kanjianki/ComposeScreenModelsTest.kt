@@ -1113,7 +1113,7 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings overview", model.cockpitLabel)
+        assertEquals("Overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
         assertEquals("Note type", model.rows[0][0].label)
