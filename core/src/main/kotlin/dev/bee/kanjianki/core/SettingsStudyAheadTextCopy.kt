@@ -8,7 +8,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Show soon-due reviews. Learning waits stay fixed."
+        return "Show due reviews early. Learning delays still apply."
     }
 
     @JvmStatic
@@ -39,11 +39,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadOutOfRangeErrorText(): String {
-        return String.format(
-            Locale.ROOT,
-            "Enter 0-%d minutes. 0 turns it off.",
-            SettingsInputRules.MAX_STUDY_AHEAD_MINUTES,
-        )
+        return String.format(Locale.ROOT, "Use %s minutes. 0 turns it off.", studyAheadMinutesRange())
     }
 
     @JvmStatic
