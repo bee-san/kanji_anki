@@ -458,8 +458,8 @@ class SettingsTextCopyTest {
                 listOf(
                         "On",
                         "Off",
-                        "Up",
-                        "Down",
+                        "Move up",
+                        "Move down",
                         "Restore defaults",
                         "Ladder restored.",
                         "Leave one rung always on.",

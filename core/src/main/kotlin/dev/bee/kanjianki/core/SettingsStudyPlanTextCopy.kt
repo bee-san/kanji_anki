@@ -184,10 +184,10 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun moveUpLabel(): String = "Up"
+    fun moveUpLabel(): String = "Move up"
 
     @JvmStatic
-    fun moveDownLabel(): String = "Down"
+    fun moveDownLabel(): String = "Move down"
 
     @JvmStatic
     fun restoreDefaultLadderLabel(): String = "Restore defaults"
