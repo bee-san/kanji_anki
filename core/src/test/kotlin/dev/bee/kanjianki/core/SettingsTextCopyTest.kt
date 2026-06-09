@@ -76,15 +76,15 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "App updates",
-                        "Version 1.2.3. Checks releases and verifies the APK.",
+                        "Version 1.2.3. Check for verified updates.",
                         "Automatic updates",
                         "Check for updates",
                         "On: daily checks",
                         "Off",
                         "Last check: not yet",
                         "Last result: none",
-                        "Permission granted",
-                        "Permission missing",
+                        "App installs allowed",
+                        "App installs need permission",
                         "Ready to install: 0.4.33",
                         "Pick the next update action.",
                         "Tap Install verified update to continue.",

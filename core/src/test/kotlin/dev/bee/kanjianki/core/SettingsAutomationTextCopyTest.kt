@@ -10,11 +10,11 @@ class SettingsAutomationTextCopyTest {
         assertEquals("0.4.33", SettingsAutomationTextCopy.versionText("v0.4.33"))
         assertEquals("App updates", SettingsAutomationTextCopy.updatePageTitle())
         assertEquals(
-            "Version 1.2.3. Checks releases and verifies the APK.",
+            "Version 1.2.3. Check for verified updates.",
             SettingsAutomationTextCopy.updatePageBody("1.2.3"),
         )
         assertEquals(
-            "Version unknown. Checks releases and verifies the APK.",
+            "Version unknown. Check for verified updates.",
             SettingsAutomationTextCopy.updatePageBody(null),
         )
         assertEquals("Automatic updates", SettingsAutomationTextCopy.automaticUpdatesTitle())
@@ -23,8 +23,8 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("  "))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
         assertEquals("Last result: not yet", SettingsAutomationTextCopy.autoUpdateLastResultLine(null))
-        assertEquals("Permission granted", SettingsAutomationTextCopy.installPermissionLine(true))
-        assertEquals("Permission missing", SettingsAutomationTextCopy.installPermissionLine(false))
+        assertEquals("App installs allowed", SettingsAutomationTextCopy.installPermissionLine(true))
+        assertEquals("App installs need permission", SettingsAutomationTextCopy.installPermissionLine(false))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
         assertEquals("Pick the next update action.", SettingsAutomationTextCopy.pendingUpdateFallback())
         assertEquals("Tap Install verified update to continue.", SettingsAutomationTextCopy.pendingUpdateFallback(true))
