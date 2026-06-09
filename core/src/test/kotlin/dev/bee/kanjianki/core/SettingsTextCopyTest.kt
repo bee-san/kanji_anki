@@ -205,7 +205,7 @@ class SettingsTextCopyTest {
                         "Include suspended cards",
                         "Include tagged cards",
                         "Include weak cards",
-                        "Include browser query",
+                        "Use browser query",
                         "deck:Japanese tag:kani",
                         "Browser query",
                         "tag1, tag2",

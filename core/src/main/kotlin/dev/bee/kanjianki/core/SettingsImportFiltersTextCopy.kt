@@ -22,7 +22,7 @@ object SettingsImportFiltersTextCopy {
     fun weakCardsLabel(): String = "Include weak cards"
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Include browser query"
+    fun browserQueryLabel(): String = "Use browser query"
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
