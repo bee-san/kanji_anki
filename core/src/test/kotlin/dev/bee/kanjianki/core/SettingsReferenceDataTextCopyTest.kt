@@ -8,18 +8,18 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Jiten rank range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Import kanji within these Jiten ranks. Default: 100-3000.",
+            "Set Jiten ranks to import. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Most frequent rank", SettingsReferenceDataTextCopy.minRankLabel())
         assertEquals("Least frequent rank", SettingsReferenceDataTextCopy.maxRankLabel())
         assertEquals("Most frequent", SettingsReferenceDataTextCopy.minimumRankLabel())
         assertEquals("Least frequent", SettingsReferenceDataTextCopy.maximumRankLabel())
-        assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
+        assertEquals("Save ranks", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
         assertEquals("Enter rank numbers.", SettingsReferenceDataTextCopy.numericRanksToast())
         assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Rank range saved. Sync to refresh practice.",
+            "Ranks saved. Sync to refresh practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())

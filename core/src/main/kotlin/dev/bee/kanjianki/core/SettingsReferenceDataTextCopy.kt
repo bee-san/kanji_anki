@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Import kanji within these Jiten ranks. Default: 100-3000."
+        return "Set Jiten ranks to import. Default: 100-3000."
     }
 
     @JvmStatic
@@ -22,7 +22,7 @@ object SettingsReferenceDataTextCopy {
     fun maximumRankLabel(): String = "Least frequent"
 
     @JvmStatic
-    fun saveFrequencyRangeLabel(): String = "Save rank range"
+    fun saveFrequencyRangeLabel(): String = "Save ranks"
 
     @JvmStatic
     fun numericRanksToast(): String = "Enter rank numbers."
@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Rank range saved. Sync to refresh practice."
+    fun frequencyRangeSavedToast(): String = "Ranks saved. Sync to refresh practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
