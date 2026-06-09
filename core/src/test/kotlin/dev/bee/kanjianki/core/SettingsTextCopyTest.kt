@@ -192,7 +192,7 @@ class SettingsTextCopyTest {
 
         assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("notifications"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("notifications"))
-        assertEquals("Keep one rung enabled.", SettingsTextCopy.keepAlwaysAvailableRungToast())
+        assertEquals("Keep at least one rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast())
     }
 
     @Test
@@ -425,7 +425,7 @@ class SettingsTextCopyTest {
                         "On: always available",
                         "On when similar kanji exist",
                         "Study ladder",
-                        "Order practice types. Keep one enabled.",
+                        "Choose practice order. Keep at least one rung on.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -458,9 +458,9 @@ class SettingsTextCopyTest {
                         "Down",
                         "Restore defaults",
                         "Ladder restored.",
-                        "Keep one rung enabled.",
-                        "Write kanji off.",
-                        "Write kanji on.",
+                        "Keep at least one rung on.",
+                        "Write kanji turned off.",
+                        "Write kanji turned on.",
                         "Ladder movement",
                         "Due reviews move cards. Repeats stay practice-only.",
                         "Days to move up",

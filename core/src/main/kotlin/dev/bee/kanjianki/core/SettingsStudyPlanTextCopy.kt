@@ -175,7 +175,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Order practice types. Keep one enabled."
+        return "Choose practice order. Keep at least one rung on."
     }
 
     @JvmStatic
@@ -197,12 +197,12 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep one rung enabled."
+        return "Keep at least one rung on."
     }
 
     @JvmStatic
     fun ladderRungToggleToast(rung: RecordsBase.LadderRung, wasEnabled: Boolean): String {
-        return settingsLadderRungLabel(rung) + if (wasEnabled) " off." else " on."
+        return settingsLadderRungLabel(rung) + if (wasEnabled) " turned off." else " turned on."
     }
 
     @JvmStatic
