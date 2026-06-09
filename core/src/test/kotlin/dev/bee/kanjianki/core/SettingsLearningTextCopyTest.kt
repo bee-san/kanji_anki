@@ -8,12 +8,12 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "Set repeat waits; practice does not move the ladder.",
+            "Set repeat waits. Due reviews still move the ladder.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
-        assertEquals("Missed reviews", SettingsLearningTextCopy.reviewMissesLabel())
-        assertEquals("Anki default", SettingsLearningTextCopy.ankiDefaultLabel())
-        assertEquals("Match new-card steps", SettingsLearningTextCopy.sameLearningStepsLabel())
+        assertEquals("After missed reviews", SettingsLearningTextCopy.reviewMissesLabel())
+        assertEquals("Use Anki defaults", SettingsLearningTextCopy.ankiDefaultLabel())
+        assertEquals("Copy new-card steps", SettingsLearningTextCopy.sameLearningStepsLabel())
         assertEquals("Save learning steps", SettingsLearningTextCopy.saveLearningStepsLabel())
         assertEquals("Steps saved.", SettingsLearningTextCopy.learningStepsSavedToast())
     }
