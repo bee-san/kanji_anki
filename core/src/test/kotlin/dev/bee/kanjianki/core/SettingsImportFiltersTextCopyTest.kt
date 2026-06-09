@@ -8,7 +8,7 @@ class SettingsImportFiltersTextCopyTest {
     fun importFilterHelpersPreserveFormatting() {
         assertEquals("Import filters", SettingsImportFiltersTextCopy.importFiltersTitle())
         assertEquals(
-            "Pick sources, save, then sync to refresh practice.",
+            "Pick sources, save, sync.",
             SettingsImportFiltersTextCopy.importFiltersBody(),
         )
         assertEquals("Active cards", SettingsImportFiltersTextCopy.activeCardsLabel())
@@ -28,12 +28,12 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Minimum lapses", SettingsImportFiltersTextCopy.lapsesLabel())
         assertEquals("Matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
         assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
-        assertEquals("Add an Anki search or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
+        assertEquals("Add a search or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Turn on at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
-        assertEquals("Saved. Sync to refresh practice.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
+        assertEquals("Saved. Sync to refresh.", SettingsImportFiltersTextCopy.importFiltersSavedToast())
         assertEquals("Presets", SettingsImportFiltersTextCopy.presetsTitle())
         assertEquals("Preset saved. Sync to refresh.", SettingsImportFiltersTextCopy.importPresetSavedToast())
-        assertEquals("Use numbers for thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
-        assertEquals("Use difficulty 1-10, lapses 1-100, cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
+        assertEquals("Use numeric thresholds.", SettingsImportFiltersTextCopy.numericImportThresholdsToast())
+        assertEquals("Difficulty 1-10. Lapses 1-100. Cards 1-1000.", SettingsImportFiltersTextCopy.importThresholdRangeToast())
     }
 }

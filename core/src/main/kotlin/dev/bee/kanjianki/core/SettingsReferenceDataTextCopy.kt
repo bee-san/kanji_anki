@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Set Jiten ranks for suspended cards, then sync."
+        return "Set suspended-card ranks, then sync."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsReferenceDataTextCopy {
     fun rankRangeToast(): String = "Use ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Range saved. Sync to refresh practice."
+    fun frequencyRangeSavedToast(): String = "Saved. Sync to refresh."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
@@ -48,7 +48,7 @@ object SettingsReferenceDataTextCopy {
     fun dataLicensesTitle(): String = "Data licenses"
 
     @JvmStatic
-    fun dataLicensesBody(): String = "Dictionary, stroke, and font attributions."
+    fun dataLicensesBody(): String = "Dictionary, stroke, and font credits."
 
     @JvmStatic
     fun dictionaryDataTitle(): String = "Dictionary data"

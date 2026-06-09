@@ -15,7 +15,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Use Kiku, or map your own Anki fields."
+        return "Use Kiku or map your own Anki fields."
     }
 
     @JvmStatic
@@ -23,7 +23,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Tell Kani which Anki fields to read."
+        return "Tell Kani which fields to read."
     }
 
     @JvmStatic

@@ -76,7 +76,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "App updates",
-                        "Version 1.2.3. Check for verified updates.",
+                        "Version 1.2.3. Check updates.",
                         "Automatic updates",
                         "Check for updates",
                         "Daily checks enabled",
@@ -86,7 +86,7 @@ class SettingsTextCopyTest {
                         "App installs allowed",
                         "App installs need permission",
                         "Ready to install: 0.4.33",
-                        "Choose the next update action.",
+                        "Pick the next update action.",
                         "Install verified update to continue.",
                         "Allow app installs to continue.",
                         "Install verified update",
@@ -202,7 +202,7 @@ class SettingsTextCopyTest {
         assertEquals(
                 listOf(
                         "Import filters",
-                        "Pick sources, save, then sync to refresh practice.",
+                        "Pick sources, save, sync.",
                         "Active cards",
                         "Suspended cards",
                         "Tagged cards",
@@ -217,15 +217,15 @@ class SettingsTextCopyTest {
                         "Minimum lapses",
                         "Matching cards per kanji",
                         "Save import filters",
-                        "Add an Anki search or turn it off.",
+                        "Add a search or turn it off.",
                         "Turn on at least one source.",
-                        "Saved. Sync to refresh practice.",
+                        "Saved. Sync to refresh.",
                         "Presets",
                         "Preset saved. Sync to refresh.",
-                        "Use numbers for thresholds.",
-                        "Use difficulty 1-10, lapses 1-100, cards 1-1000.",
+                        "Use numeric thresholds.",
+                        "Difficulty 1-10. Lapses 1-100. Cards 1-1000.",
                         "Suspended card range",
-                        "Set Jiten ranks for suspended cards, then sync.",
+                        "Set suspended-card ranks, then sync.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),
@@ -264,18 +264,18 @@ class SettingsTextCopyTest {
                         "Save rank range",
                         "Use numbers for ranks.",
                         "Use ranks 1-20000.",
-                        "Range saved. Sync to refresh practice.",
+                        "Saved. Sync to refresh.",
                         "Offline data licenses",
                         "Dictionary, stroke, and font credits.",
                         "Open data licenses",
                         "Data licenses",
-                        "Dictionary, stroke, and font attributions.",
+                        "Dictionary, stroke, and font credits.",
                         "Dictionary data",
                         "Stroke data",
                         "Fonts",
                         "Note type",
                         "Using Kiku",
-                        "Use Kiku, or map your own Anki fields.",
+                        "Use Kiku or map your own Anki fields.",
                         "Fields"
                 ),
                 listOf(
@@ -303,7 +303,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Tell Kani which Anki fields to read.",
+                        "Tell Kani which fields to read.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -348,13 +348,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani picks today's count. Anki due dates stay fixed.",
+                "Kani sets today's count. Due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's count. Anki due dates stay fixed.",
+                "Set today's count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -362,7 +362,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "Set waits for new and missed cards. Due reviews move the ladder.",
+                "Set new and missed waits. Due reviews move the ladder.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Missed reviews", SettingsTextCopy.reviewMissesLabel())
@@ -388,17 +388,17 @@ class SettingsTextCopyTest {
         assertEquals("Balanced mix", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
         assertEquals("Jiten frequency first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Higher Anki difficulty first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
-        assertEquals("Cards likely to be forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
+        assertEquals("Cards likely forgotten first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Cards missed in Kani first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals(
-                "Balances misses, forgetting risk, and frequency.",
+                "Balances misses, risk, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Pick new-card order. Due reviews and repeats stay first.",
+                "Set card order. Reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -415,7 +415,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
-                        "One range per line, e.g. 1-500=95%. Everything else uses global retention.",
+                        "One range per line, e.g. 1-500=95%. Use the retention slider.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -429,7 +429,7 @@ class SettingsTextCopyTest {
                         "Included in study",
                         "Included when similar kanji exist",
                         "Study ladder",
-                        "Set practice order. Leave at least one rung on.",
+                        "Set practice order. Keep one rung on.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -513,12 +513,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Turn on notifications to receive reminders.",
+                "Enable reminder notifications.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Save to allow reminder notifications.",
+                "Save to allow reminders.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))
