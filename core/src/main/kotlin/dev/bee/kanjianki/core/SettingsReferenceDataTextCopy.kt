@@ -2,36 +2,36 @@ package dev.bee.kanjianki.core
 
 object SettingsReferenceDataTextCopy {
     @JvmStatic
-    fun frequencyRangeTitle(): String = "Kanji frequency range"
+    fun frequencyRangeTitle(): String = "Jiten rank range"
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Choose Jiten ranks to suspend. Default: 100-3000."
+        return "Import kanji within these Jiten ranks. Default: 100-3000."
     }
 
     @JvmStatic
-    fun minRankLabel(): String = "Min rank"
+    fun minRankLabel(): String = "Most frequent rank"
 
     @JvmStatic
-    fun maxRankLabel(): String = "Max rank"
+    fun maxRankLabel(): String = "Least frequent rank"
 
     @JvmStatic
-    fun minimumRankLabel(): String = "Minimum rank"
+    fun minimumRankLabel(): String = "Most frequent"
 
     @JvmStatic
-    fun maximumRankLabel(): String = "Maximum rank"
+    fun maximumRankLabel(): String = "Least frequent"
 
     @JvmStatic
-    fun saveFrequencyRangeLabel(): String = "Save frequency range"
+    fun saveFrequencyRangeLabel(): String = "Save rank range"
 
     @JvmStatic
-    fun numericRanksToast(): String = "Enter numeric ranks."
+    fun numericRanksToast(): String = "Enter rank numbers."
 
     @JvmStatic
-    fun rankRangeToast(): String = "Ranks must be 1-20000."
+    fun rankRangeToast(): String = "Use ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Saved. Sync to refresh practice."
+    fun frequencyRangeSavedToast(): String = "Rank range saved. Sync to refresh practice."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"

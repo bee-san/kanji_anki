@@ -6,20 +6,20 @@ import org.junit.Test
 class SettingsReferenceDataTextCopyTest {
     @Test
     fun referenceDataHelpersPreserveFormatting() {
-        assertEquals("Kanji frequency range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
+        assertEquals("Jiten rank range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Choose Jiten ranks to suspend. Default: 100-3000.",
+            "Import kanji within these Jiten ranks. Default: 100-3000.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
-        assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
-        assertEquals("Max rank", SettingsReferenceDataTextCopy.maxRankLabel())
-        assertEquals("Minimum rank", SettingsReferenceDataTextCopy.minimumRankLabel())
-        assertEquals("Maximum rank", SettingsReferenceDataTextCopy.maximumRankLabel())
-        assertEquals("Save frequency range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
-        assertEquals("Enter numeric ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
-        assertEquals("Ranks must be 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
+        assertEquals("Most frequent rank", SettingsReferenceDataTextCopy.minRankLabel())
+        assertEquals("Least frequent rank", SettingsReferenceDataTextCopy.maxRankLabel())
+        assertEquals("Most frequent", SettingsReferenceDataTextCopy.minimumRankLabel())
+        assertEquals("Least frequent", SettingsReferenceDataTextCopy.maximumRankLabel())
+        assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
+        assertEquals("Enter rank numbers.", SettingsReferenceDataTextCopy.numericRanksToast())
+        assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Saved. Sync to refresh practice.",
+            "Rank range saved. Sync to refresh practice.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
