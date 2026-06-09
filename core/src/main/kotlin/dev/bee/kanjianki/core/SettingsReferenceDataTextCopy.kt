@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Set Jiten ranks for suspended cards, then sync."
+        return "Set suspended-card ranks, then sync."
     }
 
     @JvmStatic

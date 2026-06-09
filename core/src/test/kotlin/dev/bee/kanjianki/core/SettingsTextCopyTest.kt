@@ -225,7 +225,7 @@ class SettingsTextCopyTest {
                         "Use numbers for thresholds.",
                         "Use difficulty 1-10, lapses 1-100, cards 1-1000.",
                         "Suspended card range",
-                        "Set Jiten ranks for suspended cards, then sync.",
+                        "Set suspended-card ranks, then sync.",
                 ),
                 listOf(
                         SettingsTextCopy.importFiltersTitle(),

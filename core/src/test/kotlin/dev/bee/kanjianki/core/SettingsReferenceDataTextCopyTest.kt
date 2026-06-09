@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Suspended card range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Set Jiten ranks for suspended cards, then sync.",
+            "Set suspended-card ranks, then sync.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
