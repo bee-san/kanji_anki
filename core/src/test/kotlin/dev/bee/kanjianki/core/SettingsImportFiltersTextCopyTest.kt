@@ -15,7 +15,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Suspended cards", SettingsImportFiltersTextCopy.suspendedCardsLabel())
         assertEquals("Tagged cards", SettingsImportFiltersTextCopy.taggedCardsLabel())
         assertEquals("Weak cards", SettingsImportFiltersTextCopy.weakCardsLabel())
-        assertEquals("Anki search results", SettingsImportFiltersTextCopy.browserQueryLabel())
+        assertEquals("Browser query", SettingsImportFiltersTextCopy.browserQueryLabel())
         assertEquals("deck:Japanese tag:kani", SettingsImportFiltersTextCopy.ankiBrowserQueryHint())
         assertEquals("Anki search", SettingsImportFiltersTextCopy.ankiBrowserQueryLabel())
         assertEquals(

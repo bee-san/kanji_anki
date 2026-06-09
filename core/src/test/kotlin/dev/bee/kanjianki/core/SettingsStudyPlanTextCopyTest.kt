@@ -57,7 +57,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("One range per line, e.g. 1-500=95%. Use the retention slider.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("One range per line, e.g. 1-500=95%.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
