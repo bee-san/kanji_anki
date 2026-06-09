@@ -275,7 +275,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type",
                         "Using Kiku",
-                        "Default: Kiku. Map fields.",
+                        "Use Kiku, or map your own Anki fields.",
                         "Fields"
                 ),
                 listOf(
@@ -303,7 +303,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Map expression, reading, meaning, sentence, frequency, sort.",
+                        "Tell Kani which Anki fields to read.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
@@ -315,7 +315,7 @@ class SettingsTextCopyTest {
                         "Save note type",
                         "Enter a note type name.",
                         "Choose the kanji field.",
-                        "Saved. Sync to rebuild cards."
+                        "Saved. Sync to apply fields."
                 ),
                 listOf(
                         SettingsTextCopy.requiredFieldsBody(),

@@ -11,9 +11,9 @@ class SettingsNoteTypeTextCopyTest {
         assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("  Kiku  "))
         assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText(null))
         assertEquals("No note type selected", SettingsNoteTypeTextCopy.noteTypeUsingText("   "))
-        assertEquals("Default: Kiku. Map fields.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
+        assertEquals("Use Kiku, or map your own Anki fields.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
         assertEquals("Fields", SettingsNoteTypeTextCopy.requiredFieldsTitle())
-        assertEquals("Map expression, reading, meaning, sentence, frequency, sort.", SettingsNoteTypeTextCopy.requiredFieldsBody())
+        assertEquals("Tell Kani which Anki fields to read.", SettingsNoteTypeTextCopy.requiredFieldsBody())
         assertEquals("Expression field", SettingsNoteTypeTextCopy.expressionFieldLabel())
         assertEquals("Reading field", SettingsNoteTypeTextCopy.readingFieldLabel())
         assertEquals("Meaning field", SettingsNoteTypeTextCopy.meaningFieldLabel())
@@ -25,6 +25,6 @@ class SettingsNoteTypeTextCopyTest {
         assertEquals("Save note type", SettingsNoteTypeTextCopy.saveNoteTypeLabel())
         assertEquals("Enter a note type name.", SettingsNoteTypeTextCopy.noteTypeRequiredToast())
         assertEquals("Choose the kanji field.", SettingsNoteTypeTextCopy.expressionFieldRequiredToast())
-        assertEquals("Saved. Sync to rebuild cards.", SettingsNoteTypeTextCopy.noteTypeSavedToast())
+        assertEquals("Saved. Sync to apply fields.", SettingsNoteTypeTextCopy.noteTypeSavedToast())
     }
 }

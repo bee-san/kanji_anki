@@ -15,7 +15,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun noteTypeFieldsBody(): String {
-        return "Default: Kiku. Map fields."
+        return "Use Kiku, or map your own Anki fields."
     }
 
     @JvmStatic
@@ -23,7 +23,7 @@ object SettingsNoteTypeTextCopy {
 
     @JvmStatic
     fun requiredFieldsBody(): String {
-        return "Map expression, reading, meaning, sentence, frequency, sort."
+        return "Tell Kani which Anki fields to read."
     }
 
     @JvmStatic
@@ -60,7 +60,7 @@ object SettingsNoteTypeTextCopy {
     fun expressionFieldRequiredToast(): String = "Choose the kanji field."
 
     @JvmStatic
-    fun noteTypeSavedToast(): String = "Saved. Sync to rebuild cards."
+    fun noteTypeSavedToast(): String = "Saved. Sync to apply fields."
 
     private fun String.javaTrim(): String {
         return trim { it <= ' ' }
