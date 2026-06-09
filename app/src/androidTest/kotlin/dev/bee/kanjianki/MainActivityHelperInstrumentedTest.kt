@@ -548,9 +548,9 @@ private fun verifyWorkloadAndReminderSummaries(activity: MainActivity) {
         assertEquals("Focused: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
-        assertEquals("Automatic workload: waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
+        assertEquals("Waiting for cards", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
-                "Automatic workload: 2 items today",
+                "2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         );
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));

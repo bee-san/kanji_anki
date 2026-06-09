@@ -9,14 +9,20 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
         assertEquals("Save workload", SettingsStudyPlanTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Kani picks today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Set today's workload. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Kani sets today's count. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
+        assertEquals("Choose today's count. Anki due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
         assertEquals("More: up to 17 items", SettingsStudyPlanTextCopy.workloadStatusText(80, 20))
         assertEquals("Maximum: 1 item", SettingsStudyPlanTextCopy.maxItemsStatusText(0))
-        assertEquals("Automatic workload: waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
+        assertEquals("Waiting for cards", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null))
+        assertEquals(
+            "7 items today",
+            SettingsStudyPlanTextCopy.autoWorkloadStatusText(
+                RecordsSchedulerModels.AdaptiveLoadPlan(40, 7, 3, listOf("語"), 1, false, "focus"),
+            ),
+        )
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))

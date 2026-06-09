@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's workload. Anki due dates stay fixed."
+        return "Kani sets today's count. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's workload. Anki due dates stay fixed."
+        return "Choose today's count. Anki due dates stay fixed."
     }
 
     @JvmStatic
@@ -68,9 +68,9 @@ object SettingsStudyPlanTextCopy {
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Automatic workload: waiting for cards"
+            return "Waiting for cards"
         }
-        return "Automatic workload: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        return StudyTextCopy.countText(plan.target, "item", "items") + " today"
     }
 
     private fun workloadStatusLabel(snappedWorkloadPercent: Int): String {
