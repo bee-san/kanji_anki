@@ -9,8 +9,8 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
         assertEquals("Save limit", SettingsStudyPlanTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
-        assertEquals("Kani picks today's count. Review due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
-        assertEquals("Choose today's count. Review due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Kani sets today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
+        assertEquals("Pick today's count. Due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
@@ -29,7 +29,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("Choose new-card order. Due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("New cards only; due reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Similar kanji stay close on this screen: 人/入, 土/士.",
@@ -47,16 +47,16 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
-            "FSRS stays local. Review due dates stay unchanged.",
+            "FSRS stays local; due dates stay unchanged.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Retention by Jiten rank", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
-        assertEquals("One range per line, e.g. 1-500=95%. Other ranks use the global target.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
+        assertEquals("One range per line: 1-500=95%. Other ranks use the global target.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Choose practice order. Keep at least one rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Choose practice order. Keep at least one rung enabled.", SettingsStudyPlanTextCopy.studyLadderBody())
         assertEquals("Keep at least one rung on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
