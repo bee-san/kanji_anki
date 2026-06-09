@@ -682,7 +682,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Set card order, timing, workload, and ladder.",
+            "Set card order, timing, study load, and ladder.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
@@ -835,7 +835,7 @@ class ComposeScreenModelsTest {
         assertEquals("Review dictionaries, stroke data, fonts, and credits.", referenceData.summary)
         assertEquals("1 card", referenceData.panelCount)
         assertEquals("Study settings", collapsedBehavior.title)
-        assertEquals("Set card order, timing, workload, and ladder.", collapsedBehavior.summary)
+        assertEquals("Set card order, timing, study load, and ladder.", collapsedBehavior.summary)
         assertEquals("8 cards", collapsedBehavior.panelCount)
         assertTrue(collapsedBehavior.panels.isEmpty())
 
@@ -911,7 +911,7 @@ class ComposeScreenModelsTest {
     fun newCardSortModelKeepsOptionsAndSaverContract() {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
-        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Most frequent Jiten ranks first.")
+        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Most frequent kanji first.")
         val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Most-forgotten cards first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
@@ -924,7 +924,7 @@ class ComposeScreenModelsTest {
 
         assertEquals("Frequency", frequency.label)
         assertEquals("frequency", frequency.mode)
-        assertEquals("Most frequent Jiten ranks first.", frequency.description)
+        assertEquals("Most frequent kanji first.", frequency.description)
         assertEquals("New card order", model.title)
         assertEquals("Choose how Kani admits new problem kanji.", model.body)
         assertEquals("frequency", model.initialMode)
@@ -1176,7 +1176,7 @@ class ComposeScreenModelsTest {
         val saveWorkload = SettingsWorkloadAction { calls.add("saveWorkload") }
         val enableAutomatic = SettingsWorkloadAction { calls.add("enableAutomatic") }
         val model = SettingsWorkloadPanelModel(
-            title = "Today's workload",
+            title = "Today's study load",
             autoMode = true,
             autoStatus = "Kani plan",
             automaticBody = "Kani chooses the focus set.",
@@ -1184,17 +1184,17 @@ class ComposeScreenModelsTest {
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
-            saveMaximumLabel = "Save maximum",
-            manualWorkloadLabel = "Choose workload manually",
-            saveWorkloadLabel = "Save today's workload",
-            automaticParetoLabel = "Let Kani choose",
+            saveMaximumLabel = "Save max items",
+            manualWorkloadLabel = "Choose count yourself",
+            saveWorkloadLabel = "Save study load",
+            automaticParetoLabel = "Let Kani pick",
             onSaveMaximum = saveMaximum,
             onEnableManual = enableManual,
             onSaveWorkload = saveWorkload,
             onEnableAutomatic = enableAutomatic,
         )
 
-        assertEquals("Today's workload", model.title)
+        assertEquals("Today's study load", model.title)
         assertEquals(true, model.autoMode)
         assertEquals("Kani plan", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
@@ -1202,10 +1202,10 @@ class ComposeScreenModelsTest {
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
-        assertEquals("Save maximum", model.saveMaximumLabel)
-        assertEquals("Choose workload manually", model.manualWorkloadLabel)
-        assertEquals("Save today's workload", model.saveWorkloadLabel)
-        assertEquals("Let Kani choose", model.automaticParetoLabel)
+        assertEquals("Save max items", model.saveMaximumLabel)
+        assertEquals("Choose count yourself", model.manualWorkloadLabel)
+        assertEquals("Save study load", model.saveWorkloadLabel)
+        assertEquals("Let Kani pick", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
         assertSame(enableManual, model.onEnableManual)
         assertSame(saveWorkload, model.onSaveWorkload)

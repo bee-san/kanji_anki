@@ -10,7 +10,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("Set fields, filters, rank range, and sync.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Set card order, timing, workload, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Set card order, timing, study load, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
         assertEquals("Set reminders, sync, and update checks.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())

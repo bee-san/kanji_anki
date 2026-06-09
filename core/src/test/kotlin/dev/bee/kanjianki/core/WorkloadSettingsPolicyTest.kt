@@ -11,7 +11,7 @@ class WorkloadSettingsPolicyTest {
         assertEquals(null, request.mode)
         assertEquals(null, request.workloadPercent)
         assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, request.maxItems)
-        assertEquals("Maximum saved.", request.message)
+        assertEquals("Max items saved.", request.message)
     }
 
     @Test
@@ -21,7 +21,7 @@ class WorkloadSettingsPolicyTest {
         assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, request.mode)
         assertEquals(null, request.workloadPercent)
         assertEquals(null, request.maxItems)
-        assertEquals("Manual workload ready.", request.message)
+        assertEquals("Manual study load ready.", request.message)
     }
 
     @Test
@@ -31,7 +31,7 @@ class WorkloadSettingsPolicyTest {
         assertEquals(AdaptiveLoadPlanner.MODE_AUTO, request.mode)
         assertEquals(null, request.workloadPercent)
         assertEquals(null, request.maxItems)
-        assertEquals("Kani will choose today's workload.", request.message)
+        assertEquals("Kani will pick today's study load.", request.message)
     }
 
     @Test
@@ -41,6 +41,6 @@ class WorkloadSettingsPolicyTest {
         assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, request.mode)
         assertEquals(95, request.workloadPercent)
         assertEquals(AdaptiveLoadPlanner.MIN_MAX_ITEMS, request.maxItems)
-        assertEquals("Today's workload saved.", request.message)
+        assertEquals("Study load saved.", request.message)
     }
 }

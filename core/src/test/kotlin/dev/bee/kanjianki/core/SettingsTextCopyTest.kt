@@ -40,7 +40,7 @@ class SettingsTextCopyTest {
                         "Import & sync",
                         "Set fields, filters, rank range, and sync.",
                         "Study settings",
-                        "Set card order, timing, workload, and ladder.",
+                        "Set card order, timing, study load, and ladder.",
                         "Automation",
                         "Set reminders, sync, and update checks.",
                         "Display & data",
@@ -192,7 +192,7 @@ class SettingsTextCopyTest {
 
         assertTrue(SettingsTextCopy.notificationsBlockedBody().contains("notifications"))
         assertTrue(SettingsTextCopy.notificationPermissionBody().contains("notifications"))
-        assertEquals("Keep at least one rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast())
+        assertEquals("Keep one always-available rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast())
     }
 
     @Test
@@ -342,20 +342,20 @@ class SettingsTextCopyTest {
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         )
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
-        assertEquals("Today's workload", SettingsTextCopy.dailyWorkloadTitle())
+        assertEquals("Today's study load", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani chooses today's count. Due dates stay fixed.",
+                "Let Kani pick today's count. Due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
-        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel())
-        assertEquals("Choose workload manually", SettingsTextCopy.manualWorkloadLabel())
+        assertEquals("Save max items", SettingsTextCopy.saveMaximumLabel())
+        assertEquals("Choose count yourself", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's item count. Due dates stay fixed.",
+                "Pick today's item count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
-        assertEquals("Save today's workload", SettingsTextCopy.saveWorkloadLabel())
-        assertEquals("Let Kani choose", SettingsTextCopy.automaticParetoLabel())
+        assertEquals("Save study load", SettingsTextCopy.saveWorkloadLabel())
+        assertEquals("Let Kani pick", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
                 "Set repeat waits. Due reviews still move the ladder.",
@@ -382,7 +382,7 @@ class SettingsTextCopyTest {
         assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced priority", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
-        assertEquals("Most frequent Jiten ranks first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
+        assertEquals("Most frequent kanji first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
         assertEquals("Harder cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
         assertEquals("Most-forgotten cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Weaker Kani cards first.", SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
@@ -411,7 +411,7 @@ class SettingsTextCopyTest {
                         "Review retention",
                         "FSRS stays local; due dates stay unchanged.",
                         "Retention by Jiten rank",
-                        "One range per line: 1-500=95%. Other ranks use the global target.",
+                        "Use 1-500=95%. Other ranks use the global target.",
                         "Use example ranges",
                         "Save retention",
                         "95%",
@@ -425,7 +425,7 @@ class SettingsTextCopyTest {
                         "On: always available",
                         "On when similar kanji exist",
                         "Study ladder",
-                        "Choose practice order. Keep at least one rung enabled.",
+                        "Pick practice order. Keep one always-available rung on.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),
@@ -458,7 +458,7 @@ class SettingsTextCopyTest {
                         "Down",
                         "Restore defaults",
                         "Ladder restored.",
-                        "Keep at least one rung on.",
+                        "Keep one always-available rung on.",
                         "Write kanji turned off.",
                         "Write kanji turned on.",
                         "Ladder movement",
