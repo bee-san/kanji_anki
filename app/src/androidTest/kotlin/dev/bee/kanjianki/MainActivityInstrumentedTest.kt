@@ -269,13 +269,13 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setStudyAheadMinutes("later");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
             setStudyAheadMinutes("2000");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
             setStudyAheadMinutes("45");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText();
             clickText(scenario, "Save movement rules");
@@ -310,7 +310,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setLearningStepText();
             clickText(scenario, "Save learning steps");
             setStudyAheadMinutes();
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             setLadderThresholdText();
             clickText(scenario, "Save movement rules");
             setNavigationWorkloadControls(scenario);
