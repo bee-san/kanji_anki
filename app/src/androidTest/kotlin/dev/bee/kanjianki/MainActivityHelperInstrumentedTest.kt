@@ -553,7 +553,7 @@ private fun verifyWorkloadAndReminderSummaries(activity: MainActivity) {
                 "Automatic workload: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, listOf("裂", "語"), 0, false, "auto"))
         );
-        assertEquals("Notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
+        assertEquals("Notifications blocked", SettingsTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
         assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
