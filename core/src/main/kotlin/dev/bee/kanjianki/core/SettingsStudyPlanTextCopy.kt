@@ -184,10 +184,10 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun moveUpLabel(): String = "Up"
+    fun moveUpLabel(): String = "Move up"
 
     @JvmStatic
-    fun moveDownLabel(): String = "Down"
+    fun moveDownLabel(): String = "Move down"
 
     @JvmStatic
     fun restoreDefaultLadderLabel(): String = "Restore defaults"
@@ -209,9 +209,9 @@ object SettingsStudyPlanTextCopy {
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
         val enabled = ladder.isEnabled(rung)
         if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
-            return if (enabled) "On when similar kanji exist" else "Off: similar kanji skipped"
+            return if (enabled) "Included when similar kanji exist" else "Skipped in study"
         }
-        return if (enabled) "On by default" else "Off: skipped"
+        return if (enabled) "Included in study" else "Skipped in study"
     }
 
     @JvmStatic
