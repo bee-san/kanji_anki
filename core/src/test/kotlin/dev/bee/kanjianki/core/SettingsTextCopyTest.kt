@@ -398,7 +398,7 @@ class SettingsTextCopyTest {
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
-                "Choose the order. Reviews and repeats stay first.",
+                "Choose the order for new cards. Reviews and repeats stay first.",
                 SettingsTextCopy.newCardSortBody()
         )
         assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel())
@@ -513,12 +513,12 @@ class SettingsTextCopyTest {
         assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel())
         assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel())
         assertEquals(
-                "Enable reminder notifications.",
+                "Turn on reminder notifications.",
                 SettingsTextCopy.notificationsBlockedBody()
         )
         assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel())
         assertEquals(
-                "Save to allow reminders.",
+                "Save to turn on reminders.",
                 SettingsTextCopy.notificationPermissionBody()
         )
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5))

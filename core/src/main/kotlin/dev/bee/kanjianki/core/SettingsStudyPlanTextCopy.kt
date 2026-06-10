@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit daily new cards."
+    fun deckLimitsBody(): String = "Set the daily new-card limit."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Daily new card limit"
@@ -131,7 +131,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose the order. Reviews and repeats stay first."
+        return "Choose the order for new cards. Reviews and repeats stay first."
     }
 
     @JvmStatic
