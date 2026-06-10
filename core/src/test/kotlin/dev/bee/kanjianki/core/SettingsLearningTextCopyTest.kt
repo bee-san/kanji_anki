@@ -8,7 +8,7 @@ class SettingsLearningTextCopyTest {
     fun learningStepHelpersPreserveFormatting() {
         assertEquals("Learning steps", SettingsLearningTextCopy.learningStepsTitle())
         assertEquals(
-            "Set new and missed waits. Due reviews move the ladder.",
+            "Set new and missed waits. Due reviews move up the ladder.",
             SettingsLearningTextCopy.learningStepsBody(),
         )
         assertEquals("Missed reviews", SettingsLearningTextCopy.reviewMissesLabel())
