@@ -12,7 +12,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Sync once to enable daily syncs."
+            return "Sync once to enable daily sync."
         }
         return if (enabled) displayTime else "Off"
     }
@@ -40,7 +40,7 @@ object SettingsAutomationTextCopy {
     fun updatePageBody(versionName: String?): String {
         val version = versionText(versionName)
         val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
-        return "$versionLine. Check updates."
+        return "$versionLine. Check for updates."
     }
 
     @JvmStatic
@@ -76,7 +76,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Pick the next update action."
+        return "Choose an update action."
     }
 
     @JvmStatic
@@ -105,7 +105,7 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Sync once to enable daily syncs."
+            return "Sync once to enable daily sync."
         }
         if (enabled) {
             return timedStatus("On around", "On", displayTime)
@@ -122,7 +122,7 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once to enable daily syncs."
+            return "Sync once to enable daily sync."
         }
         val details = ArrayList<String>()
         addDetail(details, "Last sync: ", lastSuccessText)
