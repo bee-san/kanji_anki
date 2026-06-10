@@ -6,6 +6,9 @@ object SettingsSectionTextCopy {
     private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
+    fun settingsTitle(): String = localizedText("Settings", "設定")
+
+    @JvmStatic
     fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic

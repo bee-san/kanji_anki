@@ -7,6 +7,7 @@ import java.util.Locale
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
+        assertEquals("Settings", SettingsSectionTextCopy.settingsTitle())
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
         assertEquals("Choose sources, filters, and rank range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
@@ -37,6 +38,7 @@ class SettingsSectionTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
+            assertEquals("設定", SettingsSectionTextCopy.settingsTitle())
             assertEquals("インポートと同期", SettingsSectionTextCopy.settingsAnkiSourceTitle())
             assertEquals("ソース、フィルター、範囲を選ぶ。", SettingsSectionTextCopy.settingsAnkiSourceBody())
             assertEquals("学習設定", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
