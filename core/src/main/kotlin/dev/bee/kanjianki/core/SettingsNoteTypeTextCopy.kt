@@ -10,7 +10,7 @@ object SettingsNoteTypeTextCopy {
         if (safeModelName.isEmpty()) {
             return "Select a note type"
         }
-        return "Using $safeModelName"
+        return safeModelName
     }
 
     @JvmStatic

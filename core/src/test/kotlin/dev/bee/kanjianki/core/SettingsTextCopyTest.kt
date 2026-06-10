@@ -274,7 +274,7 @@ class SettingsTextCopyTest {
                         "Stroke data",
                         "Fonts",
                         "Note type",
-                        "Using Kiku",
+                        "Kiku",
                         "Use Kiku or map Anki fields.",
                         "Fields"
                 ),
