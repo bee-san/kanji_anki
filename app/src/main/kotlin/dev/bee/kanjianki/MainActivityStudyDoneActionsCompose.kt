@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val StudyDonePrimary = Color(0xFFDA3A7A)
 private val StudyDonePrimaryBorder = Color(0xFFFFADCD)
@@ -53,23 +54,27 @@ fun StudyDoneActions(
     ) {
         if (availableStudyMoreNewCards > 0) {
             StudyPrimaryButton(
-                label = "Study more new cards",
+                label = StudyTextCopy.studyMoreNewCardsLabel(),
+                traceLabel = "Study more new cards",
                 onClick = onStudyMore
             )
         }
         if (availableStudyMoreNewCards > 0) {
             StudySecondaryButton(
-                label = MainActivityBase.LABEL_CONTINUE_ALL_KANJI,
+                label = StudyTextCopy.continueAllKanjiLabel(),
+                traceLabel = "Continue all kanji",
                 onClick = onContinueAll
             )
         } else {
             StudyPrimaryButton(
-                label = MainActivityBase.LABEL_CONTINUE_ALL_KANJI,
+                label = StudyTextCopy.continueAllKanjiLabel(),
+                traceLabel = "Continue all kanji",
                 onClick = onContinueAll
             )
         }
         StudySecondaryButton(
-            label = MainActivityBase.LABEL_BACK_HOME,
+            label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
             onClick = onBackHome
         )
     }
@@ -131,12 +136,14 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
             } else if (model.showBackHome) {
                 if (model.backHomePrimary) {
                     StudyPrimaryButton(
-                        label = MainActivityBase.LABEL_BACK_HOME,
+                        label = StudyTextCopy.backHomeLabel(),
+                        traceLabel = "Back home",
                         onClick = { model.onBackHome.run() }
                     )
                 } else {
                     StudySecondaryButton(
-                        label = MainActivityBase.LABEL_BACK_HOME,
+                        label = StudyTextCopy.backHomeLabel(),
+                        traceLabel = "Back home",
                         onClick = { model.onBackHome.run() }
                     )
                 }
@@ -165,7 +172,7 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
         },
         confirmButton = {
             TextButton(onClick = {
-                withButtonTrace(model.confirmLabel) {
+                withButtonTrace("Study more new cards confirm") {
                     model.onConfirm(requestedCount)
                 }
             }) {
@@ -174,7 +181,7 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
         },
         dismissButton = {
             TextButton(onClick = {
-                withButtonTrace(model.cancelLabel) {
+                withButtonTrace("Study more new cards cancel") {
                     model.onDismiss.run()
                 }
             }) {
@@ -229,10 +236,11 @@ private fun StudyDoneSummary(lines: List<String>) {
 @Composable
 private fun StudyPrimaryButton(
     label: String,
+    traceLabel: String = label,
     onClick: () -> Unit
 ) {
     Button(
-        onClick = { withButtonTrace(label) { onClick() } },
+        onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
@@ -257,10 +265,11 @@ private fun StudyPrimaryButton(
 @Composable
 private fun StudySecondaryButton(
     label: String,
+    traceLabel: String = label,
     onClick: () -> Unit
 ) {
     OutlinedButton(
-        onClick = { withButtonTrace(label) { onClick() } },
+        onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
