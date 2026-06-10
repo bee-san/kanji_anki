@@ -110,7 +110,52 @@ class KanjiGameCopyTest {
         assertEquals("Kanji -> meaning", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MEANING_POP))
         assertEquals("Word -> reading", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.READING_RUSH))
         assertEquals("Meaning -> kanji", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+        assertEquals("Meaning Pop", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.MEANING_POP))
+        assertEquals("Reading Rush", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.READING_RUSH))
+        assertEquals("Confusable Clash", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+        assertEquals("Games mode card", KanjiGameCopy.modeCardAccessibilityPrefix())
         assertThrows(NullPointerException::class.java) { KanjiGameCopy.modeLabel(null) }
+        assertThrows(NullPointerException::class.java) { KanjiGameCopy.modeTitle(null) }
+    }
+
+    @Test
+    fun questionPromptCopyPreservesEnglishGameEngineOutput() {
+        val meaning = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.MEANING_POP,
+            "語",
+            "語",
+            "Pick the meaning",
+            "language",
+            listOf("language", "word"),
+            "語 = language",
+        )
+        val reading = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.READING_RUSH,
+            "語",
+            "言語",
+            "Pick the reading for 語",
+            "げんご",
+            listOf("げんご", "ことば"),
+            "語 = げんご · language",
+        )
+        val confusable = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+            "裂",
+            "Which kanji means split?",
+            "Watch the shape",
+            "裂",
+            listOf("裂", "提"),
+            "裂 = split",
+        )
+
+        assertEquals("語", KanjiGameCopy.questionPrompt(meaning))
+        assertEquals("Pick the meaning", KanjiGameCopy.questionPromptDetail(meaning))
+        assertEquals("言語", KanjiGameCopy.questionPrompt(reading))
+        assertEquals("Pick the reading for 語", KanjiGameCopy.questionPromptDetail(reading))
+        assertEquals("Which kanji means split?", KanjiGameCopy.questionPrompt(confusable))
+        assertEquals("Watch the shape", KanjiGameCopy.questionPromptDetail(confusable))
+        assertThrows(NullPointerException::class.java) { KanjiGameCopy.questionPrompt(null) }
+        assertThrows(NullPointerException::class.java) { KanjiGameCopy.questionPromptDetail(null) }
     }
 
     @Test
@@ -134,10 +179,58 @@ class KanjiGameCopyTest {
             assertEquals("漢字→意味", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MEANING_POP))
             assertEquals("単語→読み", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.READING_RUSH))
             assertEquals("意味→漢字", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+            assertEquals("意味ポップ", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.MEANING_POP))
+            assertEquals("読みラッシュ", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.READING_RUSH))
+            assertEquals("似た漢字バトル", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+            assertEquals("ゲームモードカード", KanjiGameCopy.modeCardAccessibilityPrefix())
             assertEquals("もっとデータが必要です。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
             assertEquals("集中リストから意味を選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true))
             assertEquals("出典の単語から読みを選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true))
             assertEquals("似ている漢字から選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true))
+            assertEquals("拉", KanjiGameCopy.questionPrompt(question(KanjiGameEngine.GameMode.MEANING_POP, "language")))
+            assertEquals("意味を選びます。", KanjiGameCopy.questionPromptDetail(question(KanjiGameEngine.GameMode.MEANING_POP, "language")))
+            assertEquals(
+                "語の読みを選びます。",
+                KanjiGameCopy.questionPromptDetail(
+                    KanjiGameEngine.GameQuestion(
+                        KanjiGameEngine.GameMode.READING_RUSH,
+                        "語",
+                        "言語",
+                        "Pick the reading for 語",
+                        "げんご",
+                        listOf("げんご", "ことば"),
+                        "語 = げんご · language",
+                    )
+                )
+            )
+            assertEquals(
+                "「split」を表す漢字は？",
+                KanjiGameCopy.questionPrompt(
+                    KanjiGameEngine.GameQuestion(
+                        KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+                        "裂",
+                        "Which kanji means split?",
+                        "Watch the shape",
+                        "裂",
+                        listOf("裂", "提"),
+                        "裂 = split",
+                    )
+                )
+            )
+            assertEquals(
+                "形を見比べます。",
+                KanjiGameCopy.questionPromptDetail(
+                    KanjiGameEngine.GameQuestion(
+                        KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+                        "裂",
+                        "Which kanji means split?",
+                        "Watch the shape",
+                        "裂",
+                        listOf("裂", "提"),
+                        "裂 = split",
+                    )
+                )
+            )
             assertEquals("ラウンド完了", KanjiGameCopy.resultTitle(true, false))
             assertEquals("正解", KanjiGameCopy.resultTitle(false, true))
             assertEquals("惜しい", KanjiGameCopy.resultTitle(false, false))

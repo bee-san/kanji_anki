@@ -36,7 +36,7 @@ internal fun gamesSyncButtonTestTag(): String = "games-sync-button"
 
 private fun gamesModeCardDescription(model: GamesModeCardModel): String {
     return listOfNotNull(
-        "Games mode card",
+        KanjiGameCopy.modeCardAccessibilityPrefix(),
         model.title,
         model.label,
         model.body,

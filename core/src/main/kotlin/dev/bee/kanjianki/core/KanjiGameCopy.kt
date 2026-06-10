@@ -76,6 +76,58 @@ object KanjiGameCopy {
     }
 
     @JvmStatic
+    fun modeTitle(mode: KanjiGameEngine.GameMode?): String {
+        return when (mode!!) {
+            KanjiGameEngine.GameMode.MEANING_POP -> localizedText(mode.title, "意味ポップ")
+            KanjiGameEngine.GameMode.READING_RUSH -> localizedText(mode.title, "読みラッシュ")
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(mode.title, "似た漢字バトル")
+        }
+    }
+
+    @JvmStatic
+    fun modeCardAccessibilityPrefix(): String = localizedText("Games mode card", "ゲームモードカード")
+
+    @JvmStatic
+    fun questionPrompt(question: KanjiGameEngine.GameQuestion?): String {
+        val safeQuestion = question!!
+        if (!isJapaneseLocale()) {
+            return safeQuestion.prompt
+        }
+        return when (safeQuestion.mode) {
+            KanjiGameEngine.GameMode.MEANING_POP,
+            KanjiGameEngine.GameMode.READING_RUSH -> safeQuestion.prompt
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "「${confusablePromptMeaning(safeQuestion.prompt)}」を表す漢字は？"
+        }
+    }
+
+    @JvmStatic
+    fun questionPromptDetail(question: KanjiGameEngine.GameQuestion?): String {
+        val safeQuestion = question!!
+        if (!isJapaneseLocale()) {
+            return safeQuestion.promptDetail
+        }
+        return when (safeQuestion.mode) {
+            KanjiGameEngine.GameMode.MEANING_POP -> "意味を選びます。"
+            KanjiGameEngine.GameMode.READING_RUSH -> readingPromptDetail(safeQuestion.targetKanji)
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "形を見比べます。"
+        }
+    }
+
+    private fun readingPromptDetail(targetKanji: String): String {
+        return if (targetKanji.isEmpty()) "読みを選びます。" else "${targetKanji}の読みを選びます。"
+    }
+
+    private fun confusablePromptMeaning(prompt: String): String {
+        val prefix = "Which kanji means "
+        val suffix = "?"
+        return if (prompt.startsWith(prefix) && prompt.endsWith(suffix)) {
+            prompt.substring(prefix.length, prompt.length - suffix.length)
+        } else {
+            prompt
+        }
+    }
+
+    @JvmStatic
     fun modeBody(mode: KanjiGameEngine.GameMode?, available: Boolean): String {
         if (!available) {
             return localizedText("Needs more data.", "もっとデータが必要です。")
