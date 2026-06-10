@@ -16,7 +16,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Dictionaries, strokes, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Choose a section below.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Choose a section.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
