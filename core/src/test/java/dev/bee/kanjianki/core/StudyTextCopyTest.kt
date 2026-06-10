@@ -167,6 +167,25 @@ class StudyTextCopyTest {
     @Test
     fun studyDoneCopyPreservesFocusAndRunSummaryText() {
         assertEquals("Today's focus done", StudyTextCopy.studyDoneTitle())
+        assertEquals("Practice", StudyTextCopy.practiceLabel())
+        assertEquals("Back home", StudyTextCopy.backHomeLabel())
+        assertEquals("Continue all kanji", StudyTextCopy.continueAllKanjiLabel())
+        assertEquals("New cards", StudyTextCopy.newCardsLabel())
+        assertEquals("Study", StudyTextCopy.studyLabel())
+        assertEquals("Cancel", StudyTextCopy.cancelLabel())
+        assertEquals("Nothing due now", StudyTextCopy.nothingDueTitle())
+        assertEquals("All caught up", StudyTextCopy.allCaughtUpHeadline())
+        assertEquals(
+            "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
+            StudyTextCopy.allCaughtUpBody(),
+        )
+        assertEquals("Study practice", StudyTextCopy.studyPracticeTitle())
+        assertEquals("Nothing to study yet", StudyTextCopy.nothingToStudyHeadline())
+        assertEquals("Sync AnkiDroid first.", StudyTextCopy.syncAnkiDroidFirstBody())
+        assertEquals("Kanji not available", StudyTextCopy.kanjiNotAvailableHeadline())
+        assertEquals("This kanji changed after sync.", StudyTextCopy.kanjiChangedAfterSyncBody())
+        assertEquals("Study more new cards", StudyTextCopy.studyMoreNewCardsLabel())
+        assertEquals("How many extra new cards?", StudyTextCopy.studyMoreNewCardsDialogMessage())
         assertEquals(
             "Keep going or stop here.",
             StudyTextCopy.adaptiveFocusDoneBody(),
@@ -191,6 +210,25 @@ class StudyTextCopyTest {
             Locale.setDefault(Locale.JAPANESE)
 
             assertEquals("今日のフォーカス完了", StudyTextCopy.studyDoneTitle())
+            assertEquals("練習", StudyTextCopy.practiceLabel())
+            assertEquals("ホームに戻る", StudyTextCopy.backHomeLabel())
+            assertEquals("すべての漢字を続ける", StudyTextCopy.continueAllKanjiLabel())
+            assertEquals("新規カード", StudyTextCopy.newCardsLabel())
+            assertEquals("学習", StudyTextCopy.studyLabel())
+            assertEquals("キャンセル", StudyTextCopy.cancelLabel())
+            assertEquals("今は期限のカードがありません", StudyTextCopy.nothingDueTitle())
+            assertEquals("すべて完了", StudyTextCopy.allCaughtUpHeadline())
+            assertEquals(
+                "アクティブな漢字は休憩中です。新しいカードを同期するか、レビュー期限になったら戻ってきてください。",
+                StudyTextCopy.allCaughtUpBody(),
+            )
+            assertEquals("学習練習", StudyTextCopy.studyPracticeTitle())
+            assertEquals("まだ学習するカードがありません", StudyTextCopy.nothingToStudyHeadline())
+            assertEquals("先にAnkiDroidを同期してください。", StudyTextCopy.syncAnkiDroidFirstBody())
+            assertEquals("漢字を利用できません", StudyTextCopy.kanjiNotAvailableHeadline())
+            assertEquals("この漢字は同期後に変更されました。", StudyTextCopy.kanjiChangedAfterSyncBody())
+            assertEquals("新規カードを追加で学習", StudyTextCopy.studyMoreNewCardsLabel())
+            assertEquals("追加する新規カードは何枚ですか？", StudyTextCopy.studyMoreNewCardsDialogMessage())
             assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.adaptiveFocusDoneBody())
             assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.studyRunDoneBody())
             assertEquals("今日のフォーカス：残り0 / 7", StudyTextCopy.adaptiveFocusDoneSummary(7))

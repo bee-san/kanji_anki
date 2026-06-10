@@ -31,9 +31,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             seededPlan,
             studyDoneScreenModel(
-                "Nothing due now",
-                "All caught up",
-                "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
+                StudyTextCopy.nothingDueTitle(),
+                StudyTextCopy.allCaughtUpHeadline(),
+                StudyTextCopy.allCaughtUpBody(),
                 emptyList(),
                 false,
                 true,
@@ -88,9 +88,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
-                "Study practice",
-                "Nothing to study yet",
-                "Sync AnkiDroid first.",
+                StudyTextCopy.studyPracticeTitle(),
+                StudyTextCopy.nothingToStudyHeadline(),
+                StudyTextCopy.syncAnkiDroidFirstBody(),
                 emptyList(),
                 false,
                 false,
@@ -103,9 +103,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
-                "Study practice",
-                "Kanji not available",
-                "This kanji changed after sync.",
+                StudyTextCopy.studyPracticeTitle(),
+                StudyTextCopy.kanjiNotAvailableHeadline(),
+                StudyTextCopy.kanjiChangedAfterSyncBody(),
                 emptyList(),
                 false,
                 false,
@@ -152,7 +152,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     ): StudyDoneScreenModel {
         val available = if (showDoneActions) availableStudyMoreNewCards() else 0
         return StudyDoneScreenModel(
-            MainActivityBase.LABEL_PRACTICE,
+            StudyTextCopy.practiceLabel(),
             title,
             headline,
             body,
@@ -228,12 +228,12 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
         val defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen)
         studyMoreDialog = StudyMoreNewCardsDialogModel(
-            title = "Study more new cards",
-            message = "How many extra new cards?",
-            inputLabel = MainActivityBase.LABEL_NEW_CARDS,
+            title = StudyTextCopy.studyMoreNewCardsLabel(),
+            message = StudyTextCopy.studyMoreNewCardsDialogMessage(),
+            inputLabel = StudyTextCopy.newCardsLabel(),
             initialCount = defaultCount,
-            confirmLabel = MainActivityBase.LABEL_STUDY,
-            cancelLabel = "Cancel",
+            confirmLabel = StudyTextCopy.studyLabel(),
+            cancelLabel = StudyTextCopy.cancelLabel(),
             onConfirm = ::applyStudyMoreNewCardsRequest,
             onDismiss = Runnable {
                 studyMoreDialog = null

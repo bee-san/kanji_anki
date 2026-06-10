@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val StudyDonePrimary = Color(0xFFDA3A7A)
 private val StudyDonePrimaryBorder = Color(0xFFFFADCD)
@@ -53,23 +54,23 @@ fun StudyDoneActions(
     ) {
         if (availableStudyMoreNewCards > 0) {
             StudyPrimaryButton(
-                label = "Study more new cards",
+                label = StudyTextCopy.studyMoreNewCardsLabel(),
                 onClick = onStudyMore
             )
         }
         if (availableStudyMoreNewCards > 0) {
             StudySecondaryButton(
-                label = MainActivityBase.LABEL_CONTINUE_ALL_KANJI,
+                label = StudyTextCopy.continueAllKanjiLabel(),
                 onClick = onContinueAll
             )
         } else {
             StudyPrimaryButton(
-                label = MainActivityBase.LABEL_CONTINUE_ALL_KANJI,
+                label = StudyTextCopy.continueAllKanjiLabel(),
                 onClick = onContinueAll
             )
         }
         StudySecondaryButton(
-            label = MainActivityBase.LABEL_BACK_HOME,
+            label = StudyTextCopy.backHomeLabel(),
             onClick = onBackHome
         )
     }
@@ -131,12 +132,12 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
             } else if (model.showBackHome) {
                 if (model.backHomePrimary) {
                     StudyPrimaryButton(
-                        label = MainActivityBase.LABEL_BACK_HOME,
+                        label = StudyTextCopy.backHomeLabel(),
                         onClick = { model.onBackHome.run() }
                     )
                 } else {
                     StudySecondaryButton(
-                        label = MainActivityBase.LABEL_BACK_HOME,
+                        label = StudyTextCopy.backHomeLabel(),
                         onClick = { model.onBackHome.run() }
                     )
                 }

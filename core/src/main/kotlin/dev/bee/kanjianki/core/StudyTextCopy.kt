@@ -131,6 +131,59 @@ object StudyTextCopy {
     }
 
     @JvmStatic
+    fun practiceLabel(): String = localizedText("Practice", "練習")
+
+    @JvmStatic
+    fun backHomeLabel(): String = localizedText("Back home", "ホームに戻る")
+
+    @JvmStatic
+    fun continueAllKanjiLabel(): String = localizedText("Continue all kanji", "すべての漢字を続ける")
+
+    @JvmStatic
+    fun newCardsLabel(): String = localizedText("New cards", "新規カード")
+
+    @JvmStatic
+    fun studyLabel(): String = localizedText("Study", "学習")
+
+    @JvmStatic
+    fun cancelLabel(): String = localizedText("Cancel", "キャンセル")
+
+    @JvmStatic
+    fun nothingDueTitle(): String = localizedText("Nothing due now", "今は期限のカードがありません")
+
+    @JvmStatic
+    fun allCaughtUpHeadline(): String = localizedText("All caught up", "すべて完了")
+
+    @JvmStatic
+    fun allCaughtUpBody(): String {
+        return localizedText(
+            "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
+            "アクティブな漢字は休憩中です。新しいカードを同期するか、レビュー期限になったら戻ってきてください。",
+        )
+    }
+
+    @JvmStatic
+    fun studyPracticeTitle(): String = localizedText("Study practice", "学習練習")
+
+    @JvmStatic
+    fun nothingToStudyHeadline(): String = localizedText("Nothing to study yet", "まだ学習するカードがありません")
+
+    @JvmStatic
+    fun syncAnkiDroidFirstBody(): String = localizedText("Sync AnkiDroid first.", "先にAnkiDroidを同期してください。")
+
+    @JvmStatic
+    fun kanjiNotAvailableHeadline(): String = localizedText("Kanji not available", "漢字を利用できません")
+
+    @JvmStatic
+    fun kanjiChangedAfterSyncBody(): String = localizedText("This kanji changed after sync.", "この漢字は同期後に変更されました。")
+
+    @JvmStatic
+    fun studyMoreNewCardsLabel(): String = localizedText("Study more new cards", "新規カードを追加で学習")
+
+    @JvmStatic
+    fun studyMoreNewCardsDialogMessage(): String = localizedText("How many extra new cards?", "追加する新規カードは何枚ですか？")
+
+    @JvmStatic
     fun adaptiveFocusDoneBody(): String {
         return localizedText("Keep going or stop here.", "続けても、ここで終えてもOKです。")
     }
