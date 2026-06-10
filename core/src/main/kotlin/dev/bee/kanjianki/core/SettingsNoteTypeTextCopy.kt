@@ -1,66 +1,71 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsNoteTypeTextCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
-    fun noteTypeFieldsTitle(): String = "Note type"
+    fun noteTypeFieldsTitle(): String = localizedText("Note type", "ノートタイプ")
 
     @JvmStatic
     fun noteTypeUsingText(modelName: String?): String {
         val safeModelName = modelName?.javaTrim() ?: ""
         if (safeModelName.isEmpty()) {
-            return "Select a note type"
+            return localizedText("Select a note type", "ノートタイプを選択")
         }
         return safeModelName
     }
 
     @JvmStatic
-    fun noteTypeFieldsBody(): String {
-        return "Use Kiku or map Anki fields."
-    }
+    fun noteTypeFieldsBody(): String = localizedText("Use Kiku or map Anki fields.", "Kikuを使うか、Ankiのフィールドを割り当ててください。")
 
     @JvmStatic
-    fun requiredFieldsTitle(): String = "Fields"
+    fun requiredFieldsTitle(): String = localizedText("Fields", "フィールド")
 
     @JvmStatic
-    fun requiredFieldsBody(): String {
-        return "Choose the fields Kani reads."
-    }
+    fun requiredFieldsBody(): String = localizedText("Choose the fields Kani reads.", "Kaniが読むフィールドを選んでください。")
 
     @JvmStatic
-    fun expressionFieldLabel(): String = "Expression field"
+    fun expressionFieldLabel(): String = localizedText("Expression field", "表現フィールド")
 
     @JvmStatic
-    fun readingFieldLabel(): String = "Reading field"
+    fun readingFieldLabel(): String = localizedText("Reading field", "読みフィールド")
 
     @JvmStatic
-    fun meaningFieldLabel(): String = "Meaning field"
+    fun meaningFieldLabel(): String = localizedText("Meaning field", "意味フィールド")
 
     @JvmStatic
-    fun sentenceFieldLabel(): String = "Sentence field"
+    fun sentenceFieldLabel(): String = localizedText("Sentence field", "例文フィールド")
 
     @JvmStatic
-    fun frequencyFieldLabel(): String = "Frequency field"
+    fun frequencyFieldLabel(): String = localizedText("Frequency field", "頻度フィールド")
 
     @JvmStatic
-    fun frequencySortFieldLabel(): String = "Frequency sort field"
+    fun frequencySortFieldLabel(): String = localizedText("Frequency sort field", "頻度順フィールド")
 
     @JvmStatic
-    fun chooseFromAnkiDroidLabel(): String = "Choose note type"
+    fun chooseFromAnkiDroidLabel(): String = localizedText("Choose note type", "ノートタイプを選択")
 
     @JvmStatic
-    fun useKikuLabel(): String = "Use Kiku"
+    fun useKikuLabel(): String = localizedText("Use Kiku", "Kikuを使う")
 
     @JvmStatic
-    fun saveNoteTypeLabel(): String = "Save note type"
+    fun saveNoteTypeLabel(): String = localizedText("Save note type", "ノートタイプを保存")
 
     @JvmStatic
-    fun noteTypeRequiredToast(): String = "Enter a note type name."
+    fun noteTypeRequiredToast(): String = localizedText("Enter a note type name.", "ノートタイプ名を入力してください。")
 
     @JvmStatic
-    fun expressionFieldRequiredToast(): String = "Choose the kanji field."
+    fun expressionFieldRequiredToast(): String = localizedText("Choose the kanji field.", "漢字フィールドを選んでください。")
 
     @JvmStatic
-    fun noteTypeSavedToast(): String = "Saved. Sync to apply fields."
+    fun noteTypeSavedToast(): String = localizedText("Saved. Sync to apply fields.", "保存しました。同期するとフィールドが反映されます。")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     private fun String.javaTrim(): String {
         return trim { it <= ' ' }
