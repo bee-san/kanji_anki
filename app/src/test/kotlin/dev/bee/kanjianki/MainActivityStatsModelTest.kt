@@ -7,6 +7,7 @@ import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class MainActivityStatsModelTest {
     @Test
@@ -92,6 +93,48 @@ class MainActivityStatsModelTest {
         assertEquals(listOf(33_333L), source.studyTimeReads)
     }
 
+    @Test
+    fun buildStatsScreenModelTranslatesStatsCopyInJapaneseLocale() {
+        withLocale(Locale.JAPAN) {
+            val source = FakeStatsSource(
+                fresh = snapshot(
+                    improvedCount = 3,
+                    sourceVersion = 7,
+                    studyStreak = StudyStatsStore.StudyStreak(3, 9, true, 8, 3_600_000L),
+                    studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(4_000L, 9_000L, 2),
+                ),
+                direct = snapshot(improvedCount = 9, sourceVersion = 11),
+            )
+
+            val model = buildStatsScreenModel(source, nowMillis = 4_500_000L)
+
+            assertEquals("統計", model.title)
+            assertEquals(
+                listOf(
+                    "弱い漢字の推移",
+                    "Ankiの支え",
+                    "学習連続",
+                    "学習の影響",
+                    "要対応",
+                    "ラダー状況",
+                    "最近のミス",
+                    "学習時間",
+                ),
+                model.sections.map { it.title },
+            )
+            assertEquals("弱い漢字3件が改善", model.sections[0].summary)
+            assertEquals("成熟カード0件が増加", model.sections[1].summary)
+            assertEquals("3日連続", model.sections[2].summary)
+            assertEquals("12件の復習", model.sections[3].summary)
+            assertEquals("ラダー上のアクティブ漢字0件", model.sections[5].summary)
+            assertEquals("最近のミス2件", model.sections[6].summary)
+            assertEquals("今日: 4秒", model.sections[7].summary)
+            assertEquals("直近7日: 9秒", model.sections[7].body)
+            assertEquals("Kaniは動いています", model.verdict.title)
+            assertEquals("3件の弱い漢字が改善しました。", model.verdict.body)
+        }
+    }
+
     private class FakeStatsSource(
         private val fresh: StatsCacheStore.Snapshot? = null,
         private val latest: StatsCacheStore.Snapshot? = null,
@@ -175,6 +218,16 @@ class MainActivityStatsModelTest {
                 studyTaskTimeStats,
                 cacheFormatVersion,
             )
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        return try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(previous)
         }
     }
 }

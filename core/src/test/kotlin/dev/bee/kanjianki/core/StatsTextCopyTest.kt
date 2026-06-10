@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class StatsTextCopyTest {
     @Test
@@ -173,5 +174,38 @@ class StatsTextCopyTest {
             "痛  Λambda · just now",
             StatsTextCopy.recentMistakeRowText("痛", "λambda", 4_500_000L, 4_500_000L)
         )
+    }
+
+    @Test
+    fun japaneseLocaleTranslatesStatsCopyAndFormatting() {
+        withLocale(Locale.JAPAN) {
+            assertEquals("統計", StatsTextCopy.statsTitle())
+            assertEquals("弱い漢字の推移", StatsTextCopy.weakKanjiTrendTitle())
+            assertEquals("弱い漢字3件が改善", StatsTextCopy.weakKanjiImprovedSummary(3))
+            assertEquals("Ankiの支え", StatsTextCopy.ankiSupportTitle())
+            assertEquals("今日: 1分5秒", StatsTextCopy.studyTimeTodayLabel(StatsTextCopy.formatStudyTime(65_000)))
+            assertEquals("証拠待ち", StatsTextCopy.verdictTitle(false))
+            assertEquals("学習して同期すると推移が見えます。", StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0))
+            assertEquals(
+                "昇格待ち2件 · リスク1件 · 降格待ち1件。21日を超えたら昇格。3回のミスで降格。",
+                StatsTextCopy.ladderHealthBody(5, 2, 1, 1, 21, 3)
+            )
+            assertEquals("3日連続", StatsTextCopy.studyStreakSummary(3))
+            assertEquals("12件の復習", StatsTextCopy.studyImpactSummary(12))
+            assertEquals("12件の復習を4件の漢字にわたって行いました。 書き取りプロンプト: 4件成功、2件失敗、手動上書き1件。", StatsTextCopy.studyImpactBody(12, 4, 6, 4, 2, 1))
+            assertEquals("痛  再挑戦 · 5分前", StatsTextCopy.recentMistakeRowText("痛", "again", 4_200_000L, 4_500_000L))
+            assertEquals("1時間2分", StatsTextCopy.formatStudyTime(3_720_000))
+            assertEquals("5秒", StatsTextCopy.formatStudyTime(5_000))
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        return try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }

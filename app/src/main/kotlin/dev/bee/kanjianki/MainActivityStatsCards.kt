@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
-import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
@@ -86,7 +85,7 @@ internal fun statsScreenModel(
     nowMillis: Long,
 ): StatsScreenModel {
     return StatsScreenModel(
-        title = "Stats",
+        title = StatsTextCopy.statsTitle(),
         intro = "",
         verdict = statsVerdictCard(stats),
         sections = listOf(
@@ -166,12 +165,8 @@ private fun outcomeCard(
 
 private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Weak kanji trend",
-        summary = StudyTextCopy.countText(
-            stats.weakKanjiImproved.improvedCount,
-            "weak kanji improved",
-            "weak kanji improved"
-        ),
+        title = StatsTextCopy.weakKanjiTrendTitle(),
+        summary = StatsTextCopy.weakKanjiImprovedSummary(stats.weakKanjiImproved.improvedCount),
         body = StatsTextCopy.weaknessImprovementBody(
             stats.weakKanjiImproved.improvedCount,
             stats.weakKanjiImproved.averageBeforeWeakness,
@@ -191,17 +186,9 @@ private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): Stats
 
 private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Anki support",
-        summary = StudyTextCopy.countText(
-            stats.matureSupportGained.matureSupportGained,
-            "mature card gained",
-            "mature cards gained"
-        ),
-        body = StudyTextCopy.countText(
-            stats.matureSupportGained.firstSupportCount,
-            "kanji gained first mature support",
-            "kanji gained first mature support"
-        ) + ".",
+        title = StatsTextCopy.ankiSupportTitle(),
+        summary = StatsTextCopy.matureSupportSummary(stats.matureSupportGained.matureSupportGained),
+        body = StatsTextCopy.firstMatureSupportSummary(stats.matureSupportGained.firstSupportCount) + ".",
         lines = supportGainExamples(stats.matureSupportGained).map {
             StatsLineModel(
                 text = it,
@@ -219,7 +206,7 @@ private fun studyStreakCard(
     nowMillis: Long,
 ): StatsCardModel {
     return outcomeCard(
-        title = "Study streak",
+        title = StatsTextCopy.studyStreakTitle(),
         summary = StatsTextCopy.studyStreakSummary(streak.currentDays),
         body = StatsTextCopy.studyStreakBody(
             streak.bestDays,
@@ -235,8 +222,8 @@ private fun studyStreakCard(
 
 private fun studyImpactCard(stats: StudyStatsStore.StudyImpactStats): StatsCardModel {
     return outcomeCard(
-        title = "Study impact",
-        summary = StudyTextCopy.countText(stats.totalReviews, "review", "reviews"),
+        title = StatsTextCopy.studyImpactTitle(),
+        summary = StatsTextCopy.studyImpactSummary(stats.totalReviews),
         body = StatsTextCopy.studyImpactBody(
             stats.totalReviews,
             stats.distinctReviewedKanji,
@@ -256,8 +243,8 @@ private fun recentMistakesCard(
 ): StatsCardModel {
     val rows = mistakes.take(5)
     return outcomeCard(
-        title = "Recent mistakes",
-        summary = StudyTextCopy.countText(rows.size, "recent mistake", "recent mistakes"),
+        title = StatsTextCopy.recentMistakesTitle(),
+        summary = StatsTextCopy.recentMistakesSummary(rows.size),
         body = StatsTextCopy.recentMistakesBody(rows.isNotEmpty()),
         lines = rows.map { mistake ->
             StatsLineModel(
@@ -298,11 +285,7 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
         if (rows.isNotEmpty() && report != null && report.needsMoreCardsCount > 0) {
             add(
                 StatsLineModel(
-                    text = StudyTextCopy.countText(
-                        report.needsMoreCardsCount,
-                        "kanji still needs more Anki evidence",
-                        "kanji still need more Anki evidence"
-                    ) + ".",
+                    text = StatsTextCopy.moreAnkiEvidenceSummary(report.needsMoreCardsCount) + ".",
                     color = STATS_MUTED_COLOR,
                     bold = false,
                     sizeSp = 15
@@ -311,8 +294,8 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
         }
     }
     return StatsCardModel(
-        title = "Needs attention",
-        summary = StudyTextCopy.countText(rows.size, "kanji with enough evidence", "kanji with enough evidence"),
+        title = StatsTextCopy.needsAttentionTitle(),
+        summary = StatsTextCopy.kanjiWithEnoughEvidenceSummary(rows.size),
         body = StatsTextCopy.notHelpingBody(report == null || report.empty(), rows.isNotEmpty()),
         lines = details,
         strokeColor = STATS_CORAL_COLOR,
@@ -324,12 +307,8 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
 
 private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsCardModel {
     return outcomeCard(
-        title = "Ladder status",
-        summary = StudyTextCopy.countText(
-            metric.totalActiveItems,
-            "active kanji on the ladder",
-            "active kanji on the ladder"
-        ),
+        title = StatsTextCopy.ladderStatusTitle(),
+        summary = StatsTextCopy.activeKanjiOnLadderSummary(metric.totalActiveItems),
         body = StatsTextCopy.ladderHealthBody(
             metric.totalActiveItems,
             metric.promotionReadyCount,
@@ -382,18 +361,18 @@ private fun supportGainExamples(metric: StudyStatsStore.MatureSupportGainedMetri
 
 private fun studyTimeCard(stats: StudyStatsStore.StudyTaskTimeStats): StatsCardModel {
     return StatsCardModel(
-        title = "Study time",
-        summary = "Today: " + StatsTextCopy.formatStudyTime(stats.todayMillis),
-        body = "Last 7 days: " + StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis),
+        title = StatsTextCopy.studyTimeTitle(),
+        summary = StatsTextCopy.studyTimeTodayLabel(StatsTextCopy.formatStudyTime(stats.todayMillis)),
+        body = StatsTextCopy.studyTimeLast7DaysLabel(StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis)),
         lines = listOf(
             StatsLineModel(
-                text = "Answered tasks: " + stats.answeredTasks,
+                text = StatsTextCopy.studyTimeAnsweredTasksLabel(stats.answeredTasks),
                 color = STATS_MUTED_COLOR,
                 bold = false,
                 sizeSp = 16
             ),
             StatsLineModel(
-                text = "Avg / task: " + StatsTextCopy.formatStudyTime(stats.averageMillisPerTask()),
+                text = StatsTextCopy.studyTimeAveragePerTaskLabel(StatsTextCopy.formatStudyTime(stats.averageMillisPerTask())),
                 color = STATS_MUTED_COLOR,
                 bold = false,
                 sizeSp = 16
