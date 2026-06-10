@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class StudyTaskCopyTest {
     @Test
@@ -91,6 +92,45 @@ class StudyTaskCopyTest {
                 sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.REVIEW)
             )
         )
+    }
+
+    @Test
+    fun studyCopyTranslatesToJapaneseLocale() {
+        withJapaneseLocale {
+            assertEquals("学習", StudyTaskCopy.labelForTask(null))
+            assertEquals("集中復習", StudyTaskCopy.labelForTask("targeted_flashcard"))
+            assertEquals("漢字→意味", StudyTaskCopy.labelForTask(StudyTaskTypes.KANJI_MEANING))
+            assertEquals("意味→漢字", StudyTaskCopy.labelForTask(StudyTaskTypes.MEANING_KANJI))
+            assertEquals("意味を入力", StudyTaskCopy.labelForTask(StudyTaskTypes.TYPING_MEANING))
+            assertEquals("意味を入力", StudyTaskCopy.labelForTask(StudyTaskTypes.TYPE_MEANING))
+            assertEquals("フォント→意味", StudyTaskCopy.labelForTask(StudyTaskTypes.FONT_MEANING))
+            assertEquals("単語→読み", StudyTaskCopy.labelForTask(StudyTaskTypes.WORD_READING))
+            assertEquals("漢字を書く", StudyTaskCopy.labelForTask(StudyTaskTypes.WRITE_KANJI))
+            assertEquals("似た漢字", StudyTaskCopy.labelForTask(StudyTaskTypes.SIMILAR_KANJI))
+            assertEquals("素早く復習", StudyTaskCopy.labelForTask("meaning_flashcard"))
+            assertEquals("フォント確認", StudyTaskCopy.labelForTask("font_recognition"))
+            assertEquals("修正", StudyTaskCopy.labelForTask("repair_writing"))
+            assertEquals("集中練習", StudyTaskCopy.labelForTask("targeted_writing"))
+            assertEquals("新しい問題漢字", StudyTaskCopy.labelForTask("context_writing"))
+            assertEquals("ガイド付き復習", StudyTaskCopy.labelForTask("guided_writing"))
+            assertEquals("記憶確認", StudyTaskCopy.labelForTask("blind_writing"))
+            assertEquals("記憶確認", StudyTaskCopy.labelForTask("sampled_handwriting"))
+            assertEquals("形を覚える", StudyTaskCopy.labelForTask("confusable_recognition"))
+
+            assertEquals("この単語を読む", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.WORD_READING, false)))
+            assertEquals("意味を入力", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.TYPING_MEANING, false)))
+            assertEquals("漢字を選ぶ", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.MEANING_KANJI, false)))
+            assertEquals("この漢字を見分ける", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.FONT_MEANING, false)))
+            assertEquals("この漢字の意味は？", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.KANJI_MEANING, false)))
+
+            assertEquals("学習", StudyTaskCopy.studyModeLabel(sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.NEW_LEARNING)))
+            assertEquals("再学習", StudyTaskCopy.studyModeLabel(sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.RELEARNING)))
+            assertEquals("練習", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.WRITE_KANJI, true)))
+            assertEquals("読む", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.WORD_READING, false)))
+            assertEquals("入力", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.TYPING_MEANING, false)))
+            assertEquals("思い出す", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.MEANING_KANJI, false)))
+            assertEquals("見分ける", StudyTaskCopy.studyModeLabel(null))
+        }
     }
 
     @Test
@@ -197,5 +237,15 @@ class StudyTaskCopyTest {
             true,
             "prompt"
         )
+    }
+
+    private fun withJapaneseLocale(block: () -> Unit) {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            block()
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }
