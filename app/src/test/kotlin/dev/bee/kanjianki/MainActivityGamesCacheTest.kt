@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -36,6 +37,38 @@ class MainActivityGamesCacheTest {
             assertEquals(before + 1, activity.gameDataCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    @Test
+    fun gamesScreenModelUsesJapaneseModeTitles() {
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        try {
+            withLocale(Locale.JAPAN) {
+                val activity = Robolectric.buildActivity(CountingGamesActivity::class.java)
+                    .create()
+                    .start()
+                    .resume()
+                    .get()
+
+                val model = activity.gamesScreenModel()
+
+                assertEquals("意味ポップ", model.modeCards[0].title)
+                assertEquals("読みラッシュ", model.modeCards[1].title)
+                assertEquals("似た漢字バトル", model.modeCards[2].title)
+            }
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
         }
     }
 

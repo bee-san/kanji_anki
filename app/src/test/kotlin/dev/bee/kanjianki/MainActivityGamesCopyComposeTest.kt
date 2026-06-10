@@ -1,7 +1,10 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
@@ -42,23 +45,82 @@ class MainActivityGamesCopyComposeTest {
     }
 
     @Test
-    fun gameQuestionCardUsesJapaneseModeLabel() {
+    fun gamesModeCardUsesJapaneseTitleAndAccessibilityLabel() {
         withLocale(Locale.JAPAN) {
-            val question = KanjiGameEngine.GameQuestion(
-                KanjiGameEngine.GameMode.MEANING_POP,
+            composeRule.setContent {
+                GamesScreen(
+                    GamesScreenModel(
+                        title = KanjiGameCopy.gamesLabel(),
+                        subtitle = KanjiGameCopy.gamesSubtitle(),
+                        emptyTitle = null,
+                        emptyBody = null,
+                        showSyncButton = false,
+                        onSync = Runnable {},
+                        modeCards = listOf(
+                            GamesModeCardModel(
+                                title = KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.MEANING_POP),
+                                label = KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MEANING_POP),
+                                body = KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, available = true),
+                                accentColor = 0xFFFF6B6B.toInt(),
+                                available = true,
+                                chipLabel = KanjiGameCopy.playLabel(),
+                                onClick = Runnable {},
+                            )
+                        ),
+                    )
+                )
+            }
+
+            composeRule.onNodeWithText("意味ポップ").assertIsDisplayed()
+            composeRule.onNodeWithContentDescription("ゲームモードカード, 意味ポップ, 漢字→意味, 集中リストから意味を選びます。, 開始")
+                .assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun gameQuestionCardUsesJapaneseReadingPromptInstructions() {
+        withLocale(Locale.JAPAN) {
+            val readingQuestion = KanjiGameEngine.GameQuestion(
+                KanjiGameEngine.GameMode.READING_RUSH,
                 "語",
-                "語",
-                "Pick the meaning",
-                "language",
-                listOf("language", "word"),
+                "言語",
+                "Pick the reading for 語",
+                "げんご",
+                listOf("げんご", "ことば"),
                 "語 = language",
             )
 
             composeRule.setContent {
-                GamesQuestionCard(question = question, onChoiceSelected = {})
+                GamesQuestionCard(question = readingQuestion, onChoiceSelected = {})
             }
 
-            composeRule.onNodeWithText("漢字→意味").assertIsDisplayed()
+            composeRule.onNodeWithText("単語→読み").assertIsDisplayed()
+            composeRule.onNodeWithText("語の読みを選びます。").assertIsDisplayed()
+            composeRule.onAllNodesWithText("Pick the reading for 語").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun gameQuestionCardUsesJapaneseConfusablePromptInstructions() {
+        withLocale(Locale.JAPAN) {
+            val confusableQuestion = KanjiGameEngine.GameQuestion(
+                KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+                "裂",
+                "Which kanji means split?",
+                "Watch the shape",
+                "裂",
+                listOf("裂", "提"),
+                "裂 = split",
+            )
+
+            composeRule.setContent {
+                GamesQuestionCard(question = confusableQuestion, onChoiceSelected = {})
+            }
+
+            composeRule.onNodeWithText("「split」を表す漢字は？").assertIsDisplayed()
+            composeRule.onNodeWithText("形を見比べます。").assertIsDisplayed()
+            composeRule.onAllNodesWithText("Which kanji means split?").assertCountEquals(0)
+            composeRule.onAllNodesWithText("Watch the shape").assertCountEquals(0)
         }
     }
 

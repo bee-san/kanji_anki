@@ -132,7 +132,7 @@ fun GamesQuestionCard(
             }
 
             Text(
-                text = question.prompt,
+                text = KanjiGameCopy.questionPrompt(question),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
                 style = TextStyle(
@@ -147,7 +147,7 @@ fun GamesQuestionCard(
             )
 
             Text(
-                text = question.promptDetail,
+                text = KanjiGameCopy.questionPromptDetail(question),
                 style = TextStyle(
                     fontSize = 16.sp,
                     lineHeight = 16.sp,

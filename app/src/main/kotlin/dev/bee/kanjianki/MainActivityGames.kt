@@ -46,7 +46,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             KanjiGameEngine.GameMode.values().map { mode ->
                 val modeAvailable = available.contains(mode)
                 GamesModeCardModel(
-                    title = mode.title,
+                    title = KanjiGameCopy.modeTitle(mode),
                     label = KanjiGameCopy.modeLabel(mode),
                     body = KanjiGameCopy.modeBody(mode, modeAvailable),
                     accentColor = colorForGameMode(mode),
@@ -86,7 +86,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             return
         }
         renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
                 GamesQuestionCard(
                     question = question,
                     onChoiceSelected = { choice -> answerGameQuestion(question, choice) }
@@ -98,7 +98,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
         val model = GamesUnavailableModel(KanjiGameCopy.gameNotReadyTitle(), KanjiGameCopy.gameNotReadyBody())
         renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames) {
                 GamesUnavailableCard(model)
             }
         }
@@ -132,7 +132,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         val primaryLabel = gamePrimaryLabel(roundComplete)
         val primaryAction = gamePrimaryAction(question.mode, roundComplete)
         renderHomeRoute {
-            GamesPlayScreen(title = question.mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(question.mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
                         title = KanjiGameCopy.resultTitle(roundComplete, correct),
@@ -154,7 +154,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun renderGameRoundComplete(mode: KanjiGameEngine.GameMode) {
         renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
                         title = KanjiGameCopy.roundCompleteLabel(),
