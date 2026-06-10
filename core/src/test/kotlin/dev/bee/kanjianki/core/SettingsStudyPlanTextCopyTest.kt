@@ -46,9 +46,9 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Limit new cards per day.", SettingsStudyPlanTextCopy.deckLimitsBody())
-        assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
-        assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
+        assertEquals("Set the daily new-card cap.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("New cards per day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
+        assertEquals("Save daily limit", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
