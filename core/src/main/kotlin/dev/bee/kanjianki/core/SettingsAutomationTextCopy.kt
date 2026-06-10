@@ -66,7 +66,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return if (canInstall) "App installs allowed" else "App installs need permission"
+        return if (canInstall) "App installs allowed" else "Allow app installs first"
     }
 
     @JvmStatic
@@ -82,9 +82,9 @@ object SettingsAutomationTextCopy {
     @JvmStatic
     fun pendingUpdateFallback(canInstall: Boolean): String {
         return if (canInstall) {
-            "Install verified update to continue."
+            "Install verified update first."
         } else {
-            "Allow app installs to continue."
+            "Allow app installs first."
         }
     }
 
