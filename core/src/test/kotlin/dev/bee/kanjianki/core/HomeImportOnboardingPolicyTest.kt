@@ -61,7 +61,7 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.CHOOSE_SOURCE, noSources.state())
         assertEquals("Review import settings", noSources.primaryActionLabel())
-        assertTrue(noSources.body().contains("Choose import sources before the first sync."))
+        assertTrue(noSources.body().contains("Pick import sources before the first sync."))
     }
 
     @Test

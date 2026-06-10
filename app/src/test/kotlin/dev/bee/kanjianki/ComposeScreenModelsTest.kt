@@ -677,7 +677,7 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "Choose sources, filters, and range.",
+            "Pick sources, filters, and the range.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
         assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
@@ -687,7 +687,7 @@ class ComposeScreenModelsTest {
         )
         assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Set reminders, sync, and updates.",
+            "Manage reminders, sync, and updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
@@ -826,10 +826,10 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("Import & sync", importSync.title)
-        assertEquals("Choose sources, filters, and range.", importSync.summary)
+        assertEquals("Pick sources, filters, and the range.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
-        assertEquals("Set reminders, sync, and updates.", advanced.summary)
+        assertEquals("Manage reminders, sync, and updates.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
         assertEquals("Display & data", referenceData.title)
         assertEquals("Manage dictionaries, strokes, fonts, and credits.", referenceData.summary)

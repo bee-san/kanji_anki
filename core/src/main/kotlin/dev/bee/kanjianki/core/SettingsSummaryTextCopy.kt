@@ -27,7 +27,7 @@ object SettingsSummaryTextCopy {
             sources.add(localizedText("browser query", "ブラウザ検索"))
         }
         if (sources.isEmpty()) {
-            return localizedText("Choose import sources", "インポート元を選択")
+            return localizedText("Pick import sources", "インポート元を選ぶ")
         }
         return if (isJapaneseLocale()) {
             sources.joinToString("＋") + "、" + matchingCardsSummary(safeSettings)

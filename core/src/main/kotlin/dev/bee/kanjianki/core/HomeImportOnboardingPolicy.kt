@@ -57,7 +57,7 @@ object HomeImportOnboardingPolicy {
         if (!settings.hasImportSourceEnabled()) {
             return Plan(
                 State.CHOOSE_SOURCE,
-                "Choose import sources before the first sync.",
+                "Pick import sources before the first sync.",
                 "Review import settings",
             )
         }
