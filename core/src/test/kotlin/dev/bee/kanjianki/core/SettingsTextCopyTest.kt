@@ -216,7 +216,7 @@ class SettingsTextCopyTest {
                         "Minimum FSRS difficulty",
                         "Minimum lapses",
                         "Matching cards per kanji",
-                        "Save import filters",
+                        "Save filters",
                         "Add a search or turn it off.",
                         "Turn on at least one source.",
                         "Saved. Sync to refresh.",
