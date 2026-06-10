@@ -35,7 +35,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY),
         )
         assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle())
-        assertEquals("Choose the order. Reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
+        assertEquals("Choose the order for new cards. Reviews and repeats stay first.", SettingsStudyPlanTextCopy.newCardSortBody())
         assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel())
         assertEquals(
             "Similar kanji stay close: 人/入, 土/士.",
@@ -46,7 +46,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Limit daily new cards.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Set the daily new-card limit.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("Daily new card limit", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save daily limits", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
