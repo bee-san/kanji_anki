@@ -8,13 +8,13 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("Choose sources, filters, and range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Sources, filters, and range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Set new cards, timing, workload, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("New cards, timing, workload, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
-        assertEquals("Manage reminders, sync, and updates.", SettingsSectionTextCopy.settingsAutomationBody())
+        assertEquals("Reminders, sync, and updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Manage dictionaries, strokes, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Dictionaries, strokes, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Overview", SettingsSectionTextCopy.settingsCockpitLabel())
         assertEquals("Choose a section below.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
