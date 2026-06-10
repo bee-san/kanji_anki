@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Collections
+import java.util.Locale
 
 class TimelineCopyTest {
     @Test
@@ -83,6 +84,71 @@ class TimelineCopyTest {
         assertEquals("Review passed", writingPass.title())
         assertEquals("Writing passed and was rated good.", writingPass.detail())
         assertEquals("Recall review was rated good.", recallPass.detail())
+    }
+
+    @Test
+    fun japaneseLocaleTranslatesTimelineHistoryCopy() {
+        val now = 5_000L
+
+        withLocale(Locale.JAPAN) {
+            assertEquals("修復中", TimelineCopy.statusText(timeline(row(), studyItem("review", now)), now))
+            assertEquals("復習まで休止中", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
+            assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
+            assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+
+            assertEquals("", TimelineCopy.sourceLine(event("", "")))
+            assertEquals("出典: expr", TimelineCopy.sourceLine(event("expr", "")))
+            assertEquals("出典: expr  reading", TimelineCopy.sourceLine(event("expr", "reading")))
+
+            assertEquals(
+                "同期後に弱いAnki証拠が残っていなかったため、この修復を完了しました。",
+                TimelineCopy.studyStateDetail(true, null, 3),
+            )
+            assertEquals(
+                "同期で弱い証拠が再び見つかったため、この漢字の修復を再開しました。",
+                TimelineCopy.studyStateDetail(false, null, 3),
+            )
+            assertEquals(
+                "成熟したAnkiの支えが目標に到達: 成熟サポート 3 / 目標 3。",
+                TimelineCopy.studyStateDetail(true, 3, 3),
+            )
+            assertEquals(
+                "成熟したAnkiの支えが目標を下回りました: 成熟サポート 1 / 目標 3。",
+                TimelineCopy.studyStateDetail(false, 1, 3),
+            )
+            assertEquals(
+                "Ankiの証拠はまだ修復が必要: 成熟サポート 1 / 目標 3。",
+                TimelineCopy.supportDetail("Anki evidence still needs repair", 1, 3),
+            )
+
+            val manual = TimelineCopy.reviewEvent(review("good", false, false, true), "good")
+            val recallFail = TimelineCopy.reviewEvent(review("again", false, false, false), "again")
+            val writingAgain = TimelineCopy.reviewEvent(review("again", true, false, false), "again")
+            val writingMiss = TimelineCopy.reviewEvent(review("hard", true, false, false), "hard")
+            val writingPass = TimelineCopy.reviewEvent(review("good", true, true, false), "good")
+            val recallPass = TimelineCopy.reviewEvent(review("good", false, false, false), "good")
+
+            assertEquals("手動上書き", manual.title())
+            assertEquals("手動確認後に「良い」として保存しました。", manual.detail())
+            assertEquals("復習ミス", recallFail.title())
+            assertEquals("思い出せなかったため、Kaniがもう一度出題します。", recallFail.detail())
+            assertEquals("書き取りをミスしたため、Kaniがもう一度出題します。", writingAgain.detail())
+            assertEquals("復習ミス", writingMiss.title())
+            assertEquals("書き取りは不合格で、「難しい」と評価されました。", writingMiss.detail())
+            assertEquals("復習成功", writingPass.title())
+            assertEquals("書き取りに成功し、「良い」と評価されました。", writingPass.detail())
+            assertEquals("思い出し復習は「良い」と評価されました。", recallPass.detail())
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        return try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 
     private fun timeline(
