@@ -8,7 +8,7 @@ class SettingsReferenceDataTextCopyTest {
     fun referenceDataHelpersPreserveFormatting() {
         assertEquals("Suspended card range", SettingsReferenceDataTextCopy.frequencyRangeTitle())
         assertEquals(
-            "Set suspended-card ranks, then sync.",
+            "Set the rank range, then sync.",
             SettingsReferenceDataTextCopy.frequencyRangeBody(),
         )
         assertEquals("Min rank", SettingsReferenceDataTextCopy.minRankLabel())
@@ -16,10 +16,10 @@ class SettingsReferenceDataTextCopyTest {
         assertEquals("Minimum rank", SettingsReferenceDataTextCopy.minimumRankLabel())
         assertEquals("Maximum rank", SettingsReferenceDataTextCopy.maximumRankLabel())
         assertEquals("Save rank range", SettingsReferenceDataTextCopy.saveFrequencyRangeLabel())
-        assertEquals("Use numbers for ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
-        assertEquals("Use ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
+        assertEquals("Enter numbers for ranks.", SettingsReferenceDataTextCopy.numericRanksToast())
+        assertEquals("Enter ranks 1-20000.", SettingsReferenceDataTextCopy.rankRangeToast())
         assertEquals(
-            "Saved. Sync to refresh.",
+            "Range saved. Sync to refresh.",
             SettingsReferenceDataTextCopy.frequencyRangeSavedToast(),
         )
         assertEquals("Offline data licenses", SettingsReferenceDataTextCopy.offlineDataLicensesTitle())
