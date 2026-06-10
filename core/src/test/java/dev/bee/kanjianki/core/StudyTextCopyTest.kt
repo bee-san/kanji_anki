@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -74,6 +75,30 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun heroQuestionTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals(
+                "読み方は？",
+                StudyTextCopy.heroQuestion(
+                    session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.WORD_READING),
+                ),
+            )
+            assertEquals(
+                "この漢字の意味は？",
+                StudyTextCopy.heroQuestion(
+                    session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.KANJI_MEANING),
+                ),
+            )
+            assertEquals("この漢字の意味は？", StudyTextCopy.heroQuestion(null))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun collectionMeaningForSessionUsesSelectedExampleThenRowMeaning() {
         val active = example("active", "活動語", "active meaning")
         val suspended = example("suspended", "休止語", "suspended meaning")
@@ -101,6 +126,27 @@ class StudyTextCopyTest {
         assertEquals("Answer: 静 · Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))
         assertEquals("Which kanji means Fallback clue?", StudyTextCopy.meaningKanjiChoiceQuestion(null, "fallback clue"))
         assertEquals("Typing answer accepted.", StudyTextCopy.typingAnswerAcceptedToast())
+    }
+
+    @Test
+    fun meaningKanjiChoiceCopyTranslatesToJapaneseLocale() {
+        val card = RecordsImportModels.MeaningKanjiChoiceCard(
+            "静",
+            "(suru verb) quiet",
+            "しず",
+            listOf("静", "青", "清", "晴"),
+        )
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
+            assertEquals("正解。静 は「Quiet」です。", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
+            assertEquals("答え：静 ・ Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))
+            assertEquals("入力した答えを保存しました。", StudyTextCopy.typingAnswerAcceptedToast())
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     @Test
@@ -139,11 +185,47 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun studyDoneCopyTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("今日のフォーカス完了", StudyTextCopy.studyDoneTitle())
+            assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.adaptiveFocusDoneBody())
+            assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.studyRunDoneBody())
+            assertEquals("今日のフォーカス：残り0 / 7", StudyTextCopy.adaptiveFocusDoneSummary(7))
+            assertEquals("このセッションで1件の漢字が進みました", StudyTextCopy.movedForwardSummary(1))
+            assertEquals("このセッションで3件の漢字が進みました", StudyTextCopy.movedForwardSummary(3))
+            assertEquals("1件の漢字をミスしました。まもなく再出題されます", StudyTextCopy.missedSummary(1))
+            assertEquals("2件の漢字をミスしました。まもなく再出題されます", StudyTextCopy.missedSummary(2))
+            assertEquals("1件のタスクが完了しました", StudyTextCopy.completedTaskSummary(1))
+            assertEquals("4件のタスクが完了しました", StudyTextCopy.completedTaskSummary(4))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun similarRepairPromptPreservesRepairCopyBranches() {
         assertEquals("You picked 提 — write 拉.", StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull")))
         assertEquals("Write 拉.", StudyTextCopy.similarRepairPrompt(repair("拉", "", "")))
         assertEquals("Repair saved.", StudyTextCopy.similarWritingRepairSavedToast(true))
         assertEquals("Saved. Try that repair again.", StudyTextCopy.similarWritingRepairSavedToast(false))
+    }
+
+    @Test
+    fun similarRepairPromptTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("提を選びました。拉を書いてください。", StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull")))
+            assertEquals("拉を書いてください。", StudyTextCopy.similarRepairPrompt(repair("拉", "", "")))
+            assertEquals("修復を保存しました。", StudyTextCopy.similarWritingRepairSavedToast(true))
+            assertEquals("保存しました。もう一度練習しましょう。", StudyTextCopy.similarWritingRepairSavedToast(false))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     @Test

@@ -1,6 +1,10 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object StudyTextCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun countText(count: Int, singular: String?, plural: String?): String {
         return "$count " + if (count == 1) singular else plural
@@ -51,9 +55,9 @@ object StudyTextCopy {
     @JvmStatic
     fun heroQuestion(session: RecordsSchedulerModels.StudySession?): String {
         if (session != null && StudyTaskTypes.WORD_READING == session.taskType) {
-            return "What is the reading?"
+            return localizedText("What is the reading?", "読み方は？")
         }
-        return "What does this kanji mean?"
+        return localizedText("What does this kanji mean?", "この漢字の意味は？")
     }
 
     @JvmStatic
@@ -79,7 +83,11 @@ object StudyTextCopy {
         card: RecordsImportModels.MeaningKanjiChoiceCard?,
         prompt: String?,
     ): String {
-        return "Which kanji means " + meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 96) + "?"
+        val meaning = meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 96)
+        if (isJapaneseLocale()) {
+            return "「$meaning」はどの漢字ですか？"
+        }
+        return "Which kanji means $meaning?"
     }
 
     @JvmStatic
@@ -101,53 +109,74 @@ object StudyTextCopy {
         val targetKanji = card?.targetKanji ?: ""
         val meaning = meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 72)
         if (correct) {
+            if (isJapaneseLocale()) {
+                return "正解。$targetKanji は「$meaning」です。"
+            }
             return "Correct. $targetKanji means $meaning."
+        }
+        if (isJapaneseLocale()) {
+            return "答え：$targetKanji ・ $meaning"
         }
         return "Answer: $targetKanji \u00b7 $meaning"
     }
 
     @JvmStatic
     fun typingAnswerAcceptedToast(): String {
-        return "Typing answer accepted."
+        return localizedText("Typing answer accepted.", "入力した答えを保存しました。")
     }
 
     @JvmStatic
     fun studyDoneTitle(): String {
-        return "Today's focus done"
+        return localizedText("Today's focus done", "今日のフォーカス完了")
     }
 
     @JvmStatic
     fun adaptiveFocusDoneBody(): String {
-        return "Keep going or stop here."
+        return localizedText("Keep going or stop here.", "続けても、ここで終えてもOKです。")
     }
 
     @JvmStatic
     fun studyRunDoneBody(): String {
-        return "Keep going or stop here."
+        return localizedText("Keep going or stop here.", "続けても、ここで終えてもOKです。")
     }
 
     @JvmStatic
     fun adaptiveFocusDoneSummary(target: Int): String {
+        if (isJapaneseLocale()) {
+            return "今日のフォーカス：残り0 / $target"
+        }
         return "Today's focus: 0 of $target left"
     }
 
     @JvmStatic
     fun movedForwardSummary(count: Int): String {
+        if (isJapaneseLocale()) {
+            return "このセッションで${count}件の漢字が進みました"
+        }
         return countText(count, "kanji moved forward this session", "kanji moved forward this session")
     }
 
     @JvmStatic
     fun missedSummary(count: Int): String {
+        if (isJapaneseLocale()) {
+            return "${count}件の漢字をミスしました。まもなく再出題されます"
+        }
         return countText(count, "kanji was missed and will come back soon", "kanji were missed and will come back soon")
     }
 
     @JvmStatic
     fun completedTaskSummary(count: Int): String {
+        if (isJapaneseLocale()) {
+            return "${count}件のタスクが完了しました"
+        }
         return countText(count, "task completed", "tasks completed")
     }
 
     @JvmStatic
     fun similarWritingRepairSavedToast(passed: Boolean): String {
+        if (isJapaneseLocale()) {
+            return if (passed) "修復を保存しました。" else "保存しました。もう一度練習しましょう。"
+        }
         return if (passed) "Repair saved." else "Saved. Try that repair again."
     }
 
@@ -155,9 +184,19 @@ object StudyTextCopy {
     fun similarRepairPrompt(repair: RecordsImportModels.SimilarKanjiWritingRepair): String {
         return buildString {
             if (repair.wrongSelection.isNotEmpty()) {
-                append("You picked ").append(repair.wrongSelection).append(" — write ").append(repair.repairKanji).append(".")
+                if (isJapaneseLocale()) {
+                    append(repair.wrongSelection).append("を選びました。")
+                        .append(repair.repairKanji).append("を書いてください。")
+                } else {
+                    append("You picked ").append(repair.wrongSelection).append(" — write ")
+                        .append(repair.repairKanji).append(".")
+                }
             } else {
-                append("Write ").append(repair.repairKanji).append(".")
+                if (isJapaneseLocale()) {
+                    append(repair.repairKanji).append("を書いてください。")
+                } else {
+                    append("Write ").append(repair.repairKanji).append(".")
+                }
             }
         }
     }
@@ -205,4 +244,9 @@ object StudyTextCopy {
         }
         return session.row.primaryMeaning
     }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
