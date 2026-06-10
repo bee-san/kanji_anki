@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class FocusQueueCopyTest {
     @Test
@@ -65,6 +66,52 @@ class FocusQueueCopyTest {
         assertEquals("word -> reading", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.WORD_READING)))
     }
 
+    @Test
+    fun focusQueueCopyTranslatesToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            val active = example("active", "読解")
+            val suspended = example("suspended", "復習")
+            val now = 5_000L
+
+            assertEquals(
+                "読解 から · 復習 を見逃し",
+                FocusQueueCopy.sourceEvidenceText(row("弱", 42, 1, "reason", listOf(active, suspended))),
+            )
+            assertEquals("読解 から", FocusQueueCopy.sourceEvidenceText(row("弱", 42, 1, "reason", listOf(active))))
+            assertEquals("復習 を見逃し", FocusQueueCopy.sourceEvidenceText(row("弱", 42, 1, "reason", listOf(suspended))))
+            assertEquals("AnkiDroid から", FocusQueueCopy.sourceEvidenceText(row("弱", 42, 1, "reason")))
+            assertEquals("漢字練習が必要です。", FocusQueueCopy.queueCardBody(row("弱", 0, 0, "")))
+            assertEquals(
+                "形の取り違え。書いて練習しましょう。",
+                FocusQueueCopy.queueCardBody(row("似", 0, 0, "similar kanji confusion")),
+            )
+            assertEquals("Specific reason", FocusQueueCopy.queueCardBody(row("弱", 0, 0, "Specific reason")))
+            assertEquals(
+                "弱点 42 · 成熟サポート 1/3 · 漢字→意味 · 今すぐ復習",
+                FocusQueueCopy.focusReasonLine(
+                    row("弱", 42, 1, "reason"),
+                    item("弱", RecordsBase.LadderRung.KANJI_MEANING, StudyLadderRules.STATE_REVIEW, now, 1),
+                    now,
+                    3,
+                ),
+            )
+            assertEquals(
+                "漢字を書く · 学習中",
+                FocusQueueCopy.focusReasonLine(
+                    row("書", 0, 3, "reason"),
+                    item("書", RecordsBase.LadderRung.WRITE_KANJI, StudyLadderRules.STATE_LEARNING, now + 1L, 1),
+                    now,
+                    3,
+                ),
+            )
+            assertEquals("意味を入力", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.TYPE_MEANING)))
+            assertEquals("似た漢字", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.SIMILAR_KANJI)))
+            assertEquals("意味→漢字", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.MEANING_KANJI)))
+            assertEquals("フォント→意味", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.FONT_MEANING)))
+            assertEquals("単語→読み", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.WORD_READING)))
+        }
+    }
+
     private fun row(
         kanji: String,
         weaknessScore: Int,
@@ -122,5 +169,15 @@ class FocusQueueCopyTest {
             .copyBuilder()
             .rung(rung)
             .build()
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
