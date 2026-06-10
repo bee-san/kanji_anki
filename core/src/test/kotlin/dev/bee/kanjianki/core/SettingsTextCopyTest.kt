@@ -470,7 +470,7 @@ class SettingsTextCopyTest {
                         "Days to move up",
                         "Fails to move down",
                         "Use default movement rules",
-                        "Save movement rules",
+                        "Save rules",
                         "Movement rules saved."
                 ),
                 listOf(
