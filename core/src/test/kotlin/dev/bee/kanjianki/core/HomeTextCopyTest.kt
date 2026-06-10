@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import java.util.Locale
 
 class HomeTextCopyTest {
     @Test
@@ -107,6 +108,73 @@ class HomeTextCopyTest {
     }
 
     @Test
+    fun homeShellAndSyncCopyTranslateToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            val waiting = RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, emptyList(), 0, false, "")
+            val all = RecordsSchedulerModels.AdaptiveLoadPlan(100, 2, 2, listOf("裂", "語"), 0, true, "all")
+            val focused = RecordsSchedulerModels.AdaptiveLoadPlan(20, 4, 1, listOf("裂", "語"), 0, false, "focus")
+            val settings = RecordsSyncModels.Settings(
+                "Basic",
+                "kanji",
+                "meaning",
+                "reading",
+                "deck",
+                "",
+                "",
+                "",
+                2,
+                1,
+                1000,
+                20,
+                5
+            )
+
+            assertEquals("カニ", HomeTextCopy.appTitle())
+            assertEquals("待機中", HomeTextCopy.focusHeadline(waiting))
+            assertEquals("全件最新", HomeTextCopy.focusHeadline(all))
+            assertEquals("残り 1/4 件", HomeTextCopy.focusHeadline(focused))
+            assertEquals("まだ同期していません", HomeTextCopy.homeSyncValue(null))
+            assertEquals("ミス", HomeTextCopy.recentMistakeTitle(null))
+            assertEquals("再挑戦 · Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"))
+            assertEquals("見逃し", HomeTextCopy.recentMistakeSubtitle(null, null))
+            assertEquals("連続日数なし", HomeTextCopy.streakHeadline(0))
+            assertEquals("2日連続", HomeTextCopy.streakHeadline(2))
+            assertEquals("今日は未完了", HomeTextCopy.streakMetricBody(false, 0))
+            assertEquals("最高: 5日", HomeTextCopy.streakMetricBody(true, 5))
+            assertEquals("今日は完了", HomeTextCopy.streakMetricBody(true, 0))
+            assertEquals("1日", HomeTextCopy.streakDayCount(1))
+            assertEquals("3日", HomeTextCopy.streakDayCount(3))
+            assertEquals("保存しました。この漢字はすぐ再登場します。2日連続。", HomeTextCopy.reviewToast(false, StudyRatings.AGAIN, 2))
+            assertEquals("保存しました。この漢字は練習中のままです。", HomeTextCopy.reviewToast(false, StudyRatings.HARD, 0))
+            assertEquals("保存しました。この漢字は次へ進みました。2日連続。", HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 2))
+            assertEquals("保存しました。", HomeTextCopy.reviewToast(false, null, 0))
+            assertEquals("すでに保存済み。", HomeTextCopy.reviewToast(true, StudyRatings.GOOD, 2))
+            assertEquals("AnkiDroidを同期", HomeTextCopy.syncAnkiDroidLabel())
+            assertEquals("集中キュー", HomeTextCopy.focusQueueTitle())
+            assertEquals("キューに漢字がありません", HomeTextCopy.noKanjiQueuedTitle())
+            assertEquals("同期", HomeTextCopy.syncMetricLabel())
+            assertEquals("最新です", HomeTextCopy.syncMetricStatus(true))
+            assertEquals("タップして同期", HomeTextCopy.syncMetricStatus(false))
+            assertEquals("AnkiDroidを同期しますか？", HomeTextCopy.syncDialogTitle())
+            assertEquals(
+                "Kaniは停止中のBasicカードを端末に保持します。アクティブカードも必要なら有効にしてください。",
+                HomeTextCopy.syncDialogMessage(settings)
+            )
+            assertEquals("カードを同期", HomeTextCopy.syncDialogPositiveLabel())
+            assertEquals("キャンセル", HomeTextCopy.cancelLabel())
+            assertEquals("同期完了", HomeTextCopy.syncCompleteTitle())
+            assertEquals("学習可能な漢字1件", HomeTextCopy.syncReadyCountText(1))
+            assertEquals("学習可能な漢字3件", HomeTextCopy.syncReadyCountText(3))
+            assertEquals("Ankiからの候補1件。Auto Pareto: 1 item today。", HomeTextCopy.syncCandidateSummary(1, "Auto Pareto: 1 item today"))
+            assertEquals("停止中の漢字4件を取り込みました", HomeTextCopy.importedSuspendedKanjiText(4))
+            assertEquals("AnkiDroidに対応が必要です", HomeTextCopy.syncNeedsAttentionTitle())
+            assertEquals("AnkiDroidを読み取れませんでした", HomeTextCopy.syncReadErrorTitle())
+            assertEquals("AnkiDroidの権限を確認してから再試行してください。", HomeTextCopy.syncFailureFallback())
+            assertEquals("再同期", HomeTextCopy.trySyncAgainLabel())
+        }
+    }
+
+    @Test
     fun syncCopyPreservesDialogResultAndFallbackText() {
         val settings = RecordsSyncModels.Settings(
             "Basic",
@@ -186,6 +254,76 @@ class HomeTextCopyTest {
         assertEquals("relearning", HomeTextCopy.relearningChipLabel())
         assertEquals("Back to Browse", HomeTextCopy.backToBrowseKanjiLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.browseItemMeaning(null) }
+    }
+
+    @Test
+    fun browseAndDetailCopyTranslateToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            val inventory = inventory("語", "language", "inventory:語")
+            val row = row("裂", "row:裂")
+            val rowWithReason = row("裂", "row:裂", "manual reason")
+
+            assertEquals("該当なし", HomeTextCopy.browseResultHeading(0))
+            assertEquals("該当なし", HomeTextCopy.browseResultHeading(-1))
+            assertEquals("2件の漢字", HomeTextCopy.browseResultHeading(2))
+            assertEquals("最初の300件を表示", HomeTextCopy.browseResultHeading(300))
+            assertEquals("漢字を閲覧", HomeTextCopy.browseTitle())
+            assertEquals("漢字、意味、読み、例文を検索", HomeTextCopy.browseSearchHint())
+            assertEquals("検索", HomeTextCopy.browseSearchButtonLabel())
+            assertEquals("類似漢字のみ", HomeTextCopy.browseSimilarFilterLabel())
+            assertEquals("1/2件を選択", HomeTextCopy.browseStudySelectionSummary(1, 2))
+            assertEquals("すべて選択済み", HomeTextCopy.browseStudySelectionSummary(2, 2))
+            assertEquals("未選択", HomeTextCopy.browseStudySelectionSummary(0, 0))
+            assertEquals("すべて選択", HomeTextCopy.browseSelectAllStudiedLabel())
+            assertEquals("すべてクリア", HomeTextCopy.browseDeselectAllStudiedLabel())
+            assertEquals("この漢字を学習対象にする", HomeTextCopy.browseStudiedToggleLabel("語"))
+            assertEquals("ローカル漢字が見つかりません", HomeTextCopy.browseEmptyTitle())
+            assertEquals("先にAnkiDroidを同期するか、別の検索を試してください。", HomeTextCopy.browseEmptyBody())
+            assertEquals("漢字が見つかりません", HomeTextCopy.kanjiNotFoundTitle())
+            assertEquals("ローカル記録が見つかりません。", HomeTextCopy.kanjiNotFoundBody())
+            assertEquals("まだ意味は保存されていません", HomeTextCopy.browseItemMeaning(inventory("語", "", "")))
+            assertEquals("language", HomeTextCopy.browseItemMeaning(inventory))
+            assertEquals("ローカルソース1件 · 例文2件", HomeTextCopy.browseInventorySummary(1, 2))
+            assertEquals("ローカルソース3件 · 例文1件", HomeTextCopy.browseInventorySummary(3, 1))
+            assertEquals("停止中", HomeTextCopy.suspendedChipLabel())
+            assertEquals("再学習", HomeTextCopy.relearningChipLabel())
+            assertEquals("閲覧に戻る", HomeTextCopy.backToBrowseKanjiLabel())
+            assertEquals("", HomeTextCopy.detailReasonTitle())
+            assertEquals("非アクティブ; 復元履歴として保持。", HomeTextCopy.historicalReasonText())
+            assertEquals("アクティブな練習エビデンス。", HomeTextCopy.activeReasonText(row))
+            assertEquals("manual reason", HomeTextCopy.activeReasonText(rowWithReason))
+            assertEquals("Anki検索: row:裂", HomeTextCopy.ankiBrowserLine("row:裂"))
+            assertEquals("今すぐ復習", HomeTextCopy.reviewNowLabel())
+            assertEquals("検索をコピー", HomeTextCopy.copyAnkiSearchLabel())
+            assertEquals("Anki検索", HomeTextCopy.ankiSearchClipLabel())
+            assertEquals("検索をコピーしました", HomeTextCopy.ankiSearchCopiedToast())
+            assertEquals("ローカルで停止", HomeTextCopy.localSuspendButtonLabel(false))
+            assertEquals("ローカル停止を解除", HomeTextCopy.localSuspendButtonLabel(true))
+            assertEquals("ローカルで停止しました。", HomeTextCopy.localSuspendToast(false))
+            assertEquals("停止を解除しました。", HomeTextCopy.localSuspendToast(true))
+            assertEquals("例文", HomeTextCopy.examplesTitle())
+            assertEquals("ローカル記録", HomeTextCopy.localInventoryTitle())
+            assertEquals("ソース1件 · 例文2件", HomeTextCopy.localInventorySummary(1, 2))
+            assertEquals("ソース3件 · 例文1件", HomeTextCopy.localInventorySummary(3, 1))
+            assertEquals("Anki検索: row:裂", HomeTextCopy.localInventorySearchLine("row:裂"))
+            assertEquals(
+                "最終確認 ${DateTextPolicy.shortDateTime(123456789L)}",
+                HomeTextCopy.localInventoryLastSeenLine(123456789L)
+            )
+            assertEquals("復元履歴", HomeTextCopy.inventoryTitle(null))
+            assertEquals("language", HomeTextCopy.inventoryTitle(inventory))
+            assertEquals("裂", HomeTextCopy.detailDisplayKanji("fallback", row, inventory))
+            assertEquals("語", HomeTextCopy.detailDisplayKanji("fallback", null, inventory))
+            assertEquals("fallback", HomeTextCopy.detailDisplayKanji("fallback", null, null))
+            assertEquals("inventory:語", HomeTextCopy.detailBrowserSearch(row, inventory))
+            assertEquals("row:裂", HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")))
+            assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null))
+            assertEquals("成熟サポート 0/2", HomeTextCopy.matureSupportTargetText(0, 2))
+            assertEquals("成熟サポート 3/4", HomeTextCopy.matureSupportTargetText(3, 4))
+            assertEquals("同期または復習後にタイムラインが表示されます。", HomeTextCopy.timelineEmptyText())
+            assertEquals("復元タイムライン", HomeTextCopy.recoveryTimelineTitle())
+            assertEquals("アクティブな Anki エビデンスはありません。", HomeTextCopy.noActiveEvidenceText())
+        }
     }
 
     @Test
@@ -341,5 +479,15 @@ class HomeTextCopyTest {
             null,
             null
         )
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
