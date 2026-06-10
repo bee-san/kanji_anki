@@ -14,7 +14,7 @@ class SettingsStudyAheadPanelModelsTest {
         assertEquals("Review early; learning waits stay fixed.", model.body)
         assertEquals("Minutes (0-1440)", model.minutesLabel)
         assertEquals("30", model.initialMinutesText)
-        assertEquals("Save look-ahead", model.saveLabel)
+        assertEquals("Save minutes", model.saveLabel)
 
         model.onSave.save("45")
         assertEquals("45", minutesText)

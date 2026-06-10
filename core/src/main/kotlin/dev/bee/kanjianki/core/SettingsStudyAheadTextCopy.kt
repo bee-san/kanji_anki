@@ -12,7 +12,7 @@ object SettingsStudyAheadTextCopy {
     }
 
     @JvmStatic
-    fun saveStudyAheadLabel(): String = "Save look-ahead"
+    fun saveStudyAheadLabel(): String = "Save minutes"
 
     @JvmStatic
     fun studyAheadSavedToast(): String = "Look-ahead saved."
