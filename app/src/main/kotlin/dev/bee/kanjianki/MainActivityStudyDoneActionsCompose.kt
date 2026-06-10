@@ -55,22 +55,26 @@ fun StudyDoneActions(
         if (availableStudyMoreNewCards > 0) {
             StudyPrimaryButton(
                 label = StudyTextCopy.studyMoreNewCardsLabel(),
+                traceLabel = "Study more new cards",
                 onClick = onStudyMore
             )
         }
         if (availableStudyMoreNewCards > 0) {
             StudySecondaryButton(
                 label = StudyTextCopy.continueAllKanjiLabel(),
+                traceLabel = "Continue all kanji",
                 onClick = onContinueAll
             )
         } else {
             StudyPrimaryButton(
                 label = StudyTextCopy.continueAllKanjiLabel(),
+                traceLabel = "Continue all kanji",
                 onClick = onContinueAll
             )
         }
         StudySecondaryButton(
             label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
             onClick = onBackHome
         )
     }
@@ -133,11 +137,13 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
                 if (model.backHomePrimary) {
                     StudyPrimaryButton(
                         label = StudyTextCopy.backHomeLabel(),
+                        traceLabel = "Back home",
                         onClick = { model.onBackHome.run() }
                     )
                 } else {
                     StudySecondaryButton(
                         label = StudyTextCopy.backHomeLabel(),
+                        traceLabel = "Back home",
                         onClick = { model.onBackHome.run() }
                     )
                 }
@@ -166,7 +172,7 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
         },
         confirmButton = {
             TextButton(onClick = {
-                withButtonTrace(model.confirmLabel) {
+                withButtonTrace("Study more new cards confirm") {
                     model.onConfirm(requestedCount)
                 }
             }) {
@@ -175,7 +181,7 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
         },
         dismissButton = {
             TextButton(onClick = {
-                withButtonTrace(model.cancelLabel) {
+                withButtonTrace("Study more new cards cancel") {
                     model.onDismiss.run()
                 }
             }) {
@@ -230,10 +236,11 @@ private fun StudyDoneSummary(lines: List<String>) {
 @Composable
 private fun StudyPrimaryButton(
     label: String,
+    traceLabel: String = label,
     onClick: () -> Unit
 ) {
     Button(
-        onClick = { withButtonTrace(label) { onClick() } },
+        onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
@@ -258,10 +265,11 @@ private fun StudyPrimaryButton(
 @Composable
 private fun StudySecondaryButton(
     label: String,
+    traceLabel: String = label,
     onClick: () -> Unit
 ) {
     OutlinedButton(
-        onClick = { withButtonTrace(label) { onClick() } },
+        onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp),
