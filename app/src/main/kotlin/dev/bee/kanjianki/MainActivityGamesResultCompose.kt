@@ -150,7 +150,7 @@ fun GamesResultCard(model: GamesResultModel) {
                 )
             ) {
                 Text(
-                    text = KanjiGameCopy.LABEL_GAMES,
+                    text = KanjiGameCopy.gamesLabel(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )

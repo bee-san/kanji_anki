@@ -120,7 +120,7 @@ fun GamesQuestionCard(
                 border = BorderStroke(1.dp, accent.copy(alpha = 0.34f))
             ) {
                 Text(
-                    text = question.mode.label,
+                    text = KanjiGameCopy.modeLabel(question.mode),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = TextStyle(
                         fontSize = 13.sp,

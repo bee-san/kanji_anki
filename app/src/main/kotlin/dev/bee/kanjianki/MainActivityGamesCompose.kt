@@ -54,7 +54,7 @@ fun GamesPlayScreen(
     Column(modifier = Modifier.fillMaxWidth()) {
         HomeSectionHeader(
             title = title,
-            actionLabel = KanjiGameCopy.LABEL_GAMES,
+            actionLabel = KanjiGameCopy.gamesLabel(),
             onAction = onGames
         )
         score?.let { GamesScoreStrip(it) }
@@ -119,7 +119,7 @@ fun GamesScreen(model: GamesScreenModel) {
                         contentColor = GamesWhite
                     )
                 ) {
-                    Text(text = KanjiGameCopy.LABEL_SYNC_ANKIDROID)
+                    Text(text = KanjiGameCopy.syncAnkiDroidLabel())
                 }
             }
         } else {

@@ -7,6 +7,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Arrays
+import java.util.Locale
 
 class KanjiGameCopyTest {
     @Test
@@ -87,6 +88,75 @@ class KanjiGameCopyTest {
         assertEquals("Sync AnkiDroid to build games.", KanjiGameCopy.EMPTY_NO_KANJI_BODY)
         assertEquals("Needs more data", KanjiGameCopy.GAME_NOT_READY_TITLE)
         assertEquals("At least two choices needed.", KanjiGameCopy.GAME_NOT_READY_BODY)
+    }
+
+    @Test
+    fun screenLabelFunctionsPreserveEnglishDefaults() {
+        assertEquals("Games", KanjiGameCopy.gamesLabel())
+        assertEquals("Next", KanjiGameCopy.nextLabel())
+        assertEquals("Round complete", KanjiGameCopy.roundCompleteLabel())
+        assertEquals("New round", KanjiGameCopy.newRoundLabel())
+        assertEquals("Sync AnkiDroid", KanjiGameCopy.syncAnkiDroidLabel())
+        assertEquals("Start", KanjiGameCopy.playLabel())
+        assertEquals("Needs data", KanjiGameCopy.lockedLabel())
+        assertEquals("Round", KanjiGameCopy.roundLabel())
+        assertEquals("Score", KanjiGameCopy.scoreLabel())
+        assertEquals("Streak", KanjiGameCopy.streakLabel())
+        assertEquals("Practice without changing reviews.", KanjiGameCopy.gamesSubtitle())
+        assertEquals("No games yet", KanjiGameCopy.emptyNoKanjiTitle())
+        assertEquals("Sync AnkiDroid to build games.", KanjiGameCopy.emptyNoKanjiBody())
+        assertEquals("Needs more data", KanjiGameCopy.gameNotReadyTitle())
+        assertEquals("At least two choices needed.", KanjiGameCopy.gameNotReadyBody())
+        assertEquals("Kanji -> meaning", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MEANING_POP))
+        assertEquals("Word -> reading", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.READING_RUSH))
+        assertEquals("Meaning -> kanji", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+        assertThrows(NullPointerException::class.java) { KanjiGameCopy.modeLabel(null) }
+    }
+
+    @Test
+    fun gameScreenCopyTranslatesToJapaneseLocale() {
+        withLocale(Locale.JAPAN) {
+            assertEquals("ゲーム", KanjiGameCopy.gamesLabel())
+            assertEquals("次へ", KanjiGameCopy.nextLabel())
+            assertEquals("ラウンド完了", KanjiGameCopy.roundCompleteLabel())
+            assertEquals("新しいラウンド", KanjiGameCopy.newRoundLabel())
+            assertEquals("AnkiDroidを同期", KanjiGameCopy.syncAnkiDroidLabel())
+            assertEquals("開始", KanjiGameCopy.playLabel())
+            assertEquals("データ不足", KanjiGameCopy.lockedLabel())
+            assertEquals("ラウンド", KanjiGameCopy.roundLabel())
+            assertEquals("スコア", KanjiGameCopy.scoreLabel())
+            assertEquals("連続", KanjiGameCopy.streakLabel())
+            assertEquals("復習を変更せずに練習できます。", KanjiGameCopy.gamesSubtitle())
+            assertEquals("まだゲームはありません", KanjiGameCopy.emptyNoKanjiTitle())
+            assertEquals("AnkiDroidを同期してゲームを作成します。", KanjiGameCopy.emptyNoKanjiBody())
+            assertEquals("もっとデータが必要です", KanjiGameCopy.gameNotReadyTitle())
+            assertEquals("選択肢が2つ以上必要です。", KanjiGameCopy.gameNotReadyBody())
+            assertEquals("漢字→意味", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MEANING_POP))
+            assertEquals("単語→読み", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.READING_RUSH))
+            assertEquals("意味→漢字", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+            assertEquals("もっとデータが必要です。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, false))
+            assertEquals("集中リストから意味を選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true))
+            assertEquals("出典の単語から読みを選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true))
+            assertEquals("似ている漢字から選びます。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true))
+            assertEquals("ラウンド完了", KanjiGameCopy.resultTitle(true, false))
+            assertEquals("正解", KanjiGameCopy.resultTitle(false, true))
+            assertEquals("惜しい", KanjiGameCopy.resultTitle(false, false))
+            assertEquals("正解: pull", KanjiGameCopy.answerText("pull"))
+            assertEquals("あなたの答え: push", KanjiGameCopy.selectedAnswerText("push"))
+            assertEquals("スコア: 7/10", KanjiGameCopy.finalScoreText(7, 10))
+            assertEquals("正答率: 70%", KanjiGameCopy.accuracyText(7, 10))
+            assertEquals("正答率: 0%", KanjiGameCopy.accuracyText(7, 0))
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 
     private fun question(mode: KanjiGameEngine.GameMode, correctAnswer: String): KanjiGameEngine.GameQuestion {
