@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core
 import java.util.Locale
 
 object FocusQueueCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
     private const val SOURCE_ACTIVE = "active"
     private const val SOURCE_SUSPENDED = "suspended"
 
@@ -18,21 +19,21 @@ object FocusQueueCopy {
             }
         }
         if (active.isNotEmpty() && suspended.isNotEmpty()) {
-            return "From $active · missed $suspended"
+            return localizedText("From $active · missed $suspended", "$active から · $suspended を見逃し")
         }
         if (active.isNotEmpty()) {
-            return "From $active"
+            return localizedText("From $active", "$active から")
         }
         if (suspended.isNotEmpty()) {
-            return "Missed $suspended"
+            return localizedText("Missed $suspended", "$suspended を見逃し")
         }
-        return "From AnkiDroid"
+        return localizedText("From AnkiDroid", "AnkiDroid から")
     }
 
     @JvmStatic
     fun queueCardBody(row: RecordsImportModels.DashboardRow): String {
         if (row.reasonText.isEmpty()) {
-            return "Needs kanji practice."
+            return localizedText("Needs kanji practice.", "漢字練習が必要です。")
         }
         val normalized = row.reasonText.lowercase(Locale.ROOT)
         if (
@@ -40,7 +41,7 @@ object FocusQueueCopy {
             normalized.contains("similar kanji") ||
             normalized.contains("similar choice")
         ) {
-            return "Shape mix-up; practice writing."
+            return localizedText("Shape mix-up; practice writing.", "形の取り違え。書いて練習しましょう。")
         }
         return row.reasonText
     }
@@ -54,16 +55,21 @@ object FocusQueueCopy {
     ): String {
         val parts = ArrayList<String>()
         if (row.weaknessScore > 0) {
-            parts.add("weakness ${row.weaknessScore}")
+            parts.add(localizedText("weakness ${row.weaknessScore}", "弱点 ${row.weaknessScore}"))
         }
         if (row.matureSupportCount < matureSupportThreshold) {
-            parts.add("support ${row.matureSupportCount}/$matureSupportThreshold")
+            parts.add(
+                localizedText(
+                    "support ${row.matureSupportCount}/$matureSupportThreshold",
+                    "成熟カード ${row.matureSupportCount}/$matureSupportThreshold",
+                ),
+            )
         }
         parts.add(recognitionStageLabel(item))
         if (item.dueAtMillis <= nowMillis) {
-            parts.add("due now")
+            parts.add(localizedText("due now", "今すぐ復習"))
         } else if (StudyLadderRules.STATE_LEARNING == item.state) {
-            parts.add(StudyLadderRules.STATE_LEARNING)
+            parts.add(localizedText(StudyLadderRules.STATE_LEARNING, "学習中"))
         }
         return parts.joinToString(" · ")
     }
@@ -71,13 +77,18 @@ object FocusQueueCopy {
     @JvmStatic
     fun recognitionStageLabel(item: RecordsStudyModels.StudyItem): String {
         return when (item.rung) {
-            RecordsBase.LadderRung.WRITE_KANJI -> "write kanji"
-            RecordsBase.LadderRung.TYPE_MEANING -> "type meaning"
-            RecordsBase.LadderRung.SIMILAR_KANJI -> "similar kanji"
-            RecordsBase.LadderRung.MEANING_KANJI -> "meaning -> kanji"
-            RecordsBase.LadderRung.FONT_MEANING -> "font -> meaning"
-            RecordsBase.LadderRung.WORD_READING -> "word -> reading"
-            RecordsBase.LadderRung.KANJI_MEANING -> "kanji -> meaning"
+            RecordsBase.LadderRung.WRITE_KANJI -> localizedText("write kanji", "漢字を書く")
+            RecordsBase.LadderRung.TYPE_MEANING -> localizedText("type meaning", "意味を入力")
+            RecordsBase.LadderRung.SIMILAR_KANJI -> localizedText("similar kanji", "似た漢字")
+            RecordsBase.LadderRung.MEANING_KANJI -> localizedText("meaning -> kanji", "意味→漢字")
+            RecordsBase.LadderRung.FONT_MEANING -> localizedText("font -> meaning", "字体→意味")
+            RecordsBase.LadderRung.WORD_READING -> localizedText("word -> reading", "単語→読み")
+            RecordsBase.LadderRung.KANJI_MEANING -> localizedText("kanji -> meaning", "漢字→意味")
         }
     }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
