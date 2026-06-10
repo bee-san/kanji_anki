@@ -362,13 +362,13 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "Set new/missed waits. Due reviews move cards up.",
+                "Set new and missed waits. Due reviews move up.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Missed reviews", SettingsTextCopy.reviewMissesLabel())
         assertEquals("Use Anki defaults", SettingsTextCopy.ankiDefaultLabel())
         assertEquals("Copy new-card steps", SettingsTextCopy.sameLearningStepsLabel())
-        assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel())
+        assertEquals("Save steps", SettingsTextCopy.saveLearningStepsLabel())
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
