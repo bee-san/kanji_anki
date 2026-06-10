@@ -1,116 +1,128 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsAutomationTextCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
         if (blocked) {
-            return "Notifications blocked"
+            return localizedText("Notifications blocked", "通知がブロックされています")
         }
-        return if (enabled) displayTime else "Off"
+        return if (enabled) displayTime else offText()
     }
 
     @JvmStatic
     fun settingsAutoSyncSummary(configured: Boolean, enabled: Boolean, displayTime: String?): String? {
         if (!configured) {
-            return "Sync once to enable daily sync."
+            return syncOnceToEnableDailySyncText()
         }
-        return if (enabled) displayTime else "Off"
+        return if (enabled) displayTime else offText()
     }
 
     @JvmStatic
     fun settingsUpdateSummary(hasPendingUpdate: Boolean, enabled: Boolean): String {
         if (hasPendingUpdate) {
-            return "Ready to install"
+            return readyToInstallText()
         }
-        return if (enabled) "Daily checks enabled" else "Off"
+        return if (enabled) dailyChecksEnabledText() else offText()
     }
 
     @JvmStatic
     fun versionText(version: String?): String {
         if (version == null || version.javaTrim().isEmpty()) {
-            return "unknown version"
+            return localizedText("unknown version", "不明なバージョン")
         }
         return version.replaceFirst("^v".toRegex(), "")
     }
 
     @JvmStatic
-    fun updatePageTitle(): String = "App updates"
+    fun updatePageTitle(): String = appUpdatesTitle()
 
     @JvmStatic
     fun updatePageBody(versionName: String?): String {
         val version = versionText(versionName)
-        val versionLine = if (version == "unknown version") "Version unknown" else "Version $version"
-        return "$versionLine. Check for updates."
+        val versionLine = if (version == versionText(null)) {
+            localizedText("Version unknown", "バージョン不明")
+        } else {
+            localizedText("Version $version", "バージョン $version")
+        }
+        return localizedText("$versionLine. Check for updates.", "$versionLine。更新を確認します。")
     }
 
     @JvmStatic
-    fun automaticUpdatesTitle(): String = "Automatic updates"
+    fun automaticUpdatesTitle(): String = localizedText("Automatic updates", "自動更新")
 
     @JvmStatic
-    fun checkForUpdateLabel(): String = "Check for updates"
+    fun checkForUpdateLabel(): String = localizedText("Check for updates", "更新を確認")
 
     @JvmStatic
     fun autoUpdatePanelStatus(enabled: Boolean): String {
-        return if (enabled) "Daily checks enabled" else "Off"
+        return if (enabled) dailyChecksEnabledText() else offText()
     }
 
     @JvmStatic
     fun autoUpdateLastCheckLine(lastCheckText: String?): String {
-        return "Last check: " + displayValue(lastCheckText, "not yet")
+        return localizedText("Last check: ", "最終確認: ") + displayValue(lastCheckText, localizedText("not yet", "まだ"))
     }
 
     @JvmStatic
     fun autoUpdateLastResultLine(lastResult: String?): String {
-        return "Last result: " + displayValue(lastResult, "not yet")
+        return localizedText("Last result: ", "最終結果: ") + displayValue(lastResult, localizedText("not yet", "まだ"))
     }
 
     @JvmStatic
     fun installPermissionLine(canInstall: Boolean): String {
-        return if (canInstall) "App installs allowed" else "Allow app installs first"
+        return if (canInstall) {
+            localizedText("App installs allowed", "アプリのインストールを許可済み")
+        } else {
+            allowAppInstallsFirstText()
+        }
     }
 
     @JvmStatic
     fun verifiedApkReadyLine(version: String?): String {
-        return "Ready to install: " + versionText(version)
+        return localizedText("Ready to install: ", "インストール準備完了: ") + versionText(version)
     }
 
     @JvmStatic
     fun pendingUpdateFallback(): String {
-        return "Choose an update action."
+        return localizedText("Choose an update action.", "更新操作を選んでください。")
     }
 
     @JvmStatic
     fun pendingUpdateFallback(canInstall: Boolean): String {
         return if (canInstall) {
-            "Install verified update first."
+            localizedText("Install verified update first.", "確認済みの更新を先にインストールしてください。")
         } else {
-            "Allow app installs first."
+            allowAppInstallsFirstText() + localizedText(".", "。")
         }
     }
 
     @JvmStatic
-    fun installVerifiedUpdateLabel(): String = "Install verified update"
+    fun installVerifiedUpdateLabel(): String = localizedText("Install verified update", "確認済みの更新をインストール")
 
     @JvmStatic
-    fun setupAppInstallsLabel(): String = "Allow app installs"
+    fun setupAppInstallsLabel(): String = localizedText("Allow app installs", "アプリのインストールを許可")
 
     @JvmStatic
     fun automaticUpdatesToggleLabel(enabled: Boolean): String {
-        return if (enabled) "Turn off updates" else "Turn on updates"
+        return if (enabled) localizedText("Turn off updates", "更新をオフにする") else localizedText("Turn on updates", "更新をオンにする")
     }
 
     @JvmStatic
-    fun backToSettingsLabel(): String = "Back to settings"
+    fun backToSettingsLabel(): String = localizedText("Back to settings", "設定に戻る")
 
     @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String {
         if (!configured) {
-            return "Sync once to enable daily sync."
+            return syncOnceToEnableDailySyncText()
         }
         if (enabled) {
-            return timedStatus("On around", "On", displayTime)
+            return timedStatus("On around", "On", "オン", "オン", displayTime)
         }
-        return "Off"
+        return offText()
     }
 
     @JvmStatic
@@ -122,90 +134,90 @@ object SettingsAutomationTextCopy {
         nextRunText: String?,
     ): String {
         if (!configured) {
-            return "Sync once to enable daily sync."
+            return syncOnceToEnableDailySyncText()
         }
         val details = ArrayList<String>()
-        addDetail(details, "Last sync: ", lastSuccessText)
-        addDetail(details, "Last attempt: ", lastAttemptText)
+        addDetail(details, localizedText("Last sync: ", "最終同期: "), lastSuccessText)
+        addDetail(details, localizedText("Last attempt: ", "最終試行: "), lastAttemptText)
         if (enabled) {
-            addDetail(details, "Next: ", nextRunText)
+            addDetail(details, localizedText("Next: ", "次回: "), nextRunText)
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Scheduled; Android may delay it."
+                localizedText("Scheduled; Android may delay it.", "スケジュール済み。Androidにより遅れることがあります。")
             } else {
-                "Sync paused."
+                localizedText("Sync paused.", "同期を一時停止中。")
             }
         }
-        return details.joinToString(". ") + "."
+        return details.joinToString(localizedText(". ", "。")) + localizedText(".", "。")
     }
 
     @JvmStatic
-    fun dailyAnkiSyncTitle(): String = "Daily sync"
+    fun dailyAnkiSyncTitle(): String = localizedText("Daily sync", "毎日同期")
 
     @JvmStatic
-    fun turnOffDailySyncLabel(): String = "Turn off daily sync"
+    fun turnOffDailySyncLabel(): String = localizedText("Turn off daily sync", "毎日同期をオフにする")
 
     @JvmStatic
-    fun turnOnDailySyncLabel(): String = "Turn on daily sync"
+    fun turnOnDailySyncLabel(): String = localizedText("Turn on daily sync", "毎日同期をオンにする")
 
     @JvmStatic
-    fun appUpdatesTitle(): String = "App updates"
+    fun appUpdatesTitle(): String = localizedText("App updates", "アプリの更新")
 
     @JvmStatic
-    fun openUpdaterLabel(): String = "Open updater"
+    fun openUpdaterLabel(): String = localizedText("Open updater", "アップデーターを開く")
 
     @JvmStatic
     fun reminderStatus(enabled: Boolean, blocked: Boolean, displayTime: String?): String {
         if (blocked) {
-            return "Blocked: notifications disabled"
+            return localizedText("Blocked: notifications disabled", "ブロック: 通知が無効")
         }
         if (enabled) {
-            return timedStatus("Daily around", "Daily", displayTime)
+            return timedStatus("Daily around", "Daily", "毎日", "毎日", displayTime)
         }
-        return "Off"
+        return offText()
     }
 
     @JvmStatic
-    fun dailyReminderTitle(): String = "Daily reminder"
+    fun dailyReminderTitle(): String = localizedText("Daily reminder", "毎日のリマインダー")
 
     @JvmStatic
     fun dailyReminderBody(): String {
-        return "Android may delay reminders."
+        return localizedText("Android may delay reminders.", "Androidによりリマインダーが遅れることがあります。")
     }
 
     @JvmStatic
-    fun morningReminderPresetLabel(): String = "Morning"
+    fun morningReminderPresetLabel(): String = localizedText("Morning", "朝")
 
     @JvmStatic
-    fun lunchReminderPresetLabel(): String = "Lunch"
+    fun lunchReminderPresetLabel(): String = localizedText("Lunch", "昼")
 
     @JvmStatic
-    fun eveningReminderPresetLabel(): String = "Evening"
+    fun eveningReminderPresetLabel(): String = localizedText("Evening", "夕方")
 
     @JvmStatic
-    fun nightReminderPresetLabel(): String = "Night"
+    fun nightReminderPresetLabel(): String = localizedText("Night", "夜")
 
     @JvmStatic
-    fun saveReminderLabel(): String = "Save reminder"
+    fun saveReminderLabel(): String = localizedText("Save reminder", "リマインダーを保存")
 
     @JvmStatic
-    fun enableReminderLabel(): String = "Enable reminder"
+    fun enableReminderLabel(): String = localizedText("Enable reminder", "リマインダーを有効にする")
 
     @JvmStatic
-    fun turnOffReminderLabel(): String = "Turn off reminder"
+    fun turnOffReminderLabel(): String = localizedText("Turn off reminder", "リマインダーをオフにする")
 
     @JvmStatic
     fun notificationsBlockedBody(): String {
-        return "Turn on reminder notifications."
+        return localizedText("Turn on reminder notifications.", "リマインダー通知をオンにしてください。")
     }
 
     @JvmStatic
-    fun openNotificationSettingsLabel(): String = "Open notification settings"
+    fun openNotificationSettingsLabel(): String = localizedText("Open notification settings", "通知設定を開く")
 
     @JvmStatic
     fun notificationPermissionBody(): String {
-        return "Save to turn on reminders."
+        return localizedText("Save to turn on reminders.", "保存するとリマインダーがオンになります。")
     }
 
     @JvmStatic
@@ -215,7 +227,7 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun reminderTimeButtonLabel(hour: Int, minute: Int): String {
-        return "Reminder time: " + TimeOfDaySettingsPolicy.displayTime(hour, minute)
+        return localizedText("Reminder time: ", "リマインダー時刻: ") + TimeOfDaySettingsPolicy.displayTime(hour, minute)
     }
 
     @JvmStatic
@@ -234,12 +246,18 @@ object SettingsAutomationTextCopy {
         }
     }
 
-    private fun timedStatus(prefix: String, fallback: String, displayTime: String?): String {
+    private fun timedStatus(
+        englishPrefix: String,
+        englishFallback: String,
+        japanesePrefix: String,
+        japaneseFallback: String,
+        displayTime: String?,
+    ): String {
         val time = displayTime?.javaTrim()
         if (time == null || time.isEmpty()) {
-            return fallback
+            return localizedText(englishFallback, japaneseFallback)
         }
-        return "$prefix $time"
+        return if (isJapaneseLocale()) "$japanesePrefix ${time}ごろ" else "$englishPrefix $time"
     }
 
     private fun displayValue(value: String?, fallback: String): String {
@@ -249,6 +267,21 @@ object SettingsAutomationTextCopy {
         }
         return text
     }
+
+    private fun offText(): String = localizedText("Off", "オフ")
+
+    private fun dailyChecksEnabledText(): String = localizedText("Daily checks enabled", "毎日の確認が有効")
+
+    private fun readyToInstallText(): String = localizedText("Ready to install", "インストール準備完了")
+
+    private fun syncOnceToEnableDailySyncText(): String = localizedText("Sync once to enable daily sync.", "毎日同期を有効にするには一度同期してください。")
+
+    private fun allowAppInstallsFirstText(): String = localizedText("Allow app installs first", "先にアプリのインストールを許可してください")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     private fun String.javaTrim(): String {
         return trim { it <= ' ' }
