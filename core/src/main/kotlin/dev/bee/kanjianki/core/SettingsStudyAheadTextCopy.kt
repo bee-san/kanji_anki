@@ -19,7 +19,7 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadMinutesLabel(): String {
-        return String.format(Locale.ROOT, "Look-ahead minutes (%s)", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Minutes (%s)", studyAheadMinutesRange())
     }
 
     @JvmStatic
