@@ -90,7 +90,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             studyDoneScreenModel(
                 "Study practice",
                 "Nothing to study yet",
-                "Sync from AnkiDroid first to find kanji to repair.",
+                "Sync AnkiDroid first.",
                 emptyList(),
                 false,
                 false,
@@ -105,7 +105,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             studyDoneScreenModel(
                 "Study practice",
                 "Kanji not available",
-                "This row may have changed after sync.",
+                "This kanji changed after sync.",
                 emptyList(),
                 false,
                 false,

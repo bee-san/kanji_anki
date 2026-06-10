@@ -159,7 +159,7 @@ class MainActivityStudyDoneActionsComposeTest {
                     modeLabel = MainActivityBase.LABEL_PRACTICE,
                     title = "Study practice",
                     headline = "Nothing to study yet",
-                    body = "Sync from AnkiDroid first.",
+                    body = "Sync AnkiDroid first.",
                     summaryLines = emptyList(),
                     showDoneActions = false,
                     availableStudyMoreNewCards = 0,
@@ -174,7 +174,7 @@ class MainActivityStudyDoneActionsComposeTest {
 
         composeRule.onNodeWithText("Study practice").assertIsDisplayed()
         composeRule.onNodeWithText("Nothing to study yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync from AnkiDroid first.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync AnkiDroid first.").assertIsDisplayed()
         composeRule.onNodeWithTag(homeEmptyStateTestTag("Nothing to study yet")).assertIsDisplayed()
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_BACK_HOME).assertCountEquals(0)
     }

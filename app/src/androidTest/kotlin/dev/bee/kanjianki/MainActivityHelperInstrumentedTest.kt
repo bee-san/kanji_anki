@@ -893,6 +893,7 @@ fun studyRenderAndProgressHelpersCoverTerminalStudyStates() {
 private fun verifyTerminalStudyScreens(activity: MainActivity, dueLater: RecordsSchedulerModels.AdaptiveLoadPlan, complete: RecordsSchedulerModels.AdaptiveLoadPlan) {
         activity.renderEmptyStudyQueue();
         assertHasText(activity, "Nothing to study yet");
+        assertHasText(activity, "Sync AnkiDroid first.");
         activity.renderNoStudySession(dueLater);
         assertHasText(activity, "Nothing due now");
         performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
@@ -907,6 +908,7 @@ private fun verifyTerminalStudyScreens(activity: MainActivity, dueLater: Records
         assertHasText(activity, "Study now: 2 / 3");
         activity.renderStudyForKanji("謎");
         assertHasText(activity, "Kanji not available");
+        assertHasText(activity, "This kanji changed after sync.");
     }
 
 private fun verifyStudyMoreNewCardRequests(activity: MainActivity, now: Long) {
