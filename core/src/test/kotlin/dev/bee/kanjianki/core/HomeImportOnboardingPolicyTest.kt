@@ -18,7 +18,7 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.INSTALL_ANKIDROID, missingApp.state())
         assertEquals("Install AnkiDroid", missingApp.primaryActionLabel())
-        assertTrue(missingApp.body().contains("Install AnkiDroid"))
+        assertEquals("Install AnkiDroid, then come back to sync your kanji.", missingApp.body())
 
         val needsPermission = HomeImportOnboardingPolicy.plan(
             true,
@@ -44,7 +44,7 @@ class HomeImportOnboardingPolicyTest {
         assertEquals(HomeImportOnboardingPolicy.State.READY_FIRST_SYNC, ready.state())
         assertEquals("Sync cards", ready.primaryActionLabel())
         assertEquals(
-            "Kani keeps suspended Basic cards on device. Enable active cards to include them.",
+            "Kani keeps suspended Basic cards on device. Turn on active cards if you want those too.",
             ready.body()
         )
     }
@@ -61,7 +61,7 @@ class HomeImportOnboardingPolicyTest {
         )
         assertEquals(HomeImportOnboardingPolicy.State.CHOOSE_SOURCE, noSources.state())
         assertEquals("Review import settings", noSources.primaryActionLabel())
-        assertTrue(noSources.body().contains("Pick import sources before the first sync."))
+        assertEquals("Choose import sources before you sync.", noSources.body())
     }
 
     @Test

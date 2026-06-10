@@ -43,7 +43,7 @@ object HomeImportOnboardingPolicy {
         if (!providerInstalled) {
             return Plan(
                 State.INSTALL_ANKIDROID,
-                "Install AnkiDroid, then return to Kani to import your local kanji cards.",
+                "Install AnkiDroid, then come back to sync your kanji.",
                 "Install AnkiDroid",
             )
         }
@@ -57,7 +57,7 @@ object HomeImportOnboardingPolicy {
         if (!settings.hasImportSourceEnabled()) {
             return Plan(
                 State.CHOOSE_SOURCE,
-                "Pick import sources before the first sync.",
+                "Choose import sources before you sync.",
                 "Review import settings",
             )
         }

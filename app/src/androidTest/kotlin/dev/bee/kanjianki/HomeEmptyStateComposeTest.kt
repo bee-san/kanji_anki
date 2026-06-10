@@ -19,7 +19,7 @@ class HomeEmptyStateComposeTest {
         composeRule.setContent {
             HomeEmptyState(
                 title = "No kanji queued",
-                body = "Sync AnkiDroid to find problem cards.",
+                body = "Sync AnkiDroid to load your kanji queue.",
                 style = HomeEmptyStateStyle.LegacyBand
             )
         }
@@ -28,7 +28,7 @@ class HomeEmptyStateComposeTest {
         composeRule.onNodeWithText("No kanji queued")
             .assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
-        composeRule.onNodeWithText("Sync AnkiDroid to find problem cards.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync AnkiDroid to load your kanji queue.").assertIsDisplayed()
     }
 
     @Test
