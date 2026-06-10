@@ -61,7 +61,7 @@ object FocusQueueCopy {
             parts.add(
                 localizedText(
                     "support ${row.matureSupportCount}/$matureSupportThreshold",
-                    "成熟カード ${row.matureSupportCount}/$matureSupportThreshold",
+                    "成熟サポート ${row.matureSupportCount}/$matureSupportThreshold",
                 ),
             )
         }
@@ -81,7 +81,7 @@ object FocusQueueCopy {
             RecordsBase.LadderRung.TYPE_MEANING -> localizedText("type meaning", "意味を入力")
             RecordsBase.LadderRung.SIMILAR_KANJI -> localizedText("similar kanji", "似た漢字")
             RecordsBase.LadderRung.MEANING_KANJI -> localizedText("meaning -> kanji", "意味→漢字")
-            RecordsBase.LadderRung.FONT_MEANING -> localizedText("font -> meaning", "字体→意味")
+            RecordsBase.LadderRung.FONT_MEANING -> localizedText("font -> meaning", "フォント→意味")
             RecordsBase.LadderRung.WORD_READING -> localizedText("word -> reading", "単語→読み")
             RecordsBase.LadderRung.KANJI_MEANING -> localizedText("kanji -> meaning", "漢字→意味")
         }

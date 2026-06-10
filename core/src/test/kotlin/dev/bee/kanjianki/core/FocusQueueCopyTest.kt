@@ -87,7 +87,7 @@ class FocusQueueCopyTest {
             )
             assertEquals("Specific reason", FocusQueueCopy.queueCardBody(row("弱", 0, 0, "Specific reason")))
             assertEquals(
-                "弱点 42 · 成熟カード 1/3 · 漢字→意味 · 今すぐ復習",
+                "弱点 42 · 成熟サポート 1/3 · 漢字→意味 · 今すぐ復習",
                 FocusQueueCopy.focusReasonLine(
                     row("弱", 42, 1, "reason"),
                     item("弱", RecordsBase.LadderRung.KANJI_MEANING, StudyLadderRules.STATE_REVIEW, now, 1),
@@ -107,7 +107,7 @@ class FocusQueueCopyTest {
             assertEquals("意味を入力", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.TYPE_MEANING)))
             assertEquals("似た漢字", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.SIMILAR_KANJI)))
             assertEquals("意味→漢字", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.MEANING_KANJI)))
-            assertEquals("字体→意味", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.FONT_MEANING)))
+            assertEquals("フォント→意味", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.FONT_MEANING)))
             assertEquals("単語→読み", FocusQueueCopy.recognitionStageLabel(item(RecordsBase.LadderRung.WORD_READING)))
         }
     }
