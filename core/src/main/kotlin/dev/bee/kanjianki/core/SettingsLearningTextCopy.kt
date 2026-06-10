@@ -6,7 +6,7 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "Set new/missed waits. Due reviews move cards up."
+        return "Set new and missed waits. Due reviews move up."
     }
 
     @JvmStatic
@@ -19,7 +19,7 @@ object SettingsLearningTextCopy {
     fun sameLearningStepsLabel(): String = "Copy new-card steps"
 
     @JvmStatic
-    fun saveLearningStepsLabel(): String = "Save learning steps"
+    fun saveLearningStepsLabel(): String = "Save steps"
 
     @JvmStatic
     fun learningStepsSavedToast(): String = "Steps saved."

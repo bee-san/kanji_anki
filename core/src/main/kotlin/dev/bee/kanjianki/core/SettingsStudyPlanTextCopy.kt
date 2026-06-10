@@ -7,13 +7,13 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit new cards per day."
+    fun deckLimitsBody(): String = "Set the daily new-card cap."
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "Daily new card limit"
+    fun newCardsPerDayLabel(): String = "New cards per day"
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save daily limits"
+    fun saveDeckLimitsLabel(): String = "Save daily limit"
 
     @JvmStatic
     fun dailyWorkloadTitle(): String = "Daily workload"
