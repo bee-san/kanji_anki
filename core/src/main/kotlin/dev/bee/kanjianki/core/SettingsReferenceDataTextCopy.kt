@@ -6,7 +6,7 @@ object SettingsReferenceDataTextCopy {
 
     @JvmStatic
     fun frequencyRangeBody(): String {
-        return "Set suspended-card ranks, then sync."
+        return "Set the rank range, then sync."
     }
 
     @JvmStatic
@@ -25,13 +25,13 @@ object SettingsReferenceDataTextCopy {
     fun saveFrequencyRangeLabel(): String = "Save rank range"
 
     @JvmStatic
-    fun numericRanksToast(): String = "Use numbers for ranks."
+    fun numericRanksToast(): String = "Enter numbers for ranks."
 
     @JvmStatic
-    fun rankRangeToast(): String = "Use ranks 1-20000."
+    fun rankRangeToast(): String = "Enter ranks 1-20000."
 
     @JvmStatic
-    fun frequencyRangeSavedToast(): String = "Saved. Sync to refresh."
+    fun frequencyRangeSavedToast(): String = "Range saved. Sync to refresh."
 
     @JvmStatic
     fun offlineDataLicensesTitle(): String = "Offline data licenses"
