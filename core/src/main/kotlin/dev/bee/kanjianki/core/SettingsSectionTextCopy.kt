@@ -33,7 +33,7 @@ object SettingsSectionTextCopy {
     fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
 
     @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Choose a section below.", "下のセクションを選ぶ。")
+    fun settingsHeroBody(): String = localizedText("Choose a section.", "下のセクションを選ぶ。")
 
     @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")

@@ -95,7 +95,7 @@ class SettingsTextCopyTest {
                         "Turn on updates",
                         "Back to settings",
                         "Overview",
-                        "Choose a section below.",
+                        "Choose a section.",
                         "Note type",
                         "Import filters",
                         "Suspended card range",
