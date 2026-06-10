@@ -533,7 +533,7 @@ class SettingsTextCopyTest {
 
     @Test
     fun studyAheadCopyPreservesLabelsAndValidationMessages() {
-        assertEquals("Look-ahead minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
+        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel())
         assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription())
         assertEquals("Enter whole minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText())

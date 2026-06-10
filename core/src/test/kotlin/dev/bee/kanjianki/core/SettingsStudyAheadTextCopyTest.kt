@@ -10,7 +10,7 @@ class SettingsStudyAheadTextCopyTest {
         assertEquals("Review early; learning waits stay fixed.", SettingsStudyAheadTextCopy.studyAheadBody())
         assertEquals("Save look-ahead", SettingsStudyAheadTextCopy.saveStudyAheadLabel())
         assertEquals("Look-ahead saved.", SettingsStudyAheadTextCopy.studyAheadSavedToast())
-        assertEquals("Look-ahead minutes (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel())
+        assertEquals("Minutes (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel())
         assertEquals("0-1440", SettingsStudyAheadTextCopy.studyAheadMinutesRange())
         assertEquals("1440 minutes (24h)", SettingsStudyAheadTextCopy.studyAheadMaxDescription())
         assertEquals("Enter whole minutes (0-1440).", SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText())
