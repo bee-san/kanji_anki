@@ -3,6 +3,8 @@ package dev.bee.kanjianki.core
 import java.util.Locale
 
 object HomeTextCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun sentenceCase(value: String?): String {
         if (value.isNullOrEmpty()) {
@@ -11,21 +13,39 @@ object HomeTextCopy {
         return value.substring(0, 1).uppercase(Locale.ROOT) + value.substring(1)
     }
 
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun localizedRatingLabel(value: String): String {
+        return when (StudyRatings.normalize(value)) {
+            StudyRatings.AGAIN -> localizedText("Again", "再挑戦")
+            StudyRatings.HARD -> localizedText("Hard", "難しい")
+            StudyRatings.GOOD -> localizedText("Good", "良い")
+            StudyRatings.EASY -> localizedText("Easy", "簡単")
+            else -> sentenceCase(value)
+        }
+    }
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
+
     @JvmStatic
     fun focusHeadline(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Waiting"
+            return localizedText("Waiting", "待機中")
         }
         if (plan.allKanjiMode) {
-            return "All current"
+            return localizedText("All current", "全件最新")
         }
-        return "${plan.remaining}/${plan.target} left"
+        return localizedText(
+            "${plan.remaining}/${plan.target} left",
+            "残り ${plan.remaining}/${plan.target} 件",
+        )
     }
 
     @JvmStatic
     fun homeSyncValue(finishedAtMillis: Long?): String {
         if (finishedAtMillis == null) {
-            return "Never synced"
+            return localizedText("Never synced", "まだ同期していません")
         }
         return sentenceCase(DateTextPolicy.humanSyncTime(finishedAtMillis))
     }
@@ -33,324 +53,375 @@ object HomeTextCopy {
     @JvmStatic
     fun recentMistakeTitle(rowMeaning: String?): String {
         if (rowMeaning.isNullOrEmpty()) {
-            return "Mistake"
+            return localizedText("Mistake", "ミス")
         }
         return rowMeaning
     }
 
     @JvmStatic
     fun recentMistakeSubtitle(rating: String?, dateText: String?): String {
-        val safeRating = rating?.takeIf { it.isNotEmpty() }?.let(::sentenceCase)
+        val safeRating = rating?.takeIf { it.isNotEmpty() }?.let(::localizedRatingLabel)
         val safeDate = dateText?.takeIf { it.isNotEmpty() }
-        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty { "Missed" }
+        return listOfNotNull(safeRating, safeDate).joinToString(" · ").ifEmpty {
+            localizedText("Missed", "見逃し")
+        }
     }
 
     @JvmStatic
     fun streakHeadline(currentDays: Int): String {
         if (currentDays <= 0) {
-            return "No streak yet"
+            return localizedText("No streak yet", "連続日数なし")
         }
-        return "$currentDays-day streak"
+        return localizedText("$currentDays-day streak", "${currentDays}日連続")
     }
 
     @JvmStatic
     fun streakMetricBody(studiedToday: Boolean, bestDays: Int): String {
         if (studiedToday) {
-            return if (bestDays > 0) "Best: ${streakDayCount(bestDays)}" else "Done today"
+            return if (bestDays > 0) {
+                localizedText("Best: ${streakDayCount(bestDays)}", "最高: ${streakDayCount(bestDays)}")
+            } else {
+                localizedText("Done today", "今日は完了")
+            }
         }
-        return "Not done today"
+        return localizedText("Not done today", "今日は未完了")
     }
 
     @JvmStatic
     fun streakDayCount(days: Int): String {
-        return "$days ${if (days == 1) "day" else "days"}"
+        return localizedText(
+            "$days ${if (days == 1) "day" else "days"}",
+            "${days}日",
+        )
     }
 
     @JvmStatic
     fun reviewToast(duplicate: Boolean, appliedRating: String?, currentStreakDays: Int): String {
         if (duplicate) {
-            return "Already saved."
+            return localizedText("Already saved.", "すでに保存済み。")
         }
-        val streakText = if (currentStreakDays <= 0) "" else " ${streakHeadline(currentStreakDays)}."
+        val streakText = if (currentStreakDays <= 0) {
+            ""
+        } else {
+            localizedText(
+                " ${streakHeadline(currentStreakDays)}.",
+                "${streakHeadline(currentStreakDays)}。",
+            )
+        }
         return when (appliedRating) {
-            StudyRatings.AGAIN -> "Saved. This kanji will come back soon.$streakText"
-            StudyRatings.HARD -> "Saved. This kanji stays in practice.$streakText"
-            StudyRatings.GOOD, StudyRatings.EASY -> "Saved. This kanji moved forward.$streakText"
-            else -> "Saved.$streakText"
+            StudyRatings.AGAIN -> localizedText(
+                "Saved. This kanji will come back soon.$streakText",
+                "保存しました。この漢字はすぐ再登場します。$streakText",
+            )
+            StudyRatings.HARD -> localizedText(
+                "Saved. This kanji stays in practice.$streakText",
+                "保存しました。この漢字は練習中のままです。$streakText",
+            )
+            StudyRatings.GOOD, StudyRatings.EASY -> localizedText(
+                "Saved. This kanji moved forward.$streakText",
+                "保存しました。この漢字は次へ進みました。$streakText",
+            )
+            else -> localizedText("Saved.$streakText", "保存しました。$streakText")
         }
     }
 
     @JvmStatic
-    fun appTitle(): String = "Kani"
+    fun appTitle(): String = localizedText("Kani", "カニ")
 
     @JvmStatic
     fun appSubtitle(): String = ""
 
     @JvmStatic
-    fun syncAnkiDroidLabel(): String = "Sync AnkiDroid"
+    fun syncAnkiDroidLabel(): String = localizedText("Sync AnkiDroid", "AnkiDroidを同期")
 
     @JvmStatic
-    fun focusQueueTitle(): String = "Focus queue"
+    fun focusQueueTitle(): String = localizedText("Focus queue", "集中キュー")
 
     @JvmStatic
-    fun viewAllLabel(): String = "View all"
+    fun viewAllLabel(): String = localizedText("View all", "すべて見る")
 
     @JvmStatic
-    fun noKanjiQueuedTitle(): String = "No kanji queued"
+    fun noKanjiQueuedTitle(): String = localizedText("No kanji queued", "キューに漢字がありません")
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to load your kanji queue."
+        localizedText(
+            "Sync AnkiDroid to load your kanji queue.",
+            "AnkiDroidを同期して漢字キューを読み込みます。",
+        )
 
     @JvmStatic
-    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid to load your kanji queue."
+    fun focusQueueNoKanjiQueuedBody(): String =
+        localizedText(
+            "Sync AnkiDroid to load your kanji queue.",
+            "AnkiDroidを同期して漢字キューを読み込みます。",
+        )
 
     @JvmStatic
-    fun syncMetricLabel(): String = "Sync"
+    fun syncMetricLabel(): String = localizedText("Sync", "同期")
 
     @JvmStatic
-    fun syncMetricStatus(upToDate: Boolean): String = if (upToDate) "Up to date" else "Tap to sync"
+    fun syncMetricStatus(upToDate: Boolean): String =
+        if (upToDate) localizedText("Up to date", "最新です") else localizedText("Tap to sync", "タップして同期")
 
     @JvmStatic
-    fun streakMetricLabel(): String = "Streak"
+    fun streakMetricLabel(): String = localizedText("Streak", "連続日数")
 
     @JvmStatic
-    fun focusMetricLabel(): String = "Focus"
+    fun focusMetricLabel(): String = localizedText("Focus", "集中")
 
     @JvmStatic
-    fun deckOverviewTitle(): String = "Deck overview"
+    fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic
-    fun deckOverviewDueLabel(): String = "Due"
+    fun deckOverviewDueLabel(): String = localizedText("Due", "要復習")
 
     @JvmStatic
-    fun deckOverviewNewLabel(): String = "New"
+    fun deckOverviewNewLabel(): String = localizedText("New", "新規")
 
     @JvmStatic
-    fun deckOverviewLearningLabel(): String = "Learning"
+    fun deckOverviewLearningLabel(): String = localizedText("Learning", "学習中")
 
     @JvmStatic
-    fun deckOverviewRelearningLabel(): String = "Relearning"
+    fun deckOverviewRelearningLabel(): String = localizedText("Relearning", "再学習")
 
     @JvmStatic
-    fun deckOverviewSuspendedLabel(): String = "Suspended"
+    fun deckOverviewSuspendedLabel(): String = localizedText("Suspended", "停止中")
 
     @JvmStatic
-    fun deckOverviewBuriedLabel(): String = "Buried"
+    fun deckOverviewBuriedLabel(): String = localizedText("Buried", "埋もれ")
 
     @JvmStatic
-    fun browseActionLabel(): String = "Browse Kanji"
+    fun browseActionLabel(): String = localizedText("Browse Kanji", "漢字を閲覧")
 
     @JvmStatic
-    fun recentMistakesTitle(): String = "Recent mistakes"
+    fun recentMistakesTitle(): String = localizedText("Recent mistakes", "最近のミス")
 
     @JvmStatic
-    fun statsActionLabel(): String = "Stats"
+    fun statsActionLabel(): String = localizedText("Stats", "統計")
 
     @JvmStatic
-    fun gamesActionLabel(): String = "Games"
+    fun gamesActionLabel(): String = localizedText("Games", "ゲーム")
 
     @JvmStatic
-    fun homeLabel(): String = "Home"
+    fun homeLabel(): String = localizedText("Home", "ホーム")
 
     @JvmStatic
-    fun loadingLabel(): String = "Loading…"
+    fun loadingLabel(): String = localizedText("Loading…", "読み込み中…")
 
     @JvmStatic
-    fun noRecentMistakesTitle(): String = "No mistakes yet"
+    fun noRecentMistakesTitle(): String = localizedText("No mistakes yet", "まだミスはありません")
 
     @JvmStatic
-    fun noRecentMistakesBody(): String = "Missed or hard reviews."
+    fun noRecentMistakesBody(): String = localizedText("Missed or hard reviews.", "見逃しや難しかった復習。")
 
     @JvmStatic
-    fun syncDialogTitle(): String = "Sync AnkiDroid?"
+    fun syncDialogTitle(): String = localizedText("Sync AnkiDroid?", "AnkiDroidを同期しますか？")
 
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Turn on active cards if you want those too."
+        return localizedText(
+            "Kani keeps suspended ${safeSettings.modelName} cards on device. Turn on active cards if you want those too.",
+            "Kaniは停止中の${safeSettings.modelName}カードを端末に保持します。アクティブカードも必要なら有効にしてください。",
+        )
     }
 
     @JvmStatic
-    fun syncDialogPositiveLabel(): String = "Sync cards"
+    fun syncDialogPositiveLabel(): String = localizedText("Sync cards", "カードを同期")
 
     @JvmStatic
-    fun cancelLabel(): String = "Cancel"
+    fun cancelLabel(): String = localizedText("Cancel", "キャンセル")
 
     @JvmStatic
-    fun syncingTitle(): String = "Syncing AnkiDroid"
+    fun syncingTitle(): String = localizedText("Syncing AnkiDroid", "AnkiDroidを同期中")
 
     @JvmStatic
-    fun syncAlreadyRunningTitle(): String = "Sync already running"
+    fun syncAlreadyRunningTitle(): String = localizedText("Sync already running", "同期はすでに実行中")
 
     @JvmStatic
-    fun syncAlreadyRunningFallback(): String = "Already reading AnkiDroid."
+    fun syncAlreadyRunningFallback(): String = localizedText("Already reading AnkiDroid.", "すでにAnkiDroidを読み込んでいます。")
 
     @JvmStatic
-    fun syncCompleteTitle(): String = "Sync complete"
+    fun syncCompleteTitle(): String = localizedText("Sync complete", "同期完了")
 
     @JvmStatic
     fun syncReadyCountText(count: Int): String =
-        StudyTextCopy.countText(count, "kanji ready to study", "kanji ready to study")
+        localizedText(
+            StudyTextCopy.countText(count, "kanji ready to study", "kanji ready to study"),
+            "学習可能な漢字${count}件",
+        )
 
     @JvmStatic
     fun syncCandidateSummary(dashboardRows: Int, adaptiveFocusText: String?): String {
-        return StudyTextCopy.countText(dashboardRows, "candidate from Anki", "candidates from Anki") +
-            ". " +
-            adaptiveFocusText.toString() +
-            "."
+        return localizedText(
+            StudyTextCopy.countText(dashboardRows, "candidate from Anki", "candidates from Anki") +
+                ". " +
+                adaptiveFocusText.toString() +
+                ".",
+            "Ankiからの候補${dashboardRows}件。${adaptiveFocusText.toString()}。",
+        )
     }
 
     @JvmStatic
     fun importedSuspendedKanjiText(count: Int): String =
-        StudyTextCopy.countText(count, "suspended kanji imported", "suspended kanji imported")
+        localizedText(
+            StudyTextCopy.countText(count, "suspended kanji imported", "suspended kanji imported"),
+            "停止中の漢字${count}件を取り込みました",
+        )
 
     @JvmStatic
-    fun syncNeedsAttentionTitle(): String = "AnkiDroid needs attention"
+    fun syncNeedsAttentionTitle(): String = localizedText("AnkiDroid needs attention", "AnkiDroidに対応が必要です")
 
     @JvmStatic
-    fun syncReadErrorTitle(): String = "Could not read AnkiDroid"
+    fun syncReadErrorTitle(): String = localizedText("Could not read AnkiDroid", "AnkiDroidを読み取れませんでした")
 
     @JvmStatic
-    fun syncFailureFallback(): String = "Check AnkiDroid permissions, then retry."
+    fun syncFailureFallback(): String = localizedText("Check AnkiDroid permissions, then retry.", "AnkiDroidの権限を確認してから再試行してください。")
 
     @JvmStatic
-    fun trySyncAgainLabel(): String = "Try sync again"
+    fun trySyncAgainLabel(): String = localizedText("Try sync again", "再同期")
 
     @JvmStatic
     fun browseResultHeading(size: Int): String {
         if (size <= 0) {
-            return "No matches"
+            return localizedText("No matches", "該当なし")
         }
         if (size >= 300) {
-            return "Showing first 300 matches"
+            return localizedText("Showing first 300 matches", "最初の300件を表示")
         }
-        return StudyTextCopy.countText(size, "kanji", "kanji")
+        return localizedText(StudyTextCopy.countText(size, "kanji", "kanji"), "${size}件の漢字")
     }
 
     @JvmStatic
-    fun browseTitle(): String = "Browse Kanji"
+    fun browseTitle(): String = localizedText("Browse Kanji", "漢字を閲覧")
 
     @JvmStatic
-    fun browseSearchHint(): String = "Search kanji, meaning, reading, or examples"
+    fun browseSearchHint(): String = localizedText("Search kanji, meaning, reading, or examples", "漢字、意味、読み、例文を検索")
 
     @JvmStatic
-    fun browseSearchButtonLabel(): String = "Search"
+    fun browseSearchButtonLabel(): String = localizedText("Search", "検索")
 
     @JvmStatic
-    fun browseSimilarFilterLabel(): String = "Similar kanji only"
+    fun browseSimilarFilterLabel(): String = localizedText("Similar kanji only", "類似漢字のみ")
 
     @JvmStatic
     fun browseStudySelectionSummary(selected: Int, total: Int): String {
         val safeTotal = total.coerceAtLeast(0)
         val safeSelected = selected.coerceIn(0, safeTotal)
         if (safeTotal == 0 || safeSelected == 0) {
-            return "None selected"
+            return localizedText("None selected", "未選択")
         }
         if (safeSelected == safeTotal) {
-            return "All selected"
+            return localizedText("All selected", "すべて選択済み")
         }
-        return "$safeSelected of $safeTotal selected"
+        return localizedText("$safeSelected of $safeTotal selected", "${safeSelected}/${safeTotal}件を選択")
     }
 
     @JvmStatic
-    fun browseSelectAllStudiedLabel(): String = "Select all"
+    fun browseSelectAllStudiedLabel(): String = localizedText("Select all", "すべて選択")
 
     @JvmStatic
-    fun browseDeselectAllStudiedLabel(): String = "Clear all"
+    fun browseDeselectAllStudiedLabel(): String = localizedText("Clear all", "すべてクリア")
 
     @JvmStatic
-    fun browseStudiedToggleLabel(kanji: String?): String = "Study this kanji"
+    fun browseStudiedToggleLabel(kanji: String?): String = localizedText("Study this kanji", "この漢字を学習対象にする")
 
     @JvmStatic
-    fun browseEmptyTitle(): String = "No local kanji found"
+    fun browseEmptyTitle(): String = localizedText("No local kanji found", "ローカル漢字が見つかりません")
 
     @JvmStatic
-    fun browseEmptyBody(): String = "Sync AnkiDroid first, or try a different search."
+    fun browseEmptyBody(): String = localizedText("Sync AnkiDroid first, or try a different search.", "先にAnkiDroidを同期するか、別の検索を試してください。")
 
     @JvmStatic
-    fun kanjiNotFoundTitle(): String = "Kanji not found"
+    fun kanjiNotFoundTitle(): String = localizedText("Kanji not found", "漢字が見つかりません")
 
     @JvmStatic
-    fun kanjiNotFoundBody(): String = "No local record found."
+    fun kanjiNotFoundBody(): String = localizedText("No local record found.", "ローカル記録が見つかりません。")
 
     @JvmStatic
     fun browseItemMeaning(item: RecordsImportModels.KanjiInventoryItem?): String {
         val safeItem = item ?: throw NullPointerException("item")
-        return if (safeItem.primaryMeaning.isEmpty()) "Meaning not stored yet" else safeItem.primaryMeaning
+        return if (safeItem.primaryMeaning.isEmpty()) localizedText("Meaning not stored yet", "まだ意味は保存されていません") else safeItem.primaryMeaning
     }
 
     @JvmStatic
     fun browseInventorySummary(sourceCount: Int, exampleCount: Int): String {
-        return StudyTextCopy.countText(sourceCount, "local source", "local sources") +
-            " · " +
-            StudyTextCopy.countText(exampleCount, "example", "examples")
+        return localizedText(
+            StudyTextCopy.countText(sourceCount, "local source", "local sources") +
+                " · " +
+                StudyTextCopy.countText(exampleCount, "example", "examples"),
+            "ローカルソース${sourceCount}件 · 例文${exampleCount}件",
+        )
     }
 
     @JvmStatic
-    fun suspendedChipLabel(): String = "SUSPENDED"
+    fun suspendedChipLabel(): String = localizedText("SUSPENDED", "停止中")
 
     @JvmStatic
-    fun relearningChipLabel(): String = "relearning"
+    fun relearningChipLabel(): String = localizedText("relearning", "再学習")
 
     @JvmStatic
-    fun backToBrowseKanjiLabel(): String = "Back to Browse"
+    fun backToBrowseKanjiLabel(): String = localizedText("Back to Browse", "閲覧に戻る")
 
     @JvmStatic
     fun detailReasonTitle(): String = ""
 
     @JvmStatic
     fun historicalReasonText(): String =
-        "Inactive; kept in recovery history."
+        localizedText("Inactive; kept in recovery history.", "非アクティブ; 復元履歴として保持。")
 
     @JvmStatic
     fun activeReasonText(row: RecordsImportModels.DashboardRow?): String {
         val safeRow = row ?: throw NullPointerException("row")
-        return if (safeRow.reasonText.isEmpty()) "Active practice evidence." else safeRow.reasonText
+        return if (safeRow.reasonText.isEmpty()) localizedText("Active practice evidence.", "アクティブな練習エビデンス。") else safeRow.reasonText
     }
 
     @JvmStatic
-    fun ankiBrowserLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
+    fun ankiBrowserLine(browserSearch: String?): String = localizedText("Anki search: ${browserSearch.toString()}", "Anki検索: ${browserSearch.toString()}")
 
     @JvmStatic
-    fun reviewNowLabel(): String = "Review now"
+    fun reviewNowLabel(): String = localizedText("Review now", "今すぐ復習")
 
     @JvmStatic
-    fun copyAnkiSearchLabel(): String = "Copy search"
+    fun copyAnkiSearchLabel(): String = localizedText("Copy search", "検索をコピー")
 
     @JvmStatic
-    fun ankiSearchClipLabel(): String = "Anki search"
+    fun ankiSearchClipLabel(): String = localizedText("Anki search", "Anki検索")
 
     @JvmStatic
-    fun ankiSearchCopiedToast(): String = "Search copied"
+    fun ankiSearchCopiedToast(): String = localizedText("Search copied", "検索をコピーしました")
 
     @JvmStatic
     fun localSuspendButtonLabel(currentlySuspended: Boolean): String =
-        if (currentlySuspended) "Unsuspend locally" else "Suspend locally"
+        if (currentlySuspended) localizedText("Unsuspend locally", "ローカル停止を解除") else localizedText("Suspend locally", "ローカルで停止")
 
     @JvmStatic
     fun localSuspendToast(wasSuspended: Boolean): String =
-        if (wasSuspended) "Unsuspended." else "Suspended locally."
+        if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
-    fun examplesTitle(): String = "Examples"
+    fun examplesTitle(): String = localizedText("Examples", "例文")
 
     @JvmStatic
-    fun localInventoryTitle(): String = "Local records"
+    fun localInventoryTitle(): String = localizedText("Local records", "ローカル記録")
 
     @JvmStatic
     fun localInventorySummary(sourceCount: Int, exampleCount: Int): String {
-        return StudyTextCopy.countText(sourceCount, "source", "sources") +
-            " · " +
-            StudyTextCopy.countText(exampleCount, "example", "examples")
+        return localizedText(
+            StudyTextCopy.countText(sourceCount, "source", "sources") +
+                " · " +
+                StudyTextCopy.countText(exampleCount, "example", "examples"),
+            "ソース${sourceCount}件 · 例文${exampleCount}件",
+        )
     }
 
     @JvmStatic
-    fun localInventorySearchLine(browserSearch: String?): String = "Anki search: ${browserSearch.toString()}"
+    fun localInventorySearchLine(browserSearch: String?): String = localizedText("Anki search: ${browserSearch.toString()}", "Anki検索: ${browserSearch.toString()}")
 
     @JvmStatic
     fun localInventoryLastSeenLine(lastSeenAtMillis: Long): String =
-        "Last seen ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}"
+        localizedText("Last seen ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}", "最終確認 ${DateTextPolicy.shortDateTime(lastSeenAtMillis)}")
 
     @JvmStatic
     fun detailDisplayKanji(
@@ -367,7 +438,7 @@ object HomeTextCopy {
     @JvmStatic
     fun inventoryTitle(inventory: RecordsImportModels.KanjiInventoryItem?): String {
         if (inventory == null || inventory.primaryMeaning.isEmpty()) {
-            return "Historical recovery"
+            return localizedText("Historical recovery", "復元履歴")
         }
         return inventory.primaryMeaning
     }
@@ -388,16 +459,16 @@ object HomeTextCopy {
 
     @JvmStatic
     fun matureSupportTargetText(matureSupportCount: Int, target: Int): String =
-        "Mature support $matureSupportCount/$target"
+        localizedText("Mature support $matureSupportCount/$target", "成熟サポート $matureSupportCount/$target")
 
     @JvmStatic
-    fun timelineEmptyText(): String = "Timeline appears after sync or review."
+    fun timelineEmptyText(): String = localizedText("Timeline appears after sync or review.", "同期または復習後にタイムラインが表示されます。")
 
     @JvmStatic
-    fun recoveryTimelineTitle(): String = "Recovery timeline"
+    fun recoveryTimelineTitle(): String = localizedText("Recovery timeline", "復元タイムライン")
 
     @JvmStatic
-    fun noActiveEvidenceText(): String = "No active Anki evidence."
+    fun noActiveEvidenceText(): String = localizedText("No active Anki evidence.", "アクティブな Anki エビデンスはありません。")
 
     @JvmStatic
     fun exampleSourceLabel(example: RecordsImportModels.Example?): String =
