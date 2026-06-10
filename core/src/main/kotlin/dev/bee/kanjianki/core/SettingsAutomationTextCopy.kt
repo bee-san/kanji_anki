@@ -132,9 +132,9 @@ object SettingsAutomationTextCopy {
         }
         if (details.isEmpty()) {
             return if (enabled) {
-                "Daily sync scheduled. Android may delay it."
+                "Scheduled; Android may delay it."
             } else {
-                "Daily sync paused."
+                "Sync paused."
             }
         }
         return details.joinToString(". ") + "."

@@ -43,6 +43,8 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Sync once to enable daily sync.", SettingsAutomationTextCopy.autoSyncStatus(false, true, "07:30"))
         assertEquals("On", SettingsAutomationTextCopy.autoSyncStatus(true, true, null))
         assertEquals("Sync once to enable daily sync.", SettingsAutomationTextCopy.autoSyncDetail(false, true, "", "", ""))
+        assertEquals("Scheduled; Android may delay it.", SettingsAutomationTextCopy.autoSyncDetail(true, true, "", "", ""))
+        assertEquals("Sync paused.", SettingsAutomationTextCopy.autoSyncDetail(true, false, "", "", ""))
         assertEquals("Daily sync", SettingsAutomationTextCopy.dailyAnkiSyncTitle())
         assertEquals("Turn off daily sync", SettingsAutomationTextCopy.turnOffDailySyncLabel())
         assertEquals("Turn on daily sync", SettingsAutomationTextCopy.turnOnDailySyncLabel())
