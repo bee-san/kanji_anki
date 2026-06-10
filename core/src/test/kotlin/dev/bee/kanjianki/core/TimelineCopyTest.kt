@@ -44,6 +44,35 @@ class TimelineCopyTest {
     }
 
     @Test
+    fun eventStorageCopyPreservesEnglishDefaults() {
+        assertEquals("Imported from suspended Anki", TimelineCopy.suspendedImportedTitle())
+        assertEquals(
+            "Kani recovered this kanji from a suspended AnkiDroid card.",
+            TimelineCopy.suspendedImportedDetail(),
+        )
+        assertEquals("Kani started watching", TimelineCopy.firstSeenTitle())
+        assertEquals(
+            "This kanji entered Kani from local AnkiDroid evidence.",
+            TimelineCopy.firstSeenAnkiEvidenceDetail(),
+        )
+        assertEquals(
+            "This kanji has historical Kani study state.",
+            TimelineCopy.firstSeenHistoricalStudyDetail(),
+        )
+        assertEquals("Weak support seen", TimelineCopy.weakSupportSeenTitle())
+        assertEquals("Retired by Anki support", TimelineCopy.retiredByAnkiSupportTitle())
+        assertEquals(
+            "Kani had already retired this repair before timeline tracking was added.",
+            TimelineCopy.historicalRetiredDetail(),
+        )
+        assertEquals("Anki support improved", TimelineCopy.supportImprovedTitle())
+        assertEquals("Mature support rose from 1 to 2.", TimelineCopy.supportImprovedDetail(1, 2))
+        assertEquals("Anki support dropped", TimelineCopy.supportDroppedTitle())
+        assertEquals("Mature support fell from 3 to 1.", TimelineCopy.supportDroppedDetail(3, 1))
+        assertEquals("Repair reopened", TimelineCopy.repairReopenedTitle())
+    }
+
+    @Test
     fun studyStateDetailPreservesRetiredAndReopenedCopy() {
         assertEquals(
             "No weak Anki evidence remained after sync, so Kani retired this repair.",
@@ -99,6 +128,22 @@ class TimelineCopyTest {
             assertEquals("", TimelineCopy.sourceLine(event("", "")))
             assertEquals("出典: expr", TimelineCopy.sourceLine(event("expr", "")))
             assertEquals("出典: expr  reading", TimelineCopy.sourceLine(event("expr", "reading")))
+            assertEquals("保留中のAnkiからインポート", TimelineCopy.suspendedImportedTitle())
+            assertEquals("KaniはAnkiDroidの保留カードからこの漢字を復旧しました。", TimelineCopy.suspendedImportedDetail())
+            assertEquals("Kaniが見守り開始", TimelineCopy.firstSeenTitle())
+            assertEquals("この漢字はローカルAnkiDroidの証拠からKaniに入りました。", TimelineCopy.firstSeenAnkiEvidenceDetail())
+            assertEquals("この漢字には過去のKani学習状態があります。", TimelineCopy.firstSeenHistoricalStudyDetail())
+            assertEquals("弱いサポートを検出", TimelineCopy.weakSupportSeenTitle())
+            assertEquals("Ankiの支えで修了", TimelineCopy.retiredByAnkiSupportTitle())
+            assertEquals(
+                "タイムライン記録が追加される前に、Kaniはすでにこの修復を完了していました。",
+                TimelineCopy.historicalRetiredDetail(),
+            )
+            assertEquals("Ankiサポートが改善", TimelineCopy.supportImprovedTitle())
+            assertEquals("成熟サポートが1から2に増えました。", TimelineCopy.supportImprovedDetail(1, 2))
+            assertEquals("Ankiサポートが低下", TimelineCopy.supportDroppedTitle())
+            assertEquals("成熟サポートが3から1に減りました。", TimelineCopy.supportDroppedDetail(3, 1))
+            assertEquals("修復を再開", TimelineCopy.repairReopenedTitle())
 
             assertEquals(
                 "同期後に弱いAnki証拠が残っていなかったため、この修復を完了しました。",

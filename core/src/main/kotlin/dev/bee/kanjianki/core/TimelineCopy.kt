@@ -62,6 +62,69 @@ object TimelineCopy {
     }
 
     @JvmStatic
+    fun suspendedImportedTitle(): String = localizedText("Imported from suspended Anki", "保留中のAnkiからインポート")
+
+    @JvmStatic
+    fun suspendedImportedDetail(): String = localizedText(
+        "Kani recovered this kanji from a suspended AnkiDroid card.",
+        "KaniはAnkiDroidの保留カードからこの漢字を復旧しました。",
+    )
+
+    @JvmStatic
+    fun firstSeenTitle(): String = localizedText("Kani started watching", "Kaniが見守り開始")
+
+    @JvmStatic
+    fun firstSeenAnkiEvidenceDetail(): String = localizedText(
+        "This kanji entered Kani from local AnkiDroid evidence.",
+        "この漢字はローカルAnkiDroidの証拠からKaniに入りました。",
+    )
+
+    @JvmStatic
+    fun firstSeenHistoricalStudyDetail(): String = localizedText(
+        "This kanji has historical Kani study state.",
+        "この漢字には過去のKani学習状態があります。",
+    )
+
+    @JvmStatic
+    fun weakSupportSeenTitle(): String = localizedText("Weak support seen", "弱いサポートを検出")
+
+    @JvmStatic
+    fun retiredByAnkiSupportTitle(): String = localizedText("Retired by Anki support", "Ankiの支えで修了")
+
+    @JvmStatic
+    fun historicalRetiredDetail(): String = localizedText(
+        "Kani had already retired this repair before timeline tracking was added.",
+        "タイムライン記録が追加される前に、Kaniはすでにこの修復を完了していました。",
+    )
+
+    @JvmStatic
+    fun supportImprovedTitle(): String = localizedText("Anki support improved", "Ankiサポートが改善")
+
+    @JvmStatic
+    fun supportImprovedDetail(previous: Int, current: Int): String {
+        return if (isJapaneseLocale()) {
+            "成熟サポートが" + previous + "から" + current + "に増えました。"
+        } else {
+            "Mature support rose from " + previous + " to " + current + "."
+        }
+    }
+
+    @JvmStatic
+    fun supportDroppedTitle(): String = localizedText("Anki support dropped", "Ankiサポートが低下")
+
+    @JvmStatic
+    fun supportDroppedDetail(previous: Int, current: Int): String {
+        return if (isJapaneseLocale()) {
+            "成熟サポートが" + previous + "から" + current + "に減りました。"
+        } else {
+            "Mature support fell from " + previous + " to " + current + "."
+        }
+    }
+
+    @JvmStatic
+    fun repairReopenedTitle(): String = localizedText("Repair reopened", "修復を再開")
+
+    @JvmStatic
     fun studyStateDetail(retired: Boolean, matureSupportCount: Int?, target: Int): String {
         if (retired) {
             return if (matureSupportCount == null) {

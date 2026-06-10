@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import java.util.Locale
 import kotlin.system.measureNanoTime
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -36,6 +37,98 @@ class LocalStoreTimelineCacheTest {
     fun tearDown() {
         store.close()
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesSyncAndBackfilledTimelineEvents() {
+        withLocale(Locale.JAPAN) {
+            val settings = RecordsSyncModels.Settings.kikuDefaults()
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                listOf(suspendedImport("字0")),
+                listOf(dashboardRow(0, matureSupportCount = 1)),
+                settings,
+                1_000L,
+                2_000L,
+                null,
+            )
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                listOf(suspendedImport("字0")),
+                listOf(dashboardRow(0, matureSupportCount = 3)),
+                settings,
+                3_000L,
+                4_000L,
+                null,
+            )
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                listOf(suspendedImport("字0")),
+                listOf(dashboardRow(0, matureSupportCount = 2)),
+                settings,
+                5_000L,
+                6_000L,
+                null,
+            )
+
+            val syncEvents = store.timelineForKanji("字0").events
+            assertTimelineEvent(
+                syncEvents,
+                "suspended_imported",
+                "保留中のAnkiからインポート",
+                "KaniはAnkiDroidの保留カードからこの漢字を復旧しました。",
+            )
+            assertTimelineEvent(
+                syncEvents,
+                LocalStoreBase.TIMELINE_FIRST_SEEN,
+                "Kaniが見守り開始",
+                "この漢字はローカルAnkiDroidの証拠からKaniに入りました。",
+            )
+            assertTimelineEvent(
+                syncEvents,
+                "weak_support_seen",
+                "弱いサポートを検出",
+                "Ankiの証拠はまだ修復が必要: 成熟サポート 1 / 目標 2。",
+            )
+            assertTimelineEvent(
+                syncEvents,
+                "support_improved",
+                "Ankiサポートが改善",
+                "成熟サポートが1から3に増えました。",
+            )
+            assertTimelineEvent(
+                syncEvents,
+                "support_dropped",
+                "Ankiサポートが低下",
+                "成熟サポートが3から2に減りました。",
+            )
+
+            store.replaceStudyItems(listOf(studyItem("字0", 7_000L, LocalStoreBase.STATE_RETIRED)))
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest("字0", "review-token", "good", false, false, false, 0),
+                "good",
+                8_000L,
+            )
+            val db = store.writableDatabase
+            db.delete(LocalStoreBase.TABLE_KANJI_TIMELINE_EVENTS, null, null)
+            store.clearTimelineCache()
+            store.backfillTimelineEvents(db)
+            store.clearTimelineCache()
+
+            val backfilledEvents = store.timelineForKanji("字0").events
+            assertTimelineEvent(
+                backfilledEvents,
+                LocalStoreBase.STATE_RETIRED,
+                "Ankiの支えで修了",
+                "成熟したAnkiの支えが目標に到達: 成熟サポート 2 / 目標 2。",
+            )
+            assertTimelineEvent(
+                backfilledEvents,
+                "review_passed",
+                "復習成功",
+                "思い出し復習は「良い」と評価されました。",
+            )
+        }
     }
 
     @Test
@@ -115,7 +208,7 @@ class LocalStoreTimelineCacheTest {
         return List(count) { index -> dashboardRow(index) }
     }
 
-    private fun dashboardRow(index: Int): RecordsImportModels.DashboardRow {
+    private fun dashboardRow(index: Int, matureSupportCount: Int = 0): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
             "字$index",
             if (index % 4 == 0) null else index + 1,
@@ -127,7 +220,7 @@ class LocalStoreTimelineCacheTest {
             "reason text $index",
             1,
             0,
-            0,
+            matureSupportCount,
             listOf(example(index)),
         )
     }
@@ -153,10 +246,45 @@ class LocalStoreTimelineCacheTest {
         )
     }
 
-    private fun studyItem(kanji: String, dueAtMillis: Long): RecordsStudyModels.StudyItem {
+    private fun suspendedImport(kanji: String): RecordsImportModels.SuspendedImport {
+        return RecordsImportModels.SuspendedImport(
+            kanji,
+            null,
+            false,
+            0,
+            listOf(RecordsImportModels.SuspendedSource(kanji, 1L, 10L, "expr-0", "read-0", "meaning-0", "sentence-0")),
+        )
+    }
+
+    private fun assertTimelineEvent(
+        events: List<RecordsImportModels.KanjiTimelineEvent>,
+        eventType: String,
+        title: String,
+        detail: String,
+    ) {
+        val event = events.first { it.eventType == eventType }
+        assertEquals(title, event.title)
+        assertEquals(detail, event.detail)
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        return try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
+    }
+
+    private fun studyItem(
+        kanji: String,
+        dueAtMillis: Long,
+        state: String = "review",
+    ): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(
             kanji,
-            "review",
+            state,
             dueAtMillis,
             1.0,
             2.0,
