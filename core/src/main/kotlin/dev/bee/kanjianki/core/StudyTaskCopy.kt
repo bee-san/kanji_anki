@@ -1,6 +1,9 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object StudyTaskCopy {
+    private const val JAPANESE_LANGUAGE = "ja"
     private const val LABEL_STUDY = "Study"
     private const val LABEL_SIMILAR_KANJI = "Similar kanji"
 
@@ -17,48 +20,48 @@ object StudyTaskCopy {
 
     @JvmStatic
     fun labelForTask(task: String?): String = when (task) {
-        null -> LABEL_STUDY
-        TASK_TARGETED_FLASHCARD -> "Focused recall"
-        StudyTaskTypes.KANJI_MEANING -> "Kanji -> meaning"
-        StudyTaskTypes.MEANING_KANJI -> "Meaning -> kanji"
+        null -> localizedText(LABEL_STUDY, "学習")
+        TASK_TARGETED_FLASHCARD -> localizedText("Focused recall", "集中復習")
+        StudyTaskTypes.KANJI_MEANING -> localizedText("Kanji -> meaning", "漢字→意味")
+        StudyTaskTypes.MEANING_KANJI -> localizedText("Meaning -> kanji", "意味→漢字")
         StudyTaskTypes.TYPING_MEANING,
-        StudyTaskTypes.TYPE_MEANING -> "Type the meaning"
+        StudyTaskTypes.TYPE_MEANING -> localizedText("Type the meaning", "意味を入力")
 
-        StudyTaskTypes.FONT_MEANING -> "Font -> meaning"
-        StudyTaskTypes.WORD_READING -> "Word -> reading"
-        StudyTaskTypes.WRITE_KANJI -> "Write kanji"
-        StudyTaskTypes.SIMILAR_KANJI -> LABEL_SIMILAR_KANJI
-        TASK_MEANING_FLASHCARD -> "Quick recall"
-        TASK_FONT_RECOGNITION -> "Font check"
-        TASK_REPAIR_WRITING -> "Repair"
-        TASK_TARGETED_WRITING -> "Focused practice"
-        TASK_CONTEXT_WRITING -> "New problem kanji"
-        TASK_GUIDED_WRITING -> "Guided review"
+        StudyTaskTypes.FONT_MEANING -> localizedText("Font -> meaning", "フォント→意味")
+        StudyTaskTypes.WORD_READING -> localizedText("Word -> reading", "単語→読み")
+        StudyTaskTypes.WRITE_KANJI -> localizedText("Write kanji", "漢字を書く")
+        StudyTaskTypes.SIMILAR_KANJI -> localizedText(LABEL_SIMILAR_KANJI, "似た漢字")
+        TASK_MEANING_FLASHCARD -> localizedText("Quick recall", "素早く復習")
+        TASK_FONT_RECOGNITION -> localizedText("Font check", "フォント確認")
+        TASK_REPAIR_WRITING -> localizedText("Repair", "修正")
+        TASK_TARGETED_WRITING -> localizedText("Focused practice", "集中練習")
+        TASK_CONTEXT_WRITING -> localizedText("New problem kanji", "新しい問題漢字")
+        TASK_GUIDED_WRITING -> localizedText("Guided review", "ガイド付き復習")
         TASK_BLIND_WRITING,
-        TASK_SAMPLED_HANDWRITING -> "Memory check"
+        TASK_SAMPLED_HANDWRITING -> localizedText("Memory check", "記憶確認")
 
-        TASK_CONFUSABLE_RECOGNITION -> "Learn the shape"
-        else -> LABEL_STUDY
+        TASK_CONFUSABLE_RECOGNITION -> localizedText("Learn the shape", "形を覚える")
+        else -> localizedText(LABEL_STUDY, "学習")
     }
 
     @JvmStatic
     fun flashcardTitle(session: RecordsSchedulerModels.StudySession?): String = when {
-        isWordReadingTask(session) -> "Read this word"
-        isTypingMeaningTask(session) -> "Type the meaning"
-        isMeaningKanjiTask(session) -> "Choose the kanji"
-        isFontRecognitionTask(session) -> "Recognise this kanji"
-        else -> "Name this kanji"
+        isWordReadingTask(session) -> localizedText("Read this word", "この単語を読む")
+        isTypingMeaningTask(session) -> localizedText("Type the meaning", "意味を入力")
+        isMeaningKanjiTask(session) -> localizedText("Choose the kanji", "漢字を選ぶ")
+        isFontRecognitionTask(session) -> localizedText("Recognise this kanji", "この漢字を見分ける")
+        else -> localizedText("Name this kanji", "この漢字の意味は？")
     }
 
     @JvmStatic
     fun studyModeLabel(session: RecordsSchedulerModels.StudySession?): String = when {
-        isNewLearningRepeat(session) -> "Learn"
-        isRelearning(session) -> "Relearning"
-        session != null && session.writingRequired -> "Practice"
-        isWordReadingTask(session) -> "Read"
-        isTypingMeaningTask(session) -> "Type"
-        isMeaningKanjiTask(session) -> "Recall"
-        else -> "Recognise"
+        isNewLearningRepeat(session) -> localizedText("Learn", "学習")
+        isRelearning(session) -> localizedText("Relearning", "再学習")
+        session != null && session.writingRequired -> localizedText("Practice", "練習")
+        isWordReadingTask(session) -> localizedText("Read", "読む")
+        isTypingMeaningTask(session) -> localizedText("Type", "入力")
+        isMeaningKanjiTask(session) -> localizedText("Recall", "思い出す")
+        else -> localizedText("Recognise", "見分ける")
     }
 
     private fun isNewLearningRepeat(session: RecordsSchedulerModels.StudySession?): Boolean {
@@ -108,4 +111,9 @@ object StudyTaskCopy {
     @JvmStatic
     fun isWordReadingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
         session != null && StudyTaskTypes.WORD_READING == session.taskType
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
