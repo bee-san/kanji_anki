@@ -348,13 +348,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani chooses today's count; due dates stay fixed.",
+                "Kani chooses today's count. Due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's count; due dates stay fixed.",
+                "Choose today's count. Due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
@@ -362,7 +362,7 @@ class SettingsTextCopyTest {
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
         assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle())
         assertEquals(
-                "Set new and missed waits. Due reviews move the ladder.",
+                "Set new and missed waits. Due reviews move up the ladder.",
                 SettingsTextCopy.learningStepsBody()
         )
         assertEquals("Missed reviews", SettingsTextCopy.reviewMissesLabel())

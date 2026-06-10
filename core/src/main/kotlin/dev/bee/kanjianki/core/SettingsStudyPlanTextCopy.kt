@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani chooses today's count; due dates stay fixed."
+        return "Kani chooses today's count. Due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Choose today's count; due dates stay fixed."
+        return "Choose today's count. Due dates stay fixed."
     }
 
     @JvmStatic
