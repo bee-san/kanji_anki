@@ -8,7 +8,7 @@ class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("Pick sources, filters, and the range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Choose sources, filters, and range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
         assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
         assertEquals("Set new cards, timing, workload, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
         assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
@@ -16,7 +16,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
         assertEquals("Manage dictionaries, strokes, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
         assertEquals("Overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Pick a section.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Choose a section below.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
@@ -46,7 +46,7 @@ class SettingsSectionTextCopyTest {
             assertEquals("表示とデータ", SettingsSectionTextCopy.settingsReferenceDataTitle())
             assertEquals("辞書、ストローク、フォント、クレジットを管理。", SettingsSectionTextCopy.settingsReferenceDataBody())
             assertEquals("概要", SettingsSectionTextCopy.settingsCockpitLabel())
-            assertEquals("セクションを選んでください。", SettingsSectionTextCopy.settingsHeroBody())
+            assertEquals("下のセクションを選ぶ。", SettingsSectionTextCopy.settingsHeroBody())
             assertEquals("ノートタイプ", SettingsSectionTextCopy.noteTypeStatusLabel())
             assertEquals("インポートフィルター", SettingsSectionTextCopy.importFiltersStatusLabel())
             assertEquals("停止カードの範囲", SettingsSectionTextCopy.importRanksStatusLabel())
