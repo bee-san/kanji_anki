@@ -27,7 +27,7 @@ class SettingsImportFiltersTextCopyTest {
         assertEquals("Minimum FSRS difficulty", SettingsImportFiltersTextCopy.fsrsDifficultyLabel())
         assertEquals("Minimum lapses", SettingsImportFiltersTextCopy.lapsesLabel())
         assertEquals("Matching cards per kanji", SettingsImportFiltersTextCopy.minimumMatchingCardsLabel())
-        assertEquals("Save import filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
+        assertEquals("Save filters", SettingsImportFiltersTextCopy.saveImportFiltersLabel())
         assertEquals("Add a search or turn it off.", SettingsImportFiltersTextCopy.browserQueryRequiredToast())
         assertEquals("Turn on at least one source.", SettingsImportFiltersTextCopy.importSourceRequiredToast())
         assertEquals("Saved. Sync to refresh.", SettingsImportFiltersTextCopy.importFiltersSavedToast())

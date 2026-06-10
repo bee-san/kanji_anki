@@ -254,7 +254,7 @@ fun testSettingsControlsPersistFiltersAndLearning() {
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             clickText(scenario, "Study settings");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -302,7 +302,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
             clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             clickText(scenario, "Study settings");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -596,15 +596,15 @@ fun testImportFilterValidationBlocksEmptySourcesAndEmptyBrowserQuery() {
             setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), false);
             setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "");
             setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Japanese tag:kani");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             waitForText(scenario, "Import filters");
             LocalStore(context).use { store ->
                 var saved = SyncSettings.fromStore(store)
@@ -624,7 +624,7 @@ fun testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
             clickText(scenario, "Settings");
             setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), true);
             setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "not numeric");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), true);
@@ -637,7 +637,7 @@ fun testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
             setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "8.5");
             setComposeTextField(SettingsTextCopy.lapsesLabel(), "4");
             setComposeTextField(SettingsTextCopy.minimumMatchingCardsLabel(), "2");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             waitForText(scenario, "Import filters");
             assertCustomImportSettingsStored();
 

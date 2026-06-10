@@ -51,7 +51,7 @@ object SettingsImportFiltersTextCopy {
     fun minimumMatchingCardsLabel(): String = "Matching cards per kanji"
 
     @JvmStatic
-    fun saveImportFiltersLabel(): String = "Save import filters"
+    fun saveImportFiltersLabel(): String = "Save filters"
 
     @JvmStatic
     fun browserQueryRequiredToast(): String = "Add a search or turn it off."
