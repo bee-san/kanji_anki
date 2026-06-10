@@ -8,14 +8,14 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadBody(): String {
-        return "Move reviews earlier. Learning waits stay fixed."
+        return "Review early; learning waits stay fixed."
     }
 
     @JvmStatic
-    fun saveStudyAheadLabel(): String = "Save study ahead"
+    fun saveStudyAheadLabel(): String = "Save look-ahead"
 
     @JvmStatic
-    fun studyAheadSavedToast(): String = "Study ahead saved."
+    fun studyAheadSavedToast(): String = "Look-ahead saved."
 
     @JvmStatic
     fun studyAheadMinutesLabel(): String {
@@ -34,12 +34,12 @@ object SettingsStudyAheadTextCopy {
 
     @JvmStatic
     fun studyAheadWholeNumberErrorText(): String {
-        return String.format(Locale.ROOT, "Use whole minutes from %s.", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Enter whole minutes (%s).", studyAheadMinutesRange())
     }
 
     @JvmStatic
     fun studyAheadOutOfRangeErrorText(): String {
-        return String.format(Locale.ROOT, "Use %s minutes. 0 turns it off.", studyAheadMinutesRange())
+        return String.format(Locale.ROOT, "Enter %s minutes; 0 turns it off.", studyAheadMinutesRange())
     }
 
     @JvmStatic
