@@ -38,13 +38,13 @@ class SettingsTextCopyTest {
                         "0.4.33",
                         "release-v0.4.33",
                         "Import & sync",
-                        "Sources, filters, and range.",
+                        "Sources, filters, range.",
                         "Study settings",
-                        "New cards, timing, workload, and ladder.",
+                        "New cards, timing, workload, ladder.",
                         "Automation",
-                        "Reminders, sync, and updates.",
+                        "Reminders, sync, updates.",
                         "Display & data",
-                        "Dictionaries, strokes, fonts, and credits.",
+                        "Dictionaries, strokes, fonts, credits.",
                 ),
                 listOf(
                         SettingsTextCopy.settingsReminderSummary(true, true, "21:05"),
@@ -348,13 +348,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani chooses today's count. Due dates stay fixed.",
+                "Kani picks today's count; due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Choose today's count. Due dates stay fixed.",
+                "Set today's count; due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
