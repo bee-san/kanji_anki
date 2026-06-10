@@ -6,7 +6,7 @@ object SettingsLearningTextCopy {
 
     @JvmStatic
     fun learningStepsBody(): String {
-        return "Set new and missed waits. Due reviews move up the ladder."
+        return "Set new/missed waits. Due reviews move cards up."
     }
 
     @JvmStatic
