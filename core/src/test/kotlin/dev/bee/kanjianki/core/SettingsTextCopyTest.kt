@@ -12,7 +12,7 @@ class SettingsTextCopyTest {
         assertEquals("3+ cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, true, true, 3)))
         assertEquals("1+ card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)))
         assertEquals("active + suspended + tagged + weak + browser query; 3+ cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)))
-        assertEquals("Choose import sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
+        assertEquals("Pick import sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)))
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsImportSummary(null) }
         assertThrows(NullPointerException::class.java) { SettingsTextCopy.matchingCardsSummary(null) }
     }
