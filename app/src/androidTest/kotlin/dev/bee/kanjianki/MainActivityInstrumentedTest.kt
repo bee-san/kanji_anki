@@ -2779,7 +2779,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 "Automation",
                 "Display & data",
                 "Note type",
-                "Using Kiku",
+                "Kiku",
                 "Kanji field",
                 "Reading field",
                 "Meaning field",

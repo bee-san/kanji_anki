@@ -7,8 +7,8 @@ class SettingsNoteTypeTextCopyTest {
     @Test
     fun noteTypeHelpersPreserveFormatting() {
         assertEquals("Note type", SettingsNoteTypeTextCopy.noteTypeFieldsTitle())
-        assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
-        assertEquals("Using Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("  Kiku  "))
+        assertEquals("Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"))
+        assertEquals("Kiku", SettingsNoteTypeTextCopy.noteTypeUsingText("  Kiku  "))
         assertEquals("Select a note type", SettingsNoteTypeTextCopy.noteTypeUsingText(null))
         assertEquals("Select a note type", SettingsNoteTypeTextCopy.noteTypeUsingText("   "))
         assertEquals("Use Kiku or map Anki fields.", SettingsNoteTypeTextCopy.noteTypeFieldsBody())
