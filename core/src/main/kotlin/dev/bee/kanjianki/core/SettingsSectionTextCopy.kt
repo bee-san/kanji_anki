@@ -9,25 +9,25 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = localizedText("Choose sources, filters, and range.", "ソース、フィルター、範囲を選ぶ。")
+    fun settingsAnkiSourceBody(): String = localizedText("Sources, filters, and range.", "ソース、フィルター、範囲を選ぶ。")
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = localizedText("Set new cards, timing, workload, and ladder.", "新規カード、タイミング、負荷、ラダーを設定。")
+    fun settingsStudyBehaviorBody(): String = localizedText("New cards, timing, workload, and ladder.", "新規カード、タイミング、負荷、ラダーを設定。")
 
     @JvmStatic
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = localizedText("Manage reminders, sync, and updates.", "リマインダー、同期、更新を管理。")
+    fun settingsAutomationBody(): String = localizedText("Reminders, sync, and updates.", "リマインダー、同期、更新を管理。")
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = localizedText("Manage dictionaries, strokes, fonts, and credits.", "辞書、ストローク、フォント、クレジットを管理。")
+    fun settingsReferenceDataBody(): String = localizedText("Dictionaries, strokes, fonts, and credits.", "辞書、ストローク、フォント、クレジットを管理。")
 
     @JvmStatic
     fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
