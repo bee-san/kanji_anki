@@ -100,10 +100,10 @@ object HomeTextCopy {
 
     @JvmStatic
     fun homeNoKanjiQueuedBody(): String =
-        "Sync AnkiDroid to add kanji."
+        "Sync AnkiDroid to load your kanji queue."
 
     @JvmStatic
-    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid to add kanji."
+    fun focusQueueNoKanjiQueuedBody(): String = "Sync AnkiDroid to load your kanji queue."
 
     @JvmStatic
     fun syncMetricLabel(): String = "Sync"
@@ -168,7 +168,7 @@ object HomeTextCopy {
     @JvmStatic
     fun syncDialogMessage(settings: RecordsSyncModels.Settings?): String {
         val safeSettings = settings ?: throw NullPointerException("settings")
-        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Enable active cards to include them."
+        return "Kani keeps suspended ${safeSettings.modelName} cards on device. Turn on active cards if you want those too."
     }
 
     @JvmStatic
