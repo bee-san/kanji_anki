@@ -7,7 +7,7 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = "Daily limits"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Set the daily new-card limit."
+    fun deckLimitsBody(): String = "Limit new cards per day."
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = "Daily new card limit"
@@ -20,7 +20,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani chooses today's count. Due dates stay fixed."
+        return "Kani picks today's count; due dates stay fixed."
     }
 
     @JvmStatic
@@ -31,7 +31,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Choose today's count. Due dates stay fixed."
+        return "Set today's count; due dates stay fixed."
     }
 
     @JvmStatic
