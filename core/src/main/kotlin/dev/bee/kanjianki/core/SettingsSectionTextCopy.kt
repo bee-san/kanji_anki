@@ -9,7 +9,7 @@ object SettingsSectionTextCopy {
     fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = localizedText("Choose sources, filters, and range.", "ソース、フィルター、範囲を選択。")
+    fun settingsAnkiSourceBody(): String = localizedText("Pick sources, filters, and the range.", "ソース、フィルター、範囲を選ぶ。")
 
     @JvmStatic
     fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
@@ -21,7 +21,7 @@ object SettingsSectionTextCopy {
     fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = localizedText("Set reminders, sync, and updates.", "リマインダー、同期、更新を設定。")
+    fun settingsAutomationBody(): String = localizedText("Manage reminders, sync, and updates.", "リマインダー、同期、更新を管理。")
 
     @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
@@ -33,7 +33,7 @@ object SettingsSectionTextCopy {
     fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
 
     @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Choose a section to edit.", "編集するセクションを選んでください。")
+    fun settingsHeroBody(): String = localizedText("Pick a section.", "セクションを選んでください。")
 
     @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
