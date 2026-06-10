@@ -275,7 +275,7 @@ class SettingsTextCopyTest {
                         "Fonts",
                         "Note type",
                         "Using Kiku",
-                        "Use Kiku or map your own Anki fields.",
+                        "Use Kiku or map Anki fields.",
                         "Fields"
                 ),
                 listOf(
@@ -303,7 +303,7 @@ class SettingsTextCopyTest {
         )
         assertEquals(
                 listOf(
-                        "Tell Kani which fields to read.",
+                        "Choose the fields Kani reads.",
                         "Expression field",
                         "Reading field",
                         "Meaning field",
