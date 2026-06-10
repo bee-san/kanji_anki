@@ -19,7 +19,7 @@ object SettingsLadderThresholdTextCopy {
     fun useDefaultLadderThresholdsLabel(): String = "Use default movement rules"
 
     @JvmStatic
-    fun saveLadderThresholdsLabel(): String = "Save movement rules"
+    fun saveLadderThresholdsLabel(): String = "Save rules"
 
     @JvmStatic
     fun ladderThresholdsSavedToast(): String = "Movement rules saved."

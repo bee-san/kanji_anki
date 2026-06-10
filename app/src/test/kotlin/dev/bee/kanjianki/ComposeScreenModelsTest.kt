@@ -1075,7 +1075,7 @@ class ComposeScreenModelsTest {
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
             defaultsLabel = "Use default movement rules",
-            saveLabel = "Save movement rules",
+            saveLabel = "Save rules",
             onSave = save,
         )
 
@@ -1088,7 +1088,7 @@ class ComposeScreenModelsTest {
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
         assertEquals("Use default movement rules", model.defaultsLabel)
-        assertEquals("Save movement rules", model.saveLabel)
+        assertEquals("Save rules", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
         assertEquals("28", savedPromotionDays)

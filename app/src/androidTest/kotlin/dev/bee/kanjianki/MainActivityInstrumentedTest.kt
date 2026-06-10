@@ -278,7 +278,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
             clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText();
-            clickText(scenario, "Save movement rules");
+            clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
             configureManualWorkload(scenario);
             verifyWorkloadAutoActions(scenario);
         }
@@ -312,7 +312,7 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
             setStudyAheadMinutes();
             clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             setLadderThresholdText();
-            clickText(scenario, "Save movement rules");
+            clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
             setNavigationWorkloadControls(scenario);
             setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();

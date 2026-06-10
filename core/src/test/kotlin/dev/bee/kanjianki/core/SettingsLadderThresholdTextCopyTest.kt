@@ -11,7 +11,7 @@ class SettingsLadderThresholdTextCopyTest {
         assertEquals("Days to move up", SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel())
         assertEquals("Fails to move down", SettingsLadderThresholdTextCopy.failsToGoDownLabel())
         assertEquals("Use default movement rules", SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel())
-        assertEquals("Save movement rules", SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel())
+        assertEquals("Save rules", SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel())
         assertEquals("Movement rules saved.", SettingsLadderThresholdTextCopy.ladderThresholdsSavedToast())
     }
 }
