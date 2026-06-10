@@ -24,7 +24,7 @@ class SettingsTextCopyTest {
                         "Notifications blocked",
                         "21:05",
                         "Off",
-                        "Sync once to schedule daily syncs.",
+                        "Sync once to enable daily syncs.",
                         "07:30",
                         "Off",
                         "Ready to install",
@@ -141,11 +141,11 @@ class SettingsTextCopyTest {
                         "Expand Automation",
                         "1 card",
                         "2 cards",
-                        "Sync once to schedule daily syncs.",
+                        "Sync once to enable daily syncs.",
                         "On around 07:30",
                         "Off",
-                        "Sync once to schedule daily syncs.",
-                        "Scheduled daily. Android may delay it.",
+                        "Sync once to enable daily syncs.",
+                        "Daily sync scheduled. Android may delay it.",
                         "Daily sync paused.",
                         "Last sync: yesterday. Last attempt: today. Next: tomorrow.",
                         "Last sync: yesterday. Last attempt: today.",
@@ -348,13 +348,13 @@ class SettingsTextCopyTest {
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0))
         assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle())
         assertEquals(
-                "Kani sets today's count. Due dates stay fixed.",
+                "Kani chooses today's count; due dates stay fixed.",
                 SettingsTextCopy.automaticWorkloadBody()
         )
         assertEquals("Save workload", SettingsTextCopy.saveMaximumLabel())
         assertEquals("Set workload manually", SettingsTextCopy.manualWorkloadLabel())
         assertEquals(
-                "Set today's count. Due dates stay fixed.",
+                "Choose today's count; due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
