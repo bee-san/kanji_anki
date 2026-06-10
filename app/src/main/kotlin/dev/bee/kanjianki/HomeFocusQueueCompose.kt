@@ -39,6 +39,9 @@ import dev.bee.kanjianki.core.StudyTextCopy
 
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
+internal fun homeFocusQueueCardContentDescription(kanji: String, meaning: String): String =
+    "Study card for $kanji, $meaning"
+
 internal fun homeFocusQueuePanelModel(
     rows: List<RecordsImportModels.DashboardRow>,
     entries: List<MainActivityBase.QueueEntry>,
@@ -147,7 +150,7 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
             .semantics {
-                contentDescription = "Study"
+                contentDescription = homeFocusQueueCardContentDescription(model.kanji, model.meaning)
             }
             .clickable(
                 role = Role.Button,

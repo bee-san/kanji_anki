@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +58,7 @@ fun HomeEmptyState(
         ) {
             Text(
                 text = title,
+                modifier = Modifier.semantics { heading() },
                 color = colors.titleColor,
                 fontSize = colors.titleSize,
                 fontWeight = FontWeight.Bold,

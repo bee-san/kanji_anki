@@ -1,5 +1,8 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -22,7 +25,9 @@ class HomeEmptyStateComposeTest {
         }
 
         composeRule.onNodeWithTag(homeEmptyStateTestTag("No kanji queued")).assertIsDisplayed()
-        composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
+        composeRule.onNodeWithText("No kanji queued")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
         composeRule.onNodeWithText("Sync AnkiDroid to find problem cards.").assertIsDisplayed()
     }
 
@@ -36,7 +41,9 @@ class HomeEmptyStateComposeTest {
         }
 
         composeRule.onNodeWithTag(homeEmptyStateTestTag("No mistakes yet")).assertIsDisplayed()
-        composeRule.onNodeWithText("No mistakes yet").assertIsDisplayed()
+        composeRule.onNodeWithText("No mistakes yet")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
         composeRule.onNodeWithText("Missed or hard reviews.").assertIsDisplayed()
     }
 }
