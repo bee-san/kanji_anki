@@ -10,6 +10,8 @@ class SettingsStudyPlanTextCopyTest {
     fun workloadAndSortHelpersPreserveFormatting() {
         assertEquals("Daily workload", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
         assertEquals("Save workload", SettingsStudyPlanTextCopy.saveMaximumLabel())
+        assertEquals("Save workload", SettingsStudyPlanTextCopy.saveWorkloadLabel())
+        assertEquals("Use automatic workload", SettingsStudyPlanTextCopy.automaticParetoLabel())
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
         assertEquals("Kani picks today's count; due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
         assertEquals("Set today's count; due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
@@ -107,6 +109,8 @@ class SettingsStudyPlanTextCopyTest {
 
             assertEquals("1日の学習量", SettingsStudyPlanTextCopy.dailyWorkloadTitle())
             assertEquals("学習量を保存", SettingsStudyPlanTextCopy.saveMaximumLabel())
+            assertEquals("学習量を保存", SettingsStudyPlanTextCopy.saveWorkloadLabel())
+            assertEquals("自動学習量を使う", SettingsStudyPlanTextCopy.automaticParetoLabel())
             assertEquals("学習量を手動で設定", SettingsStudyPlanTextCopy.manualWorkloadLabel())
             assertEquals("Kaniが今日の数を選ぶ。期限日は固定のまま。", SettingsStudyPlanTextCopy.automaticWorkloadBody())
             assertEquals("今日の数を設定する。期限日は固定のまま。", SettingsStudyPlanTextCopy.manualWorkloadBody())
