@@ -35,6 +35,11 @@ class StudyWritingCopyTest {
                 "Write from the prompt. The answer stays hidden until you check.",
                 StudyWritingCopy.promptInstruction(),
             )
+            assertEquals("Erase", StudyWritingCopy.eraseLabel())
+            assertEquals("Undo", StudyWritingCopy.undoLabel())
+            assertEquals("Replay", StudyWritingCopy.replayLabel())
+            assertEquals("Mark right anyway", StudyWritingCopy.manualOverrideLabel())
+            assertEquals("Try again with full guide", StudyWritingCopy.practiceWithGuideLabel())
             assertEquals("Checking handwriting...", StudyWritingCopy.checkingStatus())
             assertEquals(
                 "The handwriting checker is unavailable on this device.",
@@ -63,6 +68,11 @@ class StudyWritingCopyTest {
                 "問題を見て書いてください。答えは確認するまで隠れています。",
                 StudyWritingCopy.promptInstruction(),
             )
+            assertEquals("消去", StudyWritingCopy.eraseLabel())
+            assertEquals("元に戻す", StudyWritingCopy.undoLabel())
+            assertEquals("再生", StudyWritingCopy.replayLabel())
+            assertEquals("それでも合格にする", StudyWritingCopy.manualOverrideLabel())
+            assertEquals("フルガイドで再挑戦", StudyWritingCopy.practiceWithGuideLabel())
             assertEquals("手書き判定中...", StudyWritingCopy.checkingStatus())
             assertEquals(
                 "この端末では自動手書き判定は使えません。",

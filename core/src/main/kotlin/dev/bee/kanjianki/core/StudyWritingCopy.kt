@@ -41,6 +41,21 @@ object StudyWritingCopy {
     )
 
     @JvmStatic
+    fun eraseLabel(): String = localizedText("Erase", "消去")
+
+    @JvmStatic
+    fun undoLabel(): String = localizedText("Undo", "元に戻す")
+
+    @JvmStatic
+    fun replayLabel(): String = localizedText("Replay", "再生")
+
+    @JvmStatic
+    fun manualOverrideLabel(): String = localizedText("Mark right anyway", "それでも合格にする")
+
+    @JvmStatic
+    fun practiceWithGuideLabel(): String = localizedText("Try again with full guide", "フルガイドで再挑戦")
+
+    @JvmStatic
     fun checkingStatus(): String = localizedText(
         "Checking handwriting...",
         "手書き判定中...",
