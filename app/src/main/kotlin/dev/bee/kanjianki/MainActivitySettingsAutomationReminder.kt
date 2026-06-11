@@ -78,7 +78,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         saveReminderSettings(
             traceSection = "kani.settings.reminder.disable",
             reminder = LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute),
-            toastMessage = ReminderSettingsSavePolicy.DISABLED_MESSAGE,
+            toastMessage = ReminderSettingsSavePolicy.disabledMessage(),
             toastLength = Toast.LENGTH_SHORT,
             onSaved = {
                 ReminderScheduler.cancel(activity)

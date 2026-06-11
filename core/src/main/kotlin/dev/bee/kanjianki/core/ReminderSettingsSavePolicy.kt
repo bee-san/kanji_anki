@@ -1,9 +1,29 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object ReminderSettingsSavePolicy {
     const val DISABLED_MESSAGE: String = "Reminder turned off."
     const val NOTIFICATIONS_BLOCKED_MESSAGE: String = "Reminder saved, but Android notifications are off."
     const val PERMISSION_DENIED_MESSAGE: String = "Notifications are off, so reminders are disabled."
+    private const val JAPANESE_LANGUAGE = "ja"
+
+    @JvmStatic
+    fun disabledMessage(): String = localizedText(DISABLED_MESSAGE, "リマインダーをオフにしました。")
+
+    @JvmStatic
+    fun permissionDeniedMessage(): String = localizedText(
+        PERMISSION_DENIED_MESSAGE,
+        "通知がオフのため、リマインダーは無効です。",
+    )
+
+    private fun notificationsBlockedMessage(): String = localizedText(
+        NOTIFICATIONS_BLOCKED_MESSAGE,
+        "リマインダーを保存しましたが、Androidの通知がオフです。",
+    )
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english
 
     @JvmStatic
     fun fields(enabled: Boolean, hour: Int, minute: Int): ReminderFields {
@@ -14,9 +34,13 @@ object ReminderSettingsSavePolicy {
     @JvmStatic
     fun savedMessage(hour: Int, minute: Int, notificationsAllowed: Boolean): String {
         if (!notificationsAllowed) {
-            return NOTIFICATIONS_BLOCKED_MESSAGE
+            return notificationsBlockedMessage()
         }
-        return "Reminder saved for around ${TimeOfDaySettingsPolicy.displayTime(hour, minute)}."
+        val timeText = TimeOfDaySettingsPolicy.displayTime(hour, minute)
+        return localizedText(
+            "Reminder saved for around $timeText.",
+            "${timeText}頃にリマインダーを保存しました。",
+        )
     }
 
     @JvmRecord
