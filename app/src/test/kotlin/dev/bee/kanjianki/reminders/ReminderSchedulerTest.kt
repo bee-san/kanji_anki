@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.time.AppClock
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
@@ -103,6 +105,22 @@ class ReminderSchedulerTest {
         assertEquals(1, services.ensureCount)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         assertEquals(1, notificationManager.activeNotifications.size)
+    }
+
+    @Test
+    fun ensureNotificationChannelUsesJapaneseMetadata() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        withLocale(Locale.JAPANESE) {
+            ReminderScheduler.ensureNotificationChannel(context)
+
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = notificationManager.getNotificationChannel(ReminderScheduler.REMINDER_CHANNEL_ID)
+
+            assertTrue(channel != null)
+            assertEquals(ReminderCopyPolicy.notificationChannelName(), channel!!.name.toString())
+            assertEquals(ReminderCopyPolicy.notificationChannelDescription(), channel.description?.toString())
+        }
     }
 
     @Test
@@ -296,7 +314,9 @@ class ReminderSchedulerTest {
     private fun clearReminderState() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("kanji_anki_simple.db")
-        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll()
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancelAll()
+        notificationManager.deleteNotificationChannel(ReminderScheduler.REMINDER_CHANNEL_ID)
     }
 
     private fun seedReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
@@ -351,6 +371,16 @@ class ReminderSchedulerTest {
         return calendar.timeInMillis
     }
 
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
+    }
+
     private class FakeReminderServices(private val channelContext: Context? = null) : ReminderScheduler.ReminderServices {
         var cancelCount = 0
         var scheduledAtMillis = -1L
@@ -385,10 +415,12 @@ class ReminderSchedulerTest {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(
                 NotificationChannel(
-                    "kani_study_reminders",
-                    "Study reminders",
+                    ReminderScheduler.REMINDER_CHANNEL_ID,
+                    ReminderCopyPolicy.notificationChannelName(),
                     NotificationManager.IMPORTANCE_DEFAULT,
-                )
+                ).apply {
+                    description = ReminderCopyPolicy.notificationChannelDescription()
+                }
             )
         }
     }
