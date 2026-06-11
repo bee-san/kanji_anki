@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayList
@@ -71,6 +72,54 @@ class SchedulerTimelineSimulatorTest {
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, next.trace.selected!!.rung)
         assertTrue(next.trace.skipped.first { it.rung == RecordsBase.LadderRung.FONT_MEANING }.reasonCodes.contains("same_family_hidden"))
         assertGolden("relearningBeatsSameFamilyReviewSibling", simulator.renderText())
+    }
+
+    @Test
+    fun emptyQueueRendersNoSelectedTimeline() {
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = emptyList(),
+            startingItems = emptyList(),
+            startMillis = START,
+        )
+
+        val seed = simulator.seedQueue()
+        val next = simulator.nextSession()
+
+        assertEquals("seed", seed.kind)
+        assertNull(seed.trace.selected)
+        assertEquals("next", next.kind)
+        assertNull(next.trace.selected)
+        assertEquals(
+            """
+            T+00:00 seed admitted=none
+            T+00:00 next selected=none
+            """.trimIndent(),
+            simulator.renderText().trimEnd(),
+        )
+    }
+
+    @Test
+    fun advanceEventsExposeCurrentItemsAndTimelineOffsets() {
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 30)),
+            startingItems = emptyList(),
+            startMillis = START,
+        )
+
+        simulator.seedQueue()
+        val afterMinutes = simulator.advanceBy(90 * 60_000L)
+        val afterDays = simulator.advanceTo(START + 2 * BridgeScheduler.DAY)
+
+        assertEquals("advance", afterMinutes.kind)
+        assertEquals(90 * 60_000L, afterMinutes.offsetMillis)
+        assertEquals("advance", afterDays.kind)
+        assertEquals(2 * BridgeScheduler.DAY, afterDays.offsetMillis)
+        assertEquals(1, simulator.currentItems().size)
+        assertEquals(3, simulator.events().size)
+        assertTrue(simulator.renderText().contains("T+01:30 advance now=T+01:30"))
+        assertTrue(simulator.renderText().contains("T+2d advance now=T+2d"))
     }
 
     private fun assertGolden(name: String, actual: String) {
