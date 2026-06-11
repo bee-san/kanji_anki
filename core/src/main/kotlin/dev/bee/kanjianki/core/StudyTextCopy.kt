@@ -158,6 +158,15 @@ object StudyTextCopy {
     fun studyLabel(): String = localizedText("Study", "学習")
 
     @JvmStatic
+    fun meaningLabel(): String = localizedText("Meaning", "意味")
+
+    @JvmStatic
+    fun passLabel(): String = localizedText("Pass", "合格")
+
+    @JvmStatic
+    fun failLabel(): String = localizedText("Fail", "不合格")
+
+    @JvmStatic
     fun cancelLabel(): String = localizedText("Cancel", "キャンセル")
 
     @JvmStatic

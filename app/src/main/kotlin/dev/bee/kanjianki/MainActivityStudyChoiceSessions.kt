@@ -45,7 +45,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 MeaningChoiceResultModel(
                     StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
                     if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                    if (correct) MainActivityBase.LABEL_PASS else MainActivityBase.LABEL_FAIL,
+                    if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
                     correctChoice = choiceCard.targetKanji,
                     selectedChoiceCorrect = correct,
                 )

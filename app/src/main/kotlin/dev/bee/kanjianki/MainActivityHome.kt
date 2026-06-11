@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StatsPrecomputeStore
 import dev.bee.kanjianki.data.StudyStatsStore
@@ -96,7 +97,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             deckOverviewRows = deckOverviewRows,
             showSyncCta = rows.isEmpty(),
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
-            studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+            studyLabel = HomeTextCopy.studyNowLabel(),
             onSync = this::confirmSync,
             onStudy = this::startFocusedStudy,
             actions = homeActionModels(this),
@@ -105,12 +106,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
             onFocusAction = if (rows.isEmpty()) null else this::renderFocusQueue,
             emptyTitle = when {
                 rows.isEmpty() -> HomeTextCopy.noKanjiQueuedTitle()
-                entries.isEmpty() -> MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE
+                entries.isEmpty() -> HomeTextCopy.activePracticeEmptyTitle()
                 else -> null
             },
             emptyBody = when {
                 rows.isEmpty() -> HomeTextCopy.homeNoKanjiQueuedBody()
-                entries.isEmpty() -> MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY
+                entries.isEmpty() -> HomeTextCopy.activePracticeEmptyBody()
                 else -> null
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
@@ -145,7 +146,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             deckOverviewRows = emptyList(),
             showSyncCta = true,
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
-            studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+            studyLabel = HomeTextCopy.studyNowLabel(),
             onSync = this::confirmSync,
             onStudy = this::startFocusedStudy,
             actions = homeActionModels(this),
@@ -310,10 +311,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 HomeTextCopy.syncReadyCountText(result.studyReadyCount),
                 summaryLines,
                 TEAL,
-                if (result.studyReadyCount > 0) LABEL_STUDY_NOW else null,
+                if (result.studyReadyCount > 0) HomeTextCopy.studyNowLabel() else null,
                 CORAL,
                 if (result.studyReadyCount > 0) ::startFocusedStudy else null,
-                LABEL_BACK_HOME,
+                StudyTextCopy.backHomeLabel(),
                 this::renderHome,
             )
         )
@@ -330,7 +331,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 HomeTextCopy.trySyncAgainLabel(),
                 TEAL,
                 this::confirmSync,
-                LABEL_BACK_HOME,
+                StudyTextCopy.backHomeLabel(),
                 this::renderHome,
             )
         )

@@ -60,8 +60,8 @@ internal fun homeFocusQueuePanelModel(
     }
     return HomeFocusQueuePanelModel(
         planText = AdaptiveFocusCopy.adaptiveFocusText(plan),
-        emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
-        emptyBody = if (rows.isEmpty()) HomeTextCopy.focusQueueNoKanjiQueuedBody() else MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY,
+        emptyTitle = if (rows.isEmpty()) HomeTextCopy.noKanjiQueuedTitle() else HomeTextCopy.activePracticeEmptyTitle(),
+        emptyBody = if (rows.isEmpty()) HomeTextCopy.focusQueueNoKanjiQueuedBody() else HomeTextCopy.activePracticeEmptyBody(),
         showSyncButton = rows.isEmpty(),
         cards = cards
     )
@@ -100,7 +100,7 @@ internal fun homeFocusQueueCardModel(
             if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
                 add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), ComposeColor(MainActivityUiSupport.CORAL)))
             } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-                add(HomeFocusQueueTagModel(MainActivityBase.STATE_LEARNING, ComposeColor(MainActivityUiSupport.TEAL)))
+                add(HomeFocusQueueTagModel(HomeTextCopy.deckOverviewLearningLabel(), ComposeColor(MainActivityUiSupport.TEAL)))
             }
         },
         accentColor = queueAccentColor(item, nowMillis),

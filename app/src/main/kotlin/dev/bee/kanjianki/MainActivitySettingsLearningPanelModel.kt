@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 
 internal data class SettingsLearningStepsTextState(
     val newStepsText: String,
@@ -18,7 +19,7 @@ internal object SettingsLearningStepsPanelModels {
         return SettingsLearningStepsPanelModel(
             title = SettingsTextCopy.learningStepsTitle(),
             body = SettingsTextCopy.learningStepsBody(),
-            newCardsLabel = MainActivityBase.LABEL_NEW_CARDS,
+            newCardsLabel = StudyTextCopy.newCardsLabel(),
             initialNewStepsText = current.newStepsText(),
             reviewMissesLabel = SettingsTextCopy.reviewMissesLabel(),
             initialReviewStepsText = current.reviewStepsText(),
