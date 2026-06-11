@@ -124,11 +124,11 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         beforeRank: Int,
         afterRank: Int,
     ): Boolean {
-        if (hasSimilarKanji || !ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI)) {
-            return false
-        }
         val similarRank = ladder.rankForRung(RecordsBase.LadderRung.SIMILAR_KANJI)
-        return min(beforeRank, afterRank) < similarRank && similarRank < max(beforeRank, afterRank)
+        return !hasSimilarKanji &&
+            ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI) &&
+            min(beforeRank, afterRank) < similarRank &&
+            similarRank < max(beforeRank, afterRank)
     }
 
     private fun movementReason(
