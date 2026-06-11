@@ -28,7 +28,8 @@ import dev.bee.kanjianki.time.AppClock
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"
     private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
-    private const val CHANNEL_ID = "kani_study_reminders"
+    const val REMINDER_CHANNEL_ID = "kani_study_reminders"
+    private const val CHANNEL_ID = REMINDER_CHANNEL_ID
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val WEEK_MILLIS = 7 * 86_400_000L
@@ -243,10 +244,10 @@ object ReminderScheduler {
             val manager = notificationManager() ?: return
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Study reminders",
+                ReminderCopyPolicy.notificationChannelName(),
                 NotificationManager.IMPORTANCE_DEFAULT
             )
-            channel.description = "Friendly Kani review reminders."
+            channel.description = ReminderCopyPolicy.notificationChannelDescription()
             channel.setShowBadge(true)
             manager.createNotificationChannel(channel)
         }
