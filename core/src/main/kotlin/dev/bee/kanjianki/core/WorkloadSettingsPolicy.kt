@@ -1,10 +1,14 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object WorkloadSettingsPolicy {
     const val MAXIMUM_SAVED_MESSAGE: String = "Max items saved."
     const val MANUAL_ENABLED_MESSAGE: String = "Manual study load ready."
     const val AUTOMATIC_ENABLED_MESSAGE: String = "Kani will pick today's study load."
     const val WORKLOAD_SAVED_MESSAGE: String = "Study load saved."
+
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
     fun saveMaximum(maxItems: Int): SaveRequest {
@@ -12,7 +16,7 @@ object WorkloadSettingsPolicy {
             null,
             null,
             AdaptiveLoadPlanner.normalizeMaxItems(maxItems),
-            MAXIMUM_SAVED_MESSAGE,
+            localizedText(MAXIMUM_SAVED_MESSAGE, "最大件数を保存しました。"),
         )
     }
 
@@ -22,7 +26,7 @@ object WorkloadSettingsPolicy {
             AdaptiveLoadPlanner.MODE_MANUAL,
             null,
             null,
-            MANUAL_ENABLED_MESSAGE,
+            localizedText(MANUAL_ENABLED_MESSAGE, "手動の学習量に切り替えました。"),
         )
     }
 
@@ -32,7 +36,7 @@ object WorkloadSettingsPolicy {
             AdaptiveLoadPlanner.MODE_AUTO,
             null,
             null,
-            AUTOMATIC_ENABLED_MESSAGE,
+            localizedText(AUTOMATIC_ENABLED_MESSAGE, "今日の学習量はKaniが選びます。"),
         )
     }
 
@@ -42,9 +46,14 @@ object WorkloadSettingsPolicy {
             AdaptiveLoadPlanner.MODE_MANUAL,
             AdaptiveLoadPlanner.snapWorkloadPercent(workloadPercent),
             AdaptiveLoadPlanner.normalizeMaxItems(maxItems),
-            WORKLOAD_SAVED_MESSAGE,
+            localizedText(WORKLOAD_SAVED_MESSAGE, "学習量を保存しました。"),
         )
     }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     class SaveRequest private constructor(
         @JvmField val mode: String?,
