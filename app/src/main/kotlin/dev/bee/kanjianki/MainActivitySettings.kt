@@ -50,7 +50,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         }
         settingsScrollY = scrollY
         renderAsyncHomeRoute(
-            loadingTitle = MainActivityBase.NAV_SETTINGS,
+            loadingTitle = SettingsTextCopy.settingsTitle(),
             load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
             render = { model ->
                 composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {

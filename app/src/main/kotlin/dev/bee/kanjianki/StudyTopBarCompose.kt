@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.SettingsTextCopy
 
 private val StudyHeroPlum = Color(0xFF7A245D)
 private val StudyHeroPink = Color(0xFFF82D72)
@@ -95,7 +96,7 @@ fun StudyTopBar(
             Spacer(modifier = Modifier.width(10.dp))
             StudyTopBarIconButton(
                 iconRes = R.drawable.ic_settings_24,
-                description = "Settings",
+                description = SettingsTextCopy.settingsTitle(),
                 onClick = onSettings
             )
         }

@@ -24,6 +24,9 @@ object SettingsTextCopy {
     fun versionText(version: String?): String = SettingsAutomationTextCopy.versionText(version)
 
     @JvmStatic
+    fun settingsTitle(): String = SettingsSectionTextCopy.settingsTitle()
+
+    @JvmStatic
     fun settingsAnkiSourceTitle(): String = SettingsSectionTextCopy.settingsAnkiSourceTitle()
 
     @JvmStatic

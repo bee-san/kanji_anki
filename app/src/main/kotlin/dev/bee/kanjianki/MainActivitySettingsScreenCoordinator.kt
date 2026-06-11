@@ -22,7 +22,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
         val reminderBlocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(activity)
         return SettingsAutomationHeroModel(
             cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
-            title = MainActivityBase.NAV_SETTINGS,
+            title = SettingsTextCopy.settingsTitle(),
             body = SettingsTextCopy.settingsHeroBody(),
             rows = listOf(
                 listOf(

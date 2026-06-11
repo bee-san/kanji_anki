@@ -36,7 +36,7 @@ internal fun settingsAutomationHeroModel(
     val reminderBlocked = reminder.enabled && !notificationsAllowed
     return SettingsAutomationHeroModel(
         cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
-        title = MainActivityBase.NAV_SETTINGS,
+        title = SettingsTextCopy.settingsTitle(),
         body = SettingsTextCopy.settingsHeroBody(),
         rows = listOf(
             listOf(
