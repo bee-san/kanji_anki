@@ -199,6 +199,170 @@ class WritingFeedbackCopyTest {
     }
 
     @Test
+    fun japaneseLocaleLocalizesWritingFeedbackCopy() = withDefaultLocale(Locale.JAPANESE) {
+        assertEquals("なぞってから確認しましょう。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
+        assertEquals("最小ヒント", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
+        assertEquals("\nお題: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), "裂"))
+        assertEquals("確認中...", WritingFeedbackCopy.checkWritingButtonText(true, false))
+        assertEquals("チェッカーをダウンロード", WritingFeedbackCopy.downloadCheckerLabel())
+        assertEquals("ヒント", WritingFeedbackCopy.hintButtonText(3))
+        assertEquals("もっとヒント", WritingFeedbackCopy.hintButtonText(1))
+        assertEquals("不合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)))
+        assertEquals("合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)))
+        assertEquals(
+            "手本\n手書き判定の準備ができています。",
+            WritingFeedbackCopy.modelStatusMessage("手本", true, true, false)
+        )
+        assertEquals(
+            "手本\n1画目に近づけて書いてください。",
+            WritingFeedbackCopy.blockedStrokeStatus("手本", StrokeGuideGuard.Decision.rejected(1, "Stay close to stroke 1."))
+        )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesCombinedResultMessage() = withDefaultLocale(Locale.JAPANESE) {
+        val analysis = WritingAnalysis(
+            WritingAnalysis.Status.WRONG,
+            "again",
+            false,
+            "I could not read that as the target kanji yet.",
+            listOf(RecognitionCandidate("拉", 0.9f), RecognitionCandidate("拡", 0.7f)),
+            null,
+            HintLevel.BLIND,
+            0,
+        )
+
+        assertEquals(
+            "まだお題の漢字として読み取れません。" +
+                "\n次の挑戦はヒントを増やします: 最小ヒント。" +
+                "\nお題: 裂" +
+                "\n認識候補: 拉, 拡" +
+                "\n1画目: 順番が違うかもしれません" +
+                "\n認識できましたが、線が乱れています",
+            WritingFeedbackCopy.resultMessage(
+                analysis,
+                "裂",
+                3,
+                true,
+                "Stroke 1: likely wrong order\nRecognized, but the stroke path was messy"
+            )
+        )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesKnownAnalysisMessages() = withDefaultLocale(Locale.JAPANESE) {
+        val localizedMessages = listOf(
+            "Write in the square before checking." to "確認する前に枠の中に書いてください。",
+            "The handwriting checker is unavailable on this device." to "この端末では手書き判定を使えません。",
+            "Automatic handwriting checks are unavailable on this device." to "この端末では自動手書き判定を使えません。",
+            "Download the handwriting checker before automatic checks." to "自動判定の前に手書き判定をダウンロードしてください。",
+            "I could not read that as the target kanji yet." to "まだお題の漢字として読み取れません。",
+            "The handwriting checker could not read this attempt. Try once more." to
+                "手書き判定がこの入力を読み取れませんでした。もう一度試してください。",
+            "Readable, but the stroke path needs one more careful pass." to
+                "読めますが、線をもう少し丁寧に書くとよくなります。",
+            "Clean match." to "きれいに一致しました。",
+            "Matched the kanji. Keep tightening the stroke path." to
+                "漢字は一致しました。線をさらに整えていきましょう。",
+            "Recognized as the target kanji. Stroke order could not be checked because no guide is bundled yet." to
+                "お題の漢字として認識しました。筆順ガイドがまだ含まれていないため、筆順は確認できませんでした。",
+            "Recognized as the target kanji, but stroke order could not be checked because no guide is bundled yet." to
+                "お題の漢字として認識しましたが、筆順ガイドがまだ含まれていないため筆順は確認できませんでした。",
+            "No stroke-order guide is available for this kanji." to "この漢字の筆順ガイドはまだありません。",
+            "No stroke-order guide is available for this kanji. I could not read that as the target kanji yet." to
+                "この漢字の筆順ガイドはまだありません。まだお題の漢字として読み取れません。",
+            "No ink was drawn." to "まだ何も書かれていません。",
+            "Stroke path looks clean." to "線はきれいです。",
+            "Readable path, but some strokes look shaky." to "読める線ですが、一部の画が不安定です。",
+            "The stroke count or order does not match the guide yet." to
+                "画数または筆順がまだガイドと一致していません。",
+        )
+
+        for ((english, japanese) in localizedMessages) {
+            assertEquals(japanese, WritingFeedbackCopy.resultMessage(analysisWithMessage(english), null, null, false, null))
+        }
+        assertEquals(
+            "Unmapped analyzer note.",
+            WritingFeedbackCopy.resultMessage(analysisWithMessage("Unmapped analyzer note."), null, null, false, null)
+        )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesModelUnavailableResultMessages() = withDefaultLocale(Locale.JAPANESE) {
+        assertEquals(
+            "この端末では手書き判定を使えません。\nお題: 裂",
+            WritingFeedbackCopy.resultMessage(
+                WritingAnalysisEngine.modelUnavailable("The handwriting checker is unavailable on this device."),
+                "裂",
+                null,
+                false,
+                null
+            )
+        )
+        assertEquals(
+            "自動判定の前に手書き判定をダウンロードしてください。\nお題: 裂",
+            WritingFeedbackCopy.resultMessage(
+                WritingAnalysisEngine.modelUnavailable("Download the handwriting checker before automatic checks."),
+                "裂",
+                null,
+                false,
+                null
+            )
+        )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesDiagnosisVariants() = withDefaultLocale(Locale.JAPANESE) {
+        assertEquals(
+            "きれいに一致しました。" +
+                "\n1画目: 向きが違うかもしれません" +
+                "\n2画目: 抜けているかもしれません" +
+                "\n3画目: 形が崩れているようです" +
+                "\nStroke 4: unknown label" +
+                "\nUnmapped diagnosis",
+            WritingFeedbackCopy.resultMessage(
+                analysisWithMessage("Clean match."),
+                null,
+                null,
+                false,
+                "Stroke 1: likely wrong direction" +
+                    "\nStroke 2: may be missing" +
+                    "\nStroke 3: shape looks rough" +
+                    "\nStroke 4: unknown label" +
+                    "\nUnmapped diagnosis"
+            )
+        )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesBlockedStrokeFallbacks() = withDefaultLocale(Locale.JAPANESE) {
+        assertEquals("手本\n手本に沿って書いてください。", WritingFeedbackCopy.blockedStrokeStatus("手本", null))
+        assertEquals(
+            "手本\nガイドの全ての画はすでに書かれています。",
+            WritingFeedbackCopy.blockedStrokeStatus(
+                "手本",
+                StrokeGuideGuard.Decision.rejected(1, "All guided strokes are already drawn.")
+            )
+        )
+        assertEquals(
+            "手本\nCustom guard copy.",
+            WritingFeedbackCopy.blockedStrokeStatus("手本", StrokeGuideGuard.Decision.rejected(1, "Custom guard copy."))
+        )
+    }
+
+    @Test
+    fun nonJapaneseLocaleKeepsEnglishWritingFeedbackCopy() = withDefaultLocale(Locale.CANADA) {
+        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
+        assertEquals("Minimal", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
+        assertEquals("\nTarget: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), "裂"))
+        assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, false))
+        assertEquals(
+            "Guide\nStay close to stroke 1.",
+            WritingFeedbackCopy.blockedStrokeStatus("Guide", StrokeGuideGuard.Decision.rejected(1, "Stay close to stroke 1."))
+        )
+    }
+
+    @Test
     fun writingActionPolicyPreservesSubmittableAndFallbackStatuses() {
         assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null))
         assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)))
@@ -261,34 +425,13 @@ class WritingFeedbackCopyTest {
         assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), false, false, 3))
     }
 
-    @Test
-    fun japaneseLocaleTranslatesWritingFeedbackCopy() {
-        withLocale(Locale.JAPAN) {
-            val guide = guide()
-            val noGuide = emptyGuide()
-
-            assertEquals("ストロークをなぞってから確認してください。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide))
-            assertEquals("記憶で書いてから確認してください。まだストロークガイドはありません。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), noGuide))
-            assertEquals("なぞり", WritingFeedbackCopy.stageLabel(HintLevel.TRACE))
-            assertEquals("輪郭", WritingFeedbackCopy.stageLabel(HintLevel.OUTLINE))
-            assertEquals("最小", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
-            assertEquals("記憶", WritingFeedbackCopy.stageLabel(HintLevel.BLIND))
-            assertEquals("確認中...", WritingFeedbackCopy.checkWritingButtonText(true, false))
-            assertEquals("もっときれいに", WritingFeedbackCopy.checkWritingButtonText(false, true))
-            assertEquals("チェック", WritingFeedbackCopy.checkWritingButtonText(false, false))
-            assertEquals("チェッカーをダウンロード", WritingFeedbackCopy.downloadCheckerLabel())
-            assertEquals("ヒント", WritingFeedbackCopy.hintButtonText(3))
-            assertEquals("もっとヒント", WritingFeedbackCopy.hintButtonText(1))
-            assertEquals("\n次の書き取りでは助けが少なくなります: 最小.", WritingFeedbackCopy.attemptProgressText(analysis(WritingAnalysis.Status.PASS, true, HintLevel.OUTLINE, 0), null, false))
-            assertEquals("\nもっときれいに書くと合格しやすくなります。今の助けを保つなら「しっかり保存」を選んでください。", WritingFeedbackCopy.attemptProgressText(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0), null, false))
-            assertEquals("\n対象: 拉", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), "拉"))
-            assertEquals("不合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)))
-            assertEquals("しっかり保存", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)))
-            assertEquals("合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)))
-            assertEquals("Guide\nこの端末では自動手書き判定は使えません。", WritingFeedbackCopy.unavailableModelStatusMessage("Guide"))
-            assertEquals("Guide\n手書き判定器の状態を読み取れません。", WritingFeedbackCopy.modelStatusMessage("Guide", false, false, false))
-            assertEquals("Guide\n自動判定を使う前に手書き判定器をダウンロードしてください。", WritingFeedbackCopy.modelStatusMessage("Guide", true, false, false))
-            assertEquals("Guide\n手書き判定器の準備ができました。", WritingFeedbackCopy.modelStatusMessage("Guide", true, true, false))
+    private fun <T> withDefaultLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
         }
     }
 
@@ -330,21 +473,15 @@ class WritingFeedbackCopyTest {
         return WritingAnalysis(status, if (passed) "good" else "again", passed, status.name, emptyList(), null, hintLevel, hintsUsed)
     }
 
+    private fun analysisWithMessage(message: String): WritingAnalysis {
+        return WritingAnalysis(WritingAnalysis.Status.NO_INK, "again", false, message, emptyList(), null, HintLevel.BLIND, 0)
+    }
+
     private fun analysisWithOrder(
         status: WritingAnalysis.Status,
         passed: Boolean,
         order: StrokeOrderEvaluator.StrokeOrderResult,
     ): WritingAnalysis {
         return WritingAnalysis(status, if (passed) "good" else "again", passed, status.name, emptyList(), order, HintLevel.BLIND, 0)
-    }
-
-    private fun <T> withLocale(locale: Locale, block: () -> T): T {
-        val previous = Locale.getDefault()
-        Locale.setDefault(locale)
-        return try {
-            block()
-        } finally {
-            Locale.setDefault(previous)
-        }
     }
 }
