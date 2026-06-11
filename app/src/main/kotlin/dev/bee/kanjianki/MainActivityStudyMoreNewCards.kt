@@ -40,7 +40,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             loadExisting = { kanji -> study.store.studyItemsForKanji(kanji) },
         )
         if (loadData == null) {
-            Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
+            Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
             return false
         }
         val rows = loadData.rows
@@ -56,7 +56,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             study.studyLadderSettings()
         )
         if (!result.admittedAny()) {
-            Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
+            Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
             return false
         }
         val admission = StudyMoreNewCardActions.applyAdmission(

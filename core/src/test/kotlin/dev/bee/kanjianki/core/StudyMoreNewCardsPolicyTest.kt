@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -40,5 +41,30 @@ class StudyMoreNewCardsPolicyTest {
     fun partialAvailabilityMessagePreservesPluralCopy() {
         assertEquals("Only 1 new card was available.", StudyMoreNewCardsPolicy.partialAvailabilityMessage(1))
         assertEquals("Only 2 new cards were available.", StudyMoreNewCardsPolicy.partialAvailabilityMessage(2))
+    }
+
+    @Test
+    fun messagesLocalizeInJapaneseLocale() {
+        withDefaultLocale(Locale.JAPANESE) {
+            val nonInteger = StudyMoreNewCardsPolicy.requestedCount("abc")
+            val zero = StudyMoreNewCardsPolicy.requestedCount("0")
+
+            assertFalse(nonInteger.accepted())
+            assertEquals("新規カード数は整数で入力してください。", nonInteger.message())
+            assertFalse(zero.accepted())
+            assertEquals("新規カード数は1以上で入力してください。", zero.message())
+            assertEquals("新しいカードはありません。", StudyMoreNewCardsPolicy.noNewCardsAvailableMessage())
+            assertEquals("新規カードは2件のみ使用できます。", StudyMoreNewCardsPolicy.partialAvailabilityMessage(2))
+        }
+    }
+
+    private inline fun withDefaultLocale(locale: Locale, block: () -> Unit) {
+        val previousLocale = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 }
