@@ -15,7 +15,7 @@ object SyncProgressCopy {
                 Stage.PROCESSING_IMPORTED_CARDS -> "取り込んだカードを処理中"
                 Stage.SAVING_LOCAL_DATA -> "ローカルデータを保存中"
                 Stage.BUILDING_PRACTICE_QUEUE -> "練習キューを作成中"
-                Stage.ARCHIVING_IMPORTED_CARDS -> "取り込んだ停止カードをアーカイブ中"
+                Stage.ARCHIVING_IMPORTED_CARDS -> "取り込んだ休止カードをアーカイブ中"
                 null -> "カードを同期中"
             }
         } else {
@@ -37,14 +37,13 @@ object SyncProgressCopy {
         return if (isJapaneseLocale()) {
             when (stage) {
                 Stage.FINDING_NOTE_TYPE -> "コレクションの形を確認しています。"
-                Stage.READING_NOTES -> "カード数がわかる前にノートを読み込んでいます。"
-                Stage.PROCESSING_IMPORTED_CARDS -> "AnkiDroidの読み込みが完了しました。取り込んだカードをローカルで処理しています。"
-                Stage.SAVING_LOCAL_DATA -> "Ankiのスナップショットと取り込み証拠を保存しています。"
+                Stage.READING_NOTES -> "カード総数が分かる前にノートを読み込んでいます。"
+                Stage.PROCESSING_IMPORTED_CARDS -> "AnkiDroid の読み取りが完了しました。取り込んだカードをローカルで処理しています。"
+                Stage.SAVING_LOCAL_DATA -> "Anki のスナップショットと取り込み証跡を保存しています。"
                 Stage.BUILDING_PRACTICE_QUEUE -> "練習キューを保存しています。"
-                Stage.ARCHIVING_IMPORTED_CARDS -> "アーカイブした停止カードを更新しています。"
+                Stage.ARCHIVING_IMPORTED_CARDS -> "取り込んだ休止カードをアーカイブしています。"
                 Stage.SCANNING_CARDS,
-                null,
-                -> "カードのスキャンを準備しています。"
+                null -> "カードをスキャンする準備をしています。"
             }
         } else {
             when (stage) {
@@ -55,8 +54,7 @@ object SyncProgressCopy {
                 Stage.BUILDING_PRACTICE_QUEUE -> "Saving the practice queue."
                 Stage.ARCHIVING_IMPORTED_CARDS -> "Updating archived suspended cards."
                 Stage.SCANNING_CARDS,
-                null,
-                -> "Preparing card scan."
+                null -> "Preparing card scan."
             }
         }
     }
@@ -71,10 +69,12 @@ object SyncProgressCopy {
 
     @JvmStatic
     fun cardProgressText(scannedCards: Int, totalCards: Int): String {
+        val scanned = maxOf(0, scannedCards)
+        val total = maxOf(0, totalCards)
         return if (isJapaneseLocale()) {
-            maxOf(0, scannedCards).toString() + " / " + maxOf(0, totalCards) + " 枚スキャン済み"
+            "$scanned / $total 枚をスキャン済み"
         } else {
-            maxOf(0, scannedCards).toString() + " / " + maxOf(0, totalCards) + " cards scanned"
+            "$scanned / $total cards scanned"
         }
     }
 
@@ -85,22 +85,21 @@ object SyncProgressCopy {
         }
         val scanned = maxOf(0, scannedCards)
         if (scanned <= 0) {
-            return localizedText("Scanning cards.", "カードをスキャン中です。")
+            return localizedText("Scanning cards.", "カードをスキャンしています。")
         }
         val elapsed = maxOf(1L, elapsedMillis)
         val perSecond = scanned * 1000.0 / elapsed
-        val rateText = String.format(
-            Locale.US,
-            if (perSecond >= 10.0) localizedText("%.0f cards/sec", "%.0f 枚/秒") else localizedText("%.1f cards/sec", "%.1f 枚/秒"),
-            perSecond,
-        )
+        val rateText = cardsPerSecondText(perSecond)
         val remaining = maxOf(0, maxOf(0, totalCards) - scanned)
         if (remaining == 0) {
             return localizedText("$rateText - finishing up", "$rateText - 仕上げ中")
         }
         if (scanned >= 3 && elapsed >= 1000L) {
             val etaMillis = Math.round((remaining / perSecond) * 1000.0)
-            return localizedText("$rateText - about ${shortDuration(etaMillis)} left", "$rateText - 残り約 ${shortDuration(etaMillis)}")
+            return localizedText(
+                "$rateText - about ${shortDuration(etaMillis)} left",
+                "$rateText - 残り約${shortDuration(etaMillis)}",
+            )
         }
         return localizedText("$rateText - estimating time left", "$rateText - 残り時間を計算中")
     }
@@ -108,16 +107,44 @@ object SyncProgressCopy {
     @JvmStatic
     fun shortDuration(millis: Long): String {
         val seconds = maxOf(1L, Math.round(millis / 1000.0))
+        if (isJapaneseLocale()) {
+            if (seconds < 60L) {
+                return "${seconds}秒"
+            }
+            val minutes = maxOf(1L, Math.round(seconds / 60.0))
+            if (minutes < 60L) {
+                return "${minutes}分"
+            }
+            val hours = maxOf(1L, Math.round(minutes / 60.0))
+            return "${hours}時間"
+        }
         if (seconds < 60L) {
-            return if (isJapaneseLocale()) "$seconds 秒" else "$seconds sec"
+            return "$seconds sec"
         }
         val minutes = maxOf(1L, Math.round(seconds / 60.0))
         if (minutes < 60L) {
-            return if (isJapaneseLocale()) "$minutes 分" else "$minutes min"
+            return "$minutes min"
         }
         val hours = maxOf(1L, Math.round(minutes / 60.0))
-        return if (isJapaneseLocale()) "$hours 時間" else "$hours hr"
+        return "$hours hr"
     }
+
+    @JvmStatic
+    fun progressDescription(value: String): String {
+        return localizedText("Sync progress: $value", "同期の進捗: $value")
+    }
+
+    private fun cardsPerSecondText(perSecond: Double): String {
+        val pattern = if (perSecond >= 10.0) "%.0f" else "%.1f"
+        val value = String.format(Locale.US, pattern, perSecond)
+        return if (isJapaneseLocale()) "$value 枚/秒" else "$value cards/sec"
+    }
+
+    private fun localizedText(english: String, japanese: String): String {
+        return if (isJapaneseLocale()) japanese else english
+    }
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     enum class Stage {
         FINDING_NOTE_TYPE,
@@ -128,10 +155,4 @@ object SyncProgressCopy {
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS,
     }
-
-    private fun localizedText(english: String, japanese: String): String {
-        return if (isJapaneseLocale()) japanese else english
-    }
-
-    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
