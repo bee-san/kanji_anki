@@ -27,10 +27,10 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val model = MeaningChoiceSessionModel(
-            "Recall",
-            LABEL_CHOOSE_KANJI,
+            StudyTaskCopy.studyModeLabel(session),
+            StudyTextCopy.studyChoiceTitle(),
             StudyTaskCopy.labelForTask(session.taskType),
-            "Pick the matching kanji.",
+            StudyTextCopy.studyChoiceBody(),
             "",
             StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt),
             choiceCard.choices,
@@ -98,12 +98,12 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             System.currentTimeMillis()
         )
         val model = SimilarChoiceSessionModel(
-            "Recognise",
-            LABEL_CHOOSE_KANJI,
-            MainActivityBase.LABEL_SIMILAR_KANJI,
-            "Pick the matching kanji.",
+            StudyTaskCopy.studyModeLabel(session),
+            StudyTextCopy.studyChoiceTitle(),
+            StudyTaskCopy.labelForTask(session.taskType),
+            StudyTextCopy.studyChoiceBody(),
             reason,
-            "Which kanji means $meaning?",
+            StudyTextCopy.studyChoiceQuestion(meaning),
             SimilarChoiceGridModel(
                 choices,
                 true
@@ -141,7 +141,4 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         MainActivityStudyInteractionReset.resetChoice(home, resetTouchTracking)
     }
 
-    private companion object {
-        const val LABEL_CHOOSE_KANJI = "Choose the kanji"
-    }
 }
