@@ -7,6 +7,7 @@ import java.util.Locale
 class StudyReviewButtonCopyTest {
     @Test
     fun reviewButtonsUseAnkiRatingNames() {
+        assertEquals("Reveal", StudyReviewButtonCopy.revealLabel())
         assertEquals("Again", StudyReviewButtonCopy.againLabel())
         assertEquals("Good", StudyReviewButtonCopy.goodLabel())
     }
@@ -20,6 +21,7 @@ class StudyReviewButtonCopyTest {
     @Test
     fun reviewButtonsTranslateToJapaneseLocale() {
         withJapaneseLocale {
+            assertEquals("答えを見る", StudyReviewButtonCopy.revealLabel())
             assertEquals("もう一度", StudyReviewButtonCopy.againLabel())
             assertEquals("できた", StudyReviewButtonCopy.goodLabel())
             assertEquals("もう一度: このカードを早めに再表示する", StudyReviewButtonCopy.againContentDescription())
