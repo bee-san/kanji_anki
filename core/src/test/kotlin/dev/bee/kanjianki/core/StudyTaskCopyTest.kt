@@ -51,6 +51,7 @@ class StudyTaskCopyTest {
         assertEquals("Type", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.TYPE_MEANING, false)))
         assertEquals("Recall", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.MEANING_KANJI, false)))
         assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.KANJI_MEANING, false)))
+        assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.SIMILAR_KANJI, false)))
         assertEquals("Recognise", StudyTaskCopy.studyModeLabel(null))
     }
 
@@ -129,6 +130,7 @@ class StudyTaskCopyTest {
             assertEquals("読む", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.WORD_READING, false)))
             assertEquals("入力", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.TYPING_MEANING, false)))
             assertEquals("思い出す", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.MEANING_KANJI, false)))
+            assertEquals("見分ける", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.SIMILAR_KANJI, false)))
             assertEquals("見分ける", StudyTaskCopy.studyModeLabel(null))
         }
     }

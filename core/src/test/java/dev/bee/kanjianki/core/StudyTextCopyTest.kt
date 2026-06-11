@@ -121,6 +121,9 @@ class StudyTextCopyTest {
             listOf("静", "青", "清", "晴"),
         )
 
+        assertEquals("Choose the kanji", StudyTextCopy.studyChoiceTitle())
+        assertEquals("Pick the matching kanji.", StudyTextCopy.studyChoiceBody())
+        assertEquals("Which kanji means Quiet?", StudyTextCopy.studyChoiceQuestion("Quiet"))
         assertEquals("Which kanji means Quiet?", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
         assertEquals("Correct. 静 means Quiet.", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
         assertEquals("Answer: 静 · Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))
@@ -140,6 +143,9 @@ class StudyTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
+            assertEquals("漢字を選ぶ", StudyTextCopy.studyChoiceTitle())
+            assertEquals("一致する漢字を選んでください。", StudyTextCopy.studyChoiceBody())
+            assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.studyChoiceQuestion("Quiet"))
             assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
             assertEquals("正解。静 は「Quiet」です。", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
             assertEquals("答え：静 ・ Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))

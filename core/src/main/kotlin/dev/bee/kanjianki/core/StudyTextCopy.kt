@@ -73,6 +73,21 @@ object StudyTextCopy {
     }
 
     @JvmStatic
+    fun studyChoiceTitle(): String = localizedText("Choose the kanji", "漢字を選ぶ")
+
+    @JvmStatic
+    fun studyChoiceBody(): String = localizedText("Pick the matching kanji.", "一致する漢字を選んでください。")
+
+    @JvmStatic
+    fun studyChoiceQuestion(meaning: String): String {
+        return if (isJapaneseLocale()) {
+            "「$meaning」はどの漢字ですか？"
+        } else {
+            "Which kanji means $meaning?"
+        }
+    }
+
+    @JvmStatic
     fun meaningKanjiChoiceQuestion(card: RecordsImportModels.MeaningKanjiChoiceCard?, prompt: String?): String {
         return meaningKanjiChoiceQuestion(null, card, prompt)
     }
@@ -84,10 +99,7 @@ object StudyTextCopy {
         prompt: String?,
     ): String {
         val meaning = meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 96)
-        if (isJapaneseLocale()) {
-            return "「$meaning」はどの漢字ですか？"
-        }
-        return "Which kanji means $meaning?"
+        return studyChoiceQuestion(meaning)
     }
 
     @JvmStatic
