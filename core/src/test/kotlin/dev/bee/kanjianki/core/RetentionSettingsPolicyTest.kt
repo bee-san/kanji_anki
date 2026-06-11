@@ -71,8 +71,8 @@ class RetentionSettingsPolicyTest {
 
             assertTrue(result.valid)
             assertEquals(0.95, parameters.targetRetention, 0.001)
-            assertEquals("レビュー維持率を保存しました。", result.message)
-            assertEquals("レビュー維持率を保存しました。", RetentionSettingsPolicy.savedMessage())
+            assertEquals("レビュー保持率を保存しました。", result.message)
+            assertEquals("レビュー保持率を保存しました。", RetentionSettingsPolicy.savedMessage())
         }
     }
 

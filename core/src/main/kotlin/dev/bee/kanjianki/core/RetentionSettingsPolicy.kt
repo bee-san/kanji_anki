@@ -36,7 +36,7 @@ object RetentionSettingsPolicy {
     }
 
     @JvmStatic
-    fun savedMessage(): String = localizedText(SAVED_MESSAGE, "レビュー維持率を保存しました。")
+    fun savedMessage(): String = localizedText(SAVED_MESSAGE, "レビュー保持率を保存しました。")
 
     private fun localizedText(english: String, japanese: String): String =
         if (isJapaneseLocale()) japanese else english
