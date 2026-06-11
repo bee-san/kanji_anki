@@ -111,7 +111,7 @@ fun HomeMetricCard(
     val compactBody = remember(model.body) { model.body?.let { StudyTextCopy.compact(it, 22) } }
     val contentDescriptionText = remember(model.label, model.value, compactBody) {
         listOfNotNull(
-            "Home metric card",
+            HomeTextCopy.homeMetricCardDescription(),
             model.label,
             model.value,
             compactBody,

@@ -15,6 +15,9 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Set workload manually", SettingsStudyPlanTextCopy.manualWorkloadLabel())
         assertEquals("Kani picks today's count; due dates stay fixed.", SettingsStudyPlanTextCopy.automaticWorkloadBody())
         assertEquals("Set today's count; due dates stay fixed.", SettingsStudyPlanTextCopy.manualWorkloadBody())
+        assertEquals("Today's study load percentage", SettingsStudyPlanTextCopy.workloadPercentSliderDescription())
+        assertEquals("Maximum items", SettingsStudyPlanTextCopy.maxItemsSliderDescription())
+        assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsStudyPlanTextCopy.workloadScaleLabels().toList())
         assertEquals("Very little: up to 1 item", SettingsStudyPlanTextCopy.workloadStatusText(0, 5))
         assertEquals("Focused: up to 5 items", SettingsStudyPlanTextCopy.workloadStatusText(20, 5))
         assertEquals("Balanced: up to 11 items", SettingsStudyPlanTextCopy.workloadStatusText(50, 20))
@@ -114,6 +117,8 @@ class SettingsStudyPlanTextCopyTest {
             assertEquals("学習量を手動で設定", SettingsStudyPlanTextCopy.manualWorkloadLabel())
             assertEquals("Kaniが今日の数を選ぶ。期限日は固定のまま。", SettingsStudyPlanTextCopy.automaticWorkloadBody())
             assertEquals("今日の数を設定する。期限日は固定のまま。", SettingsStudyPlanTextCopy.manualWorkloadBody())
+            assertEquals("今日の学習量の割合", SettingsStudyPlanTextCopy.workloadPercentSliderDescription())
+            assertEquals("最大件数", SettingsStudyPlanTextCopy.maxItemsSliderDescription())
             assertArrayEquals(
                 arrayOf("ごく少なめ", "集中", "バランス", "多め", "すべての漢字"),
                 SettingsStudyPlanTextCopy.workloadScaleLabels(),

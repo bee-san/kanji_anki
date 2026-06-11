@@ -41,7 +41,7 @@ class MainActivityHomeOverviewComposeTest {
         var clicked = false
         val syncBody = "Connected to AnkiDroid and ready to sync after the latest refresh"
         val expectedContentDescription = listOfNotNull(
-            "Home metric card",
+            HomeTextCopy.homeMetricCardDescription(),
             "Sync",
             "Ready",
             StudyTextCopy.compact(syncBody, 22),

@@ -372,6 +372,12 @@ object SettingsTextCopy {
     fun manualWorkloadBody(): String = SettingsStudyPlanTextCopy.manualWorkloadBody()
 
     @JvmStatic
+    fun workloadPercentSliderDescription(): String = SettingsStudyPlanTextCopy.workloadPercentSliderDescription()
+
+    @JvmStatic
+    fun maxItemsSliderDescription(): String = SettingsStudyPlanTextCopy.maxItemsSliderDescription()
+
+    @JvmStatic
     fun workloadScaleLabels(): Array<String> = SettingsStudyPlanTextCopy.workloadScaleLabels()
 
     @JvmStatic

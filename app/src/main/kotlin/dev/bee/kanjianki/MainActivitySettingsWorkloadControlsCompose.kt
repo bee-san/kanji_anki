@@ -20,8 +20,11 @@ import kotlin.math.roundToInt
 private val WorkloadControlTeal = KaniUiTokens.Teal
 
 object SettingsWorkloadControlDescriptions {
-    const val WORKLOAD_PERCENT_SLIDER = "Today's study load percentage"
-    const val MAX_ITEMS_SLIDER = "Maximum items"
+    val WORKLOAD_PERCENT_SLIDER: String
+        get() = SettingsTextCopy.workloadPercentSliderDescription()
+
+    val MAX_ITEMS_SLIDER: String
+        get() = SettingsTextCopy.maxItemsSliderDescription()
 }
 
 object SettingsWorkloadTestTags {

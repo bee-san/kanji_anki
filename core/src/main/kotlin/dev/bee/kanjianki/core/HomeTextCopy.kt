@@ -171,6 +171,9 @@ object HomeTextCopy {
     fun focusMetricLabel(): String = localizedText("Focus", "集中")
 
     @JvmStatic
+    fun homeMetricCardDescription(): String = localizedText("Home metric card", "ホームの指標カード")
+
+    @JvmStatic
     fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic

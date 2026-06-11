@@ -37,6 +37,12 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
+    fun workloadPercentSliderDescription(): String = localizedText("Today's study load percentage", "今日の学習量の割合")
+
+    @JvmStatic
+    fun maxItemsSliderDescription(): String = localizedText("Maximum items", "最大件数")
+
+    @JvmStatic
     fun workloadScaleLabels(): Array<String> {
         return if (isJapaneseLocale()) {
             arrayOf("ごく少なめ", "集中", "バランス", "多め", "すべての漢字")
