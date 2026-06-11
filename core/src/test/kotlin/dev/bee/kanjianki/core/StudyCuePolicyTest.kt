@@ -151,6 +151,13 @@ class StudyCuePolicyTest {
     }
 
     @Test
+    fun readingLineDetectionAcceptsEnglishAndJapaneseCueLabels() {
+        assertEquals(true, StudyCuePolicy.isReadingLine("Reading: ご"))
+        assertEquals(true, StudyCuePolicy.isReadingLine("読み：ご"))
+        assertEquals(false, StudyCuePolicy.isReadingLine("例：言語"))
+    }
+
+    @Test
     fun meaningChoiceAnswerLinesOmitsDuplicateOrMissingIndividualGlosses() {
         val duplicateFields = DictionaryLookup.KanjiEntryFields(
             "脱",

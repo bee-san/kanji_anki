@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -114,6 +115,10 @@ class DictionaryLookupTest {
         )
 
         assertTrue(TypingAnswerMatcher.acceptedMeanings(lookup, "謎", "Collection clue").isEmpty())
+        withLocale(Locale.JAPANESE) {
+            assertTrue(TypingAnswerMatcher.acceptedMeanings(lookup, "謎", "").isEmpty())
+            assertFalse(TypingAnswerMatcher.matches(lookup, "謎", "コレクションのヒント", ""))
+        }
         assertFalse(TypingAnswerMatcher.matches(lookup, "謎", null, "mystery"))
     }
 
@@ -160,6 +165,16 @@ class DictionaryLookupTest {
         assertTrue(empty.meanings.isEmpty())
         assertEquals("", lookup.studyCue("", "fallback", "", "", "").reading)
         assertEquals("", lookup.studyCue("", "fallback", "", "", "").meaning)
+    }
+
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 
     private fun kanji(

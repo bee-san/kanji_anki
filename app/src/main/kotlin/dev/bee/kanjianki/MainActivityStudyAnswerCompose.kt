@@ -85,7 +85,7 @@ private fun answerPanelModel(
         textLines.mapIndexed { index, line ->
             StudyAnswerLineModel(
                 text = line,
-                color = if (line.startsWith("Reading:")) StudyAnswerPink else StudyAnswerPlum,
+                color = if (StudyCuePolicy.isReadingLine(line)) StudyAnswerPink else StudyAnswerPlum,
                 sizeSp = if (index == 0) 17 else 15,
                 bold = true
             )

@@ -55,9 +55,14 @@ object StudyCuePolicy {
             2,
         )
         if (individualMeanings.isNotEmpty() && !individualMeanings.equals(compoundMeaning, ignoreCase = true)) {
-            lines.add("Individual kanji meanings: $individualMeanings")
+            lines.add(StudyCueFormatter.individualKanjiMeaningsLine(individualMeanings))
         }
         return lines
+    }
+
+    @JvmStatic
+    fun isReadingLine(line: String?): Boolean {
+        return StudyCueFormatter.isReadingLine(line)
     }
 
     @JvmStatic
