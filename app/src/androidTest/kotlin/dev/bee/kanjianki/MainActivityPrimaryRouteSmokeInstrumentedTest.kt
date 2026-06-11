@@ -77,8 +77,9 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisible("裂")
 
             scenario.onActivity { it.renderStats() }
-            assertVisible("Stats")
-            assertVisible("Waiting for evidence")
+            assertVisible("Stats overview")
+            assertVisible("Reviews analytics")
+            assertVisible("Weakness insights")
 
             scenario.onActivity { it.renderGames() }
             assertVisible("Games")

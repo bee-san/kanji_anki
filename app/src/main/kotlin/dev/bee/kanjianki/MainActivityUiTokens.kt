@@ -28,6 +28,7 @@ internal object KaniUiTokens {
     val Blue = Color(MainActivityUiSupport.BLUE)
     val Grey = Color(0xFFB2B2BA)
     val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
+    val Gold = Color(MainActivityUiSupport.GOLD)
     val White = Color(0xFFFFFFFF)
     val PanelFill = Color(0xFFFFFDFE)
     val PanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
