@@ -171,6 +171,9 @@ object HomeTextCopy {
     fun focusMetricLabel(): String = localizedText("Focus", "集中")
 
     @JvmStatic
+    fun homeMetricCardDescription(): String = localizedText("Home metric card", "ホームの指標カード")
+
+    @JvmStatic
     fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic
@@ -187,6 +190,15 @@ object HomeTextCopy {
 
     @JvmStatic
     fun deckOverviewSuspendedLabel(): String = localizedText("Suspended", "停止中")
+
+    @JvmStatic
+    fun studyNowLabel(): String = localizedText("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun activePracticeEmptyTitle(): String = localizedText("No active practice yet", "学習中の漢字はまだありません")
+
+    @JvmStatic
+    fun activePracticeEmptyBody(): String = localizedText("Study now adds the next kanji.", "今すぐ学習すると次の漢字が追加されます。")
 
     @JvmStatic
     fun deckOverviewBuriedLabel(): String = localizedText("Buried", "埋もれ")

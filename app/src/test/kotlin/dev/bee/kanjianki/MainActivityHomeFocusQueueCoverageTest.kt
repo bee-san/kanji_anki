@@ -75,7 +75,7 @@ class MainActivityHomeFocusQueueCoverageTest {
         assertEquals("字A", model.cards[0].kanji)
         assertEquals("字B", model.cards[1].kanji)
         assertTrue(model.cards[0].tags.any { it.label == HomeTextCopy.relearningChipLabel() })
-        assertTrue(model.cards[1].tags.any { it.label == MainActivityBase.STATE_LEARNING })
+        assertTrue(model.cards[1].tags.any { it.label == HomeTextCopy.deckOverviewLearningLabel() })
 
         model.cards[0].onClick()
         model.cards[1].onClick()

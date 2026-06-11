@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val HeroPanelFill = Color(MainActivityUiSupport.STUDY_HERO_PANEL)
 private val HeroPanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
@@ -75,7 +76,7 @@ fun FlashcardCard(
             }
             model.typingAnswer?.let { typingAnswerState ->
                 TypingMeaningAnswer(
-                    label = MainActivityBase.LABEL_MEANING,
+                    label = StudyTextCopy.meaningLabel(),
                     state = typingAnswerState,
                     onDone = onTypingDone,
                 )

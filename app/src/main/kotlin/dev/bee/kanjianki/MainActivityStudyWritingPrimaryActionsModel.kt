@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 
 data class WritingPrimaryActionsModel(
     val checkText: String,
@@ -22,7 +23,7 @@ data class WritingPrimaryActionsModel(
                 checkEnabled = true,
                 downloadText = WritingFeedbackCopy.downloadCheckerLabel(),
                 downloadVisible = true,
-                nextText = MainActivityBase.LABEL_PASS,
+                nextText = StudyTextCopy.passLabel(),
                 nextVisible = false,
                 onCheck = Runnable {},
                 onDownload = Runnable {},

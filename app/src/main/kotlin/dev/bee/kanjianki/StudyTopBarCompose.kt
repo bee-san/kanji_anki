@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val StudyHeroPlum = Color(0xFF7A245D)
 private val StudyHeroPink = Color(0xFFF82D72)
@@ -45,7 +46,8 @@ private val StudyHeroTrack = Color(0xFFFBDDEC)
 private val StudyTopBarButtonFill = Color(0xFFFFF2F8)
 private val StudyTopBarButtonShape = RoundedCornerShape(28.dp)
 object StudyTopBarDescriptions {
-    const val PROGRESS = "Study progress"
+    val PROGRESS: String
+        get() = StudyTextCopy.studyProgressDescription()
 }
 
 private val StudyTopBarProgressTextStyle = TextStyle(
@@ -75,7 +77,7 @@ fun StudyTopBar(
         ) {
             StudyTopBarIconButton(
                 iconRes = R.drawable.ic_close_24,
-                description = "Close study",
+                description = StudyTextCopy.closeStudyLabel(),
                 onClick = onClose
             )
             Spacer(modifier = Modifier.width(10.dp))

@@ -359,6 +359,8 @@ class SettingsTextCopyTest {
                 "Set today's count; due dates stay fixed.",
                 SettingsTextCopy.manualWorkloadBody()
         )
+        assertEquals("Today's study load percentage", SettingsTextCopy.workloadPercentSliderDescription())
+        assertEquals("Maximum items", SettingsTextCopy.maxItemsSliderDescription())
         assertEquals(listOf("Very little", "Focused", "Balanced", "More", "All kanji"), SettingsTextCopy.workloadScaleLabels().toList())
         assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel())
         assertEquals("Use automatic workload", SettingsTextCopy.automaticParetoLabel())
