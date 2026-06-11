@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.progress.AnalyticsRange
 import dev.bee.kanjianki.progress.ProgressAccuracyRetentionState
+import dev.bee.kanjianki.progress.ProgressAnalyticsCopy
 import dev.bee.kanjianki.progress.ProgressAnalyticsState
 import dev.bee.kanjianki.progress.ProgressBarChartState
 import dev.bee.kanjianki.progress.ProgressByLevelState
@@ -163,13 +164,13 @@ private fun RowScope.ProgressBottomNavItem(
         icon = {
             Icon(
                 painter = painterResource(tab.iconRes),
-                contentDescription = tab.label,
+                contentDescription = ProgressAnalyticsCopy.bottomNavLabel(tab.label),
                 modifier = Modifier.size(22.dp),
             )
         },
         label = {
             Text(
-                text = tab.label,
+                text = ProgressAnalyticsCopy.bottomNavLabel(tab.label),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -200,7 +201,7 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
         ProgressMetricGrid(
             specs = listOf(
                 ProgressMetricSpec(
-                    label = "Total reviews",
+                    label = ProgressAnalyticsCopy.totalReviewsLabel(),
                     value = state.totalReviews.valueLabel,
                     detail = state.totalReviews.detailLabel,
                     delta = state.totalReviews.deltaLabel,
@@ -208,7 +209,7 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
                     accent = KaniUiTokens.Coral,
                 ),
                 ProgressMetricSpec(
-                    label = "Accuracy",
+                    label = ProgressAnalyticsCopy.accuracyLabel(),
                     value = state.accuracy.valueLabel,
                     detail = state.accuracy.detailLabel,
                     delta = state.accuracy.deltaLabel,
@@ -216,15 +217,15 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
                     accent = KaniUiTokens.Teal,
                 ),
                 ProgressMetricSpec(
-                    label = "Streak",
+                    label = ProgressAnalyticsCopy.streakLabel(),
                     value = state.currentStreak.valueLabel,
                     detail = state.currentStreak.detailLabel,
-                    delta = "Best ${state.currentStreak.bestDays} days",
+                    delta = ProgressAnalyticsCopy.bestStreakLabel(state.currentStreak.bestDays),
                     iconRes = R.drawable.ic_flame_24,
                     accent = KaniUiTokens.Gold,
                 ),
                 ProgressMetricSpec(
-                    label = "Kanji learned",
+                    label = ProgressAnalyticsCopy.kanjiLearnedLabel(),
                     value = state.kanjiLearned.valueLabel,
                     detail = state.kanjiLearned.detailLabel,
                     delta = state.kanjiLearned.deltaLabel,
@@ -232,7 +233,7 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
                     accent = KaniUiTokens.Blue,
                 ),
                 ProgressMetricSpec(
-                    label = "Focus sessions",
+                    label = ProgressAnalyticsCopy.focusSessionsLabel(),
                     value = state.focusSessions.valueLabel,
                     detail = state.focusSessions.detailLabel,
                     delta = state.focusSessions.deltaLabel,
@@ -240,7 +241,7 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
                     accent = KaniUiTokens.StudyPlum,
                 ),
                 ProgressMetricSpec(
-                    label = "Study time",
+                    label = ProgressAnalyticsCopy.studyTimeLabel(),
                     value = state.studyTime.valueLabel,
                     detail = state.studyTime.detailLabel,
                     delta = state.studyTime.deltaLabel,
@@ -295,25 +296,25 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
             columns = 2,
             specs = listOf(
                 ProgressMetricSpec(
-                    label = "Total reviews",
+                    label = ProgressAnalyticsCopy.totalReviewsLabel(),
                     value = state.totalReviews.valueLabel,
                     iconRes = R.drawable.ic_stats_24,
                     accent = KaniUiTokens.Coral,
                 ),
                 ProgressMetricSpec(
-                    label = "Average / day",
+                    label = ProgressAnalyticsCopy.averagePerDayLabel(),
                     value = state.averagePerDay.valueLabel,
                     iconRes = R.drawable.ic_trending_24,
                     accent = KaniUiTokens.Teal,
                 ),
                 ProgressMetricSpec(
-                    label = "Correct",
+                    label = ProgressAnalyticsCopy.correctLabel(),
                     value = state.correct.valueLabel,
                     iconRes = R.drawable.ic_target_24,
                     accent = KaniUiTokens.Blue,
                 ),
                 ProgressMetricSpec(
-                    label = "Incorrect",
+                    label = ProgressAnalyticsCopy.incorrectLabel(),
                     value = state.incorrect.valueLabel,
                     iconRes = R.drawable.ic_book_24,
                     accent = KaniUiTokens.Gold,
@@ -326,14 +327,14 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ProgressMiniSummaryCard(
-                title = "Best day",
+                title = ProgressAnalyticsCopy.bestDayCardTitle(),
                 value = state.bestDayLabel,
                 detail = state.currentStreak.valueLabel,
                 accent = KaniUiTokens.Coral,
                 modifier = Modifier.weight(1f),
             )
             ProgressMiniSummaryCard(
-                title = "Streak",
+                title = ProgressAnalyticsCopy.streakLabel(),
                 value = state.currentStreak.valueLabel,
                 detail = state.currentStreak.detailLabel ?: "",
                 accent = KaniUiTokens.Teal,
@@ -376,10 +377,10 @@ private fun ProgressAccuracyRetentionSection(state: ProgressAccuracyRetentionSta
             state.categoryStatuses.forEach { status ->
                 ProgressChip(
                     text = "${status.label}: ${status.status}",
-                    accent = when (status.status) {
-                        "Excellent" -> KaniUiTokens.Teal
-                        "Great" -> KaniUiTokens.Blue
-                        "Good" -> KaniUiTokens.Gold
+                    accent = when (ProgressAnalyticsCopy.statusKey(status.status)) {
+                        "excellent" -> KaniUiTokens.Teal
+                        "great" -> KaniUiTokens.Blue
+                        "good" -> KaniUiTokens.Gold
                         else -> KaniUiTokens.Coral
                     },
                     selected = false,
@@ -437,7 +438,7 @@ private fun ProgressWeaknessInsightsSection(state: ProgressWeaknessInsightsState
         }
 
         Text(
-            text = "Most missed kanji",
+            text = ProgressAnalyticsCopy.mostMissedKanjiTitle(),
             color = KaniUiTokens.Ink,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
@@ -445,7 +446,7 @@ private fun ProgressWeaknessInsightsSection(state: ProgressWeaknessInsightsState
         ProgressMissedKanjiGrid(items = state.mostMissedKanji)
 
         Text(
-            text = "Support needed",
+            text = ProgressAnalyticsCopy.supportNeededTitle(),
             color = KaniUiTokens.Ink,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
@@ -702,7 +703,7 @@ private fun ProgressFractionCard(state: ProgressFractionMetricState) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "All levels learned",
+                    text = ProgressAnalyticsCopy.allLevelsLearnedLabel(),
                     color = KaniUiTokens.Muted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -779,7 +780,7 @@ private fun ProgressLineChartHeader(
         }
         if (selectedRange != null) {
             ProgressChip(
-                text = selectedRange.label,
+                text = ProgressAnalyticsCopy.rangeLabel(selectedRange),
                 accent = accentColor,
                 selected = true,
             )
@@ -1009,7 +1010,7 @@ private fun ProgressBarChartCard(
                 }
                 if (chart.selectedRange != null) {
                     ProgressChip(
-                        text = chart.selectedRange.label,
+                        text = ProgressAnalyticsCopy.rangeLabel(chart.selectedRange),
                         accent = accentColor,
                         selected = true,
                     )
@@ -1173,7 +1174,7 @@ private fun ProgressRangeChipRow(
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ranges.forEach { range ->
             ProgressChip(
-                text = range.label,
+                text = ProgressAnalyticsCopy.rangeLabel(range),
                 accent = KaniUiTokens.Coral,
                 selected = range == selectedRange,
             )
@@ -1243,10 +1244,10 @@ private fun ProgressRetentionRow(row: ProgressRetentionRowState) {
                     .fillMaxWidth(row.percent / 100f)
                     .height(12.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(when (row.label) {
-                        "Meaning" -> KaniUiTokens.Teal
-                        "Reading" -> KaniUiTokens.Blue
-                        "Writing" -> KaniUiTokens.Gold
+                    .background(when (ProgressAnalyticsCopy.cardTypeKey(row.label)) {
+                        "meaning" -> KaniUiTokens.Teal
+                        "reading" -> KaniUiTokens.Blue
+                        "writing" -> KaniUiTokens.Gold
                         else -> KaniUiTokens.Coral
                     }),
             )
@@ -1346,7 +1347,7 @@ private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
                         fontWeight = FontWeight.ExtraBold,
                     )
                     Text(
-                        text = "of ${state.total}",
+                        text = ProgressAnalyticsCopy.ofTotalLabel(state.total),
                         color = KaniUiTokens.Muted,
                         fontSize = 11.sp,
                     )
@@ -1354,7 +1355,7 @@ private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Focus score",
+                    text = ProgressAnalyticsCopy.focusScoreLabel(),
                     color = KaniUiTokens.Muted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1367,7 +1368,7 @@ private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
                     lineHeight = 22.sp,
                 )
                 Text(
-                    text = "Kanji that need extra practice are highlighted here.",
+                    text = ProgressAnalyticsCopy.focusScoreDetail(),
                     color = KaniUiTokens.Muted,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
@@ -1407,16 +1408,16 @@ private fun ProgressWeaknessRow(row: ProgressWeaknessRowState) {
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "${row.missedCount} misses",
+                        text = ProgressAnalyticsCopy.missesLabel(row.missedCount),
                         color = KaniUiTokens.Muted,
                         fontSize = 10.sp,
                     )
                 }
                 ProgressChip(
                     text = row.severity,
-                    accent = when (row.severity) {
-                        "High" -> KaniUiTokens.Coral
-                        "Medium" -> KaniUiTokens.Gold
+                    accent = when (ProgressAnalyticsCopy.severityKey(row.severity)) {
+                        "high" -> KaniUiTokens.Coral
+                        "medium" -> KaniUiTokens.Gold
                         else -> KaniUiTokens.Teal
                     },
                     selected = false,
@@ -1434,9 +1435,9 @@ private fun ProgressWeaknessRow(row: ProgressWeaknessRowState) {
                         .fillMaxWidth(row.accuracyPercent / 100f)
                         .height(10.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(when (row.severity) {
-                            "High" -> KaniUiTokens.Coral
-                            "Medium" -> KaniUiTokens.Gold
+                        .background(when (ProgressAnalyticsCopy.severityKey(row.severity)) {
+                            "high" -> KaniUiTokens.Coral
+                            "medium" -> KaniUiTokens.Gold
                             else -> KaniUiTokens.Teal
                         }),
                 )
@@ -1488,7 +1489,7 @@ private fun ProgressMissedKanjiChip(
                 fontWeight = FontWeight.ExtraBold,
             )
             Text(
-                text = "${item.misses} misses",
+                text = ProgressAnalyticsCopy.missesLabel(item.misses),
                 color = KaniUiTokens.Coral,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
