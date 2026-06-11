@@ -1,11 +1,11 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.AttributionCopy
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.util.Locale
 
 class AttributionTextsTest {
     @Test
@@ -16,6 +16,25 @@ class AttributionTextsTest {
         )
         assertEquals("KanjiVG stroke data, CC BY-SA 3.0.", AttributionTexts.kanjiVg(null))
         assertEquals("", AttributionTexts.rawResourceText(null, 0))
+    }
+
+    @Test
+    fun dictionarySourcesUsesJapaneseFallbacksWithoutAndroidResources() {
+        withJapaneseLocale {
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySources(null),
+            )
+            assertEquals("KanjiVG筆順データ、CC BY-SA 3.0。", AttributionTexts.kanjiVg(null))
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySourcesFromManifestText("not json"),
+            )
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", null, null)),
+            )
+        }
     }
 
     @Test
@@ -88,20 +107,8 @@ class AttributionTextsTest {
     }
 
     @Test
-    fun japaneseLocaleLocalizesAttributionTextsFallbacksAndEmptyManifest() {
-        withLocale(Locale.JAPANESE) {
-            assertEquals(
-                "KANJIDIC2の辞書データ（EDRDG、Jitenの順位データ、KanjiVGの画数データ）。",
-                AttributionTexts.dictionarySources(null),
-            )
-            assertEquals(
-                "KanjiVGの画数データ、CC BY-SA 3.0。",
-                AttributionTexts.kanjiVg(null),
-            )
-            assertEquals(
-                "KANJIDIC2の辞書データ（EDRDG、Jitenの順位データ、KanjiVGの画数データ）。",
-                AttributionTexts.dictionarySourcesFromManifestText("not json"),
-            )
+    fun parsedDictionaryManifestUsesJapaneseLabelsInJapaneseLocale() {
+        withJapaneseLocale {
             assertEquals(
                 "辞書マニフェストが空です。",
                 AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sourceArray(), null)),
@@ -115,19 +122,19 @@ class AttributionTextsTest {
                 ),
             )
             assertEquals(
-                "生成日時: 2026-05-15\n\nKANJIDIC2\nライセンス: CC BY-SA\nソース: kanjidic2.xml\nバージョン: 2026-05-01",
+                "生成: 2026-05-15\n\nKANJIDIC2\nライセンス: CC BY-SA\n出典: kanjidic2.xml\nバージョン: 2026-05-01",
                 AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sources, null)),
             )
         }
     }
 
-    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
-        val previous = Locale.getDefault()
-        Locale.setDefault(locale)
-        return try {
+    private fun withJapaneseLocale(block: () -> Unit) {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
             block()
         } finally {
-            Locale.setDefault(previous)
+            Locale.setDefault(originalLocale)
         }
     }
 
