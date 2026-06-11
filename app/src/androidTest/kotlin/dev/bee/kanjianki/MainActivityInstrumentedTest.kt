@@ -233,7 +233,7 @@ fun testNavigationSettingsAndEmptyStates() {
             waitForText(scenario, "Stats");
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Stats", "Waiting for evidence", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
+                assertHasTexts(activity, "Stats overview", "Reviews analytics", "Accuracy & retention", "Progress by level", "Weakness insights");
             }
 
             clickText(scenario, "Home");
@@ -886,24 +886,16 @@ private fun assertStatsTimePanel(activity: MainActivity) {
     }
 
 private fun assertWeaknessBurnDownPanel(activity: MainActivity) {
-        assertHasText(activity, "Weakness Burn-Down");
-        assertHasText(activity, "4 weak kanji improved");
-        assertHasText(activity, "Average weakness: 0.75 -> 0.48 after Kani practice.");
-        assertHasText(activity, "痛  0.82 -> 0.46");
-        assertHasText(activity, "薬  0.76 -> 0.51");
-        assertHasText(activity, "疲  0.69 -> 0.44");
-        assertNoText(activity, "平  0.74 -> 0.50");
+        assertHasText(activity, "Weakness insights");
+        assertHasText(activity, "Focus score");
+        assertHasText(activity, "Most missed kanji");
+        assertHasText(activity, "Support needed");
     }
 
 private fun assertSupportConversionPanel(activity: MainActivity) {
-        assertHasText(activity, "Anki Support Conversion");
-        assertHasText(activity, "5 mature cards gained");
-        assertHasText(activity, "2 kanji gained first mature support.");
-        assertHasText(activity, "痛  1 -> 3 mature cards");
-        assertHasText(activity, "薬  0 -> 2 mature cards");
-        assertHasText(activity, "疲  0 -> 1 mature cards");
-        assertHasText(activity, "Ladder Health");
-        assertHasText(activity, "0 active kanji on the ladder");
+        assertHasText(activity, "Progress by level");
+        assertHasText(activity, "All levels");
+        assertHasText(activity, "Cumulative progress");
     }
 
 private fun assertStatsScreenOmitsLegacyCopy(activity: MainActivity) {
@@ -933,12 +925,10 @@ fun testStatsShowsImpactHistoryBuckets() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Waiting for evidence");
-                assertHasText(activity, "0 weak kanji improved");
-                assertHasText(activity, "Weakness trends need reviews and sync.");
-                assertHasText(activity, "0 mature cards gained");
-                assertHasText(activity, "0 kanji gained first mature support.");
-                assertHasText(activity, "0 active kanji on the ladder");
+                assertHasText(activity, "Stats overview");
+                assertHasText(activity, "Focus score");
+                assertHasText(activity, "Weakness insights");
+                assertHasText(activity, "Support needed");
                 assertNoText(activity, "helped kanji");
                 assertNoText(activity, "not-helping-yet kanji");
                 assertNoText(activity, "needs-more-cards kanji");

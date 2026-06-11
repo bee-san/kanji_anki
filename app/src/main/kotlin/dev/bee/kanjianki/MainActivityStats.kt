@@ -5,16 +5,29 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.progress.progressAnalyticsSnapshot
 
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.statsActionLabel(),
-            load = { buildStatsScreenModel() },
+            load = { progressAnalyticsSnapshot(store) },
             render = { model ->
-                composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
-                    StatsRouteScreen(model = model, onHome = this::renderHome)
-                }
+                composeRouteWithActionBar(
+                    selected = MainActivityBase.NAV_STATS_ROUTE,
+                    content = {
+                        ProgressAnalyticsDashboardScreen(state = model)
+                    },
+                    actionBar = {
+                        ProgressAnalyticsBottomNav(
+                            selectedTab = ProgressAnalyticsBottomNavTab.Progress,
+                            onHome = this::renderHome,
+                            onStudy = this::renderStudy,
+                            onProgress = this::renderStats,
+                            onProfile = this::renderSettings,
+                        )
+                    },
+                )
             },
         )
     }
