@@ -52,6 +52,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         ).show()
         activity.activeSimilarWritingRepair = null
         activity.renderStudy()
+        ReminderScheduler.schedule(activity)
     }
 
     fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
@@ -136,5 +137,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             activity.studySessionTracker::recordReviewOutcome,
             activity::markStudyRunPassed
         )
+        ReminderScheduler.schedule(activity)
     }
 }

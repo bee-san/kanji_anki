@@ -42,6 +42,21 @@ class ReminderSchedulePolicyTest {
     }
 
     @Test
+    fun nextTriggerCanSkipTodayWhenNeededForDailyReminderReschedule() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 7, 15)
+
+            val trigger = ReminderSchedulePolicy.nextTriggerMillis(8, 30, now, false)
+
+            assertEquals(utc(2026, Calendar.MAY, 16, 8, 30), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
     fun adaptiveTriggerUsesStudyHistoryBeforeCutoffAndFallsBackAfterCutoff() {
         val original = TimeZone.getDefault()
         try {

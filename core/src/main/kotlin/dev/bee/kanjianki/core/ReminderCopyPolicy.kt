@@ -85,30 +85,6 @@ object ReminderCopyPolicy {
         return forCounts(focusRemaining, 0)
     }
 
-    private fun reviewCopy(due: Int): ReminderCopy {
-        return if (isJapaneseLocale()) {
-            ReminderCopy(
-                "さらに漢字を復習しましょう",
-                String.format(
-                    Locale.ROOT,
-                    "%d件の漢字が今復習できます。Kaniを開いて復習しましょう。",
-                    due,
-                ),
-            )
-        } else {
-            ReminderCopy(
-                "You have more Kanji to review",
-                String.format(
-                    Locale.ROOT,
-                    "%d kanji %s ready now. Open Kani to review %s.",
-                    due,
-                    if (due == 1) "is" else "are",
-                    if (due == 1) "it" else "them",
-                ),
-            )
-        }
-    }
-
     private fun streakCopy(waiting: Int, currentStreakDays: Int): ReminderCopy {
         return if (isJapaneseLocale()) {
             val streakLabel = if (currentStreakDays > 0) {
@@ -163,6 +139,20 @@ object ReminderCopyPolicy {
         } else {
             ReminderCopy("Kani is caught up", "You've already studied today. Open Kani later when more kanji come back.")
         }
+    }
+
+    @JvmStatic
+    fun reviewCopy(due: Int): ReminderCopy {
+        return ReminderCopy(
+            "You have more Kanji to review",
+            String.format(
+                Locale.ROOT,
+                "%d kanji %s ready now. Open Kani to review %s.",
+                due,
+                if (due == 1) "is" else "are",
+                if (due == 1) "it" else "them",
+            ),
+        )
     }
 
     private fun syncCopy(): ReminderCopy {

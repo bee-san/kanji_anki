@@ -179,6 +179,12 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun getDoubleSetting(key: String, fallback: Double): Double = studySettings().getDoubleSetting(key, fallback)
 
+    fun reviewReminderNotificationsToday(nowMillis: Long): Int = studySettings().reviewReminderNotificationsToday(nowMillis)
+
+    fun recordReviewReminderNotificationShown(nowMillis: Long) = studySettings().recordReviewReminderNotificationShown(nowMillis)
+
+    fun clearReviewReminderNotifications(nowMillis: Long) = studySettings().clearReviewReminderNotifications(nowMillis)
+
     fun putIntSetting(key: String, value: Int) {
         studySettings().putIntSetting(key, value)
     }
