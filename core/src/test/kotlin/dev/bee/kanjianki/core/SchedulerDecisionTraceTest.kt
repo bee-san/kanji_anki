@@ -132,6 +132,20 @@ class SchedulerDecisionTraceTest {
         assertTrue(traced.trace.fsrsCalls.isEmpty())
     }
 
+    @Test
+    fun traceApplyReviewLearningStepDoesNotInventFsrsCall() {
+        val scheduler = schedulerWithReviewIntervalDays(22)
+        val item = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING).withToken("learning-hard")
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(item, hardRequest("裂", "learning-hard"), HashSet(), 1_000L).build()
+        )
+
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, traced.result.item.phase)
+        assertTrue(traced.trace.transition!!.reasonCodes.contains("new_learning_step"))
+        assertTrue(traced.trace.fsrsCalls.isEmpty())
+        assertTrue(SchedulerTraceFormatter.userExplanation(traced.trace).contains("hard"))
+    }
+
     private fun item(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
     }
@@ -164,6 +178,10 @@ class SchedulerDecisionTraceTest {
 
     private fun failRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
         return RecordsSchedulerModels.ReviewRequest(kanji, token, "again", false, false, false, 0)
+    }
+
+    private fun hardRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
+        return RecordsSchedulerModels.ReviewRequest(kanji, token, "hard", false, false, false, 0)
     }
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {

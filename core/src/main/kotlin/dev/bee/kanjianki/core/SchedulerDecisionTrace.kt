@@ -70,8 +70,16 @@ class SchedulerTracedReviewResult(
 object SchedulerTraceFormatter {
     @JvmStatic
     fun userExplanation(trace: SchedulerDecisionTrace?): String {
-        val selected = trace?.selected ?: return "No study card is ready."
-        return "Selected ${selected.kanji} for ${selected.taskType} (${selected.phase.wireName()})."
+        if (trace == null) {
+            return "No scheduler trace is available."
+        }
+        trace.selected?.let { selected ->
+            return "Selected ${selected.kanji} for ${selected.taskType} (${selected.phase.wireName()})."
+        }
+        trace.transition?.let { transition ->
+            return "Applied ${transition.rating}: ${transition.beforeRung.wireName()} -> ${transition.afterRung.wireName()}."
+        }
+        return "No study card is ready."
     }
 
     @JvmStatic

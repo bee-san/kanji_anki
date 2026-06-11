@@ -69,6 +69,7 @@ class StudySessionSelector {
                 skipped.add(traceCandidate(item, rowByKanji, reasons, nowMillis))
             }
         }
+        skipped.sortWith(compareTraceCandidates())
         val dueCandidates = activeItems
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
@@ -352,6 +353,14 @@ class StudySessionSelector {
 
     private fun traceDueAtMillis(item: RecordsStudyModels.StudyItem, nowMillis: Long): Long {
         return if (isUnseenNewItem(item)) nowMillis else item.dueAtMillis
+    }
+
+    private fun compareTraceCandidates(): Comparator<SchedulerDecisionTraceCandidate> {
+        return compareBy<SchedulerDecisionTraceCandidate>(
+            { it.kanji },
+            { it.taskType },
+            { it.dueAtMillis },
+        )
     }
 
     private fun queueReasonCodes(

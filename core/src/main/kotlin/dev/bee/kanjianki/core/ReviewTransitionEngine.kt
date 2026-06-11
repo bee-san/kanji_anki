@@ -147,8 +147,24 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (duplicateReason != null) {
             return emptyList()
         }
-        val callType = if (beforePhase == RecordsBase.SchedulerPhase.REVIEW) "review" else "initial_review"
+        if (beforePhase == RecordsBase.SchedulerPhase.REVIEW) {
+            return listOf(SchedulerFsrsCallTrace("review", result.appliedRating, result.item.matureIntervalDays))
+        }
+        if (!calledInitialReviewFsrs(beforePhase, result)) {
+            return emptyList()
+        }
+        val callType = "initial_review"
         return listOf(SchedulerFsrsCallTrace(callType, result.appliedRating, result.item.matureIntervalDays))
+    }
+
+    private fun calledInitialReviewFsrs(
+        beforePhase: RecordsBase.SchedulerPhase,
+        result: RecordsSchedulerModels.ReviewResult,
+    ): Boolean {
+        if (result.item.phase != RecordsBase.SchedulerPhase.REVIEW) {
+            return false
+        }
+        return beforePhase == RecordsBase.SchedulerPhase.NEW_LEARNING || StudyRatings.AGAIN != result.appliedRating
     }
 
     private fun applyLadderTransition(context: ReviewContext, state: ReviewState) {
