@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.study.StrokeGuide
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine
 import dev.bee.kanjianki.core.study.WritingSample
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.study.CapturedWriting
 import dev.bee.kanjianki.study.WritingRecognizer
 
@@ -28,10 +29,10 @@ internal class MainActivityStudyWritingCheck(private val activity: MainActivityS
         val guide = activity.strokeGuide(target)
         activity.checkingWriting = true
         activity.updateResultActions()
-        activity.setStudyStatus("Checking handwriting...", MainActivityBase.MUTED)
+        activity.setStudyStatus(StudyWritingCopy.checkingStatus(), MainActivityBase.MUTED)
         val recognizer = activity.currentWritingRecognizer()
         if (recognizer == null) {
-            activity.showModelUnavailable("The handwriting checker is unavailable on this device.")
+            activity.showModelUnavailable(StudyWritingCopy.modelUnavailableStatus())
             return
         }
         recognizer.modelStatus().whenComplete { status, statusError ->
@@ -42,7 +43,7 @@ internal class MainActivityStudyWritingCheck(private val activity: MainActivityS
                     }
                     activity.writingModelDownloaded = false
                     activity.writingModelStatusKnown = true
-                    activity.showModelUnavailable("Download the handwriting checker before automatic checks.")
+                    activity.showModelUnavailable(StudyWritingCopy.downloadRequiredStatus())
                 }
                 return@whenComplete
             }

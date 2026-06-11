@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyWritingCopy
 
 class WritingFallbackActionsView private constructor(
     private val sharedState: WritingActionsBarState?,
@@ -48,7 +49,7 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
     ) {
         if (model.replayVisible) {
             WritingSecondaryButton(
-                label = "Replay",
+                label = StudyWritingCopy.replayLabel(),
                 onClick = { model.onReplay.run() },
                 modifier = Modifier.weight(1f),
                 minHeight = 56.dp
@@ -56,7 +57,7 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
         }
         if (model.manualOverrideVisible) {
             WritingSecondaryButton(
-                label = "Mark right anyway",
+                label = StudyWritingCopy.manualOverrideLabel(),
                 onClick = { model.onManualOverride.run() },
                 modifier = Modifier.weight(1f),
                 minHeight = 56.dp
@@ -64,7 +65,7 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
         }
         if (model.practiceWithGuideVisible) {
             WritingSecondaryButton(
-                label = "Try again with full guide",
+                label = StudyWritingCopy.practiceWithGuideLabel(),
                 onClick = { model.onPracticeWithGuide.run() },
                 modifier = Modifier.weight(1f),
                 minHeight = 56.dp

@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
@@ -86,7 +87,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     private fun writingPromptHeaderModel(session: RecordsSchedulerModels.StudySession): WritingPromptHeaderModel {
         return WritingPromptHeaderModel(
             StudyTaskCopy.studyModeLabel(session),
-            "Draw this kanji",
+            StudyWritingCopy.title(),
             StudyTaskCopy.labelForTask(session.taskType),
             home.studyReasonLine(session),
             writingPromptLines(session)
@@ -94,7 +95,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     private fun writingSectionTitle(session: RecordsSchedulerModels.StudySession): String {
-        return if (StudyTaskCopy.isRepairWritingTask(session)) "" else "Writing"
+        return StudyWritingCopy.sectionTitle(session)
     }
 
     private fun writingPromptLines(session: RecordsSchedulerModels.StudySession): List<WritingPromptLineModel> {
@@ -107,7 +108,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         if (!StudyTaskCopy.isRecallTask(session)) {
             lines.add(
                 WritingPromptLineModel(
-                    "Use the reference, trace, then check.",
+                    StudyWritingCopy.referenceInstruction(),
                     15,
                     MainActivityUiSupport.STUDY_MUTED,
                     false
@@ -117,18 +118,18 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         }
         lines.add(
             WritingPromptLineModel(
-                "Prompt: " + StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session),
+                StudyWritingCopy.recallPromptLine(StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)),
                 17,
                 MainActivityUiSupport.STUDY_PLUM,
                 true
             )
         )
         if (row.reading.isNotEmpty()) {
-            lines.add(WritingPromptLineModel("Reading: " + row.reading, 15, MainActivityUiSupport.STUDY_MUTED, false))
+            lines.add(WritingPromptLineModel(StudyWritingCopy.readingLine(row.reading), 15, MainActivityUiSupport.STUDY_MUTED, false))
         }
         lines.add(
             WritingPromptLineModel(
-                "Write from the prompt. The answer stays hidden until you check.",
+                StudyWritingCopy.promptInstruction(),
                 15,
                 MainActivityUiSupport.STUDY_MUTED,
                 false

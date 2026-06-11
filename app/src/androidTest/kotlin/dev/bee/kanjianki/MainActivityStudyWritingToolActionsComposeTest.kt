@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.StudyWritingCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -34,11 +35,11 @@ class MainActivityStudyWritingToolActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Erase").assertIsDisplayed()
-        composeRule.onNodeWithText("Undo").assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.eraseLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.undoLabel()).assertIsDisplayed()
         composeRule.onNodeWithText("More help").assertIsDisplayed()
-        composeRule.onNodeWithText("Erase").performClick()
-        composeRule.onNodeWithText("Undo").performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.eraseLabel()).performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.undoLabel()).performClick()
         composeRule.onNodeWithText("More help").performClick()
 
         assertTrue(erased)
@@ -61,7 +62,8 @@ class MainActivityStudyWritingToolActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Undo").assertIsNotEnabled()
+        composeRule.onNodeWithText(StudyWritingCopy.undoLabel()).assertIsNotEnabled()
+        composeRule.onAllNodesWithText(StudyWritingCopy.eraseLabel()).assertCountEquals(1)
         composeRule.onAllNodesWithText("Hint").assertCountEquals(0)
     }
 }

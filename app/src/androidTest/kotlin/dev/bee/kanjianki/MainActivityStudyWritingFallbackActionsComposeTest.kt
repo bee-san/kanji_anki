@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.StudyWritingCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -33,12 +34,12 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Replay").assertIsDisplayed()
-        composeRule.onNodeWithText("Mark right anyway").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again with full guide").assertIsDisplayed()
-        composeRule.onNodeWithText("Replay").performClick()
-        composeRule.onNodeWithText("Mark right anyway").performClick()
-        composeRule.onNodeWithText("Try again with full guide").performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.replayLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.manualOverrideLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.practiceWithGuideLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.replayLabel()).performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.manualOverrideLabel()).performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.practiceWithGuideLabel()).performClick()
 
         assertTrue(replayed)
         assertTrue(manuallyAccepted)
@@ -60,9 +61,9 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
             )
         }
 
-        composeRule.onAllNodesWithText("Replay").assertCountEquals(0)
-        composeRule.onNodeWithText("Mark right anyway").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Try again with full guide").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyWritingCopy.replayLabel()).assertCountEquals(0)
+        composeRule.onNodeWithText(StudyWritingCopy.manualOverrideLabel()).assertIsDisplayed()
+        composeRule.onAllNodesWithText(StudyWritingCopy.practiceWithGuideLabel()).assertCountEquals(0)
     }
 
     @Test
@@ -80,8 +81,8 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
             )
         }
 
-        composeRule.onAllNodesWithText("Replay").assertCountEquals(0)
-        composeRule.onAllNodesWithText("Mark right anyway").assertCountEquals(0)
-        composeRule.onAllNodesWithText("Try again with full guide").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyWritingCopy.replayLabel()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyWritingCopy.manualOverrideLabel()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyWritingCopy.practiceWithGuideLabel()).assertCountEquals(0)
     }
 }
