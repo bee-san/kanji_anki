@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.study.WritingRecognizer
 
 internal class MainActivityStudyWritingStatus(private val activity: MainActivityStudy) {
@@ -59,10 +60,10 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
         val token = activity.activeSession?.token
         val recognizer = activity.currentWritingRecognizer()
         if (recognizer == null) {
-            activity.setStudyStatus("The handwriting checker is unavailable on this device.", MainActivityBase.CORAL)
+            activity.setStudyStatus(StudyWritingCopy.modelUnavailableStatus(), MainActivityBase.CORAL)
             return
         }
-        activity.setStudyStatus("Downloading handwriting checker...", MainActivityBase.MUTED)
+        activity.setStudyStatus(StudyWritingCopy.downloadingStatus(), MainActivityBase.MUTED)
         recognizer.downloadModel().whenComplete { _, error ->
             activity.main.post {
                 if (token != null && !activity.isActiveToken(token)) {
@@ -70,10 +71,10 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
                 }
                 if (error != null) {
                     updateWritingModelAvailability(false)
-                    activity.setStudyStatus("Handwriting checker download failed: ${error.message}", MainActivityBase.CORAL)
+                    activity.setStudyStatus(StudyWritingCopy.downloadFailedStatus(error.message), MainActivityBase.CORAL)
                 } else {
                     updateWritingModelAvailability(true)
-                    activity.setStudyStatus("Handwriting checker ready.", MainActivityBase.TEAL)
+                    activity.setStudyStatus(StudyWritingCopy.readyStatus(), MainActivityBase.TEAL)
                 }
                 activity.updateResultActions()
             }
