@@ -1,0 +1,2 @@
+T+00:00 seed admitted=裂 task=kanji_meaning rung=KANJI_MEANING phase=NEW_LEARNING due=T+00:00 reasons=[new_admitted]
+T+00:00 next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=NEW_LEARNING due=T+00:00 reasons=[due_now,new_learning_unseen,selected_best_candidate]
