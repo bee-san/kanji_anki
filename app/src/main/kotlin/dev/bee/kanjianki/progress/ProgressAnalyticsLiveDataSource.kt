@@ -8,7 +8,6 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -16,6 +15,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.roundToInt
+
+private const val SIMILAR_KANJI_LABEL = "Similar kanji"
 
 internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
     val snapshot = store.cachedStatsSnapshotOrNull() ?: store.recomputeStatsSnapshotSynchronously(nowMillis)
@@ -113,7 +114,7 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
             ),
             cardTypeBreakdown = ProgressDistributionChartState(
                 title = "Card type breakdown",
-                segments = liveCardTypeSegments(snapshot, studyImpact, impact),
+                segments = liveCardTypeSegments(studyImpact, impact),
                 accessibilitySummary = "Card type breakdown. Total ${formatInt(totalReviews30)} reviews. Distribution reflects the current cache snapshot and live review mix.",
             ),
             correctIncorrectBreakdown = ProgressDistributionChartState(
@@ -193,14 +194,14 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
                 ProgressRetentionRowState(label = "Meaning", percent = clampPercent(accuracy30 + 1), valueLabel = "${clampPercent(accuracy30 + 1)}%"),
                 ProgressRetentionRowState(label = "Reading", percent = clampPercent(accuracy30 - 2), valueLabel = "${clampPercent(accuracy30 - 2)}%"),
                 ProgressRetentionRowState(label = "Writing", percent = clampPercent(100 - studyImpact.writingFailed.coerceAtMost(studyImpact.writingRequired)), valueLabel = "${clampPercent(100 - studyImpact.writingFailed.coerceAtMost(studyImpact.writingRequired))}%"),
-                ProgressRetentionRowState(label = "Similar kanji", percent = clampPercent(accuracy30 - 12), valueLabel = "${clampPercent(accuracy30 - 12)}%"),
+                ProgressRetentionRowState(label = SIMILAR_KANJI_LABEL, percent = clampPercent(accuracy30 - 12), valueLabel = "${clampPercent(accuracy30 - 12)}%"),
             ),
             retentionSummary = "Retention by card type based on the current local cache snapshot and recent review history.",
             categoryStatuses = listOf(
                 ProgressCategoryStatusState(label = "Meaning", status = statusFor(accuracy30 + 1)),
                 ProgressCategoryStatusState(label = "Reading", status = statusFor(accuracy30 - 2)),
                 ProgressCategoryStatusState(label = "Writing", status = statusFor(clampPercent(100 - studyImpact.writingFailed.coerceAtMost(studyImpact.writingRequired)))),
-                ProgressCategoryStatusState(label = "Similar kanji", status = statusFor(accuracy30 - 12)),
+                ProgressCategoryStatusState(label = SIMILAR_KANJI_LABEL, status = statusFor(accuracy30 - 12)),
             ),
         ),
         progressByLevel = ProgressByLevelState(
@@ -408,12 +409,11 @@ private fun supportNeeded(outcome: StudyStatsStore.KaniOutcomeStats): List<Progr
         ProgressSupportNeedState(label = "Meaning", targetLabel = "Kanji", count = outcome.ladderHealth.promotionReadyCount),
         ProgressSupportNeedState(label = "Reading", targetLabel = "Kanji", count = outcome.ladderHealth.demotionRiskCount),
         ProgressSupportNeedState(label = "Writing", targetLabel = "Kanji", count = outcome.ladderHealth.demotionReadyCount),
-        ProgressSupportNeedState(label = "Similar kanji", targetLabel = "Kanji", count = outcome.ladderHealth.totalActiveItems),
+        ProgressSupportNeedState(label = SIMILAR_KANJI_LABEL, targetLabel = "Kanji", count = outcome.ladderHealth.totalActiveItems),
     )
 }
 
 private fun liveCardTypeSegments(
-    snapshot: StatsCacheStore.Snapshot,
     studyImpact: StudyStatsStore.StudyImpactStats,
     impact: KanjiImpactAnalyzer.Report,
 ): List<ProgressDistributionSegmentState> {
@@ -421,7 +421,7 @@ private fun liveCardTypeSegments(
         ProgressDistributionSegmentState(label = "Meaning", value = max(impact.helpedCount, 1), percent = 0),
         ProgressDistributionSegmentState(label = "Reading", value = max(impact.notHelpingCount, 1), percent = 0),
         ProgressDistributionSegmentState(label = "Writing", value = max(studyImpact.writingRequired - studyImpact.writingFailed, 1), percent = 0),
-        ProgressDistributionSegmentState(label = "Similar kanji", value = max(impact.needsMoreCardsCount, 1), percent = 0),
+        ProgressDistributionSegmentState(label = SIMILAR_KANJI_LABEL, value = max(impact.needsMoreCardsCount, 1), percent = 0),
     )
     val total = segments.sumOf { it.value }.coerceAtLeast(1)
     return segments.map { segment ->

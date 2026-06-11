@@ -37,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -460,8 +461,8 @@ private fun ProgressWeaknessInsightsSection(state: ProgressWeaknessInsightsState
 @Composable
 private fun ProgressSectionCard(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     trailing: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -749,138 +750,227 @@ private fun ProgressLineChartCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = chart.title,
-                        color = KaniUiTokens.Ink,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (!chart.tooltipLabel.isNullOrBlank()) {
-                        Text(
-                            text = chart.tooltipLabel,
-                            color = KaniUiTokens.Muted,
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
-                if (selectedRange != null) {
-                    ProgressChip(
-                        text = selectedRange.label,
-                        accent = accentColor,
-                        selected = true,
-                    )
-                }
-            }
+            ProgressLineChartHeader(chart, selectedRange, accentColor)
+            ProgressLineChartPlot(chart, accentColor, secondaryColor)
+            ProgressLineChartXAxis(chart.xAxisLabels)
+            ProgressLineChartLegend(chart.series, accentColor, secondaryColor)
+        }
+    }
+}
+
+@Composable
+private fun ProgressLineChartHeader(
+    chart: ProgressLineChartState,
+    selectedRange: AnalyticsRange?,
+    accentColor: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = chart.title,
+                color = KaniUiTokens.Ink,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            ProgressLineChartTooltip(chart.tooltipLabel)
+        }
+        if (selectedRange != null) {
+            ProgressChip(
+                text = selectedRange.label,
+                accent = accentColor,
+                selected = true,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressLineChartTooltip(label: String?) {
+    if (label.isNullOrBlank()) return
+    Text(
+        text = label,
+        color = KaniUiTokens.Muted,
+        fontSize = 11.sp,
+    )
+}
+
+@Composable
+private fun ProgressLineChartPlot(
+    chart: ProgressLineChartState,
+    accentColor: Color,
+    secondaryColor: Color,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .semantics { contentDescription = chart.accessibilitySummary },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ProgressLineChartYAxis(chart.yAxisLabels)
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .semantics { contentDescription = chart.accessibilitySummary },
+                    .weight(1f)
+                    .height(140.dp),
             ) {
-                val leftAxisWidth = 34.dp
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier
-                            .width(leftAxisWidth)
-                            .height(140.dp),
-                        verticalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        chart.yAxisLabels.reversed().forEach { label ->
-                            Text(
-                                text = label,
-                                color = KaniUiTokens.Muted,
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Right,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(140.dp),
-                    ) {
-                        Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                            val plotWidth = size.width
-                            val plotHeight = size.height
-                            val allValues = chart.series.flatMap { it.values }
-                            val maxValue = (allValues.maxOrNull() ?: 1).coerceAtLeast(1)
-                            val minValue = 0
-                            val lineColors = listOf(accentColor, secondaryColor, KaniUiTokens.Blue, KaniUiTokens.Gold)
-                            repeat(chart.yAxisLabels.size) { index ->
-                                val y = plotHeight - (plotHeight / (chart.yAxisLabels.size - 1).coerceAtLeast(1)) * index
-                                drawLine(
-                                    color = Color(0xFFF0E7EF),
-                                    start = Offset(0f, y),
-                                    end = Offset(plotWidth, y),
-                                    strokeWidth = 1.2f,
-                                )
-                            }
-                            chart.series.forEachIndexed { seriesIndex, series ->
-                                val seriesColor = lineColors.getOrElse(seriesIndex) { accentColor }
-                                val values = series.values
-                                if (values.size < 2) return@forEachIndexed
-                                val stepX = plotWidth / (values.size - 1)
-                                val points = values.mapIndexed { index, value ->
-                                    val normalized = (value - minValue).toFloat() / (maxValue - minValue).coerceAtLeast(1)
-                                    Offset(
-                                        x = stepX * index,
-                                        y = plotHeight - (normalized * (plotHeight - 10f)) - 4f,
-                                    )
-                                }
-                                for (index in 0 until points.size - 1) {
-                                    val start = points[index]
-                                    val end = points[index + 1]
-                                    drawLine(
-                                        color = seriesColor.copy(alpha = if (series.style == ProgressSeriesStyle.DASHED) 0.45f else 1f),
-                                        start = start,
-                                        end = end,
-                                        strokeWidth = if (series.style == ProgressSeriesStyle.DASHED) 4.5f else 5.5f,
-                                        cap = StrokeCap.Round,
-                                    )
-                                }
-                                points.forEach { point ->
-                                    drawCircle(
-                                        color = seriesColor,
-                                        radius = if (series.style == ProgressSeriesStyle.DASHED) 3.5f else 4.8f,
-                                        center = point,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                chart.xAxisLabels.forEach { label ->
-                    Text(
-                        text = label,
-                        color = KaniUiTokens.Muted,
-                        fontSize = 10.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-            if (!chart.series.isEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    chart.series.take(2).forEachIndexed { index, series ->
-                        ProgressLegendPill(
-                            text = series.label,
-                            accent = if (index == 0) accentColor else secondaryColor,
-                            selected = index == 0,
-                        )
-                    }
+                Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                    drawProgressLineChart(chart, accentColor, secondaryColor)
                 }
             }
         }
     }
 }
+
+@Composable
+private fun ProgressLineChartYAxis(labels: List<String>) {
+    Column(
+        modifier = Modifier
+            .width(34.dp)
+            .height(140.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        labels.reversed().forEach { label ->
+            Text(
+                text = label,
+                color = KaniUiTokens.Muted,
+                fontSize = 10.sp,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressLineChartXAxis(labels: List<String>) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        labels.forEach { label ->
+            Text(
+                text = label,
+                color = KaniUiTokens.Muted,
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressLineChartLegend(
+    series: List<ProgressSeriesState>,
+    accentColor: Color,
+    secondaryColor: Color,
+) {
+    if (series.isNotEmpty()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            series.take(2).forEachIndexed { index, item ->
+                ProgressLegendPill(
+                    text = item.label,
+                    accent = if (index == 0) accentColor else secondaryColor,
+                    selected = index == 0,
+                )
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawProgressLineChart(
+    chart: ProgressLineChartState,
+    accentColor: Color,
+    secondaryColor: Color,
+) {
+    val values = chart.series.flatMap { it.values }
+    val maxValue = (values.maxOrNull() ?: 1).coerceAtLeast(1)
+    val lineColors = listOf(accentColor, secondaryColor, KaniUiTokens.Blue, KaniUiTokens.Gold)
+    drawProgressGridLines(chart.yAxisLabels.size)
+    chart.series.forEachIndexed { index, series ->
+        drawProgressSeries(
+            series = series,
+            color = lineColors.getOrElse(index) { accentColor },
+            maxValue = maxValue,
+        )
+    }
+}
+
+private fun DrawScope.drawProgressGridLines(labelCount: Int) {
+    val plotHeight = size.height
+    val stepCount = (labelCount - 1).coerceAtLeast(1)
+    repeat(labelCount) { index ->
+        val y = plotHeight - (plotHeight / stepCount) * index
+        drawLine(
+            color = Color(0xFFF0E7EF),
+            start = Offset(0f, y),
+            end = Offset(size.width, y),
+            strokeWidth = 1.2f,
+        )
+    }
+}
+
+private fun DrawScope.drawProgressSeries(
+    series: ProgressSeriesState,
+    color: Color,
+    maxValue: Int,
+) {
+    if (series.values.size < 2) return
+    val points = progressSeriesPoints(series.values, maxValue)
+    drawProgressSegments(points, color, series.style)
+    drawProgressPoints(points, color, series.style)
+}
+
+private fun DrawScope.progressSeriesPoints(values: List<Int>, maxValue: Int): List<Offset> {
+    val valueRange = maxValue.coerceAtLeast(1)
+    val stepX = size.width / (values.size - 1)
+    return values.mapIndexed { index, value ->
+        val normalized = value.coerceAtLeast(0).toFloat() / valueRange
+        Offset(
+            x = stepX * index,
+            y = size.height - (normalized * (size.height - 10f)) - 4f,
+        )
+    }
+}
+
+private fun DrawScope.drawProgressSegments(
+    points: List<Offset>,
+    color: Color,
+    style: ProgressSeriesStyle,
+) {
+    points.zipWithNext().forEach { (start, end) ->
+        drawLine(
+            color = color.copy(alpha = progressSeriesAlpha(style)),
+            start = start,
+            end = end,
+            strokeWidth = progressSeriesStrokeWidth(style),
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+private fun DrawScope.drawProgressPoints(
+    points: List<Offset>,
+    color: Color,
+    style: ProgressSeriesStyle,
+) {
+    points.forEach { point ->
+        drawCircle(
+            color = color,
+            radius = progressSeriesPointRadius(style),
+            center = point,
+        )
+    }
+}
+
+private fun progressSeriesAlpha(style: ProgressSeriesStyle): Float =
+    if (style == ProgressSeriesStyle.DASHED) 0.45f else 1f
+
+private fun progressSeriesStrokeWidth(style: ProgressSeriesStyle): Float =
+    if (style == ProgressSeriesStyle.DASHED) 4.5f else 5.5f
+
+private fun progressSeriesPointRadius(style: ProgressSeriesStyle): Float =
+    if (style == ProgressSeriesStyle.DASHED) 3.5f else 4.8f
 
 @Composable
 private fun ProgressBarChartCard(
