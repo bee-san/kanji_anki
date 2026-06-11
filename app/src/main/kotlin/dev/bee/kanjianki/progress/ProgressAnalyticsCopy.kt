@@ -110,7 +110,7 @@ object ProgressAnalyticsCopy {
             ),
             currentStreak = state.currentStreak.copy(
                 valueLabel = daysLabel(state.currentStreak.currentDays),
-                detailLabel = localizedLabelOrNull(state.currentStreak.detailLabel),
+                detailLabel = state.currentStreak.detailLabel?.let(::localizeBestDays),
             ),
             kanjiLearned = state.kanjiLearned.copy(
                 deltaLabel = localizeThisWeekDelta(state.kanjiLearned.deltaLabel),

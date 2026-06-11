@@ -25,6 +25,7 @@ class ProgressAnalyticsCopyTest {
         assertEquals("統計の概要", snapshot.overview.title)
         assertEquals("学習状況の概要", snapshot.overview.subtitle)
         assertEquals("+18% 直近7日比", snapshot.overview.totalReviews.deltaLabel)
+        assertEquals("最高14日", snapshot.overview.currentStreak.detailLabel)
         assertEquals("復習の推移", snapshot.overview.reviewsOverTime.title)
         assertEquals(
             listOf("4月19日", "4月26日", "5月3日", "5月10日", "5月17日", "5月18日"),
