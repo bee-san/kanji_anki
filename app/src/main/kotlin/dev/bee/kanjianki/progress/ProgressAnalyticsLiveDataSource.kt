@@ -57,7 +57,7 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
         max(overallLearned + 1, outcome.ladderHealth.rungCounts.values.sum()),
     )
 
-    return ProgressAnalyticsState(
+    return ProgressAnalyticsCopy.localize(ProgressAnalyticsState(
         generatedAtMillis = nowMillis,
         overview = ProgressOverviewState(
             title = "Stats overview",
@@ -242,7 +242,7 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
             mostMissedKanji = mostMissedKanji(snapshot.recentMistakes),
             supportNeeded = supportNeeded(outcome),
         ),
-    )
+    ))
 }
 
 private data class ReviewDaySummary(

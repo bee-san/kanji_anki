@@ -24,7 +24,7 @@ fun progressAnalyticsDemoSnapshot(nowMillis: Long = currentTimeMillis()): Progre
         AnalyticsRange.NINETY_DAYS,
     )
 
-    return ProgressAnalyticsState(
+    return ProgressAnalyticsCopy.localize(ProgressAnalyticsState(
         generatedAtMillis = nowMillis,
         overview = ProgressOverviewState(
             title = "Stats overview",
@@ -227,5 +227,5 @@ fun progressAnalyticsDemoSnapshot(nowMillis: Long = currentTimeMillis()): Progre
                 ProgressSupportNeedState(label = "Similar kanji", targetLabel = "", count = 24),
             ),
         ),
-    )
+    ))
 }
