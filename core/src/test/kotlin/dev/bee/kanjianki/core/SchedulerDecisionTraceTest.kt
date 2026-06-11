@@ -146,6 +146,41 @@ class SchedulerDecisionTraceTest {
         assertTrue(SchedulerTraceFormatter.userExplanation(traced.trace).contains("hard"))
     }
 
+    @Test
+    fun traceFormattersExplainNullReadySkippedTransitionAndFsrsDetails() {
+        assertEquals("No scheduler trace is available.", SchedulerTraceFormatter.userExplanation(null))
+        assertEquals("scheduler_trace unavailable", SchedulerTraceFormatter.developerExplanation(null))
+
+        val emptyTrace = SchedulerDecisionTrace("next_session", 1_000L, null, null, null, null, null)
+        assertEquals("No study card is ready.", SchedulerTraceFormatter.userExplanation(emptyTrace))
+
+        val skipped = SchedulerDecisionTraceCandidate(
+            "裂",
+            "kanji_meaning",
+            RecordsBase.LadderRung.KANJI_MEANING,
+            RecordsBase.SchedulerPhase.NEW_LEARNING,
+            1_000L,
+            listOf("same_family_hidden"),
+            "裂\u0000signature",
+            42,
+        )
+        val transition = SchedulerReviewTransitionTrace(
+            "good",
+            RecordsBase.LadderRung.KANJI_MEANING,
+            RecordsBase.LadderRung.FONT_MEANING,
+            "fsrs_interval_promotes",
+            listOf("review_pass_fsrs_interval", "fsrs_interval_promotes"),
+        )
+        val fsrs = SchedulerFsrsCallTrace("review", "good", 22)
+        val trace = SchedulerDecisionTrace("apply_review", 2_000L, null, null, listOf(skipped), transition, listOf(fsrs))
+
+        val developer = SchedulerTraceFormatter.developerExplanation(trace)
+        assertTrue(developer.contains("skipped=裂:same_family_hidden"))
+        assertTrue(developer.contains("transition=kanji_meaning->font_meaning:fsrs_interval_promotes"))
+        assertTrue(developer.contains("fsrs=review:good:22"))
+        assertTrue(SchedulerTraceFormatter.userExplanation(trace).contains("kanji_meaning -> font_meaning"))
+    }
+
     private fun item(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
     }
