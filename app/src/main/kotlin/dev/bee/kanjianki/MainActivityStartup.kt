@@ -17,10 +17,12 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
 
         if (shouldRunBackgroundStartupTasks(launchIntent)) {
             activity.requestAnkiPermissionIfNeeded()
-            ReminderScheduler.schedule(activity)
-            AutoSyncScheduler.schedule(activity)
-            AutoUpdateScheduler.schedule(activity)
-            DatabaseBackupScheduler.schedule(activity)
+            activity.io.execute {
+                ReminderScheduler.schedule(activity)
+                AutoSyncScheduler.schedule(activity)
+                AutoUpdateScheduler.schedule(activity)
+                DatabaseBackupScheduler.schedule(activity)
+            }
         }
         handleLaunchIntent(launchIntent)
     }
