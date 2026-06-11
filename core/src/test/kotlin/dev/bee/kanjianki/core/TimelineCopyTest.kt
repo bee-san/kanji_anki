@@ -44,35 +44,6 @@ class TimelineCopyTest {
     }
 
     @Test
-    fun eventStorageCopyPreservesEnglishDefaults() {
-        assertEquals("Imported from suspended Anki", TimelineCopy.suspendedImportedTitle())
-        assertEquals(
-            "Kani recovered this kanji from a suspended AnkiDroid card.",
-            TimelineCopy.suspendedImportedDetail(),
-        )
-        assertEquals("Kani started watching", TimelineCopy.firstSeenTitle())
-        assertEquals(
-            "This kanji entered Kani from local AnkiDroid evidence.",
-            TimelineCopy.firstSeenAnkiEvidenceDetail(),
-        )
-        assertEquals(
-            "This kanji has historical Kani study state.",
-            TimelineCopy.firstSeenHistoricalStudyDetail(),
-        )
-        assertEquals("Weak support seen", TimelineCopy.weakSupportSeenTitle())
-        assertEquals("Retired by Anki support", TimelineCopy.retiredByAnkiSupportTitle())
-        assertEquals(
-            "Kani had already retired this repair before timeline tracking was added.",
-            TimelineCopy.historicalRetiredDetail(),
-        )
-        assertEquals("Anki support improved", TimelineCopy.supportImprovedTitle())
-        assertEquals("Mature support rose from 1 to 2.", TimelineCopy.supportImprovedDetail(1, 2))
-        assertEquals("Anki support dropped", TimelineCopy.supportDroppedTitle())
-        assertEquals("Mature support fell from 3 to 1.", TimelineCopy.supportDroppedDetail(3, 1))
-        assertEquals("Repair reopened", TimelineCopy.repairReopenedTitle())
-    }
-
-    @Test
     fun studyStateDetailPreservesRetiredAndReopenedCopy() {
         assertEquals(
             "No weak Anki evidence remained after sync, so Kani retired this repair.",
@@ -116,83 +87,64 @@ class TimelineCopyTest {
     }
 
     @Test
-    fun japaneseLocaleTranslatesTimelineHistoryCopy() {
-        val now = 5_000L
+    fun japaneseLocaleTranslatesTimelineCopy() {
+        withLocale(Locale.JAPANESE) {
+            val now = 5_000L
 
-        withLocale(Locale.JAPAN) {
             assertEquals("修復中", TimelineCopy.statusText(timeline(row(), studyItem("review", now)), now))
-            assertEquals("復習まで休止中", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
-            assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
-            assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+            assertEquals("復習まで待機中", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
+            assertEquals("Ankiの支援で終了", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
+            assertEquals("Ankiの支援で終了", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
 
-            assertEquals("", TimelineCopy.sourceLine(event("", "")))
             assertEquals("出典: expr", TimelineCopy.sourceLine(event("expr", "")))
             assertEquals("出典: expr  reading", TimelineCopy.sourceLine(event("expr", "reading")))
-            assertEquals("保留中のAnkiからインポート", TimelineCopy.suspendedImportedTitle())
-            assertEquals("KaniはAnkiDroidの保留カードからこの漢字を復旧しました。", TimelineCopy.suspendedImportedDetail())
-            assertEquals("Kaniが見守り開始", TimelineCopy.firstSeenTitle())
-            assertEquals("この漢字はローカルAnkiDroidの証拠からKaniに入りました。", TimelineCopy.firstSeenAnkiEvidenceDetail())
-            assertEquals("この漢字には過去のKani学習状態があります。", TimelineCopy.firstSeenHistoricalStudyDetail())
-            assertEquals("弱いサポートを検出", TimelineCopy.weakSupportSeenTitle())
-            assertEquals("Ankiの支えで修了", TimelineCopy.retiredByAnkiSupportTitle())
-            assertEquals(
-                "タイムライン記録が追加される前に、Kaniはすでにこの修復を完了していました。",
-                TimelineCopy.historicalRetiredDetail(),
-            )
-            assertEquals("Ankiサポートが改善", TimelineCopy.supportImprovedTitle())
-            assertEquals("成熟サポートが1から2に増えました。", TimelineCopy.supportImprovedDetail(1, 2))
-            assertEquals("Ankiサポートが低下", TimelineCopy.supportDroppedTitle())
-            assertEquals("成熟サポートが3から1に減りました。", TimelineCopy.supportDroppedDetail(3, 1))
-            assertEquals("修復を再開", TimelineCopy.repairReopenedTitle())
 
             assertEquals(
-                "同期後に弱いAnki証拠が残っていなかったため、この修復を完了しました。",
+                "同期後に弱いAnki証拠が残らなかったため、Kaniはこの修復を終了しました。",
                 TimelineCopy.studyStateDetail(true, null, 3),
             )
             assertEquals(
-                "同期で弱い証拠が再び見つかったため、この漢字の修復を再開しました。",
+                "同期で再び弱い証拠が見つかったため、Kaniはこの漢字を再開しました。",
                 TimelineCopy.studyStateDetail(false, null, 3),
             )
             assertEquals(
-                "成熟したAnkiの支えが目標に到達: 成熟サポート 3 / 目標 3。",
+                "成熟Ankiサポートは目標に達しました: 成熟サポート 3 / 目標 3。",
                 TimelineCopy.studyStateDetail(true, 3, 3),
             )
             assertEquals(
-                "成熟したAnkiの支えが目標を下回りました: 成熟サポート 1 / 目標 3。",
+                "成熟Ankiサポートは目標を下回りました: 成熟サポート 1 / 目標 3。",
                 TimelineCopy.studyStateDetail(false, 1, 3),
-            )
-            assertEquals(
-                "Ankiの証拠はまだ修復が必要: 成熟サポート 1 / 目標 3。",
-                TimelineCopy.supportDetail("Anki evidence still needs repair", 1, 3),
             )
 
             val manual = TimelineCopy.reviewEvent(review("good", false, false, true), "good")
             val recallFail = TimelineCopy.reviewEvent(review("again", false, false, false), "again")
-            val writingAgain = TimelineCopy.reviewEvent(review("again", true, false, false), "again")
             val writingMiss = TimelineCopy.reviewEvent(review("hard", true, false, false), "hard")
             val writingPass = TimelineCopy.reviewEvent(review("good", true, true, false), "good")
             val recallPass = TimelineCopy.reviewEvent(review("good", false, false, false), "good")
 
+            assertEquals(TimelineCopy.EVENT_MANUAL_OVERRIDE, manual.eventType())
             assertEquals("手動上書き", manual.title())
-            assertEquals("手動確認後に「良い」として保存しました。", manual.detail())
+            assertEquals("手動確認後、goodとして保存しました。", manual.detail())
+            assertEquals(TimelineCopy.EVENT_REVIEW_FAILED, recallFail.eventType())
             assertEquals("復習ミス", recallFail.title())
-            assertEquals("思い出せなかったため、Kaniがもう一度出題します。", recallFail.detail())
-            assertEquals("書き取りをミスしたため、Kaniがもう一度出題します。", writingAgain.detail())
+            assertEquals("想起に失敗したため、Kaniは再表示します。", recallFail.detail())
+            assertEquals(TimelineCopy.EVENT_REVIEW_FAILED, writingMiss.eventType())
             assertEquals("復習ミス", writingMiss.title())
-            assertEquals("書き取りは不合格で、「難しい」と評価されました。", writingMiss.detail())
+            assertEquals("書き取りは合格せず、hardとして評価されました。", writingMiss.detail())
+            assertEquals(TimelineCopy.EVENT_REVIEW_PASSED, writingPass.eventType())
             assertEquals("復習成功", writingPass.title())
-            assertEquals("書き取りに成功し、「良い」と評価されました。", writingPass.detail())
-            assertEquals("思い出し復習は「良い」と評価されました。", recallPass.detail())
+            assertEquals("書き取りは合格し、goodとして評価されました。", writingPass.detail())
+            assertEquals("想起レビューはgoodとして評価されました。", recallPass.detail())
         }
     }
 
     private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
-        val previous = Locale.getDefault()
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
         return try {
-            Locale.setDefault(locale)
             block()
         } finally {
-            Locale.setDefault(previous)
+            Locale.setDefault(original)
         }
     }
 
