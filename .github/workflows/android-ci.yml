@@ -53,6 +53,7 @@ on:
       - 'renovate.json'
       - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
+      - 'README.md'
 
 concurrency:
   group: android-ci-${{ github.ref }}
