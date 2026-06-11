@@ -40,7 +40,7 @@ import dev.bee.kanjianki.core.StudyTextCopy
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
 internal fun homeFocusQueueCardContentDescription(kanji: String, meaning: String): String =
-    "Study card for $kanji, $meaning"
+    HomeTextCopy.focusQueueCardContentDescription(kanji, meaning)
 
 internal fun homeFocusQueuePanelModel(
     rows: List<RecordsImportModels.DashboardRow>,

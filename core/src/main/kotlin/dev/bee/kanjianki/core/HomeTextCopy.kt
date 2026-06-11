@@ -174,6 +174,10 @@ object HomeTextCopy {
     fun homeMetricCardDescription(): String = localizedText("Home metric card", "ホームの指標カード")
 
     @JvmStatic
+    fun focusQueueCardContentDescription(kanji: String, meaning: String): String =
+        localizedText("Study card for $kanji, $meaning", "${kanji}の学習カード、$meaning")
+
+    @JvmStatic
     fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic

@@ -287,7 +287,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 null,
                 TEAL,
                 null,
-                LABEL_BACK_HOME,
+                StudyTextCopy.backHomeLabel(),
                 this::renderHome,
             )
         )
