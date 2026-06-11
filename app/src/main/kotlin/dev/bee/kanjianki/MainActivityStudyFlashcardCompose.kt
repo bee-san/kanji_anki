@@ -126,7 +126,7 @@ private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () 
 @Composable
 private fun StudyRevealButton(onReveal: () -> Unit) {
     StudyPrimaryActionButton(
-        label = "Reveal",
+        label = StudyReviewButtonCopy.revealLabel(),
         onClick = onReveal,
         modifier = Modifier
             .fillMaxWidth()

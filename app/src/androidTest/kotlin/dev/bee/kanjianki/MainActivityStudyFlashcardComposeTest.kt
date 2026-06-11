@@ -37,8 +37,8 @@ class MainActivityStudyFlashcardComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Reveal").assertIsDisplayed()
-        composeRule.onNodeWithTag(studyActionButtonTestTag("Reveal"))
+        composeRule.onNodeWithText(StudyReviewButtonCopy.revealLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyReviewButtonCopy.revealLabel()))
             .assertIsDisplayed()
             .performClick()
 
