@@ -27,7 +27,8 @@ object UpdateRunScreenCopy {
         fun progressLabel(): String = progressLabel
     }
 
-    private fun localizedText(english: String, japanese: String): String {
-        return if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english
-    }
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

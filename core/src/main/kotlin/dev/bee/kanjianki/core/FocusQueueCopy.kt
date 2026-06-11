@@ -19,21 +19,21 @@ object FocusQueueCopy {
             }
         }
         if (active.isNotEmpty() && suspended.isNotEmpty()) {
-            return localizedText("From $active · missed $suspended", "$active から · $suspended を見逃し")
+            return localizedText("From $active · missed $suspended", "出典 $active · 見逃し $suspended")
         }
         if (active.isNotEmpty()) {
-            return localizedText("From $active", "$active から")
+            return localizedText("From $active", "出典 $active")
         }
         if (suspended.isNotEmpty()) {
-            return localizedText("Missed $suspended", "$suspended を見逃し")
+            return localizedText("Missed $suspended", "見逃し $suspended")
         }
-        return localizedText("From AnkiDroid", "AnkiDroid から")
+        return localizedText("From AnkiDroid", "AnkiDroidから")
     }
 
     @JvmStatic
     fun queueCardBody(row: RecordsImportModels.DashboardRow): String {
         if (row.reasonText.isEmpty()) {
-            return localizedText("Needs kanji practice.", "漢字練習が必要です。")
+            return localizedText("Needs kanji practice.", "漢字の練習が必要です。")
         }
         val normalized = row.reasonText.lowercase(Locale.ROOT)
         if (
@@ -41,7 +41,7 @@ object FocusQueueCopy {
             normalized.contains("similar kanji") ||
             normalized.contains("similar choice")
         ) {
-            return localizedText("Shape mix-up; practice writing.", "形の取り違え。書いて練習しましょう。")
+            return localizedText("Shape mix-up; practice writing.", "字形の取り違えです。書いて練習しましょう。")
         }
         return row.reasonText
     }
@@ -58,16 +58,11 @@ object FocusQueueCopy {
             parts.add(localizedText("weakness ${row.weaknessScore}", "弱点 ${row.weaknessScore}"))
         }
         if (row.matureSupportCount < matureSupportThreshold) {
-            parts.add(
-                localizedText(
-                    "support ${row.matureSupportCount}/$matureSupportThreshold",
-                    "成熟サポート ${row.matureSupportCount}/$matureSupportThreshold",
-                ),
-            )
+            parts.add(localizedText("support ${row.matureSupportCount}/$matureSupportThreshold", "支え ${row.matureSupportCount}/$matureSupportThreshold"))
         }
         parts.add(recognitionStageLabel(item))
         if (item.dueAtMillis <= nowMillis) {
-            parts.add(localizedText("due now", "今すぐ復習"))
+            parts.add(localizedText("due now", "今すぐ"))
         } else if (StudyLadderRules.STATE_LEARNING == item.state) {
             parts.add(localizedText(StudyLadderRules.STATE_LEARNING, "学習中"))
         }
@@ -76,19 +71,32 @@ object FocusQueueCopy {
 
     @JvmStatic
     fun recognitionStageLabel(item: RecordsStudyModels.StudyItem): String {
-        return when (item.rung) {
-            RecordsBase.LadderRung.WRITE_KANJI -> localizedText("write kanji", "漢字を書く")
-            RecordsBase.LadderRung.TYPE_MEANING -> localizedText("type meaning", "意味を入力")
-            RecordsBase.LadderRung.SIMILAR_KANJI -> localizedText("similar kanji", "似た漢字")
-            RecordsBase.LadderRung.MEANING_KANJI -> localizedText("meaning -> kanji", "意味→漢字")
-            RecordsBase.LadderRung.FONT_MEANING -> localizedText("font -> meaning", "フォント→意味")
-            RecordsBase.LadderRung.WORD_READING -> localizedText("word -> reading", "単語→読み")
-            RecordsBase.LadderRung.KANJI_MEANING -> localizedText("kanji -> meaning", "漢字→意味")
+        return if (isJapaneseLocale()) {
+            when (item.rung) {
+                RecordsBase.LadderRung.WRITE_KANJI -> "漢字を書く"
+                RecordsBase.LadderRung.TYPE_MEANING -> "意味を入力"
+                RecordsBase.LadderRung.SIMILAR_KANJI -> "似た漢字"
+                RecordsBase.LadderRung.MEANING_KANJI -> "意味→漢字"
+                RecordsBase.LadderRung.FONT_MEANING -> "フォント→意味"
+                RecordsBase.LadderRung.WORD_READING -> "単語→読み"
+                RecordsBase.LadderRung.KANJI_MEANING -> "漢字→意味"
+            }
+        } else {
+            when (item.rung) {
+                RecordsBase.LadderRung.WRITE_KANJI -> "write kanji"
+                RecordsBase.LadderRung.TYPE_MEANING -> "type meaning"
+                RecordsBase.LadderRung.SIMILAR_KANJI -> "similar kanji"
+                RecordsBase.LadderRung.MEANING_KANJI -> "meaning -> kanji"
+                RecordsBase.LadderRung.FONT_MEANING -> "font -> meaning"
+                RecordsBase.LadderRung.WORD_READING -> "word -> reading"
+                RecordsBase.LadderRung.KANJI_MEANING -> "kanji -> meaning"
+            }
         }
     }
 
-    private fun localizedText(english: String, japanese: String): String =
-        if (isJapaneseLocale()) japanese else english
+    private fun localizedText(english: String, japanese: String): String {
+        return if (isJapaneseLocale()) japanese else english
+    }
 
     private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

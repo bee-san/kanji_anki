@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class AttributionTextsTest {
     @Test
@@ -84,6 +85,50 @@ class AttributionTextsTest {
             "\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
             lines.joinToString("\n"),
         )
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesAttributionTextsFallbacksAndEmptyManifest() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals(
+                "KANJIDIC2の辞書データ（EDRDG、Jitenの順位データ、KanjiVGの画数データ）。",
+                AttributionTexts.dictionarySources(null),
+            )
+            assertEquals(
+                "KanjiVGの画数データ、CC BY-SA 3.0。",
+                AttributionTexts.kanjiVg(null),
+            )
+            assertEquals(
+                "KANJIDIC2の辞書データ（EDRDG、Jitenの順位データ、KanjiVGの画数データ）。",
+                AttributionTexts.dictionarySourcesFromManifestText("not json"),
+            )
+            assertEquals(
+                "辞書マニフェストが空です。",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sourceArray(), null)),
+            )
+            val sources = objectArray(
+                jsonObject(
+                    "name", "KANJIDIC2",
+                    "license", "CC BY-SA",
+                    "source_path", "kanjidic2.xml",
+                    "database_version", "2026-05-01",
+                ),
+            )
+            assertEquals(
+                "生成日時: 2026-05-15\n\nKANJIDIC2\nライセンス: CC BY-SA\nソース: kanjidic2.xml\nバージョン: 2026-05-01",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sources, null)),
+            )
+        }
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 
     private fun jsonObject(vararg entries: String): JSONObject {

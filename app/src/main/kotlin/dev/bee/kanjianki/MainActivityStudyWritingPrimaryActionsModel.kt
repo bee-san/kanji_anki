@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.study.WritingFeedbackCopy
+
 data class WritingPrimaryActionsModel(
     val checkText: String,
     val checkVisible: Boolean,
@@ -15,10 +17,10 @@ data class WritingPrimaryActionsModel(
     companion object {
         fun initial(): WritingPrimaryActionsModel {
             return WritingPrimaryActionsModel(
-                checkText = "Check",
+                checkText = WritingFeedbackCopy.checkWritingButtonText(false, false),
                 checkVisible = true,
                 checkEnabled = true,
-                downloadText = "Download checker",
+                downloadText = WritingFeedbackCopy.downloadCheckerLabel(),
                 downloadVisible = true,
                 nextText = MainActivityBase.LABEL_PASS,
                 nextVisible = false,
