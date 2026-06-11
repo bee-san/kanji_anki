@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -75,22 +76,48 @@ class LearningStepsSettingsPolicyTest {
 
     @Test
     fun saveRequestRejectsInvalidNewStepsWithExistingCopy() {
-        assertInvalid("", "10m")
-        assertInvalid("soon", "10m")
-        assertInvalid("0m", "10m")
+        withLocale(Locale.ENGLISH) {
+            assertInvalid("", "10m", LearningStepsSettingsPolicy.STEP_FORMAT_ERROR)
+            assertInvalid("soon", "10m", LearningStepsSettingsPolicy.STEP_FORMAT_ERROR)
+            assertInvalid("0m", "10m", LearningStepsSettingsPolicy.STEP_FORMAT_ERROR)
+            assertEquals(LearningStepsSettingsPolicy.STEP_FORMAT_ERROR, LearningStepsSettingsPolicy.stepFormatError())
+        }
     }
 
     @Test
     fun saveRequestRejectsInvalidReviewStepsWithExistingCopy() {
-        assertInvalid("1m, 10m", "soon")
-        assertInvalid("1m, 10m", "0m")
+        withLocale(Locale.ENGLISH) {
+            assertInvalid("1m, 10m", "soon", LearningStepsSettingsPolicy.STEP_FORMAT_ERROR)
+            assertInvalid("1m, 10m", "0m", LearningStepsSettingsPolicy.STEP_FORMAT_ERROR)
+        }
     }
 
-    private fun assertInvalid(newStepsText: String, reviewStepsText: String) {
+    @Test
+    fun japaneseLocaleTranslatesInvalidStepCopy() {
+        withLocale(Locale.JAPANESE) {
+            val message = "1m、10m、1h、1d のようにステップを入力してください。"
+
+            assertInvalid("", "10m", message)
+            assertInvalid("1m, 10m", "soon", message)
+            assertEquals(message, LearningStepsSettingsPolicy.stepFormatError())
+        }
+    }
+
+    private fun assertInvalid(newStepsText: String, reviewStepsText: String, expectedMessage: String) {
         val result = LearningStepsSettingsPolicy.saveRequest(newStepsText, reviewStepsText)
 
         assertFalse(result.valid)
         assertNull(result.settings)
-        assertEquals(LearningStepsSettingsPolicy.STEP_FORMAT_ERROR, result.message)
+        assertEquals(expectedMessage, result.message)
+    }
+
+    private inline fun withLocale(locale: Locale, block: () -> Unit) {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
