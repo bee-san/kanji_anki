@@ -30,6 +30,26 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         return RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
     }
 
+    fun debugTraceApplyReview(application: BridgeScheduler.ReviewApplication): SchedulerTracedReviewResult {
+        val ladder = StudyLadderRules.safeLadder(application.ladder)
+        val beforeRung = ladder.effectiveRung(application.item.rung, application.item.hasSimilarKanji)
+        val beforePhase = application.item.phase
+        val duplicateReason = duplicateReason(application.item, application.request, application.consumedTokens)
+        val result = applyReview(application)
+        val reasonCodes = transitionReasonCodes(application, result, beforeRung, beforePhase, duplicateReason, ladder)
+        val movementReason = movementReason(beforeRung, result.item.rung, result.appliedRating, duplicateReason, ladder)
+        val transition = SchedulerReviewTransitionTrace(
+            result.appliedRating,
+            beforeRung,
+            result.item.rung,
+            movementReason,
+            reasonCodes,
+        )
+        val fsrsCalls = fsrsCallTrace(beforePhase, result, duplicateReason)
+        val trace = SchedulerDecisionTrace("apply_review", application.nowMillis, null, emptyList(), emptyList(), transition, fsrsCalls)
+        return SchedulerTracedReviewResult(result, trace)
+    }
+
     private fun duplicateReviewResult(
         item: RecordsStudyModels.StudyItem,
         request: RecordsSchedulerModels.ReviewRequest,
@@ -42,6 +62,93 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             return RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "Review token does not match the active session.")
         }
         return null
+    }
+
+    private fun duplicateReason(
+        item: RecordsStudyModels.StudyItem,
+        request: RecordsSchedulerModels.ReviewRequest,
+        consumedTokens: Set<String>,
+    ): String? {
+        if (consumedTokens.contains(request.token)) {
+            return "duplicate_token"
+        }
+        if (!item.activeToken.isNullOrEmpty() && item.activeToken != request.token) {
+            return "token_mismatch"
+        }
+        return null
+    }
+
+    private fun transitionReasonCodes(
+        application: BridgeScheduler.ReviewApplication,
+        result: RecordsSchedulerModels.ReviewResult,
+        beforeRung: RecordsBase.LadderRung,
+        beforePhase: RecordsBase.SchedulerPhase,
+        duplicateReason: String?,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): List<String> {
+        val reasons = ArrayList<String>()
+        if (duplicateReason != null) {
+            reasons.add(duplicateReason)
+            return reasons
+        }
+        when (beforePhase) {
+            RecordsBase.SchedulerPhase.REVIEW -> {
+                if (StudyRatings.AGAIN == result.appliedRating) {
+                    reasons.add("review_again_lapse")
+                } else {
+                    reasons.add("review_pass_fsrs_interval")
+                }
+            }
+            RecordsBase.SchedulerPhase.NEW_LEARNING -> reasons.add("new_learning_step")
+            RecordsBase.SchedulerPhase.RELEARNING -> reasons.add("relearning_step")
+        }
+        val beforeRank = ladder.rankForRung(beforeRung)
+        val afterRank = ladder.rankForRung(result.item.rung)
+        if (afterRank > beforeRank) {
+            reasons.add("fsrs_interval_promotes")
+            if (!application.item.hasSimilarKanji && ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI)) {
+                reasons.add("similar_kanji_unavailable")
+            }
+        } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
+            reasons.add("real_again_streak_threshold")
+        }
+        return reasons
+    }
+
+    private fun movementReason(
+        beforeRung: RecordsBase.LadderRung,
+        afterRung: RecordsBase.LadderRung,
+        rating: String,
+        duplicateReason: String?,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): String {
+        if (duplicateReason != null) {
+            return "duplicate"
+        }
+        val beforeRank = ladder.rankForRung(beforeRung)
+        val afterRank = ladder.rankForRung(afterRung)
+        if (afterRank > beforeRank) {
+            return "fsrs_interval_promotes"
+        }
+        if (afterRank < beforeRank && StudyRatings.AGAIN == rating) {
+            return "again_streak_demotes"
+        }
+        if (afterRank < beforeRank) {
+            return "rung_demotes"
+        }
+        return "rung_unchanged"
+    }
+
+    private fun fsrsCallTrace(
+        beforePhase: RecordsBase.SchedulerPhase,
+        result: RecordsSchedulerModels.ReviewResult,
+        duplicateReason: String?,
+    ): List<SchedulerFsrsCallTrace> {
+        if (duplicateReason != null) {
+            return emptyList()
+        }
+        val callType = if (beforePhase == RecordsBase.SchedulerPhase.REVIEW) "review" else "initial_review"
+        return listOf(SchedulerFsrsCallTrace(callType, result.appliedRating, result.item.matureIntervalDays))
     }
 
     private fun applyLadderTransition(context: ReviewContext, state: ReviewState) {

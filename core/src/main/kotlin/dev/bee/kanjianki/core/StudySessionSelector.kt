@@ -39,6 +39,56 @@ class StudySessionSelector {
         return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
     }
 
+    fun debugTraceNextSession(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): SchedulerDecisionTrace {
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
+        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val rowByKanji = rowByKanji(rows)
+        val activeByFamily = activeCandidatesByFamily(items, rows, allowedKanji, safeLadder)
+        val activeItems = ArrayList<RecordsStudyModels.StudyItem>()
+        val skipped = ArrayList<SchedulerDecisionTraceCandidate>()
+        for (family in activeByFamily.values) {
+            val active = activeFamilyItem(family, nowMillis, horizon, safeLadder, true)
+            activeItems.add(active)
+            for (item in family) {
+                if (sameTraceItem(item, active)) {
+                    continue
+                }
+                val reasons = queueReasonCodes(item, nowMillis, horizon)
+                reasons.add("same_family_hidden")
+                if (compareFamilyActivity(item, active, nowMillis, horizon, safeLadder, true) > 0) {
+                    reasons.add("same_family_lower_priority")
+                }
+                skipped.add(traceCandidate(item, rowByKanji, reasons, nowMillis))
+            }
+        }
+        val dueCandidates = activeItems
+            .filter { it.dueAtMillis <= horizon }
+            .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
+        val best = dueCandidates.firstOrNull()
+        val candidates = ArrayList<SchedulerDecisionTraceCandidate>()
+        for (item in dueCandidates) {
+            val reasons = queueReasonCodes(item, nowMillis, horizon)
+            if (best != null && sameTraceItem(item, best)) {
+                reasons.add("selected_best_candidate")
+            }
+            candidates.add(traceCandidate(item, rowByKanji, reasons, nowMillis))
+        }
+        val selected = best?.let {
+            val reasons = queueReasonCodes(it, nowMillis, horizon)
+            reasons.add("selected_best_candidate")
+            traceCandidate(it, rowByKanji, reasons, nowMillis)
+        }
+        return SchedulerDecisionTrace("next_session", nowMillis, selected, candidates, skipped, null, emptyList())
+    }
+
     @Suppress("java:S2245")
     fun randomizedTaskKeys(
         items: List<RecordsStudyModels.StudyItem>,
@@ -258,6 +308,88 @@ class StudySessionSelector {
     ) {
         val itemFamilyKey = StudyQueueSeeder.familyKey(item)
         byFamily.computeIfAbsent(itemFamilyKey) { ArrayList() }.add(item)
+    }
+
+    private fun activeCandidatesByFamily(
+        items: List<RecordsStudyModels.StudyItem>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        allowedKanji: Set<String>?,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): Map<String, MutableList<RecordsStudyModels.StudyItem>> {
+        val currentRows = HashSet<String>()
+        val currentFamilies = HashSet<String>()
+        for (row in rows) {
+            currentRows.add(row.kanji)
+            currentFamilies.add(StudyQueueSeeder.rowFamilyKey(row))
+        }
+        val byFamily = HashMap<String, MutableList<RecordsStudyModels.StudyItem>>()
+        for (item in items) {
+            val effective = StudyLadderRules.alignRungToLadder(item, ladder)
+            if (isActiveQueueCandidate(effective, currentRows, currentFamilies, allowedKanji)) {
+                addFamilyItem(byFamily, effective)
+            }
+        }
+        return byFamily
+    }
+
+    private fun traceCandidate(
+        item: RecordsStudyModels.StudyItem,
+        rowByKanji: Map<String, RecordsImportModels.DashboardRow>,
+        reasonCodes: List<String>,
+        nowMillis: Long,
+    ): SchedulerDecisionTraceCandidate {
+        return SchedulerDecisionTraceCandidate(
+            item.kanji,
+            StudyTaskTypes.forRung(item.rung),
+            item.rung,
+            item.phase,
+            traceDueAtMillis(item, nowMillis),
+            reasonCodes,
+            StudyQueueSeeder.familyKey(item),
+            rowWeakness(item, rowByKanji),
+        )
+    }
+
+    private fun traceDueAtMillis(item: RecordsStudyModels.StudyItem, nowMillis: Long): Long {
+        return if (isUnseenNewItem(item)) nowMillis else item.dueAtMillis
+    }
+
+    private fun queueReasonCodes(
+        item: RecordsStudyModels.StudyItem,
+        nowMillis: Long,
+        horizonMillis: Long,
+    ): MutableList<String> {
+        val reasons = ArrayList<String>()
+        if (item.dueAtMillis > horizonMillis) {
+            reasons.add("outside_study_ahead")
+        } else if (item.dueAtMillis <= nowMillis) {
+            reasons.add("due_now")
+        } else {
+            reasons.add("inside_study_ahead")
+        }
+        when (item.phase) {
+            RecordsBase.SchedulerPhase.NEW_LEARNING -> {
+                if (item.totalReviews == 0) {
+                    reasons.add("new_learning_unseen")
+                } else {
+                    reasons.add("new_learning_step")
+                }
+            }
+            RecordsBase.SchedulerPhase.RELEARNING -> reasons.add("relearning_due")
+            RecordsBase.SchedulerPhase.REVIEW -> reasons.add("review_due")
+        }
+        return reasons
+    }
+
+    private fun sameTraceItem(
+        left: RecordsStudyModels.StudyItem,
+        right: RecordsStudyModels.StudyItem,
+    ): Boolean {
+        return left.kanji == right.kanji &&
+            left.rung == right.rung &&
+            left.phase == right.phase &&
+            left.answerSignature == right.answerSignature &&
+            left.dueAtMillis == right.dueAtMillis
     }
 
     private fun activeFamilyItem(
