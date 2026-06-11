@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -25,6 +26,7 @@ class RetentionSettingsPolicyTest {
         assertFalse(parameters.frequencyRetentionEnabled)
         assertEquals("1-500=95%", parameters.frequencyRetentionRanges)
         assertEquals("Review retention saved.", result.message)
+        assertEquals("Review retention saved.", RetentionSettingsPolicy.savedMessage())
     }
 
     @Test
@@ -61,7 +63,30 @@ class RetentionSettingsPolicyTest {
         assertEquals("500-1=90%", parameters.frequencyRetentionRanges)
     }
 
+    @Test
+    fun saveRequestLocalizesSuccessMessageInJapaneseLocale() {
+        withDefaultLocale(Locale.JAPANESE) {
+            val result = RetentionSettingsPolicy.saveRequest(95, false, " 1-500=95% ", parameters())
+            val parameters = requireNotNull(result.parameters)
+
+            assertTrue(result.valid)
+            assertEquals(0.95, parameters.targetRetention, 0.001)
+            assertEquals("レビュー維持率を保存しました。", result.message)
+            assertEquals("レビュー維持率を保存しました。", RetentionSettingsPolicy.savedMessage())
+        }
+    }
+
     private fun parameters(): RecordsSchedulerModels.SchedulerParameters {
         return RecordsSchedulerModels.SchedulerParameters(0.88, 0.4, 1.1, 2.2, 3.3, 123L, 45)
+    }
+
+    private fun withDefaultLocale(locale: Locale, block: () -> Unit) {
+        val previousLocale = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 }

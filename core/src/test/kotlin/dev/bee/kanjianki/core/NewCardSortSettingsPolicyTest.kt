@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -22,9 +23,31 @@ class NewCardSortSettingsPolicyTest {
     @Test
     fun saveRequestPreservesExistingToastCopy() {
         assertEquals("New card sort saved.", request(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK).message)
+        assertEquals("New card sort saved.", NewCardSortSettingsPolicy.savedMessage())
+    }
+
+    @Test
+    fun saveRequestLocalizesToastCopyInJapaneseLocale() {
+        withDefaultLocale(Locale.JAPANESE) {
+            val request = request(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK)
+
+            assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, request.mode)
+            assertEquals("新規カードの並び順を保存しました。", request.message)
+            assertEquals("新規カードの並び順を保存しました。", NewCardSortSettingsPolicy.savedMessage())
+        }
     }
 
     private fun request(selectedMode: String?): NewCardSortSettingsPolicy.SaveRequest {
         return NewCardSortSettingsPolicy.saveRequest(selectedMode)
+    }
+
+    private fun withDefaultLocale(locale: Locale, block: () -> Unit) {
+        val previousLocale = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 }
