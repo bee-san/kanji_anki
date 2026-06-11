@@ -21,6 +21,7 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
+      - 'README.md'
   workflow_dispatch:
     inputs:
       full_coverage:
