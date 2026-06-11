@@ -360,6 +360,11 @@ class StudySessionSelector {
             { it.kanji },
             { it.taskType },
             { it.dueAtMillis },
+            { it.familyKey },
+            { it.phase.wireName() },
+            { it.rung.wireName() },
+            { it.weaknessScore },
+            { it.reasonCodes.joinToString("|") },
         )
     }
 
