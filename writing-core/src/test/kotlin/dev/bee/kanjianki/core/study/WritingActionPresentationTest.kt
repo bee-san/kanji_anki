@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core.study
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -116,6 +117,23 @@ class WritingActionPresentationTest {
         assertFalse(presentation.undoEnabled)
     }
 
+    @Test
+    fun japaneseLocaleTranslatesWritingPresentationLabels() {
+        withLocale(Locale.JAPAN) {
+            val input = WritingActionPresentation.Input(analysis(WritingAnalysis.Status.CLOSE, true))
+            input.checkingWriting = true
+            input.currentPracticeLevel = 1
+
+            val presentation = WritingActionPresentation.from(input)
+
+            assertTrue(presentation.checkVisible)
+            assertEquals("確認中...", presentation.checkText)
+            assertEquals("もっとヒント", presentation.hintText)
+            assertTrue(presentation.nextVisible)
+            assertEquals("しっかり保存", presentation.nextLabel)
+        }
+    }
+
     private fun analysis(status: WritingAnalysis.Status, passed: Boolean): WritingAnalysis {
         return WritingAnalysis(
             status,
@@ -150,5 +168,15 @@ class WritingActionPresentationTest {
 
     private fun stroke(startX: Float, startY: Float, endX: Float, endY: Float): InkStroke {
         return InkStroke(listOf(InkPoint(startX, startY, 0), InkPoint(endX, endY, 1)))
+    }
+
+    private fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }

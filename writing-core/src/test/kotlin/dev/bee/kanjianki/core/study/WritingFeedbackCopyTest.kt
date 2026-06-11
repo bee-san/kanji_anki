@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core.study
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -260,6 +261,37 @@ class WritingFeedbackCopyTest {
         assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), false, false, 3))
     }
 
+    @Test
+    fun japaneseLocaleTranslatesWritingFeedbackCopy() {
+        withLocale(Locale.JAPAN) {
+            val guide = guide()
+            val noGuide = emptyGuide()
+
+            assertEquals("ストロークをなぞってから確認してください。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide))
+            assertEquals("記憶で書いてから確認してください。まだストロークガイドはありません。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), noGuide))
+            assertEquals("なぞり", WritingFeedbackCopy.stageLabel(HintLevel.TRACE))
+            assertEquals("輪郭", WritingFeedbackCopy.stageLabel(HintLevel.OUTLINE))
+            assertEquals("最小", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
+            assertEquals("記憶", WritingFeedbackCopy.stageLabel(HintLevel.BLIND))
+            assertEquals("確認中...", WritingFeedbackCopy.checkWritingButtonText(true, false))
+            assertEquals("もっときれいに", WritingFeedbackCopy.checkWritingButtonText(false, true))
+            assertEquals("チェック", WritingFeedbackCopy.checkWritingButtonText(false, false))
+            assertEquals("チェッカーをダウンロード", WritingFeedbackCopy.downloadCheckerLabel())
+            assertEquals("ヒント", WritingFeedbackCopy.hintButtonText(3))
+            assertEquals("もっとヒント", WritingFeedbackCopy.hintButtonText(1))
+            assertEquals("\n次の書き取りでは助けが少なくなります: 最小.", WritingFeedbackCopy.attemptProgressText(analysis(WritingAnalysis.Status.PASS, true, HintLevel.OUTLINE, 0), null, false))
+            assertEquals("\nもっときれいに書くと合格しやすくなります。今の助けを保つなら「しっかり保存」を選んでください。", WritingFeedbackCopy.attemptProgressText(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0), null, false))
+            assertEquals("\n対象: 拉", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), "拉"))
+            assertEquals("不合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)))
+            assertEquals("しっかり保存", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)))
+            assertEquals("合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)))
+            assertEquals("Guide\nこの端末では自動手書き判定は使えません。", WritingFeedbackCopy.unavailableModelStatusMessage("Guide"))
+            assertEquals("Guide\n手書き判定器の状態を読み取れません。", WritingFeedbackCopy.modelStatusMessage("Guide", false, false, false))
+            assertEquals("Guide\n自動判定を使う前に手書き判定器をダウンロードしてください。", WritingFeedbackCopy.modelStatusMessage("Guide", true, false, false))
+            assertEquals("Guide\n手書き判定器の準備ができました。", WritingFeedbackCopy.modelStatusMessage("Guide", true, true, false))
+        }
+    }
+
     private fun guide(): StrokeGuide {
         return StrokeGuide("裂", listOf(stroke()))
     }
@@ -304,5 +336,15 @@ class WritingFeedbackCopyTest {
         order: StrokeOrderEvaluator.StrokeOrderResult,
     ): WritingAnalysis {
         return WritingAnalysis(status, if (passed) "good" else "again", passed, status.name, emptyList(), order, HintLevel.BLIND, 0)
+    }
+
+    private fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }
