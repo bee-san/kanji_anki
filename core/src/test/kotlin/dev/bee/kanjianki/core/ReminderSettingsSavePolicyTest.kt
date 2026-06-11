@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class ReminderSettingsSavePolicyTest {
     @Test
@@ -36,11 +37,39 @@ class ReminderSettingsSavePolicyTest {
     }
 
     @Test
+    fun savedMessageAndPermissionCopyTranslateToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals("08:05頃にリマインダーを保存しました。", ReminderSettingsSavePolicy.savedMessage(8, 5, true))
+            assertEquals(
+                "リマインダーを保存しましたが、Androidの通知がオフです。",
+                ReminderSettingsSavePolicy.savedMessage(8, 5, false),
+            )
+            assertEquals("リマインダーをオフにしました。", ReminderSettingsSavePolicy.disabledMessage())
+            assertEquals("通知がオフのため、リマインダーは無効です。", ReminderSettingsSavePolicy.permissionDeniedMessage())
+        }
+    }
+
+    @Test
     fun disabledAndDeniedCopyIsCentralized() {
         assertEquals("Reminder turned off.", ReminderSettingsSavePolicy.DISABLED_MESSAGE)
+        assertEquals("Reminder turned off.", ReminderSettingsSavePolicy.disabledMessage())
         assertEquals(
             "Notifications are off, so reminders are disabled.",
             ReminderSettingsSavePolicy.PERMISSION_DENIED_MESSAGE,
         )
+        assertEquals(
+            "Notifications are off, so reminders are disabled.",
+            ReminderSettingsSavePolicy.permissionDeniedMessage(),
+        )
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }
