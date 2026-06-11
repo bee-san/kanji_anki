@@ -111,8 +111,24 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             }
         } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
             reasons.add("real_again_streak_threshold")
+            if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
+                reasons.add("similar_kanji_unavailable")
+            }
         }
         return reasons
+    }
+
+    private fun skipsSimilarRungWithoutContent(
+        hasSimilarKanji: Boolean,
+        ladder: RecordsBase.StudyLadderSettings,
+        beforeRank: Int,
+        afterRank: Int,
+    ): Boolean {
+        if (hasSimilarKanji || !ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI)) {
+            return false
+        }
+        val similarRank = ladder.rankForRung(RecordsBase.LadderRung.SIMILAR_KANJI)
+        return min(beforeRank, afterRank) < similarRank && similarRank < max(beforeRank, afterRank)
     }
 
     private fun movementReason(
