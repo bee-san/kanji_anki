@@ -49,6 +49,55 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun threeDueReviewAgainsDemoteMatchesGoldenTimeline() {
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)),
+            startMillis = START,
+            learningSettings = noRelearningSteps(),
+        )
+
+        simulator.nextSession()
+        val firstAgain = simulator.answer("again")
+        simulator.advanceTo(firstAgain.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val secondAgain = simulator.answer("again")
+        simulator.advanceTo(secondAgain.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val finalAgain = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, finalAgain.snapshot!!.rung)
+        assertEquals(0, finalAgain.snapshot!!.realAgainStreak)
+        assertEquals("again_streak_demotes", finalAgain.trace.transition!!.movementReason)
+        assertTrue(finalAgain.trace.transition!!.reasonCodes.contains("review_again_lapse"))
+        assertTrue(finalAgain.trace.transition!!.reasonCodes.contains("real_again_streak_threshold"))
+        assertGolden("threeDueReviewAgainsDemote", simulator.renderText())
+    }
+
+    @Test
+    fun similarKanjiSkippedWithoutContentMatchesGoldenTimeline() {
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, answer.snapshot!!.rung)
+        assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
+        assertTrue(answer.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+        assertGolden("similarKanjiSkippedWithoutContent", simulator.renderText())
+    }
+
+    @Test
     fun relearningBeatsSameFamilyReviewSiblingMatchesGoldenTimeline() {
         val relearning = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
             .copyBuilder()
@@ -149,6 +198,13 @@ class SchedulerTimelineSimulatorTest {
             .rung(rung)
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .build()
+    }
+
+    private fun noRelearningSteps(): RecordsSchedulerModels.LearningStepSettings {
+        return RecordsSchedulerModels.LearningStepSettings(
+            RecordsSchedulerModels.LearningStepSettings.defaultNewSteps(),
+            emptyList(),
+        )
     }
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
