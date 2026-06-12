@@ -152,6 +152,39 @@ class WritingRatingMapperTest {
     }
 
     @Test
+    fun tutorDiagnosisLabelsDoNotOverrideSchedulerBoundaries() {
+        val mapper = WritingRatingMapper()
+        val diagnosis = StrokeDiagnosis.builder()
+            .add(StrokeDiagnosis.Label.EXTRA_STROKE, 3)
+            .add(StrokeDiagnosis.Label.FAR_FROM_GUIDE, 1)
+            .add(StrokeDiagnosis.Label.CONFUSED_WITH_SIMILAR_KANJI, 0)
+            .build()
+        val failed = WritingAnalysis(
+            WritingAnalysis.Status.WRONG,
+            "again",
+            false,
+            "wrong",
+            listOf(RecognitionCandidate("提", 0.99f)),
+            cleanStrokeOrder().withDiagnosis(diagnosis),
+            HintLevel.BLIND,
+            0,
+        )
+        val close = WritingAnalysis(
+            WritingAnalysis.Status.CLOSE,
+            "hard",
+            true,
+            "close",
+            listOf(RecognitionCandidate("拉", 0.99f)),
+            cleanStrokeOrder().withDiagnosis(diagnosis),
+            HintLevel.BLIND,
+            0,
+        )
+
+        assertEquals(StudyRating.AGAIN, mapper.applyRequestedRating(StudyRating.EASY, true, failed, false))
+        assertEquals(StudyRating.HARD, mapper.applyRequestedRating(StudyRating.EASY, true, close, false))
+    }
+
+    @Test
     fun recognitionOnlySessionLeavesRatingUnchanged() {
         val mapper = WritingRatingMapper()
 

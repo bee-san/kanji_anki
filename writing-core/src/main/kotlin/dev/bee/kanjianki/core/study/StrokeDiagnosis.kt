@@ -8,7 +8,10 @@ class StrokeDiagnosis private constructor(entries: List<Entry>) {
         WRONG_ORDER,
         WRONG_DIRECTION,
         MISSING_STROKE,
+        EXTRA_STROKE,
         ROUGH_SHAPE,
+        FAR_FROM_GUIDE,
+        CONFUSED_WITH_SIMILAR_KANJI,
         RECOGNIZED_BUT_MESSY,
     }
 

@@ -64,6 +64,21 @@ class StrokeOrderEvaluatorTest {
     }
 
     @Test
+    fun extraStrokeReportsExtraStroke() {
+        val result = StrokeOrderEvaluator.evaluate(
+            guide(),
+            sample(
+                stroke(10f, 10f, 90f, 10f),
+                stroke(10f, 30f, 90f, 30f),
+                stroke(10f, 50f, 90f, 50f),
+            )
+        )
+
+        assertFalse(result.clean)
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.EXTRA_STROKE, 3))
+    }
+
+    @Test
     fun skippedMiddleStrokeReportsThatGuideStrokeMissing() {
         val result = StrokeOrderEvaluator.evaluate(
             threeStrokeGuide(),
@@ -269,6 +284,7 @@ class StrokeOrderEvaluatorTest {
         assertFalse(result.acceptable)
         assertFalse(result.clean)
         assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1))
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.FAR_FROM_GUIDE, 1))
     }
 
     @Test

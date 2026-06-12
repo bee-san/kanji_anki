@@ -450,12 +450,18 @@ class WritingFeedbackCopy private constructor() {
                     "likely wrong order" -> "${stroke}画目: 順番が違うかもしれません"
                     "likely wrong direction" -> "${stroke}画目: 向きが違うかもしれません"
                     "may be missing" -> "${stroke}画目: 抜けているかもしれません"
+                    "may be extra" -> "${stroke}画目: 余分な一画かもしれません"
                     "shape looks rough" -> "${stroke}画目: 形が崩れているようです"
+                    "component proportion or shape looks rough" -> "${stroke}画目: 部品のバランスや形を見直しましょう"
+                    "too far from the guide" -> "${stroke}画目: 手本から離れすぎています"
                     else -> line
                 }
             }
             return when (line) {
+                "It looked like a different kanji; compare the similar parts" ->
+                    "別の漢字に見えます。似ている部分を比べましょう"
                 "Recognized, but the stroke path was messy" -> "認識できましたが、線が乱れています"
+                "Good enough, but the stroke path was messy" -> "合格範囲ですが、線が乱れています"
                 else -> line
             }
         }
