@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayList
 import java.util.HashSet
+import java.util.Locale
 
 class SchedulerDecisionTraceTest {
     @Test
@@ -181,6 +182,45 @@ class SchedulerDecisionTraceTest {
         assertTrue(SchedulerTraceFormatter.userExplanation(trace).contains("kanji_meaning -> font_meaning"))
     }
 
+    @Test
+    fun userTraceFormatterTranslatesJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals("スケジューラーの記録はありません。", SchedulerTraceFormatter.userExplanation(null))
+
+            val emptyTrace = SchedulerDecisionTrace("next_session", 1_000L, null, null, null, null, null)
+            assertEquals("学習できるカードはありません。", SchedulerTraceFormatter.userExplanation(emptyTrace))
+
+            val selected = SchedulerDecisionTraceCandidate(
+                "裂",
+                "kanji_meaning",
+                RecordsBase.LadderRung.KANJI_MEANING,
+                RecordsBase.SchedulerPhase.NEW_LEARNING,
+                1_000L,
+                listOf("due_now"),
+                "裂\u0000signature",
+                42,
+            )
+            val selectedTrace = SchedulerDecisionTrace("next_session", 1_000L, selected, listOf(selected), null, null, null)
+            assertEquals(
+                "裂をkanji_meaning用に選びました（new_learning）。",
+                SchedulerTraceFormatter.userExplanation(selectedTrace),
+            )
+
+            val transition = SchedulerReviewTransitionTrace(
+                "good",
+                RecordsBase.LadderRung.KANJI_MEANING,
+                RecordsBase.LadderRung.FONT_MEANING,
+                "fsrs_interval_promotes",
+                listOf("review_pass_fsrs_interval"),
+            )
+            val reviewTrace = SchedulerDecisionTrace("apply_review", 2_000L, null, null, null, transition, null)
+            assertEquals(
+                "goodを適用: kanji_meaning → font_meaning。",
+                SchedulerTraceFormatter.userExplanation(reviewTrace),
+            )
+        }
+    }
+
     private fun item(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
     }
@@ -221,6 +261,16 @@ class SchedulerDecisionTraceTest {
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
         return BridgeScheduler(FixedIntervalFsrsAdapter(intervalDays * BridgeScheduler.DAY))
+    }
+
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val previous = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 
     private class FixedIntervalFsrsAdapter(private val reviewIntervalMillis: Long) : KaniFsrsAdapter {
