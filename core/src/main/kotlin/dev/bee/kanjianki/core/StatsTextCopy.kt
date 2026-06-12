@@ -74,6 +74,49 @@ object StatsTextCopy {
     }
 
     @JvmStatic
+    fun repairEvidenceCohortTitle(): String = localizedText("Repair evidence cohort", "修復の証拠コホート")
+
+    @JvmStatic
+    fun repairEvidenceCohortSummary(count: Int): String =
+        localizedText(
+            StudyTextCopy.countText(count, "repair evidence item", "repair evidence items"),
+            "修復の証拠${count}件",
+        )
+
+    @JvmStatic
+    fun repairEvidenceCohortBody(
+        improvingCount: Int,
+        stableCount: Int,
+        regressingCount: Int,
+        insufficientEvidenceCount: Int,
+        highConfidenceCount: Int,
+        mediumConfidenceCount: Int,
+        lowConfidenceCount: Int,
+    ): String {
+        return if (isJapaneseLocale()) {
+            "改善中${improvingCount}件 · 横ばい${stableCount}件 · 悪化中${regressingCount}件 · 証拠待ち${insufficientEvidenceCount}件。信頼度: 高${highConfidenceCount}件 · 中${mediumConfidenceCount}件 · 低${lowConfidenceCount}件。"
+        } else {
+            "${improvingCount} improving · ${stableCount} stable · ${regressingCount} regressing · ${insufficientEvidenceCount} waiting for evidence. Confidence: ${highConfidenceCount} high · ${mediumConfidenceCount} medium · ${lowConfidenceCount} low."
+        }
+    }
+
+    @JvmStatic
+    fun repairEvidenceConfidenceBandLabel(confidence: Double): String = when {
+        confidence >= 0.75 -> localizedText("high confidence", "高信頼")
+        confidence < 0.50 -> localizedText("low confidence", "低信頼")
+        else -> localizedText("medium confidence", "中信頼")
+    }
+
+    @JvmStatic
+    fun repairEvidenceCohortExampleText(
+        kanji: String,
+        status: KanjiRepairEvidencePolicy.Status,
+        confidence: Double,
+    ): String {
+        return clean(kanji) + " · " + repairEvidenceStatusLabel(status) + " · " + repairEvidenceConfidenceBandLabel(confidence)
+    }
+
+    @JvmStatic
     fun moreAnkiEvidenceSummary(count: Int): String =
         localizedText(
             StudyTextCopy.countText(count, "kanji still needs more Anki evidence", "kanji still need more Anki evidence"),

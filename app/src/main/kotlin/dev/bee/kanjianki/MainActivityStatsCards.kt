@@ -70,6 +70,7 @@ internal fun buildStatsScreenModel(
     val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
     val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
     val repairEvidence = source.kanjiRepairEvidence()
+    val repairEvidenceCohort = StudyStatsStore.repairEvidenceCohortStats(repairEvidence)
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
@@ -78,6 +79,7 @@ internal fun buildStatsScreenModel(
         studyStreak,
         recentMistakes,
         repairEvidence,
+        repairEvidenceCohort,
         nowMillis,
     )
 }
@@ -90,6 +92,7 @@ internal fun statsScreenModel(
     studyStreak: StudyStatsStore.StudyStreak,
     recentMistakes: List<StudyStatsStore.RecentMistake>,
     repairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
+    repairEvidenceCohort: StudyStatsStore.RepairEvidenceCohortStats = StudyStatsStore.RepairEvidenceCohortStats.empty(),
     nowMillis: Long,
 ): StatsScreenModel {
     return StatsScreenModel(
@@ -99,6 +102,7 @@ internal fun statsScreenModel(
         sections = buildList {
             add(weaknessBurnDownCard(stats))
             add(supportConversionCard(stats))
+            repairEvidenceCohortCard(repairEvidenceCohort)?.let(::add)
             repairEvidenceCard(repairEvidence)?.let(::add)
             add(studyStreakCard(studyStreak, nowMillis))
             add(studyImpactCard(studyImpact))
@@ -335,6 +339,35 @@ private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsC
             )
         },
         strokeColor = STATS_GOLD_COLOR
+    )
+}
+
+private fun repairEvidenceCohortCard(cohort: StudyStatsStore.RepairEvidenceCohortStats): StatsCardModel? {
+    if (cohort.totalCount == 0) {
+        return null
+    }
+    val rows = cohort.examples.take(4)
+    return outcomeCard(
+        title = StatsTextCopy.repairEvidenceCohortTitle(),
+        summary = StatsTextCopy.repairEvidenceCohortSummary(cohort.totalCount),
+        body = StatsTextCopy.repairEvidenceCohortBody(
+            cohort.improvingCount,
+            cohort.stableCount,
+            cohort.regressingCount,
+            cohort.insufficientEvidenceCount,
+            cohort.highConfidenceCount,
+            cohort.mediumConfidenceCount,
+            cohort.lowConfidenceCount,
+        ),
+        lines = rows.map { row ->
+            StatsLineModel(
+                text = StatsTextCopy.repairEvidenceCohortExampleText(row.kanji, row.status, row.confidence),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_CORAL_COLOR
     )
 }
 
