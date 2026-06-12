@@ -1516,6 +1516,25 @@ class ComposeScreenModelsTest {
             ),
             explanationLines,
         )
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("Pair", "列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Watch", "Watch this pair closely.", true),
+            ),
+            similarKanjiExplanationLines(
+                SimilarKanjiExplanation(
+                    targetKanji = "",
+                    confusedWith = listOf("列", "烈"),
+                    sharedComponents = emptyList(),
+                    differingComponents = emptyList(),
+                    meaningClues = emptyList(),
+                    readingClues = emptyList(),
+                    failedSourceWords = emptyList(),
+                    watchThisPart = "Watch this pair closely.",
+                    confidence = ExplanationConfidence.LOW,
+                )
+            ),
+        )
         assertEquals(explanationLines, similar.explanationLines)
         assertEquals("Recall", meaning.modeLabel)
         assertEquals("meaning -> kanji", meaning.taskLabel)

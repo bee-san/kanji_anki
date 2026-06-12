@@ -87,6 +87,25 @@ class SimilarKanjiExplanationPolicyTest {
         assertEquals("拉と提・謎の違いを見比べましょう。", explanation.watchThisPart)
     }
 
+    @Test
+    fun japaneseLocaleKeepsConservativeFallbackGuidanceLocalized() = withLocale(Locale.JAPAN) {
+        val singlePair = SimilarKanjiExplanationPolicy.explain(
+            "拉",
+            null,
+            listOf(pair("拉", "提")),
+            null,
+        )
+        val noPair = SimilarKanjiExplanationPolicy.explain(
+            "拉",
+            listOf(item("拉", "pull", "ら")),
+            emptyList(),
+            emptyList(),
+        )
+
+        assertEquals("拉と提の違いを見比べましょう。", singlePair.watchThisPart)
+        assertEquals("この漢字をよく見ましょう。", noPair.watchThisPart)
+    }
+
     private fun item(kanji: String, meaning: String, readings: String): RecordsImportModels.KanjiInventoryItem {
         return RecordsImportModels.KanjiInventoryItem(kanji, meaning, readings, "", 1, 1, false, 0L)
     }
