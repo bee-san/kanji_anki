@@ -2,9 +2,12 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.ExplanationConfidence
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.SimilarKanjiExplanation
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStoreBase
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
@@ -1597,6 +1600,39 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun similarKanjiExplanationSourceWordsUseCurrentStudyExamples() {
+        val session = RecordsSchedulerModels.StudySession(
+            item = null,
+            row = RecordsImportModels.DashboardRow(
+                "裂",
+                120,
+                "split",
+                "れつ",
+                "裂",
+                7,
+                "lapse",
+                "Recent misses",
+                4,
+                0,
+                0,
+                listOf(
+                    example("  分裂  "),
+                    example("裂ける"),
+                    example("分裂"),
+                    example(""),
+                ),
+            ),
+            token = "study:裂",
+            taskType = StudyTaskTypes.SIMILAR_KANJI,
+            writingRequired = false,
+            prompt = "split",
+        )
+
+        assertEquals(listOf("分裂", "裂ける"), similarKanjiExplanationSourceWords(session))
+        assertEquals(emptyList<String>(), similarKanjiExplanationSourceWords(null))
+    }
+
+    @Test
     fun writingAnswerPanelStateKeepsVisibilityTransitions() {
         val hidden = WritingAnswerPanelState()
         val visible = WritingAnswerPanelState(true)
@@ -1713,6 +1749,19 @@ class ComposeScreenModelsTest {
         assertEquals(false, state.containsWindowPoint(3f, 20f))
         assertEquals(false, state.containsWindowPoint(12f, 39f))
     }
+
+    private fun example(expression: String): RecordsImportModels.Example =
+        RecordsImportModels.Example(
+            "anki",
+            1L,
+            2L,
+            expression,
+            "れつ",
+            "split",
+            "sample sentence",
+            false,
+            0,
+        )
 
     private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
         val original = Locale.getDefault()
