@@ -169,16 +169,14 @@ jobs:
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
         with:
           gradle-version: "9.4.1"
-
-      - name: Set up Android SDK
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Install Android SDK packages
         if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Enable KVM access (full-coverage mode only)
         if: steps.coverage-mode.outputs.full == 'true'

@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_run:
+    workflows: ["Android CI"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -17,17 +21,19 @@ on:
         type: boolean
 
 concurrency:
-  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event_name == 'workflow_run' && 'main-auto' || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   metadata:
     name: Release metadata
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     permissions:
       contents: read
     outputs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
+      build_sha: ${{ steps.meta.outputs.build_sha }}
       version_name: ${{ steps.meta.outputs.version_name }}
       version_code: ${{ steps.meta.outputs.version_code }}
       apk_name: ${{ steps.meta.outputs.apk_name }}
@@ -44,9 +50,45 @@ jobs:
         id: meta
         env:
           RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+          WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            build_sha="${WORKFLOW_RUN_HEAD_SHA}"
+          else
+            build_sha="${GITHUB_SHA}"
+          fi
+
+          if ! git cat-file -e "${build_sha}^{commit}" 2>/dev/null; then
+            echo "::error::Build commit ${build_sha} is not reachable from the fetched history."
+            exit 1
+          fi
+
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             release_tag="${RELEASE_TAG_INPUT}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            release_tag="$(python3 <<'PY'
+          import re
+          import subprocess
+
+          tags = subprocess.check_output(
+              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
+              text=True,
+          ).splitlines()
+          versions = []
+          for tag in tags:
+              match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+              if match:
+                  versions.append(tuple(int(part) for part in match.groups()))
+          if not versions:
+              raise SystemExit("No existing vMAJOR.MINOR.PATCH tag found to bump from.")
+          major, minor, patch = max(versions)
+          print(f"v{major}.{minor}.{patch + 1}")
+          PY
+          )"
+            if git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
+              echo "::error::Computed auto-release tag ${release_tag} already exists."
+              exit 1
+            fi
           else
             release_tag="${GITHUB_REF_NAME}"
           fi
@@ -91,9 +133,9 @@ jobs:
           PY
           )"
           if [[ -n "${previous_tag}" ]]; then
-            changed_files="$(git diff --name-only "${previous_tag}" "${GITHUB_SHA}")"
+            changed_files="$(git diff --name-only "${previous_tag}" "${build_sha}")"
           else
-            changed_files="$(git ls-tree -r --name-only "${GITHUB_SHA}")"
+            changed_files="$(git ls-tree -r --name-only "${build_sha}")"
           fi
 
           ankidroid_fixture_required=false
@@ -133,6 +175,7 @@ jobs:
 
           {
             echo "release_tag=${release_tag}"
+            echo "build_sha=${build_sha}"
             echo "version_name=${version_name}"
             echo "version_code=${version_code}"
             echo "apk_name=${apk_name}"
@@ -151,6 +194,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.metadata.outputs.build_sha }}
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -160,14 +205,14 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Decode signing keystore
         id: signing
@@ -179,7 +224,10 @@ jobs:
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
-      - name: Run release gate and build signed APK
+      # Deterministic tests for this commit are enforced by the
+      # "Require green commit checks" job (Fast confidence gate, SonarQube,
+      # CodeQL), so the validate job only assembles and verifies the APK.
+      - name: Build signed release APK
         env:
           KANI_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
           KANI_VERSION_CODE: ${{ needs.metadata.outputs.version_code }}
@@ -187,7 +235,7 @@ jobs:
           KANI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
           KANI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
           KANI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
-        run: ./gradlew ciRelease --parallel -Dorg.gradle.parallel=true
+        run: ./gradlew :app:assembleRelease --parallel -Dorg.gradle.parallel=true
 
       - name: Verify release APK metadata and signature
         run: |
@@ -241,6 +289,7 @@ jobs:
       - name: Wait for Android CI, SonarQube, and CodeQL success
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
           REQUIRED_CHECKS: Fast confidence gate|Build coverage and analyze|Analyze Java/Kotlin
         run: |
           set -euo pipefail
@@ -248,7 +297,7 @@ jobs:
           deadline=$((SECONDS + 55 * 60))
 
           while true; do
-            gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" > "${checks_json}"
+            gh api "repos/${GITHUB_REPOSITORY}/commits/${BUILD_SHA}/check-runs?per_page=100" > "${checks_json}"
             result="$(python3 - "${checks_json}" <<'PY'
           import json
           import os
@@ -334,6 +383,9 @@ jobs:
     needs: metadata
     if: needs.metadata.outputs.ankidroid_fixture_required == 'true'
     uses: ./.github/workflows/android-instrumented.yml
+    secrets: inherit
+    with:
+      ref: ${{ needs.metadata.outputs.build_sha }}
 
   publish-release:
     name: Publish GitHub release
@@ -364,6 +416,7 @@ jobs:
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
           ALLOW_ASSET_OVERWRITE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_asset_overwrite || false }}
         run: |
           set -euo pipefail
@@ -385,7 +438,7 @@ jobs:
           else
             gh release create "${release_tag}" "${apk_path}" "${sha_path}" \
               --title "${release_tag}" \
-              --target "${GITHUB_SHA}" \
+              --target "${BUILD_SHA}" \
               --generate-notes \
               --repo "${GITHUB_REPOSITORY}"
           fi
