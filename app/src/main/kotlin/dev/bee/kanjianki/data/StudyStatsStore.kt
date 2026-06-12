@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KaniOutcomePolicy
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LadderHealthPolicy
 import dev.bee.kanjianki.core.RecentMistakePolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -308,6 +309,68 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         fun after(): OutcomeSnapshot? = after
     }
 
+    class KanjiRepairEvidence(evidence: KanjiRepairEvidencePolicy.Evidence) {
+        @JvmField val kanji: String
+        @JvmField val status: KanjiRepairEvidencePolicy.Status
+        @JvmField val reason: String
+        @JvmField val explanation: String
+        @JvmField val beforeWeakness: Int?
+        @JvmField val afterWeakness: Int?
+        @JvmField val beforeMatureSupport: Int?
+        @JvmField val afterMatureSupport: Int?
+        @JvmField val kaniReviews: Int
+        @JvmField val writingFailures: Int
+        @JvmField val lastMistakeAtMillis: Long
+        @JvmField val lastSyncAtMillis: Long
+        @JvmField val confidence: Double
+        @JvmField val confidenceReason: String
+
+        init {
+            this.kanji = evidence.kanji()
+            this.status = evidence.status()
+            this.reason = evidence.reason()
+            this.explanation = evidence.explanation()
+            this.beforeWeakness = evidence.beforeWeakness()
+            this.afterWeakness = evidence.afterWeakness()
+            this.beforeMatureSupport = evidence.beforeMatureSupport()
+            this.afterMatureSupport = evidence.afterMatureSupport()
+            this.kaniReviews = evidence.kaniReviews()
+            this.writingFailures = evidence.writingFailures()
+            this.lastMistakeAtMillis = evidence.lastMistakeAtMillis()
+            this.lastSyncAtMillis = evidence.lastSyncAtMillis()
+            this.confidence = evidence.confidence()
+            this.confidenceReason = evidence.confidenceReason()
+        }
+
+        fun kanji(): String = kanji
+
+        fun status(): KanjiRepairEvidencePolicy.Status = status
+
+        fun reason(): String = reason
+
+        fun explanation(): String = explanation
+
+        fun beforeWeakness(): Int? = beforeWeakness
+
+        fun afterWeakness(): Int? = afterWeakness
+
+        fun beforeMatureSupport(): Int? = beforeMatureSupport
+
+        fun afterMatureSupport(): Int? = afterMatureSupport
+
+        fun kaniReviews(): Int = kaniReviews
+
+        fun writingFailures(): Int = writingFailures
+
+        fun lastMistakeAtMillis(): Long = lastMistakeAtMillis
+
+        fun lastSyncAtMillis(): Long = lastSyncAtMillis
+
+        fun confidence(): Double = confidence
+
+        fun confidenceReason(): String = confidenceReason
+    }
+
     class LadderItemEvidence {
         @JvmField val state: String
         @JvmField val rung: RecordsBase.LadderRung
@@ -377,6 +440,11 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                 outcomeEvidence,
                 ladderHealth(safeList(ladderItems), ladderPromotionIntervalDays, ladderDemotionFailStreak)
             )
+        }
+
+        @JvmStatic
+        fun repairEvidence(evidence: KanjiRepairEvidencePolicy.Evidence): KanjiRepairEvidence {
+            return KanjiRepairEvidence(evidence)
         }
 
         private fun calculateKaniOutcomeStats(
