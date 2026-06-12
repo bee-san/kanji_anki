@@ -41,6 +41,13 @@ class StudyTextCopyLocaleLabelsTest {
         assertEquals("Again saved", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
     }
 
+    @Test
+    fun studyCopyUsesUndoMessagesForOtherRatingsToo() {
+        assertEquals("Hard saved", StudyTextCopy.reviewUndoMessage(StudyRatings.HARD))
+        assertEquals("Easy saved", StudyTextCopy.reviewUndoMessage(StudyRatings.EASY))
+        assertEquals("Again saved", StudyTextCopy.reviewUndoMessage("mystery"))
+    }
+
     private fun withLocale(locale: Locale, block: () -> Unit) {
         val previous = Locale.getDefault()
         Locale.setDefault(locale)
