@@ -17,6 +17,9 @@ internal class StudySessionTracker {
 
     fun completedCount(): Int = progressTracker.completedCount()
 
+    fun completedTaskBreakdown(): StudySessionProgressTracker.CompletedTaskBreakdown =
+        progressTracker.completedTaskBreakdown()
+
     fun targetCount(): Int = progressTracker.targetCount()
 
     fun movedForwardCount(): Int = progressTracker.movedForwardCount()

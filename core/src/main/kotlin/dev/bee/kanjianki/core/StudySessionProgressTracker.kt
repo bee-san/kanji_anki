@@ -19,6 +19,31 @@ class StudySessionProgressTracker {
 
     fun missedCount(): Int = missedKanji.size
 
+    fun completedTaskBreakdown(): CompletedTaskBreakdown {
+        var writingChecks = 0
+        var similarKanjiChoices = 0
+        var similarKanjiRepairs = 0
+        var wordReadingReviews = 0
+        var otherReviews = 0
+        for (key in completedTaskKeys) {
+            val taskType = taskTypeForCompletedKey(key)
+            when {
+                isSimilarRepairKey(key) -> similarKanjiRepairs++
+                StudyTaskTypes.SIMILAR_KANJI == taskType -> similarKanjiChoices++
+                StudyTaskTypes.WORD_READING == taskType -> wordReadingReviews++
+                isWritingTaskType(taskType) -> writingChecks++
+                else -> otherReviews++
+            }
+        }
+        return CompletedTaskBreakdown(
+            writingChecks,
+            similarKanjiChoices,
+            similarKanjiRepairs,
+            wordReadingReviews,
+            otherReviews,
+        )
+    }
+
     fun resetProgress() {
         completedCount = 0
         targetCount = 0
@@ -128,6 +153,18 @@ class StudySessionProgressTracker {
         @JvmField val fraction: Float,
     )
 
+    class CompletedTaskBreakdown(
+        @JvmField val writingChecks: Int,
+        @JvmField val similarKanjiChoices: Int,
+        @JvmField val similarKanjiRepairs: Int,
+        @JvmField val wordReadingReviews: Int,
+        @JvmField val otherReviews: Int,
+    ) {
+        @JvmField
+        val total: Int = writingChecks + similarKanjiChoices + similarKanjiRepairs +
+            wordReadingReviews + otherReviews
+    }
+
     companion object {
         @JvmStatic
         fun sessionTaskKey(session: RecordsSchedulerModels.StudySession?): String {
@@ -152,6 +189,29 @@ class StudySessionProgressTracker {
 
         private fun isEmpty(key: String?): Boolean {
             return key.isNullOrEmpty()
+        }
+
+        private fun isSimilarRepairKey(key: String): Boolean {
+            return key.startsWith("repair:")
+        }
+
+        private fun taskTypeForCompletedKey(key: String): String {
+            if (!key.startsWith("session:")) {
+                return ""
+            }
+            val taskSuffix = key.substring("session:".length)
+            val separator = taskSuffix.indexOf(':')
+            return if (separator < 0) taskSuffix else taskSuffix.substring(0, separator)
+        }
+
+        private fun isWritingTaskType(taskType: String): Boolean {
+            return taskType == StudyTaskTypes.WRITE_KANJI ||
+                taskType == "targeted_writing" ||
+                taskType == "context_writing" ||
+                taskType == "guided_writing" ||
+                taskType == "blind_writing" ||
+                taskType == "sampled_handwriting" ||
+                taskType == "repair_writing"
         }
 
         private fun safeKanji(kanji: String?): String {

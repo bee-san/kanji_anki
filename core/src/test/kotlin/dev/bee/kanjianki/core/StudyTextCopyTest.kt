@@ -48,6 +48,23 @@ class StudyTextCopyLocaleLabelsTest {
         assertEquals("Again saved", StudyTextCopy.reviewUndoMessage("mystery"))
     }
 
+    @Test
+    fun studyCopySummarizesCompletedTaskBreakdown() {
+        val breakdown = StudySessionProgressTracker.CompletedTaskBreakdown(
+            writingChecks = 2,
+            similarKanjiChoices = 1,
+            similarKanjiRepairs = 1,
+            wordReadingReviews = 1,
+            otherReviews = 1,
+        )
+
+        assertEquals(
+            "6 tasks completed — 2 writing checks, 1 similar kanji choice, " +
+                "1 similar kanji repair, 1 word reading review, 1 other review",
+            StudyTextCopy.completedTaskBreakdownSummary(breakdown),
+        )
+    }
+
     private fun withLocale(locale: Locale, block: () -> Unit) {
         val previous = Locale.getDefault()
         Locale.setDefault(locale)
