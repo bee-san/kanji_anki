@@ -37,7 +37,7 @@ class RalphValidationTest(unittest.TestCase):
                     "ci_fast_result": {"status": "passed"},
                     "ci_quality_result": {"status": "passed"},
                     "screenshot_result": {"status": "passed", "run_id": 77},
-                    "design_review": {"status": "passed", "passed": True, "accepted_issues": []},
+                    "design_review": self._passing_design_comparison(),
                     "button_review": {
                         "status": "passed",
                         "passed": True,
@@ -156,7 +156,7 @@ class RalphValidationTest(unittest.TestCase):
                     "ci_fast_result": {"status": "passed"},
                     "ci_quality_result": {"status": "passed"},
                     "screenshot_result": {"status": "passed"},
-                    "design_review": {"status": "passed", "passed": True, "accepted_issues": []},
+                    "design_review": self._passing_design_comparison(),
                     "button_review": {
                         "status": "passed",
                         "passed": True,
@@ -237,7 +237,7 @@ class RalphValidationTest(unittest.TestCase):
                     "ci_fast_result": {"status": "passed"},
                     "ci_quality_result": {"status": "passed"},
                     "screenshot_result": {"status": "passed"},
-                    "design_review": {"status": "passed", "passed": True, "accepted_issues": []},
+                    "design_review": self._passing_design_comparison(),
                     "button_review": {
                         "status": "passed",
                         "passed": True,
@@ -302,6 +302,80 @@ class RalphValidationTest(unittest.TestCase):
         self.assertEqual("skipped", self._gate(report, "ci_quality_gate")["status"])
         self.assertEqual("skipped", self._gate(report, "screenshot_availability")["status"])
         self.assertEqual("skipped", self._gate(report, "button_contract_delta_guard")["status"])
+
+    def test_design_comparison_requires_after_better_and_score_delta(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home_file, manifest, contract = self._build_home_ui_fixture(root, with_click_test=True)
+            base_state: dict[str, object] = {
+                "branch": "feature/ralph-validation",
+                "default_branch": "main",
+                "changed_files": [home_file],
+                "dirty_paths": [],
+                "diff_lines": 42,
+                "commits_ahead": 0,
+                "manifest": manifest,
+                "button_contract": contract,
+                "targeted_compose_tests": [{"command": "./gradlew :app:testDebugUnitTest", "status": "passed"}],
+                "ci_fast_result": {"status": "passed"},
+                "ci_quality_result": {"status": "passed"},
+                "screenshot_result": {"status": "passed", "run_id": 77},
+                "button_review": {
+                    "status": "passed",
+                    "passed": True,
+                    "missing_contract_rows": [],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                },
+                "reviewer_result": {"status": "passed", "model": "gpt5.4-codex-mini"},
+                "require_remote_green": False,
+            }
+
+            missing_report = validation.build_validation_report(
+                {**base_state, "design_review": {"status": "passed", "passed": True, "accepted_issues": []}}
+            )
+            low_delta = self._passing_design_comparison()
+            low_delta["score_delta"] = 0.04
+            low_delta["score_after"] = 0.66
+            low_delta_report = validation.build_validation_report(
+                {**base_state, "design_review": low_delta, "min_design_score_delta": 0.10}
+            )
+            not_better = self._passing_design_comparison()
+            not_better["after_better"] = False
+            not_better_report = validation.build_validation_report({**base_state, "design_review": not_better})
+
+        missing_gate = self._gate(missing_report, "design_comparison")
+        low_delta_gate = self._gate(low_delta_report, "design_comparison")
+        not_better_gate = self._gate(not_better_report, "design_comparison")
+        self.assertEqual("failed", missing_gate["status"])
+        self.assertIn("after-better", str(missing_gate["message"]))
+        self.assertEqual("failed", low_delta_gate["status"])
+        self.assertIn("score delta", str(low_delta_gate["message"]))
+        self.assertEqual("failed", not_better_gate["status"])
+        self.assertIn("after screenshot is better", str(not_better_gate["message"]))
+
+    def test_cli_accepts_min_design_score_delta(self) -> None:
+        parser = validation.build_parser()
+        args = parser.parse_args(["--min-design-score-delta", "0.25"])
+        self.assertEqual(0.25, args.min_design_score_delta)
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["--min-design-score-delta", "-0.1"])
+
+    def _passing_design_comparison(self) -> dict[str, object]:
+        return {
+            "schema": "cheap-ralph-design-comparison-v1",
+            "status": "passed",
+            "passed": True,
+            "after_better": True,
+            "score_before": 0.62,
+            "score_after": 0.76,
+            "score_delta": 0.14,
+            "issue_resolved": True,
+            "new_regressions": [],
+            "learning_correctness_risk": False,
+            "rationale": "After screenshot gives the primary action clearer hierarchy without changing study behavior.",
+        }
 
     def _build_home_ui_fixture(self, root: Path, *, with_click_test: bool) -> tuple[str, dict[str, object], dict[str, object]]:
         home_file = root / "app/src/main/kotlin/dev/bee/kanjianki/MainActivityHome.kt"
