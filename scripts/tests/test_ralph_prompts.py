@@ -38,6 +38,18 @@ class RalphPromptsTest(unittest.TestCase):
                 "highest_priority_issue",
                 "do_not_touch",
             },
+            "ralph_design_comparison.md": {
+                "schema",
+                "passed",
+                "after_better",
+                "score_before",
+                "score_after",
+                "score_delta",
+                "issue_resolved",
+                "new_regressions",
+                "learning_correctness_risk",
+                "rationale",
+            },
             "ralph_ui_implementer.md": {
                 "accepted_issue",
                 "changed_files",
