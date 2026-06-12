@@ -62,6 +62,7 @@ data class DailyStudyPlanRequest(
 
 object DailyStudyPlanPolicy {
     private const val DEFAULT_SECONDS_PER_ITEM = 30
+    private const val DEFAULT_DUE_LATER_CLUSTER_WINDOW_MILLIS = 2L * 60L * 60L * 1000L
 
     @JvmStatic
     fun plan(request: DailyStudyPlanRequest?): DailyStudyPlan {
@@ -70,7 +71,7 @@ object DailyStudyPlanPolicy {
         val dueLaterCutoffMillis = dueLaterCutoffMillis(nowMillis, safeRequest.dueLaterLookaheadMillis)
         val dueTimes = safeRequest.dueAtMillis.filter { it > 0L }
         val dueNow = dueTimes.count { it <= nowMillis }
-        val dueLaterTimes = dueTimes.filter { it > nowMillis && it < dueLaterCutoffMillis }
+        val dueLaterTimes = dueTimes.filter { it > nowMillis && it < dueLaterCutoffMillis }.sorted()
         val dueLater = dueLaterTimes.size
         val newProblemKanjiAvailable = safeRequest.newProblemKanjiAvailable.coerceAtLeast(0)
         val streak = safeRequest.streak
@@ -89,10 +90,11 @@ object DailyStudyPlanPolicy {
             syncStatus = syncStatus,
             hasUsefulEvidence = hasUsefulEvidence,
         )
+        val dueLaterCluster = dueLaterCluster(dueLaterTimes, DEFAULT_DUE_LATER_CLUSTER_WINDOW_MILLIS)
         val nextUsefulReminderAtMillis = nextUsefulReminderAtMillis(
             nowMillis = nowMillis,
             recommendedAction = recommendedAction,
-            dueLaterTimes = dueLaterTimes,
+            dueLaterReminderAtMillis = dueLaterCluster.recommendedReminderAtMillis,
         )
         val estimatedMinutes = estimateMinutes(
             dueNow = dueNow,
@@ -118,8 +120,8 @@ object DailyStudyPlanPolicy {
             dueLookahead = DueLookaheadWindow(
                 dueNow = dueNow,
                 dueSoon = dueLater,
-                nextClusterAtMillis = dueLaterTimes.minOrNull() ?: 0L,
-                clusterSize = dueLater,
+                nextClusterAtMillis = dueLaterCluster.nextClusterAtMillis,
+                clusterSize = dueLaterCluster.clusterSize,
                 recommendedReminderAtMillis = nextUsefulReminderAtMillis,
             ),
             syncStatus = syncStatus,
@@ -181,13 +183,13 @@ object DailyStudyPlanPolicy {
     private fun nextUsefulReminderAtMillis(
         nowMillis: Long,
         recommendedAction: RecommendedAction,
-        dueLaterTimes: List<Long>,
+        dueLaterReminderAtMillis: Long,
     ): Long {
         return when (recommendedAction) {
             RecommendedAction.STUDY_NOW,
             RecommendedAction.STUDY_ONCE_FOR_STREAK,
             RecommendedAction.SYNC_FIRST -> nowMillis
-            RecommendedAction.WAIT_UNTIL_LATER -> dueLaterTimes.minOrNull() ?: 0L
+            RecommendedAction.WAIT_UNTIL_LATER -> dueLaterReminderAtMillis.takeIf { it > 0L } ?: 0L
             RecommendedAction.NOTHING_USEFUL_NOW -> 0L
         }
     }
@@ -249,6 +251,23 @@ object DailyStudyPlanPolicy {
             "$count $plural"
         }
     }
+
+    private fun dueLaterCluster(dueLaterTimes: List<Long>, clusterWindowMillis: Long): DueLaterCluster {
+        val nextClusterAtMillis = dueLaterTimes.firstOrNull() ?: return DueLaterCluster(0L, 0, 0L)
+        val clusterEndMillis = nextClusterAtMillis + clusterWindowMillis.coerceAtLeast(0L)
+        val clusterTimes = dueLaterTimes.takeWhile { it <= clusterEndMillis }
+        return DueLaterCluster(
+            nextClusterAtMillis = nextClusterAtMillis,
+            clusterSize = clusterTimes.size,
+            recommendedReminderAtMillis = clusterTimes.lastOrNull() ?: nextClusterAtMillis,
+        )
+    }
+
+    private data class DueLaterCluster(
+        val nextClusterAtMillis: Long,
+        val clusterSize: Int,
+        val recommendedReminderAtMillis: Long,
+    )
 
     private fun dueLaterCutoffMillis(nowMillis: Long, dueLaterLookaheadMillis: Long): Long {
         val localDayEndMillis = LocalDayPolicy.nextLocalDayStart(nowMillis)

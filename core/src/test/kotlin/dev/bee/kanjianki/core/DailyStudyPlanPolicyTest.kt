@@ -43,6 +43,34 @@ class DailyStudyPlanPolicyTest {
     }
 
     @Test
+    fun nearbyDueRepeatsClusterIntoOneUsefulReminder() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 8, 0)
+            val request = DailyStudyPlanRequest(
+                nowMillis = now,
+                dueAtMillis = listOf(
+                    utc(2026, Calendar.MAY, 15, 8, 20),
+                    utc(2026, Calendar.MAY, 15, 8, 45),
+                    utc(2026, Calendar.MAY, 15, 10, 0),
+                    utc(2026, Calendar.MAY, 15, 14, 0),
+                ),
+                lastSuccessfulSyncAtMillis = now - 3_600_000L,
+            )
+
+            val plan = DailyStudyPlanPolicy.plan(request)
+
+            assertEquals(4, plan.dueLater)
+            assertEquals(RecommendedAction.WAIT_UNTIL_LATER, plan.recommendedAction)
+            assertEquals(utc(2026, Calendar.MAY, 15, 10, 0), plan.nextUsefulReminderAtMillis)
+            assertEquals(4, plan.dueLookahead.dueSoon)
+            assertEquals(utc(2026, Calendar.MAY, 15, 8, 20), plan.dueLookahead.nextClusterAtMillis)
+            assertEquals(3, plan.dueLookahead.clusterSize)
+            assertEquals(utc(2026, Calendar.MAY, 15, 10, 0), plan.dueLookahead.recommendedReminderAtMillis)
+            assertEquals(listOf("4 learning repeats later"), plan.reasons)
+        }
+    }
+
+    @Test
     fun studiedTodayWithoutDueWorkIsNothingUsefulNow() {
         withUtcZone {
             val now = utc(2026, Calendar.MAY, 15, 8, 0)
