@@ -9,7 +9,7 @@ object UpdateTextPolicy {
     @JvmStatic
     fun readableMessage(error: Throwable?): String {
         if (error == null) {
-            return "unknown error"
+            return localizedText("unknown error", "不明なエラー")
         }
         val message = error.message
         if (!message.isNullOrBlank()) {
@@ -17,6 +17,50 @@ object UpdateTextPolicy {
         }
         return error::class.java.simpleName
     }
+
+    @JvmStatic
+    fun alreadyOnVersionMessage(version: String): String = localizedText(
+        "Already on $version.",
+        "すでにバージョン $version を使用しています。",
+    )
+
+    @JvmStatic
+    fun updateCheckFailedMessage(reason: String?): String = localizedErrorMessage(
+        "Update check failed",
+        "更新の確認に失敗しました",
+        reason,
+    )
+
+    @JvmStatic
+    fun noVerifiedApkWaitingMessage(): String = localizedText(
+        "No verified APK is waiting to install.",
+        "インストール待ちの確認済みAPKはありません。",
+    )
+
+    @JvmStatic
+    fun verifiedApkCacheMissingMessage(): String = localizedText(
+        "Verified APK cache is missing. Check again to download it.",
+        "確認済みAPKのキャッシュがありません。もう一度確認してダウンロードしてください。",
+    )
+
+    @JvmStatic
+    fun updateInstallFailedMessage(reason: String?): String = localizedErrorMessage(
+        "Update install failed",
+        "更新のインストールに失敗しました",
+        reason,
+    )
+
+    @JvmStatic
+    fun apkVerifiedGrantInstallPermissionMessage(): String = localizedText(
+        "APK verified. Grant install permission to continue.",
+        "APKを確認しました。続行するにはインストール権限を許可してください。",
+    )
+
+    @JvmStatic
+    fun apkVerifiedAndroidInstallerStartedMessage(): String = localizedText(
+        "APK verified. Android installer started.",
+        "APKを確認しました。Androidのインストーラーを起動しました。",
+    )
 
     @JvmStatic
     fun notificationTitle(): String = localizedText(
@@ -59,6 +103,11 @@ object UpdateTextPolicy {
         "Open Kani to install it.",
         "Kaniを開いてインストールします。",
     )
+
+    private fun localizedErrorMessage(englishPrefix: String, japanesePrefix: String, reason: String?): String {
+        val suffix = if (reason.isNullOrBlank()) "" else ": ${reason.trim()}"
+        return localizedText("$englishPrefix$suffix", "$japanesePrefix$suffix")
+    }
 
     private fun localizedText(english: String, japanese: String): String =
         if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english
