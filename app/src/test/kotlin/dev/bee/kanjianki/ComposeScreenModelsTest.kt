@@ -1,8 +1,10 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.ExplanationConfidence
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.SimilarKanjiExplanation
 import dev.bee.kanjianki.data.LocalStoreBase
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
@@ -1457,6 +1459,18 @@ class ComposeScreenModelsTest {
             ),
             helperText = null,
         )
+        val explanation = SimilarKanjiExplanation(
+            targetKanji = "裂",
+            confusedWith = listOf("列", "烈"),
+            sharedComponents = listOf("⿰"),
+            differingComponents = listOf("歹", "衣"),
+            meaningClues = listOf("裂: split", "列: row"),
+            readingClues = listOf("裂: れつ", "列: れつ"),
+            failedSourceWords = listOf("source one", "source two"),
+            watchThisPart = "Watch how 裂 differs from 列 and 烈.",
+            confidence = ExplanationConfidence.HIGH,
+        )
+        val explanationLines = similarKanjiExplanationLines(explanation)
         val similar = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
             title = "Choose the kanji",
@@ -1465,6 +1479,7 @@ class ComposeScreenModelsTest {
             reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = grid,
+            explanationLines = explanationLines,
         )
         val meaning = MeaningChoiceSessionModel(
             modeLabel = "Recall",
@@ -1488,6 +1503,19 @@ class ComposeScreenModelsTest {
         assertEquals("Weak Anki evidence", similar.reasonLine)
         assertEquals("Which kanji means split?", similar.question)
         assertSame(grid, similar.gridModel)
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("Pair", "裂 vs 列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
+                SimilarKanjiExplanationLineModel("Meaning clues", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("Reading clues", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("Shared components", "⿰"),
+                SimilarKanjiExplanationLineModel("Different components", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列 and 烈.", true),
+            ),
+            explanationLines,
+        )
+        assertEquals(explanationLines, similar.explanationLines)
         assertEquals("Recall", meaning.modeLabel)
         assertEquals("meaning -> kanji", meaning.taskLabel)
         assertEquals(listOf("裂", "列", "烈", "劣"), meaning.choices)
