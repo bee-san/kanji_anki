@@ -12,14 +12,23 @@ class WritingFeedbackCopyTest {
         val emptyGuide = StrokeGuide("裂", emptyList())
         val guide = guide()
 
-        assertTrue(WritingFeedbackCopy.guideLabel(3, emptyGuide).startsWith("Write from memory"))
-        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"))
-        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("Draw it"))
-        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide))
-        assertEquals("Copy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide))
-        assertEquals("Write with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide))
-        assertEquals("Write from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide))
-        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(null, guide))
+        assertEquals(
+            "Help level: Blind\nWrite from memory; stroke-order feedback will be limited.",
+            WritingFeedbackCopy.guideLabel(3, emptyGuide)
+        )
+        assertEquals(
+            "Help level: Blind\nWrite from memory; stroke-order feedback will be limited.",
+            WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), emptyGuide)
+        )
+        assertEquals(
+            "Help level: Trace\nDraw it, then check. Stroke-order feedback will be limited.",
+            WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide)
+        )
+        assertEquals("Help level: Trace\nTrace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide))
+        assertEquals("Help level: Outline\nCopy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide))
+        assertEquals("Help level: Minimal\nWrite with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide))
+        assertEquals("Help level: Blind\nWrite from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide))
+        assertEquals("Help level: Trace\nTrace the strokes, then check.", WritingFeedbackCopy.guideLabel(null, guide))
     }
 
     @Test
@@ -212,7 +221,7 @@ class WritingFeedbackCopyTest {
 
     @Test
     fun japaneseLocaleLocalizesWritingFeedbackCopy() = withDefaultLocale(Locale.JAPANESE) {
-        assertEquals("なぞってから確認しましょう。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
+        assertEquals("ヒント段階: なぞる\nなぞってから確認しましょう。", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
         assertEquals("最小ヒント", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
         assertEquals("\nお題: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), "裂"))
         assertEquals("確認中...", WritingFeedbackCopy.checkWritingButtonText(true, false))
@@ -372,7 +381,7 @@ class WritingFeedbackCopyTest {
 
     @Test
     fun nonJapaneseLocaleKeepsEnglishWritingFeedbackCopy() = withDefaultLocale(Locale.CANADA) {
-        assertEquals("Trace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
+        assertEquals("Help level: Trace\nTrace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide()))
         assertEquals("Minimal", WritingFeedbackCopy.stageLabel(HintLevel.MINIMAL))
         assertEquals("\nTarget: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), "裂"))
         assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, false))

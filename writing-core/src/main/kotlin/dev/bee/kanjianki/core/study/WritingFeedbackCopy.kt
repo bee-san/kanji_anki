@@ -18,36 +18,39 @@ class WritingFeedbackCopy private constructor() {
         fun guideLabel(state: HintState?, guide: StrokeGuide?): String {
             val level = state?.level() ?: HintLevel.TRACE
             val hasGuide = guide != null && !guide.isEmpty()
-            if (!hasGuide) {
+            val message = if (!hasGuide) {
                 if (level == HintLevel.BLIND) {
-                    return localizedText(
-                        "Write from memory, then check. No stroke guide is bundled yet.",
-                        "記憶で書いてから確認しましょう。筆順ガイドはまだ含まれていません。"
+                    localizedText(
+                        "Write from memory; stroke-order feedback will be limited.",
+                        "記憶で書きましょう。筆順フィードバックは限定されます。"
+                    )
+                } else {
+                    localizedText(
+                        "Draw it, then check. Stroke-order feedback will be limited.",
+                        "書いてから確認しましょう。筆順フィードバックは限定されます。"
                     )
                 }
-                return localizedText(
-                    "Draw it, then check. Stroke-order feedback will be limited.",
-                    "書いてから確認しましょう。筆順フィードバックは限定されます。"
-                )
+            } else {
+                when (level) {
+                    HintLevel.TRACE -> localizedText(
+                        "Trace the strokes, then check.",
+                        "なぞってから確認しましょう。"
+                    )
+                    HintLevel.OUTLINE -> localizedText(
+                        "Copy the faint outline; the current stroke is emphasized.",
+                        "薄い輪郭を写しましょう。現在の一画が強調されています。"
+                    )
+                    HintLevel.MINIMAL -> localizedText(
+                        "Write with only the current stroke hinted, then check.",
+                        "現在の一画だけをヒントに書いてから確認しましょう。"
+                    )
+                    HintLevel.BLIND -> localizedText(
+                        "Write from memory, then check. Use Hint if you are stuck.",
+                        "記憶で書いてから確認しましょう。迷ったらヒントを使ってください。"
+                    )
+                }
             }
-            return when (level) {
-                HintLevel.TRACE -> localizedText(
-                    "Trace the strokes, then check.",
-                    "なぞってから確認しましょう。"
-                )
-                HintLevel.OUTLINE -> localizedText(
-                    "Copy the faint outline; the current stroke is emphasized.",
-                    "薄い輪郭を写しましょう。現在の一画が強調されています。"
-                )
-                HintLevel.MINIMAL -> localizedText(
-                    "Write with only the current stroke hinted, then check.",
-                    "現在の一画だけをヒントに書いてから確認しましょう。"
-                )
-                HintLevel.BLIND -> localizedText(
-                    "Write from memory, then check. Use Hint if you are stuck.",
-                    "記憶で書いてから確認しましょう。迷ったらヒントを使ってください。"
-                )
-            }
+            return withHelpStage(level, message)
         }
 
         @JvmStatic
@@ -97,6 +100,12 @@ class WritingFeedbackCopy private constructor() {
                 HintLevel.MINIMAL -> localizedText("Minimal", "最小ヒント")
                 HintLevel.BLIND -> localizedText("Blind", "暗記")
             }
+        }
+
+        private fun withHelpStage(level: HintLevel, message: String): String {
+            val stage = stageLabel(level)
+            val prefix = localizedText("Help level: $stage", "ヒント段階: $stage")
+            return "$prefix\n$message"
         }
 
         @JvmStatic
