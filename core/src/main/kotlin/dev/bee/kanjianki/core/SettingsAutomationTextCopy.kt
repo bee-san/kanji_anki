@@ -4,6 +4,7 @@ import java.util.Locale
 
 object SettingsAutomationTextCopy {
     private const val JAPANESE_LANGUAGE = "ja"
+    private const val AUTO_UPDATE_DEFAULT_LAST_RESULT = "No automatic update check has run yet."
 
     @JvmStatic
     fun settingsReminderSummary(enabled: Boolean, blocked: Boolean, displayTime: String?): String? {
@@ -69,7 +70,10 @@ object SettingsAutomationTextCopy {
 
     @JvmStatic
     fun autoUpdateLastResultLine(lastResult: String?): String {
-        return localizedText("Last result: ", "最終結果: ") + displayValue(lastResult, localizedText("not yet", "まだ"))
+        return localizedText("Last result: ", "最終結果: ") + displayValue(
+            localizedAutoUpdateResultText(lastResult),
+            localizedText("not yet", "まだ"),
+        )
     }
 
     @JvmStatic
@@ -264,6 +268,17 @@ object SettingsAutomationTextCopy {
         val text = value?.javaTrim()
         if (text == null || text.isEmpty()) {
             return fallback
+        }
+        return text
+    }
+
+    private fun localizedAutoUpdateResultText(value: String?): String? {
+        val text = value?.javaTrim()
+        if (text == null || text.isEmpty()) {
+            return null
+        }
+        if (isJapaneseLocale() && text == AUTO_UPDATE_DEFAULT_LAST_RESULT) {
+            return null
         }
         return text
     }

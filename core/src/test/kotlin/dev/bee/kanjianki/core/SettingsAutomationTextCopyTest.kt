@@ -24,6 +24,10 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Last check: not yet", SettingsAutomationTextCopy.autoUpdateLastCheckLine("  "))
         assertEquals("Last result: none", SettingsAutomationTextCopy.autoUpdateLastResultLine("none"))
         assertEquals("Last result: not yet", SettingsAutomationTextCopy.autoUpdateLastResultLine(null))
+        assertEquals(
+            "Last result: No automatic update check has run yet.",
+            SettingsAutomationTextCopy.autoUpdateLastResultLine("No automatic update check has run yet."),
+        )
         assertEquals("App installs allowed", SettingsAutomationTextCopy.installPermissionLine(true))
         assertEquals("Allow app installs first", SettingsAutomationTextCopy.installPermissionLine(false))
         assertEquals("Ready to install: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
@@ -94,6 +98,7 @@ class SettingsAutomationTextCopyTest {
             assertEquals("オフ", SettingsAutomationTextCopy.autoUpdatePanelStatus(false))
             assertEquals("最終確認: まだ", SettingsAutomationTextCopy.autoUpdateLastCheckLine(null))
             assertEquals("最終結果: なし", SettingsAutomationTextCopy.autoUpdateLastResultLine("なし"))
+            assertEquals("最終結果: まだ", SettingsAutomationTextCopy.autoUpdateLastResultLine("No automatic update check has run yet."))
             assertEquals("アプリのインストールを許可済み", SettingsAutomationTextCopy.installPermissionLine(true))
             assertEquals("先にアプリのインストールを許可してください", SettingsAutomationTextCopy.installPermissionLine(false))
             assertEquals("インストール準備完了: 0.4.33", SettingsAutomationTextCopy.verifiedApkReadyLine("v0.4.33"))
