@@ -170,6 +170,30 @@ class WritingFeedbackCopy private constructor() {
         }
 
         @JvmStatic
+        fun checkerDownloadStatus(guidePrefix: String?): String {
+            return appendStatus(
+                guidePrefix,
+                localizedText(
+                    "Downloading handwriting checker...",
+                    "手書き判定器をダウンロードしています..."
+                )
+            )
+        }
+
+        @JvmStatic
+        fun checkerDownloadFailedStatus(guidePrefix: String?, errorMessage: String?): String {
+            val safeError = errorMessage?.takeIf { it.isNotBlank() }
+                ?: localizedText("an unknown error", "不明なエラー")
+            return appendStatus(
+                guidePrefix,
+                localizedText(
+                    "Handwriting checker download failed: $safeError",
+                    "手書き判定器のダウンロードに失敗しました: $safeError"
+                )
+            )
+        }
+
+        @JvmStatic
         fun hintButtonText(currentPracticeLevel: Int): String {
             return if (currentPracticeLevel == 3) {
                 localizedText("Hint", "ヒント")

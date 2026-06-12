@@ -204,6 +204,22 @@ class WritingFeedbackCopyTest {
     }
 
     @Test
+    fun checkerDownloadStatusPreservesGuidePrefixedHintStage() {
+        assertEquals(
+            "Guide\nDownloading handwriting checker...",
+            WritingFeedbackCopy.checkerDownloadStatus("Guide")
+        )
+        assertEquals(
+            "Guide\nHandwriting checker download failed: boom",
+            WritingFeedbackCopy.checkerDownloadFailedStatus("Guide", "boom")
+        )
+        assertEquals(
+            "Handwriting checker download failed: an unknown error",
+            WritingFeedbackCopy.checkerDownloadFailedStatus("", "")
+        )
+    }
+
+    @Test
     fun blockedStrokeStatusUsesDecisionMessageOrFallback() {
         assertEquals(
             "Guide\nStay close to the guide.",
@@ -226,6 +242,14 @@ class WritingFeedbackCopyTest {
         assertEquals("\nお題: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), "裂"))
         assertEquals("確認中...", WritingFeedbackCopy.checkWritingButtonText(true, false))
         assertEquals("チェッカーをダウンロード", WritingFeedbackCopy.downloadCheckerLabel())
+        assertEquals(
+            "手本\n手書き判定器をダウンロードしています...",
+            WritingFeedbackCopy.checkerDownloadStatus("手本")
+        )
+        assertEquals(
+            "手本\n手書き判定器のダウンロードに失敗しました: 不明なエラー",
+            WritingFeedbackCopy.checkerDownloadFailedStatus("手本", "")
+        )
         assertEquals("ヒント", WritingFeedbackCopy.hintButtonText(3))
         assertEquals("もっとヒント", WritingFeedbackCopy.hintButtonText(1))
         assertEquals("不合格", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)))
