@@ -130,12 +130,17 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
             similarKanjiExplanationLines(explanation),
         )
-        home.renderComposeStudyRoute {
-            SimilarChoiceSessionCard(
-                model = model,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-            )
-        }
+        home.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
+            content = {
+                SimilarChoiceSessionCard(
+                    model = model,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                    showInlineChoices = false,
+                )
+            },
+            actionBar = { SimilarChoiceActionBar(model.gridModel) },
+        )
     }
 
     fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard {
