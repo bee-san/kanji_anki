@@ -137,6 +137,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             activity.studySessionTracker::recordReviewOutcome,
             activity::markStudyRunPassed
         )
+        activity.studyUndoState.capture(
+            StudyReviewActions.AppliedReviewSnapshot(request.token, item, result.item),
+            result.appliedRating,
+            now,
+        )
         ReminderScheduler.schedule(activity)
     }
 }
