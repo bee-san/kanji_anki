@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -18,10 +19,40 @@ import kotlin.math.roundToInt
 
 private const val SIMILAR_KANJI_LABEL = "Similar kanji"
 
+internal interface ProgressAnalyticsStatsSource {
+    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
+    fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
+}
+
 internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
-    val snapshot = store.cachedStatsSnapshotOrNull() ?: store.recomputeStatsSnapshotSynchronously(nowMillis)
-    val reviewDays30 = store.reviewDaySummaries(nowMillis, 30)
-    val reviewDays14 = store.reviewDaySummaries(nowMillis, 14)
+    return progressAnalyticsSnapshot(
+        source = object : ProgressAnalyticsStatsSource {
+            override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                return store.cachedStatsSnapshotOrNull()
+            }
+
+            override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+                return store.latestStatsSnapshotOrNull()
+            }
+
+            override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+                return store.recomputeStatsSnapshotSynchronously(nowMillis)
+            }
+
+            override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
+                return store.reviewDaySummaries(nowMillis, days)
+            }
+        },
+        nowMillis = nowMillis,
+    )
+}
+
+internal fun progressAnalyticsSnapshot(source: ProgressAnalyticsStatsSource, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
+    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    val reviewDays30 = source.reviewDaySummaries(nowMillis, 30)
+    val reviewDays14 = source.reviewDaySummaries(nowMillis, 14)
     val reviewDays7 = reviewDays14.takeLast(7)
     val reviewDays7Prev = reviewDays14.take(7)
     val reviewBuckets30 = bucketSummaries(reviewDays30, 6)
@@ -245,7 +276,7 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
     ))
 }
 
-private data class ReviewDaySummary(
+internal data class ReviewDaySummary(
     val dayStart: Long,
     val total: Int,
     val again: Int,
