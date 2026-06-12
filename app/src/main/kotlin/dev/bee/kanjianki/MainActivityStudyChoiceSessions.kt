@@ -11,7 +11,20 @@ import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
+import java.util.LinkedHashSet
 import java.util.Random
+
+internal fun similarKanjiExplanationSourceWords(session: RecordsSchedulerModels.StudySession?): List<String> {
+    val examples = session?.row?.examples ?: return emptyList()
+    val out = LinkedHashSet<String>()
+    for (example in examples) {
+        val expression = example.expression.trim()
+        if (expression.isNotEmpty()) {
+            out.add(expression)
+        }
+    }
+    return ArrayList(out)
+}
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
     private val meaningKanjiChoicePlanner = MeaningKanjiChoicePlanner()
@@ -102,7 +115,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             choiceCard.targetKanji,
             home.store.searchKanjiInventory(""),
             home.store.similarPairsForKanji(choiceCard.targetKanji),
-            emptyList(),
+            similarKanjiExplanationSourceWords(session),
         )
         val model = SimilarChoiceSessionModel(
             StudyTaskCopy.studyModeLabel(session),
