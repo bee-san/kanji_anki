@@ -1,11 +1,15 @@
 package dev.bee.kanjianki.update
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.pm.PackageInstaller
+import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator
 import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector
+import dev.bee.kanjianki.updatecore.UpdateTextPolicy
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -25,13 +29,31 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class GitHubUpdaterTest {
+    private val context: Context = ApplicationProvider.getApplicationContext()
+
+    @Before
+    fun setUp() {
+        context.deleteDatabase("kanji_anki_simple.db")
+    }
+
+    @After
+    fun tearDown() {
+        context.deleteDatabase("kanji_anki_simple.db")
+    }
     @Test
     fun readableMessageFallsBackToExceptionClassWhenMessageIsNull() {
         assertEquals("RuntimeException", GitHubUpdater.readableMessage(RuntimeException()))
@@ -40,6 +62,31 @@ class GitHubUpdaterTest {
     @Test
     fun readableMessageKeepsSpecificExceptionMessage() {
         assertEquals("HTTP 403", GitHubUpdater.readableMessage(RuntimeException("HTTP 403")))
+    }
+
+    @Test
+    fun checkDownloadAndInstallReportsAlreadyOnVersionWhenReleaseMatches() {
+        context.deleteDatabase("kanji_anki_simple.db")
+        val updater = GitHubUpdater(context, clientReturningText("{\"tag_name\":\"${BuildConfig.VERSION_NAME}\"}"))
+
+        val result = updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertFalse(result.success)
+        assertEquals(UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME), result.message)
+    }
+
+    @Test
+    fun checkDownloadAndInstallReportsLocalizedFailureWhenFetchingReleaseFails() {
+        context.deleteDatabase("kanji_anki_simple.db")
+        val updater = GitHubUpdater(context, failingTextClient(IOException("network down")))
+
+        val result = updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertFalse(result.success)
+        assertEquals(
+            UpdateTextPolicy.updateCheckFailedMessage("network down"),
+            result.message,
+        )
     }
 
     @Test
@@ -405,6 +452,62 @@ class GitHubUpdaterTest {
     private fun invokeSafeFileName(name: String?): String = GitHubUpdater.safeFileName(name)
 
     private fun invokeSha256(file: File): String = GitHubUpdater.sha256(file)
+
+    private fun clientReturningText(text: String): GitHubUpdater.UpdateClient {
+        return object : GitHubUpdater.UpdateClient {
+            override fun getText(url: String): String = text
+
+            override fun download(url: String, file: File) {
+                error("download should not be called")
+            }
+
+            override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata {
+                error("inspectApk should not be called")
+            }
+
+            override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
+
+            override fun startPackageInstaller(
+                apkFile: File,
+                version: String,
+                source: GitHubUpdater.UpdateSource,
+                targetSdkVersion: Int,
+            ) {
+                error("startPackageInstaller should not be called")
+            }
+
+            override fun showPendingUpdate(version: String, message: String): Boolean =
+                error("showPendingUpdate should not be called")
+        }
+    }
+
+    private fun failingTextClient(ioError: IOException): GitHubUpdater.UpdateClient {
+        return object : GitHubUpdater.UpdateClient {
+            override fun getText(url: String): String = throw ioError
+
+            override fun download(url: String, file: File) {
+                error("download should not be called")
+            }
+
+            override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata {
+                error("inspectApk should not be called")
+            }
+
+            override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
+
+            override fun startPackageInstaller(
+                apkFile: File,
+                version: String,
+                source: GitHubUpdater.UpdateSource,
+                targetSdkVersion: Int,
+            ) {
+                error("startPackageInstaller should not be called")
+            }
+
+            override fun showPendingUpdate(version: String, message: String): Boolean =
+                error("showPendingUpdate should not be called")
+        }
+    }
 
     private fun assertThrowsIOException(connection: HttpURLConnection): IOException {
         try {
