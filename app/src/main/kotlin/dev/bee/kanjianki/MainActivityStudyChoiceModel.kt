@@ -1,6 +1,9 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.SimilarKanjiExplanation
+import java.util.Locale
+
+private const val JAPANESE_LANGUAGE = "ja"
 
 fun interface KanjiChoiceHandler {
     fun onChoice(glyph: String)
@@ -56,21 +59,33 @@ data class SimilarKanjiExplanationLineModel(
 internal fun similarKanjiExplanationLines(explanation: SimilarKanjiExplanation): List<SimilarKanjiExplanationLineModel> {
     val out = ArrayList<SimilarKanjiExplanationLineModel>()
     if (explanation.confusedWith.isNotEmpty()) {
-        val pairValue = if (explanation.targetKanji.isNotEmpty()) {
-            "${explanation.targetKanji} vs ${explanation.confusedWith.joinToString(" / ")}"
-        } else {
-            explanation.confusedWith.joinToString(" / ")
-        }
-        out.add(SimilarKanjiExplanationLineModel("Pair", pairValue, true))
+        out.add(SimilarKanjiExplanationLineModel(localizedText("Pair", "ペア"), similarPairValue(explanation), true))
     }
-    addJoinedLine(out, "Source words", explanation.failedSourceWords, false)
-    addJoinedLine(out, "Meaning clues", explanation.meaningClues, false)
-    addJoinedLine(out, "Reading clues", explanation.readingClues, false)
-    addJoinedLine(out, "Shared components", explanation.sharedComponents, false)
-    addJoinedLine(out, "Different components", explanation.differingComponents, false)
-    out.add(SimilarKanjiExplanationLineModel("Watch", explanation.watchThisPart, true))
+    addJoinedLine(out, localizedText("Source words", "出典語"), explanation.failedSourceWords, false)
+    addJoinedLine(out, localizedText("Meaning clues", "意味の手がかり"), explanation.meaningClues, false)
+    addJoinedLine(out, localizedText("Reading clues", "読みの手がかり"), explanation.readingClues, false)
+    addJoinedLine(out, localizedText("Shared components", "共通部品"), explanation.sharedComponents, false)
+    addJoinedLine(out, localizedText("Different components", "異なる部品"), explanation.differingComponents, false)
+    out.add(SimilarKanjiExplanationLineModel(localizedText("Watch", "注目"), explanation.watchThisPart, true))
     return out
 }
+
+private fun similarPairValue(explanation: SimilarKanjiExplanation): String {
+    val separator = if (isJapaneseLocale()) "・" else " / "
+    val confused = explanation.confusedWith.joinToString(separator)
+    if (explanation.targetKanji.isEmpty()) {
+        return confused
+    }
+    return if (isJapaneseLocale()) {
+        "${explanation.targetKanji}と$confused"
+    } else {
+        "${explanation.targetKanji} vs $confused"
+    }
+}
+
+private fun localizedText(english: String, japanese: String): String = if (isJapaneseLocale()) japanese else english
+
+private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
 private fun addJoinedLine(
     out: MutableList<SimilarKanjiExplanationLineModel>,
