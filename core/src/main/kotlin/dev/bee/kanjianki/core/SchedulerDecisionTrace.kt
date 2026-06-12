@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import java.util.ArrayList
 import java.util.Collections
+import java.util.Locale
 
 class SchedulerDecisionTrace(
     operation: String?,
@@ -68,18 +69,26 @@ class SchedulerTracedReviewResult(
 )
 
 object SchedulerTraceFormatter {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun userExplanation(trace: SchedulerDecisionTrace?): String {
         if (trace == null) {
-            return "No scheduler trace is available."
+            return localizedText("No scheduler trace is available.", "スケジューラーの記録はありません。")
         }
         trace.selected?.let { selected ->
+            if (isJapaneseLocale()) {
+                return "${selected.kanji}を${selected.taskType}用に選びました（${selected.phase.wireName()}）。"
+            }
             return "Selected ${selected.kanji} for ${selected.taskType} (${selected.phase.wireName()})."
         }
         trace.transition?.let { transition ->
+            if (isJapaneseLocale()) {
+                return "${transition.rating}を適用: ${transition.beforeRung.wireName()} → ${transition.afterRung.wireName()}。"
+            }
             return "Applied ${transition.rating}: ${transition.beforeRung.wireName()} -> ${transition.afterRung.wireName()}."
         }
-        return "No study card is ready."
+        return localizedText("No study card is ready.", "学習できるカードはありません。")
     }
 
     @JvmStatic
@@ -104,4 +113,9 @@ object SchedulerTraceFormatter {
         }
         return parts.joinToString("; ")
     }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }
