@@ -8,8 +8,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
+
+object StudyUndoBannerTestTags {
+    const val BANNER = "study-undo-banner"
+}
 
 @Composable
 internal fun StudyUndoBanner(
@@ -18,7 +23,9 @@ internal fun StudyUndoBanner(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(StudyUndoBannerTestTags.BANNER),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
