@@ -317,8 +317,12 @@ class WritingFeedbackCopyTest {
             "きれいに一致しました。" +
                 "\n1画目: 向きが違うかもしれません" +
                 "\n2画目: 抜けているかもしれません" +
-                "\n3画目: 形が崩れているようです" +
-                "\nStroke 4: unknown label" +
+                "\n3画目: 余分な一画かもしれません" +
+                "\n4画目: 部品のバランスや形を見直しましょう" +
+                "\n5画目: 手本から離れすぎています" +
+                "\n別の漢字に見えます。似ている部分を比べましょう" +
+                "\n合格範囲ですが、線が乱れています" +
+                "\nStroke 6: unknown label" +
                 "\nUnmapped diagnosis",
             WritingFeedbackCopy.resultMessage(
                 analysisWithMessage("Clean match."),
@@ -327,8 +331,12 @@ class WritingFeedbackCopyTest {
                 false,
                 "Stroke 1: likely wrong direction" +
                     "\nStroke 2: may be missing" +
-                    "\nStroke 3: shape looks rough" +
-                    "\nStroke 4: unknown label" +
+                    "\nStroke 3: may be extra" +
+                    "\nStroke 4: component proportion or shape looks rough" +
+                    "\nStroke 5: too far from the guide" +
+                    "\nIt looked like a different kanji; compare the similar parts" +
+                    "\nGood enough, but the stroke path was messy" +
+                    "\nStroke 6: unknown label" +
                     "\nUnmapped diagnosis"
             )
         )

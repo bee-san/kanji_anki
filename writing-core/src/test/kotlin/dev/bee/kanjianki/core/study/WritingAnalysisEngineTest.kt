@@ -47,6 +47,22 @@ class WritingAnalysisEngineTest {
     }
 
     @Test
+    fun wrongSingleKanjiCandidateAddsTutorOnlyConfusionDiagnosis() {
+        val analysis = WritingAnalysisEngine.analyze(
+            "拉",
+            sample(),
+            guide(),
+            listOf(RecognitionCandidate("提", 0.99f)),
+        )
+
+        assertFalse(analysis.writingPassed)
+        assertEquals(WritingAnalysis.Status.WRONG, analysis.status)
+        assertEquals("again", analysis.rating)
+        assertTrue(analysis.strokeOrder!!.diagnosis.hasLabel(StrokeDiagnosis.Label.CONFUSED_WITH_SIMILAR_KANJI))
+        assertEquals(StudyRating.AGAIN, WritingRatingMapper().applyRequestedRating(StudyRating.EASY, true, analysis, false))
+    }
+
+    @Test
     fun missingStrokeGuideStillPassesRecognitionOnlyMatch() {
         val analysis = WritingAnalysisEngine.analyze(
             "鿃",
