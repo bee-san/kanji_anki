@@ -38,6 +38,14 @@ fun WritingPromptHeader(model: WritingPromptHeaderModel) {
             color = MainActivityUiSupport.STUDY_PINK_DARK,
             bold = true
         )
+        if (model.reasonLine.isNotBlank()) {
+            WritingPromptText(
+                text = model.reasonLine,
+                sizeSp = 14,
+                color = MainActivityUiSupport.STUDY_MUTED,
+                bold = false
+            )
+        }
         model.detailLines.forEach { line ->
             WritingPromptText(
                 text = line.text,
