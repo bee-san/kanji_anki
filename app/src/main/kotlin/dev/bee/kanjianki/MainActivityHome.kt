@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
+import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -81,6 +82,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             ).rows()
         }
         val homeItems = studyItems
+        val dailyPlan = dailyStudyPlan(rows, homeItems, now)
         val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
         val entries = if (rows.isEmpty()) {
             emptyList()
@@ -94,6 +96,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, sync, provider, streak, homePlan),
+            todayPlan = homeTodayPlanModel(dailyPlan, this::startFocusedStudy, this::confirmSync),
             deckOverviewRows = deckOverviewRows,
             showSyncCta = rows.isEmpty(),
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
@@ -143,6 +146,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
             metrics = homeMetricModels(this, null, provider, null, null),
+            todayPlan = homeTodayPlanModel(DailyStudyPlanPolicy.plan(null), this::startFocusedStudy, this::confirmSync),
             deckOverviewRows = emptyList(),
             showSyncCta = true,
             syncLabel = HomeTextCopy.syncAnkiDroidLabel(),

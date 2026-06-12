@@ -16,6 +16,10 @@ fun HomeScreen(model: HomeScreenModel) {
         HomeHeader(title = model.title, subtitle = model.subtitle)
         Spacer(modifier = Modifier.height(12.dp))
         HomeMetricRow(metrics = model.metrics)
+        if (model.todayPlan.summary.isNotBlank() || model.todayPlan.details.isNotEmpty() || model.todayPlan.actionLabel != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            HomeTodayPlanCard(model.todayPlan)
+        }
         if (model.deckOverviewRows.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             HomeDeckOverview(model.deckOverviewRows)

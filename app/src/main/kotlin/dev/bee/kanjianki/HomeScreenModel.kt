@@ -4,6 +4,7 @@ data class HomeScreenModel(
     val title: String,
     val subtitle: String,
     val metrics: List<HomeMetricModel>,
+    val todayPlan: HomeTodayPlanModel,
     val deckOverviewRows: List<String>,
     val showSyncCta: Boolean,
     val syncLabel: String,

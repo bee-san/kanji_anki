@@ -217,6 +217,7 @@ class ComposeScreenModelsTest {
             title = "Kani",
             subtitle = "Repair weak kanji",
             metrics = listOf(metric),
+            todayPlan = HomeTodayPlanModel("Today", "Nothing useful now", emptyList()),
             deckOverviewRows = listOf("Due 2", "New 1"),
             showSyncCta = true,
             syncLabel = "Sync",
@@ -235,6 +236,8 @@ class ComposeScreenModelsTest {
         assertEquals("Kani", model.title)
         assertEquals("Repair weak kanji", model.subtitle)
         assertEquals(listOf(metric), model.metrics)
+        assertEquals("Today", model.todayPlan.title)
+        assertEquals("Nothing useful now", model.todayPlan.summary)
         assertEquals(listOf("Due 2", "New 1"), model.deckOverviewRows)
         assertEquals(true, model.showSyncCta)
         assertEquals("Sync", model.syncLabel)
