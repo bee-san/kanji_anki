@@ -97,7 +97,7 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
-    fun progressRouteCacheMissFallsBackToDirectRecomputeButStillQueriesLiveReviewWindows() {
+    fun progressRouteCacheMissUsesLatestCacheBeforeDirectRecomputeAndStillQueriesLiveReviewWindows() {
         val now = 55_555L
         val source = GuardedProgressAnalyticsStatsSource(
             latest = snapshot(sourceVersion = 8L),
@@ -109,8 +109,8 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(now, state.generatedAtMillis)
         assertEquals("Stats overview", state.overview.title)
         assertEquals(1, source.freshReads)
-        assertEquals(0, source.latestReads)
-        assertEquals(1, source.directRecomputes)
+        assertEquals(1, source.latestReads)
+        assertEquals(0, source.directRecomputes)
         assertEquals(listOf(30, 14), source.reviewDayRequests)
     }
 
