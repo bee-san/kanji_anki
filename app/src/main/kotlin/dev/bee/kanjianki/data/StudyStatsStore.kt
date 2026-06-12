@@ -41,6 +41,10 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         return queries.kanjiRepairEvidenceInputs().map { repairEvidence(KanjiRepairEvidencePolicy.summarize(it)) }
     }
 
+    fun kanjiRepairEvidenceCohortStats(): RepairEvidenceCohortStats {
+        return repairEvidenceCohortStats(kanjiRepairEvidence())
+    }
+
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         return queries.reviewStatsSince(sinceMillis)
     }
@@ -348,6 +352,92 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
 
     }
 
+    class RepairEvidenceCohortStats(
+        @JvmField val totalCount: Int,
+        @JvmField val improvingCount: Int,
+        @JvmField val stableCount: Int,
+        @JvmField val regressingCount: Int,
+        @JvmField val insufficientEvidenceCount: Int,
+        @JvmField val highConfidenceCount: Int,
+        @JvmField val mediumConfidenceCount: Int,
+        @JvmField val lowConfidenceCount: Int,
+        @JvmField val examples: List<KanjiRepairEvidence>,
+    ) {
+        companion object {
+            private const val HIGH_CONFIDENCE_THRESHOLD = 0.75
+            private const val LOW_CONFIDENCE_THRESHOLD = 0.50
+
+            @JvmStatic
+            fun empty(): RepairEvidenceCohortStats {
+                return RepairEvidenceCohortStats(0, 0, 0, 0, 0, 0, 0, 0, emptyList())
+            }
+
+            @JvmStatic
+            fun from(evidence: List<KanjiRepairEvidence?>?): RepairEvidenceCohortStats {
+                val safeEvidence: MutableList<KanjiRepairEvidence> = ArrayList()
+                for (item in evidence.orEmpty()) {
+                    if (item != null) {
+                        safeEvidence.add(item)
+                    }
+                }
+                if (safeEvidence.isEmpty()) {
+                    return empty()
+                }
+
+                val sortedExamples = safeEvidence.sortedWith(
+                    compareBy<KanjiRepairEvidence> { statusPriority(it.status) }
+                        .thenBy { if (it.status == KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE) it.reason else "" }
+                        .thenByDescending { it.confidence }
+                        .thenBy { it.kanji }
+                )
+
+                var improvingCount = 0
+                var stableCount = 0
+                var regressingCount = 0
+                var insufficientEvidenceCount = 0
+                var highConfidenceCount = 0
+                var lowConfidenceCount = 0
+
+                for (item in safeEvidence) {
+                    when (item.status) {
+                        KanjiRepairEvidencePolicy.Status.IMPROVING -> improvingCount += 1
+                        KanjiRepairEvidencePolicy.Status.STABLE -> stableCount += 1
+                        KanjiRepairEvidencePolicy.Status.REGRESSING -> regressingCount += 1
+                        KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE -> insufficientEvidenceCount += 1
+                    }
+                    when {
+                        item.confidence >= HIGH_CONFIDENCE_THRESHOLD -> highConfidenceCount += 1
+                        item.confidence < LOW_CONFIDENCE_THRESHOLD -> lowConfidenceCount += 1
+                    }
+                }
+
+                val totalCount = safeEvidence.size
+                val mediumConfidenceCount = totalCount - highConfidenceCount - lowConfidenceCount
+
+                return RepairEvidenceCohortStats(
+                    totalCount,
+                    improvingCount,
+                    stableCount,
+                    regressingCount,
+                    insufficientEvidenceCount,
+                    highConfidenceCount,
+                    mediumConfidenceCount,
+                    lowConfidenceCount,
+                    sortedExamples,
+                )
+            }
+
+            private fun statusPriority(status: KanjiRepairEvidencePolicy.Status): Int {
+                return when (status) {
+                    KanjiRepairEvidencePolicy.Status.REGRESSING -> 0
+                    KanjiRepairEvidencePolicy.Status.IMPROVING -> 1
+                    KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE -> 2
+                    KanjiRepairEvidencePolicy.Status.STABLE -> 3
+                }
+            }
+        }
+    }
+
     class LadderItemEvidence {
         @JvmField val state: String
         @JvmField val rung: RecordsBase.LadderRung
@@ -422,6 +512,11 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         @JvmStatic
         fun repairEvidence(evidence: KanjiRepairEvidencePolicy.Evidence): KanjiRepairEvidence {
             return KanjiRepairEvidence(evidence)
+        }
+
+        @JvmStatic
+        fun repairEvidenceCohortStats(evidence: List<KanjiRepairEvidence?>?): RepairEvidenceCohortStats {
+            return RepairEvidenceCohortStats.from(evidence)
         }
 
         private fun calculateKaniOutcomeStats(

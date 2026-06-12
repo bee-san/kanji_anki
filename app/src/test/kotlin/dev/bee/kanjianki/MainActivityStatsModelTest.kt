@@ -7,7 +7,6 @@ import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -164,7 +163,29 @@ class MainActivityStatsModelTest {
 
         val model = buildStatsScreenModel(source, nowMillis = 4_500_000L)
 
-        assertTrue(model.sections.any { it.title == "Repair evidence" })
+        assertEquals(
+            listOf(
+                "Weak kanji trend",
+                "Anki support",
+                "Repair evidence cohort",
+                "Repair evidence",
+                "Study streak",
+                "Study impact",
+                "Needs attention",
+                "Ladder status",
+                "Recent mistakes",
+                "Study time",
+            ),
+            model.sections.map { it.title },
+        )
+        val cohortCard = model.sections.first { it.title == "Repair evidence cohort" }
+        assertEquals("1 repair evidence item", cohortCard.summary)
+        assertEquals(
+            "1 improving · 0 stable · 0 regressing · 0 waiting for evidence. Confidence: 1 high · 0 medium · 0 low.",
+            cohortCard.body,
+        )
+        assertEquals(1, cohortCard.lines.size)
+        assertEquals("弱 · Improving · high confidence", cohortCard.lines.first().text)
         val repairCard = model.sections.first { it.title == "Repair evidence" }
         assertEquals("1 repair evidence item", repairCard.summary)
         assertEquals("Latest entries first.", repairCard.body)

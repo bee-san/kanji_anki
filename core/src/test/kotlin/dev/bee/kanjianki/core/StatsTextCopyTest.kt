@@ -212,6 +212,16 @@ class StatsTextCopyTest {
             assertEquals("2 recent mistakes", StatsTextCopy.recentMistakesSummary(2))
             assertEquals("Needs attention", StatsTextCopy.needsAttentionTitle())
             assertEquals("4 kanji with enough evidence", StatsTextCopy.kanjiWithEnoughEvidenceSummary(4))
+            assertEquals("Repair evidence cohort", StatsTextCopy.repairEvidenceCohortTitle())
+            assertEquals("3 repair evidence items", StatsTextCopy.repairEvidenceCohortSummary(3))
+            assertEquals(
+                "2 improving · 1 stable · 1 regressing · 0 waiting for evidence. Confidence: 2 high · 1 medium · 1 low.",
+                StatsTextCopy.repairEvidenceCohortBody(2, 1, 1, 0, 2, 1, 1),
+            )
+            assertEquals(
+                "裂 · Improving · high confidence",
+                StatsTextCopy.repairEvidenceCohortExampleText("裂", KanjiRepairEvidencePolicy.Status.IMPROVING, 0.84),
+            )
             assertEquals("Ladder status", StatsTextCopy.ladderStatusTitle())
             assertEquals("3 active kanji on the ladder", StatsTextCopy.activeKanjiOnLadderSummary(3))
             assertEquals("Study time", StatsTextCopy.studyTimeTitle())
@@ -234,6 +244,16 @@ class StatsTextCopyTest {
             assertEquals("最近のミス2件", StatsTextCopy.recentMistakesSummary(2))
             assertEquals("要対応", StatsTextCopy.needsAttentionTitle())
             assertEquals("十分な証拠がある漢字4件", StatsTextCopy.kanjiWithEnoughEvidenceSummary(4))
+            assertEquals("修復の証拠コホート", StatsTextCopy.repairEvidenceCohortTitle())
+            assertEquals("修復の証拠3件", StatsTextCopy.repairEvidenceCohortSummary(3))
+            assertEquals(
+                "改善中2件 · 横ばい1件 · 悪化中1件 · 証拠待ち0件。信頼度: 高2件 · 中1件 · 低1件。",
+                StatsTextCopy.repairEvidenceCohortBody(2, 1, 1, 0, 2, 1, 1),
+            )
+            assertEquals(
+                "裂 · 改善中 · 高信頼",
+                StatsTextCopy.repairEvidenceCohortExampleText("裂", KanjiRepairEvidencePolicy.Status.IMPROVING, 0.84),
+            )
             assertEquals("ラダー状況", StatsTextCopy.ladderStatusTitle())
             assertEquals("ラダー上のアクティブ漢字3件", StatsTextCopy.activeKanjiOnLadderSummary(3))
             assertEquals("学習時間", StatsTextCopy.studyTimeTitle())
