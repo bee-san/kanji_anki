@@ -1,11 +1,13 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -135,6 +137,42 @@ class MainActivityStatsModelTest {
         }
     }
 
+    @Test
+    fun buildStatsScreenModelShowsRepairEvidenceCardWhenAvailable() {
+        val source = FakeStatsSource(
+            repairEvidenceRows = listOf(
+                StudyStatsStore.repairEvidence(
+                    KanjiRepairEvidencePolicy.Evidence(
+                        kanjiArg = "弱",
+                        statusArg = KanjiRepairEvidencePolicy.Status.IMPROVING,
+                        reasonArg = "improved_weakness_after_reviews",
+                        explanationArg = "After Kani reviews, AnkiDroid weakness moved 70 → 40.",
+                        beforeWeaknessArg = 70,
+                        afterWeaknessArg = 40,
+                        beforeMatureSupportArg = 0,
+                        afterMatureSupportArg = 3,
+                        kaniReviewsArg = 3,
+                        writingFailuresArg = 0,
+                        lastMistakeAtMillisArg = 2_000L,
+                        lastSyncAtMillisArg = 5_000L,
+                        confidenceArg = 0.84,
+                        confidenceReasonArg = "Weakness moved 70 → 40 after 3 Kani reviews and 2 post-review samples.",
+                    )
+                )
+            ),
+        )
+
+        val model = buildStatsScreenModel(source, nowMillis = 4_500_000L)
+
+        assertTrue(model.sections.any { it.title == "Repair evidence" })
+        val repairCard = model.sections.first { it.title == "Repair evidence" }
+        assertEquals("1 repair evidence item", repairCard.summary)
+        assertEquals("Latest entries first.", repairCard.body)
+        assertEquals(1, repairCard.lines.size)
+        assertEquals("弱 · Improving · 70 → 40", repairCard.lines.first().text)
+        assertEquals(1, source.repairEvidenceReads)
+    }
+
     private class FakeStatsSource(
         private val fresh: StatsCacheStore.Snapshot? = null,
         private val latest: StatsCacheStore.Snapshot? = null,
@@ -145,11 +183,13 @@ class MainActivityStatsModelTest {
             StudyStatsStore.RecentMistake("痛", "again", 4_200_000L),
             StudyStatsStore.RecentMistake("疲", "hard", 4_140_000L),
         ),
+        private val repairEvidenceRows: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
     ) : StatsScreenStatsSource {
         var freshReads = 0
         var latestReads = 0
         var directRecomputes = 0
         var studyImpactReads = 0
+        var repairEvidenceReads = 0
         val studyStreakReads = mutableListOf<Long>()
         val recentMistakeLimits = mutableListOf<Int>()
         val recomputeTimes = mutableListOf<Long>()
@@ -189,6 +229,11 @@ class MainActivityStatsModelTest {
         override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
             studyTimeReads += nowMillis
             return StudyStatsStore.StudyTaskTimeStats(4_000L, 9_000L, 2)
+        }
+
+        override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+            repairEvidenceReads += 1
+            return repairEvidenceRows
         }
     }
 

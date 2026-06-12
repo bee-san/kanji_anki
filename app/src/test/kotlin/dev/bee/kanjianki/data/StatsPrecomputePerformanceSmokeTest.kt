@@ -68,6 +68,10 @@ class StatsPrecomputePerformanceSmokeTest {
             studyTimeReads += nowMillis
             return StudyStatsStore.StudyTaskTimeStats(1_000L, 2_000L, 2)
         }
+
+        override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+            return emptyList()
+        }
     }
 
     private companion object {
