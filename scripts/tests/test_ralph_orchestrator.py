@@ -284,6 +284,118 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertEqual("failed", missing_schema["status"])
             self.assertEqual(["button review JSON must include boolean 'passed'"], missing_schema["schema_errors"])
 
+    def test_design_comparison_schema_rejects_old_issue_review_payload(self) -> None:
+        old_issue_review = {"passed": True, "accepted_issues": [], "highest_priority_issue": None}
+        comparison_review = {
+            "schema": "cheap-ralph-design-comparison-v1",
+            "passed": True,
+            "after_better": True,
+            "score_before": 0.62,
+            "score_after": 0.77,
+            "score_delta": 0.15,
+            "issue_resolved": True,
+            "new_regressions": [],
+            "learning_correctness_risk": False,
+            "rationale": "The after screenshot makes the primary action clearer without changing behavior.",
+        }
+
+        errors = orchestrator._review_schema_errors("design-comparison", old_issue_review)
+
+        self.assertEqual([], orchestrator._review_schema_errors("design-comparison", comparison_review))
+        self.assertTrue(any("cheap-ralph-design-comparison-v1" in error for error in errors))
+        self.assertTrue(any("after_better" in error for error in errors))
+        self.assertTrue(any("score_delta" in error for error in errors))
+
+    def test_remote_visual_mode_uses_design_comparison_prompt_and_label(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            project_root = Path(__file__).resolve().parents[2]
+            shutil.copytree(project_root / "scripts" / "prompts", root / "scripts" / "prompts")
+            run_dir = root / ".ralph-loop/current"
+            screenshot_dir = run_dir / "remote-screenshots"
+            screenshot_dir.mkdir(parents=True)
+            manifest_path = screenshot_dir / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "android-screenshots-v1",
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [{"route": "home", "path": "home.png"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            remote_result = {"status": "passed", "manifest": str(manifest_path), "files": ["home.png"]}
+            design_stdout = json.dumps(
+                {
+                    "schema": "cheap-ralph-design-comparison-v1",
+                    "passed": True,
+                    "after_better": True,
+                    "score_before": 0.62,
+                    "score_after": 0.77,
+                    "score_delta": 0.15,
+                    "issue_resolved": True,
+                    "new_regressions": [],
+                    "learning_correctness_risk": False,
+                    "rationale": "The after screenshot improves hierarchy without changing study behavior.",
+                }
+            )
+            button_stdout = json.dumps(
+                {
+                    "passed": True,
+                    "missing_contract_rows": [],
+                    "missing_click_tests": [],
+                    "missing_disabled_state_tests": [],
+                    "a11y_gaps": [],
+                    "highest_priority_fix": {"row": "home-study-cta", "reason": "covered", "test_file": "HomeScreenComposeTest.kt"},
+                }
+            )
+            seen_design_prompt: list[str] = []
+
+            def fake_run(args, cwd=None, text=None, capture_output=None, check=None):
+                self.assertIsNotNone(cwd)
+                self.assertEqual(root.resolve(), Path(str(cwd)).resolve())
+                profile = args[2]
+                prompt = args[-1]
+                if profile == "design":
+                    seen_design_prompt.append(prompt)
+                    self.assertIn("cheap-ralph-design-comparison-v1", prompt)
+                    self.assertIn("after_better", prompt)
+                    self.assertIn("visual acceptance gate", prompt)
+                    return CompletedProcess(args, 0, design_stdout, "")
+                if profile == "uitester":
+                    return CompletedProcess(args, 0, button_stdout, "")
+                raise AssertionError(f"unexpected profile command: {args}")
+
+            args = orchestrator.build_parser().parse_args(
+                [
+                    "--repo-root",
+                    str(root),
+                    "--run-dir",
+                    ".ralph-loop/current",
+                    "--critic-cmd",
+                    "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                    "--button-cmd",
+                    "hermes -p {profile} chat -Q -t safe -q {prompt}",
+                    "--critic-profile",
+                    "design",
+                    "--button-profile",
+                    "uitester",
+                ]
+            )
+
+            with patch.object(orchestrator.github_screenshots, "run_remote_screenshots", return_value=remote_result), patch.object(orchestrator.subprocess, "run", side_effect=fake_run):
+                result = orchestrator._run_remote_visual_mode(args, root, run_dir)
+
+            self.assertEqual("passed", result["status"])
+            self.assertEqual(1, len(seen_design_prompt))
+            profile_reviews = cast(dict[str, dict[str, object]], result["profile_reviews"])
+            design_review = profile_reviews["design"]
+            self.assertEqual("design-comparison", design_review["label"])
+            self.assertEqual("cheap-ralph-design-comparison-v1", cast(dict[str, object], design_review["parsed"])["schema"])
+            self.assertEqual("design-comparison.prompt.txt", Path(cast(str, design_review["prompt_path"])).name)
+
     def test_audit_only_preserves_raw_prompt_and_status_when_button_retry_still_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import shlex
 import subprocess
@@ -112,11 +113,36 @@ def _format_command(template: str, *, prompt: str, profile: str) -> list[str]:
     return [part.format(prompt=prompt, profile=profile) for part in shlex.split(template)]
 
 
+def _finite_float_or_none(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        if math.isfinite(parsed):
+            return parsed
+    return None
+
+
 def _review_schema_errors(label: str, parsed: object) -> list[str]:
     if not isinstance(parsed, dict):
         return ["reviewer stdout must be a JSON object"]
     if label.startswith("button") and not isinstance(parsed.get("passed"), bool):
         return ["button review JSON must include boolean 'passed'"]
+    if label.startswith("design-comparison"):
+        errors: list[str] = []
+        if parsed.get("schema") != "cheap-ralph-design-comparison-v1":
+            errors.append("design comparison JSON must include schema 'cheap-ralph-design-comparison-v1'")
+        for field in ("passed", "after_better", "issue_resolved", "learning_correctness_risk"):
+            if not isinstance(parsed.get(field), bool):
+                errors.append(f"design comparison JSON must include boolean '{field}'")
+        for field in ("score_before", "score_after", "score_delta"):
+            if _finite_float_or_none(parsed.get(field)) is None:
+                errors.append(f"design comparison JSON must include finite number '{field}'")
+        if not isinstance(parsed.get("new_regressions"), list):
+            errors.append("design comparison JSON must include list 'new_regressions'")
+        if not isinstance(parsed.get("rationale"), str) or not parsed.get("rationale", "").strip():
+            errors.append("design comparison JSON must include non-empty string 'rationale'")
+        return errors
     if label.startswith("design"):
         has_file_audit_schema = "visual_problems" in parsed and "interaction_a11y_problems" in parsed
         has_design_critic_schema = "accepted_issues" in parsed or isinstance(parsed.get("passed"), bool)
@@ -770,7 +796,7 @@ def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
         _path_from_result(result, "manifest"),
         {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
     )
-    return prompts.load_project_prompt(repo_root, "ralph_design_critic.md").render(
+    return prompts.load_project_prompt(repo_root, "ralph_design_comparison.md").render(
         screenshots_json=_json_text(result),
         manifest_json=manifest_json,
     )
@@ -824,7 +850,7 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
             _remote_visual_prompt(remote_result, repo_root),
             repo_root,
             out_dir=run_dir / "remote-visual" / "reviews",
-            label="design",
+            label="design-comparison",
             profile=args.critic_profile,
         )
         button_review = _run_profile_command(

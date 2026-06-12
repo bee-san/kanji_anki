@@ -354,12 +354,17 @@ class RalphValidationTest(unittest.TestCase):
             non_finite_delta = self._passing_design_comparison()
             non_finite_delta["score_delta"] = "nan"
             non_finite_delta_report = validation.build_validation_report({**base_state, "design_review": non_finite_delta})
+            alias_report = validation.build_validation_report(
+                {**base_state, "profile_reviews": {"design_comparison": self._passing_design_comparison()}}
+            )
 
         missing_gate = self._gate(missing_report, "design_comparison")
         low_delta_gate = self._gate(low_delta_report, "design_comparison")
         not_better_gate = self._gate(not_better_report, "design_comparison")
         inconsistent_delta_gate = self._gate(inconsistent_delta_report, "design_comparison")
         non_finite_delta_gate = self._gate(non_finite_delta_report, "design_comparison")
+        alias_gate = self._gate(alias_report, "design_comparison")
+        self.assertEqual("passed", alias_gate["status"])
         self.assertEqual("failed", missing_gate["status"])
         self.assertIn("after-better", str(missing_gate["message"]))
         self.assertEqual("failed", low_delta_gate["status"])

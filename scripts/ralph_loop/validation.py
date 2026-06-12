@@ -343,7 +343,12 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     reviewer_result = _get_result(normalized, "reviewer_result", "independent_review")
     profile_reviews = _get_result(normalized, "profile_reviews")
     if isinstance(profile_reviews, dict):
-        design_review = design_review or profile_reviews.get("design")
+        design_review = (
+            design_review
+            or profile_reviews.get("design")
+            or profile_reviews.get("design_comparison")
+            or profile_reviews.get("design-comparison")
+        )
         button_review = button_review or profile_reviews.get("button_qa") or profile_reviews.get("button")
         reviewer_result = reviewer_result or profile_reviews.get("independent") or profile_reviews.get("reviewer")
 
@@ -442,7 +447,10 @@ def _normalize_state(state: dict[str, Any]) -> dict[str, Any]:
             normalized[key] = _maybe_load_json(normalized[key])
     if "profile_reviews" in normalized and isinstance(normalized["profile_reviews"], dict):
         reviews = normalized["profile_reviews"]
-        normalized.setdefault("design_review", reviews.get("design"))
+        normalized.setdefault(
+            "design_review",
+            reviews.get("design") or reviews.get("design_comparison") or reviews.get("design-comparison"),
+        )
         normalized.setdefault("button_review", reviews.get("button_qa") or reviews.get("button"))
         normalized.setdefault("reviewer_result", reviews.get("independent") or reviews.get("reviewer"))
     if "focus_paths" not in normalized or normalized.get("focus_paths") is None:
