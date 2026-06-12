@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import math
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -161,19 +162,32 @@ def _numeric(value: object, default: int = 0) -> int:
         return default
 
 
+def _finite_float_or_none(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
+
+
 def _numeric_float(value: object, default: float = 0.0) -> float:
     if value is None:
         return default
-    if not isinstance(value, (int, float, str)):
-        return default
-    try:
-        return float(value)
-    except ValueError:
-        return default
+    parsed = _finite_float_or_none(value)
+    return default if parsed is None else parsed
 
 
 def _non_negative_float(value: str) -> float:
-    parsed = float(value)
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a finite number >= 0") from exc
+    if not math.isfinite(parsed):
+        raise argparse.ArgumentTypeError("must be a finite number >= 0")
     if parsed < 0:
         raise argparse.ArgumentTypeError("must be >= 0")
     return parsed
@@ -705,27 +719,42 @@ def _design_comparison_gate(
     missing_fields: list[str] = []
     if not isinstance(comparison.get("after_better"), bool):
         missing_fields.append("after_better boolean")
-    score_delta_raw = comparison.get("score_delta")
-    if score_delta_raw is None:
-        score_delta = None
-        missing_fields.append("score_delta number")
-    elif isinstance(score_delta_raw, (int, float, str)):
-        try:
-            score_delta = float(score_delta_raw)
-        except ValueError:
-            score_delta = None
-            missing_fields.append("score_delta number")
-    else:
-        score_delta = None
-        missing_fields.append("score_delta number")
+
+    def score_field(name: str) -> float | None:
+        parsed = _finite_float_or_none(comparison.get(name))
+        if parsed is None:
+            missing_fields.append(f"{name} finite number")
+        return parsed
+
+    score_before = score_field("score_before")
+    score_after = score_field("score_after")
+    score_delta = score_field("score_delta")
     if missing_fields:
         return _gate(
             "design_comparison",
             "failed",
-            "Design comparison must include explicit after-better and score-delta evidence.",
+            "Design comparison must include explicit after-better, score-before, score-after, and score-delta evidence.",
             missing_fields=missing_fields,
             result=design_review,
             screenshot_result=screenshot_result,
+            min_score_delta=min_score_delta,
+        )
+
+    assert score_before is not None
+    assert score_after is not None
+    assert score_delta is not None
+    expected_score_delta = score_after - score_before
+    if not math.isclose(score_delta, expected_score_delta, rel_tol=1e-9, abs_tol=1e-6):
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison score delta must match score_after - score_before.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_before=score_before,
+            score_after=score_after,
+            score_delta=score_delta,
+            expected_score_delta=expected_score_delta,
             min_score_delta=min_score_delta,
         )
 

@@ -344,23 +344,41 @@ class RalphValidationTest(unittest.TestCase):
             not_better = self._passing_design_comparison()
             not_better["after_better"] = False
             not_better_report = validation.build_validation_report({**base_state, "design_review": not_better})
+            inconsistent_delta = self._passing_design_comparison()
+            inconsistent_delta["score_before"] = 0.95
+            inconsistent_delta["score_after"] = 0.10
+            inconsistent_delta["score_delta"] = 0.14
+            inconsistent_delta_report = validation.build_validation_report(
+                {**base_state, "design_review": inconsistent_delta, "min_design_score_delta": 0.10}
+            )
+            non_finite_delta = self._passing_design_comparison()
+            non_finite_delta["score_delta"] = "nan"
+            non_finite_delta_report = validation.build_validation_report({**base_state, "design_review": non_finite_delta})
 
         missing_gate = self._gate(missing_report, "design_comparison")
         low_delta_gate = self._gate(low_delta_report, "design_comparison")
         not_better_gate = self._gate(not_better_report, "design_comparison")
+        inconsistent_delta_gate = self._gate(inconsistent_delta_report, "design_comparison")
+        non_finite_delta_gate = self._gate(non_finite_delta_report, "design_comparison")
         self.assertEqual("failed", missing_gate["status"])
         self.assertIn("after-better", str(missing_gate["message"]))
         self.assertEqual("failed", low_delta_gate["status"])
         self.assertIn("score delta", str(low_delta_gate["message"]))
         self.assertEqual("failed", not_better_gate["status"])
         self.assertIn("after screenshot is better", str(not_better_gate["message"]))
+        self.assertEqual("failed", inconsistent_delta_gate["status"])
+        self.assertIn("score_after - score_before", str(inconsistent_delta_gate["message"]))
+        self.assertEqual("failed", non_finite_delta_gate["status"])
+        self.assertIn("score_delta finite number", str(non_finite_delta_gate["details"]))
 
     def test_cli_accepts_min_design_score_delta(self) -> None:
         parser = validation.build_parser()
         args = parser.parse_args(["--min-design-score-delta", "0.25"])
         self.assertEqual(0.25, args.min_design_score_delta)
-        with self.assertRaises(SystemExit):
-            parser.parse_args(["--min-design-score-delta", "-0.1"])
+        for invalid_value in ("-0.1", "nan", "inf", "-inf"):
+            with self.subTest(invalid_value=invalid_value):
+                with self.assertRaises(SystemExit):
+                    parser.parse_args([f"--min-design-score-delta={invalid_value}"])
 
     def _passing_design_comparison(self) -> dict[str, object]:
         return {
