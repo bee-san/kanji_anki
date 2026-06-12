@@ -33,6 +33,18 @@ substitute for the normal Android CI workflow.
 `./gradlew ciQuality` produces the deterministic bytecode and coverage inputs
 used by SonarQube. `./gradlew ciRelease` runs the release confidence gate and
 assembles the signed release APK when signing environment variables are set.
+In CI, the Android Release workflow's validate job runs `:app:assembleRelease`
+only; the deterministic test surface for the same commit is enforced by the
+`Require green commit checks` job (Fast confidence gate, SonarQube, CodeQL),
+so `ciRelease` is the local gate, not the CI release build command.
+
+Releases are cut automatically: every successful `Android CI` run on a `main`
+push triggers `android-release.yml` through a `workflow_run` trigger, which
+computes the next `vMAJOR.MINOR.PATCH` patch tag, builds and verifies the
+signed APK at that CI run's commit, waits for the remaining commit checks, and
+publishes the GitHub release (creating the tag at publish time). Manual tag
+pushes and `workflow_dispatch` with an explicit `release_tag` still work for
+deliberate versions.
 
 SonarCloud and CodeQL run on pushes to `main`, and can also be run manually.
 CodeQL also has a scheduled weekly run. If you change either workflow, push it
@@ -367,6 +379,17 @@ must come from the GitHub Actions release workflow, which uses repository
 secrets.
 
 ## Release Flow
+
+The default path is automatic: push (or merge) to `main`, and a successful
+`Android CI` run on that push triggers `android-release.yml`, which bumps the
+patch version, builds, gates, and publishes the release. Watch it with:
+
+```sh
+gh run list --repo bee-san/kanji_anki --workflow android-release.yml --limit 5
+gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+```
+
+For a deliberate (non-patch or re-cut) version, use the manual flow:
 
 1. Commit only the relevant files.
 2. Push the branch.
