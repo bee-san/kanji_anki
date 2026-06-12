@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,25 +19,54 @@ class StudyLadderThresholdPolicyTest {
 
     @Test
     fun saveRequestRejectsNonWholeNumbersWithExistingCopy() {
-        assertInvalid("oops", "3")
-        assertInvalid("", "3")
-        assertInvalid("21", "1.5")
+        withLocale(Locale.ENGLISH) {
+            assertInvalid("oops", "3", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertInvalid("", "3", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertInvalid("21", "1.5", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertEquals(
+                StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR,
+                StudyLadderThresholdPolicy.positiveWholeNumberError(),
+            )
+        }
     }
 
     @Test
     fun saveRequestRejectsNonPositiveNumbersWithExistingCopy() {
-        assertInvalid("0", "3")
-        assertInvalid("21", "0")
-        assertInvalid("-1", "3")
-        assertInvalid("21", "-3")
+        withLocale(Locale.ENGLISH) {
+            assertInvalid("0", "3", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertInvalid("21", "0", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertInvalid("-1", "3", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+            assertInvalid("21", "-3", StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR)
+        }
     }
 
-    private fun assertInvalid(promotionDaysText: String, failStreakText: String) {
+    @Test
+    fun japaneseLocaleTranslatesInvalidNumberCopy() {
+        withLocale(Locale.JAPANESE) {
+            val message = "正の整数を入力してください。"
+
+            assertInvalid("oops", "3", message)
+            assertInvalid("0", "3", message)
+            assertEquals(message, StudyLadderThresholdPolicy.positiveWholeNumberError())
+        }
+    }
+
+    private fun assertInvalid(promotionDaysText: String, failStreakText: String, expectedMessage: String) {
         val result = StudyLadderThresholdPolicy.saveRequest(promotionDaysText, failStreakText)
 
         assertFalse(result.valid)
         assertEquals(0, result.promotionDays)
         assertEquals(0, result.failStreak)
-        assertEquals(StudyLadderThresholdPolicy.POSITIVE_WHOLE_NUMBER_ERROR, result.message)
+        assertEquals(expectedMessage, result.message)
+    }
+
+    private inline fun withLocale(locale: Locale, block: () -> Unit) {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
