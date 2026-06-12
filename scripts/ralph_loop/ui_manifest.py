@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Sequence, cast
 
+from scripts.ralph_loop import screenshot_fixtures
+
 SCHEMA = "ui-manifest-v1"
 UI_ROOTS = ("app/src/main", "app/src/debug", "app/src/androidTest", "app/src/test")
 TEST_PARTS = ("/src/test/", "/src/androidTest/", "Test.kt")
@@ -49,10 +51,21 @@ def build_manifest(repo_root: Path) -> dict[str, object]:
     for entry in ui_files:
         entry["nearest_tests"] = _nearest_tests(entry, tests)
         entry["risk_tags"] = _risk_tags(entry)
+        entry["screenshot_fixtures"] = _screenshot_fixtures(entry)
 
     ui_files.sort(key=lambda entry: str(entry["path"]))
     buckets = sorted({str(entry["bucket"]) for entry in ui_files})
-    return {"schema": SCHEMA, "files": ui_files, "summary": {"file_count": len(ui_files), "buckets": buckets}}
+    return {
+        "schema": SCHEMA,
+        "screenshot_fixture_registry": screenshot_fixtures.fixture_registry(),
+        "files": ui_files,
+        "summary": {
+            "file_count": len(ui_files),
+            "buckets": buckets,
+            "screenshot_fixture_count": len(screenshot_fixtures.FIXTURES),
+            "screenshot_fixture_schema": screenshot_fixtures.SCHEMA,
+        },
+    }
 
 
 def _iter_candidate_files(root: Path) -> list[Path]:
@@ -197,6 +210,10 @@ def _risk_tags(entry: dict[str, object]) -> list[str]:
     if not entry["nearest_tests"] and entry["bucket"] != "test":
         tags.add("no_nearest_test")
     return sorted(tags)
+
+
+def _screenshot_fixtures(entry: dict[str, object]) -> list[dict[str, object]]:
+    return screenshot_fixtures.fixtures_for_bucket(str(entry["bucket"]))
 
 
 def build_parser() -> argparse.ArgumentParser:
