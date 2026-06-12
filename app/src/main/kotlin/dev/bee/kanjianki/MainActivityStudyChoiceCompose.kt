@@ -60,7 +60,11 @@ fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): Meaning
 }
 
 @Composable
-fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifier = Modifier) {
+fun SimilarChoiceSessionCard(
+    model: SimilarChoiceSessionModel,
+    modifier: Modifier = Modifier,
+    showInlineChoices: Boolean = true,
+) {
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
@@ -68,7 +72,18 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
         body = model.body,
         modifier = modifier,
     ) {
-        SimilarChoiceInsetPanel(model)
+        SimilarChoiceInsetPanel(model, showInlineChoices)
+    }
+}
+
+@Composable
+internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp, bottom = 2.dp)
+    ) {
+        SimilarChoiceGrid(model)
     }
 }
 
@@ -153,7 +168,7 @@ private fun SimilarChoiceModePill(label: String) {
 }
 
 @Composable
-private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel) {
+private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoices: Boolean) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,7 +183,9 @@ private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel) {
                 StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
             }
             SimilarKanjiExplanationPanel(model.explanationLines)
-            SimilarChoiceGrid(model.gridModel)
+            if (showChoices) {
+                SimilarChoiceGrid(model.gridModel)
+            }
         }
     }
 }
