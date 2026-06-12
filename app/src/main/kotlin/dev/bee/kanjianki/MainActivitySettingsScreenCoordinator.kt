@@ -97,54 +97,38 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     }
 
     private fun settingsCategoryModels(current: RecordsSyncModels.Settings): List<SettingsCategorySectionModel> {
-        val ankiSourcePanels = if (activity.settingsAnkiExpanded) {
-            listOf(
-                activity.noteTypeSettingsPanelModel(current),
-                activity.importFilterSettingsPanelModel(current),
-                activity.frequencyRangeSettingsPanelModel(current),
-                activity.autoSyncSettingsPanelModel(),
-            )
-        } else {
-            emptyList()
-        }
-        val studyBehaviorPanels = if (activity.settingsStudyExpanded) {
-            listOf(
-                MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
-                MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
-                MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
-                MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
-                activity.learningStepsSettingsPanelModel(),
-                MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
-                MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
-                activity.ladderThresholdSettingsPanelModel(),
-            )
-        } else {
-            emptyList()
-        }
-        val automationPanels = if (activity.settingsSyncExpanded) {
-            listOf(
-                activity.reminderSettingsPanelModel(),
-                SettingsUpdateOverviewPanelModel(
-                    settingsUpdatePanelModel(
-                        activity = activity,
-                        title = SettingsTextCopy.appUpdatesTitle(),
-                    ),
-                    SettingsTextCopy.openUpdaterLabel(),
-                ) {
-                    activity.settingsScrollY = activity.contentScrollY
-                    activity.renderUpdate()
-                },
-            )
-        } else {
-            emptyList()
-        }
-        val referencePanels = if (activity.settingsAppExpanded) {
-            listOf(
-                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
-            )
-        } else {
-            emptyList()
-        }
+        val ankiSourcePanels = listOf(
+            activity.noteTypeSettingsPanelModel(current),
+            activity.importFilterSettingsPanelModel(current),
+            activity.frequencyRangeSettingsPanelModel(current),
+            activity.autoSyncSettingsPanelModel(),
+        )
+        val studyBehaviorPanels = listOf(
+            MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
+            MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
+            MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
+            MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
+            activity.learningStepsSettingsPanelModel(),
+            MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
+            MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
+            activity.ladderThresholdSettingsPanelModel(),
+        )
+        val automationPanels = listOf(
+            activity.reminderSettingsPanelModel(),
+            SettingsUpdateOverviewPanelModel(
+                settingsUpdatePanelModel(
+                    activity = activity,
+                    title = SettingsTextCopy.appUpdatesTitle(),
+                ),
+                SettingsTextCopy.openUpdaterLabel(),
+            ) {
+                activity.settingsScrollY = activity.contentScrollY
+                activity.renderUpdate()
+            },
+        )
+        val referencePanels = listOf(
+            MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+        )
 
         return listOf(
             settingsAnkiSourceCategoryModel(

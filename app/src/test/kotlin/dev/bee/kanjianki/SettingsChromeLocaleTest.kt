@@ -103,6 +103,22 @@ class SettingsChromeLocaleTest {
     }
 
     @Test
+    fun settingsCollapsedImportCategoryKeepsPanelsAvailableInJapaneseLocale() {
+        withLocale(Locale.JAPAN) {
+            withMainActivity { activity ->
+                activity.settingsAnkiExpanded = false
+
+                val screen = MainActivitySettingsScreenCoordinator(activity).settingsScreenModel()
+                val importCategory = screen.categories.first { it.title == "インポートと同期" }
+
+                assertEquals(false, importCategory.expanded)
+                assertEquals(4, importCategory.panels.size)
+                assertTrue(importCategory.panels.any { panel -> panel is SettingsNoteTypePanelModel })
+            }
+        }
+    }
+
+    @Test
     fun studyTopBarUsesJapaneseSettingsDescription() {
         withLocale(Locale.JAPAN) {
             composeRule.setContent {
