@@ -48,6 +48,12 @@ def build_matrix(
             for path in cast(list[str], cast(dict[str, object], view["source_files"])[key])
         }
     )
+    view_button_row_ids = {
+        str(row["id"])
+        for view in view_rows
+        for row in cast(list[dict[str, object]], view["button_rows"])
+    }
+    unmapped_button_rows = _unmapped_button_rows(rows, view_button_row_ids, set(all_source_files))
     fixture_registry = manifest.get("screenshot_fixture_registry")
     fixture_set_hash = screenshot_fixtures.fixture_registry()["fixture_set_hash"]
     if isinstance(fixture_registry, dict):
@@ -58,11 +64,15 @@ def build_matrix(
         "source_button_contract": source_contract,
         "fixture_set_hash": fixture_set_hash,
         "views": views,
+        "unmapped_button_rows": unmapped_button_rows,
         "summary": {
             "view_count": len(views),
             "routes": [view["route"] for view in view_rows],
             "source_file_count": len(all_source_files),
+            "button_contract_row_count": len(rows),
             "button_row_count": sum(cast(dict[str, int], view["coverage"])["button_row_count"] for view in view_rows),
+            "unique_button_row_count": len(view_button_row_ids) + len(unmapped_button_rows),
+            "unmapped_button_row_count": len(unmapped_button_rows),
             "views_with_buttons": sum(1 for view in view_rows if cast(dict[str, int], view["coverage"])["button_row_count"] > 0),
             "views_missing_button_coverage": sum(
                 1 for view in view_rows if cast(dict[str, int], view["coverage"])["missing_button_rows"] > 0
@@ -96,6 +106,28 @@ def render_markdown(matrix: dict[str, object]) -> str:
                 missing=coverage["missing_button_rows"],
             )
         )
+    unmapped_rows = cast(list[dict[str, object]], matrix.get("unmapped_button_rows", []))
+    if unmapped_rows:
+        lines.extend(
+            [
+                "",
+                "## Unmapped button contract rows",
+                "",
+                "These rows are kept visible because no screenshot fixture source file can own them yet.",
+                "",
+                "| Row | Source file | Reason | Missing tests |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        for row in unmapped_rows:
+            lines.append(
+                "| `{row_id}` | {source_file} | `{reason}` | {missing_tests} |".format(
+                    row_id=row["id"],
+                    source_file=f"`{row['source_file']}`" if row.get("source_file") else "—",
+                    reason=row.get("unmapped_reason", "unmapped"),
+                    missing_tests=_markdown_list(cast(list[str], row.get("missing_tests", []))),
+                )
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -207,6 +239,30 @@ def _button_row(row: dict[str, object]) -> dict[str, object]:
         "existing_tests": row.get("existing_tests", []),
         "missing_tests": row.get("missing_tests", []),
     }
+
+
+def _unmapped_button_rows(
+    button_rows: list[dict[str, object]],
+    mapped_row_ids: set[str],
+    source_files: set[str],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for row in button_rows:
+        row_id = str(row["id"])
+        if row_id in mapped_row_ids:
+            continue
+        unmapped = _button_row(row)
+        source_file = str(row.get("source_file") or "")
+        if not source_file:
+            reason = "missing_source_file"
+        elif source_file not in source_files:
+            reason = "source_file_not_in_fixture_sources"
+        else:
+            reason = "not_attached_to_any_view"
+        unmapped["unmapped_reason"] = reason
+        rows.append(unmapped)
+    rows.sort(key=lambda item: str(item["id"]))
+    return rows
 
 
 def _registry_fixtures(manifest: dict[str, object]) -> list[dict[str, object]]:

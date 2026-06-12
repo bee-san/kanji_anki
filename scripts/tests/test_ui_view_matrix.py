@@ -38,6 +38,52 @@ class UiViewMatrixTest(unittest.TestCase):
             self.assertGreaterEqual(cast(dict[str, int], home["coverage"])["button_row_count"], 1)
             self.assertTrue(any(row["id"] == "home-study-cta" for row in cast(list[dict[str, object]], home["button_rows"])))
 
+    def test_surfaces_unmapped_button_rows_without_source_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._write_fixture_repo(root)
+            contract_path = root / "button-contract.json"
+            contract_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "button-contract-v1",
+                        "rows": [
+                            {
+                                "id": "home-study-cta",
+                                "title": "Home study CTA",
+                                "source_file": "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
+                                "composable": "HomeScreen",
+                                "labels": ["primary_home_cta"],
+                                "interactive_kinds": ["Button"],
+                                "existing_tests": ["app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt"],
+                                "missing_tests": [],
+                            },
+                            {
+                                "id": "browse-search-button",
+                                "title": "Browse search button",
+                                "source_file": "",
+                                "composable": "BrowseStudyControls",
+                                "labels": ["Search"],
+                                "interactive_kinds": ["Button"],
+                                "existing_tests": [],
+                                "missing_tests": ["click"],
+                            },
+                        ],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            matrix = ui_view_matrix.build_matrix(root, button_contract_path=contract_path)
+
+            summary = cast(dict[str, object], matrix["summary"])
+            self.assertEqual(1, summary["unmapped_button_row_count"])
+            unmapped_rows = cast(list[dict[str, object]], matrix["unmapped_button_rows"])
+            self.assertEqual(["browse-search-button"], [row["id"] for row in unmapped_rows])
+
     def test_cli_writes_json_and_markdown(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
