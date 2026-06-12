@@ -37,6 +37,10 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         return queries.kaniOutcomeStats()
     }
 
+    fun kanjiRepairEvidence(): List<KanjiRepairEvidence> {
+        return queries.kanjiRepairEvidenceInputs().map { repairEvidence(KanjiRepairEvidencePolicy.summarize(it)) }
+    }
+
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         return queries.reviewStatsSince(sinceMillis)
     }

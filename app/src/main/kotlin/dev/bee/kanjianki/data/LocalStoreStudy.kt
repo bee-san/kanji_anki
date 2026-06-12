@@ -360,6 +360,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         return StudyStatsStore(this as LocalStore).kaniOutcomeStats()
     }
 
+    fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+        return StudyStatsStore(this as LocalStore).kanjiRepairEvidence()
+    }
+
     fun studiedKanjiSince(sinceMillis: Long): Set<String> {
         return StudyStatsStore(this as LocalStore).studiedKanjiSince(sinceMillis)
     }
