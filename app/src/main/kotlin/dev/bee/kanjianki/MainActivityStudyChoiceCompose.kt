@@ -164,7 +164,37 @@ private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             StudyChoiceText(model.question, sizeSp = 22, color = StudyChoicePlum, bold = true)
+            if (model.reasonLine.isNotBlank()) {
+                StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
+            }
+            SimilarKanjiExplanationPanel(model.explanationLines)
             SimilarChoiceGrid(model.gridModel)
+        }
+    }
+}
+
+@Composable
+private fun SimilarKanjiExplanationPanel(lines: List<SimilarKanjiExplanationLineModel>) {
+    if (lines.isEmpty()) {
+        return
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = StudyCardFill,
+        border = BorderStroke(1.dp, StudyChoiceBorder)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            lines.forEach { line ->
+                StudyChoiceText(
+                    text = "${line.label}: ${line.value}",
+                    sizeSp = if (line.emphasized) 15 else 14,
+                    color = if (line.emphasized) StudyChoicePlum else StudyMuted,
+                    bold = line.emphasized,
+                )
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -33,6 +35,25 @@ class StudyUndoStateTest {
 
         state.clear()
         assertNull(state.pending)
+    }
+
+    @Test
+    fun undoMessageOrNullReturnsNullWithoutPendingAndCopyForCapturedReview() {
+        val state = StudyUndoState()
+
+        assertNull(state.undoMessageOrNull())
+
+        val snapshot = StudyReviewActions.AppliedReviewSnapshot(
+            "token-3",
+            item("語", 5),
+            item("語", 6),
+        )
+        state.capture(snapshot, StudyRatings.GOOD, 789L)
+
+        assertEquals(StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD), state.undoMessageOrNull())
+
+        state.clear()
+        assertNull(state.undoMessageOrNull())
     }
 
     private fun item(kanji: String, totalReviews: Int): RecordsStudyModels.StudyItem {

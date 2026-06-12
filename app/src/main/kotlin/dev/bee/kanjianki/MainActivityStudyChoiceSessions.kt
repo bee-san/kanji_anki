@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
+import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
@@ -97,6 +98,12 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.settings().matureSupportThreshold,
             System.currentTimeMillis()
         )
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            choiceCard.targetKanji,
+            home.store.searchKanjiInventory(""),
+            home.store.similarPairsForKanji(choiceCard.targetKanji),
+            emptyList(),
+        )
         val model = SimilarChoiceSessionModel(
             StudyTaskCopy.studyModeLabel(session),
             StudyTextCopy.studyChoiceTitle(),
@@ -107,7 +114,8 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             SimilarChoiceGridModel(
                 choices,
                 true
-            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) }
+            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
+            similarKanjiExplanationLines(explanation),
         )
         home.renderComposeStudyRoute {
             SimilarChoiceSessionCard(

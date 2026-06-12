@@ -48,6 +48,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         activity.activeUpdateUiRunToken = 0
         if (MainActivityBase.NAV_STUDY != selected) {
             activity.abandonActiveStudyTask()
+            activity.studyUndoState.clear()
         }
         MainActivityStudyInteractionReset.resetRoute(activity)
     }

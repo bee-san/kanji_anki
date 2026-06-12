@@ -20,6 +20,9 @@ object StudyReviewButtonCopy {
     fun goodLabel(): String = localizedText(LABEL_GOOD, "できた")
 
     @JvmStatic
+    fun undoLabel(): String = localizedText("Undo", "元に戻す")
+
+    @JvmStatic
     fun againContentDescription(): String =
         localizedText(DESCRIPTION_AGAIN, "もう一度: このカードを早めに再表示する")
 

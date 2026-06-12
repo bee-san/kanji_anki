@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.SimilarKanjiExplanation
+
 fun interface KanjiChoiceHandler {
     fun onChoice(glyph: String)
 }
@@ -45,6 +47,43 @@ data class SimilarChoiceGridModel(
     val onChoice: KanjiChoiceHandler,
 )
 
+data class SimilarKanjiExplanationLineModel(
+    val label: String,
+    val value: String,
+    val emphasized: Boolean = false,
+)
+
+internal fun similarKanjiExplanationLines(explanation: SimilarKanjiExplanation): List<SimilarKanjiExplanationLineModel> {
+    val out = ArrayList<SimilarKanjiExplanationLineModel>()
+    if (explanation.confusedWith.isNotEmpty()) {
+        val pairValue = if (explanation.targetKanji.isNotEmpty()) {
+            "${explanation.targetKanji} vs ${explanation.confusedWith.joinToString(" / ")}"
+        } else {
+            explanation.confusedWith.joinToString(" / ")
+        }
+        out.add(SimilarKanjiExplanationLineModel("Pair", pairValue, true))
+    }
+    addJoinedLine(out, "Source words", explanation.failedSourceWords, false)
+    addJoinedLine(out, "Meaning clues", explanation.meaningClues, false)
+    addJoinedLine(out, "Reading clues", explanation.readingClues, false)
+    addJoinedLine(out, "Shared components", explanation.sharedComponents, false)
+    addJoinedLine(out, "Different components", explanation.differingComponents, false)
+    out.add(SimilarKanjiExplanationLineModel("Watch", explanation.watchThisPart, true))
+    return out
+}
+
+private fun addJoinedLine(
+    out: MutableList<SimilarKanjiExplanationLineModel>,
+    label: String,
+    values: List<String>,
+    emphasized: Boolean,
+) {
+    val cleanValues = values.map { it.trim() }.filter { it.isNotEmpty() }
+    if (cleanValues.isNotEmpty()) {
+        out.add(SimilarKanjiExplanationLineModel(label, cleanValues.joinToString(" • "), emphasized))
+    }
+}
+
 data class SimilarChoiceSessionModel(
     val modeLabel: String,
     val title: String,
@@ -53,6 +92,7 @@ data class SimilarChoiceSessionModel(
     val reasonLine: String,
     val question: String,
     val gridModel: SimilarChoiceGridModel,
+    val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
 )
 
 data class MeaningChoiceSessionModel(

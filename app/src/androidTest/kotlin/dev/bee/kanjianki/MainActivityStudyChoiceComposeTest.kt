@@ -63,6 +63,12 @@ class MainActivityStudyChoiceComposeTest {
     fun rendersSimilarChoiceSessionCardAndInvokesSelection() {
         var selected = ""
 
+        val explanationLines = listOf(
+            SimilarKanjiExplanationLineModel("Pair", "裂 vs 列", true),
+            SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
+            SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列.", true),
+        )
+
         composeRule.setContent {
             SimilarChoiceSessionCard(
                 model = SimilarChoiceSessionModel(
@@ -76,7 +82,8 @@ class MainActivityStudyChoiceComposeTest {
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = true,
                         onChoice = KanjiChoiceHandler { selected = it }
-                    )
+                    ),
+                    explanationLines = explanationLines,
                 )
             )
         }
@@ -85,8 +92,11 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertIsDisplayed()
         composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
+        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
+        composeRule.onNodeWithText("Pair: 裂 vs 列").assertIsDisplayed()
+        composeRule.onNodeWithText("Source words: source one • source two").assertIsDisplayed()
+        composeRule.onNodeWithText("Watch: Watch how 裂 differs from 列.").assertIsDisplayed()
 
         composeRule.onNodeWithText("烈").performClick()
 

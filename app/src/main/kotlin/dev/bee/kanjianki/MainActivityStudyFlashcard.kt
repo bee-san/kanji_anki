@@ -158,11 +158,14 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     @Composable
     private fun ComposeFlashcardActionBar(route: ComposeFlashcardRouteModel) {
+        val undoMessage = activity.studyUndoState.undoMessageOrNull()
         StudyFlashcardActionBar(
             revealed = route.actionBarState.revealed,
             onReveal = { route.actionBarState.onReveal.run() },
             onFail = { route.actionBarState.onFail.run() },
             onPass = { route.actionBarState.onPass.run() },
+            undoMessage = undoMessage,
+            onUndo = { activity.undoLastRating() },
         )
     }
 
