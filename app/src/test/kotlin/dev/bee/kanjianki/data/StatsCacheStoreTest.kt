@@ -133,7 +133,7 @@ class StatsCacheStoreTest {
     }
 
     @Test
-    fun readFreshReturnsNullWhenSnapshotNotFromCurrentDay() {
+    fun readFreshStatsReturnsNullWhenSnapshotNotFromCurrentDay() {
         val today = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         val yesterday = LocalDayPolicy.moveLocalDays(today, -1)
         setSourceVersion(12L)
@@ -148,6 +148,25 @@ class StatsCacheStoreTest {
         )
 
         assertNull(cacheStore.readFresh(db, nowMillis = today))
+    }
+
+    @Test
+    fun latestStatsSnapshotOrNullDoesNotExposeStaleButReadableCacheRows() {
+        val now = System.currentTimeMillis()
+        val yesterday = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(now), -1)
+        val sourceVersion = cacheStore.currentSourceVersion(db)
+        cacheStore.write(
+            db,
+            snapshot(
+                sourceVersion = sourceVersion,
+                generatedAtMillis = yesterday + 60_000L,
+                improvedCount = 4,
+                helpedCount = 6,
+            ),
+        )
+
+        assertNotNull(cacheStore.readLatest(db))
+        assertNull(localStore!!.latestStatsSnapshotOrNull())
     }
 
     @Test

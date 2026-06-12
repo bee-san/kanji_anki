@@ -77,6 +77,43 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("Needs improvement", snapshot.weaknessInsights.focusScore.status)
     }
 
+    @Test
+    fun progressRouteFreshCacheStillQueriesLiveReviewWindowsWithoutLatestFallback() {
+        val now = 44_444L
+        val source = GuardedProgressAnalyticsStatsSource(
+            fresh = snapshot(sourceVersion = 7L),
+            latest = snapshot(sourceVersion = 8L),
+            direct = snapshot(sourceVersion = 9L),
+        )
+
+        val state = progressAnalyticsSnapshot(source, nowMillis = now)
+
+        assertEquals(now, state.generatedAtMillis)
+        assertEquals("Stats overview", state.overview.title)
+        assertEquals(1, source.freshReads)
+        assertEquals(0, source.latestReads)
+        assertEquals(0, source.directRecomputes)
+        assertEquals(listOf(30, 14), source.reviewDayRequests)
+    }
+
+    @Test
+    fun progressRouteCacheMissFallsBackToDirectRecomputeButStillQueriesLiveReviewWindows() {
+        val now = 55_555L
+        val source = GuardedProgressAnalyticsStatsSource(
+            latest = snapshot(sourceVersion = 8L),
+            direct = snapshot(sourceVersion = 9L),
+        )
+
+        val state = progressAnalyticsSnapshot(source, nowMillis = now)
+
+        assertEquals(now, state.generatedAtMillis)
+        assertEquals("Stats overview", state.overview.title)
+        assertEquals(1, source.freshReads)
+        assertEquals(0, source.latestReads)
+        assertEquals(1, source.directRecomputes)
+        assertEquals(listOf(30, 14), source.reviewDayRequests)
+    }
+
     private fun writeFreshStatsSnapshot(now: Long) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
@@ -158,5 +195,52 @@ class ProgressAnalyticsLiveDataSourceTest {
                 dayStart,
             ),
         )
+    }
+
+    private class GuardedProgressAnalyticsStatsSource(
+        private val fresh: StatsCacheStore.Snapshot? = null,
+        private val latest: StatsCacheStore.Snapshot? = null,
+        private val direct: StatsCacheStore.Snapshot = snapshot(sourceVersion = 1L),
+    ) : ProgressAnalyticsStatsSource {
+        var freshReads = 0
+        var latestReads = 0
+        var directRecomputes = 0
+        val reviewDayRequests = mutableListOf<Int>()
+
+        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+            freshReads += 1
+            return fresh
+        }
+
+        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+            latestReads += 1
+            return latest
+        }
+
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+            directRecomputes += 1
+            return direct
+        }
+
+        override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
+            reviewDayRequests += days
+            return emptyList()
+        }
+    }
+
+    private companion object {
+        fun snapshot(sourceVersion: Long): StatsCacheStore.Snapshot {
+            return StatsCacheStore.Snapshot(
+                outcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
+                impactReport = KanjiImpactAnalyzer.Report(0, 0, 0, emptyList()),
+                generatedAtMillis = 1_111L,
+                sourceVersion = sourceVersion,
+                studyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
+                recentMistakes = emptyList(),
+                studyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+                studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
+                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+            )
+        }
     }
 }
