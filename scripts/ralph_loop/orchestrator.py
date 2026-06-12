@@ -17,6 +17,7 @@ from scripts.ralph_loop import button_latency_inventory
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
 from scripts.ralph_loop import ui_manifest
+from scripts.ralph_loop import ui_view_matrix
 
 FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "shared", "all")
 BUCKET_PRIORITY = {
@@ -554,6 +555,7 @@ def _button_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
 
 
 def _render_audit_report_markdown(report: dict[str, object]) -> str:
+    artifacts = cast(dict[str, object], report["artifacts"])
     lines = [
         "# Ralph audit report",
         "",
@@ -566,11 +568,13 @@ def _render_audit_report_markdown(report: dict[str, object]) -> str:
         "",
         "## Artifacts",
         "",
-        f"- Manifest: `{report['artifacts']['manifest_json']}`",
-        f"- Button contract JSON: `{report['artifacts']['button_contract_json']}`",
-        f"- Button contract Markdown: `{report['artifacts']['button_contract_markdown']}`",
-        f"- Audit report JSON: `{report['artifacts']['audit_report_json']}`",
-        f"- Audit report Markdown: `{report['artifacts']['audit_report_markdown']}`",
+        f"- Manifest: `{artifacts['manifest_json']}`",
+        f"- UI view matrix JSON: `{artifacts['ui_view_matrix_json']}`",
+        f"- UI view matrix Markdown: `{artifacts['ui_view_matrix_markdown']}`",
+        f"- Button contract JSON: `{artifacts['button_contract_json']}`",
+        f"- Button contract Markdown: `{artifacts['button_contract_markdown']}`",
+        f"- Audit report JSON: `{artifacts['audit_report_json']}`",
+        f"- Audit report Markdown: `{artifacts['audit_report_markdown']}`",
         "",
         "## File reviews",
         "",
@@ -611,6 +615,7 @@ def _build_audit_report(
     run_dir: Path,
     manifest: dict[str, object],
     contract: dict[str, object],
+    view_matrix: dict[str, object],
     file_reviews: list[dict[str, object]],
     backlog: list[dict[str, object]],
 ) -> dict[str, object]:
@@ -661,12 +666,15 @@ def _build_audit_report(
             "require_remote_green": args.require_remote_green,
         },
         "manifest_summary": manifest.get("summary", {}),
+        "ui_view_matrix_summary": view_matrix.get("summary", {}),
         "button_contract_summary": contract.get("summary", {}),
         "summary": summary,
         "file_reviews": file_reviews,
         "backlog": backlog,
         "artifacts": {
             "manifest_json": str(run_dir / "ui-manifest.json"),
+            "ui_view_matrix_json": str(run_dir / "ui-view-matrix.json"),
+            "ui_view_matrix_markdown": str(run_dir / "ui-view-matrix.md"),
             "button_contract_json": str(run_dir / "button-contract.json"),
             "button_contract_markdown": str(run_dir / "button-contract.md"),
             "button_latency_inventory_json": str(run_dir / "button-latency-inventory.json"),
@@ -690,6 +698,9 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
     contract = button_contract.build_contract(repo_root, manifest_path)
     contract_path = run_dir / "button-contract.json"
     button_contract.write_outputs(contract, repo_root, contract_path, run_dir / "button-contract.md")
+
+    view_matrix = ui_view_matrix.build_matrix(repo_root, manifest_path, contract_path)
+    ui_view_matrix.write_outputs(view_matrix, repo_root, run_dir / "ui-view-matrix.json", run_dir / "ui-view-matrix.md")
 
     latency_measurements = args.latency_measurements
     if latency_measurements and not latency_measurements.is_absolute():
@@ -776,6 +787,7 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
         run_dir=run_dir,
         manifest=manifest,
         contract=contract,
+        view_matrix=view_matrix,
         file_reviews=file_reviews,
         backlog=backlog,
     )
