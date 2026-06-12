@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.updatecore
 
+import java.util.Locale
+
 object PackageInstallStatusPolicy {
     const val STATUS_SUCCESS = 0
     const val STATUS_PENDING_USER_ACTION = -1
@@ -12,16 +14,32 @@ object PackageInstallStatusPolicy {
     const val SOURCE_AUTOMATIC = "AUTOMATIC"
     const val SOURCE_CACHED = "CACHED"
 
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun mapInstallStatus(status: Int, message: String?): InstallCallback {
         if (status == STATUS_SUCCESS) {
-            return InstallCallback(false, true, "Install finished.")
+            return InstallCallback(false, true, installFinishedMessage())
         }
         if (status == STATUS_PENDING_USER_ACTION) {
-            return InstallCallback(true, false, "Android needs permission to finish installing.")
+            return InstallCallback(true, false, installPermissionNeededMessage())
         }
+        return InstallCallback(false, false, installFailedMessage(message))
+    }
+
+    @JvmStatic
+    fun installFinishedMessage(): String = localizedText("Install finished.", "インストールが完了しました。")
+
+    @JvmStatic
+    fun installPermissionNeededMessage(): String = localizedText(
+        "Android needs permission to finish installing.",
+        "インストールを完了するにはAndroidの許可が必要です。",
+    )
+
+    @JvmStatic
+    fun installFailedMessage(message: String?): String {
         val suffix = if (message.isNullOrBlank()) "" else ": ${message.trim()}"
-        return InstallCallback(false, false, "Install failed$suffix.")
+        return localizedText("Install failed$suffix.", "インストールに失敗しました$suffix。")
     }
 
     @JvmStatic
@@ -61,6 +79,10 @@ object PackageInstallStatusPolicy {
             return 29
         }
         return Int.MAX_VALUE
+    }
+
+    private fun localizedText(english: String, japanese: String): String {
+        return if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english
     }
 
     class InstallCallback(

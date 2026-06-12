@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.updatecore
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,47 +9,96 @@ import org.junit.Test
 class PackageInstallStatusPolicyTest {
     @Test
     fun successStatusMapsToFinishedCallback() {
-        val mapped = PackageInstallStatusPolicy.mapInstallStatus(
-            PackageInstallStatusPolicy.STATUS_SUCCESS,
-            "ignored"
-        )
+        withLocale(Locale.ENGLISH) {
+            val mapped = PackageInstallStatusPolicy.mapInstallStatus(
+                PackageInstallStatusPolicy.STATUS_SUCCESS,
+                "ignored",
+            )
 
-        assertFalse(mapped.pendingUserAction())
-        assertTrue(mapped.success())
-        assertEquals("Install finished.", mapped.message())
+            assertFalse(mapped.pendingUserAction())
+            assertTrue(mapped.success())
+            assertEquals("Install finished.", mapped.message())
+            assertEquals("Install finished.", PackageInstallStatusPolicy.installFinishedMessage())
+        }
     }
 
     @Test
     fun pendingUserActionStatusMapsToConfirmationCallback() {
-        val mapped = PackageInstallStatusPolicy.mapInstallStatus(
-            PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION,
-            "ignored"
-        )
+        withLocale(Locale.ENGLISH) {
+            val mapped = PackageInstallStatusPolicy.mapInstallStatus(
+                PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION,
+                "ignored",
+            )
 
-        assertTrue(mapped.pendingUserAction())
-        assertFalse(mapped.success())
-        assertEquals("Android needs permission to finish installing.", mapped.message())
+            assertTrue(mapped.pendingUserAction())
+            assertFalse(mapped.success())
+            assertEquals("Android needs permission to finish installing.", mapped.message())
+            assertEquals(
+                "Android needs permission to finish installing.",
+                PackageInstallStatusPolicy.installPermissionNeededMessage(),
+            )
+        }
     }
 
     @Test
     fun failureMessageIncludesTrimmedInstallerDetails() {
-        val mapped = PackageInstallStatusPolicy.mapInstallStatus(
-            12,
-            "  blocked by policy  "
-        )
+        withLocale(Locale.ENGLISH) {
+            val mapped = PackageInstallStatusPolicy.mapInstallStatus(
+                12,
+                "  blocked by policy  ",
+            )
 
-        assertFalse(mapped.pendingUserAction())
-        assertFalse(mapped.success())
-        assertEquals("Install failed: blocked by policy.", mapped.message())
+            assertFalse(mapped.pendingUserAction())
+            assertFalse(mapped.success())
+            assertEquals("Install failed: blocked by policy.", mapped.message())
+            assertEquals(
+                "Install failed: blocked by policy.",
+                PackageInstallStatusPolicy.installFailedMessage("  blocked by policy  "),
+            )
+        }
     }
 
     @Test
     fun failureMessageHandlesMissingInstallerDetails() {
-        val nullMessage = PackageInstallStatusPolicy.mapInstallStatus(12, null)
-        val blankMessage = PackageInstallStatusPolicy.mapInstallStatus(13, "  ")
+        withLocale(Locale.ENGLISH) {
+            val nullMessage = PackageInstallStatusPolicy.mapInstallStatus(12, null)
+            val blankMessage = PackageInstallStatusPolicy.mapInstallStatus(13, "  ")
 
-        assertEquals("Install failed.", nullMessage.message())
-        assertEquals("Install failed.", blankMessage.message())
+            assertEquals("Install failed.", nullMessage.message())
+            assertEquals("Install failed.", blankMessage.message())
+        }
+    }
+
+    @Test
+    fun japaneseLocaleTranslatesInstallStatusMessages() {
+        withLocale(Locale.JAPANESE) {
+            val success = PackageInstallStatusPolicy.mapInstallStatus(
+                PackageInstallStatusPolicy.STATUS_SUCCESS,
+                "ignored",
+            )
+            val pending = PackageInstallStatusPolicy.mapInstallStatus(
+                PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION,
+                "ignored",
+            )
+            val failed = PackageInstallStatusPolicy.mapInstallStatus(12, "  blocked by policy  ")
+            val failedWithoutDetails = PackageInstallStatusPolicy.mapInstallStatus(13, "  ")
+
+            assertTrue(success.success())
+            assertEquals("インストールが完了しました。", success.message())
+            assertTrue(pending.pendingUserAction())
+            assertEquals("インストールを完了するにはAndroidの許可が必要です。", pending.message())
+            assertEquals("インストールに失敗しました: blocked by policy。", failed.message())
+            assertEquals("インストールに失敗しました。", failedWithoutDetails.message())
+            assertEquals("インストールが完了しました。", PackageInstallStatusPolicy.installFinishedMessage())
+            assertEquals(
+                "インストールを完了するにはAndroidの許可が必要です。",
+                PackageInstallStatusPolicy.installPermissionNeededMessage(),
+            )
+            assertEquals(
+                "インストールに失敗しました: blocked by policy。",
+                PackageInstallStatusPolicy.installFailedMessage("  blocked by policy  "),
+            )
+        }
     }
 
     @Test
@@ -91,5 +141,15 @@ class PackageInstallStatusPolicyTest {
         assertEquals(31, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(34))
         assertEquals(33, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(35))
         assertEquals(34, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(36))
+    }
+
+    private inline fun withLocale(locale: Locale, block: () -> Unit) {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
