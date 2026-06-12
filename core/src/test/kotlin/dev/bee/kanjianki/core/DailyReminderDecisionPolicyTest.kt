@@ -175,6 +175,244 @@ class DailyReminderDecisionPolicyTest {
         }
     }
 
+    @Test
+    fun studyNowWithBlankReasonsUsesNewProblemFallbackCopy() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 8, 0)
+            val decision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        dueNow = 0,
+                        newProblemKanjiAvailable = 1,
+                        recommendedAction = RecommendedAction.STUDY_NOW,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+
+            assertTrue(decision.shouldSchedule)
+            assertEquals(ReminderFamily.DUE, decision.family)
+            assertEquals(now, decision.triggerAtMillis)
+            assertEquals("Study now", decision.title)
+            assertEquals("1 new problem kanji available. Open Kani to review them.", decision.body)
+            assertEquals(listOf("plan:new-problem-kanji"), decision.reasonIds)
+            assertEquals("1 new problem kanji available", decision.humanReason)
+        }
+    }
+
+    @Test
+    fun waitUntilLaterWithBlankReasonsUsesSingularFallbackCopy() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 8, 0)
+            val nextUseful = utc(2026, Calendar.MAY, 15, 10, 0)
+            val decision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        dueLater = 1,
+                        recommendedAction = RecommendedAction.WAIT_UNTIL_LATER,
+                        nextUsefulReminderAtMillis = nextUseful,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+
+            assertTrue(decision.shouldSchedule)
+            assertEquals(ReminderFamily.DUE, decision.family)
+            assertEquals(nextUseful, decision.triggerAtMillis)
+            assertEquals("Study later", decision.title)
+            assertEquals("1 learning repeat later. Next useful time: 10:00.", decision.body)
+            assertEquals(listOf("plan:due-later-cluster"), decision.reasonIds)
+            assertEquals("1 learning repeat later", decision.humanReason)
+        }
+    }
+
+    @Test
+    fun streakReminderCoversSafeAndCapFallbacks() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 8, 0)
+
+            val safeDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.STUDY_ONCE_FOR_STREAK,
+                        streakStatus = StreakStatus.SAFE,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertFalse(safeDecision.shouldSchedule)
+            assertEquals(null, safeDecision.family)
+            assertEquals("Nothing useful now", safeDecision.title)
+            assertEquals("Nothing useful now.", safeDecision.body)
+            assertEquals(listOf("plan:nothing-useful-now"), safeDecision.reasonIds)
+            assertEquals("nothing useful now", safeDecision.humanReason)
+
+            val cappedDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    streakRemindersShownToday = 1,
+                    streakReminderCapPerDay = 1,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.STUDY_ONCE_FOR_STREAK,
+                        streakStatus = StreakStatus.NEEDS_ONE_REVIEW,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertFalse(cappedDecision.shouldSchedule)
+            assertEquals(ReminderFamily.STREAK, cappedDecision.family)
+            assertEquals(0L, cappedDecision.triggerAtMillis)
+            assertEquals("Keep your streak", cappedDecision.title)
+            assertEquals("Streak needs one review. Open Kani now to keep your streak alive.", cappedDecision.body)
+            assertEquals(
+                listOf("plan:streak-needs-one-review", "reminder:streak-cap-reached"),
+                cappedDecision.reasonIds,
+            )
+            assertTrue(cappedDecision.humanReason.contains("streak reminder cap reached"))
+        }
+    }
+
+    @Test
+    fun syncReminderCoversCurrentStateFallbacksAndCaps() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 8, 0)
+
+            val currentDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.SYNC_FIRST,
+                        syncStatus = SyncStatus.CURRENT,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertFalse(currentDecision.shouldSchedule)
+            assertEquals(null, currentDecision.family)
+            assertEquals("Nothing useful now", currentDecision.title)
+            assertEquals("Nothing useful now.", currentDecision.body)
+            assertEquals(listOf("plan:nothing-useful-now"), currentDecision.reasonIds)
+
+            val neededDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.SYNC_FIRST,
+                        syncStatus = SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertTrue(neededDecision.shouldSchedule)
+            assertEquals(ReminderFamily.SYNC, neededDecision.family)
+            assertEquals("Sync Kani", neededDecision.title)
+            assertEquals(
+                "Sync needed before Kani can judge progress. Open Kani and sync now.",
+                neededDecision.body,
+            )
+            assertEquals(listOf("plan:sync-needed"), neededDecision.reasonIds)
+
+            val manualDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.SYNC_FIRST,
+                        syncStatus = SyncStatus.NO_MANUAL_SYNC_YET,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertTrue(manualDecision.shouldSchedule)
+            assertEquals(ReminderFamily.SYNC, manualDecision.family)
+            assertEquals(
+                "No manual sync yet. Open Kani and sync now.",
+                manualDecision.body,
+            )
+
+            val cappedDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    syncRemindersShownToday = 1,
+                    syncReminderCapPerDay = 1,
+                    plan = plan(
+                        nowMillis = now,
+                        recommendedAction = RecommendedAction.SYNC_FIRST,
+                        syncStatus = SyncStatus.UNKNOWN,
+                        reasons = listOf(" "),
+                    ),
+                ),
+            )
+            assertFalse(cappedDecision.shouldSchedule)
+            assertEquals(ReminderFamily.SYNC, cappedDecision.family)
+            assertEquals(0L, cappedDecision.triggerAtMillis)
+            assertEquals("Sync Kani", cappedDecision.title)
+            assertEquals("Sync freshness unknown. Open Kani and sync now.", cappedDecision.body)
+            assertEquals(
+                listOf("plan:sync-needed", "reminder:sync-cap-reached"),
+                cappedDecision.reasonIds,
+            )
+            assertTrue(cappedDecision.humanReason.contains("sync reminder cap reached"))
+        }
+    }
+
+    @Test
+    fun quietHoursHandleInvalidConfigurationsAndRollOverAfterStart() {
+        withUtcZone {
+            val now = utc(2026, Calendar.MAY, 15, 23, 15)
+
+            val invalidDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    quietHoursStartMinuteOfDay = 22 * 60,
+                    quietHoursLeadMinutes = 0,
+                    plan = plan(
+                        nowMillis = now,
+                        dueNow = 1,
+                        recommendedAction = RecommendedAction.STUDY_NOW,
+                        nextUsefulReminderAtMillis = utc(2026, Calendar.MAY, 16, 1, 0),
+                        reasons = listOf("1 due now"),
+                    ),
+                ),
+            )
+            assertTrue(invalidDecision.shouldSchedule)
+            assertEquals(ReminderFamily.DUE, invalidDecision.family)
+            assertEquals(utc(2026, Calendar.MAY, 16, 1, 0), invalidDecision.triggerAtMillis)
+            assertEquals("Study now", invalidDecision.title)
+            assertEquals("1 due now. Open Kani to review them.", invalidDecision.body)
+
+            val rolledDecision = DailyReminderDecisionPolicy.decide(
+                DailyReminderDecisionRequest(
+                    nowMillis = now,
+                    quietHoursStartMinuteOfDay = 22 * 60,
+                    quietHoursLeadMinutes = 60,
+                    plan = plan(
+                        nowMillis = now,
+                        dueLater = 1,
+                        recommendedAction = RecommendedAction.WAIT_UNTIL_LATER,
+                        nextUsefulReminderAtMillis = utc(2026, Calendar.MAY, 16, 22, 30),
+                        reasons = listOf("1 learning repeat later"),
+                    ),
+                ),
+            )
+            assertTrue(rolledDecision.shouldSchedule)
+            assertEquals(ReminderFamily.DUE, rolledDecision.family)
+            assertEquals(utc(2026, Calendar.MAY, 16, 21, 0), rolledDecision.triggerAtMillis)
+            assertEquals("Study later", rolledDecision.title)
+            assertEquals("1 learning repeat later. Next useful time: 21:00.", rolledDecision.body)
+            assertTrue(rolledDecision.reasonIds.contains("reminder:quiet-hours-soon"))
+        }
+    }
+
     private fun plan(
         nowMillis: Long,
         dueNow: Int = 0,
