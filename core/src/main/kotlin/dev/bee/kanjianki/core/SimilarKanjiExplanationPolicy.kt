@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import java.util.LinkedHashMap
 import java.util.LinkedHashSet
+import java.util.Locale
 
 data class SimilarKanjiExplanation(
     val targetKanji: String,
@@ -22,6 +23,8 @@ enum class ExplanationConfidence {
 }
 
 object SimilarKanjiExplanationPolicy {
+    private const val JAPANESE_LANGUAGE = "ja"
+
     @JvmStatic
     fun explain(
         targetKanji: String?,
@@ -154,6 +157,9 @@ object SimilarKanjiExplanationPolicy {
         targetKanji: String,
         confusedWith: List<String>,
     ): String {
+        if (isJapaneseLocale()) {
+            return japaneseWatchThisPart(targetKanji, confusedWith)
+        }
         if (confusedWith.isEmpty()) {
             return if (targetKanji.isNotEmpty()) {
                 "Watch this kanji closely."
@@ -167,6 +173,28 @@ object SimilarKanjiExplanationPolicy {
             "Watch how $targetKanji differs from ${joinWithAnd(confusedWith)}."
         }
     }
+
+    private fun japaneseWatchThisPart(
+        targetKanji: String,
+        confusedWith: List<String>,
+    ): String {
+        if (confusedWith.isEmpty()) {
+            return if (targetKanji.isNotEmpty()) {
+                "この漢字をよく見ましょう。"
+            } else {
+                "このペアをよく見比べましょう。"
+            }
+        }
+        return if (confusedWith.size == 1) {
+            "${targetKanji}と${confusedWith.first()}の違いを見比べましょう。"
+        } else {
+            "${targetKanji}と${joinWithJapaneseSeparator(confusedWith)}の違いを見比べましょう。"
+        }
+    }
+
+    private fun joinWithJapaneseSeparator(values: List<String>): String = values.joinToString("・")
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     private fun joinWithAnd(values: List<String>): String {
         return when (values.size) {

@@ -12,6 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -1515,6 +1516,25 @@ class ComposeScreenModelsTest {
             ),
             explanationLines,
         )
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("Pair", "列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Watch", "Watch this pair closely.", true),
+            ),
+            similarKanjiExplanationLines(
+                SimilarKanjiExplanation(
+                    targetKanji = "",
+                    confusedWith = listOf("列", "烈"),
+                    sharedComponents = emptyList(),
+                    differingComponents = emptyList(),
+                    meaningClues = emptyList(),
+                    readingClues = emptyList(),
+                    failedSourceWords = emptyList(),
+                    watchThisPart = "Watch this pair closely.",
+                    confidence = ExplanationConfidence.LOW,
+                )
+            ),
+        )
         assertEquals(explanationLines, similar.explanationLines)
         assertEquals("Recall", meaning.modeLabel)
         assertEquals("meaning -> kanji", meaning.taskLabel)
@@ -1546,6 +1566,34 @@ class ComposeScreenModelsTest {
         assertEquals(grid, grid.copy())
         assertEquals(similar, similar.copy())
         assertEquals(meaning, meaning.copy())
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesSimilarKanjiExplanationLineLabels() = withLocale(Locale.JAPAN) {
+        val explanation = SimilarKanjiExplanation(
+            targetKanji = "裂",
+            confusedWith = listOf("列", "烈"),
+            sharedComponents = listOf("⿰"),
+            differingComponents = listOf("歹", "衣"),
+            meaningClues = listOf("裂: split", "列: row"),
+            readingClues = listOf("裂: れつ", "列: れつ"),
+            failedSourceWords = listOf("source one"),
+            watchThisPart = "裂と列・烈の違いを見比べましょう。",
+            confidence = ExplanationConfidence.HIGH,
+        )
+
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("ペア", "裂と列・烈", true),
+                SimilarKanjiExplanationLineModel("出典語", "source one"),
+                SimilarKanjiExplanationLineModel("意味の手がかり", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("読みの手がかり", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("共通部品", "⿰"),
+                SimilarKanjiExplanationLineModel("異なる部品", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("注目", "裂と列・烈の違いを見比べましょう。", true),
+            ),
+            similarKanjiExplanationLines(explanation),
+        )
     }
 
     @Test
@@ -1664,5 +1712,15 @@ class ComposeScreenModelsTest {
         assertEquals(true, state.containsWindowPoint(12f, 20f))
         assertEquals(false, state.containsWindowPoint(3f, 20f))
         assertEquals(false, state.containsWindowPoint(12f, 39f))
+    }
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }
