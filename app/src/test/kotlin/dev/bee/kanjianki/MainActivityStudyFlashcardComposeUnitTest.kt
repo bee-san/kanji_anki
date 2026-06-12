@@ -8,8 +8,12 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
+import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyReviewButtonCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -98,5 +102,29 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("split").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersUndoBannerAndInvokesAction() {
+        var undoTriggered = false
+        val undoMessage = StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD)
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                undoMessage = undoMessage,
+                onUndo = { undoTriggered = true },
+            )
+        }
+
+        composeRule.onNodeWithText(undoMessage).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyReviewButtonCopy.undoLabel())
+            .assertIsDisplayed()
+            .performClick()
+
+        assertTrue(undoTriggered)
     }
 }

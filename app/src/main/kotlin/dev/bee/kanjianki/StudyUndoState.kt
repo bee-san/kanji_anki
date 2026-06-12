@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.bee.kanjianki.core.StudyTextCopy
 
 internal data class StudyUndoEntry(
     val snapshot: StudyReviewActions.AppliedReviewSnapshot,
@@ -16,6 +17,10 @@ internal class StudyUndoState {
 
     fun capture(snapshot: StudyReviewActions.AppliedReviewSnapshot, label: String, createdAtMillis: Long) {
         pending = StudyUndoEntry(snapshot, label, createdAtMillis)
+    }
+
+    fun undoMessageOrNull(): String? {
+        return pending?.let { StudyTextCopy.reviewUndoMessage(it.label) }
     }
 
     fun clear() {

@@ -108,6 +108,27 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.renderStudy()
     }
 
+    fun undoLastRating() {
+        val pending = activity.studyUndoState.pending ?: return
+        val currentItem = activity.findStudyItem(activity.store.studyItems(), pending.snapshot.afterReview.kanji)
+        if (!StudyReviewActions.matchesUndoBoundary(currentItem, pending.snapshot.afterReview)) {
+            activity.studyUndoState.clear()
+            activity.renderStudy()
+            return
+        }
+        val restoredKanji = pending.snapshot.beforeReview.kanji
+        activity.studyUndoState.clear()
+        val restored = runCatching { activity.store.undoLastAppliedReview(pending.snapshot) }.getOrDefault(false)
+        if (!restored) {
+            activity.renderStudy()
+            return
+        }
+        activity.renderStudyForKanji(restoredKanji)
+        val now = System.currentTimeMillis()
+        activity.store.recomputeStatsSnapshotSynchronously(now)
+        ReminderScheduler.schedule(activity)
+    }
+
     fun saveAppliedReview(
         request: RecordsSchedulerModels.ReviewRequest,
         result: RecordsSchedulerModels.ReviewResult,

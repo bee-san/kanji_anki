@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
+import dev.bee.kanjianki.StudyReviewActions
 
 internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
     private fun studySettings(): LocalStoreStudySettings = LocalStoreStudySettings(this)
@@ -71,8 +72,8 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         request: RecordsSchedulerModels.ReviewRequest,
         appliedRating: String?,
         reviewedAt: Long,
-        beforeReview: RecordsStudyModels.StudyItem?,
-        afterReview: RecordsStudyModels.StudyItem?,
+        beforeReview: RecordsStudyModels.StudyItem? = null,
+        afterReview: RecordsStudyModels.StudyItem? = null,
     ) {
         writableDatabase.transaction {
             val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, afterReview)
@@ -83,7 +84,20 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         }
     }
 
-    fun kanjiImpactReport(): KanjiImpactAnalyzer.Report = KanjiImpactReportStore(this as LocalStore).report()
+    fun undoLastAppliedReview(snapshot: StudyReviewActions.AppliedReviewSnapshot): Boolean {
+        return writableDatabase.transaction {
+            val deleted = delete(TABLE_REVIEW_LOG, "$COLUMN_TOKEN = ?", arrayOf(snapshot.token))
+            if (deleted <= 0) {
+                false
+            } else {
+                delete(TABLE_KANJI_TIMELINE_EVENTS, "$COLUMN_DEDUPE_KEY = ?", arrayOf("review:${snapshot.token}"))
+                upsertStudyItem(this, snapshot.beforeReview)
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+                clearStudyItemsCache()
+                true
+            }
+        }
+    }
 
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
         return StatsCacheStore(this as LocalStore).readFresh(nowMillis = System.currentTimeMillis())

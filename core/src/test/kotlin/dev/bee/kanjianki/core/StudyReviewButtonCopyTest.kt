@@ -26,7 +26,13 @@ class StudyReviewButtonCopyTest {
             assertEquals("できた", StudyReviewButtonCopy.goodLabel())
             assertEquals("もう一度: このカードを早めに再表示する", StudyReviewButtonCopy.againContentDescription())
             assertEquals("できた: 次回の復習を予定どおりに保つ", StudyReviewButtonCopy.goodContentDescription())
+            assertEquals("元に戻す", StudyReviewButtonCopy.undoLabel())
         }
+    }
+
+    @Test
+    fun undoLabelUsesPlainUndoTextByDefault() {
+        assertEquals("Undo", StudyReviewButtonCopy.undoLabel())
     }
 
     private fun withJapaneseLocale(block: () -> Unit) {

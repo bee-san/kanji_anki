@@ -335,6 +335,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingReview.submitReview(rating, override, ladder)
     }
 
+    fun undoLastRating() {
+        writingReview.undoLastRating()
+    }
+
     fun completeActiveRepairStudyTask(key: String?, outcome: String?, answeredAt: Long) {
         studyState.completeActiveRepairStudyTask(key, outcome, answeredAt)
     }

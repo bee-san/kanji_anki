@@ -245,11 +245,32 @@ object StudyTextCopy {
     }
 
     @JvmStatic
-    fun completedTaskSummary(count: Int): String {
+    fun reviewUndoMessage(rating: String): String {
+        val ratingLabel = localizedRatingLabel(rating)
+        return localizedText("${ratingLabel} saved", "${ratingLabel}を保存しました")
+    }
+
+    private fun localizedRatingLabel(value: String): String {
+        return when (StudyRatings.normalize(value)) {
+            StudyRatings.AGAIN -> StudyReviewButtonCopy.againLabel()
+            StudyRatings.HARD -> localizedText("Hard", "難しい")
+            StudyRatings.GOOD -> StudyReviewButtonCopy.goodLabel()
+            StudyRatings.EASY -> localizedText("Easy", "簡単")
+            else -> StudyReviewButtonCopy.goodLabel()
+        }
+    }
+
+    @JvmStatic
+    fun taskCompletedSummary(count: Int): String {
         if (isJapaneseLocale()) {
             return "${count}件のタスクが完了しました"
         }
         return countText(count, "task completed", "tasks completed")
+    }
+
+    @JvmStatic
+    fun completedTaskSummary(count: Int): String {
+        return taskCompletedSummary(count)
     }
 
     @JvmStatic

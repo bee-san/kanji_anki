@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import kotlin.math.roundToInt
 
 internal class FlashcardActionBarState(
@@ -51,32 +50,44 @@ fun StudyFlashcardActionBar(
     onReveal: () -> Unit,
     onFail: () -> Unit,
     onPass: () -> Unit,
+    undoMessage: String? = null,
+    onUndo: (() -> Unit)? = null,
 ) {
-    if (!revealed) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 3.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            StudyRevealButton(onReveal = onReveal)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (undoMessage != null && onUndo != null) {
+            StudyUndoBanner(
+                undoMessage = undoMessage,
+                onUndo = onUndo,
+            )
         }
-    } else {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 3.dp, vertical = 8.dp)
-                .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            StudyAgainButton(
-                onClick = onFail,
-                modifier = Modifier.weight(1f)
-            )
-            StudyGoodButton(
-                onClick = onPass,
-                modifier = Modifier.weight(1f)
-            )
+        if (!revealed) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                StudyRevealButton(onReveal = onReveal)
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                StudyAgainButton(
+                    onClick = onFail,
+                    modifier = Modifier.weight(1f)
+                )
+                StudyGoodButton(
+                    onClick = onPass,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

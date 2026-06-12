@@ -30,7 +30,15 @@ class StudyTextCopyLocaleLabelsTest {
             assertEquals("学習進捗", StudyTextCopy.studyProgressDescription())
             assertEquals("学習", StudyTextCopy.studyLabel())
             assertEquals("練習", StudyTextCopy.practiceLabel())
+            assertEquals("できたを保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
+            assertEquals("もう一度を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
         }
+    }
+
+    @Test
+    fun studyCopyShowsUndoBannerTextInEnglishByDefault() {
+        assertEquals("Good saved", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
+        assertEquals("Again saved", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
     }
 
     private fun withLocale(locale: Locale, block: () -> Unit) {

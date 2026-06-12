@@ -168,7 +168,17 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     @Composable
     private fun ComposeWritingActionBar(route: WritingSessionRouteModel) {
         val state = route.actionBarState ?: return
-        WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
+        val undoMessage = home.studyUndoState.undoMessageOrNull()
+        Column {
+            if (undoMessage != null) {
+                StudyUndoBanner(
+                    undoMessage = undoMessage,
+                    onUndo = home::undoLastRating,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+            WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
+        }
     }
 
     private data class WritingSessionRouteModel(
