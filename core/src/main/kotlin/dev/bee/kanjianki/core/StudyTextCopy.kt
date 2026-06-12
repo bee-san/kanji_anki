@@ -274,6 +274,67 @@ object StudyTextCopy {
     }
 
     @JvmStatic
+    fun completedTaskBreakdownSummary(breakdown: StudySessionProgressTracker.CompletedTaskBreakdown): String {
+        val parts = ArrayList<String>()
+        addCompletedTaskBreakdownPart(
+            parts,
+            breakdown.writingChecks,
+            "writing check",
+            "writing checks",
+            "書く練習",
+        )
+        addCompletedTaskBreakdownPart(
+            parts,
+            breakdown.similarKanjiChoices,
+            "similar kanji choice",
+            "similar kanji choices",
+            "似た漢字",
+        )
+        addCompletedTaskBreakdownPart(
+            parts,
+            breakdown.similarKanjiRepairs,
+            "similar kanji repair",
+            "similar kanji repairs",
+            "修復",
+        )
+        addCompletedTaskBreakdownPart(
+            parts,
+            breakdown.wordReadingReviews,
+            "word reading review",
+            "word reading reviews",
+            "単語読み",
+        )
+        addCompletedTaskBreakdownPart(
+            parts,
+            breakdown.otherReviews,
+            "other review",
+            "other reviews",
+            "その他",
+        )
+        if (parts.isEmpty()) {
+            return completedTaskSummary(breakdown.total)
+        }
+        return completedTaskSummary(breakdown.total) + " — " + parts.joinToString(", ")
+    }
+
+    private fun addCompletedTaskBreakdownPart(
+        parts: MutableList<String>,
+        count: Int,
+        singular: String,
+        plural: String,
+        japaneseLabel: String,
+    ) {
+        if (count <= 0) {
+            return
+        }
+        if (isJapaneseLocale()) {
+            parts.add("${count}件の$japaneseLabel")
+        } else {
+            parts.add(countText(count, singular, plural))
+        }
+    }
+
+    @JvmStatic
     fun similarWritingRepairSavedToast(passed: Boolean): String {
         if (isJapaneseLocale()) {
             return if (passed) "修復を保存しました。" else "保存しました。もう一度練習しましょう。"

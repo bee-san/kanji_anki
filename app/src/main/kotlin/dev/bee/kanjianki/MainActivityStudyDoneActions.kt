@@ -66,7 +66,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()))
         summaryLines.add(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()))
-        summaryLines.add(StudyTextCopy.completedTaskSummary(home.studySessionTracker.completedCount()))
+        summaryLines.add(StudyTextCopy.completedTaskBreakdownSummary(home.studySessionTracker.completedTaskBreakdown()))
         if (plan != null && plan.status.isNotEmpty()) {
             summaryLines.add(plan.status)
         }
