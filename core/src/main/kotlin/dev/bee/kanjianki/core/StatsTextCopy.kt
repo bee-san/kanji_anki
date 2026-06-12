@@ -53,6 +53,27 @@ object StatsTextCopy {
     fun recentMistakesTitle(): String = localizedText("Recent mistakes", "最近のミス")
 
     @JvmStatic
+    fun repairEvidenceTitle(): String = localizedText("Repair evidence", "修復の証拠")
+
+    @JvmStatic
+    fun repairEvidenceSummary(count: Int): String =
+        localizedText(
+            StudyTextCopy.countText(count, "repair evidence item", "repair evidence items"),
+            "修復の証拠${count}件",
+        )
+
+    @JvmStatic
+    fun repairEvidenceBody(): String = localizedText("Latest entries first.", "最新の項目から表示しています。")
+
+    @JvmStatic
+    fun repairEvidenceStatusLabel(status: KanjiRepairEvidencePolicy.Status): String = when (status) {
+        KanjiRepairEvidencePolicy.Status.IMPROVING -> localizedText("Improving", "改善中")
+        KanjiRepairEvidencePolicy.Status.STABLE -> localizedText("Stable", "横ばい")
+        KanjiRepairEvidencePolicy.Status.REGRESSING -> localizedText("Regressing", "悪化中")
+        KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE -> localizedText("Waiting for evidence", "証拠待ち")
+    }
+
+    @JvmStatic
     fun moreAnkiEvidenceSummary(count: Int): String =
         localizedText(
             StudyTextCopy.countText(count, "kanji still needs more Anki evidence", "kanji still need more Anki evidence"),

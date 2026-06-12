@@ -16,6 +16,7 @@ internal interface StatsScreenStatsSource {
     fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats
+    fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence>
 }
 
 internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
@@ -48,6 +49,10 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
             override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
                 return store.studyTaskTimeStats(nowMillis)
             }
+
+            override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+                return store.kanjiRepairEvidence()
+            }
         }
     )
 }
@@ -64,6 +69,7 @@ internal fun buildStatsScreenModel(
     val studyStreak = if (needsLiveFallback) source.studyStreak(nowMillis) else snapshot.studyStreak
     val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
     val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
+    val repairEvidence = source.kanjiRepairEvidence()
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
@@ -71,6 +77,7 @@ internal fun buildStatsScreenModel(
         studyImpact,
         studyStreak,
         recentMistakes,
+        repairEvidence,
         nowMillis,
     )
 }
@@ -82,22 +89,24 @@ internal fun statsScreenModel(
     studyImpact: StudyStatsStore.StudyImpactStats,
     studyStreak: StudyStatsStore.StudyStreak,
     recentMistakes: List<StudyStatsStore.RecentMistake>,
+    repairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
     nowMillis: Long,
 ): StatsScreenModel {
     return StatsScreenModel(
         title = StatsTextCopy.statsTitle(),
         intro = "",
         verdict = statsVerdictCard(stats),
-        sections = listOf(
-            weaknessBurnDownCard(stats),
-            supportConversionCard(stats),
-            studyStreakCard(studyStreak, nowMillis),
-            studyImpactCard(studyImpact),
-            notHelpingCard(report),
-            ladderHealthCard(stats.ladderHealth),
-            recentMistakesCard(recentMistakes, nowMillis),
-            studyTimeCard(studyTime)
-        )
+        sections = buildList {
+            add(weaknessBurnDownCard(stats))
+            add(supportConversionCard(stats))
+            repairEvidenceCard(repairEvidence)?.let(::add)
+            add(studyStreakCard(studyStreak, nowMillis))
+            add(studyImpactCard(studyImpact))
+            add(notHelpingCard(report))
+            add(ladderHealthCard(stats.ladderHealth))
+            add(recentMistakesCard(recentMistakes, nowMillis))
+            add(studyTimeCard(studyTime))
+        }
     )
 }
 
@@ -327,6 +336,37 @@ private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsC
         },
         strokeColor = STATS_GOLD_COLOR
     )
+}
+
+private fun repairEvidenceCard(evidence: List<StudyStatsStore.KanjiRepairEvidence>): StatsCardModel? {
+    if (evidence.isEmpty()) {
+        return null
+    }
+    val rows = evidence.take(3)
+    return outcomeCard(
+        title = StatsTextCopy.repairEvidenceTitle(),
+        summary = StatsTextCopy.repairEvidenceSummary(evidence.size),
+        body = StatsTextCopy.repairEvidenceBody(),
+        lines = rows.map { row ->
+            StatsLineModel(
+                text = repairEvidenceLineText(row),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_GOLD_COLOR
+    )
+}
+
+private fun repairEvidenceLineText(item: StudyStatsStore.KanjiRepairEvidence): String {
+    val status = StatsTextCopy.repairEvidenceStatusLabel(item.status)
+    val delta = when {
+        item.beforeWeakness != null && item.afterWeakness != null -> "${item.beforeWeakness} → ${item.afterWeakness}"
+        item.beforeMatureSupport != null && item.afterMatureSupport != null -> "${item.beforeMatureSupport} → ${item.afterMatureSupport}"
+        else -> item.reason.replace('_', ' ')
+    }
+    return "${item.kanji} · $status · $delta"
 }
 
 private fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {
