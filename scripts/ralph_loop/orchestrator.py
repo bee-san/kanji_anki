@@ -123,6 +123,13 @@ def _finite_float_or_none(value: object) -> float | None:
     return None
 
 
+def _normalized_score_or_none(value: object) -> float | None:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0 or parsed > 1.0:
+        return None
+    return parsed
+
+
 def _review_schema_errors(label: str, parsed: object) -> list[str]:
     if not isinstance(parsed, dict):
         return ["reviewer stdout must be a JSON object"]
@@ -135,9 +142,11 @@ def _review_schema_errors(label: str, parsed: object) -> list[str]:
         for field in ("passed", "after_better", "issue_resolved", "learning_correctness_risk"):
             if not isinstance(parsed.get(field), bool):
                 errors.append(f"design comparison JSON must include boolean '{field}'")
-        for field in ("score_before", "score_after", "score_delta"):
-            if _finite_float_or_none(parsed.get(field)) is None:
-                errors.append(f"design comparison JSON must include finite number '{field}'")
+        for field in ("score_before", "score_after"):
+            if _normalized_score_or_none(parsed.get(field)) is None:
+                errors.append(f"design comparison JSON must include finite 0.0..1.0 score '{field}'")
+        if _finite_float_or_none(parsed.get("score_delta")) is None:
+            errors.append("design comparison JSON must include finite number 'score_delta'")
         if not isinstance(parsed.get("new_regressions"), list):
             errors.append("design comparison JSON must include list 'new_regressions'")
         if not isinstance(parsed.get("rationale"), str) or not parsed.get("rationale", "").strip():

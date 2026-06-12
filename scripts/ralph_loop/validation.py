@@ -174,6 +174,13 @@ def _finite_float_or_none(value: object) -> float | None:
     return parsed
 
 
+def _normalized_score_or_none(value: object) -> float | None:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0 or parsed > 1.0:
+        return None
+    return parsed
+
+
 def _numeric_float(value: object, default: float = 0.0) -> float:
     if value is None:
         return default
@@ -729,6 +736,12 @@ def _design_comparison_gate(
         missing_fields.append("after_better boolean")
 
     def score_field(name: str) -> float | None:
+        if name in {"score_before", "score_after"}:
+            parsed = _normalized_score_or_none(comparison.get(name))
+            if parsed is None:
+                missing_fields.append(f"{name} finite 0.0..1.0 score")
+            return parsed
+
         parsed = _finite_float_or_none(comparison.get(name))
         if parsed is None:
             missing_fields.append(f"{name} finite number")

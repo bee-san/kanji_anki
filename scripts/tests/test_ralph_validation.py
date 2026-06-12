@@ -354,6 +354,13 @@ class RalphValidationTest(unittest.TestCase):
             non_finite_delta = self._passing_design_comparison()
             non_finite_delta["score_delta"] = "nan"
             non_finite_delta_report = validation.build_validation_report({**base_state, "design_review": non_finite_delta})
+            out_of_range_scores = self._passing_design_comparison()
+            out_of_range_scores["score_before"] = 1.2
+            out_of_range_scores["score_after"] = 2.4
+            out_of_range_scores["score_delta"] = 1.2
+            out_of_range_scores_report = validation.build_validation_report(
+                {**base_state, "design_review": out_of_range_scores, "min_design_score_delta": 0.10}
+            )
             alias_report = validation.build_validation_report(
                 {**base_state, "profile_reviews": {"design_comparison": self._passing_design_comparison()}}
             )
@@ -363,6 +370,7 @@ class RalphValidationTest(unittest.TestCase):
         not_better_gate = self._gate(not_better_report, "design_comparison")
         inconsistent_delta_gate = self._gate(inconsistent_delta_report, "design_comparison")
         non_finite_delta_gate = self._gate(non_finite_delta_report, "design_comparison")
+        out_of_range_scores_gate = self._gate(out_of_range_scores_report, "design_comparison")
         alias_gate = self._gate(alias_report, "design_comparison")
         self.assertEqual("passed", alias_gate["status"])
         self.assertEqual("failed", missing_gate["status"])
@@ -375,6 +383,9 @@ class RalphValidationTest(unittest.TestCase):
         self.assertIn("score_after - score_before", str(inconsistent_delta_gate["message"]))
         self.assertEqual("failed", non_finite_delta_gate["status"])
         self.assertIn("score_delta finite number", str(non_finite_delta_gate["details"]))
+        self.assertEqual("failed", out_of_range_scores_gate["status"])
+        self.assertIn("score_before finite 0.0..1.0 score", str(out_of_range_scores_gate["details"]))
+        self.assertIn("score_after finite 0.0..1.0 score", str(out_of_range_scores_gate["details"]))
 
     def test_cli_accepts_min_design_score_delta(self) -> None:
         parser = validation.build_parser()

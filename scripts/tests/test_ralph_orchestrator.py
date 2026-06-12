@@ -298,13 +298,22 @@ class RalphOrchestratorTest(unittest.TestCase):
             "learning_correctness_risk": False,
             "rationale": "The after screenshot makes the primary action clearer without changing behavior.",
         }
+        out_of_range_review = {
+            **comparison_review,
+            "score_before": 1.2,
+            "score_after": 2.4,
+            "score_delta": 1.2,
+        }
 
         errors = orchestrator._review_schema_errors("design-comparison", old_issue_review)
+        range_errors = orchestrator._review_schema_errors("design-comparison", out_of_range_review)
 
         self.assertEqual([], orchestrator._review_schema_errors("design-comparison", comparison_review))
         self.assertTrue(any("cheap-ralph-design-comparison-v1" in error for error in errors))
         self.assertTrue(any("after_better" in error for error in errors))
         self.assertTrue(any("score_delta" in error for error in errors))
+        self.assertTrue(any("score_before" in error and "0.0..1.0" in error for error in range_errors))
+        self.assertTrue(any("score_after" in error and "0.0..1.0" in error for error in range_errors))
 
     def test_remote_visual_mode_uses_design_comparison_prompt_and_label(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
