@@ -2,6 +2,7 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -39,24 +41,25 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 
-private val StudyHeroPlum = Color(0xFF7A245D)
-private val StudyHeroPink = Color(0xFFF82D72)
-private val StudyHeroPinkDark = Color(0xFFE62A6D)
-private val StudyHeroTrack = Color(0xFFFBDDEC)
-private val StudyTopBarButtonFill = Color(0xFFFFF2F8)
+private val StudyHeroPlum: Color @Composable get() = KaniTheme.colors.plum
+private val StudyHeroPink: Color @Composable get() = KaniTheme.colors.primary
+private val StudyHeroPinkDark: Color @Composable get() = KaniTheme.colors.primary
+private val StudyHeroTrack: Color @Composable get() = KaniTheme.colors.track
+private val StudyTopBarButtonFill: Color @Composable get() = KaniTheme.colors.pill
 private val StudyTopBarButtonShape = RoundedCornerShape(28.dp)
 object StudyTopBarDescriptions {
     val PROGRESS: String
         get() = StudyTextCopy.studyProgressDescription()
 }
 
-private val StudyTopBarProgressTextStyle = TextStyle(
-    fontSize = 18.sp,
-    fontWeight = FontWeight.Bold,
-    color = StudyHeroPlum,
-    textAlign = TextAlign.Center,
-    platformStyle = PlatformTextStyle(includeFontPadding = false)
-)
+private val StudyTopBarProgressTextStyle: TextStyle
+    @Composable get() = TextStyle(
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        color = StudyHeroPlum,
+        textAlign = TextAlign.Center,
+        platformStyle = PlatformTextStyle(includeFontPadding = false)
+    )
 
 @Composable
 fun StudyTopBar(
@@ -138,6 +141,12 @@ private fun StudyTopBarIconButton(
 @Composable
 private fun StudyProgressPill(fraction: Float) {
     val clampedFraction = fraction.coerceIn(0f, 1f)
+    val animatedFraction by animateFloatAsState(
+        targetValue = clampedFraction,
+        label = "study-progress-fill"
+    )
+    val trackColor = StudyHeroTrack
+    val fillColor = StudyHeroPink
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
@@ -149,13 +158,13 @@ private fun StudyProgressPill(fraction: Float) {
     ) {
         val radius = size.height / 2f
         drawRoundRect(
-            color = StudyHeroTrack,
+            color = trackColor,
             cornerRadius = CornerRadius(radius, radius)
         )
-        if (clampedFraction > 0f) {
+        if (animatedFraction > 0f) {
             drawRoundRect(
-                color = StudyHeroPink,
-                size = size.copy(width = size.width * clampedFraction),
+                color = fillColor,
+                size = size.copy(width = size.width * animatedFraction),
                 cornerRadius = CornerRadius(radius, radius)
             )
         }

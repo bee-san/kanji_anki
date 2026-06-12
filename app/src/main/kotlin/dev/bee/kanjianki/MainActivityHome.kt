@@ -41,10 +41,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
+    private var latestHomeRouteBackAction: Runnable? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
     private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
 
-    abstract fun renderStats()
     abstract fun renderGames()
 
     override fun renderHome() {
@@ -231,13 +231,16 @@ internal abstract class MainActivityHome : MainActivityBase() {
         startActivity(Intent(Intent.ACTION_VIEW, ANKIDROID_INSTALL_URL.toUri()))
     }
 
-    internal fun rememberHomeRouteContent(content: @Composable () -> Unit) {
+    internal fun rememberHomeRouteContent(backAction: Runnable?, content: @Composable () -> Unit) {
         latestHomeRouteContent = content
+        latestHomeRouteBackAction = backAction
     }
 
     private fun rerenderLatestHomeRoute() {
         latestHomeRouteContent?.let { content ->
-            renderHomeRoute(content)
+            renderHomeRoute(latestHomeRouteBackAction) {
+                content()
+            }
         }
     }
 
@@ -342,7 +345,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     private fun renderSyncResultScreen(model: SyncResultScreenModel) {
-        renderHomeRoute {
+        renderHomeRoute(backAction = Runnable { renderHome() }) {
             SyncResultScreen(model)
         }
     }

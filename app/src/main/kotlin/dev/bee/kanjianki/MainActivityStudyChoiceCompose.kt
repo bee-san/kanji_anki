@@ -23,17 +23,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal val StudyChoicePlum = Color(MainActivityUiSupport.STUDY_PLUM)
-internal val StudyChoiceButtonFill = Color(MainActivityUiSupport.STUDY_BG)
-internal val StudyChoiceBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-internal val StudyChoiceCorrectFill = Color(MainActivityUiSupport.TEAL)
-internal val StudyChoiceIncorrectFill = Color(MainActivityUiSupport.CORAL)
+internal val StudyChoicePlum: Color @Composable get() = KaniTheme.colors.plum
+internal val StudyChoiceButtonFill: Color @Composable get() = KaniTheme.colors.studyBg
+internal val StudyChoiceBorder: Color @Composable get() = KaniTheme.colors.border
+internal val StudyChoiceCorrectFill: Color @Composable get() = KaniTheme.colors.teal
+internal val StudyChoiceIncorrectFill: Color @Composable get() = KaniTheme.colors.coral
 internal val StudyChoiceFeedbackContent = Color.White
-private val StudyCardFill = Color(MainActivityUiSupport.STUDY_CARD)
-private val StudyPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
-private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
-private val StudyPinkDark = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
+private val StudyCardFill: Color @Composable get() = KaniTheme.colors.surface
+private val StudyPanelFill: Color @Composable get() = KaniTheme.colors.panel
+private val StudyPillFill: Color @Composable get() = KaniTheme.colors.pill
+private val StudyPinkDark: Color @Composable get() = KaniTheme.colors.primary
+private val StudyMuted: Color @Composable get() = KaniTheme.colors.muted
 
 class MeaningChoiceSessionState(selectedChoice: String? = null) {
     var selectedChoice by mutableStateOf(selectedChoice)

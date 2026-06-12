@@ -211,10 +211,15 @@ private fun GameChoiceButton(
     }
 }
 
+@Composable
 internal fun gameModeColor(mode: KanjiGameEngine.GameMode): ComposeColor {
+    return gameModeColor(KaniTheme.colors, mode)
+}
+
+internal fun gameModeColor(colors: KaniColors, mode: KanjiGameEngine.GameMode): ComposeColor {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral
-        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue
+        KanjiGameEngine.GameMode.MEANING_POP -> colors.coral
+        KanjiGameEngine.GameMode.READING_RUSH -> colors.teal
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> colors.blue
     }
 }

@@ -59,8 +59,8 @@ fun HomeTodayPlanCard(model: HomeTodayPlanModel) {
             .semantics { contentDescription = contentDescriptionText }
             .then(clickableModifier),
         shape = RoundedCornerShape(18.dp),
-        color = ComposeColor.White,
-        border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+        color = KaniTheme.colors.surface,
+        border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -69,13 +69,13 @@ fun HomeTodayPlanCard(model: HomeTodayPlanModel) {
             Text(
                 text = model.title,
                 modifier = Modifier.semantics { heading() },
-                color = ComposeColor(MainActivityUiSupport.INK),
+                color = KaniTheme.colors.ink,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = model.summary,
-                color = ComposeColor(MainActivityUiSupport.INK),
+                color = KaniTheme.colors.ink,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -84,7 +84,7 @@ fun HomeTodayPlanCard(model: HomeTodayPlanModel) {
                     model.details.forEach { detail ->
                         Text(
                             text = detail,
-                            color = ComposeColor(0xFF6E6E78),
+                            color = KaniTheme.colors.greyText,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -93,7 +93,7 @@ fun HomeTodayPlanCard(model: HomeTodayPlanModel) {
             if (model.actionLabel != null) {
                 Text(
                     text = model.actionLabel,
-                    color = ComposeColor(MainActivityUiSupport.CORAL),
+                    color = KaniTheme.colors.coral,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                 )

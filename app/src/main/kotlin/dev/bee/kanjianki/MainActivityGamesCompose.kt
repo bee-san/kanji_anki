@@ -152,7 +152,7 @@ private fun GamesEmptyState(title: String, body: String) {
 
 @Composable
 private fun GamesModeCard(model: GamesModeCardModel) {
-    val accent = ComposeColor(model.accentColor)
+    val accent = kaniColor(model.accentColor)
     val availableAccent = if (model.available) accent else GamesGrey
     val fill = if (model.available) accent.copy(alpha = 0.06f) else GamesWhite
     val stroke = availableAccent.copy(alpha = 0.34f)

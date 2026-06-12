@@ -14,10 +14,11 @@ import kotlin.math.roundToInt
 
 internal abstract class MainActivityUiSupport : ComponentActivity() {
     fun styleSystemBars() {
-        window.decorView.setBackgroundColor(BG)
+        val night = isNightMode(resources.configuration)
+        window.decorView.setBackgroundColor(if (night) BG_DARK else BG)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.isAppearanceLightStatusBars = true
-        controller.isAppearanceLightNavigationBars = true
+        controller.isAppearanceLightStatusBars = !night
+        controller.isAppearanceLightNavigationBars = !night
     }
 
     fun dp(value: Int): Int {
@@ -114,7 +115,13 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
     }
 
     companion object {
+        fun isNightMode(configuration: android.content.res.Configuration): Boolean {
+            val mask = configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+            return mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+
         @JvmField val BG: Int = 0xFFFFF7FB.toInt()
+        @JvmField val BG_DARK: Int = 0xFF1C1220.toInt()
         @JvmField val INK: Int = 0xFF2D1635.toInt()
         @JvmField val MUTED: Int = 0xFF6C5674.toInt()
         @JvmField val CORAL: Int = 0xFFFF4C76.toInt()

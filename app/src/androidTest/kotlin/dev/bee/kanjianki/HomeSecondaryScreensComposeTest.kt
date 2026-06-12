@@ -89,7 +89,7 @@ class HomeSecondaryScreensComposeTest {
                                 title = "split",
                                 subtitle = "Rated again",
                                 sourceEvidence = "From 裂語",
-                                accentColor = Color(0xFFFF4C76),
+                                accentColor = MainActivityUiSupport.CORAL,
                                 onClick = { cardClicked = true }
                             )
                         )

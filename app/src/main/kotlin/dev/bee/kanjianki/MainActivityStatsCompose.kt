@@ -90,8 +90,8 @@ private fun StatsCard(model: StatsCardModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = KaniUiTokens.PanelShape,
-        color = ComposeColor(model.fillColor),
-        border = BorderStroke(1.dp, ComposeColor(model.strokeColor))
+        color = kaniColor(model.fillColor),
+        border = BorderStroke(1.dp, kaniColor(model.strokeColor))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -100,27 +100,27 @@ private fun StatsCard(model: StatsCardModel) {
             Text(
                 text = model.title,
                 style = statsTextStyle(sizeSp = model.titleSizeSp, bold = true),
-                color = ComposeColor(model.titleColor)
+                color = kaniColor(model.titleColor)
             )
             model.summary?.let { summary ->
                 Text(
                     text = summary,
                     style = statsTextStyle(sizeSp = model.summarySizeSp, bold = true),
-                    color = ComposeColor(model.summaryColor)
+                    color = kaniColor(model.summaryColor)
                 )
             }
             model.body?.let { body ->
                 Text(
                     text = body,
                     style = statsTextStyle(sizeSp = model.bodySizeSp, bold = false),
-                    color = ComposeColor(model.bodyColor)
+                    color = kaniColor(model.bodyColor)
                 )
             }
             model.lines.forEach { line ->
                 Text(
                     text = line.text,
                     style = statsTextStyle(sizeSp = line.sizeSp, bold = line.bold),
-                    color = ComposeColor(line.color)
+                    color = kaniColor(line.color)
                 )
             }
         }

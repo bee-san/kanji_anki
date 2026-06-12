@@ -2,10 +2,12 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -17,7 +19,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
 
-private val WorkloadControlTeal = KaniUiTokens.Teal
+private val WorkloadControlTeal: Color @Composable get() = KaniUiTokens.Teal
 
 object SettingsWorkloadControlDescriptions {
     val WORKLOAD_PERCENT_SLIDER: String
@@ -49,7 +51,7 @@ internal fun WorkloadSlider(
         steps = 19,
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .testTag(SettingsWorkloadTestTags.WORKLOAD_PERCENT_SLIDER)
             .semantics { contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER }
     )
@@ -79,7 +81,7 @@ internal fun MaxItemsControl(
         steps = AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS - 1,
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .testTag(SettingsWorkloadTestTags.MAX_ITEMS_SLIDER)
             .semantics { contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER }
     )

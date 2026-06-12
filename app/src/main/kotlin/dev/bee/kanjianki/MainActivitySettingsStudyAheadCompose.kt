@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,10 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 
-private val StudyAheadInk = KaniUiTokens.Ink
-private val StudyAheadMuted = KaniUiTokens.Muted
-private val StudyAheadPanelBorder = KaniUiTokens.PanelBorder
-private val StudyAheadWhite = KaniUiTokens.White
+private val StudyAheadInk: Color @Composable get() = KaniUiTokens.Ink
+private val StudyAheadMuted: Color @Composable get() = KaniUiTokens.Muted
+private val StudyAheadPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val StudyAheadWhite: Color @Composable get() = KaniUiTokens.White
 private val StudyAheadPanelShape = KaniUiTokens.PanelShape
 
 object SettingsStudyAheadTestTags {

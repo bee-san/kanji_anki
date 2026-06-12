@@ -40,8 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val HomeInk = Color(0xFF2D1635)
-private val HomeMuted = Color(0xFF6C5674)
+private val HomeInk: Color @Composable get() = KaniTheme.colors.ink
+private val HomeMuted: Color @Composable get() = KaniTheme.colors.muted
 
 internal fun homePrimaryCtaTestTag(label: String): String = "home-primary-cta-$label"
 

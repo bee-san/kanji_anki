@@ -30,9 +30,9 @@ import dev.bee.kanjianki.core.HomeTextCopy
 
 @Composable
 fun SyncResultScreen(model: SyncResultScreenModel) {
-    val accent = ComposeColor(model.accentColor)
+    val accent = kaniColor(model.accentColor)
     val contentColor = KaniUiTokens.readableTextColor(accent)
-    val primaryColor = ComposeColor(model.primaryColor)
+    val primaryColor = kaniColor(model.primaryColor)
     val primaryContentColor = KaniUiTokens.readableTextColor(primaryColor)
     val warningSemantics = if (model.title == HomeTextCopy.syncNeedsAttentionTitle()) {
         Modifier.semantics {

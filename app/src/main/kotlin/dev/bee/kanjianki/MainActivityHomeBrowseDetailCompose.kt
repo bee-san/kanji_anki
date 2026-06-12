@@ -173,7 +173,7 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                 shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+                border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = BrowseWhite,
                     contentColor = BrowseInk
@@ -194,7 +194,7 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+            border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = BrowseWhite,
                 contentColor = BrowseInk
@@ -211,7 +211,7 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
 
 @Composable
 fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
-    val accent = ComposeColor(model.color)
+    val accent = kaniColor(model.color)
     val band = model.style == BrowseDetailPanelStyle.BAND
     Surface(
         modifier = Modifier

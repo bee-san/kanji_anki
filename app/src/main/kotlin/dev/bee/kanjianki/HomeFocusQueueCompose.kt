@@ -96,11 +96,11 @@ internal fun homeFocusQueueCardModel(
         reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold),
         body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
         tags = buildList {
-            add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
+            add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), MainActivityUiSupport.BLUE))
             if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
-                add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), ComposeColor(MainActivityUiSupport.CORAL)))
+                add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), MainActivityUiSupport.CORAL))
             } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-                add(HomeFocusQueueTagModel(HomeTextCopy.deckOverviewLearningLabel(), ComposeColor(MainActivityUiSupport.TEAL)))
+                add(HomeFocusQueueTagModel(HomeTextCopy.deckOverviewLearningLabel(), MainActivityUiSupport.TEAL))
             }
         },
         accentColor = queueAccentColor(item, nowMillis),
@@ -119,7 +119,7 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
         Text(
             text = model.planText,
             style = MaterialTheme.typography.bodyMedium,
-            color = ComposeColor(0xFF6E6E78)
+            color = KaniTheme.colors.greyText
         )
         if (model.cards.isEmpty()) {
             HomeEmptyState(
@@ -141,15 +141,16 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
 
 @Composable
 internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
-    val cardFill = model.accentColor.copy(alpha = 0.06f)
-    val cardStroke = model.accentColor.copy(alpha = 0.58f)
-    val tileFill = model.accentColor.copy(alpha = 0.14f)
-    val tileStroke = model.accentColor.copy(alpha = 0.34f)
+    val accentColor = kaniColor(model.accentColor)
+    val cardFill = accentColor.copy(alpha = 0.06f)
+    val cardStroke = accentColor.copy(alpha = 0.58f)
+    val tileFill = accentColor.copy(alpha = 0.14f)
+    val tileStroke = accentColor.copy(alpha = 0.34f)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(homeFocusQueueCardTestTag(model.kanji))
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 contentDescription = homeFocusQueueCardContentDescription(model.kanji, model.meaning)
             }
             .clickable(
@@ -193,8 +194,8 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(text = model.meaning, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(text = model.sourceEvidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
-                Text(text = model.reasonLine, style = MaterialTheme.typography.bodySmall, color = model.accentColor)
+                Text(text = model.sourceEvidence, style = MaterialTheme.typography.bodySmall, color = KaniTheme.colors.ink)
+                Text(text = model.reasonLine, style = MaterialTheme.typography.bodySmall, color = accentColor)
                 Row {
                     model.tags.forEach { tag ->
                         FocusQueueTag(tag)
@@ -205,7 +206,7 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 text = ">",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = model.accentColor
+                color = accentColor
             )
         }
     }
@@ -213,35 +214,40 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
 
 @Composable
 private fun FocusQueueTag(tag: HomeFocusQueueTagModel) {
+    val tagColor = kaniColor(tag.color)
     Surface(
         modifier = Modifier.padding(top = 7.dp, end = 7.dp, bottom = 2.dp),
         shape = RoundedCornerShape(7.dp),
-        color = focusQueueTagFill(tag.color),
-        border = BorderStroke(1.dp, tag.color)
+        color = focusQueueTagFill(tag.color, tagColor),
+        border = BorderStroke(1.dp, tagColor)
     ) {
         Text(
             text = tag.label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = tag.color,
+            color = tagColor,
             fontWeight = FontWeight.Bold
         )
     }
 }
 
-private fun focusQueueTagFill(color: ComposeColor): ComposeColor {
-    return when (color) {
-        ComposeColor(MainActivityUiSupport.CORAL) -> ComposeColor(0xFFFFEBF3)
-        ComposeColor(MainActivityUiSupport.TEAL) -> ComposeColor(0xFFE6FAFB)
-        ComposeColor(MainActivityUiSupport.BLUE) -> ComposeColor(0xFFF2EEFF)
-        else -> color.copy(alpha = 0.08f)
+@Composable
+private fun focusQueueTagFill(argb: Int, resolved: ComposeColor): ComposeColor {
+    if (KaniTheme.colors.isDark) {
+        return resolved.copy(alpha = 0.16f)
+    }
+    return when (argb) {
+        MainActivityUiSupport.CORAL -> ComposeColor(0xFFFFEBF3)
+        MainActivityUiSupport.TEAL -> ComposeColor(0xFFE6FAFB)
+        MainActivityUiSupport.BLUE -> ComposeColor(0xFFF2EEFF)
+        else -> resolved.copy(alpha = 0.08f)
     }
 }
 
-private fun queueAccentColor(item: RecordsStudyModels.StudyItem, nowMillis: Long): ComposeColor {
+private fun queueAccentColor(item: RecordsStudyModels.StudyItem, nowMillis: Long): Int {
     return when (FocusQueuePolicy.rowTone(item, nowMillis)) {
-        FocusQueuePolicy.QueueTone.DUE -> ComposeColor(0xFFFF4C76)
-        FocusQueuePolicy.QueueTone.LEARNING -> ComposeColor(0xFF6E5CE6)
-        FocusQueuePolicy.QueueTone.RESTING -> ComposeColor(0xFFF6CAE1)
+        FocusQueuePolicy.QueueTone.DUE -> MainActivityUiSupport.CORAL
+        FocusQueuePolicy.QueueTone.LEARNING -> MainActivityUiSupport.BLUE
+        FocusQueuePolicy.QueueTone.RESTING -> MainActivityUiSupport.PINK_STROKE
     }
 }

@@ -73,7 +73,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                 )
             },
             render = { model ->
-                home.renderHomeRoute {
+                home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     HomeFocusQueueScreen(model)
                 }
             },
@@ -124,7 +124,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                     onHome = home::renderHome,
                     mistakes = mistakesModel
                 )
-                home.renderHomeRoute {
+                home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     HomeRecentMistakesScreen(model)
                 }
             },

@@ -2,6 +2,11 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -68,21 +73,27 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
             title = model.title,
             summary = model.summary,
             iconRes = model.iconRes,
-            iconTint = ComposeColor(MainActivityUiSupport.STUDY_PINK_DARK),
-            borderColor = ComposeColor(MainActivityUiSupport.STUDY_BORDER),
+            iconTint = KaniTheme.colors.primary,
+            borderColor = KaniTheme.colors.border,
             expanded = model.expanded,
             countText = model.panelCount,
-            titleColor = ComposeColor(MainActivityUiSupport.STUDY_PLUM),
-            summaryColor = ComposeColor(MainActivityUiSupport.STUDY_MUTED),
-            countColor = ComposeColor(MainActivityUiSupport.STUDY_PINK_DARK),
+            titleColor = KaniTheme.colors.plum,
+            summaryColor = KaniTheme.colors.muted,
+            countColor = KaniTheme.colors.primary,
             contentDescription = model.contentDescription,
             testTagKey = model.sectionKey,
             onToggle = { model.onToggle.run() }
         )
-        if (model.expanded) {
-            model.panels.forEach { panel ->
-                Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
-                    SettingsPanel(panel)
+        AnimatedVisibility(
+            visible = model.expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                model.panels.forEach { panel ->
+                    Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
+                        SettingsPanel(panel)
+                    }
                 }
             }
         }

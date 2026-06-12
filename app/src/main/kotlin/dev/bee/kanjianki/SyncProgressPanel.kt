@@ -29,8 +29,8 @@ import java.util.Locale
 
 private val INK = 0xFF2D1635.toInt()
 private val MUTED = 0xFF6C5674.toInt()
-private val SyncProgressTrack = Color(0xFFFBDDEC)
-private val SyncProgressFill = Color(0xFFF82D72)
+private val SyncProgressTrack: Color @Composable get() = KaniTheme.colors.track
+private val SyncProgressFill: Color @Composable get() = KaniTheme.colors.primary
 private const val JAPANESE_LANGUAGE = "ja"
 
 internal data class SyncProgressPanelState(
@@ -132,7 +132,7 @@ internal fun SyncProgressTitle(title: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        color = Color(INK),
+        color = kaniColor(INK),
         fontSize = 34.sp,
         fontWeight = FontWeight.Bold,
         lineHeight = 36.sp,
@@ -193,7 +193,7 @@ private fun SyncProgressText(
     Text(
         text = value,
         modifier = modifier.padding(vertical = 4.dp),
-        color = Color(color),
+        color = kaniColor(color),
         fontSize = sizeSp.sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))

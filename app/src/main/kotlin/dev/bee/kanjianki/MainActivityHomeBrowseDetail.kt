@@ -35,7 +35,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             render = { data ->
                 home.activeBrowseQuery = data.model.initialQuery
                 home.activeBrowseSimilarOnly = data.model.similarFilterActive
-                home.renderHomeRoute {
+                home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     BrowseScreen(data.model)
                 }
             },
@@ -82,12 +82,17 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 BrowseDetailRouteData(detailModel, missingModel)
             },
             render = { data ->
+                val detailBackAction = if (fromBrowse) {
+                    Runnable { renderBrowseKanji(requestedQuery, home.activeBrowseSimilarOnly) }
+                } else {
+                    Runnable { home.renderHome() }
+                }
                 if (data.missingModel != null) {
-                    home.renderHomeRoute {
+                    home.renderHomeRoute(backAction = detailBackAction) {
                         BrowseDetailMissing(data.missingModel)
                     }
                 } else {
-                    home.renderHomeRoute {
+                    home.renderHomeRoute(backAction = detailBackAction) {
                         BrowseDetailScreen(data.model!!)
                     }
                 }

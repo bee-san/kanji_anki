@@ -26,7 +26,7 @@ class HomeRecentMistakesComposeTest {
                             title = "split; tear",
                             subtitle = "Rated AGAIN on May 19, 2026",
                             sourceEvidence = "From phrase · missed card",
-                            accentColor = androidx.compose.ui.graphics.Color(0xFFFF4C76),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = {}
                         )
                     )
@@ -55,7 +55,7 @@ class HomeRecentMistakesComposeTest {
                             title = "split; tear",
                             subtitle = "Rated AGAIN on May 19, 2026",
                             sourceEvidence = "From phrase · missed card",
-                            accentColor = androidx.compose.ui.graphics.Color(0xFFFF4C76),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = { clicked = true }
                         )
                     )

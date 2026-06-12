@@ -181,7 +181,7 @@ private fun RowScope.ProgressBottomNavItem(
             selectedTextColor = KaniUiTokens.Coral,
             unselectedIconColor = KaniUiTokens.Muted,
             unselectedTextColor = KaniUiTokens.Muted,
-            indicatorColor = Color(0xFFFFE5EF),
+            indicatorColor = KaniTheme.colors.pill,
         ),
         modifier = Modifier
             .testTag(progressAnalyticsBottomNavItemTestTag(tab))
@@ -517,7 +517,7 @@ private fun ProgressMascotBadge() {
             modifier = Modifier
                 .size(72.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFFFD8E4)),
+                .background(KaniTheme.colors.track),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -672,8 +672,8 @@ private fun ProgressMiniSummaryCard(
 private fun ProgressTipCard(text: String) {
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFFFFF2F7),
-        border = BorderStroke(1.dp, Color(0xFFFFD4E2)),
+        color = KaniTheme.colors.panelSoft,
+        border = BorderStroke(1.dp, KaniTheme.colors.border),
     ) {
         Text(
             text = text,
@@ -817,8 +817,10 @@ private fun ProgressLineChartPlot(
                     .weight(1f)
                     .height(140.dp),
             ) {
+                val extraLineColors = listOf(KaniUiTokens.Blue, KaniUiTokens.Gold)
+                val gridLineColor = KaniTheme.colors.track
                 Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                    drawProgressLineChart(chart, accentColor, secondaryColor)
+                    drawProgressLineChart(chart, accentColor, secondaryColor, extraLineColors, gridLineColor)
                 }
             }
         }
@@ -883,11 +885,13 @@ private fun DrawScope.drawProgressLineChart(
     chart: ProgressLineChartState,
     accentColor: Color,
     secondaryColor: Color,
+    extraLineColors: List<Color>,
+    gridLineColor: Color,
 ) {
     val values = chart.series.flatMap { it.values }
     val maxValue = (values.maxOrNull() ?: 1).coerceAtLeast(1)
-    val lineColors = listOf(accentColor, secondaryColor, KaniUiTokens.Blue, KaniUiTokens.Gold)
-    drawProgressGridLines(chart.yAxisLabels.size)
+    val lineColors = listOf(accentColor, secondaryColor) + extraLineColors
+    drawProgressGridLines(chart.yAxisLabels.size, gridLineColor)
     chart.series.forEachIndexed { index, series ->
         drawProgressSeries(
             series = series,
@@ -897,13 +901,13 @@ private fun DrawScope.drawProgressLineChart(
     }
 }
 
-private fun DrawScope.drawProgressGridLines(labelCount: Int) {
+private fun DrawScope.drawProgressGridLines(labelCount: Int, gridLineColor: Color) {
     val plotHeight = size.height
     val stepCount = (labelCount - 1).coerceAtLeast(1)
     repeat(labelCount) { index ->
         val y = plotHeight - (plotHeight / stepCount) * index
         drawLine(
-            color = Color(0xFFF0E7EF),
+            color = gridLineColor,
             start = Offset(0f, y),
             end = Offset(size.width, y),
             strokeWidth = 1.2f,
@@ -1112,11 +1116,12 @@ private fun ProgressDonutChart(
     segments: List<ProgressDistributionSegmentState>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = donutColors
+    val holeColor = KaniUiTokens.White
     Canvas(modifier = modifier) {
         val total = segments.sumOf { it.value }.coerceAtLeast(1)
         val strokeWidth = size.minDimension * 0.16f
         var startAngle = -90f
-        val colors = donutColors
         segments.forEachIndexed { index, segment ->
             val sweep = (segment.value.toFloat() / total.toFloat()) * 360f
             drawArc(
@@ -1131,7 +1136,7 @@ private fun ProgressDonutChart(
             startAngle += sweep
         }
         drawCircle(
-            color = KaniUiTokens.White,
+            color = holeColor,
             radius = size.minDimension * 0.28f,
             center = center,
         )
@@ -1237,7 +1242,7 @@ private fun ProgressRetentionRow(row: ProgressRetentionRowState) {
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(999.dp))
-                .background(Color(0xFFF4ECF2)),
+                .background(KaniTheme.colors.track),
         ) {
             Box(
                 modifier = Modifier
@@ -1276,7 +1281,7 @@ private fun ProgressLevelRow(row: ProgressLevelRowState) {
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(999.dp))
-                .background(Color(0xFFF4ECF2)),
+                .background(KaniTheme.colors.track),
         ) {
             Box(
                 modifier = Modifier
@@ -1299,8 +1304,8 @@ private fun ProgressLevelRow(row: ProgressLevelRowState) {
 private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFFFF8FB),
-        border = BorderStroke(1.dp, Color(0xFFFFD5E3)),
+        color = KaniTheme.colors.panelSoft,
+        border = BorderStroke(1.dp, KaniTheme.colors.border),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -1316,12 +1321,14 @@ private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
                     .semantics { contentDescription = state.accessibilityLabel },
                 contentAlignment = Alignment.Center,
             ) {
+                val gaugeColor = KaniUiTokens.Coral
+                val gaugeTrackColor = KaniTheme.colors.track
                 Canvas(modifier = Modifier.fillMaxWidth().height(112.dp)) {
                     val stroke = size.minDimension * 0.14f
                     val arcSize = Size(size.width - stroke, size.height - stroke)
                     val topLeft = Offset(stroke / 2f, stroke / 2f)
                     drawArc(
-                        color = Color(0xFFF1DDE7),
+                        color = gaugeTrackColor,
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -1330,7 +1337,7 @@ private fun ProgressFocusScoreCard(state: ProgressScoreMetricState) {
                         style = Stroke(width = stroke, cap = StrokeCap.Round),
                     )
                     drawArc(
-                        color = KaniUiTokens.Coral,
+                        color = gaugeColor,
                         startAngle = 180f,
                         sweepAngle = (state.value / state.total.toFloat()).coerceIn(0f, 1f) * 180f,
                         useCenter = false,
@@ -1428,7 +1435,7 @@ private fun ProgressWeaknessRow(row: ProgressWeaknessRowState) {
                     .fillMaxWidth()
                     .height(10.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFFF4ECF2)),
+                    .background(KaniTheme.colors.track),
             ) {
                 Box(
                     modifier = Modifier
@@ -1473,8 +1480,8 @@ private fun ProgressMissedKanjiChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFFFFF8FB),
-        border = BorderStroke(1.dp, Color(0xFFFFD5E3)),
+        color = KaniTheme.colors.panelSoft,
+        border = BorderStroke(1.dp, KaniTheme.colors.border),
     ) {
         Column(
             modifier = Modifier
@@ -1529,7 +1536,7 @@ private fun ProgressSupportNeedRow(item: ProgressSupportNeedState) {
             }
             Surface(
                 shape = RoundedCornerShape(999.dp),
-                color = Color(0xFFFFEEF5),
+                color = KaniTheme.colors.pill,
             ) {
                 Text(
                     text = item.count.toString(),
@@ -1552,10 +1559,11 @@ private data class ProgressMetricSpec(
     val detail: String? = null,
 )
 
-private val donutColors = listOf(
-    KaniUiTokens.Coral,
-    KaniUiTokens.Teal,
-    KaniUiTokens.Blue,
-    KaniUiTokens.Gold,
-    KaniUiTokens.StudyPlum,
-)
+private val donutColors: List<Color>
+    @Composable get() = listOf(
+        KaniUiTokens.Coral,
+        KaniUiTokens.Teal,
+        KaniUiTokens.Blue,
+        KaniUiTokens.Gold,
+        KaniUiTokens.StudyPlum,
+    )

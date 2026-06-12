@@ -20,13 +20,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val HeroInk = ComposeColor(0xFF7A245D)
-private val HeroWhite = ComposeColor(0xFFFFFFFF)
-private val HeroBadgeBorder = ComposeColor(0xFFEBD6E4)
-private val HeroPanelFill = ComposeColor(0xFFFFF8FC)
-private val HeroPanelBorder = ComposeColor(0xFFFFD4E7)
-private val PillBorder = ComposeColor(0xFFF9CFE2)
-private val PillFill = ComposeColor(0xFFFFFFFF)
+private val HeroInk: ComposeColor @Composable get() = KaniTheme.colors.plum
+private val HeroWhite: ComposeColor @Composable get() = KaniTheme.colors.surface
+private val HeroBadgeBorder: ComposeColor @Composable get() = KaniTheme.colors.borderSoft
+private val HeroPanelFill: ComposeColor @Composable get() = KaniTheme.colors.panelSoft
+private val HeroPanelBorder: ComposeColor @Composable get() = KaniTheme.colors.border
+private val PillBorder: ComposeColor @Composable get() = KaniTheme.colors.track
+private val PillFill: ComposeColor @Composable get() = KaniTheme.colors.surface
 private val PillShape = RoundedCornerShape(20.dp)
 private val HeroShape = RoundedCornerShape(30.dp)
 private val BadgeShape = RoundedCornerShape(18.dp)
@@ -52,7 +52,7 @@ fun SettingsAutomationHero(model: SettingsAutomationHeroModel) {
                 Text(
                     text = model.cockpitLabel,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    color = ComposeColor(0xFFDA3A7A),
+                    color = KaniTheme.colors.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -106,13 +106,13 @@ private fun SettingsAutomationHeroPill(
         ) {
             Text(
                 text = model.label,
-                color = ComposeColor(0xFF6E6E78),
+                color = KaniTheme.colors.greyText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = model.value,
-                color = ComposeColor(model.valueColor),
+                color = kaniColor(model.valueColor),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,

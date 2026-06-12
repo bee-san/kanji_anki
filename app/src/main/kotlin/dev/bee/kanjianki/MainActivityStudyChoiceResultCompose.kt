@@ -45,7 +45,7 @@ internal fun MeaningChoiceResultActionBar(
         Text(
             text = status,
             modifier = Modifier.padding(bottom = 8.dp),
-            color = Color(statusColor),
+            color = kaniColor(statusColor),
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 18.sp,

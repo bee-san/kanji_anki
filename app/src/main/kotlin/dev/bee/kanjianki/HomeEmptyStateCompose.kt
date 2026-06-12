@@ -92,10 +92,10 @@ private data class HomeEmptyStateColors(
 private fun homeEmptyStateColors(style: HomeEmptyStateStyle): HomeEmptyStateColors {
     return when (style) {
         HomeEmptyStateStyle.LegacyBand -> HomeEmptyStateColors(
-            fill = ComposeColor(MainActivityUiSupport.GOLD),
-            stroke = ComposeColor(MainActivityUiSupport.GOLD),
-            titleColor = ComposeColor(MainActivityUiSupport.INK),
-            bodyColor = ComposeColor(MainActivityUiSupport.INK),
+            fill = KaniTheme.colors.gold,
+            stroke = KaniTheme.colors.gold,
+            titleColor = KaniTheme.colors.ink,
+            bodyColor = KaniTheme.colors.ink,
             titleSize = 24.sp,
             bodySize = 16.sp,
             cornerRadius = 8.dp,
@@ -112,10 +112,10 @@ private fun homeEmptyStateColors(style: HomeEmptyStateStyle): HomeEmptyStateColo
         )
 
         HomeEmptyStateStyle.Panel -> HomeEmptyStateColors(
-            fill = ComposeColor.White,
-            stroke = ComposeColor(0xFFEBD6E4),
-            titleColor = ComposeColor(MainActivityUiSupport.INK),
-            bodyColor = ComposeColor(0xFF6E6E78),
+            fill = KaniTheme.colors.surface,
+            stroke = KaniTheme.colors.borderSoft,
+            titleColor = KaniTheme.colors.ink,
+            bodyColor = KaniTheme.colors.greyText,
             titleSize = TextUnit.Unspecified,
             bodySize = TextUnit.Unspecified,
             cornerRadius = 18.dp,

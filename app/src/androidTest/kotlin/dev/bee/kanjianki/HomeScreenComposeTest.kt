@@ -111,8 +111,8 @@ class HomeScreenComposeTest {
                             sourceEvidence = "From 裂語",
                             reasonLine = "due now",
                             body = "Needs kanji practice.",
-                            tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", Color(0xFF6E5CE6))),
-                            accentColor = Color(0xFFFF4C76),
+                            tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", MainActivityUiSupport.BLUE)),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = { cardClicked = true }
                         )
                     )

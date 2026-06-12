@@ -36,6 +36,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 )
             )
         }
+        backAction = Runnable {
+            contentScrollY = settingsScrollY
+            renderSettings(true)
+        }
     }
 
     override fun renderSettings() {
@@ -145,6 +149,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     },
                 )
             )
+        }
+        backAction = Runnable {
+            contentScrollY = settingsScrollY
+            renderSettings(true)
         }
         val updateUiRun = ++updateUiRunCounter
         activeUpdateUiRunToken = updateUiRun

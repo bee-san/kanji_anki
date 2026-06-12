@@ -2,20 +2,26 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -26,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 internal val SimilarChoiceCellHorizontalPadding = 4.dp
 internal val SimilarChoiceCellTopPadding = 8.dp
@@ -97,24 +104,33 @@ private fun SimilarChoiceButton(
 ) {
     val feedbackColor = feedback?.choiceFeedbackColor()
     val contentColor = if (feedback == null) StudyChoicePlum else StudyChoiceFeedbackContent
+    val containerColor by animateColorAsState(
+        targetValue = feedbackColor ?: StudyChoiceButtonFill,
+        label = "study-choice-fill"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = feedbackColor ?: StudyChoiceBorder,
+        label = "study-choice-border"
+    )
+    ChoiceFeedbackHaptics(feedback)
     OutlinedButton(
         enabled = enabled,
         onClick = { withButtonTrace("study-choice-$glyph") { onClick() } },
         modifier = modifier
-            .height(SimilarChoiceButtonHeight)
+            .heightIn(min = SimilarChoiceButtonHeight)
             .testTag(similarChoiceTestTag(glyph))
             .choiceFeedbackSemantics(feedback),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, feedbackColor ?: StudyChoiceBorder),
+        border = BorderStroke(1.dp, borderColor),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = feedbackColor ?: StudyChoiceButtonFill,
+            containerColor = containerColor,
             contentColor = contentColor,
-            disabledContainerColor = feedbackColor ?: StudyChoiceButtonFill,
+            disabledContainerColor = containerColor,
             disabledContentColor = contentColor,
         )
     ) {
         Text(
-            text = glyph,
+            text = choiceButtonText(glyph, feedback),
             modifier = Modifier.fillMaxWidth(),
             color = contentColor,
             fontSize = 34.sp,
@@ -125,6 +141,31 @@ private fun SimilarChoiceButton(
     }
 }
 
+/**
+ * Adds a check or cross mark next to the kanji so answer feedback does not
+ * rely on color alone.
+ */
+internal fun choiceButtonText(glyph: String, feedback: KanjiChoiceFeedback?): String {
+    return when (feedback) {
+        KanjiChoiceFeedback.CORRECT -> "$glyph ✓"
+        KanjiChoiceFeedback.INCORRECT -> "$glyph ✕"
+        null -> glyph
+    }
+}
+
+@Composable
+private fun ChoiceFeedbackHaptics(feedback: KanjiChoiceFeedback?) {
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(feedback) {
+        when (feedback) {
+            KanjiChoiceFeedback.CORRECT -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            KanjiChoiceFeedback.INCORRECT -> haptics.performHapticFeedback(HapticFeedbackType.Reject)
+            null -> Unit
+        }
+    }
+}
+
+@Composable
 private fun KanjiChoiceFeedback.choiceFeedbackColor(): Color {
     return when (this) {
         KanjiChoiceFeedback.CORRECT -> StudyChoiceCorrectFill
@@ -138,8 +179,8 @@ private fun Modifier.choiceFeedbackSemantics(feedback: KanjiChoiceFeedback?): Mo
     }
     return semantics {
         stateDescription = when (feedback) {
-            KanjiChoiceFeedback.CORRECT -> "Correct answer"
-            KanjiChoiceFeedback.INCORRECT -> "Incorrect answer"
+            KanjiChoiceFeedback.CORRECT -> StudyTextCopy.choiceCorrectStateDescription()
+            KanjiChoiceFeedback.INCORRECT -> StudyTextCopy.choiceIncorrectStateDescription()
         }
     }
 }

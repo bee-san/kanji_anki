@@ -181,6 +181,34 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var activeUpdateUiRunToken = 0
 
+    /**
+     * In-app destination for the system back gesture. Null means "no in-app
+     * destination": the callback defers to the system default (exit).
+     * The shell host sets a per-route default; sub-screens may override it
+     * after rendering.
+     */
+    @JvmField
+    var backAction: Runnable? = null
+
+    private val backCallback = object : androidx.activity.OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (!handleBackNavigation()) {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        }
+    }
+
+    /** Returns true when back was consumed by an in-app destination. */
+    fun handleBackNavigation(): Boolean {
+        val action = backAction ?: return false
+        withUiTrace("kani.button.system-back") {
+            action.run()
+        }
+        return true
+    }
+
     private val permissionHandler = MainActivityPermissionHandler(this)
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
@@ -190,6 +218,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     abstract fun renderHome()
     abstract fun renderUpdate()
+    abstract fun renderStats()
     abstract fun renderSettings()
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
@@ -211,6 +240,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
     }
 

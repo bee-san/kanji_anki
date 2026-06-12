@@ -16,6 +16,8 @@ class StudyTextCopyLocaleLabelsTest {
         assertEquals("Study progress", StudyTextCopy.studyProgressDescription())
         assertEquals("Study", StudyTextCopy.studyLabel())
         assertEquals("Practice", StudyTextCopy.practiceLabel())
+        assertEquals("Correct answer", StudyTextCopy.choiceCorrectStateDescription())
+        assertEquals("Incorrect answer", StudyTextCopy.choiceIncorrectStateDescription())
     }
 
     @Test
@@ -30,6 +32,8 @@ class StudyTextCopyLocaleLabelsTest {
             assertEquals("学習進捗", StudyTextCopy.studyProgressDescription())
             assertEquals("学習", StudyTextCopy.studyLabel())
             assertEquals("練習", StudyTextCopy.practiceLabel())
+            assertEquals("正解", StudyTextCopy.choiceCorrectStateDescription())
+            assertEquals("不正解", StudyTextCopy.choiceIncorrectStateDescription())
             assertEquals("できたを保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
             assertEquals("もう一度を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
         }

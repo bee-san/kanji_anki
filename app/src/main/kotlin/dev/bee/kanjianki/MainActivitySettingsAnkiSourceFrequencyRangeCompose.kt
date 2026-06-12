@@ -17,6 +17,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,11 +37,11 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val FrequencyInk = KaniUiTokens.Ink
-private val FrequencyMuted = KaniUiTokens.Muted
-private val FrequencyTeal = KaniUiTokens.Teal
-private val FrequencyPanelBorder = KaniUiTokens.PanelBorder
-private val FrequencyPanelFill = KaniUiTokens.PanelFill
+private val FrequencyInk: Color @Composable get() = KaniUiTokens.Ink
+private val FrequencyMuted: Color @Composable get() = KaniUiTokens.Muted
+private val FrequencyTeal: Color @Composable get() = KaniUiTokens.Teal
+private val FrequencyPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val FrequencyPanelFill: Color @Composable get() = KaniUiTokens.PanelFill
 private val FrequencyPanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -199,7 +200,7 @@ private fun RankSlider(
         valueRange = 0f..SettingsInputRules.rankSliderProgress(FrequencyRetentionRanges.MAX_RANK).toFloat(),
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .testTag(tag)
             .semantics { contentDescription = label }
     )

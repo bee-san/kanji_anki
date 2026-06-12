@@ -13,6 +13,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                     model = MainActivityShellModel(selectedRoute = selected),
                     initialScrollY = initialScrollY,
                     onScrollY = { activity.contentScrollY = it },
+                    navActions = navActions(),
                     content = content
                 )
             }
@@ -36,12 +37,22 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                     model = MainActivityShellModel(selectedRoute = selected),
                     initialScrollY = initialScrollY,
                     onScrollY = { activity.contentScrollY = it },
+                    navActions = navActions(),
                     content = content,
                     actionBar = actionBar,
                 )
             }
             activity.styleSystemBars()
         }
+    }
+
+    private fun navActions(): KaniNavActions {
+        return KaniNavActions(
+            onHome = { activity.renderHome() },
+            onStudy = { activity.renderStudy() },
+            onStats = { activity.renderStats() },
+            onSettings = { activity.renderSettings() },
+        )
     }
 
     private fun prepareRoute(selected: String) {
@@ -51,6 +62,11 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             activity.studyUndoState.clear()
         }
         MainActivityStudyInteractionReset.resetRoute(activity)
+        activity.backAction = if (MainActivityBase.NAV_HOME_ROUTE == selected) {
+            null
+        } else {
+            Runnable { activity.renderHome() }
+        }
     }
 
 }

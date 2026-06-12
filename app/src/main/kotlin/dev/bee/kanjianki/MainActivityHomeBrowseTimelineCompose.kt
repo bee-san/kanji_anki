@@ -32,7 +32,7 @@ internal fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTi
             modifier = Modifier.fillMaxWidth(),
             shape = BrowsePanelShape,
             color = BrowseWhite,
-            border = BorderStroke(1.dp, ComposeColor(model.statusColor))
+            border = BorderStroke(1.dp, kaniColor(model.statusColor))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -71,7 +71,7 @@ private fun RecoveryTimelineEvent(model: MainActivityHomeBrowseDetail.BrowseTime
         modifier = Modifier.fillMaxWidth(),
         shape = BrowsePanelShape,
         color = BrowseWhite,
-        border = BorderStroke(1.dp, ComposeColor(model.color))
+        border = BorderStroke(1.dp, kaniColor(model.color))
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

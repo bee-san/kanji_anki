@@ -79,6 +79,12 @@ object StudyTextCopy {
     fun studyChoiceBody(): String = localizedText("Pick the matching kanji.", "一致する漢字を選んでください。")
 
     @JvmStatic
+    fun choiceCorrectStateDescription(): String = localizedText("Correct answer", "正解")
+
+    @JvmStatic
+    fun choiceIncorrectStateDescription(): String = localizedText("Incorrect answer", "不正解")
+
+    @JvmStatic
     fun studyChoiceQuestion(meaning: String): String {
         return if (isJapaneseLocale()) {
             "「$meaning」はどの漢字ですか？"

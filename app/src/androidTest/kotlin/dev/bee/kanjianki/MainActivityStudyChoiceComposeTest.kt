@@ -124,7 +124,7 @@ class MainActivityStudyChoiceComposeTest {
                         lines = listOf(
                             StudyAnswerLineModel(
                                 text = "Answer detail",
-                                color = Color(0xFF2D1635),
+                                color = MainActivityUiSupport.INK,
                                 sizeSp = 15,
                                 bold = false
                             )
@@ -525,7 +525,7 @@ class MainActivityStudyChoiceComposeTest {
                     lines = listOf(
                         StudyAnswerLineModel(
                             text = answerDetail,
-                            color = Color(0xFF2D1635),
+                            color = MainActivityUiSupport.INK,
                             sizeSp = 15,
                             bold = false,
                         )

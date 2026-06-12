@@ -39,7 +39,7 @@ class HomeRecentMistakesComposeTest {
                             title = "split",
                             subtitle = "Rated again",
                             sourceEvidence = "From 裂語",
-                            accentColor = ComposeColor(0xFFFF4C76),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = { clicked = true },
                         )
                     )
@@ -71,7 +71,7 @@ class HomeRecentMistakesComposeTest {
                             title = "language",
                             subtitle = "Hard",
                             sourceEvidence = "",
-                            accentColor = ComposeColor(0xFFF0B548),
+                            accentColor = MainActivityUiSupport.GOLD,
                             onClick = {},
                         )
                     )

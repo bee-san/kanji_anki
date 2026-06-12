@@ -19,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -145,7 +147,7 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
         Icon(
             painter = painterResource(id = R.drawable.ic_eye_24),
             contentDescription = null,
-            tint = Color.White
+            tint = KaniTheme.colors.onPrimary
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
     }
@@ -153,18 +155,26 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
 
 @Composable
 private fun StudyAgainButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     StudySecondaryActionButton(
         StudyReviewButtonCopy.againLabel(),
-        onClick,
+        {
+            haptics.performHapticFeedback(HapticFeedbackType.Reject)
+            onClick()
+        },
         modifier.semantics { contentDescription = StudyReviewButtonCopy.againContentDescription() }
     )
 }
 
 @Composable
 private fun StudyGoodButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     StudyPrimaryActionButton(
         StudyReviewButtonCopy.goodLabel(),
-        onClick,
+        {
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            onClick()
+        },
         modifier.semantics { contentDescription = StudyReviewButtonCopy.goodContentDescription() }
     )
 }

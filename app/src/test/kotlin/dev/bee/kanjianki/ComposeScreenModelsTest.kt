@@ -794,11 +794,11 @@ class ComposeScreenModelsTest {
             panel = SettingsUpdatePanelModel(
                 title = "Updates",
                 statusLine = "Manual checks",
-                statusColor = ComposeColor.Black,
+                statusColor = 0xFF000000.toInt(),
                 lastCheckLine = "Never checked",
                 lastResultLine = "No result",
                 installPermissionLine = "Allowed",
-                installPermissionColor = ComposeColor.Black,
+                installPermissionColor = 0xFF000000.toInt(),
                 hasPendingUpdate = false,
                 pendingVersionLine = null,
                 pendingMessageLine = null,
@@ -1290,8 +1290,8 @@ class ComposeScreenModelsTest {
         val openSettings = { calls += "settings" }
         val toggle = { calls += "toggle" }
         val openUpdater = { calls += "updater" }
-        val statusColor = ComposeColor(0xFFFF4C76)
-        val permissionColor = ComposeColor(0xFF00AEB5)
+        val statusColor = MainActivityUiSupport.CORAL
+        val permissionColor = MainActivityUiSupport.TEAL
         val panel = SettingsUpdatePanelModel(
             title = "App updates",
             statusLine = "Ready to install",
@@ -1351,11 +1351,11 @@ class ComposeScreenModelsTest {
         val panel = SettingsUpdatePanelModel(
             title = "Automatic updates",
             statusLine = "On",
-            statusColor = ComposeColor(0xFF00AEB5),
+            statusColor = MainActivityUiSupport.TEAL,
             lastCheckLine = "Never checked",
             lastResultLine = "No previous result",
             installPermissionLine = "Permission missing",
-            installPermissionColor = ComposeColor(0xFFFF4C76),
+            installPermissionColor = MainActivityUiSupport.CORAL,
             hasPendingUpdate = false,
             pendingVersionLine = null,
             pendingMessageLine = null,
@@ -1402,13 +1402,13 @@ class ComposeScreenModelsTest {
     fun studyAnswerPanelModelKeepsGlyphLinesAndHelperText() {
         val reading = StudyAnswerLineModel(
             text = "Reading: かに",
-            color = ComposeColor(0xFFFF4C76),
+            color = MainActivityUiSupport.CORAL,
             sizeSp = 17,
             bold = true,
         )
         val meaning = StudyAnswerLineModel(
             text = "crab",
-            color = ComposeColor(0xFF3B2350),
+            color = 0xFF3B2350.toInt(),
             sizeSp = 15,
             bold = true,
         )
@@ -1426,11 +1426,11 @@ class ComposeScreenModelsTest {
         assertEquals(listOf(reading, meaning), model.lines)
         assertEquals("Trace it below, then check.", model.helperText)
         assertEquals("Reading: かに", reading.text)
-        assertEquals(ComposeColor(0xFFFF4C76), reading.color)
+        assertEquals(MainActivityUiSupport.CORAL, reading.color)
         assertEquals(17, reading.sizeSp)
         assertEquals(true, reading.bold)
         assertEquals("crab", meaning.text)
-        assertEquals(ComposeColor(0xFF3B2350), meaning.color)
+        assertEquals(0xFF3B2350.toInt(), meaning.color)
         assertEquals(15, meaning.sizeSp)
         assertEquals(true, meaning.bold)
         assertEquals(model, model.copy())
@@ -1453,7 +1453,7 @@ class ComposeScreenModelsTest {
             lines = listOf(
                 StudyAnswerLineModel(
                     text = "Reading: れつ",
-                    color = ComposeColor(0xFFFF4C76),
+                    color = MainActivityUiSupport.CORAL,
                     sizeSp = 17,
                     bold = true,
                 )

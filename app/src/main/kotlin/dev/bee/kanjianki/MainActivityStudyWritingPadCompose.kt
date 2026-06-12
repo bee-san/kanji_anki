@@ -16,8 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 
-private val WritingPadFill = Color(MainActivityUiSupport.STUDY_PANEL)
-private val WritingPadBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+private val WritingPadFill: Color @Composable get() = KaniTheme.colors.panel
+private val WritingPadBorder: Color @Composable get() = KaniTheme.colors.border
 
 @Composable
 internal fun WritingPadPanel(
@@ -32,6 +32,7 @@ internal fun WritingPadPanel(
         border = BorderStroke(1.dp, WritingPadBorder)
     ) {
         key(drawingPad, maxSizePx) {
+            val night = KaniTheme.colors.isDark
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -43,6 +44,7 @@ internal fun WritingPadPanel(
                 },
                 update = { frame ->
                     frame.attachDrawingPad(drawingPad)
+                    (drawingPad as? DrawingPadView)?.setNightMode(night)
                 }
             )
         }

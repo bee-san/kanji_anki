@@ -23,11 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val ReminderInk = KaniUiTokens.Ink
-private val ReminderMuted = KaniUiTokens.Muted
-private val ReminderCoral = KaniUiTokens.Coral
-private val ReminderPanelBorder = KaniUiTokens.PanelBorder
-private val ReminderWhite = KaniUiTokens.White
+private val ReminderInk: Color @Composable get() = KaniUiTokens.Ink
+private val ReminderMuted: Color @Composable get() = KaniUiTokens.Muted
+private val ReminderCoral: Color @Composable get() = KaniUiTokens.Coral
+private val ReminderPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val ReminderWhite: Color @Composable get() = KaniUiTokens.White
 private val ReminderPanelShape = KaniUiTokens.PanelShape
 
 internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
@@ -63,7 +63,7 @@ fun SettingsReminderPanel(model: SettingsReminderPanelModel) {
             )
             Text(
                 text = model.status,
-                color = Color(model.statusColor),
+                color = kaniColor(model.statusColor),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )

@@ -159,7 +159,7 @@ class MainActivityStudyFlashcardComposeTest {
                         title = "Answer",
                         glyph = "裂",
                         glyphSizeSp = 76,
-                        lines = listOf(StudyAnswerLineModel("split", Color(0xFF4B2552), 17, true)),
+                        lines = listOf(StudyAnswerLineModel("split", MainActivityUiSupport.STUDY_PLUM, 17, true)),
                         helperText = null
                     ),
                     revealState = revealState
@@ -207,8 +207,8 @@ class MainActivityStudyFlashcardComposeTest {
                     glyph = "裂",
                     glyphSizeSp = 76,
                     lines = listOf(
-                        StudyAnswerLineModel("split", Color(0xFF4B2552), 17, true),
-                        StudyAnswerLineModel("Reading: レツ", Color(0xFFDA3A7A), 15, true)
+                        StudyAnswerLineModel("split", MainActivityUiSupport.STUDY_PLUM, 17, true),
+                        StudyAnswerLineModel("Reading: レツ", MainActivityUiSupport.STUDY_PINK_DARK, 15, true)
                     ),
                     helperText = "Trace it below, then check."
                 )

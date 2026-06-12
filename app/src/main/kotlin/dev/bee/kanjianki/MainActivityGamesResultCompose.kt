@@ -31,8 +31,8 @@ fun GamesUnavailableCard(model: GamesUnavailableModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = GamesPanelShape,
-        color = ComposeColor(0xFFFFF7D6),
-        border = BorderStroke(1.dp, ComposeColor(0xFFFFD640))
+        color = KaniTheme.colors.gold.copy(alpha = if (KaniTheme.colors.isDark) 0.18f else 0.28f),
+        border = BorderStroke(1.dp, KaniTheme.colors.gold)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -55,7 +55,7 @@ fun GamesUnavailableCard(model: GamesUnavailableModel) {
 
 @Composable
 fun GamesResultCard(model: GamesResultModel) {
-    val accent = ComposeColor(model.titleColor)
+    val accent = kaniColor(model.titleColor)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = GamesPanelShape,
@@ -122,7 +122,7 @@ fun GamesResultCard(model: GamesResultModel) {
                     .testTag(gamesResultPrimaryButtonTestTag(model.primaryLabel)),
                 shape = GamesButtonShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ComposeColor(model.primaryColor),
+                    containerColor = kaniColor(model.primaryColor),
                     contentColor = GamesWhite
                 )
             ) {

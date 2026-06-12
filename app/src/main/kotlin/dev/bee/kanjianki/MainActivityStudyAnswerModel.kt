@@ -1,7 +1,5 @@
 package dev.bee.kanjianki
 
-import androidx.compose.ui.graphics.Color
-
 data class StudyAnswerPanelModel(
     val title: String,
     val glyph: String,
@@ -12,7 +10,8 @@ data class StudyAnswerPanelModel(
 
 data class StudyAnswerLineModel(
     val text: String,
-    val color: Color,
+    /** Legacy palette ARGB; resolve with [kaniColor] at render time. */
+    val color: Int,
     val sizeSp: Int,
     val bold: Boolean,
 )

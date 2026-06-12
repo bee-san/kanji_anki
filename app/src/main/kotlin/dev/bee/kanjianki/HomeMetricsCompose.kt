@@ -105,8 +105,12 @@ fun HomeMetricCard(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(8.dp)
-    val accentColor = androidColor(model.accent)
-    val borderColor = androidColor(HomeMetricCardBorder.softened(model.accent))
+    val accentColor = kaniColor(model.accent)
+    val borderColor = if (KaniTheme.colors.isDark) {
+        accentColor.copy(alpha = 0.35f)
+    } else {
+        androidColor(HomeMetricCardBorder.softened(model.accent))
+    }
     val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     val compactBody = remember(model.body) { model.body?.let { StudyTextCopy.compact(it, 22) } }
     val contentDescriptionText = remember(model.label, model.value, compactBody) {
@@ -139,7 +143,7 @@ fun HomeMetricCard(
             .fillMaxWidth()
             .heightIn(min = 118.dp)
             .clip(shape)
-            .background(Color.White)
+            .background(KaniTheme.colors.surface)
             .border(1.dp, borderColor, shape)
             .padding(14.dp)
     ) {
@@ -190,8 +194,8 @@ fun HomeMetricCard(
     }
 }
 
-private val HomeMetricInk = Color(0xFF2D1635)
-private val HomeMetricMuted = Color(0xFF6C5674)
+private val HomeMetricInk: Color @Composable get() = KaniTheme.colors.ink
+private val HomeMetricMuted: Color @Composable get() = KaniTheme.colors.muted
 
 private object HomeMetricCardBorder {
     fun softened(accent: Int): Int {

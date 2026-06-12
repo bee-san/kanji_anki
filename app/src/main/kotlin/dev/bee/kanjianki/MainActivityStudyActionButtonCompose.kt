@@ -22,12 +22,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal val StudyActionPrimaryColor = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-internal val StudyActionBorderColor = Color(MainActivityUiSupport.STUDY_BORDER)
-internal val StudyActionSecondaryFill = Color(0xFFFFF5FA)
-private val StudyActionDisabledBorder = Color(0xFFFFD5E6)
-private val StudyActionDisabledText = Color(0xFF9F8A98)
-private val StudyActionDisabledPrimaryFill = Color(0xFFFFC2D8)
+internal val StudyActionPrimaryColor: Color @Composable get() = KaniTheme.colors.primary
+internal val StudyActionBorderColor: Color @Composable get() = KaniTheme.colors.border
+internal val StudyActionSecondaryFill: Color @Composable get() = KaniTheme.colors.secondaryFill
+private val StudyActionDisabledBorder: Color @Composable get() = KaniTheme.colors.disabledBorder
+private val StudyActionDisabledText: Color @Composable get() = KaniTheme.colors.disabledContent
+private val StudyActionDisabledPrimaryFill: Color @Composable get() = KaniTheme.colors.disabledContainer
 
 internal fun studyActionButtonTestTag(label: String): String = "study-action-button-$label"
 
@@ -50,15 +50,15 @@ internal fun StudyPrimaryActionButton(
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = StudyActionPrimaryColor,
-            contentColor = Color.White,
+            contentColor = KaniTheme.colors.onPrimary,
             disabledContainerColor = StudyActionDisabledPrimaryFill,
-            disabledContentColor = Color.White,
+            disabledContentColor = KaniTheme.colors.onPrimary,
         ),
         border = BorderStroke(1.dp, StudyActionBorderColor),
         contentPadding = contentPadding,
     ) {
         leadingContent()
-        StudyActionButtonText(label = label, color = Color.White)
+        StudyActionButtonText(label = label, color = KaniTheme.colors.onPrimary)
     }
 }
 
@@ -81,7 +81,7 @@ internal fun StudySecondaryActionButton(
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = StudyActionSecondaryFill,
             contentColor = StudyActionPrimaryColor,
-            disabledContainerColor = Color(0xFFFFF9FC),
+            disabledContainerColor = KaniTheme.colors.secondaryFill,
             disabledContentColor = StudyActionDisabledText,
         ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),

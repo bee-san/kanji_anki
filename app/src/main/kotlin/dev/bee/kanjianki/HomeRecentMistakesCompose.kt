@@ -114,15 +114,16 @@ fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
 
 @Composable
 private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
-    val cardFill = model.accentColor.copy(alpha = 0.06f)
-    val cardStroke = model.accentColor.copy(alpha = 0.58f)
-    val tileFill = model.accentColor.copy(alpha = 0.14f)
-    val tileStroke = model.accentColor.copy(alpha = 0.34f)
+    val accentColor = kaniColor(model.accentColor)
+    val cardFill = accentColor.copy(alpha = 0.06f)
+    val cardStroke = accentColor.copy(alpha = 0.58f)
+    val tileFill = accentColor.copy(alpha = 0.14f)
+    val tileStroke = accentColor.copy(alpha = 0.34f)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(homeRecentMistakesCardTestTag(model.kanji))
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 contentDescription = homeRecentMistakesCardDescription(model)
             }
             .clickable(
@@ -166,9 +167,9 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(text = model.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(text = model.subtitle, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF6E6E78))
+                Text(text = model.subtitle, style = MaterialTheme.typography.bodySmall, color = KaniTheme.colors.greyText)
                 model.sourceEvidence?.let { evidence ->
-                    Text(text = evidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
+                    Text(text = evidence, style = MaterialTheme.typography.bodySmall, color = KaniTheme.colors.ink)
                 }
             }
 
@@ -176,16 +177,16 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
                 text = ">",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = model.accentColor
+                color = accentColor
             )
         }
     }
 }
 
-private fun recentMistakeAccentColor(rating: String): ComposeColor {
+private fun recentMistakeAccentColor(rating: String): Int {
     return when (rating) {
-        StudyRatings.AGAIN -> ComposeColor(0xFFFF4C76)
-        StudyRatings.HARD -> ComposeColor(0xFFF0B548)
-        else -> ComposeColor(0xFFF6CAE1)
+        StudyRatings.AGAIN -> MainActivityUiSupport.CORAL
+        StudyRatings.HARD -> MainActivityUiSupport.GOLD
+        else -> MainActivityUiSupport.PINK_STROKE
     }
 }

@@ -34,13 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val StudySortInk = Color(0xFF2D1635)
-private val StudySortMuted = Color(0xFF6C5674)
-private val StudySortTeal = Color(0xFF00AEB5)
-private val StudySortPinkDark = Color(0xFFDA3A7A)
-private val StudySortPanelBorder = Color(0xFFFFC7DE)
-private val StudySortButtonBorder = Color(0xFFEEBDDA)
-private val StudySortWhite = Color(0xFFFFFFFF)
+private val StudySortInk: Color @Composable get() = KaniTheme.colors.ink
+private val StudySortMuted: Color @Composable get() = KaniTheme.colors.muted
+private val StudySortTeal: Color @Composable get() = KaniTheme.colors.teal
+private val StudySortPinkDark: Color @Composable get() = KaniTheme.colors.primary
+private val StudySortPanelBorder: Color @Composable get() = KaniTheme.colors.border
+private val StudySortButtonBorder: Color @Composable get() = KaniTheme.colors.borderSoft
+private val StudySortWhite: Color @Composable get() = KaniTheme.colors.surface
 private val StudySortPanelShape = RoundedCornerShape(24.dp)
 private val StudySortButtonShape = RoundedCornerShape(12.dp)
 
@@ -153,7 +153,7 @@ private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>, w
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = StudySortButtonShape,
-        color = Color(0xFFFFF7FB),
+        color = KaniTheme.colors.bg,
         border = BorderStroke(1.dp, StudySortButtonBorder),
     ) {
         Column(

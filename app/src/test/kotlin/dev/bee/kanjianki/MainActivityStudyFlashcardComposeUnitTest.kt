@@ -82,7 +82,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                         lines = listOf(
                             StudyAnswerLineModel(
                                 text = "split",
-                                color = Color(0xFF2E1035),
+                                color = 0xFF2E1035.toInt(),
                                 sizeSp = 17,
                                 bold = true,
                             )

@@ -27,13 +27,13 @@ internal fun settingsUpdatePanelModel(
     return SettingsUpdatePanelModel(
         title = title,
         statusLine = SettingsTextCopy.autoUpdatePanelStatus(status.enabled),
-        statusColor = if (status.enabled) SettingsUpdateTeal else SettingsUpdateMuted,
+        statusColor = if (status.enabled) MainActivityUiSupport.TEAL else MainActivityUiSupport.MUTED,
         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine(
             DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)
         ),
         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine(status.lastResult),
         installPermissionLine = SettingsTextCopy.installPermissionLine(canInstallUpdates),
-        installPermissionColor = if (canInstallUpdates) SettingsUpdateTeal else SettingsUpdateCoral,
+        installPermissionColor = if (canInstallUpdates) MainActivityUiSupport.TEAL else MainActivityUiSupport.CORAL,
         hasPendingUpdate = status.hasPendingUpdate(),
         pendingVersionLine = if (status.hasPendingUpdate()) {
             SettingsTextCopy.verifiedApkReadyLine(status.lastVersion)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -33,9 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val TypingAnswerMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
-private val TypingAnswerText = Color(MainActivityUiSupport.STUDY_PLUM)
-private val TypingAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+private val TypingAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
+private val TypingAnswerText: Color @Composable get() = KaniTheme.colors.plum
+private val TypingAnswerBorder: Color @Composable get() = KaniTheme.colors.border
 
 internal fun isTypingMeaningSubmitKey(action: Int, keyCode: Int): Boolean {
     return action == AndroidKeyEvent.ACTION_UP &&
@@ -87,7 +88,7 @@ internal fun TypingMeaningAnswer(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .heightIn(min = 58.dp)
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
                     if (isTypingMeaningSubmitKey(native.action, native.keyCode)) {
@@ -104,7 +105,7 @@ internal fun TypingMeaningAnswer(
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
+                    color = KaniTheme.colors.surface,
                     border = BorderStroke(1.dp, TypingAnswerBorder)
                 ) {
                     Box(

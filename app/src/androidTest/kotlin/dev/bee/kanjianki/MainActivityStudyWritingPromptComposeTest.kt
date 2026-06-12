@@ -180,7 +180,7 @@ class MainActivityStudyWritingPromptComposeTest {
             lines = listOf(
                 StudyAnswerLineModel(
                     text = "Reference answer",
-                    color = androidx.compose.ui.graphics.Color(MainActivityUiSupport.STUDY_PLUM),
+                    color = MainActivityUiSupport.STUDY_PLUM,
                     sizeSp = 17,
                     bold = true
                 )
