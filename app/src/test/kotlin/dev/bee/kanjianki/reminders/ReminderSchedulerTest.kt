@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -98,13 +99,28 @@ class ReminderSchedulerTest {
     fun showReminderNotificationPostsNotificationWhenAllowed() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val services = FakeReminderServices(context)
-        val notificationClock = AppClock { utc(2026, Calendar.MAY, 15, 9, 0) }
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        seedDailyReminderState(context, now, utc(2026, Calendar.MAY, 15, 14, 0))
 
-        ReminderScheduler.showReminderNotification(context, services, notificationClock)
+        ReminderScheduler.showReminderNotification(context, services, AppClock { now })
 
         assertEquals(1, services.ensureCount)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         assertEquals(1, notificationManager.activeNotifications.size)
+    }
+
+    @Test
+    fun showReminderNotificationSkipsWhenDailyPlanHasNothingUseful() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val services = FakeReminderServices(context)
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        seedSuccessfulSync(context, now)
+
+        ReminderScheduler.showReminderNotification(context, services, AppClock { now })
+
+        assertEquals(0, services.ensureCount)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        assertEquals(0, notificationManager.activeNotifications.size)
     }
 
     @Test
@@ -317,6 +333,60 @@ class ReminderSchedulerTest {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancelAll()
         notificationManager.deleteNotificationChannel(ReminderScheduler.REMINDER_CHANNEL_ID)
+    }
+
+    private fun seedDailyReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
+        LocalStore(context).use { store ->
+            store.saveRows(
+                store.writableDatabase,
+                listOf(
+                    RecordsImportModels.DashboardRow(
+                        "裂",
+                        120,
+                        "裂",
+                        "裂",
+                        "裂",
+                        0,
+                        "",
+                        "",
+                        0,
+                        0,
+                        0,
+                        listOf<RecordsImportModels.Example>(),
+                    ),
+                ),
+                reviewedAt,
+            )
+            store.saveStudyItem(
+                RecordsStudyModels.StudyItem(
+                    "裂",
+                    "review",
+                    dueAtMillis,
+                    1.0,
+                    5.0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    "seed-token",
+                    reviewedAt,
+                )
+            )
+        }
+    }
+
+    private fun seedSuccessfulSync(context: Context, finishedAt: Long) {
+        LocalStore(context).use { store ->
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList<RecordsImportModels.SuspendedImport>(),
+                emptyList<RecordsImportModels.DashboardRow>(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                finishedAt,
+                finishedAt,
+                null,
+            )
+        }
     }
 
     private fun seedReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {

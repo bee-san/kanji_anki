@@ -14,6 +14,11 @@ import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
+import dev.bee.kanjianki.core.DailyReminderDecisionRequest
+import dev.bee.kanjianki.core.DailyStudyPlan
+import dev.bee.kanjianki.core.DailyStudyPlanPolicy
+import dev.bee.kanjianki.core.DailyStudyPlanRequest
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -22,6 +27,7 @@ import dev.bee.kanjianki.core.ReminderNotificationPolicy
 import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
 import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.time.AppClock
@@ -175,16 +181,16 @@ object ReminderScheduler {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
-        services.ensureNotificationChannel()
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         LocalStore(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
             val reviewBatch = reviewReminderBatch(store, now)
             val copy = if (reviewBatch != null) {
                 ReminderCopyPolicy.reviewCopy(reviewBatch.dueCount)
             } else {
-                reminderCopy(store, now)
+                dailyReminderCopy(store, now) ?: return@use
             }
+            services.ensureNotificationChannel()
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@use
             val open = Intent(context, MainActivity::class.java)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             val contentIntent = PendingIntent.getActivity(
@@ -357,6 +363,46 @@ object ReminderScheduler {
             )
                 .settings(RecordsSyncModels.Settings.kikuDefaults())
                 .build()
+        )
+    }
+
+    private fun dailyReminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy? {
+        val decision = dailyReminderDecision(store, nowMillis)
+        if (!decision.shouldSchedule) {
+            return null
+        }
+        return ReminderCopyPolicy.ReminderCopy(decision.title, decision.body)
+    }
+
+    private fun dailyReminderDecision(store: LocalStore, nowMillis: Long): dev.bee.kanjianki.core.DailyReminderDecision {
+        val plan = dailyStudyPlan(store, nowMillis)
+        return DailyReminderDecisionPolicy.decide(
+            DailyReminderDecisionRequest(
+                plan = plan,
+                nowMillis = nowMillis,
+            ),
+        )
+    }
+
+    private fun dailyStudyPlan(store: LocalStore, nowMillis: Long): DailyStudyPlan {
+        val rows = store.activeDashboardRows()
+        val items = store.studyItems()
+        val streak = store.studyStreak(nowMillis)
+        return DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = nowMillis,
+                dueAtMillis = items.map { it.dueAtMillis },
+                studiedToday = streak.studiedToday,
+                streak = StudyStreakPolicy.Streak(
+                    currentDays = streak.currentDays,
+                    bestDays = streak.bestDays,
+                    studiedToday = streak.studiedToday,
+                    reviewsToday = streak.reviewsToday,
+                    lastStudyAtMillis = streak.lastStudyAtMillis,
+                ),
+                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else items.count { it.totalReviews == 0 },
+                lastSuccessfulSyncAtMillis = store.latestSync()?.finishedAt,
+            ),
         )
     }
 
