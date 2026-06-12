@@ -344,7 +344,6 @@ class WritingFeedbackCopy private constructor() {
             return when (analysis.status) {
                 WritingAnalysis.Status.WRONG,
                 WritingAnalysis.Status.NO_STROKE_DATA,
-                WritingAnalysis.Status.RECOGNITION_ERROR,
                 -> true
                 else -> false
             }

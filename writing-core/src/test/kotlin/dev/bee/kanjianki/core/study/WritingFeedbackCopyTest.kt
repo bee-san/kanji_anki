@@ -51,6 +51,18 @@ class WritingFeedbackCopyTest {
     }
 
     @Test
+    fun recognitionErrorsDoNotAdvertiseHintRegression() {
+        val analysis = WritingAnalysisEngine.recognitionError(HintLevel.BLIND, 0)
+        val shouldIncreaseSupport = WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis)
+
+        assertFalse(shouldIncreaseSupport)
+        assertEquals(
+            "The handwriting checker could not read this attempt. Try once more.\nTarget: 裂",
+            WritingFeedbackCopy.resultMessage(analysis, "裂", 3, shouldIncreaseSupport, null)
+        )
+    }
+
+    @Test
     fun targetRevealTextPreservesTerminalStatusCopy() {
         assertEquals("", WritingFeedbackCopy.targetRevealText(null, "裂"))
         assertEquals("", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), null))
@@ -396,7 +408,7 @@ class WritingFeedbackCopyTest {
         assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)))
         assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)))
         assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.NO_STROKE_DATA, false, HintLevel.BLIND, 0)))
-        assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)))
+        assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)))
     }
 
     @Test
