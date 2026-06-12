@@ -50,7 +50,7 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
 }
 
 internal fun progressAnalyticsSnapshot(source: ProgressAnalyticsStatsSource, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
-    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.latestStatsSnapshotOrNull() ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
     val reviewDays30 = source.reviewDaySummaries(nowMillis, 30)
     val reviewDays14 = source.reviewDaySummaries(nowMillis, 14)
     val reviewDays7 = reviewDays14.takeLast(7)
