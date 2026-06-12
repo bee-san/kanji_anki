@@ -122,8 +122,8 @@ object DailyReminderDecisionPolicy {
         triggerAtMillis: Long,
         title: String,
         body: String,
-        reasonIds: MutableList<String>,
-        baseReasons: MutableList<String>,
+        reasonIds: List<String>,
+        baseReasons: List<String>,
     ): DailyReminderDecision {
         return DailyReminderDecision(
             shouldSchedule = shouldSchedule,
