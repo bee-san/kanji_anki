@@ -104,6 +104,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardActionBarState: FlashcardActionBarState? = null
 
     @JvmField
+    val studyUndoState = StudyUndoState()
+
+    @JvmField
     var typingAnswerState: TypingAnswerState? = null
 
     @JvmField

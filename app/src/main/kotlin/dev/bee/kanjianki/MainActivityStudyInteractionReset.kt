@@ -11,6 +11,7 @@ internal object MainActivityStudyInteractionReset {
         activity.flashcardActionBarState = null
         activity.flashcardAnswerRevealed = false
         activity.flashcardTouchTracking = false
+        activity.studyUndoState.clear()
     }
 
     fun resetFlashcard(activity: MainActivityStudy) {
