@@ -58,6 +58,35 @@ class HomeScreenComposeTest {
     }
 
     @Test
+    fun rendersTodayPlanCardAndTriggersAction() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomeScreen(
+                model = baseModel(
+                    showSyncCta = false,
+                    deckOverviewRows = listOf("Due 2"),
+                    todayPlan = HomeTodayPlanModel(
+                        title = HomeTextCopy.todayPlanTitle(),
+                        summary = "4 due now · about 2 min",
+                        details = listOf("Needs one calm review", "Keeps the streak safe"),
+                        actionLabel = HomeTextCopy.studyNowLabel(),
+                        onClick = { clicked = true },
+                    ),
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(homeTodayPlanTestTag())
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .performClick()
+        composeRule.onNodeWithText("4 due now · about 2 min").assertIsDisplayed()
+        composeRule.onNodeWithText("Needs one calm review").assertIsDisplayed()
+        assertTrue(clicked)
+    }
+
+    @Test
     fun rendersStudyHomeWithPreviewQueueActions() {
         var studyClicked = false
         var focusClicked = false
@@ -129,6 +158,11 @@ class HomeScreenComposeTest {
         actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})),
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
         syncMetricBody: String = "Ready",
+        todayPlan: HomeTodayPlanModel = HomeTodayPlanModel(
+            title = HomeTextCopy.todayPlanTitle(),
+            summary = "Nothing useful now",
+            details = emptyList(),
+        ),
     ): HomeScreenModel {
         return HomeScreenModel(
             title = "Kani",
@@ -138,6 +172,7 @@ class HomeScreenComposeTest {
                 HomeMetricModel(R.drawable.ic_flame_24, MainActivityUiSupport.GOLD, "Streak", "2 days", "Done today", null),
                 HomeMetricModel(R.drawable.ic_target_24, MainActivityUiSupport.CORAL, "Focus", "1 left", null, null)
             ),
+            todayPlan = todayPlan,
             deckOverviewRows = deckOverviewRows,
             showSyncCta = showSyncCta,
             syncLabel = "Sync AnkiDroid",

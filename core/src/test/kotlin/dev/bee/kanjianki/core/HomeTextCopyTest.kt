@@ -3,7 +3,10 @@ package dev.bee.kanjianki.core
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import java.util.Calendar
+import java.util.GregorianCalendar
 import java.util.Locale
+import java.util.TimeZone
 
 class HomeTextCopyTest {
     @Test
@@ -114,6 +117,85 @@ class HomeTextCopyTest {
     }
 
     @Test
+    fun todayPlanCopyPreservesReasonStringsAndReminderLabel() {
+        val plan = DailyStudyPlan(
+            dateLocalDay = 0L,
+            dueNow = 4,
+            dueLater = 2,
+            newProblemKanjiAvailable = 1,
+            streakStatus = StreakStatus.SAFE,
+            estimatedMinutes = 2,
+            recommendedAction = RecommendedAction.STUDY_NOW,
+            nextUsefulReminderAtMillis = 0L,
+            dueLookahead = DueLookaheadWindow(4, 2, 0L, 0, 0L),
+            syncStatus = SyncStatus.CURRENT,
+            reasons = listOf("4 due now", "1 new problem kanji available"),
+        )
+
+        assertEquals("Today", HomeTextCopy.todayPlanTitle())
+        assertEquals("4 due now · about 2 min", HomeTextCopy.todayPlanSummary(plan))
+        assertEquals("Next useful time: unknown", HomeTextCopy.nextUsefulTimeLabel(0L))
+    }
+
+    @Test
+    fun nextUsefulTimeLabelUsesLocalClockTime() {
+        withTimeZone(TimeZone.getTimeZone("UTC")) {
+            val calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
+            calendar.set(2026, Calendar.JUNE, 12, 20, 30, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+
+            assertEquals("Next useful time: 20:30", HomeTextCopy.nextUsefulTimeLabel(calendar.timeInMillis))
+        }
+    }
+
+    @Test
+    fun todayPlanCopyHandlesStreakAndSyncStates() {
+        val streakPlan = DailyStudyPlan(
+            dateLocalDay = 0L,
+            dueNow = 1,
+            dueLater = 0,
+            newProblemKanjiAvailable = 0,
+            streakStatus = StreakStatus.NEEDS_ONE_REVIEW,
+            estimatedMinutes = 1,
+            recommendedAction = RecommendedAction.STUDY_ONCE_FOR_STREAK,
+            nextUsefulReminderAtMillis = 0L,
+            dueLookahead = DueLookaheadWindow(1, 0, 0L, 0, 0L),
+            syncStatus = SyncStatus.CURRENT,
+            reasons = listOf("1 review keeps the streak alive"),
+        )
+        val waitPlan = DailyStudyPlan(
+            dateLocalDay = 0L,
+            dueNow = 0,
+            dueLater = 3,
+            newProblemKanjiAvailable = 0,
+            streakStatus = StreakStatus.NO_STREAK_ACTIVE,
+            estimatedMinutes = 0,
+            recommendedAction = RecommendedAction.WAIT_UNTIL_LATER,
+            nextUsefulReminderAtMillis = 123L,
+            dueLookahead = DueLookaheadWindow(0, 3, 123L, 1, 123L),
+            syncStatus = SyncStatus.CURRENT,
+            reasons = listOf("3 due later"),
+        )
+        val syncPlan = DailyStudyPlan(
+            dateLocalDay = 0L,
+            dueNow = 0,
+            dueLater = 0,
+            newProblemKanjiAvailable = 0,
+            streakStatus = StreakStatus.NO_STREAK_ACTIVE,
+            estimatedMinutes = 0,
+            recommendedAction = RecommendedAction.SYNC_FIRST,
+            nextUsefulReminderAtMillis = 0L,
+            dueLookahead = DueLookaheadWindow(0, 0, 0L, 0, 0L),
+            syncStatus = SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS,
+            reasons = listOf("Sync needed before Kani can judge progress"),
+        )
+
+        assertEquals("Streak safe after 1 review", HomeTextCopy.todayPlanSummary(streakPlan))
+        assertEquals("Nothing useful now", HomeTextCopy.todayPlanSummary(waitPlan))
+        assertEquals("Sync needed before Kani can judge progress", HomeTextCopy.todayPlanSummary(syncPlan))
+    }
+
+    @Test
     fun homeShellAndSyncCopyTranslateToJapaneseLocale() {
         withLocale(Locale.JAPANESE) {
             val waiting = RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, emptyList(), 0, false, "")
@@ -162,6 +244,22 @@ class HomeTextCopyTest {
             assertEquals("語の学習カード、言語", HomeTextCopy.focusQueueCardContentDescription("語", "言語"))
             assertEquals("学習中", HomeTextCopy.deckOverviewLearningLabel())
             assertEquals("今すぐ学習", HomeTextCopy.studyNowLabel())
+            val japanPlan = DailyStudyPlan(
+                dateLocalDay = 0L,
+                dueNow = 4,
+                dueLater = 1,
+                newProblemKanjiAvailable = 0,
+                streakStatus = StreakStatus.SAFE,
+                estimatedMinutes = 2,
+                recommendedAction = RecommendedAction.STUDY_NOW,
+                nextUsefulReminderAtMillis = 0L,
+                dueLookahead = DueLookaheadWindow(4, 1, 0L, 0, 0L),
+                syncStatus = SyncStatus.CURRENT,
+                reasons = listOf("4 due now"),
+            )
+            assertEquals("今日", HomeTextCopy.todayPlanTitle())
+            assertEquals("4件が今すぐ復習 · 約2分", HomeTextCopy.todayPlanSummary(japanPlan))
+            assertEquals("次に有効な時刻: 不明", HomeTextCopy.nextUsefulTimeLabel(0L))
             assertEquals("学習中の漢字はまだありません", HomeTextCopy.activePracticeEmptyTitle())
             assertEquals("今すぐ学習すると次の漢字が追加されます。", HomeTextCopy.activePracticeEmptyBody())
             assertEquals("同期", HomeTextCopy.syncMetricLabel())
@@ -500,6 +598,16 @@ class HomeTextCopyTest {
             block()
         } finally {
             Locale.setDefault(original)
+        }
+    }
+
+    private inline fun <T> withTimeZone(timeZone: TimeZone, block: () -> T): T {
+        val original = TimeZone.getDefault()
+        TimeZone.setDefault(timeZone)
+        return try {
+            block()
+        } finally {
+            TimeZone.setDefault(original)
         }
     }
 }

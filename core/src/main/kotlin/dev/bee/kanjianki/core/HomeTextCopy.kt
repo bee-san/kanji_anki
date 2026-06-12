@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Calendar
 import java.util.Locale
 
 object HomeTextCopy {
@@ -197,6 +198,52 @@ object HomeTextCopy {
 
     @JvmStatic
     fun studyNowLabel(): String = localizedText("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun todayPlanTitle(): String = localizedText("Today", "今日")
+
+    @JvmStatic
+    fun todayPlanSummary(plan: DailyStudyPlan): String {
+        return when (plan.recommendedAction) {
+            RecommendedAction.STUDY_NOW -> {
+                val loadText = when {
+                    plan.dueNow > 0 -> localizedText("${plan.dueNow} due now", "${plan.dueNow}件が今すぐ復習")
+                    plan.newProblemKanjiAvailable > 0 -> localizedText(
+                        "${plan.newProblemKanjiAvailable} new problem kanji available",
+                        "新しい問題漢字${plan.newProblemKanjiAvailable}件",
+                    )
+                    else -> localizedText("Study now", "今すぐ学習")
+                }
+                val timeText = if (plan.estimatedMinutes > 0) {
+                    localizedText(" · about ${plan.estimatedMinutes} min", " · 約${plan.estimatedMinutes}分")
+                } else {
+                    ""
+                }
+                loadText + timeText
+            }
+            RecommendedAction.STUDY_ONCE_FOR_STREAK ->
+                localizedText("Streak safe after 1 review", "1回の復習で連続を守れます")
+            RecommendedAction.WAIT_UNTIL_LATER ->
+                localizedText("Nothing useful now", "今は学ぶものなし")
+            RecommendedAction.SYNC_FIRST ->
+                localizedText("Sync needed before Kani can judge progress", "進捗を判断するには同期が必要")
+            RecommendedAction.NOTHING_USEFUL_NOW ->
+                localizedText("Nothing useful now", "今は学ぶものなし")
+        }
+    }
+
+    @JvmStatic
+    fun nextUsefulTimeLabel(nextUsefulReminderAtMillis: Long): String {
+        if (nextUsefulReminderAtMillis <= 0L) {
+            return localizedText("Next useful time: unknown", "次に有効な時刻: 不明")
+        }
+        val calendar = Calendar.getInstance().apply { timeInMillis = nextUsefulReminderAtMillis }
+        return localizedText("Next useful time: ", "次に有効な時刻: ") +
+            TimeOfDaySettingsPolicy.displayTime(
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+            )
+    }
 
     @JvmStatic
     fun activePracticeEmptyTitle(): String = localizedText("No active practice yet", "学習中の漢字はまだありません")

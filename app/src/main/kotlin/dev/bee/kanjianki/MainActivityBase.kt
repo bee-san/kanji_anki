@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -334,6 +335,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
         return studyPlanProvider.adaptivePlan(rows, items, now)
+    }
+
+    fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+    ): DailyStudyPlan {
+        return studyPlanProvider.dailyStudyPlan(rows, items, now)
     }
 
     fun studyPlanForMode(
