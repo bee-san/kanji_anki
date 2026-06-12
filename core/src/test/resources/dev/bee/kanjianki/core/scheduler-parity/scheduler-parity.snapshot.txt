@@ -1,0 +1,23 @@
+scheduler parity snapshot
+
+source docs:
+- docs/anki-manual-parity-checklist.md
+- docs/fsrs-impact-report.md
+
+golden timeline extracts:
+- newKanjiEntersKanjiMeaning => T+00:00 seed admitted=裂 task=kanji_meaning rung=KANJI_MEANING phase=NEW_LEARNING due=T+00:00 reasons=[new_admitted] | T+00:00 next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=NEW_LEARNING due=T+00:00 reasons=[due_now,new_learning_unseen,selected_best_candidate]
+- reviewPassPromotesAfterLongFsrsInterval => T+00:00 next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+00:00 reasons=[due_now,review_due,selected_best_candidate] | T+00:00 answer rating=good task=kanji_meaning rung=KANJI_MEANING->FONT_MEANING phase=REVIEW->REVIEW due=T+22d reasons=[review_pass_fsrs_interval,fsrs_interval_promotes,similar_kanji_unavailable] fsrs=[review:good:22]
+- threeDueReviewAgainsDemote => T+00:00 next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+00:00 reasons=[due_now,review_due,selected_best_candidate] | T+00:00 answer rating=again task=kanji_meaning rung=KANJI_MEANING->KANJI_MEANING phase=REVIEW->REVIEW due=T+1d reasons=[review_again_lapse] fsrs=[review:again:1] | T+1d advance now=T+1d | T+1d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+1d reasons=[due_now,review_due,selected_best_candidate] | T+1d answer rating=again task=kanji_meaning rung=KANJI_MEANING->KANJI_MEANING phase=REVIEW->REVIEW due=T+2d reasons=[review_again_lapse] fsrs=[review:again:1] | T+2d advance now=T+2d | T+2d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+2d reasons=[due_now,review_due,selected_best_candidate] | T+2d answer rating=again task=kanji_meaning rung=KANJI_MEANING->MEANING_KANJI phase=REVIEW->REVIEW due=T+3d reasons=[review_again_lapse,real_again_streak_threshold] fsrs=[review:again:1]
+- similarKanjiSkippedWithoutContent => T+00:00 next selected=裂 task=type_meaning rung=TYPE_MEANING phase=REVIEW due=T+00:00 reasons=[due_now,review_due,selected_best_candidate] | T+00:00 answer rating=again task=type_meaning rung=TYPE_MEANING->WRITE_KANJI phase=REVIEW->RELEARNING due=T+00:10 reasons=[review_again_lapse,real_again_streak_threshold,similar_kanji_unavailable] fsrs=[review:again:0]
+- relearningBeatsSameFamilyReviewSibling => T+00:00 next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=RELEARNING due=T+00:00 reasons=[due_now,relearning_due,selected_best_candidate] | T+00:00 hidden selected_family=裂 task=font_meaning rung=FONT_MEANING phase=REVIEW due=T+00:00 reasons=[due_now,review_due,same_family_hidden,same_family_lower_priority]
+
+parity matrix:
+| area | current Kani behavior | Anki parity note |
+| learning/relearning steps | Again resets/repeats, Good advances, Hard delays/repeats, Easy graduates | intentionally Anki-like where implemented |
+| bury/sibling order | same-family relearning wins over review sibling; persistent mature suppression remains separate | session/queue suppression only, not manual unbury |
+| FSRS | local Kani FSRS memory/interval scheduling only | not Anki deck-preset or optimizer parity |
+| lapses/leeches | Kani tracks lapses and demotion streaks; no leech tag/suspend policy | leech-informed only for now |
+
+boundary:
+- FSRS memory/interval only; Kani queue/ladder/suppression/steps/UI policy
+- Same-session same-family hiding stays separate from persistent mature-sibling suppression
