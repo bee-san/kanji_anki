@@ -342,33 +342,6 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             this.confidenceReason = evidence.confidenceReason()
         }
 
-        fun kanji(): String = kanji
-
-        fun status(): KanjiRepairEvidencePolicy.Status = status
-
-        fun reason(): String = reason
-
-        fun explanation(): String = explanation
-
-        fun beforeWeakness(): Int? = beforeWeakness
-
-        fun afterWeakness(): Int? = afterWeakness
-
-        fun beforeMatureSupport(): Int? = beforeMatureSupport
-
-        fun afterMatureSupport(): Int? = afterMatureSupport
-
-        fun kaniReviews(): Int = kaniReviews
-
-        fun writingFailures(): Int = writingFailures
-
-        fun lastMistakeAtMillis(): Long = lastMistakeAtMillis
-
-        fun lastSyncAtMillis(): Long = lastSyncAtMillis
-
-        fun confidence(): Double = confidence
-
-        fun confidenceReason(): String = confidenceReason
     }
 
     class LadderItemEvidence {
