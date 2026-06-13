@@ -111,6 +111,19 @@ def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> lis
     return normalized
 
 
+def _manifest_capture_path(capture: dict[str, object], out_dir: Path) -> Path | None:
+    raw_path = capture.get("path")
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raw_file = capture.get("file")
+        if not isinstance(raw_file, str) or not raw_file.strip():
+            return None
+        raw_path = raw_file
+    path = Path(raw_path)
+    if not path.is_absolute():
+        path = out_dir / path
+    return path
+
+
 def _current_branch(repo_root: Path, runner: Runner) -> tuple[str | None, str | None]:
     process = _run(runner, ["git", "branch", "--show-current"], repo_root)
     if process.returncode != 0:
@@ -255,6 +268,80 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 )
         pngs = manifest_files
 
+    captures = manifest.get("captures")
+    if not isinstance(captures, list) or not captures:
+        return _status(
+            "missing_artifact",
+            f"Artifact manifest at {manifests[0]} does not declare any captures.",
+            manifest=str(manifests[0]),
+        )
+    if len(captures) != len(manifest_files):
+        return _status(
+            "missing_artifact",
+            f"Artifact manifest contains {len(captures)} captures; expected exactly {len(manifest_files)} to match the listed screenshot files.",
+            manifest=str(manifests[0]),
+            captures=len(captures),
+            files=len(manifest_files),
+        )
+
+    validated_pngs: list[Path] = []
+    for index, (capture, expected_file) in enumerate(zip(captures, manifest_files)):
+        if not isinstance(capture, dict):
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest capture entry {index} is not a JSON object.",
+                manifest=str(manifests[0]),
+            )
+        capture_path = _manifest_capture_path(capture, out_dir)
+        if capture_path is None:
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest capture entry {index} does not declare a file path.",
+                manifest=str(manifests[0]),
+            )
+        if capture_path.resolve() != expected_file.resolve():
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest capture entry {index} points to {capture_path} but expected {expected_file}.",
+                manifest=str(manifests[0]),
+                capture_path=str(capture_path),
+                file_path=str(expected_file),
+            )
+        if not capture_path.exists():
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest references missing capture file: {capture_path}",
+                manifest=str(manifests[0]),
+            )
+        raw_sha256 = capture.get("sha256")
+        if not isinstance(raw_sha256, str) or not raw_sha256.strip():
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest capture entry {index} is missing a non-empty sha256.",
+                manifest=str(manifests[0]),
+                capture_path=str(capture_path),
+            )
+        try:
+            actual_sha256 = hashlib.sha256(capture_path.read_bytes()).hexdigest()
+        except OSError as error:
+            return _status(
+                "missing_artifact",
+                f"Unable to read capture file {capture_path}: {error}",
+                manifest=str(manifests[0]),
+            )
+        provided_sha256 = raw_sha256.strip().lower()
+        if provided_sha256 != actual_sha256:
+            return _status(
+                "missing_artifact",
+                f"Artifact manifest capture entry {index} sha256 mismatch for {capture_path}: expected {actual_sha256}, got {provided_sha256}.",
+                manifest=str(manifests[0]),
+                capture_path=str(capture_path),
+                sha256=provided_sha256,
+            )
+        validated_pngs.append(capture_path)
+
+    pngs = validated_pngs
+
     if expected_route is not None:
         expected_canonical = _canonical_screenshot_route(expected_route)
         assert expected_canonical is not None
@@ -301,7 +388,7 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
 
     return _status(
         "passed",
-        "Remote screenshot artifact contains a valid manifest, matching routes, and PNG screenshots.",
+        "Remote screenshot artifact contains a valid manifest, matching routes, capture hashes, and PNG screenshots.",
         manifest=str(manifests[0]),
         pngs=[str(path) for path in pngs],
         routes=manifest_routes,

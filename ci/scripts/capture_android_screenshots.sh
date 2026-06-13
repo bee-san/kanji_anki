@@ -302,11 +302,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
-capture_count = max(len(captured_routes), len(captured_files), len(captured_orientations), len(captured_launch_targets))
+if len(captured_routes) != len(captured_files):
+    raise SystemExit("Captured screenshot routes and files are out of sync.")
+
+capture_count = len(captured_routes)
 captures = []
 for index in range(capture_count):
-    route = captured_routes[index] if index < len(captured_routes) else ""
-    file_name = captured_files[index] if index < len(captured_files) else ""
+    route = captured_routes[index]
+    file_name = captured_files[index]
     orientation = captured_orientations[index] if index < len(captured_orientations) else ""
     launch_target = captured_launch_targets[index] if index < len(captured_launch_targets) else ""
     file_path = Path(file_name) if file_name else None
@@ -315,11 +318,10 @@ for index in range(capture_count):
             "route": route,
             "launch_target": launch_target,
             "orientation": orientation,
-            "file": file_name,
+            "path": file_name,
             "sha256": sha256(file_path) if file_path is not None and file_path.exists() else "",
         }
     )
-
 captured_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 manifest = {
