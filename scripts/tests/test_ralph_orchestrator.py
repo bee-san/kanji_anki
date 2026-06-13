@@ -362,6 +362,8 @@ class RalphOrchestratorTest(unittest.TestCase):
             "highest_priority_issue": "home-primary-action-hierarchy",
         }
         missing_target_spec = {**critic_review, "target_view_spec": None}
+        no_issue_missing_screenshot_reason = {**no_issue_review, "target_screenshot_unavailable_reason": ""}
+        no_issue_empty_screenshot = {**no_issue_review, "target_screenshot": ""}
         stale_multi_issue_field = {**critic_review, "accepted_issues": [critic_review["accepted_issue"]]}
 
         self.assertEqual([], orchestrator._review_schema_errors("design-critic", critic_review))
@@ -371,6 +373,10 @@ class RalphOrchestratorTest(unittest.TestCase):
         design_label_old_errors = orchestrator._review_schema_errors("design", old_multi_issue_review)
         design_label_bare_errors = orchestrator._review_schema_errors("design", {"passed": True})
         missing_target_errors = orchestrator._review_schema_errors("design-critic", missing_target_spec)
+        missing_screenshot_reason_errors = orchestrator._review_schema_errors(
+            "design-critic", no_issue_missing_screenshot_reason
+        )
+        empty_screenshot_errors = orchestrator._review_schema_errors("design-critic", no_issue_empty_screenshot)
         stale_field_errors = orchestrator._review_schema_errors("design-critic", stale_multi_issue_field)
 
         self.assertTrue(any("cheap-ralph-design-critic-v1" in error for error in old_errors))
@@ -379,6 +385,8 @@ class RalphOrchestratorTest(unittest.TestCase):
         self.assertTrue(any("single 'accepted_issue'" in error for error in design_label_old_errors))
         self.assertTrue(any("expected file-auditor fields" in error for error in design_label_bare_errors))
         self.assertTrue(any("target_view_spec" in error for error in missing_target_errors))
+        self.assertTrue(any("target_screenshot_unavailable_reason" in error for error in missing_screenshot_reason_errors))
+        self.assertTrue(any("target_screenshot must be a non-empty string" in error for error in empty_screenshot_errors))
         self.assertTrue(any("single 'accepted_issue'" in error for error in stale_field_errors))
 
         backlog = orchestrator._design_backlog_items(

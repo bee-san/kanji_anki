@@ -164,6 +164,12 @@ def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
     if not _non_empty_string_list(parsed.get("do_not_touch")):
         errors.append("design critic JSON must include non-empty string list 'do_not_touch'")
 
+    target_screenshot = parsed.get("target_screenshot")
+    if target_screenshot is not None and not _non_empty_string(target_screenshot):
+        errors.append("design critic target_screenshot must be a non-empty string or null")
+    if target_screenshot is None and not _non_empty_string(parsed.get("target_screenshot_unavailable_reason")):
+        errors.append("design critic JSON with null target_screenshot must include non-empty 'target_screenshot_unavailable_reason'")
+
     accepted_issue = parsed.get("accepted_issue")
     target_view_spec = parsed.get("target_view_spec")
     if accepted_issue is None:
@@ -194,11 +200,6 @@ def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
         for field in ("hierarchy", "copy_changes", "spacing_touch_targets", "accessibility", "material_expectations"):
             if not _non_empty_string_list(target_view_spec.get(field)):
                 errors.append(f"design critic target_view_spec must include non-empty string list '{field}'")
-    target_screenshot = parsed.get("target_screenshot")
-    if target_screenshot is not None and not _non_empty_string(target_screenshot):
-        errors.append("design critic target_screenshot must be a non-empty string or null")
-    if target_screenshot is None and not _non_empty_string(parsed.get("target_screenshot_unavailable_reason")):
-        errors.append("design critic JSON with null target_screenshot must include non-empty 'target_screenshot_unavailable_reason'")
     return errors
 
 
