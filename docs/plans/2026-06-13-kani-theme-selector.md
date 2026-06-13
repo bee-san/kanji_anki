@@ -316,5 +316,59 @@ Worktree: `/Users/autumnskerritt/kanji_anki_worktrees/kani-theme-selector-202606
 Branch: `feat/kani-theme-selector-20260613`
 
 <!-- KANBAN_GRAPH_START -->
-Pending card creation.
+
+Execution graph created on board `kani`, tenant `kani-theme-selector-20260613`.
+
+- `t_6a601a73` — `design` — **design: Kani theme selector palette spec and token map** — parents: none — status at creation: `running`
+- `t_7c6cb2fe` — `coding` — **implement: theme choice model, persistence, and Girlypop default** — parents: `t_6a601a73`
+- `t_30aa968c` — `coding` — **implement: Kani theme token layer and system bars** — parents: `t_7c6cb2fe`
+- `t_c02fa7b4` — `coding` — **implement: Settings Appearance theme selector model and copy** — parents: `t_30aa968c`
+- `t_a75223e5` — `coding` — **implement: pretty Settings theme selector Compose UI** — parents: `t_c02fa7b4`
+- `t_db41e918` — `coding` — **implement: apply themes to shell, Home, Study, and Settings** — parents: `t_a75223e5`
+- `t_0580d0cb` — `coding` — **implement: theme Stats/Progress, charts, Update, and Games surfaces** — parents: `t_db41e918`
+- `t_e018c1cb` — `coding` — **implement: deterministic screenshot harness for Kani themes** — parents: `t_0580d0cb`
+- `t_903b5c50` — `uitester` — **uitest: capture initial screenshots for all Kani themes** — parents: `t_e018c1cb`
+- `t_6c12a3c9` — `design` — **design: UX critique Kani theme screenshots and selector prettiness** — parents: `t_903b5c50`
+- `t_b46bd660` — `coding` — **implement: polish Kani themes from UX critique** — parents: `t_6c12a3c9`
+- `t_8213a769` — `coding` — **test: theme selector regression, accessibility, and contrast gates** — parents: `t_b46bd660`
+- `t_b2ee3bcb` — `uitester` — **uitest: final screenshots after Kani theme polish** — parents: `t_b46bd660`, `t_8213a769`
+- `t_df76e89f` — `design` — **design: final UX signoff for Kani theme selector screenshots** — parents: `t_b2ee3bcb`
+- `t_7e4524b7` — `qa` — **qa: review PR, CI/Sonar, and merge Kani theme selector** — parents: `t_8213a769`, `t_df76e89f`
+- `t_65dd0ca8` — `ops` — **ops: verify downloadable Kani update includes theme selector** — parents: `t_7e4524b7`
+- `t_2cdd96a8` — `ops` — **notify: Kani theme selector, screenshots, and UX signoff complete** — parents: `t_65dd0ca8`
+
+Dependency diagram:
+
+```text
+t_6a601a73
+  -> t_7c6cb2fe
+  -> t_30aa968c
+  -> t_c02fa7b4
+  -> t_a75223e5
+  -> t_db41e918
+  -> t_0580d0cb
+  -> t_e018c1cb
+  -> t_903b5c50
+  -> t_6c12a3c9
+  -> t_b46bd660
+       -> t_8213a769
+       -> t_b2ee3bcb
+            -> t_df76e89f
+                 -> t_7e4524b7
+                      -> t_65dd0ca8
+                           -> t_2cdd96a8
+       -> t_b2ee3bcb also waits for t_8213a769
+       -> t_7e4524b7 also waits for t_8213a769
+```
+
+Execution defaults encoded in card bodies:
+
+- Work only in `/Users/autumnskerritt/kanji_anki_worktrees/kani-theme-selector-20260613` on branch `feat/kani-theme-selector-20260613`.
+- Do not clobber the dirty original checkout `/Users/autumnskerritt/kanji_anki` or active Stats-page UX work.
+- Girlypop is the default theme for missing/invalid saved settings.
+- Screenshots are required; compile-only success is not a visual pass.
+- UX/design approval requires score >= 8/10 and no must-fix issues.
+- QA must link screenshots and design signoff in the PR and merge only with green checks/Sonar.
+- Release verification must use Kani's normal Android CI -> Android Release workflow; no manual release bypass without explicit approval.
+
 <!-- KANBAN_GRAPH_END -->
