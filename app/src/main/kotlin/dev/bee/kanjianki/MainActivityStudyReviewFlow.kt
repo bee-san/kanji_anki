@@ -124,8 +124,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             return
         }
         activity.renderStudyForKanji(restoredKanji)
-        val now = System.currentTimeMillis()
-        activity.store.recomputeStatsSnapshotSynchronously(now)
+        activity.scheduleStatsPrecomputeIfStaleAsync()
         ReminderScheduler.schedule(activity)
     }
 

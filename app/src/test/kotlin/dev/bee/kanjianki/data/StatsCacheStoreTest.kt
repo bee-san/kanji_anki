@@ -5,6 +5,8 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -46,7 +48,11 @@ class StatsCacheStoreTest {
     fun readFreshStatsReturnsDecodedSnapshotWhenSourceVersionMatches() {
         setSourceVersion(7L)
         val now = 1_234L
-        cacheStore.write(db, snapshot(7L, now, 2, 5))
+        val reviewDaySummaries = listOf(
+            StatsCacheStore.ReviewDaySummarySnapshot(1_000L, 8, 2, 1, 3, 2, 4, 1),
+            StatsCacheStore.ReviewDaySummarySnapshot(2_000L, 4, 1, 1, 1, 1, 0, 0),
+        )
+        cacheStore.write(db, snapshot(7L, now, 2, 5, reviewDaySummaries = reviewDaySummaries))
 
         val fresh = cacheStore.readFresh(db, nowMillis = now)
 
@@ -61,6 +67,7 @@ class StatsCacheStoreTest {
         assertEquals(2, fresh.recentMistakes.size)
         assertEquals("痛", fresh.recentMistakes[0].kanji)
         assertEquals("again", fresh.recentMistakes[0].rating)
+        assertEquals(reviewDaySummaries, fresh.reviewDaySummaries)
     }
 
     @Test
@@ -93,6 +100,85 @@ class StatsCacheStoreTest {
         assertEquals(0L, latest.studyTaskTimeStats.lastSevenDaysMillis)
         assertEquals(0, latest.studyTaskTimeStats.answeredTasks)
         assertTrue(latest.recentMistakes.isEmpty())
+        assertTrue(latest.reviewDaySummaries.isEmpty())
+    }
+
+    @Test
+    fun readLatestLegacyCacheWithoutReviewDaySummariesDefaultsToEmptyListAndIsLegacy() {
+        val reviewDaySummaries = listOf(
+            StatsCacheStore.ReviewDaySummarySnapshot(1_000L, 8, 2, 1, 3, 2, 4, 1),
+        )
+        val legacyOutcomeJson = JSONObject(
+            StatsCacheCodec.outcomeToJson(
+                StudyStatsStore.KaniOutcomeStats(
+                    StudyStatsStore.WeakKanjiImprovedMetric(4, 80.0, 40.0, Collections.emptyList()),
+                    StudyStatsStore.MatureSupportGainedMetric.empty(),
+                    StudyStatsStore.LadderHealthMetric.empty(),
+                ),
+                StudyStatsStore.StudyImpactStats(8, 3, 1, 1, 0, 0),
+                listOf(
+                    StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+                ),
+                StudyStatsStore.StudyStreak(2, 5, true, 1, 2_000L),
+                StudyStatsStore.StudyTaskTimeStats(3_000L, 4_000L, 5),
+                reviewDaySummaries,
+            )
+        ).apply {
+            remove("reviewDaySummaries")
+            put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION - 1)
+        }
+        val oldImpactJson = StatsCacheCodec.impactReportToJson(KanjiImpactAnalyzer.Report(2, 1, 0, Collections.emptyList()))
+        db.execSQL(
+            "INSERT OR REPLACE INTO ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} (id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any>(3L, 999L, legacyOutcomeJson.toString(), oldImpactJson),
+        )
+
+        val latest = cacheStore.readLatest(db)
+
+        assertNotNull(latest)
+        latest!!
+        assertEquals(STATS_CACHE_FORMAT_VERSION - 1, latest.cacheFormatVersion)
+        assertTrue(latest.reviewDaySummaries.isEmpty())
+        assertNull(cacheStore.readFresh(db))
+    }
+
+    @Test
+    fun readLatestMalformedReviewDaySummariesSkipsBadEntriesAndKeepsOtherFields() {
+        val malformedOutcomeJson = JSONObject(
+            StatsCacheCodec.outcomeToJson(
+                StudyStatsStore.KaniOutcomeStats(
+                    StudyStatsStore.WeakKanjiImprovedMetric(4, 80.0, 40.0, Collections.emptyList()),
+                    StudyStatsStore.MatureSupportGainedMetric.empty(),
+                    StudyStatsStore.LadderHealthMetric.empty(),
+                ),
+                StudyStatsStore.StudyImpactStats(8, 3, 1, 1, 0, 0),
+                listOf(
+                    StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+                ),
+                StudyStatsStore.StudyStreak(2, 5, true, 1, 2_000L),
+                StudyStatsStore.StudyTaskTimeStats(3_000L, 4_000L, 5),
+                listOf(
+                    StatsCacheStore.ReviewDaySummarySnapshot(1_000L, 8, 2, 1, 3, 2, 4, 1),
+                ),
+            )
+        ).apply {
+            put("reviewDaySummaries", JSONArray().put("bad-entry").put(17))
+            put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION - 1)
+        }
+        val oldImpactJson = StatsCacheCodec.impactReportToJson(KanjiImpactAnalyzer.Report(2, 1, 0, Collections.emptyList()))
+        db.execSQL(
+            "INSERT OR REPLACE INTO ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} (id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any>(3L, 999L, malformedOutcomeJson.toString(), oldImpactJson),
+        )
+
+        val latest = cacheStore.readLatest(db)
+
+        assertNotNull(latest)
+        latest!!
+        assertEquals(STATS_CACHE_FORMAT_VERSION - 1, latest.cacheFormatVersion)
+        assertEquals(8, latest.studyImpactStats.totalReviews)
+        assertEquals(1, latest.recentMistakes.size)
+        assertTrue(latest.reviewDaySummaries.isEmpty())
     }
 
     @Test
@@ -238,10 +324,13 @@ class StatsCacheStoreTest {
             StudyStatsStore.RecentMistake("痛", "again", 1_000L),
             StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
         ),
+        studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+        studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
+        reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot> = emptyList(),
     ): StatsCacheStore.Snapshot {
         return StatsCacheStore.Snapshot(
-            StudyStatsStore.KaniOutcomeStats(
+            outcomeStats = StudyStatsStore.KaniOutcomeStats(
                 StudyStatsStore.WeakKanjiImprovedMetric(
                     improvedCount,
                     80.0,
@@ -251,14 +340,15 @@ class StatsCacheStoreTest {
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 StudyStatsStore.LadderHealthMetric.empty(),
             ),
-            KanjiImpactAnalyzer.Report(helpedCount, 0, 0, Collections.emptyList()),
-            generatedAtMillis,
-            sourceVersion,
-            studyImpactStats,
-            recentMistakes,
-            StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
-            StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
-            cacheFormatVersion,
+            impactReport = KanjiImpactAnalyzer.Report(helpedCount, 0, 0, Collections.emptyList()),
+            generatedAtMillis = generatedAtMillis,
+            sourceVersion = sourceVersion,
+            studyImpactStats = studyImpactStats,
+            recentMistakes = recentMistakes,
+            studyStreak = studyStreak,
+            studyTaskTimeStats = studyTaskTimeStats,
+            cacheFormatVersion = cacheFormatVersion,
+            reviewDaySummaries = reviewDaySummaries,
         )
     }
 }

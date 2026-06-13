@@ -26,7 +26,11 @@ internal interface ProgressAnalyticsStatsSource {
     fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
 }
 
-internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
+internal fun progressAnalyticsSnapshot(
+    store: LocalStore,
+    nowMillis: Long = System.currentTimeMillis(),
+    scheduleRefresh: (() -> Unit)? = null,
+): ProgressAnalyticsState {
     return progressAnalyticsSnapshot(
         source = object : ProgressAnalyticsStatsSource {
             override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
@@ -46,13 +50,27 @@ internal fun progressAnalyticsSnapshot(store: LocalStore, nowMillis: Long = Syst
             }
         },
         nowMillis = nowMillis,
+        scheduleRefresh = scheduleRefresh,
     )
 }
 
-internal fun progressAnalyticsSnapshot(source: ProgressAnalyticsStatsSource, nowMillis: Long = System.currentTimeMillis()): ProgressAnalyticsState {
-    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.latestStatsSnapshotOrNull() ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
-    val reviewDays30 = source.reviewDaySummaries(nowMillis, 30)
-    val reviewDays14 = source.reviewDaySummaries(nowMillis, 14)
+internal fun progressAnalyticsSnapshot(
+    source: ProgressAnalyticsStatsSource,
+    nowMillis: Long = System.currentTimeMillis(),
+    scheduleRefresh: (() -> Unit)? = null,
+): ProgressAnalyticsState {
+    val freshSnapshot = source.cachedStatsSnapshotOrNull()
+    val latestSnapshot = if (freshSnapshot == null) source.latestStatsSnapshotOrNull() else null
+    val snapshot = freshSnapshot ?: latestSnapshot ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    if (latestSnapshot != null || (freshSnapshot != null && snapshot.reviewDaySummaries.isEmpty())) {
+        scheduleRefresh?.invoke()
+    }
+    val reviewDays30 = if (snapshot.reviewDaySummaries.isNotEmpty()) {
+        snapshot.reviewDaySummaries.map { it.toReviewDaySummary() }.takeLast(30)
+    } else {
+        source.reviewDaySummaries(nowMillis, 30)
+    }
+    val reviewDays14 = reviewDays30.takeLast(14)
     val reviewDays7 = reviewDays14.takeLast(7)
     val reviewDays7Prev = reviewDays14.take(7)
     val reviewBuckets30 = bucketSummaries(reviewDays30, 6)
@@ -288,6 +306,19 @@ internal data class ReviewDaySummary(
 ) {
     fun correct(): Int = max(0, total - again)
     fun accuracyPercent(): Int = percent(correct(), total)
+}
+
+private fun StatsCacheStore.ReviewDaySummarySnapshot.toReviewDaySummary(): ReviewDaySummary {
+    return ReviewDaySummary(
+        dayStart = dayStartMillis,
+        total = total,
+        again = again,
+        hard = hard,
+        good = good,
+        easy = easy,
+        writingRequired = writingRequired,
+        writingFailed = writingFailed,
+    )
 }
 
 private fun LocalStore.reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {

@@ -44,14 +44,9 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
-    fun liveSnapshotCombinesFreshCacheWithReviewBuckets() {
+    fun freshCachedSnapshotUsesStoredReviewDaySummariesWithoutReviewLogQueries() {
         val now = System.currentTimeMillis()
-        val todayStart = LocalDayPolicy.localDayStart(now)
-        writeFreshStatsSnapshot(now)
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -6), rating = "good", token = "week-good")
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -5), rating = "again", token = "week-again")
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -4), rating = "easy", token = "week-easy")
-        insertReview(dayStart = todayStart, rating = "hard", token = "today-hard", writingRequired = true, writingPassed = false)
+        writeFreshStatsSnapshot(now, cachedReviewDaySummaries(now))
 
         val snapshot = progressAnalyticsSnapshot(localStore!!, now)
 
@@ -66,6 +61,7 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(4, reviews.totalReviews.value)
         assertEquals(3, reviews.correct.value)
         assertEquals(1, reviews.incorrect.value)
+        assertEquals(listOf(1, 1, 1, 0, 0, 0, 1), reviews.reviewsPerDay.values)
         assertEquals(1, reviews.reviewsPerDay.values.last())
         assertTrue(reviews.accessibilitySummary.contains("4 total reviews"))
 
@@ -77,44 +73,7 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("Needs improvement", snapshot.weaknessInsights.focusScore.status)
     }
 
-    @Test
-    fun progressRouteFreshCacheStillQueriesLiveReviewWindowsWithoutLatestFallback() {
-        val now = 44_444L
-        val source = GuardedProgressAnalyticsStatsSource(
-            fresh = snapshot(sourceVersion = 7L),
-            latest = snapshot(sourceVersion = 8L),
-            direct = snapshot(sourceVersion = 9L),
-        )
-
-        val state = progressAnalyticsSnapshot(source, nowMillis = now)
-
-        assertEquals(now, state.generatedAtMillis)
-        assertEquals("Stats overview", state.overview.title)
-        assertEquals(1, source.freshReads)
-        assertEquals(0, source.latestReads)
-        assertEquals(0, source.directRecomputes)
-        assertEquals(listOf(30, 14), source.reviewDayRequests)
-    }
-
-    @Test
-    fun progressRouteCacheMissUsesLatestCacheBeforeDirectRecomputeAndStillQueriesLiveReviewWindows() {
-        val now = 55_555L
-        val source = GuardedProgressAnalyticsStatsSource(
-            latest = snapshot(sourceVersion = 8L),
-            direct = snapshot(sourceVersion = 9L),
-        )
-
-        val state = progressAnalyticsSnapshot(source, nowMillis = now)
-
-        assertEquals(now, state.generatedAtMillis)
-        assertEquals("Stats overview", state.overview.title)
-        assertEquals(1, source.freshReads)
-        assertEquals(1, source.latestReads)
-        assertEquals(0, source.directRecomputes)
-        assertEquals(listOf(30, 14), source.reviewDayRequests)
-    }
-
-    private fun writeFreshStatsSnapshot(now: Long) {
+    private fun writeFreshStatsSnapshot(now: Long, reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
             db,
@@ -170,77 +129,44 @@ class ProgressAnalyticsLiveDataSourceTest {
                     answeredTasks = 8,
                 ),
                 cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+                reviewDaySummaries = reviewDaySummaries,
             ),
         )
     }
 
-    private fun insertReview(
+    private fun cachedReviewDaySummaries(now: Long): List<StatsCacheStore.ReviewDaySummarySnapshot> {
+        val todayStart = LocalDayPolicy.localDayStart(now)
+        return (-29..0).map { dayOffset ->
+            val dayStart = LocalDayPolicy.moveLocalDays(todayStart, dayOffset)
+            when (dayOffset) {
+                -6 -> reviewDaySnapshot(dayStart, total = 1, good = 1)
+                -5 -> reviewDaySnapshot(dayStart, total = 1, again = 1)
+                -4 -> reviewDaySnapshot(dayStart, total = 1, easy = 1)
+                0 -> reviewDaySnapshot(dayStart, total = 1, hard = 1, writingRequired = 1, writingFailed = 1)
+                else -> reviewDaySnapshot(dayStart)
+            }
+        }
+    }
+
+    private fun reviewDaySnapshot(
         dayStart: Long,
-        rating: String,
-        token: String,
-        writingRequired: Boolean = false,
-        writingPassed: Boolean = true,
-    ) {
-        db.execSQL(
-            "INSERT INTO review_log " +
-                "(kanji, token, rating, writing_required, writing_passed, manual_override, reviewed_at, review_day_start) " +
-                "VALUES (?, ?, ?, ?, ?, 0, ?, ?)",
-            arrayOf<Any>(
-                token.take(1),
-                token,
-                rating,
-                if (writingRequired) 1 else 0,
-                if (writingPassed) 1 else 0,
-                dayStart + 60_000L,
-                dayStart,
-            ),
+        total: Int = 0,
+        again: Int = 0,
+        hard: Int = 0,
+        good: Int = 0,
+        easy: Int = 0,
+        writingRequired: Int = 0,
+        writingFailed: Int = 0,
+    ): StatsCacheStore.ReviewDaySummarySnapshot {
+        return StatsCacheStore.ReviewDaySummarySnapshot(
+            dayStartMillis = dayStart,
+            total = total,
+            again = again,
+            hard = hard,
+            good = good,
+            easy = easy,
+            writingRequired = writingRequired,
+            writingFailed = writingFailed,
         )
-    }
-
-    private class GuardedProgressAnalyticsStatsSource(
-        private val fresh: StatsCacheStore.Snapshot? = null,
-        private val latest: StatsCacheStore.Snapshot? = null,
-        private val direct: StatsCacheStore.Snapshot = snapshot(sourceVersion = 1L),
-    ) : ProgressAnalyticsStatsSource {
-        var freshReads = 0
-        var latestReads = 0
-        var directRecomputes = 0
-        val reviewDayRequests = mutableListOf<Int>()
-
-        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            freshReads += 1
-            return fresh
-        }
-
-        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            latestReads += 1
-            return latest
-        }
-
-        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
-            directRecomputes += 1
-            return direct
-        }
-
-        override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
-            reviewDayRequests += days
-            return emptyList()
-        }
-    }
-
-    private companion object {
-        fun snapshot(sourceVersion: Long): StatsCacheStore.Snapshot {
-            return StatsCacheStore.Snapshot(
-                outcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
-                impactReport = KanjiImpactAnalyzer.Report(0, 0, 0, emptyList()),
-                generatedAtMillis = 1_111L,
-                sourceVersion = sourceVersion,
-                studyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
-                recentMistakes = emptyList(),
-                studyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
-                studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
-                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
-            )
-        }
     }
 }
