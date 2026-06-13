@@ -1,0 +1,92 @@
+name: Android Theme Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradle_task:
+        description: Gradle task that builds the debug APK
+        required: false
+        default: ':app:assembleDebug'
+      screenshot_route:
+        description: Optional route/state selector passed to the theme screenshot harness
+        required: false
+        default: 'all'
+      screenshot_theme_matrix:
+        description: Comma-separated theme labels for capture (girlypop,light,dark,system-light,system-dark,autumn)
+        required: false
+        default: 'girlypop,light,dark,system-light,system-dark,autumn'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-theme-screenshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    name: Capture Kani theme screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Build debug APK
+        env:
+          GRADLE_TASK: ${{ inputs.gradle_task }}
+        run: |
+          case "$GRADLE_TASK" in
+            ':app:assembleDebug') ;;
+            *)
+              echo "::error::Unsupported gradle_task '$GRADLE_TASK'. Only :app:assembleDebug is allowed."
+              exit 1
+              ;;
+          esac
+          ./gradlew "$GRADLE_TASK"
+
+      - name: Launch app and capture theme screenshots
+        uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        env:
+          SCREENSHOT_ROUTE: ${{ inputs.screenshot_route }}
+          SCREENSHOT_THEME_MATRIX: ${{ inputs.screenshot_theme_matrix }}
+          ANDROID_SCREENSHOT_API_LEVEL: '35'
+          ANDROID_SCREENSHOT_PROFILE: pixel_6
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 3600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash ci/scripts/capture_kani_theme_screenshots.sh "$SCREENSHOT_ROUTE"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kani-theme-screenshots
+          path: screenshots/**
+          if-no-files-found: warn

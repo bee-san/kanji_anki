@@ -1,0 +1,118 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-06-13T15:36:28Z",
+  "captures": [
+    {
+      "launch_target": "home",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/home.png",
+      "route": "home",
+      "sha256": "746f9d885bf506a3552d816e9e8be981668c8b6e1f86a724693b4010fe1c30bc",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "study",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/study.png",
+      "route": "study",
+      "sha256": "b5b427803ae9b5faf53e19bdcf96d5d6308a991c9453fdaf1f6a998801076239",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/stats.png",
+      "route": "stats",
+      "sha256": "1aaa67b3101e7874e8b79eba8b2be8e6742853e710d935cd7d99e0aacecbc780",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/settings.png",
+      "route": "settings",
+      "sha256": "48e901196b76d3d9f0e49f2fd277bf604b10f158d4809855978a0e0ea1439efe",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "games",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/games.png",
+      "route": "games",
+      "sha256": "efbf1070c59be0ff2706650430a9fffe57e44066f89ea6bcabb979ad418ed663",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "home",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/narrow.png",
+      "route": "narrow",
+      "sha256": "421784709fe3556e8e80dafd074d3a0e3ab03150030fbcb7e593aa4023898161",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "home",
+      "orientation": "landscape",
+      "path": "screenshots/kani-theme-matrix/light/wide.png",
+      "route": "wide",
+      "sha256": "459ca2748ee2803d395d85ed76862b3fc679e1c65757140dc9bd96dbf636e0e7",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "all",
+    "light"
+  ],
+  "device": {
+    "api_level": "",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "screenshots/kani-theme-matrix/light/home.png",
+    "screenshots/kani-theme-matrix/light/study.png",
+    "screenshots/kani-theme-matrix/light/stats.png",
+    "screenshots/kani-theme-matrix/light/settings.png",
+    "screenshots/kani-theme-matrix/light/games.png",
+    "screenshots/kani-theme-matrix/light/narrow.png",
+    "screenshots/kani-theme-matrix/light/wide.png"
+  ],
+  "git_ref": "feat/kani-theme-selector-20260613",
+  "git_sha": "0cd2aeedf24ec68c73b6b5c768148bf41eb91e46",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_route": "all",
+  "requested_system_mode": "",
+  "requested_theme": "light",
+  "requested_theme_choice": "light",
+  "routes": [
+    "home",
+    "study",
+    "stats",
+    "settings",
+    "games",
+    "narrow",
+    "wide"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

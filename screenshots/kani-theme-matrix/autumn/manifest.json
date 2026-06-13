@@ -1,0 +1,118 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-06-13T15:39:39Z",
+  "captures": [
+    {
+      "launch_target": "home",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/home.png",
+      "route": "home",
+      "sha256": "69861dc8b12667c6c47be982be55aaea26cc25da3ec2edf24108e170b57c7ea6",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "study",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/study.png",
+      "route": "study",
+      "sha256": "d6eec97b19edcc65ef7834ea3372e68a2fd1ef99b466a20491d4f1d35d5f7ade",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/stats.png",
+      "route": "stats",
+      "sha256": "f13bb200730df28a249697fa7c7b5c8200e7e03c82758cad4309d0f44c88f96b",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/settings.png",
+      "route": "settings",
+      "sha256": "9778e364ef5740743975a717829a236daae96b0b441cde40f398d03c3608a377",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "games",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/games.png",
+      "route": "games",
+      "sha256": "e019c6606004b8d2a8d01dcf8f9cac77948351f095f58068fdc433872109f787",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "home",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/autumn/narrow.png",
+      "route": "narrow",
+      "sha256": "f94ca137588e233d17553cd638828b5a59a5587bc3f71253af18a7c54fc767c0",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    },
+    {
+      "launch_target": "home",
+      "orientation": "landscape",
+      "path": "screenshots/kani-theme-matrix/autumn/wide.png",
+      "route": "wide",
+      "sha256": "c7123420d9af2f83d158c239e53064a5f0dfdc23851a6046af2cdc611309ad4e",
+      "system_mode": "",
+      "theme": "autumn",
+      "theme_choice": "autumn"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "all",
+    "autumn"
+  ],
+  "device": {
+    "api_level": "",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "screenshots/kani-theme-matrix/autumn/home.png",
+    "screenshots/kani-theme-matrix/autumn/study.png",
+    "screenshots/kani-theme-matrix/autumn/stats.png",
+    "screenshots/kani-theme-matrix/autumn/settings.png",
+    "screenshots/kani-theme-matrix/autumn/games.png",
+    "screenshots/kani-theme-matrix/autumn/narrow.png",
+    "screenshots/kani-theme-matrix/autumn/wide.png"
+  ],
+  "git_ref": "feat/kani-theme-selector-20260613",
+  "git_sha": "0cd2aeedf24ec68c73b6b5c768148bf41eb91e46",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_route": "all",
+  "requested_system_mode": "",
+  "requested_theme": "autumn",
+  "requested_theme_choice": "autumn",
+  "routes": [
+    "home",
+    "study",
+    "stats",
+    "settings",
+    "games",
+    "narrow",
+    "wide"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

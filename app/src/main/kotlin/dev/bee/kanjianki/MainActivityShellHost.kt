@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.theme.resolveSystemBars
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
-    fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
+    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, content: @Composable () -> Unit) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
@@ -14,7 +14,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRoute(
-                    model = MainActivityShellModel(selectedRoute = selected),
+                    model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
                     initialScrollY = initialScrollY,
                     onScrollY = { activity.contentScrollY = it },
                     navActions = navActions(),
@@ -30,6 +30,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
@@ -43,7 +44,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRouteWithActionBar(
-                    model = MainActivityShellModel(selectedRoute = selected),
+                    model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
                     initialScrollY = initialScrollY,
                     onScrollY = { activity.contentScrollY = it },
                     navActions = navActions(),

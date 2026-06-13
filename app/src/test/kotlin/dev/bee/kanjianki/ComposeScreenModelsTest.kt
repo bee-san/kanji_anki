@@ -209,6 +209,14 @@ class ComposeScreenModelsTest {
         assertEquals(MainActivityShellModel(MainActivityBase.NAV_STUDY), study)
         assertEquals("main-route-${MainActivityBase.NAV_STUDY}", study.routeTestTag)
         assertEquals("Kani route ${MainActivityBase.NAV_STUDY}", study.routeContentDescription)
+
+        val scrolled = MainActivityShellModel(
+            selectedRoute = MainActivityBase.NAV_STUDY,
+            scrollPositionLabel = "middle",
+        )
+
+        assertEquals("Kani route ${MainActivityBase.NAV_STUDY} scroll middle", scrolled.routeContentDescription)
+        assertEquals(scrolled, scrolled.copy())
     }
 
     @Test

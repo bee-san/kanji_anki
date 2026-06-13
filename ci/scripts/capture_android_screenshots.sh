@@ -2,6 +2,7 @@
 set -euo pipefail
 
 requested_route="${1:-all}"
+requested_theme="${2:-}"
 screenshots_dir="${SCREENSHOTS_DIR:-screenshots}"
 mkdir -p "${screenshots_dir}"
 
@@ -19,7 +20,12 @@ find_aapt() {
     return
   fi
 
-  find "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" -path '*/build-tools/*/aapt' -type f 2>/dev/null | sort -V | tail -n 1
+  local sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+  if [ -z "${sdk_root}" ]; then
+    return 0
+  fi
+
+  find "${sdk_root}" -path '*/build-tools/*/aapt' -type f 2>/dev/null | sort -V | tail -n 1
 }
 
 require_tool() {
@@ -51,14 +57,23 @@ if [ -z "${package_name}" ]; then
 fi
 
 screen_route_extra="dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
+screen_theme_extra="dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+screen_scroll_position_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
+screen_scroll_y_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
 
 captured_routes=()
 captured_files=()
 captured_orientations=()
 captured_launch_targets=()
+captured_scroll_positions=()
+captured_scroll_ys=()
+captured_themes=()
+captured_theme_choices=()
+captured_system_modes=()
 
 original_accelerometer_rotation="$(adb shell settings get system accelerometer_rotation 2>/dev/null | tr -d '\r' || true)"
 original_user_rotation="$(adb shell settings get system user_rotation 2>/dev/null | tr -d '\r' || true)"
+original_ui_night_mode="$(adb shell settings get secure ui_night_mode 2>/dev/null | tr -d '\r' || true)"
 
 restore_setting() {
   local namespace="$1"
@@ -69,24 +84,82 @@ restore_setting() {
   fi
 }
 
+resolve_theme_choice() {
+  local theme_label
+  theme_label="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "${theme_label}" in
+    "")
+      printf '\n'
+      ;;
+    girlypop|light|dark|system|autumn)
+      printf '%s\n' "${theme_label}"
+      ;;
+    system-light|system-dark)
+      printf 'system\n'
+      ;;
+    *)
+      echo "Unsupported screenshot theme '${1}'. Expected girlypop, light, dark, system, system-light, system-dark, or autumn." >&2
+      return 1
+      ;;
+  esac
+}
+
+resolve_theme_system_mode() {
+  local theme_label
+  theme_label="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "${theme_label}" in
+    system-light)
+      printf 'light\n'
+      ;;
+    system-dark)
+      printf 'dark\n'
+      ;;
+    *)
+      printf '\n'
+      ;;
+  esac
+}
+
+set_system_night_mode() {
+  local mode="$1"
+  case "${mode}" in
+    light)
+      adb shell cmd uimode night no >/dev/null 2>&1 || adb shell settings put secure ui_night_mode 1 >/dev/null 2>&1 || true
+      ;;
+    dark)
+      adb shell cmd uimode night yes >/dev/null 2>&1 || adb shell settings put secure ui_night_mode 2 >/dev/null 2>&1 || true
+      ;;
+    *)
+      ;;
+  esac
+}
+
 cleanup() {
   restore_setting system accelerometer_rotation "${original_accelerometer_rotation}"
   restore_setting system user_rotation "${original_user_rotation}"
+  restore_setting secure ui_night_mode "${original_ui_night_mode}"
   adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
 }
 
 trap cleanup EXIT
 
+capture_theme_label=""
+capture_theme_choice=""
+capture_theme_system_mode=""
+if [ -n "${requested_theme}" ]; then
+  capture_theme_label="${requested_theme}"
+  capture_theme_choice="$(resolve_theme_choice "${requested_theme}")"
+  capture_theme_system_mode="$(resolve_theme_system_mode "${requested_theme}")"
+fi
+
 capture_png() {
-  local route_name="$1"
-  local output_path="${screenshots_dir}/${route_name}.png"
-  local remote_path="/sdcard/${route_name}.png"
+  local capture_name="$1"
+  local output_path="${screenshots_dir}/${capture_name}.png"
+  local remote_path="/sdcard/${capture_name}.png"
 
   adb shell screencap -p "${remote_path}"
   adb pull "${remote_path}" "${output_path}" >/dev/null
   adb shell rm -f "${remote_path}" >/dev/null 2>&1 || true
-  captured_routes+=("${route_name}")
-  captured_files+=("${output_path}")
   printf '%s\n' "${output_path}"
 }
 
@@ -179,26 +252,122 @@ set_orientation() {
   esac
 }
 
-launch_screenshot_route() {
-  local launch_target="$1"
-  adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
-  adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" >/dev/null
+logical_screen_height() {
+  local orientation="$1"
+  local wm_size
+  wm_size="$(adb shell wm size 2>/dev/null | tr -d '\r' | awk '/Physical size:/ {print $3; exit}')"
+  if [ -z "${wm_size}" ]; then
+    echo "Unable to determine physical screen size." >&2
+    exit 1
+  fi
+  local width="${wm_size%x*}"
+  local height="${wm_size#*x}"
+  case "${orientation}" in
+    portrait)
+      if [ "${height}" -ge "${width}" ]; then
+        printf '%s\n' "${height}"
+      else
+        printf '%s\n' "${width}"
+      fi
+      ;;
+    landscape)
+      if [ "${height}" -le "${width}" ]; then
+        printf '%s\n' "${height}"
+      else
+        printf '%s\n' "${width}"
+      fi
+      ;;
+    *)
+      echo "Unsupported orientation '${orientation}'" >&2
+      exit 1
+      ;;
+  esac
 }
 
-capture_route() {
-  local capture_name="$1"
+scroll_y_for_position() {
+  local orientation="$1"
+  local position="$2"
+  local screen_height
+  screen_height="$(logical_screen_height "${orientation}")"
+  case "${position}" in
+    top)
+      printf '0\n'
+      ;;
+    middle)
+      printf '%s\n' "${screen_height}"
+      ;;
+    bottom)
+      printf '%s\n' "$((screen_height * 2))"
+      ;;
+    *)
+      if [[ "${position}" =~ ^-?[0-9]+$ ]]; then
+        printf '%s\n' "${position}"
+      else
+        echo "Unsupported scroll position '${position}'" >&2
+        exit 1
+      fi
+      ;;
+  esac
+}
+
+launch_screenshot_route() {
+  local launch_target="$1"
+  local theme_choice="$2"
+  local scroll_position="$3"
+  local scroll_y="$4"
+  adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
+  local -a start_args=(am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}")
+  if [ -n "${theme_choice}" ]; then
+    start_args+=(--es "${screen_theme_extra}" "${theme_choice}")
+  fi
+  if [ -n "${scroll_position}" ]; then
+    start_args+=(--es "${screen_scroll_position_extra}" "${scroll_position}")
+  fi
+  if [ -n "${scroll_y}" ]; then
+    start_args+=(--ei "${screen_scroll_y_extra}" "${scroll_y}")
+  fi
+  adb shell "${start_args[@]}" >/dev/null
+}
+
+capture_route_variant() {
+  local route_name="$1"
+  local capture_name="$2"
+  local launch_target="$3"
+  local orientation="$4"
+  local scroll_position="$5"
+  shift 5
+  local -a expected_terms=("$@")
+  local scroll_y
+  local output_path
+  local scroll_term="scroll ${scroll_position}"
+
+  scroll_y="$(scroll_y_for_position "${orientation}" "${scroll_position}")"
+  log "Capturing ${capture_name} (${launch_target}, ${orientation}, ${scroll_position} @ ${scroll_y})"
+  set_orientation "${orientation}"
+  launch_screenshot_route "${launch_target}" "${capture_theme_choice}" "${scroll_position}" "${scroll_y}"
+  wait_for_route "${capture_name}" "${expected_terms[@]}" "${scroll_term}"
+  output_path="$(capture_png "${capture_name}")"
+  captured_routes+=("${route_name}")
+  captured_files+=("${output_path}")
+  captured_orientations+=("${orientation}")
+  captured_launch_targets+=("${launch_target}")
+  captured_scroll_positions+=("${scroll_position}")
+  captured_scroll_ys+=("${scroll_y}")
+  captured_themes+=("${capture_theme_label}")
+  captured_theme_choices+=("${capture_theme_choice}")
+  captured_system_modes+=("${capture_theme_system_mode}")
+}
+
+capture_route_triplet() {
+  local route_name="$1"
   local launch_target="$2"
   local orientation="$3"
   shift 3
   local -a expected_terms=("$@")
 
-  log "Capturing ${capture_name} (${launch_target}, ${orientation})"
-  set_orientation "${orientation}"
-  launch_screenshot_route "${launch_target}"
-  wait_for_route "${capture_name}" "${expected_terms[@]}"
-  capture_png "${capture_name}" >/dev/null
-  captured_orientations+=("${orientation}")
-  captured_launch_targets+=("${launch_target}")
+  capture_route_variant "${route_name}" "${route_name}-top" "${launch_target}" "${orientation}" "top" "${expected_terms[@]}"
+  capture_route_variant "${route_name}" "${route_name}-middle" "${launch_target}" "${orientation}" "middle" "${expected_terms[@]}"
+  capture_route_variant "${route_name}" "${route_name}-bottom" "${launch_target}" "${orientation}" "bottom" "${expected_terms[@]}"
 }
 
 log "Installing ${apk_path} (${package_name})"
@@ -210,39 +379,44 @@ adb shell settings put global window_animation_scale 0 || true
 adb shell settings put global transition_animation_scale 0 || true
 adb shell settings put global animator_duration_scale 0 || true
 
+if [ -n "${capture_theme_system_mode}" ]; then
+  log "Setting device night mode to ${capture_theme_system_mode} for screenshot theme ${capture_theme_label}"
+  set_system_night_mode "${capture_theme_system_mode}"
+fi
+
 case "${requested_route}" in
   all)
-    capture_route home home portrait "Kani route home"
-    capture_route study study portrait "Kani route study" "Study"
-    capture_route stats stats portrait "Kani route stats" "Stats"
-    capture_route settings settings portrait "Kani route settings" "Settings"
-    capture_route games games portrait "Games"
-    capture_route narrow home portrait "Kani route home"
-    capture_route wide home landscape "Kani route home"
+    capture_route_triplet home home portrait "Kani route home"
+    capture_route_triplet study study portrait "Kani route study" "Study"
+    capture_route_triplet stats stats portrait "Kani route stats" "Stats"
+    capture_route_triplet settings settings portrait "Kani route settings" "Settings"
+    capture_route_triplet games games portrait "Games"
+    capture_route_triplet narrow home portrait "Kani route home"
+    capture_route_triplet wide home landscape "Kani route home"
     ;;
   launcher-home|home)
-    capture_route home home portrait "Kani route home"
+    capture_route_triplet home home portrait "Kani route home"
     ;;
   study)
-    capture_route study study portrait "Kani route study" "Study"
+    capture_route_triplet study study portrait "Kani route study" "Study"
     ;;
   stats)
-    capture_route stats stats portrait "Kani route stats" "Stats"
+    capture_route_triplet stats stats portrait "Kani route stats" "Stats"
     ;;
   settings)
-    capture_route settings settings portrait "Kani route settings" "Settings"
+    capture_route_triplet settings settings portrait "Kani route settings" "Settings"
     ;;
   games)
-    capture_route games games portrait "Games"
+    capture_route_triplet games games portrait "Games"
     ;;
   narrow)
-    capture_route narrow home portrait "Kani route home"
+    capture_route_triplet narrow home portrait "Kani route home"
     ;;
   wide)
-    capture_route wide home landscape "Kani route home"
+    capture_route_triplet wide home landscape "Kani route home"
     ;;
   update)
-    capture_route update update portrait "Kani route settings" "GitHub updater"
+    capture_route_triplet update update portrait "Kani route settings" "GitHub updater"
     ;;
   *)
     echo "Unsupported screenshot route '${requested_route}'. Expected one of: all, home, launcher-home, study, stats, settings, games, narrow, wide, update." >&2
@@ -253,10 +427,18 @@ esac
 export APK_PATH="${apk_path}"
 export PACKAGE_NAME="${package_name}"
 export REQUESTED_ROUTE="${requested_route}"
+export REQUESTED_THEME="${requested_theme}"
+export REQUESTED_THEME_CHOICE="${capture_theme_choice}"
+export REQUESTED_SYSTEM_MODE="${capture_theme_system_mode}"
 export CAPTURED_ROUTES_RAW="$(printf '%s\n' "${captured_routes[@]}")"
 export CAPTURED_FILES_RAW="$(printf '%s\n' "${captured_files[@]}")"
 export CAPTURED_ORIENTATIONS_RAW="$(printf '%s\n' "${captured_orientations[@]}")"
 export CAPTURED_LAUNCH_TARGETS_RAW="$(printf '%s\n' "${captured_launch_targets[@]}")"
+export CAPTURED_SCROLL_POSITIONS_RAW="$(printf '%s\n' "${captured_scroll_positions[@]}")"
+export CAPTURED_SCROLL_YS_RAW="$(printf '%s\n' "${captured_scroll_ys[@]}")"
+export CAPTURED_THEMES_RAW="$(printf '%s\n' "${captured_themes[@]}")"
+export CAPTURED_THEME_CHOICES_RAW="$(printf '%s\n' "${captured_theme_choices[@]}")"
+export CAPTURED_SYSTEM_MODES_RAW="$(printf '%s\n' "${captured_system_modes[@]}")"
 export CAPTURE_SCRIPT_PATH="${0}"
 
 python3 - <<'PY'
@@ -271,6 +453,7 @@ screenshots_dir = Path(os.environ.get("SCREENSHOTS_DIR", "screenshots"))
 apk_path = os.environ["APK_PATH"]
 package_name = os.environ["PACKAGE_NAME"]
 requested_route = os.environ["REQUESTED_ROUTE"]
+requested_theme = os.environ.get("REQUESTED_THEME", "")
 capture_script_path = os.environ.get("CAPTURE_SCRIPT_PATH", "ci/scripts/capture_android_screenshots.sh")
 
 
@@ -284,6 +467,11 @@ captured_routes = [line for line in os.environ.get("CAPTURED_ROUTES_RAW", "").sp
 captured_files = [line for line in os.environ.get("CAPTURED_FILES_RAW", "").splitlines() if line]
 captured_orientations = [line for line in os.environ.get("CAPTURED_ORIENTATIONS_RAW", "").splitlines() if line]
 captured_launch_targets = [line for line in os.environ.get("CAPTURED_LAUNCH_TARGETS_RAW", "").splitlines() if line]
+captured_scroll_positions = [line for line in os.environ.get("CAPTURED_SCROLL_POSITIONS_RAW", "").splitlines() if line]
+captured_scroll_ys = [line for line in os.environ.get("CAPTURED_SCROLL_YS_RAW", "").splitlines() if line]
+captured_themes = [line for line in os.environ.get("CAPTURED_THEMES_RAW", "").splitlines() if line]
+captured_theme_choices = [line for line in os.environ.get("CAPTURED_THEME_CHOICES_RAW", "").splitlines() if line]
+captured_system_modes = [line for line in os.environ.get("CAPTURED_SYSTEM_MODES_RAW", "").splitlines() if line]
 if not captured_routes:
     captured_routes = [path.stem for path in sorted(screenshots_dir.glob("*.png"))]
 if not captured_files:
@@ -292,6 +480,16 @@ if not captured_orientations:
     captured_orientations = [""] * len(captured_routes)
 if not captured_launch_targets:
     captured_launch_targets = [""] * len(captured_routes)
+if not captured_scroll_positions:
+    captured_scroll_positions = [""] * len(captured_routes)
+if not captured_scroll_ys:
+    captured_scroll_ys = [""] * len(captured_routes)
+if not captured_themes:
+    captured_themes = [os.environ.get("REQUESTED_THEME", "")] * len(captured_routes)
+if not captured_theme_choices:
+    captured_theme_choices = [os.environ.get("REQUESTED_THEME_CHOICE", "")] * len(captured_routes)
+if not captured_system_modes:
+    captured_system_modes = [os.environ.get("REQUESTED_SYSTEM_MODE", "")] * len(captured_routes)
 
 
 def sha256(path):
@@ -300,6 +498,16 @@ def sha256(path):
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def unique_routes(values):
+    routes = []
+    seen = set()
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            routes.append(value)
+    return routes
 
 
 if len(captured_routes) != len(captured_files):
@@ -312,12 +520,30 @@ for index in range(capture_count):
     file_name = captured_files[index]
     orientation = captured_orientations[index] if index < len(captured_orientations) else ""
     launch_target = captured_launch_targets[index] if index < len(captured_launch_targets) else ""
+    scroll_position = captured_scroll_positions[index] if index < len(captured_scroll_positions) else ""
+    raw_scroll_y = captured_scroll_ys[index] if index < len(captured_scroll_ys) else ""
+    theme_label = captured_themes[index] if index < len(captured_themes) else ""
+    theme_choice = captured_theme_choices[index] if index < len(captured_theme_choices) else ""
+    system_mode = captured_system_modes[index] if index < len(captured_system_modes) else ""
     file_path = Path(file_name) if file_name else None
+    if raw_scroll_y and str(raw_scroll_y).strip():
+        try:
+            scroll_y = int(str(raw_scroll_y).strip())
+        except ValueError:
+            scroll_y = raw_scroll_y
+    else:
+        scroll_y = None
     captures.append(
         {
             "route": route,
             "launch_target": launch_target,
             "orientation": orientation,
+            "theme": theme_label,
+            "theme_choice": theme_choice,
+            "system_mode": system_mode,
+            "scroll_position": scroll_position,
+            "scroll_y": scroll_y,
+            "scrollable": True,
             "path": file_name,
             "sha256": sha256(file_path) if file_path is not None and file_path.exists() else "",
         }
@@ -326,7 +552,7 @@ captured_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds").repla
 
 manifest = {
     "captured_at_utc": captured_at_utc,
-    "command_argv": [capture_script_path, requested_route],
+    "command_argv": [capture_script_path, requested_route] + ([requested_theme] if requested_theme else []),
     "git_sha": os.environ.get("GITHUB_SHA") or run(["git", "rev-parse", "HEAD"]),
     "git_ref": os.environ.get("GITHUB_REF_NAME") or os.environ.get("GITHUB_REF") or run(["git", "branch", "--show-current"]),
     "workflow_run_id": os.environ.get("GITHUB_RUN_ID", ""),
@@ -335,13 +561,16 @@ manifest = {
     "apk_path": apk_path,
     "device": {
         "profile": os.environ.get("ANDROID_SCREENSHOT_PROFILE", ""),
-        "api_level": os.environ.get("ANDROID_SCREENSHOT_API_LEVEL", ""),
+        "api_level": os.environ.get("ANDROID_SCREENSHOT_API_LEVEL", "") or run(["adb", "shell", "getprop", "ro.build.version.sdk"]),
         "manufacturer": run(["adb", "shell", "getprop", "ro.product.manufacturer"]),
         "model": run(["adb", "shell", "getprop", "ro.product.model"]),
         "sdk": run(["adb", "shell", "getprop", "ro.build.version.sdk"]),
     },
     "requested_route": requested_route,
-    "routes": captured_routes,
+    "requested_theme": requested_theme,
+    "requested_theme_choice": os.environ.get("REQUESTED_THEME_CHOICE", ""),
+    "requested_system_mode": os.environ.get("REQUESTED_SYSTEM_MODE", ""),
+    "routes": unique_routes(captured_routes),
     "files": captured_files,
     "captures": captures,
     "notes": [

@@ -30,6 +30,9 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun handleLaunchIntent(intent: Intent?) {
         val screenshotRoute = intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)?.takeIf { it.isNotBlank() }
         if (screenshotRoute != null) {
+            screenshotThemeChoiceOrNull(intent.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME))?.let {
+                activity.store.saveAppThemeChoice(it)
+            }
             renderScreenshotRoute(screenshotRoute)
             return
         }

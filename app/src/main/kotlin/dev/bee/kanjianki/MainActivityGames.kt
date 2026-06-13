@@ -36,7 +36,10 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun renderScreenshotGames() {
         val model = screenshotGamesScreenModel()
-        renderHomeRoute {
+        renderHomeRoute(
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             GamesMenuScreen(
                 model = model,
                 onHome = this::renderHome
