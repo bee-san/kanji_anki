@@ -312,6 +312,52 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual("missing_artifact", blank_sha256["status"])
             self.assertIn("sha256", str(blank_sha256["message"]))
 
+    def test_validate_artifact_rejects_extra_or_blank_capture_routes_for_route_specific_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            home = out / "home.png"
+            study = out / "study.png"
+            home.write_bytes(b"\x89PNG\r\n\x1a\n")
+            study.write_bytes(b"\x89PNG\r\n\x1a\n")
+            manifest_path = out / "manifest.json"
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home", "study"],
+                        "files": [str(home), str(study)],
+                        "captures": [_capture_entry(home, "home"), _capture_entry(study, "study")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            extra_route = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", extra_route["status"])
+            self.assertIn("exactly match", str(extra_route["message"]))
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home", "study"],
+                        "files": [str(home), str(study)],
+                        "captures": [
+                            _capture_entry(home, "home"),
+                            {
+                                "route": "",
+                                "path": str(study),
+                                "sha256": hashlib.sha256(study.read_bytes()).hexdigest(),
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            blank_route = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", blank_route["status"])
+            self.assertIn("non-empty route", str(blank_route["message"]))
+
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

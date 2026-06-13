@@ -225,7 +225,16 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
 
     capture_entries = _manifest_capture_entries(manifest, out_dir)
     if capture_entries:
-        manifest_routes = [str(entry["route"]) for entry in capture_entries if entry["route"]]
+        for index, entry in enumerate(capture_entries):
+            route = str(entry["route"]).strip()
+            if not route:
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest capture entry {index} does not declare a non-empty route.",
+                    manifest=str(manifests[0]),
+                    capture_path=str(cast(Path, entry["path"])),
+                )
+        manifest_routes = [str(entry["route"]) for entry in capture_entries]
         manifest_files = [cast(Path, entry["path"]) for entry in capture_entries]
     else:
         manifest_routes = _manifest_routes(manifest)
@@ -377,10 +386,10 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                     routes=manifest_routes,
                     requested_route=manifest_requested_route,
                 )
-            if expected_canonical not in manifest_routes:
+            if manifest_routes != [expected_canonical]:
                 return _status(
                     "missing_artifact",
-                    f"Artifact manifest does not contain the expected screenshot route {expected_canonical!r}.",
+                    f"Artifact manifest routes must exactly match [{expected_canonical!r}] for route-specific runs.",
                     manifest=str(manifests[0]),
                     routes=manifest_routes,
                     requested_route=manifest_requested_route,
