@@ -40,6 +40,24 @@ Expected run-dir outputs after the full Ralph loop:
 - `.ralph-loop/current/audit-report.md`
 - `.ralph-loop/current/validation.json`
 
+## Loop modes and mutation guardrails
+
+- No mutation flag: run the remote visual review path. This captures/downloads the GitHub Actions
+  screenshots, asks the design comparison and button reviewers, and writes review artifacts. It does not
+  edit source files.
+- `--audit-only`: build the UI manifest, view matrix, button contract, latency inventory, and audit report.
+  This is the safest inventory/proposal mode and never dispatches screenshots or edits the checkout.
+- `--dry-run`: reserved for the scratch-checkout implementation path. Until that path is wired, the
+  orchestrator accepts the flag but fails closed, writes `.ralph-loop/current/mode-state.json`, and leaves
+  source files untouched.
+- `--apply-accepted`: reserved for applying one accepted scratch patch after before/after screenshots,
+  tests, forbidden-path guards, diff limits, and design-comparison gates pass.
+- `--commit-accepted`: reserved for committing the accepted patch after `--apply-accepted` succeeds. The
+  CLI rejects `--commit-accepted` unless `--apply-accepted` is also set.
+
+Invalid combinations fail during argument parsing: `--audit-only` with any mutation mode, `--dry-run` with
+apply/commit, and `--commit-accepted` without `--apply-accepted`.
+
 ## Preferred command sequence
 
 1. Dispatch and validate screenshots in one shot:

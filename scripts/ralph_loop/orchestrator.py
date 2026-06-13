@@ -46,16 +46,41 @@ def positive_int(value: str) -> int:
     return parsed
 
 
-class IterationCapParser(argparse.ArgumentParser):
+def non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError("must be a finite number >= 0")
+    return parsed
+
+
+class LoopModeParser(argparse.ArgumentParser):
     def parse_args(self, args=None, namespace=None):  # type: ignore[override]
         parsed = cast(argparse.Namespace, super().parse_args(args, namespace))
         if parsed.iterations > parsed.max_iterations:
             self.error("--iterations must be <= --max-iterations")
+        if parsed.audit_only and (parsed.dry_run or parsed.apply_accepted or parsed.commit_accepted):
+            self.error("--audit-only cannot be combined with --dry-run, --apply-accepted, or --commit-accepted")
+        if parsed.dry_run and (parsed.apply_accepted or parsed.commit_accepted):
+            self.error("--dry-run cannot be combined with --apply-accepted or --commit-accepted")
+        if parsed.commit_accepted and not parsed.apply_accepted:
+            self.error("--commit-accepted requires --apply-accepted")
         return parsed
 
 
+def run_mode(args: argparse.Namespace) -> str:
+    if getattr(args, "audit_only", False):
+        return "audit-only"
+    if getattr(args, "commit_accepted", False):
+        return "commit-accepted"
+    if getattr(args, "apply_accepted", False):
+        return "apply-accepted"
+    if getattr(args, "dry_run", False):
+        return "dry-run"
+    return "remote-visual"
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = IterationCapParser(description="Kani Ralph UI loop controller.")
+    parser = LoopModeParser(description="Kani Ralph UI loop controller.")
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--run-dir", type=Path, default=Path(".ralph-loop/current"))
     parser.add_argument(
@@ -63,8 +88,24 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run validation only; never edit the checkout.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Create candidate implementation artifacts in a scratch checkout only; never edit the source checkout.",
+    )
+    parser.add_argument(
+        "--apply-accepted",
+        action="store_true",
+        help="Apply one accepted scratch patch to the source checkout after every visual/validation gate passes.",
+    )
+    parser.add_argument(
+        "--commit-accepted",
+        action="store_true",
+        help="Commit the accepted patch after --apply-accepted succeeds and every gate passes.",
+    )
     parser.add_argument("--iterations", type=positive_int, default=1)
     parser.add_argument("--max-iterations", type=positive_int, default=1)
+    parser.add_argument("--min-design-score-delta", type=non_negative_float, default=0.10)
     parser.add_argument("--file-bucket", default="all", choices=FILE_BUCKET_CHOICES)
     parser.add_argument("--max-files", type=positive_int, default=1)
     parser.add_argument("--critic-profile", default="design")
@@ -745,6 +786,7 @@ def _build_audit_report(
     report: dict[str, object] = {
         "schema": "ralph-audit-report-v1",
         "status": status,
+        "mode": run_mode(args),
         "audit_only": True,
         "repo_root": str(repo_root),
         "run_dir": str(run_dir),
@@ -761,6 +803,10 @@ def _build_audit_report(
             "agent_cmd": args.agent_cmd,
             "reviewer_model": args.reviewer_model,
             "reviewer_cmd": args.reviewer_cmd,
+            "dry_run": getattr(args, "dry_run", False),
+            "apply_accepted": getattr(args, "apply_accepted", False),
+            "commit_accepted": getattr(args, "commit_accepted", False),
+            "min_design_score_delta": getattr(args, "min_design_score_delta", 0.10),
             "pr_branch": args.pr_branch,
             "push_pr_branch": args.push_pr_branch,
             "require_remote_green": args.require_remote_green,
@@ -957,9 +1003,11 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     summary: dict[str, object] = {
         "schema": "ralph-remote-visual-v1",
         "status": remote_result["status"],
+        "mode": run_mode(args),
         "audit_only": False,
         "repo_root": str(repo_root),
         "run_dir": str(run_dir),
+        "min_design_score_delta": getattr(args, "min_design_score_delta", 0.10),
         "remote_visual": remote_result,
         "remote_visual_context": str(context_path),
         "profile_reviews": {},
@@ -992,11 +1040,34 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     return summary
 
 
+def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    mode = run_mode(args)
+    summary: dict[str, object] = {
+        "schema": "ralph-loop-mode-v1",
+        "status": "failed",
+        "mode": mode,
+        "audit_only": False,
+        "repo_root": str(repo_root),
+        "run_dir": str(run_dir),
+        "reason": (
+            f"{mode} is accepted by the CLI but the scratch checkout/apply implementation is not wired yet; "
+            "failing closed so source files are not mutated without visual gates."
+        ),
+        "source_mutated": False,
+        "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
+    }
+    _write_json(run_dir / "mode-state.json", summary)
+    return summary
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     repo_root = args.repo_root.resolve()
     run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
-    if args.audit_only:
+    if getattr(args, "audit_only", False):
         return _run_audit_only(args, repo_root, run_dir)
+    if getattr(args, "dry_run", False) or getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
+        return _run_unimplemented_mode(args, repo_root, run_dir)
     return _run_remote_visual_mode(args, repo_root, run_dir)
 
 

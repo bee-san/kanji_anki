@@ -58,6 +58,7 @@ class RalphOrchestratorTest(unittest.TestCase):
         )
 
         self.assertTrue(args.audit_only)
+        self.assertEqual("audit-only", orchestrator.run_mode(args))
         self.assertEqual("settings", args.file_bucket)
         shared_args = parser.parse_args(["--repo-root", str(root), "--audit-only", "--file-bucket", "shared"])
         self.assertEqual("shared", shared_args.file_bucket)
@@ -72,6 +73,7 @@ class RalphOrchestratorTest(unittest.TestCase):
         self.assertEqual("feat/ralph-audit", args.pr_branch)
         self.assertTrue(args.push_pr_branch)
         self.assertTrue(args.require_remote_green)
+        self.assertEqual(0.10, args.min_design_score_delta)
         self.assertEqual(root, args.repo_root)
         self.assertEqual(Path(".ralph-loop/current"), args.run_dir)
         self.assertEqual("hermes -p {profile} chat -Q -t safe -q {prompt}", parser.get_default("critic_cmd"))
@@ -83,6 +85,82 @@ class RalphOrchestratorTest(unittest.TestCase):
             parser.parse_args(["--repo-root", str(root), "--iterations", "2", "--max-iterations", "1"])
         with self.assertRaises(SystemExit):
             parser.parse_args(["--repo-root", str(root), "--max-files", "0"])
+
+    def test_parser_accepts_mutation_modes_but_rejects_unsafe_combinations(self) -> None:
+        parser = orchestrator.build_parser()
+        root = Path("/tmp/ralph-mode-fixture")
+
+        dry_run = parser.parse_args(
+            [
+                "--repo-root",
+                str(root),
+                "--dry-run",
+                "--min-design-score-delta",
+                "0.25",
+            ]
+        )
+        apply_only = parser.parse_args(["--repo-root", str(root), "--apply-accepted"])
+        commit = parser.parse_args(["--repo-root", str(root), "--apply-accepted", "--commit-accepted"])
+        remote_visual = parser.parse_args(["--repo-root", str(root)])
+
+        self.assertTrue(dry_run.dry_run)
+        self.assertEqual("dry-run", orchestrator.run_mode(dry_run))
+        self.assertEqual(0.25, dry_run.min_design_score_delta)
+        self.assertEqual("apply-accepted", orchestrator.run_mode(apply_only))
+        self.assertEqual("commit-accepted", orchestrator.run_mode(commit))
+        self.assertEqual("remote-visual", orchestrator.run_mode(remote_visual))
+
+        invalid_combinations = [
+            ["--audit-only", "--dry-run"],
+            ["--audit-only", "--apply-accepted"],
+            ["--dry-run", "--apply-accepted"],
+            ["--commit-accepted"],
+            ["--min-design-score-delta", "-0.01"],
+            ["--min-design-score-delta", "nan"],
+            ["--min-design-score-delta", "inf"],
+        ]
+        for extra_args in invalid_combinations:
+            with self.subTest(extra_args=extra_args):
+                with self.assertRaises(SystemExit):
+                    parser.parse_args(["--repo-root", str(root), *extra_args])
+
+    def test_unimplemented_mutation_modes_fail_closed_without_remote_or_profile_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source_texts = self._write_fixture_repo(root)
+            args = orchestrator.build_parser().parse_args(
+                [
+                    "--repo-root",
+                    str(root),
+                    "--run-dir",
+                    ".ralph-loop/current",
+                    "--dry-run",
+                ]
+            )
+
+            with (
+                patch.object(
+                    orchestrator.github_screenshots,
+                    "run_remote_screenshots",
+                    side_effect=AssertionError("dry-run placeholder should not dispatch screenshots"),
+                ),
+                patch.object(
+                    orchestrator.subprocess,
+                    "run",
+                    side_effect=AssertionError("dry-run placeholder should not call profile commands"),
+                ),
+            ):
+                result = orchestrator.run(args)
+
+            self.assertEqual("failed", result["status"])
+            self.assertEqual("dry-run", result["mode"])
+            self.assertFalse(result["source_mutated"])
+            self.assertIn("failing closed", str(result["reason"]))
+            self.assertEqual(source_texts, self._current_source_texts(root))
+            mode_state = root / ".ralph-loop/current/mode-state.json"
+            self.assertTrue(mode_state.exists())
+            saved_state = json.loads(mode_state.read_text(encoding="utf-8"))
+            self.assertEqual(result, saved_state)
 
     def test_audit_only_generates_artifacts_and_retries_button_review_once_with_qa(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
