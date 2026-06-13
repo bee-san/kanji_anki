@@ -12,16 +12,19 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         val launchIntent = activity.intent
 
+        if (!shouldRunBackgroundStartupTasks(launchIntent)) {
+            handleLaunchIntent(launchIntent)
+            return
+        }
+
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
-        if (shouldRunBackgroundStartupTasks(launchIntent)) {
-            activity.requestAnkiPermissionIfNeeded()
-            ReminderScheduler.schedule(activity)
-            AutoSyncScheduler.schedule(activity)
-            AutoUpdateScheduler.schedule(activity)
-            DatabaseBackupScheduler.schedule(activity)
-        }
+        activity.requestAnkiPermissionIfNeeded()
+        ReminderScheduler.schedule(activity)
+        AutoSyncScheduler.schedule(activity)
+        AutoUpdateScheduler.schedule(activity)
+        DatabaseBackupScheduler.schedule(activity)
         handleLaunchIntent(launchIntent)
     }
 

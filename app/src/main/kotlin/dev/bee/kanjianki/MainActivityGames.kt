@@ -14,6 +14,10 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
 
     override fun renderGames() {
+        if (isScreenshotLaunchRequested()) {
+            renderScreenshotGames()
+            return
+        }
         clearGameSession()
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.gamesActionLabel(),
@@ -27,6 +31,16 @@ internal abstract class MainActivityGames : MainActivityHome() {
                 }
             },
         )
+    }
+
+    private fun renderScreenshotGames() {
+        val model = screenshotGamesScreenModel()
+        renderHomeRoute {
+            GamesMenuScreen(
+                model = model,
+                onHome = this::renderHome
+            )
+        }
     }
 
     internal fun returnToGames() {
