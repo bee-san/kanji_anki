@@ -17,6 +17,7 @@ from scripts.ralph_loop import button_contract
 from scripts.ralph_loop import button_latency_inventory
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
+from scripts.ralph_loop import validation
 from scripts.ralph_loop import ui_manifest
 from scripts.ralph_loop import ui_view_matrix
 
@@ -185,6 +186,38 @@ def _non_empty_string_list(value: object) -> bool:
     return _string_list(value) and bool(value)
 
 
+def _view_matches_file(view: dict[str, object], selected_file: str) -> bool:
+    source_files = view.get("source_files")
+    if not isinstance(source_files, dict):
+        return False
+    for key in ("primary_source_files", "secondary_source_files"):
+        paths = source_files.get(key)
+        if isinstance(paths, list) and selected_file in {str(path) for path in paths}:
+            return True
+    return False
+
+
+def _view_matrix_slice(view_matrix: dict[str, object], selected_file: str) -> dict[str, object]:
+    views = [dict(view) for view in cast(list[dict[str, object]], view_matrix.get("views", [])) if _view_matches_file(view, selected_file)]
+    selected_view = views[0] if views else {}
+    selected_source_files = selected_view.get("source_files") if isinstance(selected_view, dict) else {}
+    nearest_tests: list[str] = []
+    if isinstance(selected_source_files, dict):
+        nearest_tests = [str(test) for test in selected_source_files.get("nearest_tests", []) if str(test).strip()]
+    return {
+        "schema": view_matrix.get("schema", "ui-view-matrix-v1"),
+        "source_manifest": view_matrix.get("source_manifest"),
+        "source_button_contract": view_matrix.get("source_button_contract"),
+        "views": views[:1],
+        "summary": {
+            "view_count": len(views[:1]),
+            "selected_file": selected_file,
+            "matching_view_id": selected_view.get("view_id") if isinstance(selected_view, dict) else None,
+            "nearest_tests": nearest_tests,
+        },
+    }
+
+
 def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
     errors: list[str] = []
     if parsed.get("schema") != "cheap-ralph-design-critic-v1":
@@ -245,11 +278,70 @@ def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
     return errors
 
 
+def _implementer_schema_errors(parsed: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    if parsed.get("schema") != "cheap-ralph-ui-implementer-v1":
+        errors.append("ui implementer JSON must include schema 'cheap-ralph-ui-implementer-v1'")
+    if not isinstance(parsed.get("passed"), bool):
+        errors.append("ui implementer JSON must include boolean 'passed'")
+    accepted_issue = parsed.get("accepted_issue")
+    if not isinstance(accepted_issue, dict):
+        errors.append("ui implementer JSON must include object 'accepted_issue'")
+    else:
+        for field in ("id", "file", "expected_fix"):
+            if not _non_empty_string(accepted_issue.get(field)):
+                errors.append(f"ui implementer accepted_issue must include non-empty string '{field}'")
+
+    target_view_spec = parsed.get("target_view_spec")
+    if not isinstance(target_view_spec, dict):
+        errors.append("ui implementer JSON must include object 'target_view_spec'")
+    else:
+        if not _non_empty_string(target_view_spec.get("summary")):
+            errors.append("ui implementer target_view_spec must include non-empty string 'summary'")
+        for field in ("hierarchy", "copy_changes", "spacing_touch_targets", "accessibility", "material_expectations"):
+            if not _non_empty_string_list(target_view_spec.get(field)):
+                errors.append(f"ui implementer target_view_spec must include non-empty string list '{field}'")
+
+    if not _non_empty_string_list(parsed.get("changed_files")):
+        errors.append("ui implementer JSON must include non-empty string list 'changed_files'")
+    if not isinstance(parsed.get("tests_first"), bool):
+        errors.append("ui implementer JSON must include boolean 'tests_first'")
+    tests_run = parsed.get("tests_run")
+    if not isinstance(tests_run, list) or not tests_run:
+        errors.append("ui implementer JSON must include non-empty list 'tests_run'")
+    else:
+        for index, item in enumerate(tests_run):
+            if not isinstance(item, dict):
+                errors.append(f"ui implementer tests_run[{index}] must be an object")
+                continue
+            if not _non_empty_string(item.get("command")):
+                errors.append(f"ui implementer tests_run[{index}] must include non-empty string 'command'")
+            if str(item.get("result", "")).strip() not in {"passed", "failed", "blocked"}:
+                errors.append(f"ui implementer tests_run[{index}] must include result passed, failed, or blocked")
+
+    if parsed.get("passed") is True:
+        if not _non_empty_string(parsed.get("patch_path")):
+            errors.append("ui implementer JSON with passed=true must include non-empty string 'patch_path'")
+        if parsed.get("blocked_reason") is not None:
+            errors.append("ui implementer JSON with passed=true must set blocked_reason to null")
+    else:
+        if not _non_empty_string(parsed.get("blocked_reason")):
+            errors.append("ui implementer JSON with passed=false must include non-empty string 'blocked_reason'")
+
+    if parsed.get("after_screenshot_should_improve") is None:
+        errors.append("ui implementer JSON must include boolean 'after_screenshot_should_improve'")
+    elif not isinstance(parsed.get("after_screenshot_should_improve"), bool):
+        errors.append("ui implementer JSON must include boolean 'after_screenshot_should_improve'")
+    return errors
+
+
 def _review_schema_errors(label: str, parsed: object) -> list[str]:
     if not isinstance(parsed, dict):
         return ["reviewer stdout must be a JSON object"]
     if label.startswith("button") and not isinstance(parsed.get("passed"), bool):
         return ["button review JSON must include boolean 'passed'"]
+    if label.startswith("ui-implementer") or parsed.get("schema") == "cheap-ralph-ui-implementer-v1" or "patch_path" in parsed:
+        return _implementer_schema_errors(parsed)
     if label.startswith("design-comparison"):
         errors: list[str] = []
         if parsed.get("schema") != "cheap-ralph-design-comparison-v1":
@@ -1017,6 +1109,109 @@ def _button_contract_prompt(result: dict[str, object], repo_root: Path, run_dir:
     )
 
 
+def _selected_issue_from_report(report: dict[str, object]) -> dict[str, object] | None:
+    backlog = report.get("backlog")
+    file_reviews = report.get("file_reviews")
+    if not isinstance(backlog, list) or not isinstance(file_reviews, list):
+        return None
+
+    reviews_by_file: dict[str, dict[str, object]] = {}
+    for review in file_reviews:
+        if isinstance(review, dict):
+            file_name = str(review.get("file", "")).strip()
+            if file_name:
+                reviews_by_file[file_name] = review
+
+    for item in backlog:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "")
+        if kind.endswith("command-failure"):
+            continue
+        file_name = str(item.get("file", "")).strip()
+        if not file_name:
+            continue
+        review = reviews_by_file.get(file_name)
+        if not isinstance(review, dict):
+            continue
+        design = review.get("design")
+        design = design if isinstance(design, dict) else {}
+        parsed = design.get("parsed")
+        parsed = parsed if isinstance(parsed, dict) else {}
+        accepted_issue = parsed.get("accepted_issue") if isinstance(parsed.get("accepted_issue"), dict) else None
+        target_view_spec = parsed.get("target_view_spec") if isinstance(parsed.get("target_view_spec"), dict) else None
+        if accepted_issue is None:
+            accepted_issue = {
+                "id": f"{str(item.get('kind') or 'issue')}:{_slugify_path(file_name)}",
+                "file": file_name,
+                "expected_fix": str(item.get("reason") or item.get("title") or item.get("kind") or "Fix accepted issue"),
+            }
+        if target_view_spec is None:
+            summary = str(item.get("title") or file_name)
+            reason = str(item.get("reason") or item.get("title") or item.get("kind") or "")
+            target_view_spec = {
+                "summary": summary,
+                "hierarchy": [summary],
+                "copy_changes": [reason] if reason else [summary],
+                "spacing_touch_targets": ["Keep the fix local to the affected control"],
+                "accessibility": ["Preserve accessibility labels and tests"],
+                "material_expectations": ["Match the existing Material treatment"],
+            }
+        return {
+            "review": review,
+            "item": item,
+            "accepted_issue": accepted_issue,
+            "target_view_spec": target_view_spec,
+        }
+    return None
+
+
+def _ui_implementer_prompt(
+    report: dict[str, object],
+    selection: dict[str, object],
+    repo_root: Path,
+    run_dir: Path,
+    scratch_checkout: Path,
+) -> str:
+    artifacts = cast(dict[str, object], report["artifacts"])
+    manifest_json_path = Path(str(artifacts["manifest_json"]))
+    view_matrix_json_path = Path(str(artifacts["ui_view_matrix_json"]))
+    button_contract_json_path = Path(str(artifacts["button_contract_json"]))
+    manifest = json.loads(manifest_json_path.read_text(encoding="utf-8"))
+    view_matrix = json.loads(view_matrix_json_path.read_text(encoding="utf-8"))
+    contract = json.loads(button_contract_json_path.read_text(encoding="utf-8"))
+
+    review = cast(dict[str, object], selection["review"])
+    selected_file = str(review.get("file", ""))
+    manifest_entry = review.get("manifest_entry")
+    manifest_entry = cast(dict[str, object], manifest_entry if isinstance(manifest_entry, dict) else {"path": selected_file})
+    manifest_slice = _manifest_slice(manifest, manifest_entry)
+    view_matrix_slice = _view_matrix_slice(view_matrix, selected_file)
+    button_contract_slice = _button_contract_slice(contract, selected_file)
+    nearest_tests = []
+    summary = view_matrix_slice.get("summary")
+    if isinstance(summary, dict):
+        nearest_tests = summary.get("nearest_tests", []) if isinstance(summary.get("nearest_tests"), list) else []
+
+    patch_path = run_dir / "dry-run" / "implementation" / "candidate.patch"
+    return prompts.load_project_prompt(repo_root, "ralph_ui_implementer.md").render(
+        file=selected_file,
+        repo_root=str(repo_root),
+        scratch_checkout=str(scratch_checkout),
+        run_dir=str(run_dir),
+        patch_path=str(patch_path),
+        accepted_issue_json=_json_text(selection["accepted_issue"]),
+        target_view_spec_json=_json_text(selection["target_view_spec"]),
+        manifest_json=_json_text(manifest_slice),
+        view_matrix_json=_json_text(view_matrix_slice),
+        button_contract_json=_json_text(button_contract_slice),
+        required_tests_json=_json_text(nearest_tests),
+        forbidden_paths_json=_json_text(list(validation.FORBIDDEN_GLOBS)),
+        max_changed_files=str(validation.MAX_CHANGED_FILES),
+        max_diff_lines=str(validation.MAX_DIFF_LINES),
+    )
+
+
 def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
     remote_out = run_dir / "remote-screenshots"
     remote_result = github_screenshots.run_remote_screenshots(
@@ -1073,6 +1268,92 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     return summary
 
 
+def _run_dry_run_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    audit_report = _run_audit_only(args, repo_root, run_dir)
+    summary: dict[str, object] = {
+        "schema": "ralph-loop-mode-v1",
+        "status": "needs_host",
+        "mode": "dry-run",
+        "audit_only": False,
+        "repo_root": str(repo_root),
+        "run_dir": str(run_dir),
+        "reason": (
+            "dry-run needs exactly one accepted issue and the before/after visual gates are not wired yet; "
+            "failing closed so source files are not mutated without visual gates."
+        ),
+        "source_mutated": False,
+        "cleanup_pending": False,
+        "next_step": "Implement before/after visual validation before enabling apply/commit modes.",
+        "audit_report_path": str(run_dir / "audit-report.json"),
+    }
+
+    selection = _selected_issue_from_report(audit_report)
+    if selection is None:
+        summary["reason"] = (
+            "dry-run completed the audit phase but found no accepted issue to implement in the scratch checkout."
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    try:
+        scratch_checkout = _prepare_scratch_checkout(repo_root, run_dir)
+    except Exception as exc:  # pragma: no cover - defensive guard for runtime failures
+        summary["status"] = "failed"
+        summary["reason"] = (
+            f"dry-run is accepted by the CLI but failed to prepare a detached scratch checkout; "
+            f"failing closed so source files are not mutated without visual gates: {exc}"
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    agent_template = args.agent_cmd or "hermes -p agent chat -Q -t safe -q {prompt}"
+    implementer_review = _run_profile_command(
+        agent_template,
+        _ui_implementer_prompt(audit_report, selection, repo_root, run_dir, scratch_checkout),
+        scratch_checkout,
+        out_dir=run_dir / "dry-run" / "implementation",
+        label="ui-implementer",
+        profile="agent",
+    )
+    summary.update(
+        {
+            "accepted_issue": selection["accepted_issue"],
+            "target_view_spec": selection["target_view_spec"],
+            "selected_file": str(cast(dict[str, object], selection["review"]).get("file", "")),
+            "scratch_checkout": str(scratch_checkout),
+            "scratch_pointer_dir": str(run_dir / "scratch"),
+            "cleanup_pending": True,
+            "implementation": implementer_review,
+            "implementation_prompt_path": implementer_review["prompt_path"],
+            "implementation_result_path": implementer_review["result_path"],
+        }
+    )
+    if implementer_review.get("status") != "passed":
+        summary["status"] = "failed"
+        blocked_reason = ""
+        parsed = implementer_review.get("parsed")
+        if isinstance(parsed, dict):
+            blocked_reason = str(parsed.get("blocked_reason") or "").strip()
+        if blocked_reason:
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout but the UI implementer blocked: "
+                f"{blocked_reason}; failing closed so source files are not mutated without visual gates."
+            )
+        else:
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout but the UI implementer did not pass; "
+                "failing closed so source files are not mutated without visual gates."
+            )
+    else:
+        summary["reason"] = (
+            "dry-run prepared a detached scratch checkout and ran the UI implementer, but before/after visual "
+            "validation is not wired yet; failing closed so source files are not mutated without visual gates."
+        )
+    _write_json(run_dir / "mode-state.json", summary)
+    return summary
+
+
 def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
     run_dir.mkdir(parents=True, exist_ok=True)
     mode = run_mode(args)
@@ -1090,31 +1371,6 @@ def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
         "source_mutated": False,
         "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
     }
-    if mode == "dry-run":
-        try:
-            scratch_checkout = _prepare_scratch_checkout(repo_root, run_dir)
-        except Exception as exc:  # pragma: no cover - defensive guard for runtime failures
-            summary["reason"] = (
-                f"dry-run is accepted by the CLI but failed to prepare a detached scratch checkout; "
-                f"failing closed so source files are not mutated without visual gates: {exc}"
-            )
-            summary["cleanup_pending"] = False
-            _write_json(run_dir / "mode-state.json", summary)
-            return summary
-
-        summary.update(
-            {
-                "reason": (
-                    "dry-run is accepted by the CLI and prepared a detached scratch checkout, but patch "
-                    "generation and before/after visual validation are not wired yet; failing closed so source "
-                    "files are not mutated without visual gates."
-                ),
-                "scratch_checkout": str(scratch_checkout),
-                "scratch_pointer_dir": str(run_dir / "scratch"),
-                "cleanup_pending": True,
-                "next_step": "Implement scratch patch generation and before/after visual validation before enabling this mode.",
-            }
-        )
     _write_json(run_dir / "mode-state.json", summary)
     return summary
 
@@ -1124,7 +1380,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
     if getattr(args, "audit_only", False):
         return _run_audit_only(args, repo_root, run_dir)
-    if getattr(args, "dry_run", False) or getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
+    if getattr(args, "dry_run", False):
+        return _run_dry_run_mode(args, repo_root, run_dir)
+    if getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
         return _run_unimplemented_mode(args, repo_root, run_dir)
     return _run_remote_visual_mode(args, repo_root, run_dir)
 
