@@ -10,6 +10,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.theme.resolvePalette
 
 /**
  * Semantic color palette for Kani. Every color rendered by the app should
@@ -107,7 +109,7 @@ internal val LightKaniColors = KaniColors(
     muted = Color(0xFF6C5674),
     grey = Color(0xFFB2B2BA),
     greyText = Color(0xFF6E6E78),
-    primary = Color(0xFFDA3A7A),
+    primary = Color(0xFFD32F73),
     onPrimary = Color(0xFFFFFFFF),
     coral = Color(0xFFFF4C76),
     onCoral = Color(0xFFFFFFFF),
@@ -122,6 +124,72 @@ internal val LightKaniColors = KaniColors(
     disabledContainer = Color(0xFFFFC2D8),
     disabledContent = Color(0xFF9F8A98),
     disabledBorder = Color(0xFFFFD5E6),
+)
+
+internal val GirlypopKaniColors: KaniColors = LightKaniColors
+
+internal val NeutralLightKaniColors = KaniColors(
+    isDark = false,
+    bg = Color(0xFFFFFCF8),
+    studyBg = Color(0xFFFFFAF5),
+    surface = Color(0xFFFFFFFF),
+    panel = Color(0xFFF5ECE5),
+    panelSoft = Color(0xFFF9F4EF),
+    panelFill = Color(0xFFFFFDFC),
+    pill = Color(0xFFF2E7E1),
+    secondaryFill = Color(0xFFF8F3EE),
+    ink = Color(0xFF241B23),
+    plum = Color(0xFF4B3B4B),
+    muted = Color(0xFF6D6470),
+    grey = Color(0xFFB6AEB6),
+    greyText = Color(0xFF776D79),
+    primary = Color(0xFFB84E58),
+    onPrimary = Color(0xFFFFFFFF),
+    coral = Color(0xFFC96B5E),
+    onCoral = Color(0xFFFFFFFF),
+    teal = Color(0xFF1B8B8D),
+    gold = Color(0xFFC78C22),
+    blue = Color(0xFF6477DA),
+    lilac = Color(0xFF8A67F1),
+    border = Color(0xFFE4D5CF),
+    borderSoft = Color(0xFFDACAC3),
+    pinkStroke = Color(0xFFD2B5BE),
+    track = Color(0xFFECE3DE),
+    disabledContainer = Color(0xFFF0E6E1),
+    disabledContent = Color(0xFF9D9498),
+    disabledBorder = Color(0xFFE1D5D0),
+)
+
+internal val AutumnKaniColors = KaniColors(
+    isDark = false,
+    bg = Color(0xFFFFF6ED),
+    studyBg = Color(0xFFFFF3E3),
+    surface = Color(0xFFFFFFFF),
+    panel = Color(0xFFFFE8CE),
+    panelSoft = Color(0xFFFDF0DF),
+    panelFill = Color(0xFFFFFCF8),
+    pill = Color(0xFFFFE6C8),
+    secondaryFill = Color(0xFFFDF3E7),
+    ink = Color(0xFF2E1C12),
+    plum = Color(0xFF5A3725),
+    muted = Color(0xFF7B6555),
+    grey = Color(0xFFBAA99A),
+    greyText = Color(0xFF7D6656),
+    primary = Color(0xFFB85A18),
+    onPrimary = Color(0xFFFFFFFF),
+    coral = Color(0xFFD46A2F),
+    onCoral = Color(0xFFFFFFFF),
+    teal = Color(0xFF2A8E84),
+    gold = Color(0xFFD49B22),
+    blue = Color(0xFF6C64D6),
+    lilac = Color(0xFFA069EA),
+    border = Color(0xFFE1C9B1),
+    borderSoft = Color(0xFFD7B893),
+    pinkStroke = Color(0xFFCFA789),
+    track = Color(0xFFF0DEC9),
+    disabledContainer = Color(0xFFF2E4D3),
+    disabledContent = Color(0xFF9E8975),
+    disabledBorder = Color(0xFFE4CBB5),
 )
 
 internal val DarkKaniColors = KaniColors(
@@ -171,8 +239,21 @@ internal fun KaniTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colors = if (darkTheme) DarkKaniColors else LightKaniColors
-    val scheme = if (darkTheme) {
+    KaniTheme(
+        choice = if (darkTheme) KaniThemeChoice.DARK else KaniThemeChoice.GIRLYPOP,
+        isSystemInDarkTheme = darkTheme,
+        content = content,
+    )
+}
+
+@Composable
+internal fun KaniTheme(
+    choice: KaniThemeChoice,
+    isSystemInDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
+) {
+    val colors = choice.resolvePalette(isSystemInDarkTheme)
+    val scheme = if (colors.isDark) {
         darkColorScheme(
             primary = colors.primary,
             onPrimary = colors.onPrimary,
