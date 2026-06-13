@@ -38,6 +38,7 @@ internal object LocalStoreTableCreator {
             "id INTEGER PRIMARY KEY CHECK (id = 1)",
             "source_version INTEGER NOT NULL",
             "generated_at INTEGER NOT NULL",
+            "cache_format_version INTEGER NOT NULL DEFAULT 1",
             "outcome_json TEXT NOT NULL",
             "impact_report_json TEXT NOT NULL",
         )

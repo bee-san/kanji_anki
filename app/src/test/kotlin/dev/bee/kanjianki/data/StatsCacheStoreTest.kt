@@ -207,13 +207,26 @@ class StatsCacheStoreTest {
         setSourceVersion(11L)
         db.execSQL(
             "INSERT OR REPLACE INTO stats_screen_cache " +
-                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, ?, 'not-json', '{}')",
-            arrayOf<Any>(now + 12_000L),
+                "(id, source_version, generated_at, cache_format_version, outcome_json, impact_report_json) VALUES (1, 11, ?, ?, 'not-json', '{}')",
+            arrayOf<Any>(now + 12_000L, STATS_CACHE_FORMAT_VERSION),
         )
 
         assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
 
         cacheStore.markDirty(db)
+
+        assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
+    }
+
+    @Test
+    fun hasFreshSnapshotReturnsFalseForLegacyCacheFormatVersionWithoutDecodingSnapshot() {
+        val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
+        setSourceVersion(12L)
+        db.execSQL(
+            "INSERT OR REPLACE INTO stats_screen_cache " +
+                "(id, source_version, generated_at, cache_format_version, outcome_json, impact_report_json) VALUES (1, 12, ?, ?, 'not-json', '{}')",
+            arrayOf<Any>(now + 12_000L, STATS_CACHE_FORMAT_VERSION - 1),
+        )
 
         assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
     }
@@ -256,6 +269,31 @@ class StatsCacheStoreTest {
         assertNotNull(latest)
         assertEquals(sourceVersion, latest!!.sourceVersion)
         assertEquals(yesterday + 60_000L, latest.generatedAtMillis)
+    }
+
+    @Test
+    fun recordStudyTaskAnsweredMarksStatsCacheStaleAfterSuccessfulInsert() {
+        val sourceVersion = cacheStore.currentSourceVersion(db)
+        val generatedAtMillis = System.currentTimeMillis()
+        cacheStore.write(db, snapshot(sourceVersion, generatedAtMillis, 2, 5))
+
+        assertNotNull(localStore!!.cachedStatsSnapshotOrNull())
+
+        val inserted = localStore!!.recordStudyTaskAnswered(
+            taskKey = "task-1",
+            kanji = "痛",
+            taskType = "study",
+            startedAt = generatedAtMillis - 5_000L,
+            answeredAt = generatedAtMillis,
+            activeElapsedMillis = 5_000L,
+            outcome = "correct",
+        )
+
+        assertTrue(inserted)
+        assertNull(localStore!!.cachedStatsSnapshotOrNull())
+        assertNotNull(localStore!!.latestStatsSnapshotOrNull())
+        assertEquals(sourceVersion + 1L, cacheStore.currentSourceVersion(db))
+        assertEquals(sourceVersion, localStore!!.latestStatsSnapshotOrNull()!!.sourceVersion)
     }
 
     @Test
