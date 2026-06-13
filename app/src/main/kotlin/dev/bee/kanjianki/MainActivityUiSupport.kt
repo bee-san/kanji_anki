@@ -6,9 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import dev.bee.kanjianki.theme.KaniSystemBars
+import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.theme.resolveSystemBars
 import androidx.core.view.isEmpty
 import androidx.core.view.isGone
 import kotlin.math.max
@@ -18,13 +19,7 @@ import kotlin.math.roundToInt
 internal abstract class MainActivityUiSupport : ComponentActivity() {
     fun styleSystemBars() {
         val night = isNightMode(resources.configuration)
-        styleSystemBars(
-            KaniSystemBars(
-                backgroundColor = Color(if (night) BG_DARK else BG),
-                appearanceLightStatusBars = !night,
-                appearanceLightNavigationBars = !night,
-            )
-        )
+        styleSystemBars(KaniThemeChoice.SYSTEM.resolveSystemBars(night))
     }
 
     fun styleSystemBars(systemBars: KaniSystemBars) {
