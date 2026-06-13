@@ -19,6 +19,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     override fun renderUpdate() {
         cancelPendingHomeRouteLoads()
+        if (isScreenshotLaunchRequested()) {
+            renderScreenshotUpdate()
+            return
+        }
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, contentScrollY) {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
@@ -53,6 +57,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             0
         }
         settingsScrollY = scrollY
+        if (isScreenshotLaunchRequested()) {
+            renderScreenshotSettings()
+            return
+        }
         renderAsyncHomeRoute(
             loadingTitle = SettingsTextCopy.settingsTitle(),
             load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
@@ -62,6 +70,20 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 }
             },
         )
+    }
+
+    private fun renderScreenshotSettings() {
+        val model = screenshotSettingsScreenModel(this)
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+            SettingsScreen(model)
+        }
+    }
+
+    private fun renderScreenshotUpdate() {
+        val model = screenshotUpdatePageModel(this)
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+            SettingsUpdatePage(model)
+        }
     }
 
     fun runSettingsWrite(

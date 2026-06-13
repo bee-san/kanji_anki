@@ -130,7 +130,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     private fun isScreenshotRouteRequested(): Boolean {
-        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
+        return isScreenshotLaunchRequested()
     }
 
     private fun renderScreenshotHome() {

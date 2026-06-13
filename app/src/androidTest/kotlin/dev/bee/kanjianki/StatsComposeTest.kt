@@ -1,5 +1,9 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -177,6 +181,21 @@ class StatsComposeTest {
     }
 
     @Test
+    fun rendersCompactStatsScreenWithinPhoneWidth() {
+        composeRule.setContent {
+            Box(modifier = Modifier.width(360.dp)) {
+                StatsScreen(model = compactStatsScreenModel())
+            }
+        }
+
+        composeRule.onNodeWithText("Stats").assertIsDisplayed()
+        composeRule.onNodeWithText("Weak kanji trend").assertIsDisplayed()
+        composeRule.onNodeWithText("Average weakness fell from 2.1 to 1.4.").assertIsDisplayed()
+        composeRule.onNodeWithText("裂: 88 -> 33").assertIsDisplayed()
+        composeRule.onNodeWithText("Ladder status").assertIsDisplayed()
+    }
+
+    @Test
     fun rendersNoStatsVerdictAsSharedEmptyState() {
         composeRule.setContent {
             StatsScreen(
@@ -197,4 +216,57 @@ class StatsComposeTest {
         composeRule.onNodeWithTag(homeEmptyStateTestTag("No Kani impact evidence yet")).assertIsDisplayed()
         composeRule.onNodeWithText("Study weak kanji, then sync AnkiDroid so this page can compare before and after.").assertIsDisplayed()
     }
+}
+
+private fun compactStatsScreenModel(): StatsScreenModel {
+    return StatsScreenModel(
+        title = "Stats",
+        intro = "Kani keeps the strongest summary cards readable on a 360dp phone width.",
+        verdict = StatsCardModel(
+            title = "Kani is working",
+            body = "Evidence is improving.",
+            fillColor = VERDICT_FILL,
+            strokeColor = TEAL,
+            titleColor = TEAL,
+            bodyColor = INK,
+            titleSizeSp = 24,
+            bodySizeSp = 15
+        ),
+        sections = listOf(
+            StatsCardModel(
+                title = "Weak kanji trend",
+                summary = "3 weak kanji improved",
+                body = "Average weakness fell from 2.1 to 1.4.",
+                lines = listOf(
+                    StatsLineModel(
+                        text = "裂: 88 -> 33",
+                        color = INK,
+                        bold = true,
+                        sizeSp = 17
+                    )
+                ),
+                strokeColor = TEAL
+            ),
+            StatsCardModel(
+                title = "Ladder status",
+                summary = "6 active kanji on the ladder",
+                body = "2 are ready to promote; 1 is at demotion risk.",
+                lines = listOf(
+                    StatsLineModel(
+                        text = "Learn: 2",
+                        color = INK,
+                        bold = false,
+                        sizeSp = 16
+                    ),
+                    StatsLineModel(
+                        text = "Review: 3",
+                        color = INK,
+                        bold = false,
+                        sizeSp = 16
+                    )
+                ),
+                strokeColor = GOLD
+            )
+        )
+    )
 }

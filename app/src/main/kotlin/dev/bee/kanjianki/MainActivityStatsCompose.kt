@@ -4,6 +4,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,39 +47,48 @@ fun StatsRouteScreen(
 
 @Composable
 fun StatsScreen(model: StatsScreenModel, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        Text(
-            text = model.title,
-            style = statsTextStyle(sizeSp = 34, bold = true),
-            color = ComposeColor(STATS_INK_COLOR)
-        )
-        Spacer(modifier = Modifier.height(7.dp))
-        StatsCard(model.verdict)
-        if (model.intro.isNotBlank()) {
-            Spacer(modifier = Modifier.height(7.dp))
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compact = maxWidth < 380.dp
+        val titleSpacing = 7.dp
+        val introSpacing = 10.dp
+        val sectionSpacing = 14.dp
+        val bottomPadding = if (compact) 24.dp else 32.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = bottomPadding),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
             Text(
-                text = model.intro,
-                style = statsTextStyle(sizeSp = 16, bold = false),
-                color = ComposeColor(STATS_MUTED_COLOR)
+                text = model.title,
+                style = statsTextStyle(sizeSp = 34, bold = true, compact = compact),
+                color = kaniColor(STATS_INK_COLOR)
             )
-            Spacer(modifier = Modifier.height(10.dp))
-        } else {
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            model.sections.forEach { card ->
-                StatsCard(card)
+            Spacer(modifier = Modifier.height(titleSpacing))
+            StatsCard(model.verdict, compact = compact)
+            if (model.intro.isNotBlank()) {
+                Spacer(modifier = Modifier.height(titleSpacing))
+                Text(
+                    text = model.intro,
+                    style = statsTextStyle(sizeSp = 16, bold = false, compact = compact),
+                    color = kaniColor(STATS_MUTED_COLOR)
+                )
+                Spacer(modifier = Modifier.height(introSpacing))
+            } else {
+                Spacer(modifier = Modifier.height(introSpacing))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(sectionSpacing)) {
+                model.sections.forEach { card ->
+                    StatsCard(card, compact = compact)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun StatsCard(model: StatsCardModel) {
+private fun StatsCard(model: StatsCardModel, compact: Boolean = false) {
     if (model.emptyState) {
         HomeEmptyState(
             title = model.title,
@@ -87,6 +96,8 @@ private fun StatsCard(model: StatsCardModel) {
         )
         return
     }
+    val cardPadding = 14.dp
+    val lineSpacing = 4.dp
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = KaniUiTokens.PanelShape,
@@ -94,32 +105,32 @@ private fun StatsCard(model: StatsCardModel) {
         border = BorderStroke(1.dp, kaniColor(model.strokeColor))
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(cardPadding),
+            verticalArrangement = Arrangement.spacedBy(lineSpacing)
         ) {
             Text(
                 text = model.title,
-                style = statsTextStyle(sizeSp = model.titleSizeSp, bold = true),
+                style = statsTextStyle(sizeSp = model.titleSizeSp, bold = true, compact = compact),
                 color = kaniColor(model.titleColor)
             )
             model.summary?.let { summary ->
                 Text(
                     text = summary,
-                    style = statsTextStyle(sizeSp = model.summarySizeSp, bold = true),
+                    style = statsTextStyle(sizeSp = model.summarySizeSp, bold = true, compact = compact),
                     color = kaniColor(model.summaryColor)
                 )
             }
             model.body?.let { body ->
                 Text(
                     text = body,
-                    style = statsTextStyle(sizeSp = model.bodySizeSp, bold = false),
+                    style = statsTextStyle(sizeSp = model.bodySizeSp, bold = false, compact = compact),
                     color = kaniColor(model.bodyColor)
                 )
             }
             model.lines.forEach { line ->
                 Text(
                     text = line.text,
-                    style = statsTextStyle(sizeSp = line.sizeSp, bold = line.bold),
+                    style = statsTextStyle(sizeSp = line.sizeSp, bold = line.bold, compact = compact),
                     color = kaniColor(line.color)
                 )
             }
@@ -127,10 +138,11 @@ private fun StatsCard(model: StatsCardModel) {
     }
 }
 
-private fun statsTextStyle(sizeSp: Int, bold: Boolean): TextStyle {
+private fun statsTextStyle(sizeSp: Int, bold: Boolean, compact: Boolean = false): TextStyle {
+    val scale = if (compact) 0.94f else 1f
     return TextStyle(
-        fontSize = sizeSp.sp,
-        lineHeight = sizeSp.sp,
+        fontSize = (sizeSp * scale).sp,
+        lineHeight = (sizeSp * scale).sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal
     )
 }

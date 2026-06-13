@@ -165,6 +165,7 @@ Local capture requires:
 - A booted emulator or attached device visible in `adb devices`.
 - `ANDROID_HOME` / `ANDROID_SDK_ROOT` pointing at the SDK that contains that device tooling.
 - A built debug APK under `app/build/outputs/apk`.
+- A Google APIs AVD, not the bundled ATD image. Local validation here only produced usable PNGs with `system-images;android-35;google_apis;arm64-v8a` (for example the `kanji_anki_api35_google_apis_local` AVD).
 
 If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat that as a debugging signal and fall back to GitHub Actions for the final artifact.
 

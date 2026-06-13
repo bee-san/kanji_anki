@@ -62,6 +62,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     override fun renderStudy() {
         cancelPendingHomeRouteLoads()
+        if (isScreenshotLaunchRequested()) {
+            doneActions.renderEmptyStudyQueue()
+            return
+        }
         studyQueueCoordinator.renderStudy()
     }
 
@@ -113,6 +117,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     override fun renderStudyForKanji(kanji: String?) {
         cancelPendingHomeRouteLoads()
+        if (isScreenshotLaunchRequested()) {
+            doneActions.renderStudyForKanjiNotAvailable()
+            return
+        }
         studyQueueCoordinator.renderStudyForKanji(kanji)
     }
 

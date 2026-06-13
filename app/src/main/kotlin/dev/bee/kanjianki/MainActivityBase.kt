@@ -238,6 +238,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun thresholdInput(value: Int): EditText
     abstract fun parseThresholdInput(input: EditText): Int
 
+    fun isScreenshotLaunchRequested(): Boolean {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backCallback)

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 from scripts.ralph_loop import github_screenshots
@@ -41,6 +42,14 @@ def run_remote_screenshots_for_test(**kwargs: Any) -> dict[str, object]:
         return github_screenshots.run_remote_screenshots(**kwargs)
 
 
+def _capture_entry(path: Path, route: str | None = None) -> dict[str, str]:
+    return {
+        "route": route or path.stem,
+        "path": str(path),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+
+
 class GithubScreenshotsTest(unittest.TestCase):
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
@@ -65,6 +74,9 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertNotIn('-c android.intent.category.LAUNCHER', script)
         self.assertIn('local status=0', script)
         self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
+        self.assertIn('if len(captured_routes) != len(captured_files):', script)
+        self.assertIn('"captures": captures,', script)
+        self.assertIn('hashlib.sha256', script)
 
     def test_finds_run_for_current_sha_and_downloads_valid_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -100,17 +112,18 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
 
             out.mkdir(parents=True, exist_ok=True)
+            (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
             (out / "manifest.json").write_text(
                 json.dumps(
                     {
                         "requested_route": "home",
                         "routes": ["home"],
                         "files": [str(out / "home.png")],
+                        "captures": [_capture_entry(out / "home.png", "home")],
                     }
                 ),
                 encoding="utf-8",
             )
-            (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
             result = run_remote_screenshots_for_test(
                 repo_root=root,
@@ -126,17 +139,18 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual(str(out / "manifest.json"), result["manifest"])
             self.assertEqual([str(out / "home.png")], result["pngs"])
 
+            (out / "stats.png").write_bytes(b"\x89PNG\r\n\x1a\n")
             (out / "manifest.json").write_text(
                 json.dumps(
                     {
                         "requested_route": "stats",
                         "routes": ["stats"],
                         "files": [str(out / "stats.png")],
+                        "captures": [_capture_entry(out / "stats.png", "stats")],
                     }
                 ),
                 encoding="utf-8",
             )
-            (out / "stats.png").write_bytes(b"\x89PNG\r\n\x1a\n")
             mismatch = github_screenshots.validate_artifact(out, expected_route="home")
             self.assertEqual("missing_artifact", mismatch["status"])
             self.assertIn("home", mismatch["message"])
@@ -157,14 +171,76 @@ class GithubScreenshotsTest(unittest.TestCase):
                         "requested_route": "all",
                         "routes": routes,
                         "files": files,
+                        "captures": [_capture_entry(out / f"{route}.png", route) for route in routes],
                     }
                 ),
                 encoding="utf-8",
             )
-        
             result = github_screenshots.validate_artifact(out, expected_route="all")
             self.assertEqual("passed", result["status"])
             self.assertEqual(routes, result["routes"])
+
+    def test_validate_artifact_verifies_capture_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "home.png"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            sha256 = hashlib.sha256(png.read_bytes()).hexdigest()
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "home"],
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [
+                            {
+                                "route": "home",
+                                "launch_target": "home",
+                                "orientation": "portrait",
+                                "file": str(png),
+                                "sha256": sha256,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("passed", result["status"])
+            captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(1, len(captures))
+            self.assertEqual(sha256, str(captures[0]["sha256"]))
+
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "home"],
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [
+                            {
+                                "route": "home",
+                                "launch_target": "home",
+                                "orientation": "portrait",
+                                "file": str(png),
+                                "sha256": "0" * 64,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            mismatch = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", mismatch["status"])
+            self.assertIn("SHA-256", cast(str, mismatch["message"]))
 
     def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -185,6 +261,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                             "requested_route": "all",
                             "routes": routes,
                             "files": files,
+                            "captures": [_capture_entry(out / f"{route}.png", route) for route in routes],
                         },
                         sort_keys=True,
                     ),
@@ -198,6 +275,88 @@ class GithubScreenshotsTest(unittest.TestCase):
                 for route in routes:
                     (out / f"{route}.png").unlink()
                 (out / "manifest.json").unlink()
+
+    def test_validate_artifact_rejects_missing_captures_and_blank_sha256(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "home.png"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            manifest_path = out / "manifest.json"
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            missing_captures = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", missing_captures["status"])
+            self.assertIn("captures", str(missing_captures["message"]))
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [{"route": "home", "path": str(png), "sha256": ""}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            blank_sha256 = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", blank_sha256["status"])
+            self.assertIn("sha256", str(blank_sha256["message"]))
+
+    def test_validate_artifact_rejects_extra_or_blank_capture_routes_for_route_specific_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            home = out / "home.png"
+            study = out / "study.png"
+            home.write_bytes(b"\x89PNG\r\n\x1a\n")
+            study.write_bytes(b"\x89PNG\r\n\x1a\n")
+            manifest_path = out / "manifest.json"
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home", "study"],
+                        "files": [str(home), str(study)],
+                        "captures": [_capture_entry(home, "home"), _capture_entry(study, "study")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            extra_route = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", extra_route["status"])
+            self.assertIn("exactly match", str(extra_route["message"]))
+
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home", "study"],
+                        "files": [str(home), str(study)],
+                        "captures": [
+                            _capture_entry(home, "home"),
+                            {
+                                "route": "",
+                                "path": str(study),
+                                "sha256": hashlib.sha256(study.read_bytes()).hexdigest(),
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            blank_route = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", blank_route["status"])
+            self.assertIn("non-empty route", str(blank_route["message"]))
 
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

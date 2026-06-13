@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import shlex
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 from typing import Sequence, cast
@@ -16,6 +18,7 @@ from scripts.ralph_loop import button_contract
 from scripts.ralph_loop import button_latency_inventory
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
+from scripts.ralph_loop import validation
 from scripts.ralph_loop import ui_manifest
 from scripts.ralph_loop import ui_view_matrix
 
@@ -184,6 +187,38 @@ def _non_empty_string_list(value: object) -> bool:
     return _string_list(value) and bool(value)
 
 
+def _view_matches_file(view: dict[str, object], selected_file: str) -> bool:
+    source_files = view.get("source_files")
+    if not isinstance(source_files, dict):
+        return False
+    for key in ("primary_source_files", "secondary_source_files"):
+        paths = source_files.get(key)
+        if isinstance(paths, list) and selected_file in {str(path) for path in paths}:
+            return True
+    return False
+
+
+def _view_matrix_slice(view_matrix: dict[str, object], selected_file: str) -> dict[str, object]:
+    views = [dict(view) for view in cast(list[dict[str, object]], view_matrix.get("views", [])) if _view_matches_file(view, selected_file)]
+    selected_view = views[0] if views else {}
+    selected_source_files = selected_view.get("source_files") if isinstance(selected_view, dict) else {}
+    nearest_tests: list[str] = []
+    if isinstance(selected_source_files, dict):
+        nearest_tests = [str(test) for test in selected_source_files.get("nearest_tests", []) if str(test).strip()]
+    return {
+        "schema": view_matrix.get("schema", "ui-view-matrix-v1"),
+        "source_manifest": view_matrix.get("source_manifest"),
+        "source_button_contract": view_matrix.get("source_button_contract"),
+        "views": views[:1],
+        "summary": {
+            "view_count": len(views[:1]),
+            "selected_file": selected_file,
+            "matching_view_id": selected_view.get("view_id") if isinstance(selected_view, dict) else None,
+            "nearest_tests": nearest_tests,
+        },
+    }
+
+
 def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
     errors: list[str] = []
     if parsed.get("schema") != "cheap-ralph-design-critic-v1":
@@ -244,11 +279,70 @@ def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
     return errors
 
 
+def _implementer_schema_errors(parsed: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    if parsed.get("schema") != "cheap-ralph-ui-implementer-v1":
+        errors.append("ui implementer JSON must include schema 'cheap-ralph-ui-implementer-v1'")
+    if not isinstance(parsed.get("passed"), bool):
+        errors.append("ui implementer JSON must include boolean 'passed'")
+    accepted_issue = parsed.get("accepted_issue")
+    if not isinstance(accepted_issue, dict):
+        errors.append("ui implementer JSON must include object 'accepted_issue'")
+    else:
+        for field in ("id", "file", "expected_fix"):
+            if not _non_empty_string(accepted_issue.get(field)):
+                errors.append(f"ui implementer accepted_issue must include non-empty string '{field}'")
+
+    target_view_spec = parsed.get("target_view_spec")
+    if not isinstance(target_view_spec, dict):
+        errors.append("ui implementer JSON must include object 'target_view_spec'")
+    else:
+        if not _non_empty_string(target_view_spec.get("summary")):
+            errors.append("ui implementer target_view_spec must include non-empty string 'summary'")
+        for field in ("hierarchy", "copy_changes", "spacing_touch_targets", "accessibility", "material_expectations"):
+            if not _non_empty_string_list(target_view_spec.get(field)):
+                errors.append(f"ui implementer target_view_spec must include non-empty string list '{field}'")
+
+    if not _non_empty_string_list(parsed.get("changed_files")):
+        errors.append("ui implementer JSON must include non-empty string list 'changed_files'")
+    if not isinstance(parsed.get("tests_first"), bool):
+        errors.append("ui implementer JSON must include boolean 'tests_first'")
+    tests_run = parsed.get("tests_run")
+    if not isinstance(tests_run, list) or not tests_run:
+        errors.append("ui implementer JSON must include non-empty list 'tests_run'")
+    else:
+        for index, item in enumerate(tests_run):
+            if not isinstance(item, dict):
+                errors.append(f"ui implementer tests_run[{index}] must be an object")
+                continue
+            if not _non_empty_string(item.get("command")):
+                errors.append(f"ui implementer tests_run[{index}] must include non-empty string 'command'")
+            if str(item.get("result", "")).strip() not in {"passed", "failed", "blocked"}:
+                errors.append(f"ui implementer tests_run[{index}] must include result passed, failed, or blocked")
+
+    if parsed.get("passed") is True:
+        if not _non_empty_string(parsed.get("patch_path")):
+            errors.append("ui implementer JSON with passed=true must include non-empty string 'patch_path'")
+        if parsed.get("blocked_reason") is not None:
+            errors.append("ui implementer JSON with passed=true must set blocked_reason to null")
+    else:
+        if not _non_empty_string(parsed.get("blocked_reason")):
+            errors.append("ui implementer JSON with passed=false must include non-empty string 'blocked_reason'")
+
+    if parsed.get("after_screenshot_should_improve") is None:
+        errors.append("ui implementer JSON must include boolean 'after_screenshot_should_improve'")
+    elif not isinstance(parsed.get("after_screenshot_should_improve"), bool):
+        errors.append("ui implementer JSON must include boolean 'after_screenshot_should_improve'")
+    return errors
+
+
 def _review_schema_errors(label: str, parsed: object) -> list[str]:
     if not isinstance(parsed, dict):
         return ["reviewer stdout must be a JSON object"]
     if label.startswith("button") and not isinstance(parsed.get("passed"), bool):
         return ["button review JSON must include boolean 'passed'"]
+    if label.startswith("ui-implementer") or parsed.get("schema") == "cheap-ralph-ui-implementer-v1" or "patch_path" in parsed:
+        return _implementer_schema_errors(parsed)
     if label.startswith("design-comparison"):
         errors: list[str] = []
         if parsed.get("schema") != "cheap-ralph-design-comparison-v1":
@@ -951,11 +1045,162 @@ def _read_json_file_or_default(path: Path | None, default: dict[str, object]) ->
     return path.read_text(encoding="utf-8")
 
 
+def _prepare_scratch_checkout(repo_root: Path, run_dir: Path) -> Path:
+    head_sha_process = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    head_sha = head_sha_process.stdout.strip() if head_sha_process.returncode == 0 else ""
+    if not head_sha:
+        raise RuntimeError("unable to resolve HEAD for scratch checkout")
+
+    scratch_root = Path(tempfile.mkdtemp(prefix=f"{repo_root.name}-ralph-scratch-", dir=str(repo_root.parent)))
+    scratch_checkout = scratch_root / "source"
+    worktree_process = subprocess.run(
+        ["git", "worktree", "add", "--detach", str(scratch_checkout), head_sha],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if worktree_process.returncode != 0:
+        stderr = (worktree_process.stderr or worktree_process.stdout or "").strip()
+        raise RuntimeError(f"git worktree add failed: {stderr or 'unknown error'}")
+
+    scratch_pointer_dir = run_dir / "scratch"
+    scratch_pointer_dir.mkdir(parents=True, exist_ok=True)
+    (scratch_pointer_dir / "path.txt").write_text(f"{scratch_checkout}\n", encoding="utf-8")
+    (scratch_pointer_dir / "head-sha.txt").write_text(f"{head_sha}\n", encoding="utf-8")
+    return scratch_checkout
+
+
 def _path_from_result(result: dict[str, object], key: str) -> Path | None:
     value = result.get(key)
     if isinstance(value, str) and value:
         return Path(value)
     return None
+
+
+def _capture_local_screenshots(
+    repo_root: Path,
+    out_dir: Path,
+    screenshot_route: str,
+    *,
+    label: str,
+    view_context: dict[str, object] | None = None,
+) -> dict[str, object]:
+    capture_dir = out_dir.resolve()
+    capture_dir.mkdir(parents=True, exist_ok=True)
+
+    build_command = ["./gradlew", ":app:assembleDebug"]
+    build = subprocess.run(build_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    if build.returncode != 0:
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": "failed",
+            "reason": "failed to assemble debug APK before screenshot capture",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+        }
+
+    script = repo_root / "ci" / "scripts" / "capture_android_screenshots.sh"
+    if not script.exists():
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": "failed",
+            "reason": f"missing screenshot capture script at {script}",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+        }
+
+    env = os.environ.copy()
+    env["SCREENSHOTS_DIR"] = str(capture_dir)
+    capture_command = [str(script), screenshot_route]
+    capture = subprocess.run(capture_command, cwd=repo_root, text=True, capture_output=True, check=False, env=env)
+    if capture.returncode != 0:
+        stderr = (capture.stderr or capture.stdout or "").strip()
+        status = "needs_host"
+        if "Unsupported screenshot route" in stderr:
+            status = "failed"
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": status,
+            "reason": stderr or "local screenshot capture failed",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+            "capture_command": capture_command,
+            "capture_returncode": capture.returncode,
+            "capture_stdout": capture.stdout,
+            "capture_stderr": capture.stderr,
+        }
+
+    result = github_screenshots.validate_artifact(capture_dir, expected_route=screenshot_route)
+    result.update(
+        {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+            "capture_command": capture_command,
+            "capture_returncode": capture.returncode,
+            "capture_stdout": capture.stdout,
+            "capture_stderr": capture.stderr,
+        }
+    )
+    if view_context:
+        for key in ("view_id", "fixture_id", "device_profile", "fixture_set_hash", "route", "launch_route"):
+            value = view_context.get(key)
+            if value is not None:
+                result[key] = value
+    return result
+
+
+def _before_after_visual_prompt(
+    *,
+    repo_root: Path,
+    audit_report: dict[str, object],
+    selection: dict[str, object],
+    view_context: dict[str, object],
+    before_result: dict[str, object],
+    after_result: dict[str, object],
+) -> str:
+    artifacts = cast(dict[str, object], audit_report.get("artifacts", {}))
+    manifest_json = _read_json_file_or_default(
+        _path_from_result(artifacts, "manifest_json") if isinstance(artifacts, dict) else None,
+        {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
+    )
+    screenshots_json = _json_text(
+        {
+            "schema": "cheap-ralph-visual-evidence-v1",
+            "accepted_issue": selection["accepted_issue"],
+            "target_view_spec": selection["target_view_spec"],
+            "view_context": view_context,
+            "before": before_result,
+            "after": after_result,
+        }
+    )
+    return prompts.load_project_prompt(repo_root, "ralph_design_comparison.md").render(
+        screenshots_json=screenshots_json,
+        manifest_json=manifest_json,
+    )
 
 
 def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
@@ -981,6 +1226,109 @@ def _button_contract_prompt(result: dict[str, object], repo_root: Path, run_dir:
     return prompts.load_project_prompt(repo_root, "ralph_button_contract_reviewer.md").render(
         manifest_json=manifest_json,
         button_contract_json=button_contract_json,
+    )
+
+
+def _selected_issue_from_report(report: dict[str, object]) -> dict[str, object] | None:
+    backlog = report.get("backlog")
+    file_reviews = report.get("file_reviews")
+    if not isinstance(backlog, list) or not isinstance(file_reviews, list):
+        return None
+
+    reviews_by_file: dict[str, dict[str, object]] = {}
+    for review in file_reviews:
+        if isinstance(review, dict):
+            file_name = str(review.get("file", "")).strip()
+            if file_name:
+                reviews_by_file[file_name] = review
+
+    for item in backlog:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "")
+        if kind.endswith("command-failure"):
+            continue
+        file_name = str(item.get("file", "")).strip()
+        if not file_name:
+            continue
+        review = reviews_by_file.get(file_name)
+        if not isinstance(review, dict):
+            continue
+        design = review.get("design")
+        design = design if isinstance(design, dict) else {}
+        parsed = design.get("parsed")
+        parsed = parsed if isinstance(parsed, dict) else {}
+        accepted_issue = parsed.get("accepted_issue") if isinstance(parsed.get("accepted_issue"), dict) else None
+        target_view_spec = parsed.get("target_view_spec") if isinstance(parsed.get("target_view_spec"), dict) else None
+        if accepted_issue is None:
+            accepted_issue = {
+                "id": f"{str(item.get('kind') or 'issue')}:{_slugify_path(file_name)}",
+                "file": file_name,
+                "expected_fix": str(item.get("reason") or item.get("title") or item.get("kind") or "Fix accepted issue"),
+            }
+        if target_view_spec is None:
+            summary = str(item.get("title") or file_name)
+            reason = str(item.get("reason") or item.get("title") or item.get("kind") or "")
+            target_view_spec = {
+                "summary": summary,
+                "hierarchy": [summary],
+                "copy_changes": [reason] if reason else [summary],
+                "spacing_touch_targets": ["Keep the fix local to the affected control"],
+                "accessibility": ["Preserve accessibility labels and tests"],
+                "material_expectations": ["Match the existing Material treatment"],
+            }
+        return {
+            "review": review,
+            "item": item,
+            "accepted_issue": accepted_issue,
+            "target_view_spec": target_view_spec,
+        }
+    return None
+
+
+def _ui_implementer_prompt(
+    report: dict[str, object],
+    selection: dict[str, object],
+    repo_root: Path,
+    run_dir: Path,
+    scratch_checkout: Path,
+) -> str:
+    artifacts = cast(dict[str, object], report["artifacts"])
+    manifest_json_path = Path(str(artifacts["manifest_json"]))
+    view_matrix_json_path = Path(str(artifacts["ui_view_matrix_json"]))
+    button_contract_json_path = Path(str(artifacts["button_contract_json"]))
+    manifest = json.loads(manifest_json_path.read_text(encoding="utf-8"))
+    view_matrix = json.loads(view_matrix_json_path.read_text(encoding="utf-8"))
+    contract = json.loads(button_contract_json_path.read_text(encoding="utf-8"))
+
+    review = cast(dict[str, object], selection["review"])
+    selected_file = str(review.get("file", ""))
+    manifest_entry = review.get("manifest_entry")
+    manifest_entry = cast(dict[str, object], manifest_entry if isinstance(manifest_entry, dict) else {"path": selected_file})
+    manifest_slice = _manifest_slice(manifest, manifest_entry)
+    view_matrix_slice = _view_matrix_slice(view_matrix, selected_file)
+    button_contract_slice = _button_contract_slice(contract, selected_file)
+    nearest_tests = []
+    summary = view_matrix_slice.get("summary")
+    if isinstance(summary, dict):
+        nearest_tests = summary.get("nearest_tests", []) if isinstance(summary.get("nearest_tests"), list) else []
+
+    patch_path = run_dir / "dry-run" / "implementation" / "candidate.patch"
+    return prompts.load_project_prompt(repo_root, "ralph_ui_implementer.md").render(
+        file=selected_file,
+        repo_root=str(repo_root),
+        scratch_checkout=str(scratch_checkout),
+        run_dir=str(run_dir),
+        patch_path=str(patch_path),
+        accepted_issue_json=_json_text(selection["accepted_issue"]),
+        target_view_spec_json=_json_text(selection["target_view_spec"]),
+        manifest_json=_json_text(manifest_slice),
+        view_matrix_json=_json_text(view_matrix_slice),
+        button_contract_json=_json_text(button_contract_slice),
+        required_tests_json=_json_text(nearest_tests),
+        forbidden_paths_json=_json_text(list(validation.FORBIDDEN_GLOBS)),
+        max_changed_files=str(validation.MAX_CHANGED_FILES),
+        max_diff_lines=str(validation.MAX_DIFF_LINES),
     )
 
 
@@ -1040,25 +1388,376 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     return summary
 
 
-def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+def _run_dry_run_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
     run_dir.mkdir(parents=True, exist_ok=True)
-    mode = run_mode(args)
+    audit_report = _run_audit_only(args, repo_root, run_dir)
     summary: dict[str, object] = {
         "schema": "ralph-loop-mode-v1",
-        "status": "failed",
-        "mode": mode,
+        "status": "needs_host",
+        "mode": "dry-run",
         "audit_only": False,
         "repo_root": str(repo_root),
         "run_dir": str(run_dir),
         "reason": (
-            f"{mode} is accepted by the CLI but the scratch checkout/apply implementation is not wired yet; "
+            "dry-run needs exactly one accepted issue and the before/after visual gates are not wired yet; "
             "failing closed so source files are not mutated without visual gates."
         ),
         "source_mutated": False,
-        "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
+        "cleanup_pending": False,
+        "next_step": "Implement before/after visual validation before enabling apply/commit modes.",
+        "audit_report_path": str(run_dir / "audit-report.json"),
     }
+
+    selection = _selected_issue_from_report(audit_report)
+    if selection is None:
+        summary["reason"] = (
+            "dry-run completed the audit phase but found no accepted issue to implement in the scratch checkout."
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    try:
+        scratch_checkout = _prepare_scratch_checkout(repo_root, run_dir)
+    except Exception as exc:  # pragma: no cover - defensive guard for runtime failures
+        summary["status"] = "failed"
+        summary["reason"] = (
+            f"dry-run is accepted by the CLI but failed to prepare a detached scratch checkout; "
+            f"failing closed so source files are not mutated without visual gates: {exc}"
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    agent_template = args.agent_cmd or "hermes -p agent chat -Q -t safe -q {prompt}"
+    implementer_review = _run_profile_command(
+        agent_template,
+        _ui_implementer_prompt(audit_report, selection, repo_root, run_dir, scratch_checkout),
+        scratch_checkout,
+        out_dir=run_dir / "dry-run" / "implementation",
+        label="ui-implementer",
+        profile="agent",
+    )
+    summary.update(
+        {
+            "accepted_issue": selection["accepted_issue"],
+            "target_view_spec": selection["target_view_spec"],
+            "selected_file": str(cast(dict[str, object], selection["review"]).get("file", "")),
+            "scratch_checkout": str(scratch_checkout),
+            "scratch_pointer_dir": str(run_dir / "scratch"),
+            "cleanup_pending": True,
+            "implementation": implementer_review,
+            "implementation_prompt_path": implementer_review["prompt_path"],
+            "implementation_result_path": implementer_review["result_path"],
+        }
+    )
+    if implementer_review.get("status") != "passed":
+        summary["status"] = "failed"
+        blocked_reason = ""
+        parsed = implementer_review.get("parsed")
+        if isinstance(parsed, dict):
+            blocked_reason = str(parsed.get("blocked_reason") or "").strip()
+        if blocked_reason:
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout but the UI implementer blocked: "
+                f"{blocked_reason}; failing closed so source files are not mutated without visual gates."
+            )
+        else:
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout but the UI implementer did not pass; "
+                "failing closed so source files are not mutated without visual gates."
+            )
+    else:
+        artifacts = cast(dict[str, object], audit_report.get("artifacts", {}))
+        manifest_path = _path_from_result(artifacts, "manifest_json")
+        view_matrix_path = _path_from_result(artifacts, "ui_view_matrix_json")
+        view_matrix = json.loads(view_matrix_path.read_text(encoding="utf-8")) if view_matrix_path and view_matrix_path.exists() else {}
+        selected_file = str(cast(dict[str, object], selection["review"]).get("file", ""))
+        view_matrix_slice = _view_matrix_slice(view_matrix, selected_file) if isinstance(view_matrix, dict) else {}
+        selected_views = cast(list[dict[str, object]], view_matrix_slice.get("views", [])) if isinstance(view_matrix_slice, dict) else []
+        selected_view = dict(selected_views[0]) if selected_views else {}
+        view_context: dict[str, object] = {
+            "selected_file": selected_file,
+            "view_id": selected_view.get("view_id"),
+            "fixture_id": selected_view.get("fixture_id"),
+            "device_profile": selected_view.get("device_profile"),
+            "route": selected_view.get("route"),
+            "launch_route": selected_view.get("launch_route"),
+            "fixture_set_hash": view_matrix.get("fixture_set_hash"),
+            "requested_route": args.screenshot_route,
+        }
+        visual_dir = run_dir / "dry-run" / "visual"
+        before_result = _capture_local_screenshots(
+            repo_root,
+            visual_dir / "before",
+            args.screenshot_route,
+            label="before",
+            view_context=view_context,
+        )
+        after_result = _capture_local_screenshots(
+            scratch_checkout,
+            visual_dir / "after",
+            args.screenshot_route,
+            label="after",
+            view_context=view_context,
+        )
+        visual_status = "passed"
+        visual_reason = "before/after screenshot evidence captured successfully."
+        for phase_name, phase_result in (("before", before_result), ("after", after_result)):
+            phase_status = str(cast(object, phase_result.get("status", "")))
+            if phase_status != "passed":
+                visual_status = phase_status if phase_status in {"pending", "needs_host"} else "failed"
+                visual_reason = f"{phase_name} screenshot evidence is not ready: {phase_status or 'missing'}"
+                break
+
+        visual_result: dict[str, object] = {
+            "schema": "ralph-visual-pair-v1",
+            "label": "before-after",
+            "status": visual_status,
+            "requested_route": args.screenshot_route,
+            "view_context": view_context,
+            "before": before_result,
+            "after": after_result,
+        }
+        if visual_status == "passed":
+            design_review = _run_profile_command(
+                args.critic_cmd,
+                _before_after_visual_prompt(
+                    repo_root=repo_root,
+                    audit_report=audit_report,
+                    selection=selection,
+                    view_context=view_context,
+                    before_result=before_result,
+                    after_result=after_result,
+                ),
+                repo_root,
+                out_dir=visual_dir / "reviews",
+                label="design-comparison",
+                profile=args.critic_profile,
+            )
+            visual_result["design_review"] = design_review
+            summary["profile_reviews"] = {
+                "design_comparison": design_review,
+                "button_qa": cast(dict[str, object], selection["review"]).get("button"),
+            }
+            if design_review["status"] != "passed":
+                summary["status"] = "failed"
+                summary["reason"] = (
+                    "dry-run captured before/after screenshots, but the design comparison rejected the change; "
+                    "failing closed so source files are not mutated without visual gates."
+                )
+            else:
+                summary["status"] = "passed"
+                summary["reason"] = (
+                    "dry-run captured before/after screenshots in the scratch checkout and the design comparison passed; "
+                    "source checkout remains clean."
+                )
+        else:
+            summary["status"] = visual_status
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout and ran the UI implementer, but "
+                f"{visual_reason}; failing closed so source files are not mutated without visual gates."
+            )
+        summary["screenshot_result"] = visual_result
+        summary["button_review"] = cast(dict[str, object], selection["review"]).get("button")
+        summary["visual_context"] = view_context
+        summary["visual_manifest"] = {
+            "schema": "ralph-visual-context-v1",
+            "manifest_path": str(manifest_path) if manifest_path else None,
+            "view_matrix_path": str(view_matrix_path) if view_matrix_path else None,
+            "selected_view": selected_view,
+            "visual_context": view_context,
+            "before_capture_dir": before_result.get("capture_dir"),
+            "after_capture_dir": after_result.get("capture_dir"),
+        }
+    summary.setdefault(
+        "next_step",
+        "Use --apply-accepted to mutate the source checkout after visual validation, or keep iterating in dry-run.",
+    )
     _write_json(run_dir / "mode-state.json", summary)
     return summary
+
+
+def _implementation_patch_path(implementation: object) -> Path | None:
+    if not isinstance(implementation, dict):
+        return None
+    parsed = implementation.get("parsed")
+    if isinstance(parsed, dict):
+        patch_path = parsed.get("patch_path")
+        if isinstance(patch_path, str) and patch_path.strip():
+            return Path(patch_path)
+    patch_path = implementation.get("patch_path")
+    if isinstance(patch_path, str) and patch_path.strip():
+        return Path(patch_path)
+    return None
+
+
+def _apply_candidate_patch(repo_root: Path, patch_path: Path) -> dict[str, object]:
+    result: dict[str, object] = {
+        "status": "failed",
+        "patch_path": str(patch_path),
+    }
+    if not patch_path.exists():
+        result["reason"] = f"candidate patch is missing: {patch_path}"
+        return result
+
+    check_command = ["git", "apply", "--check", str(patch_path)]
+    check = subprocess.run(check_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "check_command": check_command,
+            "check_returncode": check.returncode,
+            "check_stdout": check.stdout,
+            "check_stderr": check.stderr,
+        }
+    )
+    if check.returncode != 0:
+        result["reason"] = "candidate patch failed git apply --check"
+        return result
+
+    apply_command = ["git", "apply", str(patch_path)]
+    apply = subprocess.run(apply_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "apply_command": apply_command,
+            "apply_returncode": apply.returncode,
+            "apply_stdout": apply.stdout,
+            "apply_stderr": apply.stderr,
+        }
+    )
+    if apply.returncode != 0:
+        result["reason"] = "candidate patch failed to apply to the source checkout"
+        return result
+
+    result["status"] = "passed"
+    result["reason"] = "candidate patch applied to the source checkout"
+    return result
+
+
+def _commit_applied_patch(
+    repo_root: Path,
+    run_dir: Path,
+    accepted_issue: dict[str, object],
+    patch_path: Path,
+) -> dict[str, object]:
+    issue_id = str(accepted_issue.get("id") or accepted_issue.get("file") or "accepted-issue").strip()
+    if not issue_id:
+        issue_id = "accepted-issue"
+    commit_message = f"feat(ralph): apply accepted issue {issue_id}"
+    commit_body = "\n".join(
+        [
+            f"Run state: {run_dir / 'mode-state.json'}",
+            f"Accepted issue: {issue_id}",
+            f"Primary file: {accepted_issue.get('file') or accepted_issue.get('primary_file') or 'unknown'}",
+            f"Patch: {patch_path}",
+        ]
+    )
+
+    result: dict[str, object] = {
+        "status": "failed",
+        "patch_path": str(patch_path),
+        "commit_message": commit_message,
+        "commit_body": commit_body,
+    }
+
+    add_command = ["git", "add", "-A"]
+    add = subprocess.run(add_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "add_command": add_command,
+            "add_returncode": add.returncode,
+            "add_stdout": add.stdout,
+            "add_stderr": add.stderr,
+        }
+    )
+    if add.returncode != 0:
+        result["reason"] = "git add failed before commit"
+        return result
+
+    commit_command = ["git", "commit", "-m", commit_message, "-m", commit_body]
+    commit = subprocess.run(commit_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "commit_command": commit_command,
+            "commit_returncode": commit.returncode,
+            "commit_stdout": commit.stdout,
+            "commit_stderr": commit.stderr,
+        }
+    )
+    if commit.returncode != 0:
+        result["reason"] = "git commit failed after applying the accepted patch"
+        return result
+
+    result["status"] = "passed"
+    result["reason"] = "accepted patch committed to the source checkout"
+    return result
+
+
+def _run_apply_or_commit_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    mode = run_mode(args)
+    summary = _run_dry_run_mode(args, repo_root, run_dir)
+    if summary.get("status") != "passed":
+        summary["mode"] = mode
+        summary["source_mutated"] = False
+        summary["reason"] = (
+            f"{mode} is accepted by the CLI, but the dry-run validation did not pass: {summary.get('reason')}"
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    implementation = summary.get("implementation")
+    patch_path = _implementation_patch_path(implementation)
+    if patch_path is None:
+        summary["mode"] = mode
+        summary["status"] = "failed"
+        summary["source_mutated"] = False
+        summary["reason"] = (
+            f"{mode} passed the dry-run gates, but the UI implementer did not return a usable patch_path."
+        )
+        summary["next_step"] = "Keep iterating in dry-run until the implementer emits a candidate patch."
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    apply_result = _apply_candidate_patch(repo_root, patch_path)
+    summary["mode"] = mode
+    summary["apply_result"] = apply_result
+    summary["applied_patch_path"] = str(patch_path)
+    summary["source_mutated"] = apply_result.get("status") == "passed"
+    if apply_result.get("status") != "passed":
+        summary["status"] = "failed"
+        summary["reason"] = f"{mode} failed because the candidate patch could not be applied: {apply_result.get('reason')}"
+        summary["next_step"] = "Fix the candidate patch in dry-run before trying apply-accepted again."
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    if mode == "commit-accepted":
+        accepted_issue = summary.get("accepted_issue")
+        accepted_issue_dict = cast(dict[str, object], accepted_issue) if isinstance(accepted_issue, dict) else {}
+        commit_result = _commit_applied_patch(repo_root, run_dir, accepted_issue_dict, patch_path)
+        summary["commit_result"] = commit_result
+        if commit_result.get("status") != "passed":
+            summary["status"] = "failed"
+            summary["reason"] = (
+                "commit-accepted applied the candidate patch, but git commit failed: "
+                f"{commit_result.get('reason')}"
+            )
+            summary["next_step"] = "Resolve the commit failure or keep the change applied without a commit."
+            _write_json(run_dir / "mode-state.json", summary)
+            return summary
+        summary["decision"] = "committed"
+        summary["reason"] = "commit-accepted applied the candidate patch and committed it after visual validation."
+        summary["next_step"] = "Push the branch and wait for PR review/CI."
+    else:
+        summary["decision"] = "applied"
+        summary["reason"] = "apply-accepted applied the candidate patch after visual validation."
+        summary["next_step"] = "Use --commit-accepted if you want to record the applied change as a commit."
+
+    summary["status"] = "passed"
+    _write_json(run_dir / "mode-state.json", summary)
+    return summary
+
+
+def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    return _run_apply_or_commit_mode(args, repo_root, run_dir)
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -1066,8 +1765,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
     if getattr(args, "audit_only", False):
         return _run_audit_only(args, repo_root, run_dir)
-    if getattr(args, "dry_run", False) or getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
-        return _run_unimplemented_mode(args, repo_root, run_dir)
+    if getattr(args, "dry_run", False):
+        return _run_dry_run_mode(args, repo_root, run_dir)
+    if getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
+        return _run_apply_or_commit_mode(args, repo_root, run_dir)
     return _run_remote_visual_mode(args, repo_root, run_dir)
 
 

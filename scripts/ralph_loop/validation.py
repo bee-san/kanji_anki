@@ -17,6 +17,7 @@ MAX_CHANGED_FILES = 5
 MAX_DIFF_LINES = 500
 MAX_UNPUSHED_COMMITS = 1
 MIN_DESIGN_SCORE_DELTA = 0.10
+VISUAL_ACCEPTANCE_MODES = {"dry-run", "apply-accepted", "commit-accepted"}
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 FORBIDDEN_GLOBS = (
     ".github/workflows/**",
@@ -332,6 +333,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     default_branch = _string(normalized.get("default_branch"))
     reviewer_model = _string(normalized.get("reviewer_model")) or DEFAULT_REVIEWER_MODEL
     require_remote_green = bool(normalized.get("require_remote_green", False))
+    mode = _string(normalized.get("mode"))
     max_changed_files = _numeric(normalized.get("max_changed_files"), MAX_CHANGED_FILES)
     max_diff_lines = _numeric(normalized.get("max_diff_lines"), MAX_DIFF_LINES)
     max_unpushed_commits = _numeric(normalized.get("max_unpushed_commits"), MAX_UNPUSHED_COMMITS)
@@ -385,7 +387,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     gates.append(_targeted_compose_tests_gate(interactive_changed_files, normalized.get("targeted_compose_tests")))
     gates.append(_ci_fast_gate(changed_files, ci_fast_result))
     gates.append(_ci_quality_gate(changed_files, sonar_inputs_matter, ci_quality_result))
-    gates.append(_screenshot_availability_gate(interactive_changed_files, screenshot_result))
+    gates.append(_screenshot_availability_gate(interactive_changed_files, screenshot_result, mode))
     gates.append(_design_comparison_gate(interactive_changed_files, design_review, screenshot_result, min_design_score_delta))
     gates.append(_button_qa_review_gate(interactive_changed_files, button_review, button_contract))
     gates.append(_commit_push_frequency_gate(changed_files, commits_ahead_value, max_unpushed_commits))
@@ -404,6 +406,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
         "inputs": {
             "branch": branch,
             "default_branch": default_branch,
+            "mode": mode,
             "changed_files": changed_files,
             "dirty_paths": dirty_paths,
             "focus_paths": focus_paths,
@@ -692,9 +695,90 @@ def _ci_quality_gate(changed_files: list[str], sonar_inputs_matter: bool, ci_qua
     return _gate("ci_quality_gate", status, "ciQuality/Sonar gate is not passing yet.", result=ci_quality_result)
 
 
-def _screenshot_availability_gate(interactive_changed_files: list[str], screenshot_result: object) -> dict[str, object]:
+def _visual_result_identity(result: object) -> dict[str, object]:
+    if not isinstance(result, dict):
+        return {}
+    identity: dict[str, object] = {}
+    for key in ("requested_route", "view_id", "fixture_id", "device_profile", "fixture_set_hash"):
+        value = result.get(key)
+        if value is not None:
+            identity[key] = value
+    routes = result.get("routes")
+    if isinstance(routes, list):
+        identity["routes"] = [str(route) for route in routes]
+    return identity
+
+
+def _visual_pair_results(screenshot_result: object) -> tuple[dict[str, object], dict[str, object]] | None:
+    if not isinstance(screenshot_result, dict):
+        return None
+    before = screenshot_result.get("before")
+    after = screenshot_result.get("after")
+    if isinstance(before, dict) and isinstance(after, dict):
+        return before, after
+    return None
+
+
+def _screenshot_availability_gate(interactive_changed_files: list[str], screenshot_result: object, mode: str | None) -> dict[str, object]:
     if not interactive_changed_files:
         return _gate("screenshot_availability", "skipped", "No interactive UI change requires screenshots.")
+    pair = _visual_pair_results(screenshot_result)
+    if mode in VISUAL_ACCEPTANCE_MODES:
+        if pair is None:
+            return _gate(
+                "screenshot_availability",
+                "needs_host",
+                "Need before and after screenshot evidence for the touched interactive files.",
+                result=screenshot_result,
+            )
+        before, after = pair
+        before_status = _normalize_status(before)
+        after_status = _normalize_status(after)
+        if before_status is None or after_status is None:
+            return _gate(
+                "screenshot_availability",
+                "needs_host",
+                "Need before and after screenshot validation results for the touched interactive files.",
+                result=screenshot_result,
+            )
+        if before_status in {"pending", "needs_host"} or after_status in {"pending", "needs_host"}:
+            status = "pending" if "pending" in {before_status, after_status} else "needs_host"
+            return _gate("screenshot_availability", status, "Screenshot evidence is not ready yet.", result=screenshot_result)
+        if before_status != "passed" or after_status != "passed":
+            return _gate("screenshot_availability", "failed", "Before or after screenshot evidence failed.", result=screenshot_result)
+
+        missing_identity_fields: list[str] = []
+        before_identity = _visual_result_identity(before)
+        after_identity = _visual_result_identity(after)
+        for field in ("requested_route", "view_id", "fixture_id", "device_profile", "fixture_set_hash"):
+            if field not in before_identity or field not in after_identity:
+                missing_identity_fields.append(field)
+        if missing_identity_fields:
+            return _gate(
+                "screenshot_availability",
+                "needs_host",
+                "Before/after screenshot evidence is missing route/view/fixture identity fields.",
+                result=screenshot_result,
+                missing_identity_fields=sorted(set(missing_identity_fields)),
+            )
+
+        mismatched_identity_fields = [
+            field
+            for field in sorted(set(before_identity).intersection(after_identity))
+            if before_identity[field] != after_identity[field]
+        ]
+        if mismatched_identity_fields:
+            return _gate(
+                "screenshot_availability",
+                "failed",
+                "Before and after screenshot evidence must describe the same route/view/fixture/device profile.",
+                result=screenshot_result,
+                mismatched_identity_fields=mismatched_identity_fields,
+                before_identity=before_identity,
+                after_identity=after_identity,
+            )
+        return _gate("screenshot_availability", "passed", "Screenshot evidence is available.", result=screenshot_result)
+
     status = _normalize_status(screenshot_result)
     if status is None:
         return _gate("screenshot_availability", "needs_host", "Need screenshot evidence for the touched interactive files.")

@@ -57,10 +57,15 @@ class RalphPromptsTest(unittest.TestCase):
                 "rationale",
             },
             "ralph_ui_implementer.md": {
+                "schema",
+                "passed",
                 "accepted_issue",
+                "target_view_spec",
                 "changed_files",
                 "tests_first",
                 "tests_run",
+                "patch_path",
+                "after_screenshot_should_improve",
                 "blocked_reason",
             },
         }
@@ -73,9 +78,19 @@ class RalphPromptsTest(unittest.TestCase):
                 self.assertTrue(expected_keys.issubset(set(prompt.output_schema)))
                 context = {
                     "file": "app/src/main/java/dev/bee/kanjianki/MainActivity.kt",
+                    "repo_root": "/repo/root",
+                    "scratch_checkout": "/tmp/cheap-ralph-scratch",
+                    "run_dir": "/tmp/cheap-ralph-run",
+                    "patch_path": "/tmp/cheap-ralph-run/dry-run/implementation/candidate.patch",
+                    "max_changed_files": "5",
+                    "max_diff_lines": "500",
                     "manifest_json": '{"schema":"ui-manifest-v1","files":[]}',
+                    "view_matrix_json": '{"schema":"ui-view-matrix-v1","views":[]}',
                     "button_contract_json": '{"schema":"button-contract-v1","rows":[]}',
-                    "screenshots_json": '{"pngs":[]}',
+                    "screenshots_json": '{"schema":"ui-screenshots-v1","files":[]}',
+                    "required_tests_json": '["./gradlew testDebugUnitTest"]',
+                    "forbidden_paths_json": '[".github/workflows/**"]',
+                    "target_view_spec_json": '{"summary":"Main screen","hierarchy":["root"],"copy_changes":["Tighten the CTA"],"spacing_touch_targets":["Keep the button within reach"],"accessibility":["Preserve labels"],"material_expectations":["Use existing Material styles"]}',
                     "accepted_issue_json": '{"id":"home-primary-cta","file":"MainActivity.kt"}',
                 }
                 rendered = prompt.render(**{key: context[key] for key in prompt.placeholders})
