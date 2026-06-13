@@ -15,7 +15,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
         }
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.statsActionLabel(),
-            load = { progressAnalyticsSnapshot(store) },
+            load = { progressAnalyticsSnapshot(store, scheduleRefresh = this::scheduleStatsPrecomputeIfStaleAsync) },
             render = { model ->
                 composeRouteWithActionBar(
                     selected = MainActivityBase.NAV_STATS_ROUTE,

@@ -44,14 +44,9 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
-    fun liveSnapshotCombinesFreshCacheWithReviewBuckets() {
+    fun freshCachedSnapshotUsesStoredReviewDaySummariesWithoutReviewLogQueries() {
         val now = System.currentTimeMillis()
-        val todayStart = LocalDayPolicy.localDayStart(now)
-        writeFreshStatsSnapshot(now)
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -6), rating = "good", token = "week-good")
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -5), rating = "again", token = "week-again")
-        insertReview(dayStart = LocalDayPolicy.moveLocalDays(todayStart, -4), rating = "easy", token = "week-easy")
-        insertReview(dayStart = todayStart, rating = "hard", token = "today-hard", writingRequired = true, writingPassed = false)
+        writeFreshStatsSnapshot(now, cachedReviewDaySummaries(now))
 
         val snapshot = progressAnalyticsSnapshot(localStore!!, now)
 
@@ -66,6 +61,7 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(4, reviews.totalReviews.value)
         assertEquals(3, reviews.correct.value)
         assertEquals(1, reviews.incorrect.value)
+        assertEquals(listOf(1, 1, 1, 0, 0, 0, 1), reviews.reviewsPerDay.values)
         assertEquals(1, reviews.reviewsPerDay.values.last())
         assertTrue(reviews.accessibilitySummary.contains("4 total reviews"))
 
@@ -77,7 +73,7 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("Needs improvement", snapshot.weaknessInsights.focusScore.status)
     }
 
-    private fun writeFreshStatsSnapshot(now: Long) {
+    private fun writeFreshStatsSnapshot(now: Long, reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
             db,
@@ -133,30 +129,44 @@ class ProgressAnalyticsLiveDataSourceTest {
                     answeredTasks = 8,
                 ),
                 cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+                reviewDaySummaries = reviewDaySummaries,
             ),
         )
     }
 
-    private fun insertReview(
+    private fun cachedReviewDaySummaries(now: Long): List<StatsCacheStore.ReviewDaySummarySnapshot> {
+        val todayStart = LocalDayPolicy.localDayStart(now)
+        return (-29..0).map { dayOffset ->
+            val dayStart = LocalDayPolicy.moveLocalDays(todayStart, dayOffset)
+            when (dayOffset) {
+                -6 -> reviewDaySnapshot(dayStart, total = 1, good = 1)
+                -5 -> reviewDaySnapshot(dayStart, total = 1, again = 1)
+                -4 -> reviewDaySnapshot(dayStart, total = 1, easy = 1)
+                0 -> reviewDaySnapshot(dayStart, total = 1, hard = 1, writingRequired = 1, writingFailed = 1)
+                else -> reviewDaySnapshot(dayStart)
+            }
+        }
+    }
+
+    private fun reviewDaySnapshot(
         dayStart: Long,
-        rating: String,
-        token: String,
-        writingRequired: Boolean = false,
-        writingPassed: Boolean = true,
-    ) {
-        db.execSQL(
-            "INSERT INTO review_log " +
-                "(kanji, token, rating, writing_required, writing_passed, manual_override, reviewed_at, review_day_start) " +
-                "VALUES (?, ?, ?, ?, ?, 0, ?, ?)",
-            arrayOf<Any>(
-                token.take(1),
-                token,
-                rating,
-                if (writingRequired) 1 else 0,
-                if (writingPassed) 1 else 0,
-                dayStart + 60_000L,
-                dayStart,
-            ),
+        total: Int = 0,
+        again: Int = 0,
+        hard: Int = 0,
+        good: Int = 0,
+        easy: Int = 0,
+        writingRequired: Int = 0,
+        writingFailed: Int = 0,
+    ): StatsCacheStore.ReviewDaySummarySnapshot {
+        return StatsCacheStore.ReviewDaySummarySnapshot(
+            dayStartMillis = dayStart,
+            total = total,
+            again = again,
+            hard = hard,
+            good = good,
+            easy = easy,
+            writingRequired = writingRequired,
+            writingFailed = writingFailed,
         )
     }
 }

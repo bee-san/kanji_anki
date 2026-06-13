@@ -7,10 +7,22 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 3
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 4
+internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 90
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
 internal class StatsCacheStore(private val store: LocalStore) {
+    data class ReviewDaySummarySnapshot(
+        val dayStartMillis: Long,
+        val total: Int,
+        val again: Int,
+        val hard: Int,
+        val good: Int,
+        val easy: Int,
+        val writingRequired: Int,
+        val writingFailed: Int,
+    )
+
     data class Snapshot(
         val outcomeStats: StudyStatsStore.KaniOutcomeStats,
         val impactReport: KanjiImpactAnalyzer.Report,
@@ -21,6 +33,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
         val studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         val cacheFormatVersion: Int = 1,
+        val reviewDaySummaries: List<ReviewDaySummarySnapshot> = emptyList(),
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -56,7 +69,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
 
     fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Boolean {
         val cursor = db.rawQuery(
-            "SELECT source_version, generated_at FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+            "SELECT source_version, generated_at, cache_format_version FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
             null,
         )
         cursor.use {
@@ -65,7 +78,9 @@ internal class StatsCacheStore(private val store: LocalStore) {
             }
             val snapshotSourceVersion = it.getLong(0)
             val generatedAtMillis = it.getLong(1)
+            val cacheFormatVersion = it.getInt(2)
             return snapshotSourceVersion == currentSourceVersion(db) &&
+                cacheFormatVersion == STATS_CACHE_FORMAT_VERSION &&
                 LocalDayPolicy.sameLocalDay(generatedAtMillis, nowMillis)
         }
     }
@@ -89,6 +104,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
             put("id", 1)
             put("source_version", snapshot.sourceVersion)
             put("generated_at", snapshot.generatedAtMillis)
+            put("cache_format_version", snapshot.cacheFormatVersion)
             put(
                 "outcome_json",
                 StatsCacheCodec.outcomeToJson(
@@ -97,6 +113,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.recentMistakes,
                     snapshot.studyStreak,
                     snapshot.studyTaskTimeStats,
+                    snapshot.reviewDaySummaries,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -127,6 +144,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 studyStreak = StatsCacheCodec.studyStreakFromJson(outcomeRoot.optJSONObject("studyStreak")),
                 studyTaskTimeStats = StatsCacheCodec.studyTaskTimeStatsFromJson(outcomeRoot.optJSONObject("studyTaskTimeStats")),
                 cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
+                reviewDaySummaries = StatsCacheCodec.reviewDaySummariesFromJson(outcomeRoot.optJSONArray("reviewDaySummaries")),
             )
         } catch (_: Exception) {
             null

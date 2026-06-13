@@ -86,6 +86,45 @@ internal class StudyStatsQueries(
         )
     }
 
+    fun reviewDaySummaries(nowMillis: Long, days: Int): List<StatsCacheStore.ReviewDaySummarySnapshot> {
+        if (days <= 0) {
+            return emptyList()
+        }
+        val startDay = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(nowMillis), -(days - 1))
+        val endDayExclusive = LocalDayPolicy.nextLocalDayStart(nowMillis)
+        val summariesByDay = mutableMapOf<Long, StatsCacheStore.ReviewDaySummarySnapshot>()
+        val cursor = db().rawQuery(
+            "SELECT review_day_start, COUNT(*) AS total, " +
+                "COALESCE(SUM(CASE WHEN rating='again' THEN 1 ELSE 0 END), 0) AS again_count, " +
+                "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, " +
+                "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, " +
+                "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, " +
+                "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, " +
+                "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count " +
+                "FROM $TABLE_REVIEW_LOG WHERE review_day_start>=? AND review_day_start<? GROUP BY review_day_start ORDER BY review_day_start ASC",
+            arrayOf(startDay.toString(), endDayExclusive.toString())
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                val dayStart = it.getLong(0)
+                summariesByDay[dayStart] = StatsCacheStore.ReviewDaySummarySnapshot(
+                    dayStartMillis = dayStart,
+                    total = it.getInt(1),
+                    again = it.getInt(2),
+                    hard = it.getInt(3),
+                    good = it.getInt(5),
+                    easy = it.getInt(4),
+                    writingRequired = it.getInt(6),
+                    writingFailed = it.getInt(7),
+                )
+            }
+        }
+        return (0 until days).map { index ->
+            val dayStart = LocalDayPolicy.moveLocalDays(startDay, index)
+            summariesByDay[dayStart] ?: StatsCacheStore.ReviewDaySummarySnapshot(dayStart, 0, 0, 0, 0, 0, 0, 0)
+        }
+    }
+
     fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
         val cursor = db().rawQuery(
             "SELECT " +
