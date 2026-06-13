@@ -320,6 +320,89 @@ class RalphOrchestratorTest(unittest.TestCase):
         self.assertTrue(any("score_before" in error and "0.0..1.0" in error for error in range_errors))
         self.assertTrue(any("score_after" in error and "0.0..1.0" in error for error in range_errors))
 
+    def test_design_critic_schema_requires_single_issue_and_target_spec(self) -> None:
+        critic_review = {
+            "schema": "cheap-ralph-design-critic-v1",
+            "passed": False,
+            "view_id": "home-default",
+            "before_screenshot_sha256": "a" * 64,
+            "score_before": 0.62,
+            "accepted_issue": {
+                "id": "home-primary-action-hierarchy",
+                "title": "Primary action is visually buried",
+                "severity": "medium",
+                "evidence": "home.png shows the Study button below two equally weighted secondary cards",
+                "primary_file": "app/src/main/kotlin/dev/bee/kanjianki/MainActivityHome.kt",
+                "expected_fix": "Make the existing Study action visually dominant without changing behavior",
+                "acceptance_criteria": ["after screenshot makes Study the clear primary action"],
+                "do_not_touch": ["scheduler semantics", "sync/provider/storage"],
+            },
+            "target_view_spec": {
+                "summary": "The Study CTA is the dominant next step while secondary cards stay available.",
+                "hierarchy": ["Study CTA has the strongest visual weight"],
+                "copy_changes": ["No copy semantics change"],
+                "spacing_touch_targets": ["Keep tappable areas at least 48dp"],
+                "accessibility": ["Preserve test tags and content descriptions"],
+                "material_expectations": ["Use existing Material card/button styles"],
+            },
+            "target_screenshot": None,
+            "target_screenshot_unavailable_reason": "image generation not configured",
+            "rejected_issues": [],
+            "do_not_touch": ["learning correctness", "provider/sync/storage", "release/signing/build/CI"],
+        }
+        no_issue_review = {
+            **critic_review,
+            "passed": True,
+            "accepted_issue": None,
+            "target_view_spec": None,
+        }
+        old_multi_issue_review = {
+            "passed": False,
+            "accepted_issues": [critic_review["accepted_issue"]],
+            "highest_priority_issue": "home-primary-action-hierarchy",
+        }
+        missing_target_spec = {**critic_review, "target_view_spec": None}
+        stale_multi_issue_field = {**critic_review, "accepted_issues": [critic_review["accepted_issue"]]}
+
+        self.assertEqual([], orchestrator._review_schema_errors("design-critic", critic_review))
+        self.assertEqual([], orchestrator._review_schema_errors("design-critic", no_issue_review))
+
+        old_errors = orchestrator._review_schema_errors("design-critic", old_multi_issue_review)
+        design_label_old_errors = orchestrator._review_schema_errors("design", old_multi_issue_review)
+        design_label_bare_errors = orchestrator._review_schema_errors("design", {"passed": True})
+        missing_target_errors = orchestrator._review_schema_errors("design-critic", missing_target_spec)
+        stale_field_errors = orchestrator._review_schema_errors("design-critic", stale_multi_issue_field)
+
+        self.assertTrue(any("cheap-ralph-design-critic-v1" in error for error in old_errors))
+        self.assertTrue(any("single 'accepted_issue'" in error for error in old_errors))
+        self.assertTrue(any("highest_priority_issue" in error for error in old_errors))
+        self.assertTrue(any("single 'accepted_issue'" in error for error in design_label_old_errors))
+        self.assertTrue(any("expected file-auditor fields" in error for error in design_label_bare_errors))
+        self.assertTrue(any("target_view_spec" in error for error in missing_target_errors))
+        self.assertTrue(any("single 'accepted_issue'" in error for error in stale_field_errors))
+
+        backlog = orchestrator._design_backlog_items(
+            {
+                "file": "app/src/main/kotlin/dev/bee/kanjianki/Fallback.kt",
+                "design": {"status": "failed", "parsed": critic_review, "prompt_path": "p", "result_path": "r"},
+            }
+        )
+        self.assertEqual(1, len(backlog))
+        self.assertEqual("design-accepted-issue", backlog[0]["kind"])
+        self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/MainActivityHome.kt", backlog[0]["file"])
+        self.assertIn("Target view:", str(backlog[0]["reason"]))
+
+        legacy_backlog = orchestrator._design_backlog_items(
+            {
+                "file": "app/src/main/kotlin/dev/bee/kanjianki/Fallback.kt",
+                "design": {"status": "failed", "parsed": old_multi_issue_review, "prompt_path": "p", "result_path": "r"},
+            }
+        )
+        self.assertEqual(1, len(legacy_backlog))
+        self.assertEqual("design-command-failure", legacy_backlog[0]["kind"])
+        self.assertIn("schema validation", str(legacy_backlog[0]["title"]))
+        self.assertIn("single 'accepted_issue'", str(legacy_backlog[0]["reason"]))
+
     def test_remote_visual_mode_uses_design_comparison_prompt_and_label(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -131,6 +131,77 @@ def _normalized_score_or_none(value: object) -> float | None:
     return parsed
 
 
+def _non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _string_list(value: object) -> bool:
+    return isinstance(value, list) and all(_non_empty_string(item) for item in value)
+
+
+def _non_empty_string_list(value: object) -> bool:
+    return _string_list(value) and bool(value)
+
+
+def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    if parsed.get("schema") != "cheap-ralph-design-critic-v1":
+        errors.append("design critic JSON must include schema 'cheap-ralph-design-critic-v1'")
+    if "accepted_issues" in parsed:
+        errors.append("design critic JSON must use single 'accepted_issue', not list 'accepted_issues'")
+    if "highest_priority_issue" in parsed:
+        errors.append("design critic JSON must not include legacy 'highest_priority_issue'")
+    if not isinstance(parsed.get("passed"), bool):
+        errors.append("design critic JSON must include boolean 'passed'")
+    if not _non_empty_string(parsed.get("view_id")):
+        errors.append("design critic JSON must include non-empty string 'view_id'")
+    if not _non_empty_string(parsed.get("before_screenshot_sha256")):
+        errors.append("design critic JSON must include non-empty string 'before_screenshot_sha256'")
+    if _normalized_score_or_none(parsed.get("score_before")) is None:
+        errors.append("design critic JSON must include finite 0.0..1.0 score 'score_before'")
+    if not isinstance(parsed.get("rejected_issues"), list):
+        errors.append("design critic JSON must include list 'rejected_issues'")
+    if not _non_empty_string_list(parsed.get("do_not_touch")):
+        errors.append("design critic JSON must include non-empty string list 'do_not_touch'")
+
+    accepted_issue = parsed.get("accepted_issue")
+    target_view_spec = parsed.get("target_view_spec")
+    if accepted_issue is None:
+        if parsed.get("passed") is False:
+            errors.append("design critic JSON with passed=false must include one 'accepted_issue'")
+        if target_view_spec is not None:
+            errors.append("design critic JSON without accepted_issue must set 'target_view_spec' to null")
+        return errors
+
+    if parsed.get("passed") is True:
+        errors.append("design critic JSON with accepted_issue must set passed=false")
+    if not isinstance(accepted_issue, dict):
+        errors.append("design critic JSON 'accepted_issue' must be an object or null")
+    else:
+        for field in ("id", "title", "evidence", "primary_file", "expected_fix"):
+            if not _non_empty_string(accepted_issue.get(field)):
+                errors.append(f"design critic accepted_issue must include non-empty string '{field}'")
+        if str(accepted_issue.get("severity", "")).lower() not in {"low", "medium", "high"}:
+            errors.append("design critic accepted_issue severity must be low, medium, or high")
+        for field in ("acceptance_criteria", "do_not_touch"):
+            if not _non_empty_string_list(accepted_issue.get(field)):
+                errors.append(f"design critic accepted_issue must include non-empty string list '{field}'")
+    if not isinstance(target_view_spec, dict):
+        errors.append("design critic JSON with accepted_issue must include object 'target_view_spec'")
+    else:
+        if not _non_empty_string(target_view_spec.get("summary")):
+            errors.append("design critic target_view_spec must include non-empty string 'summary'")
+        for field in ("hierarchy", "copy_changes", "spacing_touch_targets", "accessibility", "material_expectations"):
+            if not _non_empty_string_list(target_view_spec.get(field)):
+                errors.append(f"design critic target_view_spec must include non-empty string list '{field}'")
+    target_screenshot = parsed.get("target_screenshot")
+    if target_screenshot is not None and not _non_empty_string(target_screenshot):
+        errors.append("design critic target_screenshot must be a non-empty string or null")
+    if target_screenshot is None and not _non_empty_string(parsed.get("target_screenshot_unavailable_reason")):
+        errors.append("design critic JSON with null target_screenshot must include non-empty 'target_screenshot_unavailable_reason'")
+    return errors
+
+
 def _review_schema_errors(label: str, parsed: object) -> list[str]:
     if not isinstance(parsed, dict):
         return ["reviewer stdout must be a JSON object"]
@@ -153,11 +224,19 @@ def _review_schema_errors(label: str, parsed: object) -> list[str]:
         if not isinstance(parsed.get("rationale"), str) or not parsed.get("rationale", "").strip():
             errors.append("design comparison JSON must include non-empty string 'rationale'")
         return errors
+    if (
+        label.startswith("design-critic")
+        or parsed.get("schema") == "cheap-ralph-design-critic-v1"
+        or "accepted_issue" in parsed
+        or "target_view_spec" in parsed
+        or "accepted_issues" in parsed
+        or "highest_priority_issue" in parsed
+    ):
+        return _design_critic_schema_errors(parsed)
     if label.startswith("design"):
         has_file_audit_schema = "visual_problems" in parsed and "interaction_a11y_problems" in parsed
-        has_design_critic_schema = "accepted_issues" in parsed or isinstance(parsed.get("passed"), bool)
-        if not (has_file_audit_schema or has_design_critic_schema):
-            return ["design review JSON is missing expected issue fields"]
+        if not has_file_audit_schema:
+            return ["design review JSON is missing expected file-auditor fields"]
     return []
 
 
@@ -356,24 +435,44 @@ def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
     design = raw_design if isinstance(raw_design, dict) else {}
     parsed = design.get("parsed")
     parsed = parsed if isinstance(parsed, dict) else {}
+    schema_errors = design.get("schema_errors")
+    if not isinstance(schema_errors, list):
+        schema_errors = _review_schema_errors("design", parsed) if parsed else []
+    if schema_errors:
+        return [
+            {
+                "priority": 1,
+                "kind": "design-command-failure",
+                "file": str(review["file"]),
+                "title": "Design review failed schema validation",
+                "reason": "; ".join(str(error) for error in schema_errors),
+                "source": "design",
+                "prompt_path": design.get("prompt_path"),
+                "result_path": design.get("result_path"),
+            }
+        ]
     items: list[dict[str, object]] = []
-    accepted_issues = parsed.get("accepted_issues", [])
-    if isinstance(accepted_issues, list):
-        for issue in accepted_issues:
-            if not isinstance(issue, dict):
-                continue
-            items.append(
-                {
-                    "priority": _severity_rank(issue.get("severity")),
-                    "kind": "design-accepted-issue",
-                    "file": str(issue.get("file") or review["file"]),
-                    "title": str(issue.get("title") or issue.get("summary") or "Accepted UI issue"),
-                    "reason": str(issue.get("expected_fix") or issue.get("evidence") or ""),
-                    "source": "design",
-                    "prompt_path": design.get("prompt_path"),
-                    "result_path": design.get("result_path"),
-                }
-            )
+    accepted_issue = parsed.get("accepted_issue")
+    if isinstance(accepted_issue, dict):
+        target_spec = parsed.get("target_view_spec")
+        target_summary = ""
+        if isinstance(target_spec, dict):
+            target_summary = str(target_spec.get("summary") or "")
+        reason_parts = [str(accepted_issue.get("expected_fix") or accepted_issue.get("evidence") or "")]
+        if target_summary:
+            reason_parts.append(f"Target view: {target_summary}")
+        items.append(
+            {
+                "priority": _severity_rank(accepted_issue.get("severity")),
+                "kind": "design-accepted-issue",
+                "file": str(accepted_issue.get("primary_file") or accepted_issue.get("file") or review["file"]),
+                "title": str(accepted_issue.get("title") or accepted_issue.get("summary") or "Accepted UI issue"),
+                "reason": " ".join(part for part in reason_parts if part),
+                "source": "design",
+                "prompt_path": design.get("prompt_path"),
+                "result_path": design.get("result_path"),
+            }
+        )
     for field_name, kind, default_title in (
         ("visual_problems", "design-visual-problem", "Accepted visual problem"),
         ("interaction_a11y_problems", "design-interaction-a11y-problem", "Accepted interaction/accessibility problem"),

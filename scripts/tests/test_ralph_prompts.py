@@ -32,10 +32,16 @@ class RalphPromptsTest(unittest.TestCase):
                 "highest_priority_fix",
             },
             "ralph_design_critic.md": {
+                "schema",
                 "passed",
-                "accepted_issues",
+                "view_id",
+                "before_screenshot_sha256",
+                "score_before",
+                "accepted_issue",
+                "target_view_spec",
+                "target_screenshot",
+                "target_screenshot_unavailable_reason",
                 "rejected_issues",
-                "highest_priority_issue",
                 "do_not_touch",
             },
             "ralph_design_comparison.md": {
