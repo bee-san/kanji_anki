@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,20 +54,16 @@ private fun HomeDeckOverviewChip(text: String) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .background(colorOf(MainActivityUiSupport.STUDY_PILL))
-            .border(1.dp, colorOf(MainActivityUiSupport.STUDY_BORDER), shape)
+            .background(kaniColor(MainActivityUiSupport.STUDY_PILL))
+            .border(1.dp, kaniColor(MainActivityUiSupport.STUDY_BORDER), shape)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
             text = text,
-            color = colorOf(MainActivityUiSupport.STUDY_PLUM),
+            color = kaniColor(MainActivityUiSupport.STUDY_PLUM),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
         )
     }
-}
-
-private fun colorOf(argb: Int): Color {
-    return Color(argb.toLong() and 0xFFFFFFFFL)
 }

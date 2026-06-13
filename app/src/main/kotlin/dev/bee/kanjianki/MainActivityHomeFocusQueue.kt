@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.graphics.Color
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -133,9 +132,9 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
 
     fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {
         return if (streak != null && streak.studiedToday) {
-            Color.rgb(247, 159, 0)
+            MainActivityBase.GOLD
         } else {
-            Color.rgb(160, 160, 166)
+            MainActivityBase.MUTED
         }
     }
 
@@ -193,7 +192,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         return when (FocusQueuePolicy.rowTone(item, now)) {
             FocusQueuePolicy.QueueTone.DUE -> MainActivityBase.CORAL
             FocusQueuePolicy.QueueTone.LEARNING -> MainActivityBase.BLUE
-            else -> Color.rgb(246, 202, 225)
+            else -> MainActivityUiSupport.PINK_STROKE
         }
     }
 

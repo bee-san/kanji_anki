@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Color
 import android.widget.Toast
 import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -200,7 +199,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         if (inventory.lastSeenAtMillis > 0L) {
             lines.add(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis))
         }
-        return BrowseDetailPanelModel(HomeTextCopy.localInventoryTitle(), lines, Color.rgb(201, 245, 247), BrowseDetailPanelStyle.CARD)
+        return BrowseDetailPanelModel(HomeTextCopy.localInventoryTitle(), lines, MainActivityBase.TEAL, BrowseDetailPanelStyle.CARD)
     }
 
     private fun copyAnkiSearch(browserSearch: String) {

@@ -12,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +84,7 @@ private fun WritingPromptText(
 ) {
     Text(
         text = text,
-        color = Color(color),
+        color = kaniColor(color),
         fontSize = sizeSp.sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))

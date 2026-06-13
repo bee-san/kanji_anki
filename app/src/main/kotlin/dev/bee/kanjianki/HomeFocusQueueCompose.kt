@@ -218,7 +218,7 @@ private fun FocusQueueTag(tag: HomeFocusQueueTagModel) {
     Surface(
         modifier = Modifier.padding(top = 7.dp, end = 7.dp, bottom = 2.dp),
         shape = RoundedCornerShape(7.dp),
-        color = focusQueueTagFill(tag.color, tagColor),
+        color = focusQueueTagFill(tagColor),
         border = BorderStroke(1.dp, tagColor)
     ) {
         Text(
@@ -232,16 +232,11 @@ private fun FocusQueueTag(tag: HomeFocusQueueTagModel) {
 }
 
 @Composable
-private fun focusQueueTagFill(argb: Int, resolved: ComposeColor): ComposeColor {
+private fun focusQueueTagFill(resolved: ComposeColor): ComposeColor {
     if (KaniTheme.colors.isDark) {
         return resolved.copy(alpha = 0.16f)
     }
-    return when (argb) {
-        MainActivityUiSupport.CORAL -> ComposeColor(0xFFFFEBF3)
-        MainActivityUiSupport.TEAL -> ComposeColor(0xFFE6FAFB)
-        MainActivityUiSupport.BLUE -> ComposeColor(0xFFF2EEFF)
-        else -> resolved.copy(alpha = 0.08f)
-    }
+    return resolved.copy(alpha = 0.10f)
 }
 
 private fun queueAccentColor(item: RecordsStudyModels.StudyItem, nowMillis: Long): Int {
