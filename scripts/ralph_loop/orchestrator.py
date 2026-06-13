@@ -1576,25 +1576,188 @@ def _run_dry_run_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) 
     return summary
 
 
-def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+def _implementation_patch_path(implementation: object) -> Path | None:
+    if not isinstance(implementation, dict):
+        return None
+    parsed = implementation.get("parsed")
+    if isinstance(parsed, dict):
+        patch_path = parsed.get("patch_path")
+        if isinstance(patch_path, str) and patch_path.strip():
+            return Path(patch_path)
+    patch_path = implementation.get("patch_path")
+    if isinstance(patch_path, str) and patch_path.strip():
+        return Path(patch_path)
+    return None
+
+
+def _apply_candidate_patch(repo_root: Path, patch_path: Path) -> dict[str, object]:
+    result: dict[str, object] = {
+        "status": "failed",
+        "patch_path": str(patch_path),
+    }
+    if not patch_path.exists():
+        result["reason"] = f"candidate patch is missing: {patch_path}"
+        return result
+
+    check_command = ["git", "apply", "--check", str(patch_path)]
+    check = subprocess.run(check_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "check_command": check_command,
+            "check_returncode": check.returncode,
+            "check_stdout": check.stdout,
+            "check_stderr": check.stderr,
+        }
+    )
+    if check.returncode != 0:
+        result["reason"] = "candidate patch failed git apply --check"
+        return result
+
+    apply_command = ["git", "apply", str(patch_path)]
+    apply = subprocess.run(apply_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "apply_command": apply_command,
+            "apply_returncode": apply.returncode,
+            "apply_stdout": apply.stdout,
+            "apply_stderr": apply.stderr,
+        }
+    )
+    if apply.returncode != 0:
+        result["reason"] = "candidate patch failed to apply to the source checkout"
+        return result
+
+    result["status"] = "passed"
+    result["reason"] = "candidate patch applied to the source checkout"
+    return result
+
+
+def _commit_applied_patch(
+    repo_root: Path,
+    run_dir: Path,
+    accepted_issue: dict[str, object],
+    patch_path: Path,
+) -> dict[str, object]:
+    issue_id = str(accepted_issue.get("id") or accepted_issue.get("file") or "accepted-issue").strip()
+    if not issue_id:
+        issue_id = "accepted-issue"
+    commit_message = f"feat(ralph): apply accepted issue {issue_id}"
+    commit_body = "\n".join(
+        [
+            f"Run state: {run_dir / 'mode-state.json'}",
+            f"Accepted issue: {issue_id}",
+            f"Primary file: {accepted_issue.get('file') or accepted_issue.get('primary_file') or 'unknown'}",
+            f"Patch: {patch_path}",
+        ]
+    )
+
+    result: dict[str, object] = {
+        "status": "failed",
+        "patch_path": str(patch_path),
+        "commit_message": commit_message,
+        "commit_body": commit_body,
+    }
+
+    add_command = ["git", "add", "-A"]
+    add = subprocess.run(add_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "add_command": add_command,
+            "add_returncode": add.returncode,
+            "add_stdout": add.stdout,
+            "add_stderr": add.stderr,
+        }
+    )
+    if add.returncode != 0:
+        result["reason"] = "git add failed before commit"
+        return result
+
+    commit_command = ["git", "commit", "-m", commit_message, "-m", commit_body]
+    commit = subprocess.run(commit_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    result.update(
+        {
+            "commit_command": commit_command,
+            "commit_returncode": commit.returncode,
+            "commit_stdout": commit.stdout,
+            "commit_stderr": commit.stderr,
+        }
+    )
+    if commit.returncode != 0:
+        result["reason"] = "git commit failed after applying the accepted patch"
+        return result
+
+    result["status"] = "passed"
+    result["reason"] = "accepted patch committed to the source checkout"
+    return result
+
+
+def _run_apply_or_commit_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
     run_dir.mkdir(parents=True, exist_ok=True)
     mode = run_mode(args)
-    summary: dict[str, object] = {
-        "schema": "ralph-loop-mode-v1",
-        "status": "failed",
-        "mode": mode,
-        "audit_only": False,
-        "repo_root": str(repo_root),
-        "run_dir": str(run_dir),
-        "reason": (
-            f"{mode} is accepted by the CLI but the scratch checkout/apply implementation is not wired yet; "
-            "failing closed so source files are not mutated without visual gates."
-        ),
-        "source_mutated": False,
-        "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
-    }
+    summary = _run_dry_run_mode(args, repo_root, run_dir)
+    if summary.get("status") != "passed":
+        summary["mode"] = mode
+        summary["source_mutated"] = False
+        summary["reason"] = (
+            f"{mode} is accepted by the CLI, but the dry-run validation did not pass: {summary.get('reason')}"
+        )
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    implementation = summary.get("implementation")
+    patch_path = _implementation_patch_path(implementation)
+    if patch_path is None:
+        summary["mode"] = mode
+        summary["status"] = "failed"
+        summary["source_mutated"] = False
+        summary["reason"] = (
+            f"{mode} passed the dry-run gates, but the UI implementer did not return a usable patch_path."
+        )
+        summary["next_step"] = "Keep iterating in dry-run until the implementer emits a candidate patch."
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    apply_result = _apply_candidate_patch(repo_root, patch_path)
+    summary["mode"] = mode
+    summary["apply_result"] = apply_result
+    summary["applied_patch_path"] = str(patch_path)
+    summary["source_mutated"] = apply_result.get("status") == "passed"
+    if apply_result.get("status") != "passed":
+        summary["status"] = "failed"
+        summary["reason"] = f"{mode} failed because the candidate patch could not be applied: {apply_result.get('reason')}"
+        summary["next_step"] = "Fix the candidate patch in dry-run before trying apply-accepted again."
+        _write_json(run_dir / "mode-state.json", summary)
+        return summary
+
+    if mode == "commit-accepted":
+        accepted_issue = summary.get("accepted_issue")
+        accepted_issue_dict = cast(dict[str, object], accepted_issue) if isinstance(accepted_issue, dict) else {}
+        commit_result = _commit_applied_patch(repo_root, run_dir, accepted_issue_dict, patch_path)
+        summary["commit_result"] = commit_result
+        if commit_result.get("status") != "passed":
+            summary["status"] = "failed"
+            summary["reason"] = (
+                "commit-accepted applied the candidate patch, but git commit failed: "
+                f"{commit_result.get('reason')}"
+            )
+            summary["next_step"] = "Resolve the commit failure or keep the change applied without a commit."
+            _write_json(run_dir / "mode-state.json", summary)
+            return summary
+        summary["decision"] = "committed"
+        summary["reason"] = "commit-accepted applied the candidate patch and committed it after visual validation."
+        summary["next_step"] = "Push the branch and wait for PR review/CI."
+    else:
+        summary["decision"] = "applied"
+        summary["reason"] = "apply-accepted applied the candidate patch after visual validation."
+        summary["next_step"] = "Use --commit-accepted if you want to record the applied change as a commit."
+
+    summary["status"] = "passed"
     _write_json(run_dir / "mode-state.json", summary)
     return summary
+
+
+def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    return _run_apply_or_commit_mode(args, repo_root, run_dir)
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -1605,7 +1768,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if getattr(args, "dry_run", False):
         return _run_dry_run_mode(args, repo_root, run_dir)
     if getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
-        return _run_unimplemented_mode(args, repo_root, run_dir)
+        return _run_apply_or_commit_mode(args, repo_root, run_dir)
     return _run_remote_visual_mode(args, repo_root, run_dir)
 
 
