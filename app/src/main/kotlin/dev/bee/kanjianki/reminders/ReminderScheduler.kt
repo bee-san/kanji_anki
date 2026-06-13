@@ -14,11 +14,20 @@ import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
+import dev.bee.kanjianki.core.DailyReminderDecisionRequest
+import dev.bee.kanjianki.core.DailyStudyPlan
+import dev.bee.kanjianki.core.DailyStudyPlanPolicy
+import dev.bee.kanjianki.core.DailyStudyPlanRequest
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
+import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
+import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.time.AppClock
@@ -26,7 +35,8 @@ import dev.bee.kanjianki.time.AppClock
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"
     private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
-    private const val CHANNEL_ID = "kani_study_reminders"
+    const val REMINDER_CHANNEL_ID = "kani_study_reminders"
+    private const val CHANNEL_ID = REMINDER_CHANNEL_ID
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val WEEK_MILLIS = 7 * 86_400_000L
@@ -51,7 +61,23 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        schedule(settings, androidReminderServices(context), AppClock.orSystem(clock))
+        val nowMillis = AppClock.orSystem(clock).nowMillis()
+        schedule(context, settings, androidReminderServices(context), nowMillis)
+    }
+
+    @JvmStatic
+    fun schedule(
+        context: Context?,
+        settings: LocalStoreBase.ReminderSettings?,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        if (context == null) {
+            return
+        }
+        LocalStore(context).use { store ->
+            schedule(settings, store, services, nowMillis)
+        }
     }
 
     @JvmStatic
@@ -66,6 +92,29 @@ object ReminderScheduler {
             return
         }
         services.scheduleAlarm(nextTriggerMillis(settings, nowMillis))
+    }
+
+    private fun schedule(
+        settings: LocalStoreBase.ReminderSettings?,
+        store: LocalStore,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        if (settings == null || !settings.enabled) {
+            services.cancelAlarm()
+            return
+        }
+        val streak = store.studyStreak(nowMillis)
+        if (streak.studiedToday) {
+            val reviewBatch = reviewReminderBatch(store, nowMillis)
+            if (reviewBatch != null) {
+                services.scheduleAlarm(reviewBatch.triggerAtMillis)
+                return
+            }
+            services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis, false))
+            return
+        }
+        services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis))
     }
 
     @JvmStatic
@@ -132,27 +181,38 @@ object ReminderScheduler {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
-        services.ensureNotificationChannel()
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        val copy = reminderCopy(context, clock)
-        val open = Intent(context, MainActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            REQUEST_CODE,
-            open,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(copy.title)
-            .setContentText(copy.message)
-            .setStyle(Notification.BigTextStyle().bigText(copy.message))
-            .setContentIntent(contentIntent)
-            .setAutoCancel(true)
-            .setColor(Color.rgb(255, 76, 118))
-            .build()
-        manager.notify(NOTIFICATION_ID, notification)
+        LocalStore(context).use { store ->
+            val now = AppClock.orSystem(clock).nowMillis()
+            val reviewBatch = reviewReminderBatch(store, now)
+            val copy = if (reviewBatch != null) {
+                ReminderCopyPolicy.reviewCopy(reviewBatch.dueCount)
+            } else {
+                dailyReminderCopy(store, now) ?: return@use
+            }
+            services.ensureNotificationChannel()
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@use
+            val open = Intent(context, MainActivity::class.java)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val contentIntent = PendingIntent.getActivity(
+                context,
+                REQUEST_CODE,
+                open,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val notification = Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(copy.title)
+                .setContentText(copy.message)
+                .setStyle(Notification.BigTextStyle().bigText(copy.message))
+                .setContentIntent(contentIntent)
+                .setAutoCancel(true)
+                .setColor(Color.rgb(255, 76, 118))
+                .build()
+            manager.notify(NOTIFICATION_ID, notification)
+            if (reviewBatch != null) {
+                store.recordReviewReminderNotificationShown(now)
+            }
+        }
     }
 
     @JvmStatic
@@ -219,10 +279,10 @@ object ReminderScheduler {
             val manager = notificationManager() ?: return
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Study reminders",
+                ReminderCopyPolicy.notificationChannelName(),
                 NotificationManager.IMPORTANCE_DEFAULT
             )
-            channel.description = "Friendly Kani review reminders."
+            channel.description = ReminderCopyPolicy.notificationChannelDescription()
             channel.setShowBadge(true)
             manager.createNotificationChannel(channel)
         }
@@ -261,30 +321,119 @@ object ReminderScheduler {
         return ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis)
     }
 
+    @JvmStatic
+    fun nextTriggerMillis(
+        settings: LocalStoreBase.ReminderSettings,
+        nowMillis: Long,
+        studiedToday: Boolean,
+        futureDueAtMillis: Iterable<Long>,
+    ): Long {
+        return ReminderSchedulePolicy.nextTriggerMillis(
+            settings.hour,
+            settings.minute,
+            nowMillis,
+            studiedToday,
+            futureDueAtMillis,
+        )
+    }
+
     private fun reminderCopy(context: Context, clock: AppClock?): ReminderCopyPolicy.ReminderCopy {
         LocalStore(context).use { store ->
-            val rows = store.activeDashboardRows()
-            val items = store.studyItems()
             val now = AppClock.orSystem(clock).nowMillis()
-            return ReminderCopyPolicy.forPlan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                    rows,
-                    items,
-                    store.reviewStatsSince(now - WEEK_MILLIS),
-                    store.studyStreak(now).currentDays,
-                    store.studiedKanjiSince(startOfLocalDay(now)),
-                    AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                        store.adaptiveLoadWorkPercent(),
-                        store.adaptiveLoadMode(),
-                        store.adaptiveLoadMaxItems()
-                    ),
-                    now
-                )
-                    .settings(RecordsSyncModels.Settings.kikuDefaults())
-                    .build()
-            )
+            return reminderCopy(store, now)
         }
     }
 
+    private fun reminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy {
+        val rows = store.activeDashboardRows()
+        val items = store.studyItems()
+        return ReminderCopyPolicy.forPlan(
+            AdaptiveLoadPlanner.PlanRequest.builder(
+                rows,
+                items,
+                store.reviewStatsSince(nowMillis - WEEK_MILLIS),
+                store.studyStreak(nowMillis).currentDays,
+                store.studiedKanjiSince(startOfLocalDay(nowMillis)),
+                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                    store.adaptiveLoadWorkPercent(),
+                    store.adaptiveLoadMode(),
+                    store.adaptiveLoadMaxItems()
+                ),
+                nowMillis
+            )
+                .settings(RecordsSyncModels.Settings.kikuDefaults())
+                .build()
+        )
+    }
+
+    private fun dailyReminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy? {
+        val decision = dailyReminderDecision(store, nowMillis)
+        if (!decision.shouldSchedule) {
+            return null
+        }
+        return ReminderCopyPolicy.ReminderCopy(decision.title, decision.body)
+    }
+
+    private fun dailyReminderDecision(store: LocalStore, nowMillis: Long): dev.bee.kanjianki.core.DailyReminderDecision {
+        val plan = dailyStudyPlan(store, nowMillis)
+        return DailyReminderDecisionPolicy.decide(
+            DailyReminderDecisionRequest(
+                plan = plan,
+                nowMillis = nowMillis,
+            ),
+        )
+    }
+
+    private fun dailyStudyPlan(store: LocalStore, nowMillis: Long): DailyStudyPlan {
+        val rows = store.activeDashboardRows()
+        val items = store.studyItems()
+        val streak = store.studyStreak(nowMillis)
+        return DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = nowMillis,
+                dueAtMillis = items.map { it.dueAtMillis },
+                studiedToday = streak.studiedToday,
+                streak = StudyStreakPolicy.Streak(
+                    currentDays = streak.currentDays,
+                    bestDays = streak.bestDays,
+                    studiedToday = streak.studiedToday,
+                    reviewsToday = streak.reviewsToday,
+                    lastStudyAtMillis = streak.lastStudyAtMillis,
+                ),
+                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else items.count { it.totalReviews == 0 },
+                lastSuccessfulSyncAtMillis = store.latestSync()?.finishedAt,
+            ),
+        )
+    }
+
+    private fun reviewReminderBatch(
+        store: LocalStore,
+        nowMillis: Long,
+    ): ReminderReviewBatchPolicy.ReviewBatch? {
+        val streak = store.studyStreak(nowMillis)
+        if (!streak.studiedToday) {
+            return null
+        }
+        return ReminderReviewBatchPolicy.nextBatch(
+            nowMillis,
+            store.studyItems(),
+            store.reviewReminderNotificationsToday(nowMillis)
+        )
+    }
+
     private fun startOfLocalDay(nowMillis: Long): Long = LocalDayPolicy.localDayStart(nowMillis)
+
+    private fun activeReminderDueAtMillis(items: List<RecordsStudyModels.StudyItem>): List<Long> {
+        val dueAtMillis = ArrayList<Long>()
+        for (item in items) {
+            if (isActiveReminderItem(item)) {
+                dueAtMillis.add(item.dueAtMillis)
+            }
+        }
+        return dueAtMillis
+    }
+
+    private fun isActiveReminderItem(item: RecordsStudyModels.StudyItem): Boolean {
+        return StudyLadderRules.STATE_RETIRED != item.state && item.suppressedByTaskType.isEmpty()
+    }
 }

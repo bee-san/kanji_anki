@@ -8,19 +8,22 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 
 internal object HomeStudyQueueActions {
     @JvmStatic
-    fun studyQueue(request: StudyQueueRequest): List<RecordsStudyModels.StudyItem> {
-        val currentItems = request.reader.studyItems()
+    fun studyQueue(
+        request: StudyQueueRequest,
+        currentItems: List<RecordsStudyModels.StudyItem>? = null,
+    ): List<RecordsStudyModels.StudyItem> {
+        val current = currentItems ?: request.reader.studyItems()
         if (!request.persist) {
-            return currentItems
+            return current
         }
         val effectivePlan = request.plan ?: request.planProvider.adaptivePlan(
             request.rows,
-            currentItems,
+            current,
             request.nowMillis,
         )
         val seeded = request.seeder.seedQueue(
             request.rows,
-            currentItems,
+            current,
             request.settingsProvider.settings(),
             request.nowMillis,
             request.dayStartProvider.startOfDay(request.nowMillis),

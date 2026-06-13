@@ -92,6 +92,7 @@ class WritingAnalysisEngine private constructor() {
             }
             val match = match(target, candidates)
             if (!match.recognized) {
+                order = order.withDiagnosis(confusionDiagnosis(target, candidates, order.diagnosis))
                 return WritingAnalysis(
                     WritingAnalysis.Status.WRONG,
                     RATING_AGAIN,
@@ -200,6 +201,18 @@ class WritingAnalysisEngine private constructor() {
                 }
             }
             return RecognitionMatch(false, false)
+        }
+
+        private fun confusionDiagnosis(
+            target: String?,
+            candidates: List<RecognitionCandidate>?,
+            diagnosis: StrokeDiagnosis,
+        ): StrokeDiagnosis {
+            val top = candidates?.firstOrNull()?.text?.let(::normalizedCandidate) ?: ""
+            if (target.isNullOrEmpty() || top.isEmpty() || top == target || top.length != 1) {
+                return diagnosis
+            }
+            return diagnosis.plus(StrokeDiagnosis.Label.CONFUSED_WITH_SIMILAR_KANJI, 0)
         }
 
         private fun normalizedCandidate(text: String): String {

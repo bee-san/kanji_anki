@@ -113,6 +113,8 @@ class StrokeOrderEvaluator private constructor() {
             val weakestStrokeScore = summary.weakestStrokeScore
             if (actual < expected) {
                 addMissingStrokes(summary.matchedGuideStrokes, summary.diagnosis)
+            } else if (actual > expected) {
+                addExtraStrokes(expected, actual, summary.diagnosis)
             }
             val score = clamp((countScore * 0.45f) + (shapeScore * 0.55f))
             val acceptable = countDelta <= max(1, expected / 4) && score >= 0.45f
@@ -153,6 +155,12 @@ class StrokeOrderEvaluator private constructor() {
             }
         }
 
+        private fun addExtraStrokes(expected: Int, actual: Int, diagnosis: StrokeDiagnosis.Builder) {
+            for (i in expected until actual) {
+                diagnosis.add(StrokeDiagnosis.Label.EXTRA_STROKE, i + 1)
+            }
+        }
+
         private fun resultMessage(acceptable: Boolean, clean: Boolean): String {
             if (clean) {
                 return "Stroke path looks clean."
@@ -182,6 +190,9 @@ class StrokeOrderEvaluator private constructor() {
             if (wrongDirection) {
                 diagnosis.add(StrokeDiagnosis.Label.WRONG_DIRECTION, expectedIndex + 1)
                 return
+            }
+            if (expectedComparison.directionlessScore() < 0.65f) {
+                diagnosis.add(StrokeDiagnosis.Label.FAR_FROM_GUIDE, expectedIndex + 1)
             }
             if (expectedComparison.score < 0.50f && expectedComparison.directionlessScore() < 0.65f) {
                 diagnosis.add(StrokeDiagnosis.Label.ROUGH_SHAPE, expectedIndex + 1)

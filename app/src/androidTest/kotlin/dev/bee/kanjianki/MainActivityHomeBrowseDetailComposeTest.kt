@@ -1,12 +1,17 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -53,28 +58,57 @@ class MainActivityHomeBrowseDetailComposeTest {
         var searched = ""
         var homeClicked = false
         var clickedKanji = ""
+        var toggledFilterQuery = ""
+        var selectAllClicked = false
+        var deselectAllClicked = false
+        val studiedChanges = mutableListOf<Pair<String, Boolean>>()
 
         composeRule.setContent {
             BrowseScreen(
                 model = BrowseScreenModel(
                     initialQuery = " 裂 ",
                     resultHeading = "2 kanji",
+                    similarFilterActive = false,
+                    studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(1, 2),
+                    onToggleSimilarFilter = { toggledFilterQuery = it },
+                    onSelectAllStudied = { selectAllClicked = true },
+                    onDeselectAllStudied = { deselectAllClicked = true },
                     rows = listOf(
                         BrowseKanjiRowModel(
                             kanji = "裂",
                             meaning = "split",
                             readings = "レツ",
                             summary = "2 local sources · 1 example",
+                            contentDescription = browseKanjiRowDescription(
+                                kanji = "裂",
+                                meaning = "split",
+                                readings = "レツ",
+                                summary = "2 local sources · 1 example",
+                                studied = false,
+                                suspended = true,
+                            ),
                             suspended = true,
-                            onClick = { clickedKanji = "裂" }
+                            studied = false,
+                            onClick = { clickedKanji = "裂" },
+                            onStudiedChange = { studiedChanges.add("裂" to it) }
                         ),
                         BrowseKanjiRowModel(
                             kanji = "謎",
                             meaning = "Meaning not stored yet",
                             readings = "",
                             summary = "0 local sources · 1 example",
+                            contentDescription = browseKanjiRowDescription(
+                                kanji = "謎",
+                                meaning = "Meaning not stored yet",
+                                readings = "",
+                                summary = "0 local sources · 1 example",
+                                studied = true,
+                                suspended = false,
+                            ),
                             suspended = false,
-                            onClick = { clickedKanji = "謎" }
+                            studied = true,
+                            onClick = { clickedKanji = "謎" },
+                            onStudiedChange = { studiedChanges.add("謎" to it) }
                         )
                     ),
                     onHome = { homeClicked = true },
@@ -88,15 +122,40 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("split").assertIsDisplayed()
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(
+            browseKanjiRowDescription(
+                kanji = "裂",
+                meaning = "split",
+                readings = "レツ",
+                summary = "2 local sources · 1 example",
+                studied = false,
+                suspended = true,
+            )
+        ).assertIsDisplayed()
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.browseSimilarFilterLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.browseStudySelectionSummary(1, 2)).assertIsDisplayed()
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).assertIsOff()
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("謎")).assertIsOn()
 
-        composeRule.onNodeWithText("Search").performClick()
+        composeRule.onNodeWithText("Search").assertIsEnabled().performClick()
         assertEquals(" 裂 ", searched)
 
-        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).performClick()
+        composeRule.onNodeWithTag(browseSimilarFilterTestTag()).performClick()
+        assertEquals(" 裂 ", toggledFilterQuery)
+
+        composeRule.onNodeWithTag(browseSelectAllStudiedTestTag()).performClick()
+        composeRule.onNodeWithTag(browseDeselectAllStudiedTestTag()).performClick()
+        assertTrue(selectAllClicked)
+        assertTrue(deselectAllClicked)
+
+        composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).performClick()
+        assertEquals("裂" to true, studiedChanges.last())
+
+        composeRule.onNodeWithTag(browseKanjiRowTestTag("裂")).assertIsEnabled().performClick()
         assertEquals("裂", clickedKanji)
 
-        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Home").assertIsEnabled().performClick()
         assertTrue(homeClicked)
     }
 
@@ -128,15 +187,15 @@ class MainActivityHomeBrowseDetailComposeTest {
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
                         title = "",
-                        lines = listOf("Current local practice evidence from AnkiDroid.", "Anki browser: deck:Japanese"),
+                        lines = listOf("Active practice evidence.", "Anki search: deck:Japanese"),
                         color = 0xFF6E5CE6.toInt(),
                         style = BrowseDetailPanelStyle.BAND
                     )
                 )
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
-                        title = "Local inventory",
-                        lines = listOf("1 source note/card · 2 stored examples", "Search: kanji:語"),
+                        title = "Local records",
+                        lines = listOf("1 source · 2 examples", "Anki search: kanji:語"),
                         color = 0xFFC9F5F7.toInt(),
                         style = BrowseDetailPanelStyle.CARD
                     )
@@ -153,11 +212,11 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("Current local practice evidence from AnkiDroid.").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki browser: deck:Japanese").assertIsDisplayed()
-        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
-        composeRule.onNodeWithText("1 source note/card · 2 stored examples").assertIsDisplayed()
-        composeRule.onNodeWithText("Search: kanji:語").assertIsDisplayed()
+        composeRule.onNodeWithText("Active practice evidence.").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki search: deck:Japanese").assertIsDisplayed()
+        composeRule.onNodeWithText("Local records").assertIsDisplayed()
+        composeRule.onNodeWithText("1 source · 2 examples").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki search: kanji:語").assertIsDisplayed()
         composeRule.onNodeWithText("ACTIVE").assertIsDisplayed()
         composeRule.onNodeWithText("活動語  カツドウゴ").assertIsDisplayed()
         composeRule.onNodeWithText("活動語を見た。").assertIsDisplayed()
@@ -176,7 +235,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                 BrowseDetailHero(
                     model = BrowseDetailHeroModel(
                         kanji = "裂",
-                        navigationLabel = "Back to Browse Kanji",
+                        navigationLabel = "Back to Browse",
                         onNavigate = Runnable { backClicked = true }
                     )
                 )
@@ -191,8 +250,8 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailActionsModel(
                         reviewLabel = "Review now",
                         onReview = Runnable { reviewClicked = true },
-                        copyLabel = "Copy Anki search",
-                        copiedLabel = "Copied Anki search",
+                        copyLabel = "Copy search",
+                        copiedLabel = "Copied",
                         onCopy = Runnable { copyClicked = true },
                         suspendLabel = "Unsuspend locally",
                         onSuspend = Runnable { suspendClicked = true }
@@ -206,10 +265,10 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("レツ").assertIsDisplayed()
         composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
-        composeRule.onNodeWithText("Copy Anki search").performClick()
-        composeRule.onNodeWithText("Copied Anki search").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy search").performClick()
+        composeRule.onNodeWithText("Copied").assertIsDisplayed()
         composeRule.onNodeWithText("Unsuspend locally").performClick()
 
         assertTrue(backClicked)
@@ -229,7 +288,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailScreenModel(
                         hero = BrowseDetailHeroModel(
                             kanji = "裂",
-                            navigationLabel = "Back to Browse Kanji",
+                            navigationLabel = "Back to Browse",
                             onNavigate = Runnable { homeClicked = true }
                         ),
                         identity = BrowseDetailIdentityModel(
@@ -239,13 +298,13 @@ class MainActivityHomeBrowseDetailComposeTest {
                         ),
                         reason = BrowseDetailPanelModel(
                             title = "",
-                            lines = listOf("Current local practice evidence from AnkiDroid."),
+                            lines = listOf("Active practice evidence."),
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
                         ),
                         localInventory = BrowseDetailPanelModel(
-                            title = "Local inventory",
-                            lines = listOf("1 source note/card · 1 stored example"),
+                            title = "Local records",
+                            lines = listOf("1 source · 1 example"),
                             color = 0xFFC9F5F7.toInt(),
                             style = BrowseDetailPanelStyle.CARD
                         ),
@@ -253,7 +312,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             reviewLabel = "Review now",
                             onReview = Runnable { reviewClicked = true },
                             copyLabel = null,
-                            copiedLabel = "Copied Anki search",
+                            copiedLabel = "Copied",
                             onCopy = null,
                             suspendLabel = "Suspend locally",
                             onSuspend = Runnable {}
@@ -290,13 +349,13 @@ class MainActivityHomeBrowseDetailComposeTest {
         }
 
         composeRule.onNodeWithText("裂").assertIsDisplayed()
-        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
+        composeRule.onNodeWithText("Local records").assertIsDisplayed()
         composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
         composeRule.onNodeWithText("Examples").assertIsDisplayed()
         composeRule.onNodeWithText("裂語  レツゴ").assertIsDisplayed()
         composeRule.onNodeWithText("Kanji not found").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
         assertTrue(homeClicked)
         assertTrue(reviewClicked)

@@ -4,8 +4,10 @@ import android.content.Context
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
@@ -116,8 +118,8 @@ internal class ManualSyncEngine {
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler()
-            val currentItems = store.studyItems()
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
+            val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
             val plan = adaptivePlan(activeRows, currentItems, finished)
             var seeded = scheduler.seedQueue(
                 activeRows,
@@ -130,7 +132,29 @@ internal class ManualSyncEngine {
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
             store.replaceStudyItems(seeded, syncId, finished, settings)
-            return SyncResult.create(true, false, rows.size, currentSuspendedImports.size, removal.message, plan.status)
+            val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, seeded, finished)
+            val readyCount = if (activeRows.isEmpty()) {
+                0
+            } else {
+                FocusQueuePolicy.queuedEntries(
+                    activeRows,
+                    seeded,
+                    finished,
+                    store.studyAheadMinutes() * 60_000L,
+                    postSyncPlan,
+                    store.studyLadderSettings(),
+                ).size
+            }
+            return SyncResult.create(
+                true,
+                false,
+                rows.size,
+                currentSuspendedImports.size,
+                removal.message,
+                plan.status,
+                readyCount,
+                AdaptiveFocusCopy.adaptiveFocusText(postSyncPlan),
+            )
         } catch (error: AnkiDroidGateway.SyncFailure) {
             val finished = clock.nowMillis()
             store.saveFailedSync(
@@ -205,6 +229,12 @@ internal class ManualSyncEngine {
         @JvmField
         val adaptiveSummary: String = adaptiveSummary ?: ""
 
+        @JvmField
+        var studyReadyCount: Int = 0
+
+        @JvmField
+        var adaptiveFocusText: String = ""
+
         companion object {
             @JvmStatic
             internal fun create(
@@ -214,6 +244,8 @@ internal class ManualSyncEngine {
                 importedSuspendedKanji: Int,
                 message: String?,
                 adaptiveSummary: String?,
+                studyReadyCount: Int = 0,
+                adaptiveFocusText: String = "",
             ): SyncResult {
                 return SyncResult(
                     success,
@@ -222,7 +254,10 @@ internal class ManualSyncEngine {
                     importedSuspendedKanji,
                     message,
                     adaptiveSummary,
-                )
+                ).apply {
+                    this.studyReadyCount = studyReadyCount
+                    this.adaptiveFocusText = adaptiveFocusText
+                }
             }
 
             @JvmStatic

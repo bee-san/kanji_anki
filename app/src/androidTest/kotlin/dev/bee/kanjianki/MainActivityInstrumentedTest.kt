@@ -203,23 +203,23 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
             }
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity { activity ->
-                assertHasText(activity, "Back to Browse Kanji");
-                assertHasText(activity, "Local inventory");
-                assertHasText(activity, "Review this now");
+                assertHasText(activity, "Back to Browse");
+                assertHasText(activity, "Local records");
+                assertHasText(activity, "Review now");
                 assertHasText(activity, "Suspend locally");
             }
             clickText(scenario, "Suspend locally");
             scenario.onActivity { activity ->
                 assertHasText(activity, "SUSPENDED");
                 assertHasText(activity, "Unsuspend locally");
-                assertNoText(activity, "Review this now");
+                assertNoText(activity, "Review now");
             }
             clickText(scenario, "Unsuspend locally");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Review this now");
+                assertHasText(activity, "Review now");
                 assertHasText(activity, "Suspend locally");
             }
-            clickText(scenario, "Back to Browse Kanji");
+            clickText(scenario, "Back to Browse");
             scenario.onActivity { activity ->
                 assertEquals("拉", activity.activeBrowseQuery);
                 assertHasText(activity, "拉");
@@ -230,19 +230,21 @@ fun testBrowseKanjiShowsDetailAndSuspensionControls() {
     @Test
 fun testNavigationSettingsAndEmptyStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForText(scenario, "Stats");
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
+                assertHasTexts(activity, "Stats overview", "Reviews analytics", "Accuracy & retention", "Progress by level", "Weakness insights");
             }
 
             clickText(scenario, "Home");
+            waitForText(scenario, "Settings");
             clickText(scenario, "Settings");
             scenario.onActivity { activity -> assertCollapsedSettingsScreen(activity) }
-            clickText(scenario, "Advanced controls");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
-            clickText(scenario, "Open updater");
-            waitForText(scenario, "GitHub updater");
-            scenario.onActivity { activity -> assertHasTexts(activity, "GitHub updater", "Back to settings", "Home", "Current version", "Check for update") }
+            clickText(scenario, SettingsTextCopy.openUpdaterLabel());
+            waitForText(scenario, "App updates");
+            scenario.onActivity { activity -> assertHasTexts(activity, "App updates", "Back to settings", "Home", "Current version", "Check for updates") }
         }
     }
 
@@ -251,9 +253,9 @@ fun testSettingsControlsPersistFiltersAndLearning() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
-            clickText(scenario, "Save frequency range");
-            clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
+            clickText(scenario, "Study settings");
             verifyStudyBehaviorPanel(scenario);
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
@@ -267,16 +269,16 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setStudyAheadMinutes("later");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
             setStudyAheadMinutes("2000");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
             setStudyAheadMinutes("45");
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
             configureManualWorkload(scenario);
             verifyWorkloadAutoActions(scenario);
         }
@@ -286,7 +288,7 @@ fun testSettingsControlsPersistStudyAheadLadderAndWorkload() {
 fun testSettingsControlsPersistRetentionReminderAndStoredValues() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Deck options");
+            clickText(scenario, "Study settings");
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -299,18 +301,18 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
             setFrequencyRangeInputs("250", "3500");
-            clickText(scenario, "Save frequency range");
-            clickText(scenario, "Save import filters");
-            clickText(scenario, "Deck options");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
+            clickText(scenario, "Study settings");
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
             setLearningStepText();
             clickText(scenario, "Save learning steps");
             setStudyAheadMinutes();
-            clickText(scenario, "Save study ahead");
+            clickText(scenario, SettingsTextCopy.saveStudyAheadLabel());
             setLadderThresholdText();
-            clickText(scenario, "Save ladder thresholds");
+            clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
             setNavigationWorkloadControls(scenario);
             setNavigationRetentionAndReminder(scenario);
             assertNavigationSettingsPersisted();
@@ -318,14 +320,14 @@ fun testSettingsControlsPersistStoredNavigationValuesAcrossPanels() {
     }
 
 private fun setNavigationWorkloadControls(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
         ));
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
         waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
-        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
         clickText(scenario, SettingsTextCopy.automaticParetoLabel());
         waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
@@ -340,7 +342,7 @@ private fun setNavigationRetentionAndReminder(scenario: ActivityScenario<MainAct
         clickText(scenario, "95%");
         verifyRetentionValidationAndRanges(scenario);
         clickText(scenario, "Save retention");
-        clickText(scenario, "Advanced controls");
+        clickText(scenario, "Automation");
         clickText(scenario, "Morning 08:00");
         clickText(scenario, "Enable reminder");
         clickTextIfPresent("Allow");
@@ -354,14 +356,14 @@ fun setFrequencyRangeInputs(minRank: String, maxRank: String) {
 
 private fun verifyStudyBehaviorPanel(scenario: ActivityScenario<MainActivity>) {
         scenario.onActivity { activity ->
-            assertHasText(activity, "Daily workload");
-            assertHasText(activity, "Auto Pareto: waiting for problem kanji");
-            assertHasText(activity, "Use manual workload");
+            assertHasText(activity, SettingsTextCopy.dailyWorkloadTitle());
+            assertHasText(activity, SettingsTextCopy.autoWorkloadStatusText(null));
+            assertHasText(activity, SettingsTextCopy.manualWorkloadLabel());
             assertHasText(activity, "Review retention");
             assertHasText(activity, "Desired retention: 90%");
-            assertHasText(activity, "Ladder thresholds");
-            assertHasText(activity, "Days before promotion");
-            assertHasText(activity, "Fail streak before demotion");
+            assertHasText(activity, "Ladder movement");
+            assertHasText(activity, "Review days to move up");
+            assertHasText(activity, "Misses to move down");
         }
     }
 
@@ -486,14 +488,14 @@ private fun assertLadderThresholdSettings(scenario: ActivityScenario<MainActivit
     }
 
 private fun configureManualWorkload(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Use manual workload");
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
         waitForText(scenario, SettingsTextCopy.workloadStatusText(
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
         ));
         setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
         waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
-        clickText(scenario, "Save workload");
+        clickText(scenario, SettingsTextCopy.saveWorkloadLabel());
     }
 
 private fun verifyWorkloadAutoActions(scenario: ActivityScenario<MainActivity>) {
@@ -513,7 +515,7 @@ private fun verifyWorkloadAutoActions(scenario: ActivityScenario<MainActivity>) 
     }
 
 private fun enableMorningReminder(scenario: ActivityScenario<MainActivity>) {
-        clickText(scenario, "Advanced controls");
+        clickText(scenario, "Automation");
         scenario.onActivity { activity -> assertHasTexts(activity, "Daily reminder", "Daily sync") }
         clickText(scenario, "Morning 08:00");
         clickText(scenario, "Enable reminder");
@@ -538,12 +540,13 @@ fun testConfiguredDailySyncSettingsScreenCanPauseAndResume() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Advanced controls");
+            clickText(scenario, "Automation");
             waitForText(scenario, "Daily sync");
             scenario.onActivity { activity ->
                 assertHasText(activity, "On around 06:30");
-                assertHasText(activity, "Last successful sync");
-                assertHasText(activity, "Next sync");
+                assertHasText(activity, "Last sync:");
+                assertHasText(activity, "Last attempt:");
+                assertHasText(activity, "Next:");
                 assertHasText(activity, "Turn off daily sync");
             }
 
@@ -564,7 +567,7 @@ fun testReminderSettingsPanelCanEnableAndTurnOffReminder() {
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
             clickText(scenario, "Settings")
-            clickText(scenario, "Advanced controls")
+            clickText(scenario, "Automation")
             waitForText(scenario, "Daily reminder")
             clickText(scenario, "Morning 08:00")
             waitForText(scenario, "Reminder time: 08:00")
@@ -593,15 +596,15 @@ fun testImportFilterValidationBlocksEmptySourcesAndEmptyBrowserQuery() {
             setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), false);
             setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "");
             setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Japanese tag:kani");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             waitForText(scenario, "Import filters");
             LocalStore(context).use { store ->
                 var saved = SyncSettings.fromStore(store)
@@ -621,7 +624,7 @@ fun testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
             clickText(scenario, "Settings");
             setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), true);
             setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "not numeric");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             assertDefaultImportSettingsStillStored();
 
             setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), true);
@@ -634,7 +637,7 @@ fun testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
             setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "8.5");
             setComposeTextField(SettingsTextCopy.lapsesLabel(), "4");
             setComposeTextField(SettingsTextCopy.minimumMatchingCardsLabel(), "2");
-            clickText(scenario, "Save import filters");
+            clickText(scenario, SettingsTextCopy.saveImportFiltersLabel());
             waitForText(scenario, "Import filters");
             assertCustomImportSettingsStored();
 
@@ -761,19 +764,19 @@ fun testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Advanced controls");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             scenario.onActivity { activity ->
-                assertHasText(activity, "On: checks about once a day");
+                assertHasText(activity, "Daily checks enabled");
                 assertHasText(activity, "Last check: not yet");
-                assertHasText(activity, "Install permission: Missing");
-                assertHasText(activity, "Set up app installs");
-                assertHasText(activity, "Turn off automatic updates");
+                assertHasText(activity, "Permission missing");
+                assertHasText(activity, "Allow app installs");
+                assertHasText(activity, "Turn off updates");
             }
-            clickText(scenario, "Turn off automatic updates");
+            clickText(scenario, "Turn off updates");
             waitForText(scenario, "Off");
-            clickText(scenario, "Turn on automatic updates");
-            waitForText(scenario, "On: checks about once a day");
+            clickText(scenario, "Turn on updates");
+            waitForText(scenario, "Daily checks enabled");
         }
     }
 
@@ -787,22 +790,22 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
         LocalStore(context).use { store ->
             store.recordAutoUpdateResult(
                     System.currentTimeMillis(),
-                    "Android needs confirmation to finish installing.",
+                    "Android needs permission to finish installing.",
                     "v9.9.9",
                     "kani-test.apk",
-                    "Android needs confirmation before Kani can replace itself."
+                    SettingsTextCopy.pendingUpdateFallback()
             );
         }
         MainActivityRuntimeOverrides.setInstallPermission(true);
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Settings");
-            clickText(scenario, "Advanced controls");
-            waitForText(scenario, "Verified APK ready: 9.9.9");
+            clickText(scenario, "Automation");
+            waitForText(scenario, "Ready to install: 9.9.9");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Ready");
+                assertHasText(activity, "Permission granted");
                 assertHasText(activity, "Install verified update");
-                assertHasText(activity, "Android needs confirmation before Kani can replace itself.");
+                assertHasText(activity, SettingsTextCopy.pendingUpdateFallback());
             }
         }
 
@@ -810,11 +813,11 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
         val scenario = ActivityScenario.launch<MainActivity>(openUpdate)
         try {
-            waitForText(scenario, "Verified APK ready: 9.9.9")
+            waitForText(scenario, "Ready to install: 9.9.9")
             scenario.onActivity { activity ->
-                assertHasText(activity, "Install permission: Ready")
+                assertHasText(activity, "Permission granted")
                 assertHasText(activity, "Install verified update")
-                assertHasText(activity, "Android needs confirmation before Kani can replace itself.")
+                assertHasText(activity, SettingsTextCopy.pendingUpdateFallback())
             }
             clickText(scenario, "Install verified update")
             waitForText(scenario, "Last result: APK metadata could not be read. Install blocked.")
@@ -874,7 +877,7 @@ fun testStatsConnectsKaniPracticeToAnkiImpact() {
     }
 
 private fun assertStatsTimePanel(activity: MainActivity) {
-        assertHasText(activity, "Kani is working for you");
+        assertHasText(activity, "Kani is working");
         assertHasText(activity, "Answered study time");
         assertHasText(activity, "Today: 0 sec");
         assertHasText(activity, "Last 7 days: 0 sec");
@@ -883,24 +886,16 @@ private fun assertStatsTimePanel(activity: MainActivity) {
     }
 
 private fun assertWeaknessBurnDownPanel(activity: MainActivity) {
-        assertHasText(activity, "Weakness Burn-Down");
-        assertHasText(activity, "4 weak kanji improved");
-        assertHasText(activity, "Average weakness: 0.75 -> 0.48 after Kani practice.");
-        assertHasText(activity, "痛  0.82 -> 0.46");
-        assertHasText(activity, "薬  0.76 -> 0.51");
-        assertHasText(activity, "疲  0.69 -> 0.44");
-        assertNoText(activity, "平  0.74 -> 0.50");
+        assertHasText(activity, "Weakness insights");
+        assertHasText(activity, "Focus score");
+        assertHasText(activity, "Most missed kanji");
+        assertHasText(activity, "Support needed");
     }
 
 private fun assertSupportConversionPanel(activity: MainActivity) {
-        assertHasText(activity, "Anki Support Conversion");
-        assertHasText(activity, "5 mature cards gained");
-        assertHasText(activity, "2 kanji gained first mature support.");
-        assertHasText(activity, "痛  1 -> 3 mature cards");
-        assertHasText(activity, "薬  0 -> 2 mature cards");
-        assertHasText(activity, "疲  0 -> 1 mature cards");
-        assertHasText(activity, "Ladder Health");
-        assertHasText(activity, "0 active kanji on the ladder");
+        assertHasText(activity, "Progress by level");
+        assertHasText(activity, "All levels");
+        assertHasText(activity, "Cumulative progress");
     }
 
 private fun assertStatsScreenOmitsLegacyCopy(activity: MainActivity) {
@@ -930,12 +925,10 @@ fun testStatsShowsImpactHistoryBuckets() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "Stats");
             scenario.onActivity { activity ->
-                assertHasText(activity, "Kani is not currently working for you");
-                assertHasText(activity, "0 weak kanji improved");
-                assertHasText(activity, "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.");
-                assertHasText(activity, "0 mature cards gained");
-                assertHasText(activity, "0 kanji gained first mature support.");
-                assertHasText(activity, "0 active kanji on the ladder");
+                assertHasText(activity, "Stats overview");
+                assertHasText(activity, "Focus score");
+                assertHasText(activity, "Weakness insights");
+                assertHasText(activity, "Support needed");
                 assertNoText(activity, "helped kanji");
                 assertNoText(activity, "not-helping-yet kanji");
                 assertNoText(activity, "needs-more-cards kanji");
@@ -971,17 +964,17 @@ fun testKanjiDetailCopyAndStudyReviewFlow() {
             clickText(scenario, "拉");
             scenario.onActivity { activity -> assertKanjiDetailReady(activity) }
 
-            clickText(scenario, "Copy Anki search");
+            clickText(scenario, "Copy search");
             scenario.onActivity { activity ->
                 var clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 var clip = clipboard.getPrimaryClip()
                 if (clip != null) {
                     assertEquals("deck:Kiku 拉", clip.getItemAt(0).coerceToText(activity).toString());
                 }
-                assertHasText(activity, "Copied Anki search");
+                assertHasText(activity, "Copied");
             }
 
-            clickText(scenario, "Review this now");
+            clickText(scenario, "Review now");
             scenario.onActivity { activity -> assertHiddenRecognitionCard(activity) }
 
             clickText(scenario, REVEAL);
@@ -1648,9 +1641,9 @@ fun testReviewThisNowUsesSimilarChoiceGate() {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, "拉");
-            scenario.onActivity { activity -> assertHasText(activity, "Review this now") }
+            scenario.onActivity { activity -> assertHasText(activity, "Review now") }
 
-            clickText(scenario, "Review this now");
+            clickText(scenario, "Review now");
             scenario.onActivity { activity ->
                 assertHasText(activity, "0 / 1");
                 assertHasText(activity, SIMILAR_KANJI);
@@ -2125,7 +2118,7 @@ fun testLastSyncHeadlineInvitesAndStartsManualSync() {
                 assertHasText(activity, "Sync");
                 assertHasText(activity, syncValue);
                 assertNoText(activity, "active cards checked");
-                assertNoText(activity, "suspended cards archived");
+                assertNoText(activity, "suspended saved");
                 assertNoText(activity, "Study starts with recall");
                 assertNoText(activity, "Sync once to find");
             }
@@ -2772,30 +2765,30 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 "Import & sync",
-                "Deck options",
-                "Advanced controls",
+                "Study settings",
+                "Automation",
                 "Display & data",
                 "Note type",
-                "Using Kiku",
-                "Expression field",
+                "Kiku",
+                "Kanji field",
                 "Reading field",
                 "Meaning field",
                 "Frequency sort field",
                 SettingsTextCopy.chooseFromAnkiDroidLabel(),
                 "Save note type",
                 "Import filters",
-                "Active cards",
-                "Suspended cards",
-                "Tagged cards",
-                "Weak cards",
-                "Minimum matching cards per kanji",
-                "Suspended card range",
+                SettingsTextCopy.activeCardsLabel(),
+                SettingsTextCopy.suspendedCardsLabel(),
+                SettingsTextCopy.taggedCardsLabel(),
+                SettingsTextCopy.weakCardsLabel(),
+                SettingsTextCopy.minimumMatchingCardsLabel(),
+                SettingsTextCopy.importRanksStatusLabel(),
                 "Default: 100-3000",
-                "Min rank",
-                "Max rank"
+                SettingsTextCopy.minRankLabel(),
+                SettingsTextCopy.maxRankLabel()
         );
         assertImportFilterDefaultState();
-        assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
+        assertNoTexts(activity, SettingsTextCopy.dailyWorkloadTitle(), "Daily reminder", "App updates");
     }
 
 fun assertImportFilterDefaultState() {
@@ -2919,11 +2912,11 @@ private fun assertKanjiDetailReady(activity: MainActivity) {
         assertHasTexts(
                 activity,
                 IMPORTED_FROM_SUSPENDED_CARDS,
-                "Review this now",
-                "Copy Anki search",
+                "Review now",
+                "Copy search",
                 "Recovery timeline",
                 "Active repair",
-                "Mature support 0 / target 2",
+                "Mature support 0/2",
                 "Kani started watching"
         );
     }
@@ -3244,7 +3237,7 @@ fun <T : View> collectTypes(root: View, type: Class<T>, results: MutableList<T>)
         return
     }
     if (type.isInstance(root)) {
-        results.add(type.cast(root))
+        results.add(requireNotNull(type.cast(root)))
     }
     if (root is android.view.ViewGroup) {
         val group = root as android.view.ViewGroup

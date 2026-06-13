@@ -51,6 +51,34 @@ class StudyQueueSeeder {
         )
     }
 
+    fun countExtraNewCardsAvailable(
+        rows: List<RecordsImportModels.DashboardRow>,
+        existing: List<RecordsStudyModels.StudyItem>,
+        settings: RecordsSyncModels.Settings,
+        nowMillis: Long,
+        startOfDayMillis: Long,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): Int {
+        val request = SeedQueueRequest(
+            SeedQueueSource(rows, rows, existing, settings),
+            SeedQueueTiming(nowMillis, startOfDayMillis),
+            SeedQueueLimits(Int.MAX_VALUE, true),
+            StudyLadderRules.safeLadder(ladder),
+        )
+        val rowIndex = indexSeedRows(request.allRows)
+        val state = reconcileExistingItems(request, rowIndex)
+        var available = 0
+        for (row in request.admissionRows) {
+            val rowKey = rowFamilyKey(row)
+            val current = state.byFamily[rowKey]
+            val eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current)
+            if (eligible) {
+                available++
+            }
+        }
+        return available
+    }
+
     fun seedExtraNewCards(
         rows: List<RecordsImportModels.DashboardRow>,
         existing: List<RecordsStudyModels.StudyItem>,

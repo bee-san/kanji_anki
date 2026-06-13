@@ -17,14 +17,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Ink = KaniUiTokens.Ink
-private val Muted = KaniUiTokens.Muted
-private val White = KaniUiTokens.White
-private val SettingsPanelFill = KaniUiTokens.PanelFill
-private val SettingsPanelBorder = KaniUiTokens.PanelBorder
-private val DictionaryBorder = ComposeColor(0xFF31C7D6)
-private val StrokeBorder = ComposeColor(0xFFF6CAE1)
-private val FontBorder = ComposeColor(0xFFFFD640)
+private val Ink: ComposeColor @Composable get() = KaniUiTokens.Ink
+private val Muted: ComposeColor @Composable get() = KaniUiTokens.Muted
+private val White: ComposeColor @Composable get() = KaniUiTokens.White
+private val SettingsPanelFill: ComposeColor @Composable get() = KaniUiTokens.PanelFill
+private val SettingsPanelBorder: ComposeColor @Composable get() = KaniUiTokens.PanelBorder
+private val DictionaryBorder: ComposeColor @Composable get() = KaniTheme.colors.teal
+private val StrokeBorder: ComposeColor @Composable get() = KaniTheme.colors.pinkStroke
+private val FontBorder: ComposeColor @Composable get() = KaniTheme.colors.gold
 private val PanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -82,7 +82,7 @@ fun DataSourcesIntro(model: SettingsReferenceDataIntroModel) {
         Text(
             text = model.body,
             color = Muted,
-            fontSize = 16.sp
+            fontSize = 15.sp
         )
     }
 }

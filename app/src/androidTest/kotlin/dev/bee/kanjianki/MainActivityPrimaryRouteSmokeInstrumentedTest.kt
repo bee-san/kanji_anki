@@ -64,7 +64,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderSettings() }
             assertVisible(MainActivityBase.NAV_SETTINGS)
-            assertVisible("Settings overview")
+            assertVisible("Overview")
             assertVisible("Note type")
 
             scenario.onActivity { activity -> activity.renderBrowseKanji("裂") }
@@ -73,20 +73,21 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisible("local source")
 
             scenario.onActivity { activity -> activity.renderDetail("裂", true, "裂") }
-            assertVisible("Back to Browse Kanji")
+            assertVisible("Back to Browse")
             assertVisible("裂")
 
             scenario.onActivity { it.renderStats() }
-            assertVisible("Stats")
-            assertVisible("Kani is not currently working for you")
+            assertVisible("Stats overview")
+            assertVisible("Reviews analytics")
+            assertVisible("Weakness insights")
 
             scenario.onActivity { it.renderGames() }
             assertVisible("Games")
             assertVisible("Meaning Pop")
 
             scenario.onActivity { it.renderUpdate() }
-            assertVisible("GitHub updater")
-            assertVisible("Check for update")
+            assertVisible("App updates")
+            assertVisible("Check for updates")
         }
     }
 

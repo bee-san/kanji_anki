@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -74,6 +75,30 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun heroQuestionTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals(
+                "読み方は？",
+                StudyTextCopy.heroQuestion(
+                    session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.WORD_READING),
+                ),
+            )
+            assertEquals(
+                "この漢字の意味は？",
+                StudyTextCopy.heroQuestion(
+                    session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.KANJI_MEANING),
+                ),
+            )
+            assertEquals("この漢字の意味は？", StudyTextCopy.heroQuestion(null))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun collectionMeaningForSessionUsesSelectedExampleThenRowMeaning() {
         val active = example("active", "活動語", "active meaning")
         val suspended = example("suspended", "休止語", "suspended meaning")
@@ -96,11 +121,38 @@ class StudyTextCopyTest {
             listOf("静", "青", "清", "晴"),
         )
 
+        assertEquals("Choose the kanji", StudyTextCopy.studyChoiceTitle())
+        assertEquals("Pick the matching kanji.", StudyTextCopy.studyChoiceBody())
+        assertEquals("Which kanji means Quiet?", StudyTextCopy.studyChoiceQuestion("Quiet"))
         assertEquals("Which kanji means Quiet?", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
         assertEquals("Correct. 静 means Quiet.", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
         assertEquals("Answer: 静 · Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))
         assertEquals("Which kanji means Fallback clue?", StudyTextCopy.meaningKanjiChoiceQuestion(null, "fallback clue"))
         assertEquals("Typing answer accepted.", StudyTextCopy.typingAnswerAcceptedToast())
+    }
+
+    @Test
+    fun meaningKanjiChoiceCopyTranslatesToJapaneseLocale() {
+        val card = RecordsImportModels.MeaningKanjiChoiceCard(
+            "静",
+            "(suru verb) quiet",
+            "しず",
+            listOf("静", "青", "清", "晴"),
+        )
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("漢字を選ぶ", StudyTextCopy.studyChoiceTitle())
+            assertEquals("一致する漢字を選んでください。", StudyTextCopy.studyChoiceBody())
+            assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.studyChoiceQuestion("Quiet"))
+            assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
+            assertEquals("正解。静 は「Quiet」です。", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
+            assertEquals("答え：静 ・ Quiet", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false))
+            assertEquals("入力した答えを保存しました。", StudyTextCopy.typingAnswerAcceptedToast())
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     @Test
@@ -121,12 +173,31 @@ class StudyTextCopyTest {
     @Test
     fun studyDoneCopyPreservesFocusAndRunSummaryText() {
         assertEquals("Today's focus done", StudyTextCopy.studyDoneTitle())
+        assertEquals("Practice", StudyTextCopy.practiceLabel())
+        assertEquals("Back home", StudyTextCopy.backHomeLabel())
+        assertEquals("Continue all kanji", StudyTextCopy.continueAllKanjiLabel())
+        assertEquals("New cards", StudyTextCopy.newCardsLabel())
+        assertEquals("Study", StudyTextCopy.studyLabel())
+        assertEquals("Cancel", StudyTextCopy.cancelLabel())
+        assertEquals("Nothing due now", StudyTextCopy.nothingDueTitle())
+        assertEquals("All caught up", StudyTextCopy.allCaughtUpHeadline())
         assertEquals(
-            "Kani finished today's adaptive focus. Keep going or stop here.",
+            "Your active kanji are resting. Sync for new cards, or come back when reviews are due.",
+            StudyTextCopy.allCaughtUpBody(),
+        )
+        assertEquals("Study practice", StudyTextCopy.studyPracticeTitle())
+        assertEquals("Nothing to study yet", StudyTextCopy.nothingToStudyHeadline())
+        assertEquals("Sync AnkiDroid first.", StudyTextCopy.syncAnkiDroidFirstBody())
+        assertEquals("Kanji not available", StudyTextCopy.kanjiNotAvailableHeadline())
+        assertEquals("This kanji changed after sync.", StudyTextCopy.kanjiChangedAfterSyncBody())
+        assertEquals("Study more new cards", StudyTextCopy.studyMoreNewCardsLabel())
+        assertEquals("How many extra new cards?", StudyTextCopy.studyMoreNewCardsDialogMessage())
+        assertEquals(
+            "Keep going or stop here.",
             StudyTextCopy.adaptiveFocusDoneBody(),
         )
         assertEquals(
-            "Kani finished this study session. Keep going or stop here.",
+            "Keep going or stop here.",
             StudyTextCopy.studyRunDoneBody(),
         )
         assertEquals("Today's focus: 0 of 7 left", StudyTextCopy.adaptiveFocusDoneSummary(7))
@@ -139,11 +210,66 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun studyDoneCopyTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("今日のフォーカス完了", StudyTextCopy.studyDoneTitle())
+            assertEquals("練習", StudyTextCopy.practiceLabel())
+            assertEquals("ホームに戻る", StudyTextCopy.backHomeLabel())
+            assertEquals("すべての漢字を続ける", StudyTextCopy.continueAllKanjiLabel())
+            assertEquals("新規カード", StudyTextCopy.newCardsLabel())
+            assertEquals("学習", StudyTextCopy.studyLabel())
+            assertEquals("キャンセル", StudyTextCopy.cancelLabel())
+            assertEquals("今は期限のカードがありません", StudyTextCopy.nothingDueTitle())
+            assertEquals("すべて完了", StudyTextCopy.allCaughtUpHeadline())
+            assertEquals(
+                "アクティブな漢字は休憩中です。新しいカードを同期するか、レビュー期限になったら戻ってきてください。",
+                StudyTextCopy.allCaughtUpBody(),
+            )
+            assertEquals("学習練習", StudyTextCopy.studyPracticeTitle())
+            assertEquals("まだ学習するカードがありません", StudyTextCopy.nothingToStudyHeadline())
+            assertEquals("先にAnkiDroidを同期してください。", StudyTextCopy.syncAnkiDroidFirstBody())
+            assertEquals("漢字を利用できません", StudyTextCopy.kanjiNotAvailableHeadline())
+            assertEquals("この漢字は同期後に変更されました。", StudyTextCopy.kanjiChangedAfterSyncBody())
+            assertEquals("新規カードを追加で学習", StudyTextCopy.studyMoreNewCardsLabel())
+            assertEquals("追加する新規カードは何枚ですか？", StudyTextCopy.studyMoreNewCardsDialogMessage())
+            assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.adaptiveFocusDoneBody())
+            assertEquals("続けても、ここで終えてもOKです。", StudyTextCopy.studyRunDoneBody())
+            assertEquals("今日のフォーカス：残り0 / 7", StudyTextCopy.adaptiveFocusDoneSummary(7))
+            assertEquals("このセッションで1件の漢字が進みました", StudyTextCopy.movedForwardSummary(1))
+            assertEquals("このセッションで3件の漢字が進みました", StudyTextCopy.movedForwardSummary(3))
+            assertEquals("1件の漢字をミスしました。まもなく再出題されます", StudyTextCopy.missedSummary(1))
+            assertEquals("2件の漢字をミスしました。まもなく再出題されます", StudyTextCopy.missedSummary(2))
+            assertEquals("1件のタスクが完了しました", StudyTextCopy.completedTaskSummary(1))
+            assertEquals("4件のタスクが完了しました", StudyTextCopy.completedTaskSummary(4))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun similarRepairPromptPreservesRepairCopyBranches() {
         assertEquals("You picked 提 — write 拉.", StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull")))
         assertEquals("Write 拉.", StudyTextCopy.similarRepairPrompt(repair("拉", "", "")))
         assertEquals("Repair saved.", StudyTextCopy.similarWritingRepairSavedToast(true))
         assertEquals("Saved. Try that repair again.", StudyTextCopy.similarWritingRepairSavedToast(false))
+    }
+
+    @Test
+    fun similarRepairPromptTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("提を選びました。拉を書いてください。", StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull")))
+            assertEquals("拉を書いてください。", StudyTextCopy.similarRepairPrompt(repair("拉", "", "")))
+            assertEquals("修復を保存しました。", StudyTextCopy.similarWritingRepairSavedToast(true))
+            assertEquals("保存しました。もう一度練習しましょう。", StudyTextCopy.similarWritingRepairSavedToast(false))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     @Test

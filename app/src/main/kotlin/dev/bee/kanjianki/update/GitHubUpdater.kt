@@ -51,7 +51,13 @@ class GitHubUpdater @JvmOverloads constructor(
             if (!ReleaseVersion.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName())) {
                 return recordResult(
                     checkedAt,
-                    UpdateResult(false, "Already on ${BuildConfig.VERSION_NAME}.", null, false, false),
+                    UpdateResult(
+                        false,
+                        UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME),
+                        null,
+                        false,
+                        false,
+                    ),
                     latest.tagName(),
                     "",
                     "",
@@ -95,9 +101,21 @@ class GitHubUpdater @JvmOverloads constructor(
 
             installVerifiedApk(checkedAt, latest.tagName(), apkFile, source, metadata.targetSdkVersion)
         } catch (error: IOException) {
-            recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "")
+            recordResult(
+                checkedAt,
+                UpdateResult.failed(UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error))),
+                "",
+                "",
+                "",
+            )
         } catch (error: RuntimeException) {
-            recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "")
+            recordResult(
+                checkedAt,
+                UpdateResult.failed(UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error))),
+                "",
+                "",
+                "",
+            )
         }
     }
 
@@ -108,7 +126,7 @@ class GitHubUpdater @JvmOverloads constructor(
             if (!status.hasPendingUpdate()) {
                 return recordResult(
                     checkedAt,
-                    UpdateResult.failed("No verified APK is waiting to install."),
+                    UpdateResult.failed(UpdateTextPolicy.noVerifiedApkWaitingMessage()),
                     status.lastVersion,
                     "",
                     "",
@@ -118,7 +136,7 @@ class GitHubUpdater @JvmOverloads constructor(
             if (!apkFile.isFile) {
                 return recordResult(
                     checkedAt,
-                    UpdateResult.failed("Verified APK cache is missing. Check again to download it."),
+                    UpdateResult.failed(UpdateTextPolicy.verifiedApkCacheMissingMessage()),
                     status.lastVersion,
                     "",
                     "",
@@ -140,7 +158,7 @@ class GitHubUpdater @JvmOverloads constructor(
         } catch (error: IOException) {
             recordResult(
                 checkedAt,
-                UpdateResult.failed("Update install failed: " + readableMessage(error)),
+                UpdateResult.failed(UpdateTextPolicy.updateInstallFailedMessage(readableMessage(error))),
                 status.lastVersion,
                 status.pendingApkName,
                 status.pendingMessage,
@@ -148,7 +166,7 @@ class GitHubUpdater @JvmOverloads constructor(
         } catch (error: RuntimeException) {
             recordResult(
                 checkedAt,
-                UpdateResult.failed("Update install failed: " + readableMessage(error)),
+                UpdateResult.failed(UpdateTextPolicy.updateInstallFailedMessage(readableMessage(error))),
                 status.lastVersion,
                 status.pendingApkName,
                 status.pendingMessage,
@@ -166,14 +184,14 @@ class GitHubUpdater @JvmOverloads constructor(
     ): UpdateResult {
         if (!client.canRequestPackageInstalls()) {
             val permission = installPermissionIntent(context)
-            val message = "APK verified. Grant install permission to continue."
+            val message = UpdateTextPolicy.apkVerifiedGrantInstallPermissionMessage()
             val result = UpdateResult(true, message, permission, true, false)
             notifyIfAutomatic(source, version, message)
             return recordResult(checkedAt, result, version, apkFile.name, message)
         }
 
         client.startPackageInstaller(apkFile, version, source, targetSdkVersion)
-        val message = "APK verified. Android installer started."
+        val message = UpdateTextPolicy.apkVerifiedAndroidInstallerStartedMessage()
         return recordResult(checkedAt, UpdateResult(true, message, null, false, false), version, apkFile.name, "")
     }
 

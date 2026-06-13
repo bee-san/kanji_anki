@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -30,12 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val ImportFilterInk = KaniUiTokens.Ink
-private val ImportFilterMuted = KaniUiTokens.Muted
-private val ImportFilterTeal = KaniUiTokens.Teal
-private val ImportFilterPinkDark = KaniUiTokens.Primary
-private val ImportFilterPanelBorder = KaniUiTokens.PanelBorder
-private val ImportFilterPanelFill = KaniUiTokens.PanelFill
+private val ImportFilterInk: Color @Composable get() = KaniUiTokens.Ink
+private val ImportFilterMuted: Color @Composable get() = KaniUiTokens.Muted
+private val ImportFilterTeal: Color @Composable get() = KaniUiTokens.Teal
+private val ImportFilterPinkDark: Color @Composable get() = KaniUiTokens.Primary
+private val ImportFilterPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val ImportFilterPanelFill: Color @Composable get() = KaniUiTokens.PanelFill
 private val ImportFilterPanelShape = KaniUiTokens.PanelShape
 
 @Composable

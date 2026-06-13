@@ -14,23 +14,32 @@ import dev.bee.kanjianki.core.TimelineCopy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
-        val query: String,
-        val items: List<RecordsImportModels.KanjiInventoryItem>,
+        val model: BrowseScreenModel,
     )
 
-    fun renderBrowseKanji(query: String?) {
+    private data class BrowseDetailRouteData(
+        val model: BrowseDetailScreenModel?,
+        val missingModel: BrowseDetailMissingModel?,
+    )
+
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false) {
         val requestedQuery = query ?: ""
         home.activeBrowseQuery = requestedQuery
+        home.activeBrowseSimilarOnly = onlySimilarKanji
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
-            load = { BrowseRouteData(requestedQuery, home.store.searchKanjiInventory(requestedQuery)) },
+            load = {
+                val items = home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)
+                BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji))
+            },
             render = { data ->
-                home.activeBrowseQuery = data.query
-                val model = browseScreenModel(home, data.query, data.items)
-                home.renderHomeRoute {
-                    BrowseScreen(model)
+                home.activeBrowseQuery = data.model.initialQuery
+                home.activeBrowseSimilarOnly = data.model.similarFilterActive
+                home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
+                    BrowseScreen(data.model)
                 }
             },
+            traceName = "browse-route",
         )
     }
 
@@ -39,27 +48,57 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
-        val timeline = home.store.timelineForKanji(kanji)
-        val row = timeline.currentRow
-        val inventory = timeline.inventoryItem
-        if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
-            val model = BrowseDetailMissingModel(
+        val requestedQuery = browseQuery ?: ""
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.browseActionLabel(),
+            load = {
+                val timeline = home.store.timelineForKanji(kanji)
+                val row = timeline.currentRow
+                val inventory = timeline.inventoryItem
+                val isMissing = inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()
+                val missingModel = if (isMissing) {
+                    BrowseDetailMissingModel(
                         HomeTextCopy.homeLabel(),
                         Runnable { home.renderHome() },
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
-            )
-            home.renderHomeRoute {
-                BrowseDetailMissing(model)
-            }
-            return
-        }
-        val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
-        val suspended = inventory != null && inventory.suspended
-        val model = detailScreenModel(timeline, row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended)
-        home.renderHomeRoute {
-            BrowseDetailScreen(model)
-        }
+                    )
+                } else {
+                    null
+                }
+                val detailModel = if (isMissing) {
+                    null
+                } else {
+                    detailScreenModel(
+                        timeline,
+                        row,
+                        inventory,
+                        HomeTextCopy.detailDisplayKanji(kanji, row, inventory),
+                        fromBrowse,
+                        requestedQuery,
+                        inventory != null && inventory.suspended,
+                    )
+                }
+                BrowseDetailRouteData(detailModel, missingModel)
+            },
+            render = { data ->
+                val detailBackAction = if (fromBrowse) {
+                    Runnable { renderBrowseKanji(requestedQuery, home.activeBrowseSimilarOnly) }
+                } else {
+                    Runnable { home.renderHome() }
+                }
+                if (data.missingModel != null) {
+                    home.renderHomeRoute(backAction = detailBackAction) {
+                        BrowseDetailMissing(data.missingModel)
+                    }
+                } else {
+                    home.renderHomeRoute(backAction = detailBackAction) {
+                        BrowseDetailScreen(data.model!!)
+                    }
+                }
+            },
+            traceName = "browse-detail",
+        )
     }
 
     fun detailScreenModel(
@@ -87,7 +126,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         return BrowseDetailHeroModel(
             displayKanji,
             if (fromBrowse) HomeTextCopy.backToBrowseKanjiLabel() else HomeTextCopy.homeLabel(),
-            if (fromBrowse) Runnable { renderBrowseKanji(browseQuery) } else Runnable { home.renderHome() }
+            if (fromBrowse) Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) } else Runnable { home.renderHome() }
         )
     }
 
@@ -142,9 +181,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             if (browserSearch.isEmpty()) null else Runnable { copyAnkiSearch(browserSearch) },
             HomeTextCopy.localSuspendButtonLabel(suspended),
             Runnable {
-                home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
-                Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
-                renderDetail(displayKanji, fromBrowse, browseQuery ?: "")
+                home.io.execute {
+                    home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
+                    home.main.post {
+                        Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
+                        renderDetail(displayKanji, fromBrowse, browseQuery ?: "")
+                    }
+                }
             }
         )
     }

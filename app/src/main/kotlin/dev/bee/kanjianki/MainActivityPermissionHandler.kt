@@ -54,6 +54,6 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
             LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
         )
         ReminderScheduler.cancel(activity)
-        Toast.makeText(activity, ReminderSettingsSavePolicy.PERMISSION_DENIED_MESSAGE, Toast.LENGTH_LONG).show()
+        Toast.makeText(activity, ReminderSettingsSavePolicy.permissionDeniedMessage(), Toast.LENGTH_LONG).show()
     }
 }

@@ -40,7 +40,7 @@ class WritingActionPresentation private constructor(input: Input?) {
             safeInput.hasReplaySnapshot &&
             WritingFeedbackCopy.canReplayAnalysis(analysis, safeInput.hasInk, safeInput.guide)
         hintVisible = !passed && safeInput.canRevealMoreHelp
-        hintText = if (safeInput.currentPracticeLevel == 3) "Hint" else "More help"
+        hintText = WritingFeedbackCopy.hintButtonText(safeInput.currentPracticeLevel)
         answerPanelVisible = WritingFeedbackCopy.shouldShowLearningPanel(
             analysis,
             safeInput.recallTask,

@@ -38,6 +38,14 @@ fun WritingPromptHeader(model: WritingPromptHeaderModel) {
             color = MainActivityUiSupport.STUDY_PINK_DARK,
             bold = true
         )
+        if (model.reasonLine.isNotBlank()) {
+            WritingPromptText(
+                text = model.reasonLine,
+                sizeSp = 14,
+                color = MainActivityUiSupport.STUDY_MUTED,
+                bold = false
+            )
+        }
         model.detailLines.forEach { line ->
             WritingPromptText(
                 text = line.text,
@@ -54,13 +62,13 @@ private fun WritingModePill(label: String) {
     Surface(
         modifier = Modifier.padding(bottom = 8.dp),
         shape = RoundedCornerShape(18.dp),
-        color = Color(MainActivityUiSupport.STUDY_PILL),
-        border = BorderStroke(1.dp, Color(MainActivityUiSupport.STUDY_BORDER))
+        color = KaniTheme.colors.pill,
+        border = BorderStroke(1.dp, KaniTheme.colors.border)
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            color = Color(MainActivityUiSupport.STUDY_PINK_DARK),
+            color = KaniTheme.colors.primary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))

@@ -3,6 +3,7 @@
 package dev.bee.kanjianki
 
 import android.graphics.Typeface
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -32,20 +35,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
-private val HeroPanelFill = Color(MainActivityUiSupport.STUDY_HERO_PANEL)
-private val HeroPanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-private val HeroMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
-private val HeroPlum = Color(MainActivityUiSupport.STUDY_HERO_PLUM)
-private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
-private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
+private val HeroPanelFill: Color @Composable get() = KaniTheme.colors.panelSoft
+private val HeroPanelBorder: Color @Composable get() = KaniTheme.colors.border
+private val HeroMuted: Color @Composable get() = KaniTheme.colors.muted
+private val HeroPlum: Color @Composable get() = KaniTheme.colors.ink
+private val HeroPink: Color @Composable get() = KaniTheme.colors.primary
+private val HeroPillFill: Color @Composable get() = KaniTheme.colors.pill
 
 @Composable
-fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
+fun FlashcardCard(
+    model: FlashcardCardModel,
+    modifier: Modifier = Modifier,
+    onTypingDone: Runnable? = null,
+) {
+    val cardHeightModifier = if (model.revealState.isRevealed) {
+        val windowHeight = with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height.toDp()
+        }
+        Modifier.height(maxOf(360.dp, windowHeight * 0.8f))
+    } else {
+        Modifier.heightIn(min = 360.dp)
+    }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .then(cardHeightModifier),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = KaniTheme.colors.surface,
         shadowElevation = 8.dp
     ) {
         Column(
@@ -58,10 +77,19 @@ fun FlashcardCard(model: FlashcardCardModel, modifier: Modifier = Modifier) {
                 FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
             }
             model.typingAnswer?.let { typingAnswerState ->
-                TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, state = typingAnswerState)
+                TypingMeaningAnswer(
+                    label = StudyTextCopy.meaningLabel(),
+                    state = typingAnswerState,
+                    onDone = onTypingDone,
+                )
             }
             if (model.revealState.isRevealed) {
-                StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+                StudyAnswerPanel(
+                    model.answerPanel,
+                    Modifier
+                        .padding(top = 12.dp, bottom = 10.dp)
+                        .weight(1f),
+                )
             }
         }
     }
@@ -159,7 +187,7 @@ fun FlashcardHeroPanel(model: FlashcardHeroPanelModel, modifier: Modifier = Modi
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(210.dp),
+            .heightIn(min = 210.dp),
         shape = RoundedCornerShape(28.dp),
         color = HeroPanelFill,
         border = BorderStroke(1.dp, HeroPanelBorder)

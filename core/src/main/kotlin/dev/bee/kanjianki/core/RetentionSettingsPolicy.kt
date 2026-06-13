@@ -1,7 +1,11 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object RetentionSettingsPolicy {
     const val SAVED_MESSAGE: String = "Review retention saved."
+
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
     fun saveRequest(
@@ -31,6 +35,14 @@ object RetentionSettingsPolicy {
         return SaveResult.valid(parameters)
     }
 
+    @JvmStatic
+    fun savedMessage(): String = localizedText(SAVED_MESSAGE, "レビュー保持率を保存しました。")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
+
     class SaveResult private constructor(
         @JvmField val valid: Boolean,
         @JvmField val parameters: RecordsSchedulerModels.SchedulerParameters?,
@@ -38,7 +50,7 @@ object RetentionSettingsPolicy {
     ) {
         companion object {
             fun valid(parameters: RecordsSchedulerModels.SchedulerParameters): SaveResult {
-                return SaveResult(true, parameters, SAVED_MESSAGE)
+                return SaveResult(true, parameters, RetentionSettingsPolicy.savedMessage())
             }
 
             fun invalid(message: String?): SaveResult {

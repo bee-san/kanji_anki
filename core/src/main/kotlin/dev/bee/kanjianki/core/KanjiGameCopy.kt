@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object KanjiGameCopy {
     const val LABEL_GAMES = "Games"
     const val LABEL_NEXT = "Next"
@@ -11,21 +13,138 @@ object KanjiGameCopy {
     const val LABEL_ROUND = "Round"
     const val LABEL_SCORE = "Score"
     const val LABEL_STREAK = "Streak"
-    const val GAMES_SUBTITLE = "Practice kanji without changing SRS."
-    const val EMPTY_NO_KANJI_TITLE = "No kanji games yet"
-    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid first so Kani can build practice games from your own cards."
-    const val GAME_NOT_READY_TITLE = "Game not ready"
-    const val GAME_NOT_READY_BODY = "This game needs at least two usable choices from your local kanji data."
+    const val GAMES_SUBTITLE = "Practice without changing reviews."
+    const val EMPTY_NO_KANJI_TITLE = "No games yet"
+    const val EMPTY_NO_KANJI_BODY = "Sync AnkiDroid to build games."
+    const val GAME_NOT_READY_TITLE = "Needs more data"
+    const val GAME_NOT_READY_BODY = "At least two choices needed."
+
+    private const val JAPANESE_LANGUAGE = "ja"
+
+    @JvmStatic
+    fun gamesLabel(): String = localizedText(LABEL_GAMES, "ゲーム")
+
+    @JvmStatic
+    fun nextLabel(): String = localizedText(LABEL_NEXT, "次へ")
+
+    @JvmStatic
+    fun roundCompleteLabel(): String = localizedText(LABEL_ROUND_COMPLETE, "ラウンド完了")
+
+    @JvmStatic
+    fun newRoundLabel(): String = localizedText(LABEL_NEW_ROUND, "新しいラウンド")
+
+    @JvmStatic
+    fun syncAnkiDroidLabel(): String = localizedText(LABEL_SYNC_ANKIDROID, "AnkiDroidを同期")
+
+    @JvmStatic
+    fun playLabel(): String = localizedText(LABEL_PLAY, "開始")
+
+    @JvmStatic
+    fun lockedLabel(): String = localizedText(LABEL_LOCKED, "データ不足")
+
+    @JvmStatic
+    fun roundLabel(): String = localizedText(LABEL_ROUND, "ラウンド")
+
+    @JvmStatic
+    fun scoreLabel(): String = localizedText(LABEL_SCORE, "スコア")
+
+    @JvmStatic
+    fun streakLabel(): String = localizedText(LABEL_STREAK, "連続")
+
+    @JvmStatic
+    fun gamesSubtitle(): String = localizedText(GAMES_SUBTITLE, "復習を変更せずに練習できます。")
+
+    @JvmStatic
+    fun emptyNoKanjiTitle(): String = localizedText(EMPTY_NO_KANJI_TITLE, "まだゲームはありません")
+
+    @JvmStatic
+    fun emptyNoKanjiBody(): String = localizedText(EMPTY_NO_KANJI_BODY, "AnkiDroidを同期してゲームを作成します。")
+
+    @JvmStatic
+    fun gameNotReadyTitle(): String = localizedText(GAME_NOT_READY_TITLE, "もっとデータが必要です")
+
+    @JvmStatic
+    fun gameNotReadyBody(): String = localizedText(GAME_NOT_READY_BODY, "選択肢が2つ以上必要です。")
+
+    @JvmStatic
+    fun modeLabel(mode: KanjiGameEngine.GameMode?): String {
+        return when (mode!!) {
+            KanjiGameEngine.GameMode.MEANING_POP -> localizedText(mode.label, "漢字→意味")
+            KanjiGameEngine.GameMode.READING_RUSH -> localizedText(mode.label, "単語→読み")
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(mode.label, "意味→漢字")
+        }
+    }
+
+    @JvmStatic
+    fun modeTitle(mode: KanjiGameEngine.GameMode?): String {
+        return when (mode!!) {
+            KanjiGameEngine.GameMode.MEANING_POP -> localizedText(mode.title, "意味ポップ")
+            KanjiGameEngine.GameMode.READING_RUSH -> localizedText(mode.title, "読みラッシュ")
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(mode.title, "似た漢字バトル")
+        }
+    }
+
+    @JvmStatic
+    fun modeCardAccessibilityPrefix(): String = localizedText("Games mode card", "ゲームモードカード")
+
+    @JvmStatic
+    fun questionPrompt(question: KanjiGameEngine.GameQuestion?): String {
+        val safeQuestion = question!!
+        if (!isJapaneseLocale()) {
+            return safeQuestion.prompt
+        }
+        return when (safeQuestion.mode) {
+            KanjiGameEngine.GameMode.MEANING_POP,
+            KanjiGameEngine.GameMode.READING_RUSH -> safeQuestion.prompt
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "「${confusablePromptMeaning(safeQuestion.prompt)}」を表す漢字は？"
+        }
+    }
+
+    @JvmStatic
+    fun questionPromptDetail(question: KanjiGameEngine.GameQuestion?): String {
+        val safeQuestion = question!!
+        if (!isJapaneseLocale()) {
+            return safeQuestion.promptDetail
+        }
+        return when (safeQuestion.mode) {
+            KanjiGameEngine.GameMode.MEANING_POP -> "意味を選びます。"
+            KanjiGameEngine.GameMode.READING_RUSH -> readingPromptDetail(safeQuestion.targetKanji)
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "形を見比べます。"
+        }
+    }
+
+    private fun readingPromptDetail(targetKanji: String): String {
+        return if (targetKanji.isEmpty()) "読みを選びます。" else "${targetKanji}の読みを選びます。"
+    }
+
+    private fun confusablePromptMeaning(prompt: String): String {
+        val prefix = "Which kanji means "
+        val suffix = "?"
+        return if (prompt.startsWith(prefix) && prompt.endsWith(suffix)) {
+            prompt.substring(prefix.length, prompt.length - suffix.length)
+        } else {
+            prompt
+        }
+    }
 
     @JvmStatic
     fun modeBody(mode: KanjiGameEngine.GameMode?, available: Boolean): String {
         if (!available) {
-            return "Needs more local kanji data."
+            return localizedText("Needs more data.", "もっとデータが必要です。")
         }
         return when (mode!!) {
-            KanjiGameEngine.GameMode.MEANING_POP -> "Pick meanings for kanji from your focus list."
-            KanjiGameEngine.GameMode.READING_RUSH -> "Pick readings from your source words."
-            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "Choose between visually similar kanji."
+            KanjiGameEngine.GameMode.MEANING_POP -> localizedText(
+                "Pick meanings from your focus list.",
+                "集中リストから意味を選びます。",
+            )
+            KanjiGameEngine.GameMode.READING_RUSH -> localizedText(
+                "Pick readings from source words.",
+                "出典の単語から読みを選びます。",
+            )
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(
+                "Choose among similar kanji.",
+                "似ている漢字から選びます。",
+            )
         }
     }
 
@@ -58,22 +177,37 @@ object KanjiGameCopy {
     @JvmStatic
     fun resultTitle(roundComplete: Boolean, correct: Boolean): String {
         if (roundComplete) {
-            return LABEL_ROUND_COMPLETE
+            return roundCompleteLabel()
         }
-        return if (correct) "Correct" else "Not quite"
+        return if (correct) localizedText("Correct", "正解") else localizedText("Not quite", "惜しい")
     }
 
     @JvmStatic
-    fun answerText(correctAnswer: String?): String = "Correct answer: $correctAnswer"
+    fun answerText(correctAnswer: String?): String = localizedText(
+        "Correct answer: $correctAnswer",
+        "正解: $correctAnswer",
+    )
 
     @JvmStatic
-    fun selectedAnswerText(selectedAnswer: String?): String = "Your answer: $selectedAnswer"
+    fun selectedAnswerText(selectedAnswer: String?): String = localizedText(
+        "Your answer: $selectedAnswer",
+        "あなたの答え: $selectedAnswer",
+    )
 
     @JvmStatic
-    fun finalScoreText(correct: Int, total: Int): String = "Score: $correct/$total"
+    fun finalScoreText(correct: Int, total: Int): String = localizedText(
+        "Score: $correct/$total",
+        "スコア: $correct/$total",
+    )
 
     @JvmStatic
     fun accuracyText(correct: Int, answered: Int): String {
-        return "Accuracy: ${KanjiGameRoundState.accuracyPercent(correct, answered)}%"
+        val accuracy = KanjiGameRoundState.accuracyPercent(correct, answered)
+        return localizedText("Accuracy: $accuracy%", "正答率: $accuracy%")
     }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

@@ -1,76 +1,81 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsImportFiltersTextCopy {
-    @JvmStatic
-    fun importFiltersTitle(): String = "Import filters"
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
-    fun importFiltersBody(): String {
-        return "Suspend cards by default. Turn on active, tagged, or weak only when needed; Kani skips leech tags."
-    }
+    fun importFiltersTitle(): String = localizedText("Import filters", "インポートフィルター")
 
     @JvmStatic
-    fun activeCardsLabel(): String = "Active cards"
+    fun importFiltersBody(): String = localizedText("Pick sources, save, sync.", "ソースを選んで、保存して、同期する。")
 
     @JvmStatic
-    fun suspendedCardsLabel(): String = "Suspended cards"
+    fun activeCardsLabel(): String = localizedText("Active cards", "有効")
 
     @JvmStatic
-    fun taggedCardsLabel(): String = "Tagged cards"
+    fun suspendedCardsLabel(): String = localizedText("Suspended cards", "停止")
 
     @JvmStatic
-    fun weakCardsLabel(): String = "Weak cards"
+    fun taggedCardsLabel(): String = localizedText("Tagged cards", "タグ付き")
 
     @JvmStatic
-    fun browserQueryLabel(): String = "Use browser query"
+    fun weakCardsLabel(): String = localizedText("Weak cards", "弱い")
+
+    @JvmStatic
+    fun browserQueryLabel(): String = localizedText("Browser query", "ブラウザ検索")
 
     @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
 
     @JvmStatic
-    fun ankiBrowserQueryLabel(): String = "Browser query"
+    fun ankiBrowserQueryLabel(): String = localizedText("Anki search", "Anki検索")
 
     @JvmStatic
-    fun ankiBrowserQueryHelperText(): String {
-        return "Examples: is:suspended, rated:31:1, tag:kani. Kani keeps note type, rank, and threshold."
-    }
+    fun ankiBrowserQueryHelperText(): String = localizedText("Try is:suspended or tag:kani.", "is:suspended や tag:kani を試す。")
 
     @JvmStatic
     fun ankiNoteTagsHint(): String = "tag1, tag2"
 
     @JvmStatic
-    fun ankiNoteTagsLabel(): String = "Note tags"
+    fun ankiNoteTagsLabel(): String = localizedText("Tags to include", "含めるタグ")
 
     @JvmStatic
-    fun fsrsDifficultyLabel(): String = "FSRS difficulty"
+    fun fsrsDifficultyLabel(): String = localizedText("Minimum FSRS difficulty", "最小FSRS難度")
 
     @JvmStatic
-    fun lapsesLabel(): String = "Lapses"
+    fun lapsesLabel(): String = localizedText("Minimum lapses", "最小失敗数")
 
     @JvmStatic
-    fun minimumMatchingCardsLabel(): String = "Minimum matching cards per kanji"
+    fun minimumMatchingCardsLabel(): String = localizedText("Matching cards per kanji", "漢字ごとの一致カード数")
 
     @JvmStatic
-    fun saveImportFiltersLabel(): String = "Save import filters"
+    fun saveImportFiltersLabel(): String = localizedText("Save filters", "フィルターを保存")
 
     @JvmStatic
-    fun browserQueryRequiredToast(): String = "Enter a browser query or turn it off."
+    fun browserQueryRequiredToast(): String = localizedText("Add a search or turn it off.", "検索条件を追加するか、オフにしてください。")
 
     @JvmStatic
-    fun importSourceRequiredToast(): String = "Turn on at least one import source."
+    fun importSourceRequiredToast(): String = localizedText("Turn on at least one source.", "少なくとも1つのソースをオンにしてください。")
 
     @JvmStatic
-    fun importFiltersSavedToast(): String = "Import filters saved. Sync again to rebuild practice."
+    fun importFiltersSavedToast(): String = localizedText("Saved. Sync to refresh.", "保存しました。同期すると更新されます。")
 
     @JvmStatic
-    fun presetsTitle(): String = "Presets"
+    fun presetsTitle(): String = localizedText("Presets", "プリセット")
 
     @JvmStatic
-    fun importPresetSavedToast(): String = "Import preset saved. Sync again to rebuild practice."
+    fun importPresetSavedToast(): String = localizedText("Preset saved. Sync to refresh.", "プリセットを保存しました。同期すると更新されます。")
 
     @JvmStatic
-    fun numericImportThresholdsToast(): String = "Use numeric import thresholds."
+    fun numericImportThresholdsToast(): String = localizedText("Use numeric thresholds.", "数値しきい値を使ってください。")
 
     @JvmStatic
-    fun importThresholdRangeToast(): String = "Use difficulty 1-10, lapses 1-100, and cards 1-1000."
+    fun importThresholdRangeToast(): String = localizedText("Difficulty 1-10. Lapses 1-100. Cards 1-1000.", "難度 1-10。失敗 1-100。カード 1-1000。")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

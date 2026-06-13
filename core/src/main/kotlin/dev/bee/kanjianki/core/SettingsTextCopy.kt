@@ -24,6 +24,9 @@ object SettingsTextCopy {
     fun versionText(version: String?): String = SettingsAutomationTextCopy.versionText(version)
 
     @JvmStatic
+    fun settingsTitle(): String = SettingsSectionTextCopy.settingsTitle()
+
+    @JvmStatic
     fun settingsAnkiSourceTitle(): String = SettingsSectionTextCopy.settingsAnkiSourceTitle()
 
     @JvmStatic
@@ -78,6 +81,9 @@ object SettingsTextCopy {
     fun pendingUpdateFallback(): String = SettingsAutomationTextCopy.pendingUpdateFallback()
 
     @JvmStatic
+    fun pendingUpdateFallback(canInstall: Boolean): String = SettingsAutomationTextCopy.pendingUpdateFallback(canInstall)
+
+    @JvmStatic
     fun installVerifiedUpdateLabel(): String = SettingsAutomationTextCopy.installVerifiedUpdateLabel()
 
     @JvmStatic
@@ -121,6 +127,9 @@ object SettingsTextCopy {
 
     @JvmStatic
     fun categoryToggleDescription(expanded: Boolean, title: String): String = SettingsSectionTextCopy.categoryToggleDescription(expanded, title)
+
+    @JvmStatic
+    fun categoryStateDescription(expanded: Boolean): String = SettingsSectionTextCopy.categoryStateDescription(expanded)
 
     @JvmStatic
     fun settingsCategoryPanelCount(panels: Int): String = SettingsSectionTextCopy.settingsCategoryPanelCount(panels)
@@ -361,6 +370,12 @@ object SettingsTextCopy {
 
     @JvmStatic
     fun manualWorkloadBody(): String = SettingsStudyPlanTextCopy.manualWorkloadBody()
+
+    @JvmStatic
+    fun workloadPercentSliderDescription(): String = SettingsStudyPlanTextCopy.workloadPercentSliderDescription()
+
+    @JvmStatic
+    fun maxItemsSliderDescription(): String = SettingsStudyPlanTextCopy.maxItemsSliderDescription()
 
     @JvmStatic
     fun workloadScaleLabels(): Array<String> = SettingsStudyPlanTextCopy.workloadScaleLabels()

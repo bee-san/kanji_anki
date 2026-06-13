@@ -7,10 +7,24 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
+import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
+import java.util.LinkedHashSet
 import java.util.Random
+
+internal fun similarKanjiExplanationSourceWords(session: RecordsSchedulerModels.StudySession?): List<String> {
+    val examples = session?.row?.examples ?: return emptyList()
+    val out = LinkedHashSet<String>()
+    for (example in examples) {
+        val expression = example.expression.trim()
+        if (expression.isNotEmpty()) {
+            out.add(expression)
+        }
+    }
+    return ArrayList(out)
+}
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
     private val meaningKanjiChoicePlanner = MeaningKanjiChoicePlanner()
@@ -27,10 +41,10 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val model = MeaningChoiceSessionModel(
-            "Recall",
-            LABEL_CHOOSE_KANJI,
+            StudyTaskCopy.studyModeLabel(session),
+            StudyTextCopy.studyChoiceTitle(),
             StudyTaskCopy.labelForTask(session.taskType),
-            "Pick the kanji that matches the meaning.",
+            StudyTextCopy.studyChoiceBody(),
             "",
             StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt),
             choiceCard.choices,
@@ -45,7 +59,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 MeaningChoiceResultModel(
                     StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
                     if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                    if (correct) MainActivityBase.LABEL_PASS else MainActivityBase.LABEL_FAIL,
+                    if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
                     correctChoice = choiceCard.targetKanji,
                     selectedChoiceCorrect = correct,
                 )
@@ -97,24 +111,36 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.settings().matureSupportThreshold,
             System.currentTimeMillis()
         )
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            choiceCard.targetKanji,
+            home.store.searchKanjiInventory(""),
+            home.store.similarPairsForKanji(choiceCard.targetKanji),
+            similarKanjiExplanationSourceWords(session),
+        )
         val model = SimilarChoiceSessionModel(
-            "Recognise",
-            LABEL_CHOOSE_KANJI,
-            MainActivityBase.LABEL_SIMILAR_KANJI,
-            "Pick the kanji that matches the meaning.",
+            StudyTaskCopy.studyModeLabel(session),
+            StudyTextCopy.studyChoiceTitle(),
+            StudyTaskCopy.labelForTask(session.taskType),
+            StudyTextCopy.studyChoiceBody(),
             reason,
-            "Which kanji means $meaning?",
+            StudyTextCopy.studyChoiceQuestion(meaning),
             SimilarChoiceGridModel(
                 choices,
                 true
-            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) }
+            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
+            similarKanjiExplanationLines(explanation),
         )
-        home.renderComposeStudyRoute {
-            SimilarChoiceSessionCard(
-                model = model,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-            )
-        }
+        home.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
+            content = {
+                SimilarChoiceSessionCard(
+                    model = model,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                    showInlineChoices = false,
+                )
+            },
+            actionBar = { SimilarChoiceActionBar(model.gridModel) },
+        )
     }
 
     fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard {
@@ -141,7 +167,4 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         MainActivityStudyInteractionReset.resetChoice(home, resetTouchTracking)
     }
 
-    private companion object {
-        const val LABEL_CHOOSE_KANJI = "Choose the kanji"
-    }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,10 +27,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val LadderThresholdInk = KaniUiTokens.Ink
-private val LadderThresholdMuted = KaniUiTokens.Muted
-private val LadderThresholdPanelBorder = KaniUiTokens.PanelBorder
-private val LadderThresholdWhite = KaniUiTokens.White
+private val LadderThresholdInk: Color @Composable get() = KaniUiTokens.Ink
+private val LadderThresholdMuted: Color @Composable get() = KaniUiTokens.Muted
+private val LadderThresholdPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val LadderThresholdWhite: Color @Composable get() = KaniUiTokens.White
 private val LadderThresholdPanelShape = KaniUiTokens.PanelShape
 
 object SettingsLadderThresholdTestTags {

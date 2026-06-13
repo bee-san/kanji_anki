@@ -3,7 +3,8 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
-import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
+import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 
@@ -11,7 +12,11 @@ internal interface StatsScreenStatsSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
+    fun studyImpactStats(): StudyStatsStore.StudyImpactStats
+    fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak
+    fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats
+    fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence>
 }
 
 internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
@@ -29,8 +34,24 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
                 return store.recomputeStatsSnapshotSynchronously(nowMillis)
             }
 
+            override fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
+                return store.studyImpactStats()
+            }
+
+            override fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
+                return store.studyStreak(nowMillis)
+            }
+
+            override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+                return store.recentMistakes(limit)
+            }
+
             override fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
                 return store.studyTaskTimeStats(nowMillis)
+            }
+
+            override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+                return store.kanjiRepairEvidence()
             }
         }
     )
@@ -43,10 +64,23 @@ internal fun buildStatsScreenModel(
     val snapshot = source.cachedStatsSnapshotOrNull()
         ?: source.latestStatsSnapshotOrNull()
         ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    val needsLiveFallback = snapshot.cacheFormatVersion < STATS_CACHE_FORMAT_VERSION
+    val studyImpact = if (needsLiveFallback) source.studyImpactStats() else snapshot.studyImpactStats
+    val studyStreak = if (needsLiveFallback) source.studyStreak(nowMillis) else snapshot.studyStreak
+    val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
+    val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
+    val repairEvidence = source.kanjiRepairEvidence()
+    val repairEvidenceCohort = StudyStatsStore.repairEvidenceCohortStats(repairEvidence)
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
-        source.studyTaskTimeStats(nowMillis),
+        studyTaskTimeStats,
+        studyImpact,
+        studyStreak,
+        recentMistakes,
+        repairEvidence,
+        repairEvidenceCohort,
+        nowMillis,
     )
 }
 
@@ -54,18 +88,29 @@ internal fun statsScreenModel(
     stats: StudyStatsStore.KaniOutcomeStats,
     report: KanjiImpactAnalyzer.Report?,
     studyTime: StudyStatsStore.StudyTaskTimeStats,
+    studyImpact: StudyStatsStore.StudyImpactStats,
+    studyStreak: StudyStatsStore.StudyStreak,
+    recentMistakes: List<StudyStatsStore.RecentMistake>,
+    repairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
+    repairEvidenceCohort: StudyStatsStore.RepairEvidenceCohortStats = StudyStatsStore.RepairEvidenceCohortStats.empty(),
+    nowMillis: Long,
 ): StatsScreenModel {
     return StatsScreenModel(
-        title = "Stats",
-        intro = "Kani repairs weak kanji from Anki reviews and shows whether the evidence improves after sync.",
+        title = StatsTextCopy.statsTitle(),
+        intro = "",
         verdict = statsVerdictCard(stats),
-        sections = listOf(
-            weaknessBurnDownCard(stats),
-            supportConversionCard(stats),
-            notHelpingCard(report),
-            ladderHealthCard(stats.ladderHealth),
-            studyTimeCard(studyTime)
-        )
+        sections = buildList {
+            add(weaknessBurnDownCard(stats))
+            add(supportConversionCard(stats))
+            repairEvidenceCohortCard(repairEvidenceCohort)?.let(::add)
+            repairEvidenceCard(repairEvidence)?.let(::add)
+            add(studyStreakCard(studyStreak, nowMillis))
+            add(studyImpactCard(studyImpact))
+            add(notHelpingCard(report))
+            add(ladderHealthCard(stats.ladderHealth))
+            add(recentMistakesCard(recentMistakes, nowMillis))
+            add(studyTimeCard(studyTime))
+        }
     )
 }
 
@@ -133,12 +178,8 @@ private fun outcomeCard(
 
 private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Weak kanji trend",
-        summary = StudyTextCopy.countText(
-            stats.weakKanjiImproved.improvedCount,
-            "weak kanji improved",
-            "weak kanji improved"
-        ),
+        title = StatsTextCopy.weakKanjiTrendTitle(),
+        summary = StatsTextCopy.weakKanjiImprovedSummary(stats.weakKanjiImproved.improvedCount),
         body = StatsTextCopy.weaknessImprovementBody(
             stats.weakKanjiImproved.improvedCount,
             stats.weakKanjiImproved.averageBeforeWeakness,
@@ -158,17 +199,9 @@ private fun weaknessBurnDownCard(stats: StudyStatsStore.KaniOutcomeStats): Stats
 
 private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): StatsCardModel {
     return outcomeCard(
-        title = "Anki support",
-        summary = StudyTextCopy.countText(
-            stats.matureSupportGained.matureSupportGained,
-            "mature card gained",
-            "mature cards gained"
-        ),
-        body = StudyTextCopy.countText(
-            stats.matureSupportGained.firstSupportCount,
-            "kanji gained first mature support",
-            "kanji gained first mature support"
-        ) + ".",
+        title = StatsTextCopy.ankiSupportTitle(),
+        summary = StatsTextCopy.matureSupportSummary(stats.matureSupportGained.matureSupportGained),
+        body = StatsTextCopy.firstMatureSupportSummary(stats.matureSupportGained.firstSupportCount) + ".",
         lines = supportGainExamples(stats.matureSupportGained).map {
             StatsLineModel(
                 text = it,
@@ -178,6 +211,68 @@ private fun supportConversionCard(stats: StudyStatsStore.KaniOutcomeStats): Stat
             )
         },
         strokeColor = STATS_BLUE_COLOR
+    )
+}
+
+private fun studyStreakCard(
+    streak: StudyStatsStore.StudyStreak,
+    nowMillis: Long,
+): StatsCardModel {
+    return outcomeCard(
+        title = StatsTextCopy.studyStreakTitle(),
+        summary = StatsTextCopy.studyStreakSummary(streak.currentDays),
+        body = StatsTextCopy.studyStreakBody(
+            streak.bestDays,
+            streak.studiedToday,
+            streak.reviewsToday,
+            streak.lastStudyAtMillis,
+            nowMillis
+        ),
+        lines = emptyList(),
+        strokeColor = STATS_TEAL_COLOR
+    )
+}
+
+private fun studyImpactCard(stats: StudyStatsStore.StudyImpactStats): StatsCardModel {
+    return outcomeCard(
+        title = StatsTextCopy.studyImpactTitle(),
+        summary = StatsTextCopy.studyImpactSummary(stats.totalReviews),
+        body = StatsTextCopy.studyImpactBody(
+            stats.totalReviews,
+            stats.distinctReviewedKanji,
+            stats.writingRequired,
+            stats.writingPassed,
+            stats.writingFailed,
+            stats.manualOverrides
+        ),
+        lines = emptyList(),
+        strokeColor = STATS_BLUE_COLOR
+    )
+}
+
+private fun recentMistakesCard(
+    mistakes: List<StudyStatsStore.RecentMistake>,
+    nowMillis: Long,
+): StatsCardModel {
+    val rows = mistakes.take(5)
+    return outcomeCard(
+        title = StatsTextCopy.recentMistakesTitle(),
+        summary = StatsTextCopy.recentMistakesSummary(rows.size),
+        body = StatsTextCopy.recentMistakesBody(rows.isNotEmpty()),
+        lines = rows.map { mistake ->
+            StatsLineModel(
+                text = StatsTextCopy.recentMistakeRowText(
+                    mistake.kanji,
+                    mistake.rating,
+                    mistake.reviewedAtMillis,
+                    nowMillis
+                ),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_CORAL_COLOR
     )
 }
 
@@ -203,11 +298,7 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
         if (rows.isNotEmpty() && report != null && report.needsMoreCardsCount > 0) {
             add(
                 StatsLineModel(
-                    text = StudyTextCopy.countText(
-                        report.needsMoreCardsCount,
-                        "kanji still needs more Anki evidence",
-                        "kanji still need more Anki evidence"
-                    ) + ".",
+                    text = StatsTextCopy.moreAnkiEvidenceSummary(report.needsMoreCardsCount) + ".",
                     color = STATS_MUTED_COLOR,
                     bold = false,
                     sizeSp = 15
@@ -216,8 +307,8 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
         }
     }
     return StatsCardModel(
-        title = "Needs attention",
-        summary = StudyTextCopy.countText(rows.size, "kanji with enough evidence", "kanji with enough evidence"),
+        title = StatsTextCopy.needsAttentionTitle(),
+        summary = StatsTextCopy.kanjiWithEnoughEvidenceSummary(rows.size),
         body = StatsTextCopy.notHelpingBody(report == null || report.empty(), rows.isNotEmpty()),
         lines = details,
         strokeColor = STATS_CORAL_COLOR,
@@ -229,12 +320,8 @@ private fun notHelpingCard(report: KanjiImpactAnalyzer.Report?): StatsCardModel 
 
 private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsCardModel {
     return outcomeCard(
-        title = "Ladder status",
-        summary = StudyTextCopy.countText(
-            metric.totalActiveItems,
-            "active kanji on the ladder",
-            "active kanji on the ladder"
-        ),
+        title = StatsTextCopy.ladderStatusTitle(),
+        summary = StatsTextCopy.activeKanjiOnLadderSummary(metric.totalActiveItems),
         body = StatsTextCopy.ladderHealthBody(
             metric.totalActiveItems,
             metric.promotionReadyCount,
@@ -253,6 +340,66 @@ private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsC
         },
         strokeColor = STATS_GOLD_COLOR
     )
+}
+
+private fun repairEvidenceCohortCard(cohort: StudyStatsStore.RepairEvidenceCohortStats): StatsCardModel? {
+    if (cohort.totalCount == 0) {
+        return null
+    }
+    val rows = cohort.examples.take(4)
+    return outcomeCard(
+        title = StatsTextCopy.repairEvidenceCohortTitle(),
+        summary = StatsTextCopy.repairEvidenceCohortSummary(cohort.totalCount),
+        body = StatsTextCopy.repairEvidenceCohortBody(
+            cohort.improvingCount,
+            cohort.stableCount,
+            cohort.regressingCount,
+            cohort.insufficientEvidenceCount,
+            cohort.highConfidenceCount,
+            cohort.mediumConfidenceCount,
+            cohort.lowConfidenceCount,
+        ),
+        lines = rows.map { row ->
+            StatsLineModel(
+                text = StatsTextCopy.repairEvidenceCohortExampleText(row.kanji, row.status, row.confidence),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_CORAL_COLOR
+    )
+}
+
+private fun repairEvidenceCard(evidence: List<StudyStatsStore.KanjiRepairEvidence>): StatsCardModel? {
+    if (evidence.isEmpty()) {
+        return null
+    }
+    val rows = evidence.take(3)
+    return outcomeCard(
+        title = StatsTextCopy.repairEvidenceTitle(),
+        summary = StatsTextCopy.repairEvidenceSummary(evidence.size),
+        body = StatsTextCopy.repairEvidenceBody(),
+        lines = rows.map { row ->
+            StatsLineModel(
+                text = repairEvidenceLineText(row),
+                color = STATS_INK_COLOR,
+                bold = true,
+                sizeSp = 16
+            )
+        },
+        strokeColor = STATS_GOLD_COLOR
+    )
+}
+
+private fun repairEvidenceLineText(item: StudyStatsStore.KanjiRepairEvidence): String {
+    val status = StatsTextCopy.repairEvidenceStatusLabel(item.status)
+    val delta = when {
+        item.beforeWeakness != null && item.afterWeakness != null -> "${item.beforeWeakness} → ${item.afterWeakness}"
+        item.beforeMatureSupport != null && item.afterMatureSupport != null -> "${item.beforeMatureSupport} → ${item.afterMatureSupport}"
+        else -> item.reason.replace('_', ' ')
+    }
+    return "${item.kanji} · $status · $delta"
 }
 
 private fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {
@@ -287,18 +434,18 @@ private fun supportGainExamples(metric: StudyStatsStore.MatureSupportGainedMetri
 
 private fun studyTimeCard(stats: StudyStatsStore.StudyTaskTimeStats): StatsCardModel {
     return StatsCardModel(
-        title = "Study time",
-        summary = "Today: " + StatsTextCopy.formatStudyTime(stats.todayMillis),
-        body = "Last 7 days: " + StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis),
+        title = StatsTextCopy.studyTimeTitle(),
+        summary = StatsTextCopy.studyTimeTodayLabel(StatsTextCopy.formatStudyTime(stats.todayMillis)),
+        body = StatsTextCopy.studyTimeLast7DaysLabel(StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis)),
         lines = listOf(
             StatsLineModel(
-                text = "Answered tasks: " + stats.answeredTasks,
+                text = StatsTextCopy.studyTimeAnsweredTasksLabel(stats.answeredTasks),
                 color = STATS_MUTED_COLOR,
                 bold = false,
                 sizeSp = 16
             ),
             StatsLineModel(
-                text = "Avg / task: " + StatsTextCopy.formatStudyTime(stats.averageMillisPerTask()),
+                text = StatsTextCopy.studyTimeAveragePerTaskLabel(StatsTextCopy.formatStudyTime(stats.averageMillisPerTask())),
                 color = STATS_MUTED_COLOR,
                 bold = false,
                 sizeSp = 16

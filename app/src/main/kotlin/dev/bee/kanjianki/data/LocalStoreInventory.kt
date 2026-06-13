@@ -7,10 +7,58 @@ import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyCollectionLookup
 import java.util.Collections
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
+    private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    private var cachedActiveDashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow>? = null
+    private var cachedLocallySuspendedKanji: Set<String>? = null
+    private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+    private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
+    private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
+    private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
+    private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
+
+    internal fun clearDashboardRowsCache() {
+        cachedDashboardRows = null
+        cachedActiveDashboardRows = null
+        cachedActiveDashboardRowsByKanji = null
+        clearTimelineCache()
+    }
+
+    internal fun clearLocallySuspendedCache() {
+        cachedLocallySuspendedKanji = null
+        cachedActiveDashboardRows = null
+        cachedActiveDashboardRowsByKanji = null
+        clearKanjiInventoryAllCache()
+    }
+
+    internal override fun clearStudyItemsCache() {
+        cachedStudyItems = null
+        cachedStudyItemsByKanji = null
+        clearTimelineCache()
+    }
+
+    internal override fun clearKanjiInventoryAllCache() {
+        cachedKanjiInventoryAll = null
+        cachedKanjiInventorySearches = null
+        clearTimelineCache()
+    }
+
+    internal override fun clearTimelineCache() {
+        cachedTimelinesByKanji = null
+    }
+
+    internal override fun clearSimilarKanjiNeighborsCache() {
+        cachedKanjiWithSimilarNeighbors = null
+    }
+
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
+        cachedDashboardRows?.let { return it }
+
         val db = readableDatabase
         val rows = ArrayList<RecordsImportModels.DashboardRow>()
         db.query(
@@ -43,13 +91,18 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 )
             }
         }
+        cachedDashboardRows = rows
         return rows
     }
 
     fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
+        cachedActiveDashboardRows?.let { return it }
+
         val suspended = locallySuspendedKanji()
         if (suspended.isEmpty()) {
-            return dashboardRows()
+            val rows = dashboardRows()
+            cachedActiveDashboardRows = rows
+            return rows
         }
         val out = ArrayList<RecordsImportModels.DashboardRow>()
         for (row in dashboardRows()) {
@@ -57,7 +110,23 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(row)
             }
         }
+        cachedActiveDashboardRows = out
         return out
+    }
+
+    fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
+        cachedActiveDashboardRowsByKanji?.let { return it }
+
+        val rows = activeDashboardRows()
+        if (rows.isEmpty()) {
+            val empty = emptyMap<String, RecordsImportModels.DashboardRow>()
+            cachedActiveDashboardRowsByKanji = empty
+            return empty
+        }
+
+        val rowsByKanji = Collections.unmodifiableMap(StudyCollectionLookup.dashboardRowsByKanji(rows))
+        cachedActiveDashboardRowsByKanji = rowsByKanji
+        return rowsByKanji
     }
 
     fun rowForKanji(kanji: String?): RecordsImportModels.DashboardRow? {
@@ -69,15 +138,40 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun searchKanjiInventory(query: String?): List<RecordsImportModels.KanjiInventoryItem> {
+        return searchKanjiInventory(query, false)
+    }
+
+    fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
-        val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
-        var selection: String? = null
-        var args: Array<String>? = null
-        if (!parsed.isEmpty()) {
-            selection = parsed.terms().joinToString(" AND ") { "search_text LIKE ?" }
-            args = parsed.terms().map { "%$it%" }.toTypedArray()
+        val terms = parsed.terms()
+        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) terms.joinToString("\u0000") else null
+        if (cacheKey == null) {
+            if (!onlySimilarKanji && terms.isEmpty()) {
+                cachedKanjiInventoryAll?.let { return it }
+            }
+        } else {
+            cachedKanjiInventorySearches?.get(cacheKey)?.let { return it }
         }
+
+        val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
+        val clauses = ArrayList<String>()
+        val argsList = ArrayList<String>()
+        if (terms.isNotEmpty()) {
+            for (term in terms) {
+                clauses.add("search_text LIKE ?")
+                argsList.add("%$term%")
+            }
+        }
+        if (onlySimilarKanji) {
+            clauses.add(
+                "EXISTS (SELECT 1 FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE " +
+                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_A=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI OR " +
+                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_B=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
+            )
+        }
+        val selection = clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND ")
+        val args = argsList.takeIf { it.isNotEmpty() }?.toTypedArray()
         db.query(
             TABLE_KANJI_INVENTORY,
             null,
@@ -92,10 +186,20 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(readInventoryItem(db, cursor))
             }
         }
+        if (!onlySimilarKanji && terms.isEmpty()) {
+            cachedKanjiInventoryAll = out
+        } else if (!onlySimilarKanji) {
+            val searches = cachedKanjiInventorySearches ?: LinkedHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
+                cachedKanjiInventorySearches = it
+            }
+            searches[cacheKey!!] = out
+        }
         return out
     }
 
     fun locallySuspendedKanji(): Set<String> {
+        cachedLocallySuspendedKanji?.let { return it }
+
         val out = HashSet<String>()
         readableDatabase.query(
             TABLE_LOCAL_KANJI_SUSPENSIONS,
@@ -110,6 +214,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(string(cursor, COLUMN_KANJI))
             }
         }
+        cachedLocallySuspendedKanji = out
         return out
     }
 
@@ -133,24 +238,57 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             return
         }
         writableDatabase.transaction {
-            if (suspended) {
-                val values = ContentValues()
-                values.put(COLUMN_KANJI, kanji)
-                values.put("suspended_at", nowMillis)
-                insertWithOnConflict(
-                    TABLE_LOCAL_KANJI_SUSPENSIONS,
-                    null,
-                    values,
-                    SQLiteDatabase.CONFLICT_REPLACE,
-                )
-                delete(TABLE_LEARNING_REPEATS, WHERE_KANJI, arrayOf(kanji))
-            } else {
-                delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, arrayOf(kanji))
+            setKanjiLocallySuspendedInTransaction(this, kanji, suspended, nowMillis)
+        }
+        clearLocallySuspendedCache()
+        clearKanjiInventoryAllCache()
+    }
+
+    fun setKanjiLocallySuspendedForKanji(kanji: Collection<String?>?, suspended: Boolean, nowMillis: Long) {
+        val normalized = kanji
+            .orEmpty()
+            .map { it.orEmpty() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+        if (normalized.isEmpty()) {
+            return
+        }
+        writableDatabase.transaction {
+            for (value in normalized) {
+                setKanjiLocallySuspendedInTransaction(this, value, suspended, nowMillis)
             }
+        }
+        clearLocallySuspendedCache()
+        clearKanjiInventoryAllCache()
+    }
+
+    private fun setKanjiLocallySuspendedInTransaction(
+        db: SQLiteDatabase,
+        kanji: String,
+        suspended: Boolean,
+        nowMillis: Long,
+    ) {
+        if (suspended) {
+            val values = ContentValues()
+            values.put(COLUMN_KANJI, kanji)
+            values.put("suspended_at", nowMillis)
+            db.insertWithOnConflict(
+                TABLE_LOCAL_KANJI_SUSPENSIONS,
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
+            db.delete(TABLE_LEARNING_REPEATS, WHERE_KANJI, arrayOf(kanji))
+        } else {
+            db.delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, arrayOf(kanji))
         }
     }
 
     fun timelineForKanji(kanji: String): RecordsStudyModels.KanjiRecoveryTimeline {
+        if (kanji.isNotBlank()) {
+            cachedTimelinesByKanji?.get(kanji)?.let { return it }
+        }
+
         val db = readableDatabase
         val inventoryItem = readInventoryItem(db, kanji)
         val row = readDashboardRow(db, kanji)
@@ -171,10 +309,19 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             }
         }
         Collections.reverse(events)
-        return RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        val timeline = RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
+        if (kanji.isNotBlank()) {
+            val caches = cachedTimelinesByKanji ?: LinkedHashMap<String, RecordsStudyModels.KanjiRecoveryTimeline>().also {
+                cachedTimelinesByKanji = it
+            }
+            caches[kanji] = timeline
+        }
+        return timeline
     }
 
     fun studyItems(): List<RecordsStudyModels.StudyItem> {
+        cachedStudyItems?.let { return it }
+
         val db = readableDatabase
         val items = ArrayList<RecordsStudyModels.StudyItem>()
         db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, "due_at ASC").use { cursor ->
@@ -190,10 +337,53 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items[i] = current.withHasSimilarKanji(hasSimilar)
             }
         }
+        cachedStudyItems = items
+        return items
+    }
+
+    fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
+        val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct().sorted()
+        if (distinctKanji.isEmpty()) {
+            return emptyList()
+        }
+
+        val cacheKey = distinctKanji.joinToString("\u0000")
+        cachedStudyItemsByKanji?.get(cacheKey)?.let { return it }
+
+        val db = readableDatabase
+        val placeholders = distinctKanji.joinToString(",") { "?" }
+        val items = ArrayList<RecordsStudyModels.StudyItem>()
+        db.query(
+            TABLE_STUDY_ITEMS,
+            null,
+            "$COLUMN_KANJI IN ($placeholders)",
+            distinctKanji.toTypedArray(),
+            null,
+            null,
+            "due_at ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                items.add(readStudyItem(cursor))
+            }
+        }
+        val withSimilar = kanjiWithSimilarNeighbors(db)
+        for (i in items.indices) {
+            val current = items[i]
+            val hasSimilar = withSimilar.contains(current.kanji)
+            if (hasSimilar != current.hasSimilarKanji) {
+                items[i] = current.withHasSimilarKanji(hasSimilar)
+            }
+        }
+        val caches = cachedStudyItemsByKanji ?: LinkedHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
+            cachedStudyItemsByKanji = it
+        }
+        caches[cacheKey] = items
         return items
     }
 
     fun kanjiWithSimilarNeighbors(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithSimilarNeighbors?.let { return it }
+
         val out = HashSet<String>()
         db.rawQuery(
             "SELECT kanji_a FROM $TABLE_SIMILAR_KANJI_PAIRS UNION SELECT kanji_b FROM $TABLE_SIMILAR_KANJI_PAIRS",
@@ -206,7 +396,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 }
             }
         }
-        return out
+        val cached = Collections.unmodifiableSet(out)
+        cachedKanjiWithSimilarNeighbors = cached
+        return cached
     }
 
     fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>?): List<RecordsStudyModels.StudyItem> {

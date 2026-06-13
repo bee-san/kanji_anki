@@ -1,7 +1,5 @@
 package dev.bee.kanjianki
 
-import androidx.compose.ui.graphics.Color as ComposeColor
-
 data class HomeFocusQueueCardModel(
     val kanji: String,
     val meaning: String,
@@ -9,13 +7,15 @@ data class HomeFocusQueueCardModel(
     val reasonLine: String,
     val body: String,
     val tags: List<HomeFocusQueueTagModel>,
-    val accentColor: ComposeColor,
+    /** Legacy palette ARGB; resolve with [kaniColor] at render time. */
+    val accentColor: Int,
     val onClick: () -> Unit,
 )
 
 data class HomeFocusQueueTagModel(
     val label: String,
-    val color: ComposeColor,
+    /** Legacy palette ARGB; resolve with [kaniColor] at render time. */
+    val color: Int,
 )
 
 data class HomeFocusQueuePanelModel(

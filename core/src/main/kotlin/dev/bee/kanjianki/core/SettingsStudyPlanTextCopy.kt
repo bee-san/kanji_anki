@@ -3,147 +3,189 @@ package dev.bee.kanjianki.core
 import java.util.Locale
 
 object SettingsStudyPlanTextCopy {
-    @JvmStatic
-    fun deckLimitsTitle(): String = "Daily limits"
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
-    fun deckLimitsBody(): String = "Limit how many new cards Kani can show each day."
+    fun deckLimitsTitle(): String = localizedText("Daily limits", "1日の上限")
 
     @JvmStatic
-    fun newCardsPerDayLabel(): String = "Daily new card limit"
+    fun deckLimitsBody(): String = localizedText("Set the daily new-card cap.", "1日の新規カード上限を設定する。")
 
     @JvmStatic
-    fun saveDeckLimitsLabel(): String = "Save daily limits"
+    fun newCardsPerDayLabel(): String = localizedText("New cards per day", "1日の新規カード数")
 
     @JvmStatic
-    fun dailyWorkloadTitle(): String = "Daily workload"
+    fun saveDeckLimitsLabel(): String = localizedText("Save daily limit", "1日の上限を保存")
+
+    @JvmStatic
+    fun dailyWorkloadTitle(): String = localizedText("Daily workload", "1日の学習量")
 
     @JvmStatic
     fun automaticWorkloadBody(): String {
-        return "Kani picks today's workload; Anki due dates stay unchanged."
+        return localizedText("Kani picks today's count; due dates stay fixed.", "Kaniが今日の数を選ぶ。期限日は固定のまま。")
     }
 
     @JvmStatic
-    fun saveMaximumLabel(): String = "Save item limit"
+    fun saveMaximumLabel(): String = localizedText("Save workload", "学習量を保存")
 
     @JvmStatic
-    fun manualWorkloadLabel(): String = "Use manual workload"
+    fun manualWorkloadLabel(): String = localizedText("Set workload manually", "学習量を手動で設定")
 
     @JvmStatic
     fun manualWorkloadBody(): String {
-        return "Set today's workload; Anki due dates stay unchanged."
+        return localizedText("Set today's count; due dates stay fixed.", "今日の数を設定する。期限日は固定のまま。")
     }
+
+    @JvmStatic
+    fun workloadPercentSliderDescription(): String = localizedText("Today's study load percentage", "今日の学習量の割合")
+
+    @JvmStatic
+    fun maxItemsSliderDescription(): String = localizedText("Maximum items", "最大件数")
 
     @JvmStatic
     fun workloadScaleLabels(): Array<String> {
-        return arrayOf("Very little", "Pareto", "Balanced", "More", "All kanji")
+        return if (isJapaneseLocale()) {
+            arrayOf("ごく少なめ", "集中", "バランス", "多め", "すべての漢字")
+        } else {
+            arrayOf("Very little", "Focused", "Balanced", "More", "All kanji")
+        }
     }
 
     @JvmStatic
-    fun saveWorkloadLabel(): String = "Save workload"
+    fun saveWorkloadLabel(): String = localizedText("Save workload", "学習量を保存")
 
     @JvmStatic
-    fun automaticParetoLabel(): String = "Use automatic workload"
+    fun automaticParetoLabel(): String = localizedText("Use automatic workload", "自動学習量を使う")
 
     @JvmStatic
     fun workloadStatusText(percent: Int, maxItems: Int): String {
         val snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent)
         val normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems)
-        val label = AdaptiveLoadPlanner.workloadLabel(snapped)
+        val label = workloadStatusLabel(snapped)
         if (snapped >= 100) {
-            return "$label: up to $normalizedMax items"
+            return "$label: " + localizedText("up to ", "最大") + itemCountText(normalizedMax)
         }
-        return "$label: up to ${minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax)} items"
+        return "$label: " + localizedText("up to ", "最大") + itemCountText(
+            minOf(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax),
+        )
     }
 
     @JvmStatic
     fun maxItemsStatusText(maxItems: Int): String {
-        return "Maximum: " + StudyTextCopy.countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items")
+        return localizedText("Maximum: ", "最大: ") + itemCountText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems))
     }
 
     @JvmStatic
     fun autoWorkloadStatusText(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): String {
         if (plan == null || plan.target <= 0) {
-            return "Auto Pareto: waiting for problem kanji"
+            return localizedText("Waiting for cards", "カード待ち")
         }
-        return "Auto Pareto: " + StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        return if (isJapaneseLocale()) {
+            "今日は" + itemCountText(plan.target)
+        } else {
+            StudyTextCopy.countText(plan.target, "item", "items") + " today"
+        }
+    }
+
+    private fun workloadStatusLabel(snappedWorkloadPercent: Int): String {
+        if (snappedWorkloadPercent <= 0) {
+            return localizedText("Very little", "ごく少なめ")
+        }
+        if (snappedWorkloadPercent <= 20) {
+            return localizedText("Focused", "集中")
+        }
+        if (snappedWorkloadPercent <= 50) {
+            return localizedText("Balanced", "バランス")
+        }
+        if (snappedWorkloadPercent < 100) {
+            return localizedText("More", "多め")
+        }
+        return localizedText("All kanji", "すべての漢字")
     }
 
     @JvmStatic
     fun newCardSortStatusText(mode: String?): String {
-        return "Current: " + newCardSortLabel(mode)
+        return localizedText("Current: ", "現在: ") + newCardSortLabel(mode)
     }
 
     @JvmStatic
     fun newCardSortLabel(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty"
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk"
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness"
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balanced priority"
-            else -> "Frequency"
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> localizedText("Hardest first", "難しい順")
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> localizedText("Forgetting risk", "忘れやすさ")
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> localizedText("Kani misses", "Kaniのミス")
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> localizedText("Balanced mix", "バランス")
+            else -> localizedText("Frequency", "頻度")
         }
     }
 
     @JvmStatic
     fun newCardSortDescription(mode: String?): String {
         return when (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Harder Anki cards first."
-            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Cards most likely to be forgotten first."
-            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kanji with weaker Kani history first."
-            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> "Balances Kani weakness, Anki risk, missed examples, and frequency."
-            else -> "Jiten frequency first."
+            RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> localizedText("Harder cards first.", "難しいカードから。")
+            RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> localizedText("Likely forgotten first.", "忘れそうなカードから。")
+            RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> localizedText("Missed in Kani first.", "Kaniで間違えたカードから。")
+            RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY -> localizedText(
+                "Balances misses, risk, and frequency.",
+                "ミス、リスク、頻度のバランス。",
+            )
+            else -> localizedText("Jiten frequency first.", "Jiten頻度順。")
         }
     }
 
     @JvmStatic
     fun frequencyRangeStatusText(minRank: Int, maxRank: Int): String {
-        return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank)
+        return String.format(
+            Locale.ROOT,
+            localizedText("Jiten ranks %d-%d", "Jiten順位 %d-%d"),
+            minRank,
+            maxRank,
+        )
     }
 
     @JvmStatic
     fun retentionStatusText(retentionPercent: Int): String {
-        return "Desired retention: $retentionPercent%"
+        return localizedText("Desired retention: ", "目標保持率: ") + "$retentionPercent%"
     }
 
     @JvmStatic
-    fun newCardSortTitle(): String = "New card sort"
+    fun newCardSortTitle(): String = localizedText("New card sort", "新規カードの並び順")
 
     @JvmStatic
     fun newCardSortBody(): String {
-        return "Choose how new cards enter study; due reviews and repeats stay first."
+        return localizedText("New cards only. Reviews and repeats stay first.", "新規カードのみ。レビューと繰り返しは先のまま。")
     }
 
     @JvmStatic
-    fun saveNewCardSortLabel(): String = "Save new card sort"
+    fun saveNewCardSortLabel(): String = localizedText("Save new card sort", "新規カードの並び順を保存")
 
     @JvmStatic
     fun newCardSortConfusablePreviewWarning(examples: List<String>): String {
         val suffix = if (examples.isEmpty()) "" else ": " + examples.joinToString(", ")
-        return "Heads up: visually similar kanji appear close together in this preview$suffix."
+        return localizedText("Similar kanji stay close$suffix.", "似た漢字を近くに並べます$suffix。")
     }
 
     @JvmStatic
-    fun fsrsRetentionTitle(): String = "Review retention"
+    fun fsrsRetentionTitle(): String = localizedText("Review retention", "レビュー保持率")
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return "FSRS stays local. Anki due dates stay unchanged."
+        return localizedText("FSRS stays local. Anki due dates stay fixed.", "FSRSは端末内のみ。Ankiの期限日は固定のまま。")
     }
 
     @JvmStatic
-    fun useJitenRankRetentionRangesLabel(): String = "Jiten-rank retention ranges"
+    fun useJitenRankRetentionRangesLabel(): String = localizedText("Jiten-rank retention ranges", "Jiten順位ごとの保持率範囲")
 
     @JvmStatic
     fun jitenRankRetentionRangesBody(): String {
-        return "Optional: one Jiten rank range per line, like 1-500=95%. Other kanji use global retention."
+        return localizedText("One range per line, e.g. 1-500=95%.", "1行に1範囲（例: 1-500=95%）。")
     }
 
     @JvmStatic
-    fun useExampleRangesLabel(): String = "Use example ranges"
+    fun useExampleRangesLabel(): String = localizedText("Use example ranges", "例の範囲を使う")
 
     @JvmStatic
-    fun saveRetentionLabel(): String = "Save retention"
+    fun saveRetentionLabel(): String = localizedText("Save retention", "保持率を保存")
 
     @JvmStatic
     fun retentionPresetLabel(value: Int): String {
@@ -151,57 +193,74 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun studyLadderTitle(): String = "Study ladder"
+    fun studyLadderTitle(): String = localizedText("Study ladder", "学習ラダー")
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return "Turn rungs on or off, or move them. Keep one always-available rung on."
+        return localizedText("Set practice order. Keep one rung on.", "練習順を設定。1段はオンのままにする。")
     }
 
     @JvmStatic
     fun ladderToggleLabel(enabled: Boolean): String {
-        return if (enabled) "On" else "Off"
+        return if (enabled) localizedText("On", "オン") else localizedText("Off", "オフ")
     }
 
     @JvmStatic
-    fun moveUpLabel(): String = "Up"
+    fun moveUpLabel(): String = localizedText("Move up", "上へ移動")
 
     @JvmStatic
-    fun moveDownLabel(): String = "Down"
+    fun moveDownLabel(): String = localizedText("Move down", "下へ移動")
 
     @JvmStatic
-    fun restoreDefaultLadderLabel(): String = "Restore default ladder"
+    fun restoreDefaultLadderLabel(): String = localizedText("Restore defaults", "既定に戻す")
 
     @JvmStatic
-    fun studyLadderRestoredToast(): String = "Study ladder restored."
+    fun studyLadderRestoredToast(): String = localizedText("Ladder restored.", "ラダーを戻しました。")
 
     @JvmStatic
     fun keepAlwaysAvailableRungToast(): String {
-        return "Keep at least one always-available rung on."
+        return localizedText("Leave one rung always on.", "常に1段はオンにしてください。")
     }
 
     @JvmStatic
     fun ladderRungToggleToast(rung: RecordsBase.LadderRung, wasEnabled: Boolean): String {
-        return settingsLadderRungLabel(rung) + if (wasEnabled) " off." else " on."
+        val label = settingsLadderRungLabel(rung)
+        return if (isJapaneseLocale()) {
+            label + if (wasEnabled) "をオフにしました。" else "をオンにしました。"
+        } else {
+            label + if (wasEnabled) " turned off." else " turned on."
+        }
     }
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String {
-        val status = if (ladder.isEnabled(rung)) "enabled" else "disabled"
-        val kind = if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) "Conditional rung" else "Always available rung"
-        return "$kind $status"
+        val enabled = ladder.isEnabled(rung)
+        if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
+            return if (enabled) localizedText("Included when similar kanji exist", "似た漢字があるときに含める") else skippedInStudyText()
+        }
+        return if (enabled) localizedText("Included in study", "学習に含める") else skippedInStudyText()
     }
 
     @JvmStatic
     fun settingsLadderRungLabel(rung: RecordsBase.LadderRung): String {
         return when (rung) {
-            RecordsBase.LadderRung.WRITE_KANJI -> "Write kanji"
-            RecordsBase.LadderRung.SIMILAR_KANJI -> "Similar kanji"
-            RecordsBase.LadderRung.TYPE_MEANING -> "Type the meaning"
-            RecordsBase.LadderRung.MEANING_KANJI -> "Meaning -> kanji"
-            RecordsBase.LadderRung.KANJI_MEANING -> "Kanji -> meaning"
-            RecordsBase.LadderRung.FONT_MEANING -> "Font -> meaning"
-            RecordsBase.LadderRung.WORD_READING -> "Word -> reading"
+            RecordsBase.LadderRung.WRITE_KANJI -> localizedText("Write kanji", "漢字を書く")
+            RecordsBase.LadderRung.SIMILAR_KANJI -> localizedText("Similar kanji", "似た漢字")
+            RecordsBase.LadderRung.TYPE_MEANING -> localizedText("Type the meaning", "意味を入力")
+            RecordsBase.LadderRung.MEANING_KANJI -> localizedText("Meaning -> kanji", "意味 → 漢字")
+            RecordsBase.LadderRung.KANJI_MEANING -> localizedText("Kanji -> meaning", "漢字 → 意味")
+            RecordsBase.LadderRung.FONT_MEANING -> localizedText("Font -> meaning", "フォント → 意味")
+            RecordsBase.LadderRung.WORD_READING -> localizedText("Word -> reading", "単語 → 読み")
         }
     }
+
+    private fun itemCountText(count: Int): String =
+        if (isJapaneseLocale()) "${count}件" else StudyTextCopy.countText(count, "item", "items")
+
+    private fun skippedInStudyText(): String = localizedText("Skipped in study", "学習でスキップ")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

@@ -177,18 +177,17 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
 internal fun screenshotUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
     return SettingsUpdatePageModel(
         title = SettingsTextCopy.updatePageTitle(),
-        body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
         onHome = activity::renderHome,
         onBack = { activity.renderSettings(true) },
         onCheckForUpdate = {},
         panel = SettingsUpdatePanelModel(
             title = SettingsTextCopy.automaticUpdatesTitle(),
             statusLine = "Static screenshot fixture",
-            statusColor = Color(0xFF00AEB5),
+            statusColor = Color(0xFF00AEB5).toArgb(),
             lastCheckLine = "Last check: never",
             lastResultLine = "Last result: no update run",
             installPermissionLine = "Install permission: not needed in screenshots",
-            installPermissionColor = Color(0xFF6C5674),
+            installPermissionColor = Color(0xFF6C5674).toArgb(),
             hasPendingUpdate = false,
             pendingVersionLine = null,
             pendingMessageLine = null,
@@ -203,8 +202,8 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
 
 private fun screenshotGameColor(mode: KanjiGameEngine.GameMode): Int {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral.toArgb()
-        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal.toArgb()
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue.toArgb()
+        KanjiGameEngine.GameMode.MEANING_POP -> Color(0xFFFF4C76).toArgb()
+        KanjiGameEngine.GameMode.READING_RUSH -> Color(0xFF00AEB5).toArgb()
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> Color(0xFF6E5CE6).toArgb()
     }
 }

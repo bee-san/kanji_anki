@@ -15,7 +15,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,17 +63,21 @@ fun StatsScreen(model: StatsScreenModel, modifier: Modifier = Modifier) {
             Text(
                 text = model.title,
                 style = statsTextStyle(sizeSp = 34, bold = true, compact = compact),
-                color = ComposeColor(STATS_INK_COLOR)
+                color = kaniColor(STATS_INK_COLOR)
             )
             Spacer(modifier = Modifier.height(titleSpacing))
             StatsCard(model.verdict, compact = compact)
-            Spacer(modifier = Modifier.height(titleSpacing))
-            Text(
-                text = model.intro,
-                style = statsTextStyle(sizeSp = 16, bold = false, compact = compact),
-                color = ComposeColor(STATS_MUTED_COLOR)
-            )
-            Spacer(modifier = Modifier.height(introSpacing))
+            if (model.intro.isNotBlank()) {
+                Spacer(modifier = Modifier.height(titleSpacing))
+                Text(
+                    text = model.intro,
+                    style = statsTextStyle(sizeSp = 16, bold = false, compact = compact),
+                    color = kaniColor(STATS_MUTED_COLOR)
+                )
+                Spacer(modifier = Modifier.height(introSpacing))
+            } else {
+                Spacer(modifier = Modifier.height(introSpacing))
+            }
             Column(verticalArrangement = Arrangement.spacedBy(sectionSpacing)) {
                 model.sections.forEach { card ->
                     StatsCard(card, compact = compact)
@@ -98,8 +101,8 @@ private fun StatsCard(model: StatsCardModel, compact: Boolean = false) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = KaniUiTokens.PanelShape,
-        color = ComposeColor(model.fillColor),
-        border = BorderStroke(1.dp, ComposeColor(model.strokeColor))
+        color = kaniColor(model.fillColor),
+        border = BorderStroke(1.dp, kaniColor(model.strokeColor))
     ) {
         Column(
             modifier = Modifier.padding(cardPadding),
@@ -108,34 +111,34 @@ private fun StatsCard(model: StatsCardModel, compact: Boolean = false) {
             Text(
                 text = model.title,
                 style = statsTextStyle(sizeSp = model.titleSizeSp, bold = true, compact = compact),
-                color = ComposeColor(model.titleColor)
+                color = kaniColor(model.titleColor)
             )
             model.summary?.let { summary ->
                 Text(
                     text = summary,
                     style = statsTextStyle(sizeSp = model.summarySizeSp, bold = true, compact = compact),
-                    color = ComposeColor(model.summaryColor)
+                    color = kaniColor(model.summaryColor)
                 )
             }
             model.body?.let { body ->
                 Text(
                     text = body,
                     style = statsTextStyle(sizeSp = model.bodySizeSp, bold = false, compact = compact),
-                    color = ComposeColor(model.bodyColor)
+                    color = kaniColor(model.bodyColor)
                 )
             }
             model.lines.forEach { line ->
                 Text(
                     text = line.text,
                     style = statsTextStyle(sizeSp = line.sizeSp, bold = line.bold, compact = compact),
-                    color = ComposeColor(line.color)
+                    color = kaniColor(line.color)
                 )
             }
         }
     }
 }
 
-private fun statsTextStyle(sizeSp: Int, bold: Boolean, compact: Boolean): TextStyle {
+private fun statsTextStyle(sizeSp: Int, bold: Boolean, compact: Boolean = false): TextStyle {
     val scale = if (compact) 0.94f else 1f
     return TextStyle(
         fontSize = (sizeSp * scale).sp,

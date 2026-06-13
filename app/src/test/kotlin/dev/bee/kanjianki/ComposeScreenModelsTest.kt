@@ -1,8 +1,13 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.ExplanationConfidence
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.SimilarKanjiExplanation
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStoreBase
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
@@ -10,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -20,7 +26,7 @@ class ComposeScreenModelsTest {
         val background = Executors.newSingleThreadExecutor()
         val releaseLoad = CountDownLatch(1)
         val rendered = CountDownLatch(1)
-        val loader = AsyncHomeRouteLoader(background) { task -> task.run() }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> task.run() })
 
         try {
             val started = System.nanoTime()
@@ -44,11 +50,89 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun asyncHomeRouteLoaderShowsLoadingAfterDelayOnlyOnSlowLoads() {
+        val loading = mutableListOf<String>()
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loadingScheduler = ManualLoadingTaskScheduler()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { task -> main.execute(task) },
+            loadingTaskScheduler = loadingScheduler,
+        )
+
+        loader.load(
+            showLoading = {
+                loading.add("loading")
+            },
+            load = {
+                "ready"
+            },
+            render = {
+                events.add("render")
+            },
+            showLoadingAfterMs = 40,
+        )
+
+        background.runNext()
+        main.runNext()
+
+        assertEquals(listOf("render"), events)
+        loadingScheduler.runPendingTask()
+        assertTrue("unexpected loading task was queued", main.isEmpty())
+        assertEquals(listOf<String>(), loading)
+    }
+
+    @Test
+    fun asyncHomeRouteLoaderShowsLoadingAfterDelayBeforeRenderingSlowLoad() {
+        val events = mutableListOf<String>()
+        val background = QueueingExecutor()
+        val main = QueueingExecutor()
+        val loadingScheduler = ManualLoadingTaskScheduler()
+        val loadingShown = CountDownLatch(1)
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { task -> main.execute(task) },
+            loadingTaskScheduler = loadingScheduler,
+        )
+
+        loader.load(
+            showLoading = {
+                events.add("loading")
+                loadingShown.countDown()
+            },
+            load = {
+                loadingScheduler.runPendingTask()
+                assertTrue("loading should appear before slow load completes", loadingShown.await(5, TimeUnit.SECONDS))
+                "ready"
+            },
+            render = { value ->
+                events.add("render:$value")
+            },
+            showLoadingAfterMs = 40,
+        )
+
+        val backgroundWorker = Thread { background.runNext() }
+        backgroundWorker.start()
+        while (main.isEmpty()) {
+            Thread.yield()
+        }
+
+        main.runNext()
+        assertEquals(listOf("loading"), events)
+
+        backgroundWorker.join(5_000)
+        main.runNext()
+        assertEquals(listOf("loading", "render:ready"), events)
+    }
+
+    @Test
     fun asyncHomeRouteLoaderShowsLoadingBeforeBackgroundWork() {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading") },
@@ -73,7 +157,7 @@ class ComposeScreenModelsTest {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading:first") },
@@ -99,7 +183,7 @@ class ComposeScreenModelsTest {
         val events = mutableListOf<String>()
         val background = QueueingExecutor()
         val main = QueueingExecutor()
-        val loader = AsyncHomeRouteLoader(background) { task -> main.execute(task) }
+        val loader = AsyncHomeRouteLoader(background = background, postToMain = { task -> main.execute(task) })
 
         loader.load(
             showLoading = { events.add("loading") },
@@ -131,7 +215,7 @@ class ComposeScreenModelsTest {
         val onSync = {}
         val onStudy = {}
         val onFocus = {}
-        val action = HomeActionModel("Stats", R.drawable.ic_stats_24) {}
+        val action = HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})
         val coral = 0xFFFF4C76.toInt()
         val metric = HomeMetricModel(R.drawable.ic_target_24, coral, "Focus", "2", "Ready", null)
 
@@ -139,11 +223,11 @@ class ComposeScreenModelsTest {
             title = "Kani",
             subtitle = "Repair weak kanji",
             metrics = listOf(metric),
+            todayPlan = HomeTodayPlanModel("Today", "Nothing useful now", emptyList()),
             deckOverviewRows = listOf("Due 2", "New 1"),
             showSyncCta = true,
             syncLabel = "Sync",
             studyLabel = "Study",
-            studySubtitle = "Next weak kanji",
             onSync = onSync,
             onStudy = onStudy,
             actions = listOf(action),
@@ -158,14 +242,16 @@ class ComposeScreenModelsTest {
         assertEquals("Kani", model.title)
         assertEquals("Repair weak kanji", model.subtitle)
         assertEquals(listOf(metric), model.metrics)
+        assertEquals("Today", model.todayPlan.title)
+        assertEquals("Nothing useful now", model.todayPlan.summary)
         assertEquals(listOf("Due 2", "New 1"), model.deckOverviewRows)
         assertEquals(true, model.showSyncCta)
         assertEquals("Sync", model.syncLabel)
         assertEquals("Study", model.studyLabel)
-        assertEquals("Next weak kanji", model.studySubtitle)
         assertSame(onSync, model.onSync)
         assertSame(onStudy, model.onStudy)
         assertEquals(listOf(action), model.actions)
+        assertEquals(buttonTraceSection("home-action-Stats"), action.traceSection)
         assertEquals("Focus queue", model.focusTitle)
         assertEquals("View all", model.focusActionLabel)
         assertSame(onFocus, model.onFocusAction)
@@ -600,22 +686,22 @@ class ComposeScreenModelsTest {
     fun settingsCategoryCopyUsesAnkiLikeSections() {
         assertEquals("Import & sync", dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceTitle())
         assertEquals(
-            "AnkiDroid note fields, import filters, frequency range, and daily sync live together.",
+            "Choose sources, filters, and rank range.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAnkiSourceBody(),
         )
-        assertEquals("Deck options", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Study settings", dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorTitle())
         assertEquals(
-            "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.",
+            "Set new cards, timing, workload, and ladder.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsStudyBehaviorBody(),
         )
-        assertEquals("Advanced controls", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
+        assertEquals("Automation", dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationTitle())
         assertEquals(
-            "Reminders and app update checks that change how Kani runs in the background.",
+            "Manage reminders, sync, and updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
-            "Offline dictionaries, stroke data, fonts, and attribution shown by the app.",
+            "Manage dictionaries, strokes, fonts, and credits.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataBody(),
         )
     }
@@ -711,11 +797,11 @@ class ComposeScreenModelsTest {
             panel = SettingsUpdatePanelModel(
                 title = "Updates",
                 statusLine = "Manual checks",
-                statusColor = ComposeColor.Black,
+                statusColor = 0xFF000000.toInt(),
                 lastCheckLine = "Never checked",
                 lastResultLine = "No result",
                 installPermissionLine = "Allowed",
-                installPermissionColor = ComposeColor.Black,
+                installPermissionColor = 0xFF000000.toInt(),
                 hasPendingUpdate = false,
                 pendingVersionLine = null,
                 pendingMessageLine = null,
@@ -731,12 +817,37 @@ class ComposeScreenModelsTest {
 
         val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val referenceData = settingsReferenceDataCategoryModel(
+            false,
+            noop,
+            SettingsReferenceDataLinkModel(
+                title = "Data licenses",
+                body = "Dictionary, stroke, and font attributions.",
+                actionLabel = "Open licenses",
+                onAction = noop,
+            ),
+        )
+        val collapsedBehavior = settingsStudyBehaviorCategoryModel(
+            false,
+            noop,
+            panelCount = 8,
+            panels = emptyList(),
+        )
 
         assertEquals("Import & sync", importSync.title)
+        assertEquals("Choose sources, filters, and rank range.", importSync.summary)
         assertEquals("4 cards", importSync.panelCount)
-        assertEquals(listOf(noteType, importFilters, frequency, autoSync), importSync.panels)
-        assertEquals("Advanced controls", advanced.title)
+        assertEquals("Automation", advanced.title)
+        assertEquals("Manage reminders, sync, and updates.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
+        assertEquals("Display & data", referenceData.title)
+        assertEquals("Manage dictionaries, strokes, fonts, and credits.", referenceData.summary)
+        assertEquals("1 card", referenceData.panelCount)
+        assertEquals("Study settings", collapsedBehavior.title)
+        assertEquals("Set new cards, timing, workload, and ladder.", collapsedBehavior.summary)
+        assertEquals("8 cards", collapsedBehavior.panelCount)
+        assertTrue(collapsedBehavior.panels.isEmpty())
+
         assertEquals(listOf(reminder, update), advanced.panels)
     }
 
@@ -810,7 +921,7 @@ class ComposeScreenModelsTest {
         var savedMode: String? = null
         val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
         val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency", "Jiten frequency first.")
-        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Cards most likely to be forgotten first.")
+        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk", "Most-forgotten cards first.")
         val model = SettingsNewCardSortPanelModel(
             title = "New card order",
             body = "Choose how Kani admits new problem kanji.",
@@ -964,29 +1075,29 @@ class ComposeScreenModelsTest {
             savedFailStreak = failStreakText
         }
         val model = SettingsLadderThresholdPanelModel(
-            title = "Ladder thresholds",
+            title = "Ladder movement",
             body = "Tune rung movement.",
-            promotionDaysLabel = "Days before promotion",
+            promotionDaysLabel = "Days to move up",
             initialPromotionDaysText = "21",
-            failStreakLabel = "Fail streak before demotion",
+            failStreakLabel = "Fails to move down",
             initialFailStreakText = "3",
             defaultPromotionDaysText = "21",
             defaultFailStreakText = "3",
-            defaultsLabel = "Use default ladder thresholds",
-            saveLabel = "Save ladder thresholds",
+            defaultsLabel = "Use default movement rules",
+            saveLabel = "Save rules",
             onSave = save,
         )
 
-        assertEquals("Ladder thresholds", model.title)
+        assertEquals("Ladder movement", model.title)
         assertEquals("Tune rung movement.", model.body)
-        assertEquals("Days before promotion", model.promotionDaysLabel)
+        assertEquals("Days to move up", model.promotionDaysLabel)
         assertEquals("21", model.initialPromotionDaysText)
-        assertEquals("Fail streak before demotion", model.failStreakLabel)
+        assertEquals("Fails to move down", model.failStreakLabel)
         assertEquals("3", model.initialFailStreakText)
         assertEquals("21", model.defaultPromotionDaysText)
         assertEquals("3", model.defaultFailStreakText)
-        assertEquals("Use default ladder thresholds", model.defaultsLabel)
-        assertEquals("Save ladder thresholds", model.saveLabel)
+        assertEquals("Use default movement rules", model.defaultsLabel)
+        assertEquals("Save rules", model.saveLabel)
         assertSame(save, model.onSave)
         model.onSave.save("28", "4")
         assertEquals("28", savedPromotionDays)
@@ -1011,7 +1122,7 @@ class ComposeScreenModelsTest {
             notificationsAllowed = false,
         )
 
-        assertEquals("Settings overview", model.cockpitLabel)
+        assertEquals("Overview", model.cockpitLabel)
         assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
         assertEquals(4, model.rows.size)
         assertEquals("Note type", model.rows[0][0].label)
@@ -1020,13 +1131,13 @@ class ComposeScreenModelsTest {
         assertEquals("Import filters", model.rows[0][1].label)
         assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
         assertEquals("Daily reminder", model.rows[1][1].label)
-        assertEquals("Blocked by notifications", model.rows[1][1].value)
+        assertEquals("Notifications blocked", model.rows[1][1].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
         assertEquals("Daily sync", model.rows[2][0].label)
         assertEquals("07:30", model.rows[2][0].value)
         assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
         assertEquals("App updates", model.rows[2][1].label)
-        assertEquals("Verified APK ready", model.rows[2][1].value)
+        assertEquals("Ready to install", model.rows[2][1].value)
         assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
         assertEquals("Cards per kanji", model.rows[3][0].label)
         assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
@@ -1046,7 +1157,7 @@ class ComposeScreenModelsTest {
         assertEquals(0xFF6C5674.toInt(), model.rows[1][1].valueColor)
         assertEquals("Off", model.rows[2][0].value)
         assertEquals(0xFF6C5674.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Manual checks", model.rows[2][1].value)
+        assertEquals("Off", model.rows[2][1].value)
         assertEquals(0xFFDA3A7A.toInt(), model.rows[2][1].valueColor)
     }
 
@@ -1076,14 +1187,14 @@ class ComposeScreenModelsTest {
         val model = SettingsWorkloadPanelModel(
             title = "Daily workload",
             autoMode = true,
-            autoStatus = "Automatic Pareto",
+            autoStatus = "Automatic workload",
             automaticBody = "Kani chooses the focus set.",
             manualBody = "Choose the percent manually.",
             selectedWorkloadPercent = workload,
             selectedMaxItems = maxItems,
             scaleLabels = listOf("Tiny", "Normal", "Huge"),
-            saveMaximumLabel = "Save item limit",
-            manualWorkloadLabel = "Manual workload",
+            saveMaximumLabel = "Save max items",
+            manualWorkloadLabel = "Set workload manually",
             saveWorkloadLabel = "Save workload",
             automaticParetoLabel = "Use automatic workload",
             onSaveMaximum = saveMaximum,
@@ -1094,14 +1205,14 @@ class ComposeScreenModelsTest {
 
         assertEquals("Daily workload", model.title)
         assertEquals(true, model.autoMode)
-        assertEquals("Automatic Pareto", model.autoStatus)
+        assertEquals("Automatic workload", model.autoStatus)
         assertEquals("Kani chooses the focus set.", model.automaticBody)
         assertEquals("Choose the percent manually.", model.manualBody)
         assertSame(workload, model.selectedWorkloadPercent)
         assertSame(maxItems, model.selectedMaxItems)
         assertEquals(listOf("Tiny", "Normal", "Huge"), model.scaleLabels)
-        assertEquals("Save item limit", model.saveMaximumLabel)
-        assertEquals("Manual workload", model.manualWorkloadLabel)
+        assertEquals("Save max items", model.saveMaximumLabel)
+        assertEquals("Set workload manually", model.manualWorkloadLabel)
         assertEquals("Save workload", model.saveWorkloadLabel)
         assertEquals("Use automatic workload", model.automaticParetoLabel)
         assertSame(saveMaximum, model.onSaveMaximum)
@@ -1182,11 +1293,11 @@ class ComposeScreenModelsTest {
         val openSettings = { calls += "settings" }
         val toggle = { calls += "toggle" }
         val openUpdater = { calls += "updater" }
-        val statusColor = ComposeColor(0xFFFF4C76)
-        val permissionColor = ComposeColor(0xFF00AEB5)
+        val statusColor = MainActivityUiSupport.CORAL
+        val permissionColor = MainActivityUiSupport.TEAL
         val panel = SettingsUpdatePanelModel(
             title = "App updates",
-            statusLine = "Verified APK ready",
+            statusLine = "Ready to install",
             statusColor = statusColor,
             lastCheckLine = "Checked today",
             lastResultLine = "No errors",
@@ -1208,7 +1319,7 @@ class ComposeScreenModelsTest {
         )
 
         assertEquals("App updates", panel.title)
-        assertEquals("Verified APK ready", panel.statusLine)
+        assertEquals("Ready to install", panel.statusLine)
         assertEquals(statusColor, panel.statusColor)
         assertEquals("Checked today", panel.lastCheckLine)
         assertEquals("No errors", panel.lastResultLine)
@@ -1243,11 +1354,11 @@ class ComposeScreenModelsTest {
         val panel = SettingsUpdatePanelModel(
             title = "Automatic updates",
             statusLine = "On",
-            statusColor = ComposeColor(0xFF00AEB5),
+            statusColor = MainActivityUiSupport.TEAL,
             lastCheckLine = "Never checked",
             lastResultLine = "No previous result",
             installPermissionLine = "Permission missing",
-            installPermissionColor = ComposeColor(0xFFFF4C76),
+            installPermissionColor = MainActivityUiSupport.CORAL,
             hasPendingUpdate = false,
             pendingVersionLine = null,
             pendingMessageLine = null,
@@ -1259,7 +1370,6 @@ class ComposeScreenModelsTest {
         )
         val page = SettingsUpdatePageModel(
             title = "Updater",
-            body = "Check for a signed GitHub release.",
             onHome = home,
             onBack = back,
             onCheckForUpdate = check,
@@ -1267,20 +1377,17 @@ class ComposeScreenModelsTest {
         )
         val run = SettingsUpdateRunModel(
             title = "Checking",
-            body = "Downloading metadata.",
             progressLabel = "Checking GitHub",
             onHome = home,
             onBack = back,
         )
 
         assertEquals("Updater", page.title)
-        assertEquals("Check for a signed GitHub release.", page.body)
         assertSame(home, page.onHome)
         assertSame(back, page.onBack)
         assertSame(check, page.onCheckForUpdate)
         assertSame(panel, page.panel)
         assertEquals("Checking", run.title)
-        assertEquals("Downloading metadata.", run.body)
         assertEquals("Checking GitHub", run.progressLabel)
         assertSame(home, run.onHome)
         assertSame(back, run.onBack)
@@ -1298,13 +1405,13 @@ class ComposeScreenModelsTest {
     fun studyAnswerPanelModelKeepsGlyphLinesAndHelperText() {
         val reading = StudyAnswerLineModel(
             text = "Reading: かに",
-            color = ComposeColor(0xFFFF4C76),
+            color = MainActivityUiSupport.CORAL,
             sizeSp = 17,
             bold = true,
         )
         val meaning = StudyAnswerLineModel(
             text = "crab",
-            color = ComposeColor(0xFF3B2350),
+            color = 0xFF3B2350.toInt(),
             sizeSp = 15,
             bold = true,
         )
@@ -1322,11 +1429,11 @@ class ComposeScreenModelsTest {
         assertEquals(listOf(reading, meaning), model.lines)
         assertEquals("Trace it below, then check.", model.helperText)
         assertEquals("Reading: かに", reading.text)
-        assertEquals(ComposeColor(0xFFFF4C76), reading.color)
+        assertEquals(MainActivityUiSupport.CORAL, reading.color)
         assertEquals(17, reading.sizeSp)
         assertEquals(true, reading.bold)
         assertEquals("crab", meaning.text)
-        assertEquals(ComposeColor(0xFF3B2350), meaning.color)
+        assertEquals(0xFF3B2350.toInt(), meaning.color)
         assertEquals(15, meaning.sizeSp)
         assertEquals(true, meaning.bold)
         assertEquals(model, model.copy())
@@ -1349,27 +1456,40 @@ class ComposeScreenModelsTest {
             lines = listOf(
                 StudyAnswerLineModel(
                     text = "Reading: れつ",
-                    color = ComposeColor(0xFFFF4C76),
+                    color = MainActivityUiSupport.CORAL,
                     sizeSp = 17,
                     bold = true,
                 )
             ),
             helperText = null,
         )
+        val explanation = SimilarKanjiExplanation(
+            targetKanji = "裂",
+            confusedWith = listOf("列", "烈"),
+            sharedComponents = listOf("⿰"),
+            differingComponents = listOf("歹", "衣"),
+            meaningClues = listOf("裂: split", "列: row"),
+            readingClues = listOf("裂: れつ", "列: れつ"),
+            failedSourceWords = listOf("source one", "source two"),
+            watchThisPart = "Watch how 裂 differs from 列 and 烈.",
+            confidence = ExplanationConfidence.HIGH,
+        )
+        val explanationLines = similarKanjiExplanationLines(explanation)
         val similar = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
             title = "Choose the kanji",
             taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the kanji that matches the meaning.",
+            body = "Pick the matching kanji.",
             reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = grid,
+            explanationLines = explanationLines,
         )
         val meaning = MeaningChoiceSessionModel(
             modeLabel = "Recall",
             title = "Choose the kanji",
             taskLabel = "meaning -> kanji",
-            body = "Pick the kanji that matches the meaning.",
+            body = "Pick the matching kanji.",
             reasonLine = "",
             question = "Which kanji means split?",
             choices = listOf("裂", "列", "烈", "劣"),
@@ -1383,10 +1503,42 @@ class ComposeScreenModelsTest {
         assertEquals("Recognise", similar.modeLabel)
         assertEquals("Choose the kanji", similar.title)
         assertEquals(MainActivityBase.LABEL_SIMILAR_KANJI, similar.taskLabel)
-        assertEquals("Pick the kanji that matches the meaning.", similar.body)
+        assertEquals("Pick the matching kanji.", similar.body)
         assertEquals("Weak Anki evidence", similar.reasonLine)
         assertEquals("Which kanji means split?", similar.question)
         assertSame(grid, similar.gridModel)
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("Pair", "裂 vs 列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
+                SimilarKanjiExplanationLineModel("Meaning clues", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("Reading clues", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("Shared components", "⿰"),
+                SimilarKanjiExplanationLineModel("Different components", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列 and 烈.", true),
+            ),
+            explanationLines,
+        )
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("Pair", "列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Watch", "Watch this pair closely.", true),
+            ),
+            similarKanjiExplanationLines(
+                SimilarKanjiExplanation(
+                    targetKanji = "",
+                    confusedWith = listOf("列", "烈"),
+                    sharedComponents = emptyList(),
+                    differingComponents = emptyList(),
+                    meaningClues = emptyList(),
+                    readingClues = emptyList(),
+                    failedSourceWords = emptyList(),
+                    watchThisPart = "Watch this pair closely.",
+                    confidence = ExplanationConfidence.LOW,
+                )
+            ),
+        )
+        assertEquals(explanationLines, similar.explanationLines)
         assertEquals("Recall", meaning.modeLabel)
         assertEquals("meaning -> kanji", meaning.taskLabel)
         assertEquals(listOf("裂", "列", "烈", "劣"), meaning.choices)
@@ -1417,6 +1569,67 @@ class ComposeScreenModelsTest {
         assertEquals(grid, grid.copy())
         assertEquals(similar, similar.copy())
         assertEquals(meaning, meaning.copy())
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesSimilarKanjiExplanationLineLabels() = withLocale(Locale.JAPAN) {
+        val explanation = SimilarKanjiExplanation(
+            targetKanji = "裂",
+            confusedWith = listOf("列", "烈"),
+            sharedComponents = listOf("⿰"),
+            differingComponents = listOf("歹", "衣"),
+            meaningClues = listOf("裂: split", "列: row"),
+            readingClues = listOf("裂: れつ", "列: れつ"),
+            failedSourceWords = listOf("source one"),
+            watchThisPart = "裂と列・烈の違いを見比べましょう。",
+            confidence = ExplanationConfidence.HIGH,
+        )
+
+        assertEquals(
+            listOf(
+                SimilarKanjiExplanationLineModel("ペア", "裂と列・烈", true),
+                SimilarKanjiExplanationLineModel("出典語", "source one"),
+                SimilarKanjiExplanationLineModel("意味の手がかり", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("読みの手がかり", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("共通部品", "⿰"),
+                SimilarKanjiExplanationLineModel("異なる部品", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("注目", "裂と列・烈の違いを見比べましょう。", true),
+            ),
+            similarKanjiExplanationLines(explanation),
+        )
+    }
+
+    @Test
+    fun similarKanjiExplanationSourceWordsUseCurrentStudyExamples() {
+        val session = RecordsSchedulerModels.StudySession(
+            item = null,
+            row = RecordsImportModels.DashboardRow(
+                "裂",
+                120,
+                "split",
+                "れつ",
+                "裂",
+                7,
+                "lapse",
+                "Recent misses",
+                4,
+                0,
+                0,
+                listOf(
+                    example("  分裂  "),
+                    example("裂ける"),
+                    example("分裂"),
+                    example(""),
+                ),
+            ),
+            token = "study:裂",
+            taskType = StudyTaskTypes.SIMILAR_KANJI,
+            writingRequired = false,
+            prompt = "split",
+        )
+
+        assertEquals(listOf("分裂", "裂ける"), similarKanjiExplanationSourceWords(session))
+        assertEquals(emptyList<String>(), similarKanjiExplanationSourceWords(null))
     }
 
     @Test
@@ -1535,5 +1748,28 @@ class ComposeScreenModelsTest {
         assertEquals(true, state.containsWindowPoint(12f, 20f))
         assertEquals(false, state.containsWindowPoint(3f, 20f))
         assertEquals(false, state.containsWindowPoint(12f, 39f))
+    }
+
+    private fun example(expression: String): RecordsImportModels.Example =
+        RecordsImportModels.Example(
+            "anki",
+            1L,
+            2L,
+            expression,
+            "れつ",
+            "split",
+            "sample sentence",
+            false,
+            0,
+        )
+
+    private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
+        val original = Locale.getDefault()
+        Locale.setDefault(locale)
+        return try {
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }

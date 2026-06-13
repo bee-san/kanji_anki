@@ -31,15 +31,15 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "裂",
                             title = "split",
                             subtitle = "Rated again",
                             sourceEvidence = "From 裂語",
-                            accentColor = ComposeColor(0xFFFF4C76),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = { clicked = true },
                         )
                     )
@@ -63,15 +63,15 @@ class HomeRecentMistakesComposeTest {
         composeRule.setContent {
             HomeRecentMistakesPanel(
                 HomeRecentMistakesPanelModel(
-                    emptyTitle = "No recent mistakes yet",
-                    emptyBody = "Missed and hard reviews will show here after you study.",
+                    emptyTitle = "No mistakes yet",
+                    emptyBody = "Missed or hard reviews.",
                     cards = listOf(
                         HomeRecentMistakesCardModel(
                             kanji = "語",
                             title = "language",
                             subtitle = "Hard",
                             sourceEvidence = "",
-                            accentColor = ComposeColor(0xFFF0B548),
+                            accentColor = MainActivityUiSupport.GOLD,
                             onClick = {},
                         )
                     )

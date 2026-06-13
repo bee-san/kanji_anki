@@ -2,20 +2,22 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class SettingsSectionTextCopyTest {
     @Test
     fun sectionLabelsPreserveFormatting() {
+        assertEquals("Settings", SettingsSectionTextCopy.settingsTitle())
         assertEquals("Import & sync", SettingsSectionTextCopy.settingsAnkiSourceTitle())
-        assertEquals("AnkiDroid note fields, import filters, frequency range, and daily sync live together.", SettingsSectionTextCopy.settingsAnkiSourceBody())
-        assertEquals("Deck options", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
-        assertEquals("Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
-        assertEquals("Advanced controls", SettingsSectionTextCopy.settingsAutomationTitle())
-        assertEquals("Reminders and app update checks that change how Kani runs in the background.", SettingsSectionTextCopy.settingsAutomationBody())
+        assertEquals("Choose sources, filters, and rank range.", SettingsSectionTextCopy.settingsAnkiSourceBody())
+        assertEquals("Study settings", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
+        assertEquals("Set new cards, timing, workload, and ladder.", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+        assertEquals("Automation", SettingsSectionTextCopy.settingsAutomationTitle())
+        assertEquals("Manage reminders, sync, and updates.", SettingsSectionTextCopy.settingsAutomationBody())
         assertEquals("Display & data", SettingsSectionTextCopy.settingsReferenceDataTitle())
-        assertEquals("Offline dictionaries, stroke data, fonts, and attribution shown by the app.", SettingsSectionTextCopy.settingsReferenceDataBody())
-        assertEquals("Settings overview", SettingsSectionTextCopy.settingsCockpitLabel())
-        assertEquals("Choose a section below. Expanding it keeps the page in place and preserves your scroll position.", SettingsSectionTextCopy.settingsHeroBody())
+        assertEquals("Manage dictionaries, strokes, fonts, and credits.", SettingsSectionTextCopy.settingsReferenceDataBody())
+        assertEquals("Overview", SettingsSectionTextCopy.settingsCockpitLabel())
+        assertEquals("Choose a section.", SettingsSectionTextCopy.settingsHeroBody())
         assertEquals("Note type", SettingsSectionTextCopy.noteTypeStatusLabel())
         assertEquals("Import filters", SettingsSectionTextCopy.importFiltersStatusLabel())
         assertEquals("Suspended card range", SettingsSectionTextCopy.importRanksStatusLabel())
@@ -24,9 +26,45 @@ class SettingsSectionTextCopyTest {
         assertEquals("Daily sync", SettingsSectionTextCopy.dailySyncStatusLabel())
         assertEquals("App updates", SettingsSectionTextCopy.updatesStatusLabel())
         assertEquals("Cards per kanji", SettingsSectionTextCopy.matchingCardsStatusLabel())
-        assertEquals("Collapse Deck options", SettingsSectionTextCopy.categoryToggleDescription(true, "Deck options"))
-        assertEquals("Expand Advanced controls", SettingsSectionTextCopy.categoryToggleDescription(false, "Advanced controls"))
+        assertEquals("Collapse Study settings", SettingsSectionTextCopy.categoryToggleDescription(true, "Study settings"))
+        assertEquals("Expand Automation", SettingsSectionTextCopy.categoryToggleDescription(false, "Automation"))
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+    }
+
+    @Test
+    fun sectionLabelsTranslateToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("設定", SettingsSectionTextCopy.settingsTitle())
+            assertEquals("インポートと同期", SettingsSectionTextCopy.settingsAnkiSourceTitle())
+            assertEquals("ソース、フィルター、範囲を選ぶ。", SettingsSectionTextCopy.settingsAnkiSourceBody())
+            assertEquals("学習設定", SettingsSectionTextCopy.settingsStudyBehaviorTitle())
+            assertEquals("新規カード、タイミング、負荷、ラダーを設定。", SettingsSectionTextCopy.settingsStudyBehaviorBody())
+            assertEquals("自動化", SettingsSectionTextCopy.settingsAutomationTitle())
+            assertEquals("リマインダー、同期、更新を管理。", SettingsSectionTextCopy.settingsAutomationBody())
+            assertEquals("表示とデータ", SettingsSectionTextCopy.settingsReferenceDataTitle())
+            assertEquals("辞書、ストローク、フォント、クレジットを管理。", SettingsSectionTextCopy.settingsReferenceDataBody())
+            assertEquals("概要", SettingsSectionTextCopy.settingsCockpitLabel())
+            assertEquals("下のセクションを選ぶ。", SettingsSectionTextCopy.settingsHeroBody())
+            assertEquals("ノートタイプ", SettingsSectionTextCopy.noteTypeStatusLabel())
+            assertEquals("インポートフィルター", SettingsSectionTextCopy.importFiltersStatusLabel())
+            assertEquals("停止カードの範囲", SettingsSectionTextCopy.importRanksStatusLabel())
+            assertEquals("毎日のリマインダー", SettingsSectionTextCopy.reminderStatusLabel())
+            assertEquals("毎日の同期", SettingsSectionTextCopy.dailySyncStatusLabel())
+            assertEquals("アプリ更新", SettingsSectionTextCopy.updatesStatusLabel())
+            assertEquals("漢字ごとのカード数", SettingsSectionTextCopy.matchingCardsStatusLabel())
+            assertEquals("毎日のリマインダー：Off", SettingsSectionTextCopy.statusPillDescription(SettingsSectionTextCopy.reminderStatusLabel(), "Off"))
+            assertEquals("学習設定を折りたたむ", SettingsSectionTextCopy.categoryToggleDescription(true, SettingsSectionTextCopy.settingsStudyBehaviorTitle()))
+            assertEquals("自動化を展開する", SettingsSectionTextCopy.categoryToggleDescription(false, SettingsSectionTextCopy.settingsAutomationTitle()))
+            assertEquals("展開済み", SettingsSectionTextCopy.categoryStateDescription(true))
+            assertEquals("折りたたみ済み", SettingsSectionTextCopy.categoryStateDescription(false))
+            assertEquals("1枚", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
+            assertEquals("2枚", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }

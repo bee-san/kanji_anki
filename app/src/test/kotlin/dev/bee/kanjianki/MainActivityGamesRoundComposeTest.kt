@@ -7,8 +7,13 @@ import org.junit.Test
 class MainActivityGamesRoundComposeTest {
     @Test
     fun gameModeColorUsesSharedGameAccentTokens() {
-        assertEquals(GamesCoral, gameModeColor(KanjiGameEngine.GameMode.MEANING_POP))
-        assertEquals(GamesTeal, gameModeColor(KanjiGameEngine.GameMode.READING_RUSH))
-        assertEquals(GamesBlue, gameModeColor(KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+        assertEquals(LightKaniColors.coral, gameModeColor(LightKaniColors, KanjiGameEngine.GameMode.MEANING_POP))
+        assertEquals(LightKaniColors.teal, gameModeColor(LightKaniColors, KanjiGameEngine.GameMode.READING_RUSH))
+        assertEquals(LightKaniColors.blue, gameModeColor(LightKaniColors, KanjiGameEngine.GameMode.CONFUSABLE_CLASH))
+    }
+
+    @Test
+    fun gameModeColorFollowsDarkTheme() {
+        assertEquals(DarkKaniColors.coral, gameModeColor(DarkKaniColors, KanjiGameEngine.GameMode.MEANING_POP))
     }
 }

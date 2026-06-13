@@ -18,7 +18,7 @@ internal fun WritingSectionTitle(title: String, color: Int) {
     Text(
         text = title,
         modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-        color = Color(color),
+        color = kaniColor(color),
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         lineHeight = 24.sp,
@@ -30,7 +30,7 @@ internal fun WritingSectionTitle(title: String, color: Int) {
 internal fun WritingStatusText(text: String, color: Int) {
     Text(
         text = text,
-        color = Color(color),
+        color = kaniColor(color),
         fontSize = 16.sp,
         lineHeight = 17.sp,
         style = legacyTextStyle()

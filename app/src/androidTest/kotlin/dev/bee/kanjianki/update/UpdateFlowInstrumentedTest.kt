@@ -139,7 +139,7 @@ class UpdateFlowInstrumentedTest {
 
         LocalStore(context).use { store ->
             val status = store.autoUpdateStatus()
-            assertEquals("Android needs confirmation to finish installing.", status.lastResult)
+            assertEquals("Android needs permission to finish installing.", status.lastResult)
             assertEquals("v2.0.0", status.lastVersion)
             assertEquals("waiting.apk", status.pendingApkName)
             assertTrue(status.hasPendingUpdate())
@@ -324,7 +324,7 @@ class UpdateFlowInstrumentedTest {
         val noManagerController = UpdateNotifier.AndroidNotificationController(noManager, 33)
 
         assertFalse(noManagerController.areNotificationsEnabled())
-        noManagerController.ensureChannel()
+        noManagerController.ensureChannel("App updates", "Friendly Kani update prompts.")
         noManagerController.notifyUpdate("Kani update ready", "Ready")
     }
 
@@ -336,7 +336,7 @@ class UpdateFlowInstrumentedTest {
 
             assertTrue(controller.hasRuntimeNotificationPermission())
             assertTrue(controller.areNotificationsEnabled())
-            controller.ensureChannel()
+            controller.ensureChannel("App updates", "Friendly Kani update prompts.")
             controller.notifyUpdate("Kani update ready", "Ready")
         } finally {
             InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()

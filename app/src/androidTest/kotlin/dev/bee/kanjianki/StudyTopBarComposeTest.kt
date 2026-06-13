@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -44,12 +45,12 @@ class StudyTopBarComposeTest {
         }
 
         composeRule.onNodeWithText("2 / 5").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Close study").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(StudyTextCopy.closeStudyLabel()).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
         composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
             .assertRangeInfoEquals(ProgressBarRangeInfo(0.4f, 0f..1f))
 
-        composeRule.onNodeWithContentDescription("Close study").performClick()
+        composeRule.onNodeWithContentDescription(StudyTextCopy.closeStudyLabel()).performClick()
         composeRule.onNodeWithContentDescription("Settings").performClick()
 
         composeRule.runOnIdle {

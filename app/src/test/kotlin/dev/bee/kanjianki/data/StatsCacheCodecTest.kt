@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.json.JSONObject
 import java.util.Arrays
 import java.util.LinkedHashMap
 
@@ -74,6 +75,49 @@ class StatsCacheCodecTest {
         assertEquals(4, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WRITE_KANJI))
         assertEquals(7, decoded.ladderHealth.countFor(RecordsBase.LadderRung.KANJI_MEANING))
         assertEquals(0, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WORD_READING))
+    }
+
+    @Test
+    fun outcomeStatsRoundTripPreservesCachedExtras() {
+        val stats = StudyStatsStore.KaniOutcomeStats(
+            StudyStatsStore.WeakKanjiImprovedMetric(1, 91.0, 44.0, emptyList()),
+            StudyStatsStore.MatureSupportGainedMetric.empty(),
+            StudyStatsStore.LadderHealthMetric.empty(),
+        )
+        val studyImpact = StudyStatsStore.StudyImpactStats(12, 4, 3, 2, 1, 0)
+        val mistakes = Arrays.asList(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        )
+        val streak = StudyStatsStore.StudyStreak(5, 9, true, 4, 7_000L)
+        val taskTimes = StudyStatsStore.StudyTaskTimeStats(5_500L, 12_000L, 3)
+
+        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes, streak, taskTimes)
+        val root = JSONObject(json)
+        val decoded = StatsCacheCodec.outcomeFromJson(json)
+        val decodedImpact = StatsCacheCodec.studyImpactStatsFromJson(root.optJSONObject("studyImpactStats"))
+        val decodedMistakes = StatsCacheCodec.recentMistakesFromJson(root.optJSONArray("recentMistakes"))
+        val decodedStreak = StatsCacheCodec.studyStreakFromJson(root.optJSONObject("studyStreak"))
+        val decodedTaskTimes = StatsCacheCodec.studyTaskTimeStatsFromJson(root.optJSONObject("studyTaskTimeStats"))
+
+        assertEquals(3, root.optInt("cacheFormatVersion", 0))
+        assertEquals(1, decoded.weakKanjiImproved.improvedCount)
+        assertEquals(12, decodedImpact.totalReviews)
+        assertEquals(4, decodedImpact.distinctReviewedKanji)
+        assertEquals(2, decodedMistakes.size)
+        assertEquals("痛", decodedMistakes[0].kanji)
+        assertEquals("again", decodedMistakes[0].rating)
+        assertEquals(1_000L, decodedMistakes[0].reviewedAtMillis)
+
+        assertEquals(5, decodedStreak.currentDays)
+        assertEquals(9, decodedStreak.bestDays)
+        assertEquals(true, decodedStreak.studiedToday)
+        assertEquals(4, decodedStreak.reviewsToday)
+        assertEquals(7_000L, decodedStreak.lastStudyAtMillis)
+
+        assertEquals(5_500L, decodedTaskTimes.todayMillis)
+        assertEquals(12_000L, decodedTaskTimes.lastSevenDaysMillis)
+        assertEquals(3, decodedTaskTimes.answeredTasks)
     }
 
     @Test

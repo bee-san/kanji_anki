@@ -21,14 +21,12 @@ object HomeDeckOverviewPolicy {
         nowMillis: Long,
         locallySuspendedKanji: Set<String>,
     ): HomeDeckOverview {
-        val activeFamilyKeys = dashboardRows
-            .asSequence()
-            .map { StudyQueueSeeder.rowFamilyKey(it) }
-            .toHashSet()
-        val activeRows = dashboardRows
-            .asSequence()
-            .map { it.kanji }
-            .toHashSet()
+        val activeFamilyKeys = HashSet<String>(dashboardRows.size)
+        val activeRows = HashSet<String>(dashboardRows.size)
+        for (row in dashboardRows) {
+            activeFamilyKeys.add(StudyQueueSeeder.rowFamilyKey(row))
+            activeRows.add(row.kanji)
+        }
 
         var dueCount = 0
         var newCount = 0
@@ -87,9 +85,9 @@ object HomeDeckOverviewPolicy {
         activeFamilyKeys: Set<String>,
         activeRows: Set<String>,
     ): Boolean {
-        if (StudyQueueSeeder.familyKey(item) in activeFamilyKeys) {
+        if (item.answerSignature.isEmpty() && item.kanji in activeRows) {
             return true
         }
-        return item.answerSignature.isEmpty() && item.kanji in activeRows
+        return StudyQueueSeeder.familyKey(item) in activeFamilyKeys
     }
 }

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.AttributionCopy
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -15,6 +16,25 @@ class AttributionTextsTest {
         )
         assertEquals("KanjiVG stroke data, CC BY-SA 3.0.", AttributionTexts.kanjiVg(null))
         assertEquals("", AttributionTexts.rawResourceText(null, 0))
+    }
+
+    @Test
+    fun dictionarySourcesUsesJapaneseFallbacksWithoutAndroidResources() {
+        withJapaneseLocale {
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySources(null),
+            )
+            assertEquals("KanjiVG筆順データ、CC BY-SA 3.0。", AttributionTexts.kanjiVg(null))
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySourcesFromManifestText("not json"),
+            )
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", null, null)),
+            )
+        }
     }
 
     @Test
@@ -84,6 +104,38 @@ class AttributionTextsTest {
             "\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
             lines.joinToString("\n"),
         )
+    }
+
+    @Test
+    fun parsedDictionaryManifestUsesJapaneseLabelsInJapaneseLocale() {
+        withJapaneseLocale {
+            assertEquals(
+                "辞書マニフェストが空です。",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sourceArray(), null)),
+            )
+            val sources = objectArray(
+                jsonObject(
+                    "name", "KANJIDIC2",
+                    "license", "CC BY-SA",
+                    "source_path", "kanjidic2.xml",
+                    "database_version", "2026-05-01",
+                ),
+            )
+            assertEquals(
+                "生成: 2026-05-15\n\nKANJIDIC2\nライセンス: CC BY-SA\n出典: kanjidic2.xml\nバージョン: 2026-05-01",
+                AttributionTexts.dictionarySourcesFromManifest(FakeManifest("2026-05-15", sources, null)),
+            )
+        }
+    }
+
+    private fun withJapaneseLocale(block: () -> Unit) {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            block()
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     private fun jsonObject(vararg entries: String): JSONObject {

@@ -52,19 +52,25 @@ internal class MainActivitySettingsAnkiSourceNoteType(private val activity: Main
             Toast.makeText(activity, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show()
             return
         }
-        SettingsWriteActions.saveNoteTypeFields(
-            SettingsWriteActions.NoteTypeFieldWriteRequest(
-                selectedNoteType,
-                selectedExpressionField,
-                fieldState.reading.trim(),
-                fieldState.meaning.trim(),
-                fieldState.sentence.trim(),
-                fieldState.frequency.trim(),
-                fieldState.frequencySort.trim()
-            ),
-            activity.store::putStringSetting
-        )
-        Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.note-type.save",
+            write = {
+                SettingsWriteActions.saveNoteTypeFields(
+                    SettingsWriteActions.NoteTypeFieldWriteRequest(
+                        selectedNoteType,
+                        selectedExpressionField,
+                        fieldState.reading.trim(),
+                        fieldState.meaning.trim(),
+                        fieldState.sentence.trim(),
+                        fieldState.frequency.trim(),
+                        fieldState.frequencySort.trim()
+                    ),
+                    activity.store::putStringSetting
+                )
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show()
+            activity.renderSettings(true)
+        }
     }
 }

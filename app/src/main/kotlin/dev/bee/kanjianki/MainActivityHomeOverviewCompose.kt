@@ -40,8 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val HomeInk = Color(0xFF2D1635)
-private val HomeMuted = Color(0xFF6C5674)
+private val HomeInk: Color @Composable get() = KaniTheme.colors.ink
+private val HomeMuted: Color @Composable get() = KaniTheme.colors.muted
 
 internal fun homePrimaryCtaTestTag(label: String): String = "home-primary-cta-$label"
 
@@ -68,13 +68,15 @@ fun HomeHeader(
                 textAlign = TextAlign.Start,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
-            Text(
-                text = subtitle,
-                color = HomeMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    color = HomeMuted,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                )
+            }
         }
         Spacer(modifier = Modifier.width(10.dp))
         Image(
@@ -103,7 +105,14 @@ fun HomePrimaryCta(
             .semantics {
                 contentDescription = label
             }
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-sync-cta") {
+                        onClick()
+                    }
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -119,7 +128,6 @@ fun HomePrimaryCta(
 @Composable
 fun HomeStudyCta(
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -142,7 +150,14 @@ fun HomeStudyCta(
             .semantics {
                 contentDescription = title
             }
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-study-cta") {
+                        onClick()
+                    }
+                }
+            )
     ) {
         Column(
             modifier = Modifier
@@ -157,16 +172,6 @@ fun HomeStudyCta(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = noFontPadding
-            )
-            Text(
-                text = subtitle,
-                color = Color(0xFFFFF5FA),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp),
                 style = noFontPadding
             )
         }

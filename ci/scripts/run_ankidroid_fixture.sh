@@ -162,7 +162,13 @@ run_instrumentation_gate() {
 
 trap 'status=$?; if [ "${status}" -ne 0 ]; then dump_logcat; fi; exit "${status}"' EXIT
 
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+# The debug and androidTest APKs are built before the emulator step (CI) or by
+# the operator (local runs) so emulator wall time is spent only on device work.
+app_apk="app/build/outputs/apk/debug/app-debug.apk"
+test_apk="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+if [ ! -f "${app_apk}" ] || [ ! -f "${test_apk}" ]; then
+  ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+fi
 
 adb wait-for-device
 adb install -r "${ankidroid_apk}"

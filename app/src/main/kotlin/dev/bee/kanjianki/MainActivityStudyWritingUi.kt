@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.view.View
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.study.WritingActionPresentation
+import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingUi(private val activity: MainActivityStudy) {
     private val writingStatus = MainActivityStudyWritingStatus(activity)
@@ -68,7 +69,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 presentation.checkText,
                 presentation.checkVisible,
                 presentation.checkEnabled,
-                "Download checker",
+                WritingFeedbackCopy.downloadCheckerLabel(),
                 presentation.downloadVisible,
                 presentation.nextLabel,
                 presentation.nextVisible,

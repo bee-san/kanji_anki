@@ -40,10 +40,7 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
     }
 
     fun setWritingModelStatusMessage(status: WritingRecognizer.ModelStatus?, error: Throwable?) {
-        val prefix = WritingFeedbackCopy.guideLabel(
-            activity.currentHintState,
-            activity.activeSession?.item?.let { activity.strokeGuide(it.kanji) }
-        )
+        val prefix = guidePrefix()
         if (error != null || status == null) {
             activity.setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), MainActivityBase.CORAL)
             return
@@ -59,21 +56,28 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
         val token = activity.activeSession?.token
         val recognizer = activity.currentWritingRecognizer()
         if (recognizer == null) {
-            activity.setStudyStatus("The handwriting checker is unavailable on this device.", MainActivityBase.CORAL)
+            activity.setStudyStatus(WritingFeedbackCopy.unavailableModelStatusMessage(guidePrefix()), MainActivityBase.CORAL)
             return
         }
-        activity.setStudyStatus("Downloading handwriting checker...", MainActivityBase.MUTED)
+        activity.setStudyStatus(WritingFeedbackCopy.checkerDownloadStatus(guidePrefix()), MainActivityBase.MUTED)
         recognizer.downloadModel().whenComplete { _, error ->
             activity.main.post {
                 if (token != null && !activity.isActiveToken(token)) {
                     return@post
                 }
+                val prefix = guidePrefix()
                 if (error != null) {
                     updateWritingModelAvailability(false)
-                    activity.setStudyStatus("Handwriting checker download failed: ${error.message}", MainActivityBase.CORAL)
+                    activity.setStudyStatus(
+                        WritingFeedbackCopy.checkerDownloadFailedStatus(prefix, error.message),
+                        MainActivityBase.CORAL
+                    )
                 } else {
                     updateWritingModelAvailability(true)
-                    activity.setStudyStatus("Handwriting checker ready.", MainActivityBase.TEAL)
+                    activity.setStudyStatus(
+                        WritingFeedbackCopy.modelStatusMessage(prefix, true, true, false),
+                        MainActivityBase.TEAL
+                    )
                 }
                 activity.updateResultActions()
             }
@@ -83,5 +87,12 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
     fun updateWritingModelAvailability(downloaded: Boolean) {
         activity.writingModelStatusKnown = true
         activity.writingModelDownloaded = downloaded
+    }
+
+    private fun guidePrefix(): String {
+        return WritingFeedbackCopy.guideLabel(
+            activity.currentHintState,
+            activity.activeSession?.item?.let { activity.strokeGuide(it.kanji) }
+        )
     }
 }

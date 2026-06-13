@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -42,15 +43,6 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
-
-internal fun homeMetricCardDescription(model: HomeMetricModel): String {
-    return listOfNotNull(
-        "Home metric card",
-        model.label,
-        model.value,
-        model.body?.let { StudyTextCopy.compact(it, 22) }
-    ).joinToString(", ")
-}
 
 internal fun homeMetricModels(
     home: MainActivityHome,
@@ -113,27 +105,45 @@ fun HomeMetricCard(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(8.dp)
-    val accentColor = androidColor(model.accent)
-    val borderColor = androidColor(HomeMetricCardBorder.softened(model.accent))
+    val accentColor = kaniColor(model.accent)
+    val borderColor = if (KaniTheme.colors.isDark) {
+        accentColor.copy(alpha = 0.35f)
+    } else {
+        androidColor(HomeMetricCardBorder.softened(model.accent))
+    }
     val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+    val compactBody = remember(model.body) { model.body?.let { StudyTextCopy.compact(it, 22) } }
+    val contentDescriptionText = remember(model.label, model.value, compactBody) {
+        listOfNotNull(
+            HomeTextCopy.homeMetricCardDescription(),
+            model.label,
+            model.value,
+            compactBody,
+        ).joinToString(", ")
+    }
     val cardModifier = modifier
         .testTag(homeMetricCardTestTag(model.label))
         .semantics {
-            contentDescription = homeMetricCardDescription(model)
+            contentDescription = contentDescriptionText
         }
         .then(
-            if (model.onClick == null) {
-                Modifier
-            } else {
-                Modifier.clickable(role = Role.Button, onClick = model.onClick)
-            }
+            model.onClick?.let { action ->
+                Modifier.clickable(
+                    role = Role.Button,
+                    onClick = {
+                        withButtonTrace("Home metric ${model.label}") {
+                            action()
+                        }
+                    }
+                )
+            } ?: Modifier
         )
     Box(
         modifier = cardModifier
             .fillMaxWidth()
             .heightIn(min = 118.dp)
             .clip(shape)
-            .background(Color.White)
+            .background(KaniTheme.colors.surface)
             .border(1.dp, borderColor, shape)
             .padding(14.dp)
     ) {
@@ -168,9 +178,9 @@ fun HomeMetricCard(
                 modifier = Modifier.padding(top = 5.dp, bottom = 2.dp),
                 style = labelStyle
             )
-            if (!model.body.isNullOrEmpty()) {
+            if (!compactBody.isNullOrEmpty()) {
                 Text(
-                    text = StudyTextCopy.compact(model.body, 22),
+                    text = compactBody,
                     color = HomeMetricMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Normal,
@@ -184,8 +194,8 @@ fun HomeMetricCard(
     }
 }
 
-private val HomeMetricInk = Color(0xFF2D1635)
-private val HomeMetricMuted = Color(0xFF6C5674)
+private val HomeMetricInk: Color @Composable get() = KaniTheme.colors.ink
+private val HomeMetricMuted: Color @Composable get() = KaniTheme.colors.muted
 
 private object HomeMetricCardBorder {
     fun softened(accent: Int): Int {

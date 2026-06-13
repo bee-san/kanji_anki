@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import math
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -15,6 +16,7 @@ DEFAULT_REVIEWER_MODEL = "gpt5.4-codex-mini"
 MAX_CHANGED_FILES = 5
 MAX_DIFF_LINES = 500
 MAX_UNPUSHED_COMMITS = 1
+MIN_DESIGN_SCORE_DELTA = 0.10
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 FORBIDDEN_GLOBS = (
     ".github/workflows/**",
@@ -160,6 +162,44 @@ def _numeric(value: object, default: int = 0) -> int:
         return default
 
 
+def _finite_float_or_none(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
+
+
+def _normalized_score_or_none(value: object) -> float | None:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0 or parsed > 1.0:
+        return None
+    return parsed
+
+
+def _numeric_float(value: object, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    parsed = _finite_float_or_none(value)
+    return default if parsed is None else parsed
+
+
+def _non_negative_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a finite number >= 0") from exc
+    if not math.isfinite(parsed):
+        raise argparse.ArgumentTypeError("must be a finite number >= 0")
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be >= 0")
+    return parsed
+
+
 def _read_json_file(path: Path) -> object | None:
     if not path.exists() or not path.is_file():
         return None
@@ -295,6 +335,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     max_changed_files = _numeric(normalized.get("max_changed_files"), MAX_CHANGED_FILES)
     max_diff_lines = _numeric(normalized.get("max_diff_lines"), MAX_DIFF_LINES)
     max_unpushed_commits = _numeric(normalized.get("max_unpushed_commits"), MAX_UNPUSHED_COMMITS)
+    min_design_score_delta = _numeric_float(normalized.get("min_design_score_delta"), MIN_DESIGN_SCORE_DELTA)
     diff_lines = _numeric(normalized.get("diff_lines"), 0)
     commits_ahead = normalized.get("commits_ahead")
     commits_ahead_value = None if commits_ahead is None else _numeric(commits_ahead, 0)
@@ -309,7 +350,12 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     reviewer_result = _get_result(normalized, "reviewer_result", "independent_review")
     profile_reviews = _get_result(normalized, "profile_reviews")
     if isinstance(profile_reviews, dict):
-        design_review = design_review or profile_reviews.get("design")
+        design_review = (
+            design_review
+            or profile_reviews.get("design")
+            or profile_reviews.get("design_comparison")
+            or profile_reviews.get("design-comparison")
+        )
         button_review = button_review or profile_reviews.get("button_qa") or profile_reviews.get("button")
         reviewer_result = reviewer_result or profile_reviews.get("independent") or profile_reviews.get("reviewer")
 
@@ -340,7 +386,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
     gates.append(_ci_fast_gate(changed_files, ci_fast_result))
     gates.append(_ci_quality_gate(changed_files, sonar_inputs_matter, ci_quality_result))
     gates.append(_screenshot_availability_gate(interactive_changed_files, screenshot_result))
-    gates.append(_design_comparison_gate(interactive_changed_files, design_review, screenshot_result))
+    gates.append(_design_comparison_gate(interactive_changed_files, design_review, screenshot_result, min_design_score_delta))
     gates.append(_button_qa_review_gate(interactive_changed_files, button_review, button_contract))
     gates.append(_commit_push_frequency_gate(changed_files, commits_ahead_value, max_unpushed_commits))
     gates.append(_remote_ci_sonar_gate(require_remote_green, remote_ci_result))
@@ -365,6 +411,7 @@ def build_validation_report(state: dict[str, Any]) -> dict[str, object]:
             "diff_lines": diff_lines,
             "commits_ahead": commits_ahead_value,
             "require_remote_green": require_remote_green,
+            "min_design_score_delta": min_design_score_delta,
             "sonar_inputs_matter": bool(sonar_inputs_matter),
             "reviewer_model": reviewer_model,
             "run_dir": run_dir,
@@ -407,7 +454,10 @@ def _normalize_state(state: dict[str, Any]) -> dict[str, Any]:
             normalized[key] = _maybe_load_json(normalized[key])
     if "profile_reviews" in normalized and isinstance(normalized["profile_reviews"], dict):
         reviews = normalized["profile_reviews"]
-        normalized.setdefault("design_review", reviews.get("design"))
+        normalized.setdefault(
+            "design_review",
+            reviews.get("design") or reviews.get("design_comparison") or reviews.get("design-comparison"),
+        )
         normalized.setdefault("button_review", reviews.get("button_qa") or reviews.get("button"))
         normalized.setdefault("reviewer_result", reviews.get("independent") or reviews.get("reviewer"))
     if "focus_paths" not in normalized or normalized.get("focus_paths") is None:
@@ -655,17 +705,139 @@ def _screenshot_availability_gate(interactive_changed_files: list[str], screensh
     return _gate("screenshot_availability", "failed", "Screenshot evidence failed.", result=screenshot_result)
 
 
-def _design_comparison_gate(interactive_changed_files: list[str], design_review: object, screenshot_result: object) -> dict[str, object]:
+def _comparison_payload(design_review: object) -> dict[str, object]:
+    if not isinstance(design_review, dict):
+        return {}
+    parsed = design_review.get("parsed")
+    if isinstance(parsed, dict):
+        return parsed
+    return design_review
+
+
+def _design_comparison_gate(
+    interactive_changed_files: list[str],
+    design_review: object,
+    screenshot_result: object,
+    min_score_delta: float,
+) -> dict[str, object]:
     if not interactive_changed_files:
         return _gate("design_comparison", "skipped", "No interactive UI change requires design comparison.")
     status = _normalize_status(design_review)
     if status is None:
         return _gate("design_comparison", "needs_host", "Need a design review result for the touched interactive files.")
-    if status == "passed":
-        return _gate("design_comparison", "passed", "Design comparison passed.", result=design_review, screenshot_result=screenshot_result)
     if status in {"pending", "needs_host"}:
         return _gate("design_comparison", status, "Design comparison is not ready yet.", result=design_review)
-    return _gate("design_comparison", "failed", "Design comparison rejected the change.", result=design_review)
+    if status != "passed":
+        return _gate("design_comparison", "failed", "Design comparison rejected the change.", result=design_review)
+
+    comparison = _comparison_payload(design_review)
+    missing_fields: list[str] = []
+    if not isinstance(comparison.get("after_better"), bool):
+        missing_fields.append("after_better boolean")
+
+    def score_field(name: str) -> float | None:
+        if name in {"score_before", "score_after"}:
+            parsed = _normalized_score_or_none(comparison.get(name))
+            if parsed is None:
+                missing_fields.append(f"{name} finite 0.0..1.0 score")
+            return parsed
+
+        parsed = _finite_float_or_none(comparison.get(name))
+        if parsed is None:
+            missing_fields.append(f"{name} finite number")
+        return parsed
+
+    score_before = score_field("score_before")
+    score_after = score_field("score_after")
+    score_delta = score_field("score_delta")
+    if missing_fields:
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison must include explicit after-better, score-before, score-after, and score-delta evidence.",
+            missing_fields=missing_fields,
+            result=design_review,
+            screenshot_result=screenshot_result,
+            min_score_delta=min_score_delta,
+        )
+
+    assert score_before is not None
+    assert score_after is not None
+    assert score_delta is not None
+    expected_score_delta = score_after - score_before
+    if not math.isclose(score_delta, expected_score_delta, rel_tol=1e-9, abs_tol=1e-6):
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison score delta must match score_after - score_before.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_before=score_before,
+            score_after=score_after,
+            score_delta=score_delta,
+            expected_score_delta=expected_score_delta,
+            min_score_delta=min_score_delta,
+        )
+
+    if comparison.get("after_better") is not True:
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison did not confirm the after screenshot is better.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            min_score_delta=min_score_delta,
+        )
+    if score_delta is None or score_delta < min_score_delta:
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison score delta is below the configured threshold.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_delta=score_delta,
+            min_score_delta=min_score_delta,
+        )
+    if comparison.get("issue_resolved") is False:
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison says the accepted issue was not resolved.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_delta=score_delta,
+            min_score_delta=min_score_delta,
+        )
+    if comparison.get("learning_correctness_risk") is True:
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison flagged a learning-correctness risk.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_delta=score_delta,
+            min_score_delta=min_score_delta,
+        )
+    regressions = comparison.get("new_regressions")
+    if (isinstance(regressions, list) and regressions) or (regressions is not None and not isinstance(regressions, list)):
+        return _gate(
+            "design_comparison",
+            "failed",
+            "Design comparison reported new visual or interaction regressions.",
+            result=design_review,
+            screenshot_result=screenshot_result,
+            score_delta=score_delta,
+            min_score_delta=min_score_delta,
+        )
+    return _gate(
+        "design_comparison",
+        "passed",
+        "Design comparison confirms the after screenshot improved enough.",
+        result=design_review,
+        screenshot_result=screenshot_result,
+        score_delta=score_delta,
+        min_score_delta=min_score_delta,
+    )
 
 
 def _button_qa_review_gate(interactive_changed_files: list[str], button_review: object, button_contract: object) -> dict[str, object]:
@@ -924,6 +1096,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-changed-files", type=int, default=MAX_CHANGED_FILES)
     parser.add_argument("--max-diff-lines", type=int, default=MAX_DIFF_LINES)
     parser.add_argument("--max-unpushed-commits", type=int, default=MAX_UNPUSHED_COMMITS)
+    parser.add_argument("--min-design-score-delta", type=_non_negative_float, default=MIN_DESIGN_SCORE_DELTA)
     return parser
 
 
@@ -941,6 +1114,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     state["max_changed_files"] = args.max_changed_files
     state["max_diff_lines"] = args.max_diff_lines
     state["max_unpushed_commits"] = args.max_unpushed_commits
+    state["min_design_score_delta"] = args.min_design_score_delta
     report = build_validation_report(state)
     if args.out is not None:
         out_path = args.out if args.out.is_absolute() else run_dir / args.out

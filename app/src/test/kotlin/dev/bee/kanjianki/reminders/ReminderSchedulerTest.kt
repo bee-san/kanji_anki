@@ -1,16 +1,44 @@
 package dev.bee.kanjianki.reminders
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.ReminderCopyPolicy
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.time.AppClock
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class ReminderSchedulerTest {
+    @Before
+    fun setUp() {
+        clearReminderState()
+    }
+
+    @After
+    fun tearDown() {
+        clearReminderState()
+    }
+
     @Test
     fun scheduleDelegatesToServicesAndCancelsWhenDisabled() {
         val original = TimeZone.getDefault()
@@ -65,6 +93,50 @@ class ReminderSchedulerTest {
         ReminderScheduler.showReminderNotification(null, services)
 
         assertEquals(0, services.ensureCount)
+    }
+
+    @Test
+    fun showReminderNotificationPostsNotificationWhenAllowed() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val services = FakeReminderServices(context)
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        seedDailyReminderState(context, now, utc(2026, Calendar.MAY, 15, 14, 0))
+
+        ReminderScheduler.showReminderNotification(context, services, AppClock { now })
+
+        assertEquals(1, services.ensureCount)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        assertEquals(1, notificationManager.activeNotifications.size)
+    }
+
+    @Test
+    fun showReminderNotificationSkipsWhenDailyPlanHasNothingUseful() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val services = FakeReminderServices(context)
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        seedSuccessfulSync(context, now)
+
+        ReminderScheduler.showReminderNotification(context, services, AppClock { now })
+
+        assertEquals(0, services.ensureCount)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        assertEquals(0, notificationManager.activeNotifications.size)
+    }
+
+    @Test
+    fun ensureNotificationChannelUsesJapaneseMetadata() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        withLocale(Locale.JAPANESE) {
+            ReminderScheduler.ensureNotificationChannel(context)
+
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = notificationManager.getNotificationChannel(ReminderScheduler.REMINDER_CHANNEL_ID)
+
+            assertTrue(channel != null)
+            assertEquals(ReminderCopyPolicy.notificationChannelName(), channel!!.name.toString())
+            assertEquals(ReminderCopyPolicy.notificationChannelDescription(), channel.description?.toString())
+        }
     }
 
     @Test
@@ -141,6 +213,106 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun adaptiveNextTriggerUsesLatestReviewTimeAfterStudy() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(
+                    utc(2026, Calendar.MAY, 15, 12, 0),
+                    utc(2026, Calendar.MAY, 15, 13, 0),
+                    utc(2026, Calendar.MAY, 15, 14, 0),
+                ),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 15, 14, 0), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun adaptiveNextTriggerFallsBackToTomorrowWhenReviewsAreAlreadyDue() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(
+                    utc(2026, Calendar.MAY, 15, 7, 30),
+                    utc(2026, Calendar.MAY, 15, 8, 0),
+                ),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 16, 8, 30), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun adaptiveNextTriggerSkipsLateReviewTimesUntilTomorrow() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 21, 0)
+
+            val trigger = ReminderScheduler.nextTriggerMillis(
+                LocalStoreBase.ReminderSettings(true, 8, 30),
+                now,
+                true,
+                listOf(utc(2026, Calendar.MAY, 15, 23, 0)),
+            )
+
+            assertEquals(utc(2026, Calendar.MAY, 16, 8, 30), trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun scheduleWithContextUsesStoredStudyStateAndCancelsWhenDisabled() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+            val dueAt = utc(2026, Calendar.MAY, 15, 14, 0)
+            seedReminderState(context, now, dueAt)
+            val services = FakeReminderServices()
+
+            ReminderScheduler.schedule(context, LocalStoreBase.ReminderSettings(false, 8, 30), services, now)
+            assertEquals(1, services.cancelCount)
+
+            ReminderScheduler.schedule(context, LocalStoreBase.ReminderSettings(true, 8, 30), services, now)
+
+            assertEquals(dueAt, services.scheduledAtMillis)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun scheduleWithNullContextDoesNothing() {
+        val services = FakeReminderServices()
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+
+        ReminderScheduler.schedule(null, LocalStoreBase.ReminderSettings(true, 8, 30), services, now)
+
+        assertEquals(0, services.cancelCount)
+        assertEquals(-1L, services.scheduledAtMillis)
+    }
+
+    @Test
     fun nextTriggerWrapperUsesInjectedClock() {
         val original = TimeZone.getDefault()
         try {
@@ -155,6 +327,113 @@ class ReminderSchedulerTest {
         }
     }
 
+    private fun clearReminderState() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("kanji_anki_simple.db")
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancelAll()
+        notificationManager.deleteNotificationChannel(ReminderScheduler.REMINDER_CHANNEL_ID)
+    }
+
+    private fun seedDailyReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
+        LocalStore(context).use { store ->
+            store.saveRows(
+                store.writableDatabase,
+                listOf(
+                    RecordsImportModels.DashboardRow(
+                        "裂",
+                        120,
+                        "裂",
+                        "裂",
+                        "裂",
+                        0,
+                        "",
+                        "",
+                        0,
+                        0,
+                        0,
+                        listOf<RecordsImportModels.Example>(),
+                    ),
+                ),
+                reviewedAt,
+            )
+            store.saveStudyItem(
+                RecordsStudyModels.StudyItem(
+                    "裂",
+                    "review",
+                    dueAtMillis,
+                    1.0,
+                    5.0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    "seed-token",
+                    reviewedAt,
+                )
+            )
+        }
+    }
+
+    private fun seedSuccessfulSync(context: Context, finishedAt: Long) {
+        LocalStore(context).use { store ->
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList<RecordsImportModels.SuspendedImport>(),
+                emptyList<RecordsImportModels.DashboardRow>(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                finishedAt,
+                finishedAt,
+                null,
+            )
+        }
+    }
+
+    private fun seedReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
+        LocalStore(context).use { store ->
+            store.saveRows(
+                store.writableDatabase,
+                listOf(
+                    RecordsImportModels.DashboardRow(
+                        "裂",
+                        120,
+                        "裂",
+                        "裂",
+                        "裂",
+                        0,
+                        "",
+                        "",
+                        0,
+                        0,
+                        0,
+                        listOf<RecordsImportModels.Example>(),
+                    ),
+                ),
+                reviewedAt,
+            )
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest("裂", "seed-token", "good", false, false, false, 0),
+                "good",
+                reviewedAt,
+            )
+            store.saveStudyItem(
+                RecordsStudyModels.StudyItem(
+                    "裂",
+                    "review",
+                    dueAtMillis,
+                    1.0,
+                    5.0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    "seed-token",
+                    reviewedAt,
+                )
+            )
+        }
+    }
+
     private fun utc(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long {
         val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         calendar.set(year, month, day, hour, minute, 0)
@@ -162,7 +441,17 @@ class ReminderSchedulerTest {
         return calendar.timeInMillis
     }
 
-    private class FakeReminderServices : ReminderScheduler.ReminderServices {
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(original)
+        }
+    }
+
+    private class FakeReminderServices(private val channelContext: Context? = null) : ReminderScheduler.ReminderServices {
         var cancelCount = 0
         var scheduledAtMillis = -1L
         var runtimePermission = true
@@ -192,6 +481,17 @@ class ReminderSchedulerTest {
 
         override fun ensureNotificationChannel() {
             ensureCount++
+            val context = channelContext ?: return
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    ReminderScheduler.REMINDER_CHANNEL_ID,
+                    ReminderCopyPolicy.notificationChannelName(),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = ReminderCopyPolicy.notificationChannelDescription()
+                }
+            )
         }
     }
 

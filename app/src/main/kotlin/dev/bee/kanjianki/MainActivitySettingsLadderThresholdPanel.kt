@@ -22,8 +22,14 @@ internal class MainActivitySettingsLadderThresholdPanel(private val activity: Ma
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
             return
         }
-        SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting)
-        Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.ladder-threshold.save",
+            write = {
+                SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting)
+            },
+        ) {
+            Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 }

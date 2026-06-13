@@ -105,6 +105,28 @@ class BridgeScheduler {
         return ExtraNewCardsResult(suppressionPolicy.apply(result.items, resolvedSettings.matureDays), result.admittedKanji, result.availableCount)
     }
 
+    fun countExtraNewCardsAvailable(
+        rows: List<RecordsImportModels.DashboardRow>?,
+        existing: List<RecordsStudyModels.StudyItem>?,
+        settings: RecordsSyncModels.Settings?,
+        nowMillis: Long,
+        startOfDayMillis: Long,
+    ): Int {
+        return countExtraNewCardsAvailable(rows, existing, settings, nowMillis, startOfDayMillis, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    fun countExtraNewCardsAvailable(
+        rows: List<RecordsImportModels.DashboardRow>?,
+        existing: List<RecordsStudyModels.StudyItem>?,
+        settings: RecordsSyncModels.Settings?,
+        nowMillis: Long,
+        startOfDayMillis: Long,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): Int {
+        val resolvedSettings = safeSettings(settings)
+        return queueSeeder.countExtraNewCardsAvailable(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, ladder)
+    }
+
     fun nextSession(
         items: List<RecordsStudyModels.StudyItem>?,
         rows: List<RecordsImportModels.DashboardRow>?,
@@ -153,6 +175,26 @@ class BridgeScheduler {
         ladder: RecordsBase.StudyLadderSettings?
     ): RecordsSchedulerModels.StudySession? {
         return sessionSelector.nextSession(safeItems(items), safeRows(rows), nowMillis, studyAheadMillis, allowedKanji, safeSettings(settings), ladder)
+    }
+
+    fun debugTraceNextSession(
+        items: List<RecordsStudyModels.StudyItem>?,
+        rows: List<RecordsImportModels.DashboardRow>?,
+        nowMillis: Long,
+    ): SchedulerDecisionTrace {
+        return debugTraceNextSession(items, rows, nowMillis, 0L, null, RecordsSyncModels.Settings.kikuDefaults(), RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    fun debugTraceNextSession(
+        items: List<RecordsStudyModels.StudyItem>?,
+        rows: List<RecordsImportModels.DashboardRow>?,
+        nowMillis: Long,
+        studyAheadMillis: Long,
+        allowedKanji: Set<String>?,
+        settings: RecordsSyncModels.Settings?,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): SchedulerDecisionTrace {
+        return sessionSelector.debugTraceNextSession(safeItems(items), safeRows(rows), nowMillis, studyAheadMillis, allowedKanji, safeSettings(settings), ladder)
     }
 
     fun targetedSession(
@@ -278,6 +320,10 @@ class BridgeScheduler {
 
     fun applyReview(application: ReviewApplication): RecordsSchedulerModels.ReviewResult {
         return transitionEngine.applyReview(application)
+    }
+
+    fun debugTraceApplyReview(application: ReviewApplication): SchedulerTracedReviewResult {
+        return transitionEngine.debugTraceApplyReview(application)
     }
 
     fun dueCount(items: List<RecordsStudyModels.StudyItem>?, nowMillis: Long): Int {

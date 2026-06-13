@@ -40,11 +40,6 @@ fun SettingsUpdateRunScreen(model: SettingsUpdateRunModel) {
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = model.body,
-            color = UpdateRunMuted,
-            style = MaterialTheme.typography.bodyMedium
-        )
         SettingsUpdateProgressPanel(model.progressLabel)
     }
 }
@@ -94,10 +89,10 @@ private fun SettingsUpdateRunBackButton(onClick: () -> Unit) {
     )
 }
 
-private val UpdateRunInk = KaniUiTokens.Ink
-private val UpdateRunMuted = KaniUiTokens.Muted
-private val UpdateRunPlum = ComposeColor(0xFF4B2552)
-private val UpdateRunPink = KaniUiTokens.Primary
-private val UpdateRunPanelFill = KaniUiTokens.PanelFill
-private val UpdateRunPanelBorder = KaniUiTokens.PanelBorder
+private val UpdateRunInk: ComposeColor @Composable get() = KaniUiTokens.Ink
+private val UpdateRunMuted: ComposeColor @Composable get() = KaniUiTokens.Muted
+private val UpdateRunPlum: ComposeColor @Composable get() = KaniTheme.colors.plum
+private val UpdateRunPink: ComposeColor @Composable get() = KaniUiTokens.Primary
+private val UpdateRunPanelFill: ComposeColor @Composable get() = KaniUiTokens.PanelFill
+private val UpdateRunPanelBorder: ComposeColor @Composable get() = KaniUiTokens.PanelBorder
 private val UpdateRunPanelShape = KaniUiTokens.PanelShape

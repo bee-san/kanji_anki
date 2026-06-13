@@ -18,6 +18,23 @@ object StudyCollectionLookup {
     }
 
     @JvmStatic
+    fun dashboardRowsByKanji(
+        rows: List<RecordsImportModels.DashboardRow?>?,
+    ): Map<String, RecordsImportModels.DashboardRow> {
+        val safeRows = rows.orEmpty()
+        if (safeRows.isEmpty()) {
+            return emptyMap()
+        }
+        val rowsByKanji = java.util.LinkedHashMap<String, RecordsImportModels.DashboardRow>(safeRows.size)
+        for (row in safeRows) {
+            if (row != null) {
+                rowsByKanji.putIfAbsent(row.kanji, row)
+            }
+        }
+        return rowsByKanji
+    }
+
+    @JvmStatic
     fun studyItemByKanji(
         items: List<RecordsStudyModels.StudyItem?>?,
         kanji: String?,
@@ -31,5 +48,22 @@ object StudyCollectionLookup {
             }
         }
         return null
+    }
+
+    @JvmStatic
+    fun studyItemsByKanji(
+        items: List<RecordsStudyModels.StudyItem?>?,
+    ): Map<String, RecordsStudyModels.StudyItem> {
+        val safeItems = items.orEmpty()
+        if (safeItems.isEmpty()) {
+            return emptyMap()
+        }
+        val itemsByKanji = java.util.LinkedHashMap<String, RecordsStudyModels.StudyItem>(safeItems.size)
+        for (item in safeItems) {
+            if (item != null) {
+                itemsByKanji.putIfAbsent(item.kanji, item)
+            }
+        }
+        return itemsByKanji
     }
 }

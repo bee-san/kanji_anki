@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -103,6 +104,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardActionBarState: FlashcardActionBarState? = null
 
     @JvmField
+    val studyUndoState = StudyUndoState()
+
+    @JvmField
     var typingAnswerState: TypingAnswerState? = null
 
     @JvmField
@@ -177,6 +181,34 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var activeUpdateUiRunToken = 0
 
+    /**
+     * In-app destination for the system back gesture. Null means "no in-app
+     * destination": the callback defers to the system default (exit).
+     * The shell host sets a per-route default; sub-screens may override it
+     * after rendering.
+     */
+    @JvmField
+    var backAction: Runnable? = null
+
+    private val backCallback = object : androidx.activity.OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (!handleBackNavigation()) {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        }
+    }
+
+    /** Returns true when back was consumed by an in-app destination. */
+    fun handleBackNavigation(): Boolean {
+        val action = backAction ?: return false
+        withUiTrace("kani.button.system-back") {
+            action.run()
+        }
+        return true
+    }
+
     private val permissionHandler = MainActivityPermissionHandler(this)
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
@@ -186,6 +218,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     abstract fun renderHome()
     abstract fun renderUpdate()
+    abstract fun renderStats()
     abstract fun renderSettings()
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
@@ -211,6 +244,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
     }
 
@@ -340,6 +374,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return studyPlanProvider.adaptivePlan(rows, items, now)
     }
 
+    fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+    ): DailyStudyPlan {
+        return studyPlanProvider.dailyStudyPlan(rows, items, now)
+    }
+
     fun studyPlanForMode(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
@@ -417,7 +459,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val TASK_REPAIR_WRITING = "repair_writing"
         const val EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet"
         const val EMPTY_ACTIVE_PRACTICE_BODY =
-            "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus."
+            "Study now adds the next kanji."
 
         @JvmField
         val MUTED: Int = MainActivityUiSupport.MUTED

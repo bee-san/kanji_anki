@@ -22,6 +22,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,12 +39,12 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
 
-private val RetentionInk = KaniUiTokens.Ink
-private val RetentionMuted = KaniUiTokens.Muted
-private val RetentionTeal = KaniUiTokens.Teal
-private val RetentionPinkDark = KaniUiTokens.Primary
-private val RetentionPanelBorder = KaniUiTokens.PanelBorder
-private val RetentionWhite = KaniUiTokens.White
+private val RetentionInk: Color @Composable get() = KaniUiTokens.Ink
+private val RetentionMuted: Color @Composable get() = KaniUiTokens.Muted
+private val RetentionTeal: Color @Composable get() = KaniUiTokens.Teal
+private val RetentionPinkDark: Color @Composable get() = KaniUiTokens.Primary
+private val RetentionPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val RetentionWhite: Color @Composable get() = KaniUiTokens.White
 private val RetentionPanelShape = KaniUiTokens.PanelShape
 
 @Composable
@@ -184,7 +185,7 @@ private fun RetentionSlider(retentionPercent: Int, onRetentionChanged: (Int) -> 
         steps = 16,
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .semantics { contentDescription = SettingsRetentionControlDescriptions.RETENTION_SLIDER }
     )
 }

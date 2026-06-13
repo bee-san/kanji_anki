@@ -10,9 +10,14 @@ import dev.bee.kanjianki.core.WorkloadSettingsPolicy
 import dev.bee.kanjianki.sync.SyncSettings
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
 import java.util.LinkedHashMap
+import java.util.Locale
+import kotlin.io.path.Path
+import kotlin.io.path.writeText
+import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class SettingsWriteActionsTest {
@@ -138,6 +143,83 @@ class SettingsWriteActionsTest {
         val disabled = current.withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
         writer.saveStudyLadderSettings(disabled)
         assertEquals(disabled.enabledText(), writer.settings!!.enabledText())
+    }
+
+    @Test
+    fun toggleStudyLadderUsesTheProvidedSnapshot() {
+        val current = RecordsBase.StudyLadderSettings.defaults()
+
+        val next = requireNotNull(SettingsWriteActions.toggleStudyLadder(current, RecordsBase.LadderRung.WORD_READING))
+
+        assertFalse(next.isEnabled(RecordsBase.LadderRung.WORD_READING))
+        assertEquals(
+            current.withRungEnabled(RecordsBase.LadderRung.WORD_READING, false).orderText(),
+            next.orderText(),
+        )
+    }
+
+    @Test
+    fun toggleStudyLadderReturnsNullWhenTheSnapshotWouldKeepTheLastAlwaysAvailableRung() {
+        val current = RecordsBase.StudyLadderSettings(
+            listOf(RecordsBase.LadderRung.KANJI_MEANING),
+            listOf(RecordsBase.LadderRung.KANJI_MEANING),
+        )
+
+        assertNull(SettingsWriteActions.toggleStudyLadder(current, RecordsBase.LadderRung.KANJI_MEANING))
+    }
+
+    @Test
+    fun moveStudyLadderUsesTheProvidedSnapshot() {
+        val current = RecordsBase.StudyLadderSettings.defaults()
+
+        val next = SettingsWriteActions.moveStudyLadder(current, RecordsBase.LadderRung.WORD_READING, -6)
+
+        assertEquals(RecordsBase.LadderRung.WORD_READING, next.orderedRungs[0])
+        assertEquals(current.moveRung(RecordsBase.LadderRung.WORD_READING, -6).orderText(), next.orderText())
+    }
+
+    @Test
+    fun benchmarksSnapshotBasedStudyLadderToggleAgainstLegacyProviderPath() {
+        val current = RecordsBase.StudyLadderSettings.defaults()
+        val rung = RecordsBase.LadderRung.WORD_READING
+        val iterations = 2_000_000
+        var supplierCalls = 0
+        val tmpDir = requireNotNull(System.getProperty("java.io.tmpdir"))
+        val benchmarkPath = Path(tmpDir, "study-ladder-toggle-benchmark.txt")
+
+        val legacyProvider = {
+            supplierCalls++
+            current
+        }
+
+        var legacyChecksum = 0
+        val legacyNanos = measureNanoTime {
+            repeat(iterations) {
+                val next = requireNotNull(SettingsWriteActions.toggleStudyLadder(legacyProvider(), rung))
+                legacyChecksum += next.orderedRungs.size
+            }
+        }
+
+        var snapshotChecksum = 0
+        val snapshotNanos = measureNanoTime {
+            repeat(iterations) {
+                val next = requireNotNull(SettingsWriteActions.toggleStudyLadder(current, rung))
+                snapshotChecksum += next.orderedRungs.size
+            }
+        }
+
+        assertEquals(iterations, supplierCalls)
+        assertEquals(legacyChecksum, snapshotChecksum)
+        benchmarkPath.writeText(
+            String.format(
+                Locale.ROOT,
+                "study-ladder-toggle legacy_ms=%.3f legacy_avg_ns=%.1f snapshot_ms=%.3f snapshot_avg_ns=%.1f",
+                legacyNanos / 1_000_000.0,
+                legacyNanos / iterations.toDouble(),
+                snapshotNanos / 1_000_000.0,
+                snapshotNanos / iterations.toDouble(),
+            ),
+        )
     }
 
     @Test

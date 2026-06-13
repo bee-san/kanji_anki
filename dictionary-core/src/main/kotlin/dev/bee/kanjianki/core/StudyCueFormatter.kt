@@ -16,6 +16,15 @@ class StudyCueFormatter private constructor() {
         private val LEADING_METADATA_SEPARATOR_PATTERN: Pattern = Pattern.compile("\\s+")
         private val NON_ALPHA_NUMERIC_PATTERN: Pattern = Pattern.compile("[^a-z0-9-]")
         private val MULTI_WHITESPACE_PATTERN: Pattern = Pattern.compile("\\s+")
+        private const val JAPANESE_LANGUAGE = "ja"
+        private const val ENGLISH_COLLECTION_CLUE = "Collection clue"
+        private const val JAPANESE_COLLECTION_CLUE = "コレクションのヒント"
+        private const val ENGLISH_READING_PREFIX = "Reading: "
+        private const val JAPANESE_READING_PREFIX = "読み："
+        private const val ENGLISH_FROM_PREFIX = "From: "
+        private const val JAPANESE_FROM_PREFIX = "例："
+        private const val ENGLISH_INDIVIDUAL_KANJI_MEANINGS_PREFIX = "Individual kanji meanings: "
+        private const val JAPANESE_INDIVIDUAL_KANJI_MEANINGS_PREFIX = "個別の漢字の意味："
 
         private val LEADING_METADATA: Set<String> = hashSetOf(
             "noun",
@@ -48,13 +57,13 @@ class StudyCueFormatter private constructor() {
                 lines.add(safe.meaning)
             }
             if (safe.reading.isNotEmpty()) {
-                lines.add("Reading: " + hiraganaReading(safe.reading))
+                lines.add(readingLine(hiraganaReading(safe.reading)))
             }
             if (safe.fromExpression.isNotEmpty()) {
-                lines.add("From: " + safe.fromExpression)
+                lines.add(fromLine(safe.fromExpression))
             }
             if (lines.isEmpty()) {
-                lines.add("Collection clue")
+                lines.add(collectionClue())
             }
             return lines
         }
@@ -86,7 +95,7 @@ class StudyCueFormatter private constructor() {
                 value = cleanMeaningText(fallback)
             }
             if (value.isEmpty()) {
-                value = "Collection clue"
+                value = collectionClue()
             }
             return compact(capitalize(value), maxChars)
         }
@@ -94,6 +103,26 @@ class StudyCueFormatter private constructor() {
         @JvmStatic
         fun cleanCollectionMeaning(raw: String?, maxChars: Int): String {
             return compact(cleanMeaningText(raw), maxChars)
+        }
+
+        @JvmStatic
+        fun individualKanjiMeaningsLine(meanings: String): String {
+            return localizedText(
+                ENGLISH_INDIVIDUAL_KANJI_MEANINGS_PREFIX,
+                JAPANESE_INDIVIDUAL_KANJI_MEANINGS_PREFIX,
+            ) + meanings
+        }
+
+        @JvmStatic
+        fun isReadingLine(line: String?): Boolean {
+            val value = line?.trimStart() ?: return false
+            return value.startsWith(ENGLISH_READING_PREFIX) || value.startsWith(JAPANESE_READING_PREFIX)
+        }
+
+        @JvmStatic
+        fun isCollectionClue(value: String?): Boolean {
+            val normalized = value?.trim() ?: return false
+            return normalized == ENGLISH_COLLECTION_CLUE || normalized == JAPANESE_COLLECTION_CLUE
         }
 
         @JvmStatic
@@ -165,6 +194,21 @@ class StudyCueFormatter private constructor() {
             }
             return value.substring(0, cut).trim() + "..."
         }
+
+        private fun readingLine(reading: String): String = localizedText(
+            ENGLISH_READING_PREFIX + reading,
+            JAPANESE_READING_PREFIX + reading,
+        )
+
+        private fun fromLine(expression: String): String = localizedText(
+            ENGLISH_FROM_PREFIX + expression,
+            JAPANESE_FROM_PREFIX + expression,
+        )
+
+        private fun collectionClue(): String = localizedText(ENGLISH_COLLECTION_CLUE, JAPANESE_COLLECTION_CLUE)
+
+        private fun localizedText(english: String, japanese: String): String =
+            if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english
 
         private fun stripLeadingMetadataWords(value: String): String {
             val words = LEADING_METADATA_SEPARATOR_PATTERN.split(value.trim())

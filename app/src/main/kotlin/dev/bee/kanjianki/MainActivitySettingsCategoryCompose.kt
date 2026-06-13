@@ -2,11 +2,11 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -33,13 +33,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val HEADER_COLLAPSED_BG = ComposeColor(0xFFFFF6FB)
-private val HEADER_ICON_BG = ComposeColor(0xFFFFEDF6)
-private val HEADER_COUNT_BG = ComposeColor(0xFFFFF2F8)
+private val HEADER_COLLAPSED_BG: ComposeColor @Composable get() = KaniTheme.colors.bg
+private val HEADER_ICON_BG: ComposeColor @Composable get() = KaniTheme.colors.pill
+private val HEADER_COUNT_BG: ComposeColor @Composable get() = KaniTheme.colors.pill
 
 private const val HEADER_CORNER_RADIUS = 26
 private const val HEADER_ICON_SIZE = 40
@@ -64,7 +66,7 @@ internal fun SettingsCategoryHeader(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = if (expanded) ComposeColor.White else HEADER_COLLAPSED_BG,
+        color = if (expanded) KaniTheme.colors.surface else HEADER_COLLAPSED_BG,
         shape = RoundedCornerShape(HEADER_CORNER_RADIUS.dp),
         shadowElevation = 3.dp,
         border = BorderStroke(1.dp, borderColor)
@@ -77,12 +79,11 @@ internal fun SettingsCategoryHeader(
                 .testTag(settingsCategoryHeaderTestTag(testTagKey))
                 .semantics {
                     this.contentDescription = contentDescription
+                    this.stateDescription = SettingsTextCopy.categoryStateDescription(expanded)
                 }
                 .clickable(
                     role = Role.Button,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onToggle
+                    onClick = { withButtonTrace(title) { onToggle() } }
                 ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -106,17 +107,21 @@ internal fun SettingsCategoryHeader(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Category titles like Study settings, Automation, and Display & data
+                // all reuse this header row.
                 Text(
                     text = title,
                     color = titleColor,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = summary,
-                    color = summaryColor,
-                    fontSize = 14.sp
-                )
+                if (summary.isNotBlank()) {
+                    Text(
+                        text = summary,
+                        color = summaryColor,
+                        fontSize = 14.sp
+                    )
+                }
             }
 
             Surface(
@@ -137,12 +142,16 @@ internal fun SettingsCategoryHeader(
                 )
             }
 
+            val chevronRotation by animateFloatAsState(
+                targetValue = if (expanded) 90f else 0f,
+                label = "settings-category-chevron"
+            )
             Image(
                 painter = painterResource(id = R.drawable.ic_arrow_forward_24),
                 contentDescription = null,
                 modifier = Modifier
                     .size(24.dp)
-                    .rotate(if (expanded) 90f else 0f),
+                    .rotate(chevronRotation),
                 contentScale = ContentScale.Fit,
                 colorFilter = ColorFilter.tint(iconTint)
             )

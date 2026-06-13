@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecentMistakePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -121,6 +122,23 @@ internal class StudyStatsQueries(
         )
     }
 
+    fun kanjiRepairEvidenceInputs(): List<KanjiRepairEvidencePolicy.Input> {
+        val db = db()
+        val candidates = repairEvidenceCandidates(db)
+        if (candidates.isEmpty()) {
+            return emptyList()
+        }
+        val out = ArrayList<KanjiRepairEvidencePolicy.Input>(candidates.size)
+        for (kanji in candidates) {
+            out.add(repairEvidenceInput(db, kanji))
+        }
+        out.sortWith(
+            compareByDescending<KanjiRepairEvidencePolicy.Input> { it.lastReviewAtMillis() }
+                .thenBy { it.kanji() }
+        )
+        return out
+    }
+
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         val cursor = db().rawQuery(
             "SELECT " +
@@ -231,6 +249,187 @@ internal class StudyStatsQueries(
             }
         }
         return out
+    }
+
+    private data class RepairEvidenceSummary(
+        val kaniReviews: Int,
+        val postReviewSamples: Int,
+        val writingFailures: Int,
+        val lastMistakeAtMillis: Long,
+        val firstReviewAtMillis: Long,
+        val lastReviewAtMillis: Long,
+        val lastSyncAtMillis: Long,
+    )
+
+    private fun repairEvidenceCandidates(db: SQLiteDatabase): List<String> {
+        val cursor = db.rawQuery(
+            "SELECT kanji FROM $TABLE_STUDY_ITEMS WHERE state<>? " +
+                "UNION SELECT DISTINCT kanji FROM $TABLE_REVIEW_LOG WHERE kanji<>'' " +
+                "ORDER BY kanji ASC",
+            arrayOf(STATE_RETIRED)
+        )
+        val candidates = ArrayList<String>()
+        cursor.use {
+            while (it.moveToNext()) {
+                candidates.add(string(it, COLUMN_KANJI))
+            }
+        }
+        return candidates
+    }
+
+    private fun repairEvidenceInput(db: SQLiteDatabase, kanji: String): KanjiRepairEvidencePolicy.Input {
+        val summary = repairEvidenceSummary(db, kanji)
+        val before = repairEvidenceSnapshotBefore(db, kanji, summary.firstReviewAtMillis)
+        val after = repairEvidenceSnapshotAfter(db, kanji, summary.lastReviewAtMillis)
+        return KanjiRepairEvidencePolicy.Input(
+            kanji,
+            before,
+            after,
+            summary.kaniReviews,
+            summary.postReviewSamples,
+            summary.writingFailures,
+            summary.lastMistakeAtMillis,
+            summary.firstReviewAtMillis,
+            summary.lastReviewAtMillis,
+            summary.lastSyncAtMillis,
+            repairEvidenceLadder(db, kanji)
+        )
+    }
+
+    private fun repairEvidenceSummary(db: SQLiteDatabase, kanji: String): RepairEvidenceSummary {
+        val mistakeRatings = RecentMistakePolicy.mistakeRatings()
+        val cursor = db.rawQuery(
+            "SELECT " +
+                "COUNT(*) AS kani_reviews, " +
+                "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failures, " +
+                "COALESCE(MAX(CASE WHEN rating IN (?, ?) THEN reviewed_at ELSE 0 END), 0) AS last_mistake_at, " +
+                "COALESCE(MIN(reviewed_at), 0) AS first_review_at, " +
+                "COALESCE(MAX(reviewed_at), 0) AS last_review_at " +
+                "FROM $TABLE_REVIEW_LOG WHERE kanji=?",
+            arrayOf(mistakeRatings[0], mistakeRatings[1], kanji)
+        )
+        cursor.use {
+            it.moveToFirst()
+            val firstReviewAtMillis = it.getLong(3)
+            val lastReviewAtMillis = it.getLong(4)
+            return RepairEvidenceSummary(
+                kaniReviews = it.getInt(0),
+                postReviewSamples = repairEvidencePostReviewSamples(db, kanji, lastReviewAtMillis),
+                writingFailures = it.getInt(1),
+                lastMistakeAtMillis = it.getLong(2),
+                firstReviewAtMillis = firstReviewAtMillis,
+                lastReviewAtMillis = lastReviewAtMillis,
+                lastSyncAtMillis = repairEvidenceLastSyncAtMillis(db, kanji),
+            )
+        }
+    }
+
+    private fun repairEvidenceLastSyncAtMillis(db: SQLiteDatabase, kanji: String): Long {
+        val cursor = db.rawQuery(
+            "SELECT COALESCE(MAX(finished_at), 0) FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=?",
+            arrayOf(kanji)
+        )
+        cursor.use {
+            it.moveToFirst()
+            return it.getLong(0)
+        }
+    }
+
+    private fun repairEvidencePostReviewSamples(db: SQLiteDatabase, kanji: String, lastReviewAtMillis: Long): Int {
+        if (lastReviewAtMillis <= 0L) {
+            return 0
+        }
+        val cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=? AND finished_at>?",
+            arrayOf(kanji, lastReviewAtMillis.toString())
+        )
+        cursor.use {
+            it.moveToFirst()
+            return it.getInt(0)
+        }
+    }
+
+    private fun repairEvidenceSnapshotBefore(
+        db: SQLiteDatabase,
+        kanji: String,
+        firstReviewAtMillis: Long,
+    ): KanjiRepairEvidencePolicy.Snapshot? {
+        if (firstReviewAtMillis <= 0L) {
+            return null
+        }
+        return repairEvidenceSnapshot(db, kanji, "<", firstReviewAtMillis)
+    }
+
+    private fun repairEvidenceSnapshotAfter(
+        db: SQLiteDatabase,
+        kanji: String,
+        lastReviewAtMillis: Long,
+    ): KanjiRepairEvidencePolicy.Snapshot? {
+        if (lastReviewAtMillis <= 0L) {
+            return null
+        }
+        return repairEvidenceSnapshot(db, kanji, ">", lastReviewAtMillis)
+    }
+
+    private fun repairEvidenceSnapshot(
+        db: SQLiteDatabase,
+        kanji: String,
+        comparator: String,
+        boundaryMillis: Long,
+    ): KanjiRepairEvidencePolicy.Snapshot? {
+        val cursor = db.rawQuery(
+            "SELECT weakness_score, mature_support_count, finished_at, active_example_count, suspended_example_count, reason_code " +
+                "FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=? AND finished_at${comparator}? ORDER BY finished_at DESC, sync_id DESC LIMIT 1",
+            arrayOf(kanji, boundaryMillis.toString())
+        )
+        cursor.use {
+            if (!it.moveToFirst()) {
+                return null
+            }
+            return KanjiRepairEvidencePolicy.Snapshot(
+                it.getInt(0),
+                it.getInt(1),
+                it.getLong(2),
+                it.getInt(3),
+                it.getInt(4),
+                stringOrNull(it, 5)
+            )
+        }
+    }
+
+    private fun repairEvidenceLadder(db: SQLiteDatabase, kanji: String): KanjiRepairEvidencePolicy.Ladder? {
+        val cursor = db.query(
+            TABLE_STUDY_ITEMS,
+            arrayOf(
+                LocalStoreBase.COLUMN_RUNG,
+                LocalStoreBase.COLUMN_PHASE,
+                LocalStoreBase.COLUMN_REAL_PASS_STREAK,
+                LocalStoreBase.COLUMN_REAL_AGAIN_STREAK,
+                LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS,
+            ),
+            "kanji=? AND state<>?",
+            arrayOf(kanji, STATE_RETIRED),
+            null,
+            null,
+            null,
+            "1"
+        )
+        cursor.use {
+            if (!it.moveToFirst()) {
+                return null
+            }
+            return KanjiRepairEvidencePolicy.Ladder(
+                RecordsBase.LadderRung.fromWireName(string(it, LocalStoreBase.COLUMN_RUNG)),
+                RecordsBase.SchedulerPhase.fromWireName(string(it, LocalStoreBase.COLUMN_PHASE)),
+                integer(it, LocalStoreBase.COLUMN_REAL_PASS_STREAK),
+                integer(it, LocalStoreBase.COLUMN_REAL_AGAIN_STREAK),
+                integer(it, LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS)
+            )
+        }
+    }
+
+    private fun stringOrNull(cursor: Cursor, columnIndex: Int): String? {
+        return if (cursor.isNull(columnIndex)) null else cursor.getString(columnIndex)
     }
 
     private fun studyDays(today: Long): StudyDays {

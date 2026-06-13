@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,11 +28,10 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyCuePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 
-private val StudyAnswerPlum = Color(MainActivityUiSupport.STUDY_PLUM)
-private val StudyAnswerMuted = Color(MainActivityUiSupport.MUTED)
-private val StudyAnswerPink = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-private val StudyAnswerPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
-private val StudyAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+private val StudyAnswerPlum: Color @Composable get() = KaniTheme.colors.plum
+private val StudyAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
+private val StudyAnswerPanelFill: Color @Composable get() = KaniTheme.colors.panel
+private val StudyAnswerBorder: Color @Composable get() = KaniTheme.colors.border
 
 internal fun flashcardAnswerPanelModel(
     activity: MainActivityStudy,
@@ -85,7 +85,11 @@ private fun answerPanelModel(
         textLines.mapIndexed { index, line ->
             StudyAnswerLineModel(
                 text = line,
-                color = if (line.startsWith("Reading:")) StudyAnswerPink else StudyAnswerPlum,
+                color = if (StudyCuePolicy.isReadingLine(line)) {
+                    MainActivityUiSupport.STUDY_PINK_DARK
+                } else {
+                    MainActivityUiSupport.STUDY_PLUM
+                },
                 sizeSp = if (index == 0) 17 else 15,
                 bold = true
             )
@@ -94,7 +98,7 @@ private fun answerPanelModel(
         listOf(
             StudyAnswerLineModel(
                 text = session.prompt,
-                color = StudyAnswerMuted,
+                color = MainActivityUiSupport.STUDY_MUTED,
                 sizeSp = 15,
                 bold = false
             )
@@ -131,7 +135,7 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel, modifier: Modifier = Modifier
                 Box(
                     modifier = Modifier
                         .width(118.dp)
-                        .height(108.dp),
+                        .heightIn(min = 108.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -145,7 +149,7 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel, modifier: Modifier = Modifier
                     model.lines.forEach { line ->
                         Text(
                             text = line.text,
-                            color = line.color,
+                            color = kaniColor(line.color),
                             style = studyAnswerTextStyle(line.sizeSp),
                             fontWeight = if (line.bold) FontWeight.Bold else FontWeight.Normal
                         )

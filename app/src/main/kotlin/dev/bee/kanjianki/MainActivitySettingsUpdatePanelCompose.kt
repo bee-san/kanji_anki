@@ -56,7 +56,7 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
             )
             Text(
                 text = model.statusLine,
-                color = model.statusColor,
+                color = kaniColor(model.statusColor),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -72,7 +72,7 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
             )
             Text(
                 text = model.installPermissionLine,
-                color = model.installPermissionColor,
+                color = kaniColor(model.installPermissionColor),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )

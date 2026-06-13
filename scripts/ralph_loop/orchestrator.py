@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import shlex
 import subprocess
@@ -12,11 +13,13 @@ from pathlib import Path
 from typing import Sequence, cast
 
 from scripts.ralph_loop import button_contract
+from scripts.ralph_loop import button_latency_inventory
 from scripts.ralph_loop import github_screenshots
 from scripts.ralph_loop import prompts
 from scripts.ralph_loop import ui_manifest
+from scripts.ralph_loop import ui_view_matrix
 
-FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "all")
+FILE_BUCKET_CHOICES = ("home", "study", "settings", "stats", "games", "shell", "theme", "shared", "all")
 BUCKET_PRIORITY = {
     "home": 0,
     "study": 1,
@@ -43,16 +46,41 @@ def positive_int(value: str) -> int:
     return parsed
 
 
-class IterationCapParser(argparse.ArgumentParser):
+def non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError("must be a finite number >= 0")
+    return parsed
+
+
+class LoopModeParser(argparse.ArgumentParser):
     def parse_args(self, args=None, namespace=None):  # type: ignore[override]
         parsed = cast(argparse.Namespace, super().parse_args(args, namespace))
         if parsed.iterations > parsed.max_iterations:
             self.error("--iterations must be <= --max-iterations")
+        if parsed.audit_only and (parsed.dry_run or parsed.apply_accepted or parsed.commit_accepted):
+            self.error("--audit-only cannot be combined with --dry-run, --apply-accepted, or --commit-accepted")
+        if parsed.dry_run and (parsed.apply_accepted or parsed.commit_accepted):
+            self.error("--dry-run cannot be combined with --apply-accepted or --commit-accepted")
+        if parsed.commit_accepted and not parsed.apply_accepted:
+            self.error("--commit-accepted requires --apply-accepted")
         return parsed
 
 
+def run_mode(args: argparse.Namespace) -> str:
+    if getattr(args, "audit_only", False):
+        return "audit-only"
+    if getattr(args, "commit_accepted", False):
+        return "commit-accepted"
+    if getattr(args, "apply_accepted", False):
+        return "apply-accepted"
+    if getattr(args, "dry_run", False):
+        return "dry-run"
+    return "remote-visual"
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = IterationCapParser(description="Kani Ralph UI loop controller.")
+    parser = LoopModeParser(description="Kani Ralph UI loop controller.")
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--run-dir", type=Path, default=Path(".ralph-loop/current"))
     parser.add_argument(
@@ -60,8 +88,24 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run validation only; never edit the checkout.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Create candidate implementation artifacts in a scratch checkout only; never edit the source checkout.",
+    )
+    parser.add_argument(
+        "--apply-accepted",
+        action="store_true",
+        help="Apply one accepted scratch patch to the source checkout after every visual/validation gate passes.",
+    )
+    parser.add_argument(
+        "--commit-accepted",
+        action="store_true",
+        help="Commit the accepted patch after --apply-accepted succeeds and every gate passes.",
+    )
     parser.add_argument("--iterations", type=positive_int, default=1)
     parser.add_argument("--max-iterations", type=positive_int, default=1)
+    parser.add_argument("--min-design-score-delta", type=non_negative_float, default=0.10)
     parser.add_argument("--file-bucket", default="all", choices=FILE_BUCKET_CHOICES)
     parser.add_argument("--max-files", type=positive_int, default=1)
     parser.add_argument("--critic-profile", default="design")
@@ -84,6 +128,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--screenshot-artifact", default="android-screenshots")
     parser.add_argument("--screenshot-route", default="all")
     parser.add_argument("--require-remote-screenshots", action="store_true")
+    parser.add_argument(
+        "--latency-measurements",
+        type=Path,
+        default=Path(".ralph-loop/current/button-latency-measurements.json"),
+        help="Optional button-latency-measurements JSON used for latency inventory evidence.",
+    )
     return parser
 
 
@@ -103,6 +153,133 @@ def _slugify_path(value: str) -> str:
 
 def _format_command(template: str, *, prompt: str, profile: str) -> list[str]:
     return [part.format(prompt=prompt, profile=profile) for part in shlex.split(template)]
+
+
+def _finite_float_or_none(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        if math.isfinite(parsed):
+            return parsed
+    return None
+
+
+def _normalized_score_or_none(value: object) -> float | None:
+    parsed = _finite_float_or_none(value)
+    if parsed is None or parsed < 0.0 or parsed > 1.0:
+        return None
+    return parsed
+
+
+def _non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _string_list(value: object) -> bool:
+    return isinstance(value, list) and all(_non_empty_string(item) for item in value)
+
+
+def _non_empty_string_list(value: object) -> bool:
+    return _string_list(value) and bool(value)
+
+
+def _design_critic_schema_errors(parsed: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    if parsed.get("schema") != "cheap-ralph-design-critic-v1":
+        errors.append("design critic JSON must include schema 'cheap-ralph-design-critic-v1'")
+    if "accepted_issues" in parsed:
+        errors.append("design critic JSON must use single 'accepted_issue', not list 'accepted_issues'")
+    if "highest_priority_issue" in parsed:
+        errors.append("design critic JSON must not include legacy 'highest_priority_issue'")
+    if not isinstance(parsed.get("passed"), bool):
+        errors.append("design critic JSON must include boolean 'passed'")
+    if not _non_empty_string(parsed.get("view_id")):
+        errors.append("design critic JSON must include non-empty string 'view_id'")
+    if not _non_empty_string(parsed.get("before_screenshot_sha256")):
+        errors.append("design critic JSON must include non-empty string 'before_screenshot_sha256'")
+    if _normalized_score_or_none(parsed.get("score_before")) is None:
+        errors.append("design critic JSON must include finite 0.0..1.0 score 'score_before'")
+    if not isinstance(parsed.get("rejected_issues"), list):
+        errors.append("design critic JSON must include list 'rejected_issues'")
+    if not _non_empty_string_list(parsed.get("do_not_touch")):
+        errors.append("design critic JSON must include non-empty string list 'do_not_touch'")
+
+    target_screenshot = parsed.get("target_screenshot")
+    if target_screenshot is not None and not _non_empty_string(target_screenshot):
+        errors.append("design critic target_screenshot must be a non-empty string or null")
+    if target_screenshot is None and not _non_empty_string(parsed.get("target_screenshot_unavailable_reason")):
+        errors.append("design critic JSON with null target_screenshot must include non-empty 'target_screenshot_unavailable_reason'")
+
+    accepted_issue = parsed.get("accepted_issue")
+    target_view_spec = parsed.get("target_view_spec")
+    if accepted_issue is None:
+        if parsed.get("passed") is False:
+            errors.append("design critic JSON with passed=false must include one 'accepted_issue'")
+        if target_view_spec is not None:
+            errors.append("design critic JSON without accepted_issue must set 'target_view_spec' to null")
+        return errors
+
+    if parsed.get("passed") is True:
+        errors.append("design critic JSON with accepted_issue must set passed=false")
+    if not isinstance(accepted_issue, dict):
+        errors.append("design critic JSON 'accepted_issue' must be an object or null")
+    else:
+        for field in ("id", "title", "evidence", "primary_file", "expected_fix"):
+            if not _non_empty_string(accepted_issue.get(field)):
+                errors.append(f"design critic accepted_issue must include non-empty string '{field}'")
+        if str(accepted_issue.get("severity", "")).lower() not in {"low", "medium", "high"}:
+            errors.append("design critic accepted_issue severity must be low, medium, or high")
+        for field in ("acceptance_criteria", "do_not_touch"):
+            if not _non_empty_string_list(accepted_issue.get(field)):
+                errors.append(f"design critic accepted_issue must include non-empty string list '{field}'")
+    if not isinstance(target_view_spec, dict):
+        errors.append("design critic JSON with accepted_issue must include object 'target_view_spec'")
+    else:
+        if not _non_empty_string(target_view_spec.get("summary")):
+            errors.append("design critic target_view_spec must include non-empty string 'summary'")
+        for field in ("hierarchy", "copy_changes", "spacing_touch_targets", "accessibility", "material_expectations"):
+            if not _non_empty_string_list(target_view_spec.get(field)):
+                errors.append(f"design critic target_view_spec must include non-empty string list '{field}'")
+    return errors
+
+
+def _review_schema_errors(label: str, parsed: object) -> list[str]:
+    if not isinstance(parsed, dict):
+        return ["reviewer stdout must be a JSON object"]
+    if label.startswith("button") and not isinstance(parsed.get("passed"), bool):
+        return ["button review JSON must include boolean 'passed'"]
+    if label.startswith("design-comparison"):
+        errors: list[str] = []
+        if parsed.get("schema") != "cheap-ralph-design-comparison-v1":
+            errors.append("design comparison JSON must include schema 'cheap-ralph-design-comparison-v1'")
+        for field in ("passed", "after_better", "issue_resolved", "learning_correctness_risk"):
+            if not isinstance(parsed.get(field), bool):
+                errors.append(f"design comparison JSON must include boolean '{field}'")
+        for field in ("score_before", "score_after"):
+            if _normalized_score_or_none(parsed.get(field)) is None:
+                errors.append(f"design comparison JSON must include finite 0.0..1.0 score '{field}'")
+        if _finite_float_or_none(parsed.get("score_delta")) is None:
+            errors.append("design comparison JSON must include finite number 'score_delta'")
+        if not isinstance(parsed.get("new_regressions"), list):
+            errors.append("design comparison JSON must include list 'new_regressions'")
+        if not isinstance(parsed.get("rationale"), str) or not parsed.get("rationale", "").strip():
+            errors.append("design comparison JSON must include non-empty string 'rationale'")
+        return errors
+    if (
+        label.startswith("design-critic")
+        or parsed.get("schema") == "cheap-ralph-design-critic-v1"
+        or "accepted_issue" in parsed
+        or "target_view_spec" in parsed
+        or "accepted_issues" in parsed
+        or "highest_priority_issue" in parsed
+    ):
+        return _design_critic_schema_errors(parsed)
+    if label.startswith("design"):
+        has_file_audit_schema = "visual_problems" in parsed and "interaction_a11y_problems" in parsed
+        if not has_file_audit_schema:
+            return ["design review JSON is missing expected file-auditor fields"]
+    return []
 
 
 def _run_profile_command(
@@ -156,9 +333,20 @@ def _run_profile_command(
     stdout = process.stdout.strip()
     if stdout:
         try:
-            result["parsed"] = json.loads(stdout)
-        except json.JSONDecodeError:
-            pass
+            parsed = json.loads(stdout)
+            result["parsed"] = parsed
+            schema_errors = _review_schema_errors(label, parsed)
+            if schema_errors:
+                result["status"] = "failed"
+                result["schema_errors"] = schema_errors
+            elif isinstance(parsed, dict) and parsed.get("passed") is False:
+                result["status"] = "failed"
+        except json.JSONDecodeError as exc:
+            result["status"] = "failed"
+            result["schema_errors"] = [f"reviewer stdout was not valid JSON: {exc.msg}"]
+    elif result["status"] == "passed":
+        result["status"] = "failed"
+        result["schema_errors"] = ["reviewer stdout was empty"]
     _write_json(result_path, result)
     return result
 
@@ -210,13 +398,12 @@ def _manifest_slice(manifest: dict[str, object], entry: dict[str, object]) -> di
 
 def _button_contract_slice(
     contract: dict[str, object],
-    bucket: str,
-    manifest_bucket_map: dict[str, str],
+    selected_file: str,
 ) -> dict[str, object]:
     rows = [
         dict(row)
         for row in contract.get("rows", [])
-        if manifest_bucket_map.get(str(row.get("source_file", ""))) == bucket
+        if str(row.get("source_file", "")) == selected_file
     ]
     return {
         "schema": contract.get("schema", "button-contract-v1"),
@@ -224,7 +411,7 @@ def _button_contract_slice(
         "rows": rows,
         "summary": {
             "row_count": len(rows),
-            "bucket": bucket,
+            "selected_file": selected_file,
             "covered_rows": sum(1 for row in rows if row.get("existing_tests")),
             "missing_rows": sum(1 for row in rows if row.get("missing_tests")),
         },
@@ -286,22 +473,68 @@ def _severity_rank(value: object | None) -> int:
 
 
 def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
-    design = review["design"]
-    parsed = design.get("parsed") if isinstance(design, dict) else None
+    raw_design = review["design"]
+    design = raw_design if isinstance(raw_design, dict) else {}
+    parsed = design.get("parsed")
     parsed = parsed if isinstance(parsed, dict) else {}
+    schema_errors = design.get("schema_errors")
+    if not isinstance(schema_errors, list):
+        schema_errors = _review_schema_errors("design", parsed) if parsed else []
+    if schema_errors:
+        return [
+            {
+                "priority": 1,
+                "kind": "design-command-failure",
+                "file": str(review["file"]),
+                "title": "Design review failed schema validation",
+                "reason": "; ".join(str(error) for error in schema_errors),
+                "source": "design",
+                "prompt_path": design.get("prompt_path"),
+                "result_path": design.get("result_path"),
+            }
+        ]
     items: list[dict[str, object]] = []
-    accepted_issues = parsed.get("accepted_issues", [])
-    if isinstance(accepted_issues, list):
-        for issue in accepted_issues:
+    accepted_issue = parsed.get("accepted_issue")
+    if isinstance(accepted_issue, dict):
+        target_spec = parsed.get("target_view_spec")
+        target_summary = ""
+        if isinstance(target_spec, dict):
+            target_summary = str(target_spec.get("summary") or "")
+        reason_parts = [str(accepted_issue.get("expected_fix") or accepted_issue.get("evidence") or "")]
+        if target_summary:
+            reason_parts.append(f"Target view: {target_summary}")
+        items.append(
+            {
+                "priority": _severity_rank(accepted_issue.get("severity")),
+                "kind": "design-accepted-issue",
+                "file": str(accepted_issue.get("primary_file") or accepted_issue.get("file") or review["file"]),
+                "title": str(accepted_issue.get("title") or accepted_issue.get("summary") or "Accepted UI issue"),
+                "reason": " ".join(part for part in reason_parts if part),
+                "source": "design",
+                "prompt_path": design.get("prompt_path"),
+                "result_path": design.get("result_path"),
+            }
+        )
+    for field_name, kind, default_title in (
+        ("visual_problems", "design-visual-problem", "Accepted visual problem"),
+        ("interaction_a11y_problems", "design-interaction-a11y-problem", "Accepted interaction/accessibility problem"),
+    ):
+        issues = parsed.get(field_name, [])
+        if not isinstance(issues, list):
+            continue
+        for issue in issues:
             if not isinstance(issue, dict):
                 continue
+            component = str(issue.get("component") or "").strip()
+            problem = str(issue.get("problem") or issue.get("title") or issue.get("summary") or default_title)
+            title = f"{component}: {problem}" if component else problem
             items.append(
                 {
                     "priority": _severity_rank(issue.get("severity")),
-                    "kind": "design-accepted-issue",
-                    "file": str(issue.get("file") or review["file"]),
-                    "title": str(issue.get("title") or issue.get("summary") or "Accepted UI issue"),
-                    "reason": str(issue.get("expected_fix") or issue.get("evidence") or ""),
+                    "kind": kind,
+                    "file": str(issue.get("file") or parsed.get("file") or review["file"]),
+                    "title": title,
+                    "reason": str(issue.get("evidence") or issue.get("expected_fix") or ""),
                     "source": "design",
                     "prompt_path": design.get("prompt_path"),
                     "result_path": design.get("result_path"),
@@ -463,6 +696,7 @@ def _button_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
 
 
 def _render_audit_report_markdown(report: dict[str, object]) -> str:
+    artifacts = cast(dict[str, object], report["artifacts"])
     lines = [
         "# Ralph audit report",
         "",
@@ -475,11 +709,13 @@ def _render_audit_report_markdown(report: dict[str, object]) -> str:
         "",
         "## Artifacts",
         "",
-        f"- Manifest: `{report['artifacts']['manifest_json']}`",
-        f"- Button contract JSON: `{report['artifacts']['button_contract_json']}`",
-        f"- Button contract Markdown: `{report['artifacts']['button_contract_markdown']}`",
-        f"- Audit report JSON: `{report['artifacts']['audit_report_json']}`",
-        f"- Audit report Markdown: `{report['artifacts']['audit_report_markdown']}`",
+        f"- Manifest: `{artifacts['manifest_json']}`",
+        f"- UI view matrix JSON: `{artifacts['ui_view_matrix_json']}`",
+        f"- UI view matrix Markdown: `{artifacts['ui_view_matrix_markdown']}`",
+        f"- Button contract JSON: `{artifacts['button_contract_json']}`",
+        f"- Button contract Markdown: `{artifacts['button_contract_markdown']}`",
+        f"- Audit report JSON: `{artifacts['audit_report_json']}`",
+        f"- Audit report Markdown: `{artifacts['audit_report_markdown']}`",
         "",
         "## File reviews",
         "",
@@ -520,6 +756,7 @@ def _build_audit_report(
     run_dir: Path,
     manifest: dict[str, object],
     contract: dict[str, object],
+    view_matrix: dict[str, object],
     file_reviews: list[dict[str, object]],
     backlog: list[dict[str, object]],
 ) -> dict[str, object]:
@@ -549,6 +786,7 @@ def _build_audit_report(
     report: dict[str, object] = {
         "schema": "ralph-audit-report-v1",
         "status": status,
+        "mode": run_mode(args),
         "audit_only": True,
         "repo_root": str(repo_root),
         "run_dir": str(run_dir),
@@ -565,19 +803,28 @@ def _build_audit_report(
             "agent_cmd": args.agent_cmd,
             "reviewer_model": args.reviewer_model,
             "reviewer_cmd": args.reviewer_cmd,
+            "dry_run": getattr(args, "dry_run", False),
+            "apply_accepted": getattr(args, "apply_accepted", False),
+            "commit_accepted": getattr(args, "commit_accepted", False),
+            "min_design_score_delta": getattr(args, "min_design_score_delta", 0.10),
             "pr_branch": args.pr_branch,
             "push_pr_branch": args.push_pr_branch,
             "require_remote_green": args.require_remote_green,
         },
         "manifest_summary": manifest.get("summary", {}),
+        "ui_view_matrix_summary": view_matrix.get("summary", {}),
         "button_contract_summary": contract.get("summary", {}),
         "summary": summary,
         "file_reviews": file_reviews,
         "backlog": backlog,
         "artifacts": {
             "manifest_json": str(run_dir / "ui-manifest.json"),
+            "ui_view_matrix_json": str(run_dir / "ui-view-matrix.json"),
+            "ui_view_matrix_markdown": str(run_dir / "ui-view-matrix.md"),
             "button_contract_json": str(run_dir / "button-contract.json"),
             "button_contract_markdown": str(run_dir / "button-contract.md"),
+            "button_latency_inventory_json": str(run_dir / "button-latency-inventory.json"),
+            "button_latency_inventory_markdown": str(run_dir / "button-latency-inventory.md"),
         },
     }
     report["artifacts"]["audit_report_json"] = str(run_dir / "audit-report.json")
@@ -595,12 +842,31 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
     _write_json(manifest_path, manifest)
 
     contract = button_contract.build_contract(repo_root, manifest_path)
-    button_contract.write_outputs(contract, repo_root, run_dir / "button-contract.json", run_dir / "button-contract.md")
+    contract_path = run_dir / "button-contract.json"
+    button_contract.write_outputs(contract, repo_root, contract_path, run_dir / "button-contract.md")
+
+    view_matrix = ui_view_matrix.build_matrix(repo_root, manifest_path, contract_path)
+    ui_view_matrix.write_outputs(view_matrix, repo_root, run_dir / "ui-view-matrix.json", run_dir / "ui-view-matrix.md")
+
+    latency_measurements = args.latency_measurements
+    if latency_measurements and not latency_measurements.is_absolute():
+        latency_measurements = repo_root / latency_measurements
+
+    latency_inventory = button_latency_inventory.build_inventory(
+        repo_root,
+        manifest_path,
+        contract_path,
+        latency_measurements if latency_measurements and latency_measurements.exists() else None,
+    )
+    button_latency_inventory.write_outputs(
+        latency_inventory,
+        repo_root,
+        run_dir / "button-latency-inventory.json",
+        run_dir / "button-latency-inventory.md",
+    )
 
     manifest_files = cast(list[dict[str, object]], manifest.get("files", []))
     selected_entries = _selected_entries(manifest_files, args.file_bucket, args.max_files)
-    manifest_bucket_map = {str(entry.get("path", "")): str(entry.get("bucket", "")) for entry in manifest_files}
-
     file_reviews: list[dict[str, object]] = []
     backlog: list[dict[str, object]] = []
     for entry in selected_entries:
@@ -623,7 +889,7 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
 
         interactive = _is_interactive(entry)
         if interactive:
-            contract_slice = _button_contract_slice(contract, str(entry.get("bucket", "")), manifest_bucket_map)
+            contract_slice = _button_contract_slice(contract, str(entry.get("path", "")))
             button_prompt = prompts.load_project_prompt(repo_root, "ralph_button_contract_reviewer.md").render(
                 manifest_json=_json_text(manifest_slice),
                 button_contract_json=_json_text(contract_slice),
@@ -667,6 +933,7 @@ def _run_audit_only(args: argparse.Namespace, repo_root: Path, run_dir: Path) ->
         run_dir=run_dir,
         manifest=manifest,
         contract=contract,
+        view_matrix=view_matrix,
         file_reviews=file_reviews,
         backlog=backlog,
     )
@@ -696,7 +963,7 @@ def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
         _path_from_result(result, "manifest"),
         {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
     )
-    return prompts.load_project_prompt(repo_root, "ralph_design_critic.md").render(
+    return prompts.load_project_prompt(repo_root, "ralph_design_comparison.md").render(
         screenshots_json=_json_text(result),
         manifest_json=manifest_json,
     )
@@ -736,9 +1003,11 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     summary: dict[str, object] = {
         "schema": "ralph-remote-visual-v1",
         "status": remote_result["status"],
+        "mode": run_mode(args),
         "audit_only": False,
         "repo_root": str(repo_root),
         "run_dir": str(run_dir),
+        "min_design_score_delta": getattr(args, "min_design_score_delta", 0.10),
         "remote_visual": remote_result,
         "remote_visual_context": str(context_path),
         "profile_reviews": {},
@@ -750,7 +1019,7 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
             _remote_visual_prompt(remote_result, repo_root),
             repo_root,
             out_dir=run_dir / "remote-visual" / "reviews",
-            label="design",
+            label="design-comparison",
             profile=args.critic_profile,
         )
         button_review = _run_profile_command(
@@ -771,11 +1040,34 @@ def _run_remote_visual_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
     return summary
 
 
+def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) -> dict[str, object]:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    mode = run_mode(args)
+    summary: dict[str, object] = {
+        "schema": "ralph-loop-mode-v1",
+        "status": "failed",
+        "mode": mode,
+        "audit_only": False,
+        "repo_root": str(repo_root),
+        "run_dir": str(run_dir),
+        "reason": (
+            f"{mode} is accepted by the CLI but the scratch checkout/apply implementation is not wired yet; "
+            "failing closed so source files are not mutated without visual gates."
+        ),
+        "source_mutated": False,
+        "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
+    }
+    _write_json(run_dir / "mode-state.json", summary)
+    return summary
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     repo_root = args.repo_root.resolve()
     run_dir = (repo_root / args.run_dir).resolve() if not args.run_dir.is_absolute() else args.run_dir.resolve()
-    if args.audit_only:
+    if getattr(args, "audit_only", False):
         return _run_audit_only(args, repo_root, run_dir)
+    if getattr(args, "dry_run", False) or getattr(args, "apply_accepted", False) or getattr(args, "commit_accepted", False):
+        return _run_unimplemented_mode(args, repo_root, run_dir)
     return _run_remote_visual_mode(args, repo_root, run_dir)
 
 

@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.view.KeyEvent as AndroidKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.PlatformTextStyle
@@ -30,12 +34,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val TypingAnswerMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
-private val TypingAnswerText = Color(MainActivityUiSupport.STUDY_PLUM)
-private val TypingAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+private val TypingAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
+private val TypingAnswerText: Color @Composable get() = KaniTheme.colors.plum
+private val TypingAnswerBorder: Color @Composable get() = KaniTheme.colors.border
+
+internal fun isTypingMeaningSubmitKey(action: Int, keyCode: Int): Boolean {
+    return action == AndroidKeyEvent.ACTION_UP &&
+        (keyCode == AndroidKeyEvent.KEYCODE_ENTER || keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER)
+}
 
 @Composable
-internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
+internal fun TypingMeaningAnswer(
+    label: String,
+    state: TypingAnswerState,
+    onDone: Runnable? = null,
+) {
+    val submitAnswer = {
+        onDone?.run()
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -67,9 +83,21 @@ internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Done
             ),
+            keyboardActions = KeyboardActions(
+                onDone = { submitAnswer() },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .heightIn(min = 58.dp)
+                .onPreviewKeyEvent { event ->
+                    val native = event.nativeKeyEvent
+                    if (isTypingMeaningSubmitKey(native.action, native.keyCode)) {
+                        submitAnswer()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .onGloballyPositioned { coordinates ->
                     state.updateBounds(coordinates.boundsInWindow())
                 },
@@ -77,7 +105,7 @@ internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
+                    color = KaniTheme.colors.surface,
                     border = BorderStroke(1.dp, TypingAnswerBorder)
                 ) {
                     Box(

@@ -49,15 +49,14 @@ class DrawingPadView(context: Context) : View(context) {
     private var target = ""
     private var activePointerId = -1
     private var blockingCurrentStroke = false
+    private var nightMode = MainActivityUiSupport.isNightMode(context.resources.configuration)
 
     init {
-        setBackgroundColor(Color.WHITE)
-        paint.color = DRAWING_INK
+        applyPalette()
         paint.strokeWidth = 12f
         paint.style = Paint.Style.STROKE
         paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
-        grid.color = Color.rgb(244, 199, 225)
         grid.strokeWidth = 2f
         guidePaint.style = Paint.Style.STROKE
         guidePaint.strokeCap = Paint.Cap.ROUND
@@ -69,11 +68,34 @@ class DrawingPadView(context: Context) : View(context) {
         outlinePaint.strokeWidth = 5f
         outlinePaint.textAlign = Paint.Align.CENTER
         outlinePaint.typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
-        replayPaint.color = DRAWING_BLUE
         replayPaint.strokeWidth = 13f
         replayPaint.style = Paint.Style.STROKE
         replayPaint.strokeCap = Paint.Cap.ROUND
         replayPaint.strokeJoin = Paint.Join.ROUND
+    }
+
+    fun setNightMode(night: Boolean) {
+        if (nightMode == night) {
+            return
+        }
+        nightMode = night
+        applyPalette()
+        invalidate()
+    }
+
+    private fun applyPalette() {
+        setBackgroundColor(if (nightMode) DRAWING_PAPER_NIGHT else Color.WHITE)
+        paint.color = if (nightMode) DRAWING_INK_NIGHT else DRAWING_INK
+        grid.color = if (nightMode) DRAWING_GRID_NIGHT else DRAWING_GRID
+        replayPaint.color = if (nightMode) DRAWING_BLUE_NIGHT else DRAWING_BLUE
+    }
+
+    private fun guideTan(): Int {
+        return if (nightMode) DRAWING_TAN_NIGHT else DRAWING_TAN
+    }
+
+    private fun markerHalo(): Int {
+        return if (nightMode) Color.argb(230, 43, 28, 48) else Color.argb(230, 255, 255, 255)
     }
 
     fun hasInk(): Boolean {
@@ -410,7 +432,7 @@ class DrawingPadView(context: Context) : View(context) {
             val point: InkPoint = stroke.points[i]
             path.lineTo(point.x * width, point.y * height)
         }
-        guidePaint.color = if (hint.current) DRAWING_CORAL else Color.rgb(111, 74, 39)
+        guidePaint.color = if (hint.current) DRAWING_CORAL else guideTan()
         guidePaint.alpha = ((if (hint.current) 220 else 160) * hint.alpha).roundToInt()
         guidePaint.strokeWidth = if (hint.current) 14f else 9f
         canvas.drawPath(path, guidePaint)
@@ -418,7 +440,13 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     private fun drawFallbackOutline(canvas: Canvas, width: Float, height: Float) {
-        outlinePaint.color = Color.argb(if (revealGuide) 120 else 72, 111, 74, 39)
+        val tan = guideTan()
+        outlinePaint.color = Color.argb(
+            if (revealGuide) 120 else 72,
+            Color.red(tan),
+            Color.green(tan),
+            Color.blue(tan)
+        )
         outlinePaint.textSize = min(width, height) * 0.62f
         val bounds = Rect()
         outlinePaint.getTextBounds(target, 0, target.length, bounds)
@@ -475,11 +503,11 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     private fun drawStartMarker(canvas: Canvas, x: Float, y: Float, number: Int, active: Boolean, numberVisible: Boolean) {
-        markerPaint.color = Color.argb(230, 255, 255, 255)
+        markerPaint.color = markerHalo()
         canvas.drawCircle(x, y, 17f, markerPaint)
         markerPaint.style = Paint.Style.STROKE
         markerPaint.strokeWidth = 3f
-        markerPaint.color = if (active) DRAWING_CORAL else Color.rgb(111, 74, 39)
+        markerPaint.color = if (active) DRAWING_CORAL else guideTan()
         canvas.drawCircle(x, y, 17f, markerPaint)
         markerPaint.style = Paint.Style.FILL
         if (!numberVisible) {
@@ -487,7 +515,7 @@ class DrawingPadView(context: Context) : View(context) {
             return
         }
         markerText.textSize = 18f
-        markerText.color = if (active) DRAWING_CORAL else Color.rgb(111, 74, 39)
+        markerText.color = if (active) DRAWING_CORAL else guideTan()
         canvas.drawText(number.toString(), x, y - (markerText.descent() + markerText.ascent()) / 2f, markerText)
     }
 
@@ -497,7 +525,14 @@ class DrawingPadView(context: Context) : View(context) {
 
     companion object {
         private val DRAWING_INK = Color.rgb(45, 22, 53)
+        private val DRAWING_INK_NIGHT = Color.rgb(245, 234, 244)
+        private val DRAWING_PAPER_NIGHT = Color.rgb(43, 28, 48)
+        private val DRAWING_GRID = Color.rgb(244, 199, 225)
+        private val DRAWING_GRID_NIGHT = Color.rgb(84, 48, 92)
         private val DRAWING_BLUE = Color.rgb(110, 92, 230)
+        private val DRAWING_BLUE_NIGHT = Color.rgb(157, 143, 255)
+        private val DRAWING_TAN = Color.rgb(111, 74, 39)
+        private val DRAWING_TAN_NIGHT = Color.rgb(214, 170, 120)
         private val DRAWING_CORAL = Color.rgb(255, 76, 118)
         private const val REPLAY_DURATION_MILLIS = 950L
     }

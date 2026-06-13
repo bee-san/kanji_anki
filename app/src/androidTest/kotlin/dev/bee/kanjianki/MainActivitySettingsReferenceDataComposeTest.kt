@@ -86,6 +86,7 @@ class MainActivitySettingsReferenceDataComposeTest {
 
         composeRule.onNodeWithText("Home").performClick()
         composeRule.onNodeWithText("Back to settings").performClick()
+        composeRule.onNodeWithText("Bundled source attribution.").assertIsDisplayed()
         composeRule.onNodeWithText("Dictionary data").assertIsDisplayed()
         composeRule.onNodeWithText("Stroke data").assertIsDisplayed()
         composeRule.onNodeWithText("Fonts").assertIsDisplayed()

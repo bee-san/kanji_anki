@@ -28,21 +28,20 @@ class MainActivitySettingsUpdatePageComposeTest {
             SettingsUpdatePage(
                 model = SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
-                    body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = { homeClicked = true },
                     onBack = { backClicked = true },
                     onCheckForUpdate = { checkClicked = true },
                     panel = SettingsUpdatePanelModel(
                         title = SettingsTextCopy.automaticUpdatesTitle(),
                         statusLine = SettingsTextCopy.autoUpdatePanelStatus(true),
-                        statusColor = ComposeColor(0xFF00AEB5),
+                        statusColor = MainActivityUiSupport.TEAL,
                         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine("Today at 09:15"),
                         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine("APK verified. Android installer started."),
                         installPermissionLine = SettingsTextCopy.installPermissionLine(true),
-                        installPermissionColor = ComposeColor(0xFF00AEB5),
+                        installPermissionColor = MainActivityUiSupport.TEAL,
                         hasPendingUpdate = true,
                         pendingVersionLine = SettingsTextCopy.verifiedApkReadyLine("v0.4.34"),
-                        pendingMessageLine = SettingsTextCopy.pendingUpdateFallback(),
+                        pendingMessageLine = SettingsTextCopy.pendingUpdateFallback(true),
                         canInstallUpdates = true,
                         onInstallVerifiedUpdate = { installClicked = true },
                         onOpenInstallSettings = {},
@@ -56,14 +55,13 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.updatePageTitle()).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdatePanelStatus(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateLastCheckLine("Today at 09:15")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateLastResultLine("APK verified. Android installer started.")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installPermissionLine(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.verifiedApkReadyLine("v0.4.34")).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).assertIsDisplayed()
@@ -92,11 +90,11 @@ class MainActivitySettingsUpdatePageComposeTest {
                     panel = SettingsUpdatePanelModel(
                         title = SettingsTextCopy.appUpdatesTitle(),
                         statusLine = SettingsTextCopy.autoUpdatePanelStatus(false),
-                        statusColor = ComposeColor(0xFF6C5674),
+                        statusColor = MainActivityUiSupport.MUTED,
                         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine("not yet"),
                         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine("No result yet."),
                         installPermissionLine = SettingsTextCopy.installPermissionLine(false),
-                        installPermissionColor = ComposeColor(0xFFFF4C76),
+                        installPermissionColor = MainActivityUiSupport.CORAL,
                         hasPendingUpdate = false,
                         pendingVersionLine = null,
                         pendingMessageLine = null,
@@ -130,9 +128,8 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.setContent {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
-                    title = "Checking release",
-                    body = "Downloading metadata and verifying assets.",
-                    progressLabel = "Checking GitHub Releases",
+                    title = "Checking for updates",
+                    progressLabel = "Checking releases",
                     onHome = { homeClicked = true },
                     onBack = { backClicked = true }
                 )
@@ -141,10 +138,9 @@ class MainActivitySettingsUpdatePageComposeTest {
 
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed()
-        composeRule.onNodeWithText("Checking release").assertIsDisplayed()
-        composeRule.onNodeWithText("Downloading metadata and verifying assets.").assertIsDisplayed()
-        composeRule.onNodeWithText("Checking GitHub Releases").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Checking GitHub Releases").assertIsDisplayed()
+        composeRule.onNodeWithText("Checking for updates").assertIsDisplayed()
+        composeRule.onNodeWithText("Checking releases").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Checking releases").assertIsDisplayed()
 
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performClick()

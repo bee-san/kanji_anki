@@ -24,12 +24,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val NoteTypeInk = KaniUiTokens.Ink
-private val NoteTypeMuted = KaniUiTokens.Muted
-private val NoteTypeTeal = KaniUiTokens.Teal
-private val NoteTypePlum = Color(0xFF6E2B73)
-private val NoteTypePanelBorder = KaniUiTokens.PanelBorder
-private val NoteTypePanelFill = KaniUiTokens.PanelFill
+private val NoteTypeInk: Color @Composable get() = KaniUiTokens.Ink
+private val NoteTypeMuted: Color @Composable get() = KaniUiTokens.Muted
+private val NoteTypeTeal: Color @Composable get() = KaniUiTokens.Teal
+private val NoteTypePlum: Color @Composable get() = KaniTheme.colors.plum
+private val NoteTypePanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val NoteTypePanelFill: Color @Composable get() = KaniUiTokens.PanelFill
 private val NoteTypePanelShape = KaniUiTokens.PanelShape
 
 @Composable

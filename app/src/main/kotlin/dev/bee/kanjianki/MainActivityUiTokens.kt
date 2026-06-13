@@ -9,6 +9,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -20,27 +21,34 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal object KaniUiTokens {
-    val Ink = Color(MainActivityUiSupport.INK)
-    val Muted = Color(MainActivityUiSupport.MUTED)
-    val Primary = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-    val Coral = Color(MainActivityUiSupport.CORAL)
-    val Teal = Color(MainActivityUiSupport.TEAL)
-    val Blue = Color(MainActivityUiSupport.BLUE)
-    val Grey = Color(0xFFB2B2BA)
-    val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
-    val White = Color(0xFFFFFFFF)
-    val PanelFill = Color(0xFFFFFDFE)
-    val PanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-    val SubtleButtonBorder = Color(0xFFEBD6E4)
-    val ButtonBorder = Color(0xFFEEBDDA)
+    val Ink: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.ink
+    val Muted: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.muted
+    val Primary: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.primary
+    val Coral: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.coral
+    val Teal: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.teal
+    val Blue: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.blue
+    val Grey: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.grey
+    val StudyPlum: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.plum
+    val Gold: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.gold
+    val White: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.surface
+    val PanelFill: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.panelFill
+    val PanelBorder: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.border
+    val SubtleButtonBorder: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.borderSoft
+    val ButtonBorder: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.borderSoft
     val PanelShape = RoundedCornerShape(24.dp)
     val ButtonShape = RoundedCornerShape(12.dp)
     val WideButtonShape = RoundedCornerShape(22.dp)
 
+    /**
+     * Picks dark ink or white, whichever is more readable on [background].
+     * Backgrounds passed here are saturated accents, so the choice is
+     * theme-independent.
+     */
     fun readableTextColor(background: Color): Color {
-        val inkContrast = contrastRatio(Ink, background)
-        val whiteContrast = contrastRatio(White, background)
-        return if (inkContrast >= whiteContrast) Ink else White
+        val ink = Color(MainActivityUiSupport.INK)
+        val inkContrast = contrastRatio(ink, background)
+        val whiteContrast = contrastRatio(Color.White, background)
+        return if (inkContrast >= whiteContrast) ink else Color.White
     }
 }
 
@@ -102,19 +110,19 @@ private fun KaniActionButton(
         .heightIn(min = minHeightDp.dp)
     if (primary) {
         Button(
-            onClick = onClick,
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = KaniUiTokens.Primary,
-                contentColor = KaniUiTokens.White
+                containerColor = KaniTheme.colors.primary,
+                contentColor = KaniTheme.colors.onPrimary
             )
         ) {
             KaniButtonText(label = label, sizeSp = textSizeSp)
         }
     } else {
         OutlinedButton(
-            onClick = onClick,
+            onClick = { withButtonTrace(label) { onClick() } },
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),

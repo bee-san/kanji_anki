@@ -120,6 +120,7 @@ class MainActivitySettingsInstrumentedTest {
                 val manualPanel = activity.workloadSettingsPanelModel()
                 assertFalse(manualPanel.autoMode)
                 manualPanel.onEnableManual.run()
+                waitForBackgroundSettingsWrites(activity)
                 assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode())
 
                 val stepsPanel = activity.learningStepsSettingsPanelModel()
@@ -209,6 +210,7 @@ class MainActivitySettingsInstrumentedTest {
                 val ladderOrder = activity.studyLadderSettingsPanelModel()
                 assertTrue(ladderOrder.rungs.isNotEmpty())
                 ladderOrder.rungs.first { it.label.contains("Similar kanji") }.onToggle.run()
+                waitForBackgroundSettingsWrites(activity)
                 assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI))
                 activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6))
                 assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs[0])
@@ -268,6 +270,10 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.automaticUpdatesTitle()
                     )
                     assertFalse(missingPermission.canInstallUpdates)
+                    assertEquals(
+                        SettingsTextCopy.pendingUpdateFallback(false),
+                        missingPermission.pendingMessageLine
+                    )
 
                     MainActivityRuntimeOverrides.setInstallPermission(true)
                     val readyUpdate = settingsUpdatePanelModel(
@@ -275,6 +281,10 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.automaticUpdatesTitle()
                     )
                     assertTrue(readyUpdate.canInstallUpdates)
+                    assertEquals(
+                        SettingsTextCopy.pendingUpdateFallback(true),
+                        readyUpdate.pendingMessageLine
+                    )
 
                     activity.store.saveAutoUpdateEnabled(false)
                     val updateOff = settingsUpdatePanelModel(
@@ -288,6 +298,7 @@ class MainActivitySettingsInstrumentedTest {
 
                     activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 22, 45))
                     reminderHelper.saveReminderFromSelection(6, 15, false)
+                    waitForBackgroundSettingsWrites(activity)
                     val reminder = requireNotNull(activity.store.reminderSettings())
                     assertFalse(reminder.enabled)
                     assertEquals(6, reminder.hour)
@@ -343,6 +354,7 @@ class MainActivitySettingsInstrumentedTest {
                 MainActivityRuntimeOverrides.setRuntimeNotificationPermission(true)
                 MainActivityRuntimeOverrides.setNotificationsAllowed(false)
                 reminder.saveReminderFromSelection(8, 15, true)
+                waitForBackgroundSettingsWrites(activity)
                 val saved = requireNotNull(activity.store.reminderSettings())
                 assertTrue(saved.enabled)
                 assertEquals(8, saved.hour)
@@ -359,6 +371,10 @@ class MainActivitySettingsInstrumentedTest {
             MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
             MainActivityRuntimeOverrides.setNotificationsAllowed(null)
         }
+    }
+
+    private fun waitForBackgroundSettingsWrites(activity: MainActivity) {
+        activity.io.submit { }.get()
     }
 
     private fun assertHasText(activity: MainActivity, text: String) {
