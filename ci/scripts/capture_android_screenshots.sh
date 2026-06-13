@@ -54,6 +54,8 @@ screen_route_extra="dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
 
 captured_routes=()
 captured_files=()
+captured_orientations=()
+captured_launch_targets=()
 
 original_accelerometer_rotation="$(adb shell settings get system accelerometer_rotation 2>/dev/null | tr -d '\r' || true)"
 original_user_rotation="$(adb shell settings get system user_rotation 2>/dev/null | tr -d '\r' || true)"
@@ -195,6 +197,8 @@ capture_route() {
   launch_screenshot_route "${launch_target}"
   wait_for_route "${capture_name}" "${expected_terms[@]}"
   capture_png "${capture_name}" >/dev/null
+  captured_orientations+=("${orientation}")
+  captured_launch_targets+=("${launch_target}")
 }
 
 log "Installing ${apk_path} (${package_name})"
@@ -251,17 +255,23 @@ export PACKAGE_NAME="${package_name}"
 export REQUESTED_ROUTE="${requested_route}"
 export CAPTURED_ROUTES_RAW="$(printf '%s\n' "${captured_routes[@]}")"
 export CAPTURED_FILES_RAW="$(printf '%s\n' "${captured_files[@]}")"
+export CAPTURED_ORIENTATIONS_RAW="$(printf '%s\n' "${captured_orientations[@]}")"
+export CAPTURED_LAUNCH_TARGETS_RAW="$(printf '%s\n' "${captured_launch_targets[@]}")"
+export CAPTURE_SCRIPT_PATH="${0}"
 
 python3 - <<'PY'
+import hashlib
 import json
 import os
 import subprocess
 from pathlib import Path
+from datetime import datetime, timezone
 
 screenshots_dir = Path(os.environ.get("SCREENSHOTS_DIR", "screenshots"))
 apk_path = os.environ["APK_PATH"]
 package_name = os.environ["PACKAGE_NAME"]
 requested_route = os.environ["REQUESTED_ROUTE"]
+capture_script_path = os.environ.get("CAPTURE_SCRIPT_PATH", "ci/scripts/capture_android_screenshots.sh")
 
 
 def run(command):
@@ -272,12 +282,49 @@ def run(command):
 
 captured_routes = [line for line in os.environ.get("CAPTURED_ROUTES_RAW", "").splitlines() if line]
 captured_files = [line for line in os.environ.get("CAPTURED_FILES_RAW", "").splitlines() if line]
+captured_orientations = [line for line in os.environ.get("CAPTURED_ORIENTATIONS_RAW", "").splitlines() if line]
+captured_launch_targets = [line for line in os.environ.get("CAPTURED_LAUNCH_TARGETS_RAW", "").splitlines() if line]
 if not captured_routes:
     captured_routes = [path.stem for path in sorted(screenshots_dir.glob("*.png"))]
 if not captured_files:
     captured_files = [str(path) for path in sorted(screenshots_dir.glob("*.png"))]
+if not captured_orientations:
+    captured_orientations = [""] * len(captured_routes)
+if not captured_launch_targets:
+    captured_launch_targets = [""] * len(captured_routes)
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+capture_count = max(len(captured_routes), len(captured_files), len(captured_orientations), len(captured_launch_targets))
+captures = []
+for index in range(capture_count):
+    route = captured_routes[index] if index < len(captured_routes) else ""
+    file_name = captured_files[index] if index < len(captured_files) else ""
+    orientation = captured_orientations[index] if index < len(captured_orientations) else ""
+    launch_target = captured_launch_targets[index] if index < len(captured_launch_targets) else ""
+    file_path = Path(file_name) if file_name else None
+    captures.append(
+        {
+            "route": route,
+            "launch_target": launch_target,
+            "orientation": orientation,
+            "file": file_name,
+            "sha256": sha256(file_path) if file_path is not None and file_path.exists() else "",
+        }
+    )
+
+captured_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 manifest = {
+    "captured_at_utc": captured_at_utc,
+    "command_argv": [capture_script_path, requested_route],
     "git_sha": os.environ.get("GITHUB_SHA") or run(["git", "rev-parse", "HEAD"]),
     "git_ref": os.environ.get("GITHUB_REF_NAME") or os.environ.get("GITHUB_REF") or run(["git", "branch", "--show-current"]),
     "workflow_run_id": os.environ.get("GITHUB_RUN_ID", ""),
@@ -294,6 +341,7 @@ manifest = {
     "requested_route": requested_route,
     "routes": captured_routes,
     "files": captured_files,
+    "captures": captures,
     "notes": [
         "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
     ],

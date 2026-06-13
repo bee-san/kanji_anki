@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -10,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional, Sequence, cast
 
 Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
@@ -72,6 +73,42 @@ def _manifest_files(manifest: dict[str, object], out_dir: Path) -> list[Path]:
             path = out_dir / path
         resolved.append(path)
     return resolved
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> list[dict[str, object]]:
+    captures = manifest.get("captures")
+    if not isinstance(captures, list):
+        return []
+    normalized: list[dict[str, object]] = []
+    for capture in captures:
+        if not isinstance(capture, dict):
+            continue
+        raw_route = capture.get("route")
+        route = _canonical_screenshot_route(raw_route if isinstance(raw_route, str) else None)
+        raw_file = capture.get("file") or capture.get("path")
+        if not isinstance(raw_file, str) or not raw_file:
+            continue
+        path = Path(raw_file)
+        if not path.is_absolute():
+            path = out_dir / path
+        normalized.append(
+            {
+                "route": route or "",
+                "path": path,
+                "sha256": str(capture.get("sha256") or ""),
+                "orientation": str(capture.get("orientation") or ""),
+                "launch_target": str(capture.get("launch_target") or ""),
+            }
+        )
+    return normalized
 
 
 def _current_branch(repo_root: Path, runner: Runner) -> tuple[str | None, str | None]:
@@ -173,13 +210,18 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
     if not isinstance(manifest, dict):
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} is not a JSON object.", manifest=str(manifests[0]))
 
-    manifest_routes = _manifest_routes(manifest)
+    capture_entries = _manifest_capture_entries(manifest, out_dir)
+    if capture_entries:
+        manifest_routes = [str(entry["route"]) for entry in capture_entries if entry["route"]]
+        manifest_files = [cast(Path, entry["path"]) for entry in capture_entries]
+    else:
+        manifest_routes = _manifest_routes(manifest)
+        manifest_files = _manifest_files(manifest, out_dir)
     if not manifest_routes:
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} does not declare any routes.", manifest=str(manifests[0]))
 
     raw_requested_route = manifest.get("requested_route")
     manifest_requested_route = _canonical_screenshot_route(raw_requested_route if isinstance(raw_requested_route, str) else None)
-    manifest_files = _manifest_files(manifest, out_dir)
     if manifest_files:
         missing_files = [path for path in manifest_files if not path.exists()]
         if missing_files:
@@ -188,6 +230,29 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 f"Artifact manifest references missing files: {', '.join(str(path) for path in missing_files)}",
                 manifest=str(manifests[0]),
             )
+        if capture_entries:
+            hash_mismatches = []
+            for entry in capture_entries:
+                expected_sha256 = str(entry["sha256"])
+                if not expected_sha256:
+                    continue
+                file_path = cast(Path, entry["path"])
+                actual_sha256 = _sha256_file(file_path)
+                if actual_sha256 != expected_sha256:
+                    hash_mismatches.append(
+                        {
+                            "file": str(file_path),
+                            "expected_sha256": expected_sha256,
+                            "actual_sha256": actual_sha256,
+                        }
+                    )
+            if hash_mismatches:
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest SHA-256 hashes do not match for: {', '.join(item['file'] for item in hash_mismatches)}",
+                    manifest=str(manifests[0]),
+                    hash_mismatches=hash_mismatches,
+                )
         pngs = manifest_files
 
     if expected_route is not None:
@@ -241,6 +306,16 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
         pngs=[str(path) for path in pngs],
         routes=manifest_routes,
         requested_route=manifest_requested_route,
+        captures=[
+            {
+                "route": str(entry["route"]),
+                "path": str(cast(Path, entry["path"])),
+                "orientation": str(entry["orientation"]),
+                "launch_target": str(entry["launch_target"]),
+                "sha256": str(entry["sha256"]),
+            }
+            for entry in capture_entries
+        ],
     )
 
 

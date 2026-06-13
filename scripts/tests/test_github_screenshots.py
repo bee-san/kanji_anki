@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 from scripts.ralph_loop import github_screenshots
@@ -164,6 +165,68 @@ class GithubScreenshotsTest(unittest.TestCase):
             result = github_screenshots.validate_artifact(out, expected_route="all")
             self.assertEqual("passed", result["status"])
             self.assertEqual(routes, result["routes"])
+
+    def test_validate_artifact_verifies_capture_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "home.png"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            sha256 = hashlib.sha256(png.read_bytes()).hexdigest()
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "home"],
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [
+                            {
+                                "route": "home",
+                                "launch_target": "home",
+                                "orientation": "portrait",
+                                "file": str(png),
+                                "sha256": sha256,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("passed", result["status"])
+            captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(1, len(captures))
+            self.assertEqual(sha256, str(captures[0]["sha256"]))
+
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "home"],
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [
+                            {
+                                "route": "home",
+                                "launch_target": "home",
+                                "orientation": "portrait",
+                                "file": str(png),
+                                "sha256": "0" * 64,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            mismatch = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("missing_artifact", mismatch["status"])
+            self.assertIn("SHA-256", cast(str, mismatch["message"]))
 
     def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
