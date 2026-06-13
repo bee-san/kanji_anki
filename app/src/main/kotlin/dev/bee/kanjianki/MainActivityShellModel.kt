@@ -2,10 +2,18 @@ package dev.bee.kanjianki
 
 data class MainActivityShellModel(
     val selectedRoute: String = "home",
+    val scrollPositionLabel: String? = null,
 ) {
     val routeTestTag: String
         get() = "main-route-$selectedRoute"
 
     val routeContentDescription: String
-        get() = "Kani route $selectedRoute"
+        get() = buildString {
+            append("Kani route ")
+            append(selectedRoute)
+            scrollPositionLabel?.takeIf { it.isNotBlank() }?.let { label ->
+                append(" scroll ")
+                append(label)
+            }
+        }
 }

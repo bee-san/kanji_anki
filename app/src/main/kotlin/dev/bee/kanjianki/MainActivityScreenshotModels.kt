@@ -160,14 +160,15 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 onToggle = Runnable {},
                 panels = emptyList(),
             ),
-            settingsCategorySectionModel(
-                sectionKey = "settings-reference-data",
-                title = SettingsTextCopy.settingsReferenceDataTitle(),
-                summary = SettingsTextCopy.settingsReferenceDataBody(),
-                iconRes = R.drawable.ic_sparkle_24,
+            settingsAppearanceCategoryModel(
                 expanded = true,
                 onToggle = Runnable {},
-                panels = listOf(MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel()),
+                theme = activity.themeSettingsPanelModel(),
+            ),
+            settingsReferenceDataCategoryModel(
+                expanded = false,
+                onToggle = Runnable {},
+                dataLicense = MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
             ),
         ),
         onHome = Runnable { activity.renderHome() },

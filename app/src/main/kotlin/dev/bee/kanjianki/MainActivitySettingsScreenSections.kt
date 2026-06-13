@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 private const val SETTINGS_SECTION_ANKI_SOURCE = "settings-anki-source"
 private const val SETTINGS_SECTION_STUDY_BEHAVIOR = "settings-study-behavior"
 private const val SETTINGS_SECTION_AUTOMATION = "settings-automation"
+private const val SETTINGS_SECTION_APPEARANCE = "settings-appearance"
 private const val SETTINGS_SECTION_REFERENCE_DATA = "settings-reference-data"
 
 internal fun settingsAnkiSourceCategoryModel(
@@ -117,6 +118,37 @@ internal fun settingsAutomationCategoryModel(
         onToggle = onToggle,
         panelCount = 2,
         panels = listOf(reminder, update),
+    )
+}
+
+internal fun settingsAppearanceCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    panelCount: Int,
+    panels: List<SettingsPanelModel>,
+): SettingsCategorySectionModel {
+    return settingsCategorySectionModel(
+        sectionKey = SETTINGS_SECTION_APPEARANCE,
+        title = SettingsTextCopy.settingsAppearanceTitle(),
+        summary = SettingsTextCopy.settingsAppearanceBody(),
+        iconRes = R.drawable.ic_eye_24,
+        expanded = expanded,
+        onToggle = onToggle,
+        panels = panels,
+        panelCount = panelCount,
+    )
+}
+
+internal fun settingsAppearanceCategoryModel(
+    expanded: Boolean,
+    onToggle: Runnable,
+    theme: SettingsThemePanelModel,
+): SettingsCategorySectionModel {
+    return settingsAppearanceCategoryModel(
+        expanded = expanded,
+        onToggle = onToggle,
+        panelCount = 1,
+        panels = listOf(theme),
     )
 }
 

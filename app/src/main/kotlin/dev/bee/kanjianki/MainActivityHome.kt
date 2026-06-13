@@ -59,7 +59,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
             loadingTitle = HomeTextCopy.appTitle(),
             load = { buildHomeScreenModel() },
             render = { model ->
-                renderHomeScreen(model)
+                renderHomeScreen(
+                    model,
+                    initialScrollY = screenshotScrollY(),
+                    scrollPositionLabel = screenshotScrollPositionLabel(),
+                )
                 scheduleStatsPrecomputeIfStaleAsync()
             },
         )
@@ -123,8 +127,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
 
-    private fun renderHomeScreen(model: HomeScreenModel) {
-        renderHomeRoute {
+    private fun renderHomeScreen(
+        model: HomeScreenModel,
+        initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
+    ) {
+        renderHomeRoute(initialScrollY = initialScrollY, scrollPositionLabel = scrollPositionLabel) {
             HomeScreen(model)
         }
     }
@@ -161,7 +169,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
             emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
             previewCards = emptyList(),
         )
-        renderHomeScreen(model)
+        renderHomeScreen(
+            model,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        )
     }
 
     fun renderFocusQueue() {

@@ -115,7 +115,7 @@ fun BrowseDetailIdentity(model: BrowseDetailIdentityModel) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         model.stateBadges.forEach { badge ->
-            BrowseChip(label = badge.label, color = ComposeColor(badge.color))
+            BrowseChip(label = badge.label, color = kaniColor(badge.color))
         }
         Text(
             text = model.title,

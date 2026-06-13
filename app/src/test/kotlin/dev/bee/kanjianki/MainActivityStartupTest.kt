@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.theme.KaniThemeChoice
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +34,43 @@ class MainActivityStartupTest {
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
+    }
+
+    @Test
+    fun screenshotLaunchAppliesRequestedThemeChoiceBeforeRendering() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        try {
+            val intent = Intent(context, NoopStartupActivity::class.java).apply {
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME, "dark")
+            }
+            val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
+            val activity = controller.get()
+
+            controller.create().start().resume()
+
+            assertEquals(KaniThemeChoice.DARK, activity.store.appThemeChoice())
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    @Test
+    fun screenshotLaunchReadsRequestedScrollPositionAndOffset() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = Intent(context, NoopStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_SCROLL_POSITION, "middle")
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_SCROLL_Y, 1080)
+        }
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
+        val activity = controller.get()
+
+        controller.create().start().resume()
+
+        assertEquals("middle", activity.screenshotScrollPositionLabel())
+        assertEquals(1080, activity.screenshotScrollY())
     }
 
     private class NoopStartupActivity : MainActivity() {

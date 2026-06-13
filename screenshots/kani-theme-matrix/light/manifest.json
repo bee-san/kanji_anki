@@ -1,0 +1,77 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-06-13T19:37:09Z",
+  "captures": [
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/settings-top.png",
+      "route": "settings",
+      "scroll_position": "top",
+      "scroll_y": 0,
+      "scrollable": true,
+      "sha256": "d35c2317244a2c7c28caabec4d2dbcfdcb07802662ac8a9cebbfb2a5cb079d98",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/settings-middle.png",
+      "route": "settings",
+      "scroll_position": "middle",
+      "scroll_y": 1920,
+      "scrollable": true,
+      "sha256": "ca0a843f625738d46323bebce5da0f5931f024ce17878c458fcaa1c2bea4039e",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/light/settings-bottom.png",
+      "route": "settings",
+      "scroll_position": "bottom",
+      "scroll_y": 4128,
+      "scrollable": true,
+      "sha256": "372b161c393a1a08202713dd5c1819e3ce3a2b109ee05c8ffa137d7343ad2833",
+      "system_mode": "",
+      "theme": "light",
+      "theme_choice": "light"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "settings",
+    "light"
+  ],
+  "device": {
+    "api_level": "35",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "screenshots/kani-theme-matrix/light/settings-top.png",
+    "screenshots/kani-theme-matrix/light/settings-middle.png",
+    "screenshots/kani-theme-matrix/light/settings-bottom.png"
+  ],
+  "git_ref": "feat/kani-theme-selector-20260613",
+  "git_sha": "eb517926f42f096d277a413ef945b32453ec73b7",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_route": "settings",
+  "requested_system_mode": "",
+  "requested_theme": "light",
+  "requested_theme_choice": "light",
+  "routes": [
+    "settings"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

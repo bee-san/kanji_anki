@@ -126,6 +126,9 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 activity.renderUpdate()
             },
         )
+        val appearancePanels = listOf(
+            activity.themeSettingsPanelModel(),
+        )
         val referencePanels = listOf(
             MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
         )
@@ -154,6 +157,14 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 },
                 panelCount = 2,
                 panels = automationPanels,
+            ),
+            settingsAppearanceCategoryModel(
+                activity.settingsAppearanceExpanded,
+                Runnable {
+                    activity.settingsAppearanceExpanded = !activity.settingsAppearanceExpanded
+                },
+                panelCount = 1,
+                panels = appearancePanels,
             ),
             settingsReferenceDataCategoryModel(
                 activity.settingsAppExpanded,

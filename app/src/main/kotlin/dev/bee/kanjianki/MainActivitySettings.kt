@@ -74,14 +74,22 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun renderScreenshotSettings() {
         val model = screenshotSettingsScreenModel(this)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(
+            MainActivityBase.NAV_SETTINGS_ROUTE,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             SettingsScreen(model)
         }
     }
 
     private fun renderScreenshotUpdate() {
         val model = screenshotUpdatePageModel(this)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(
+            MainActivityBase.NAV_SETTINGS_ROUTE,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             SettingsUpdatePage(model)
         }
     }
@@ -129,6 +137,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
         return MainActivitySettingsLadderThresholdPanel(this).ladderThresholdSettingsPanelModel()
+    }
+
+    internal fun themeSettingsPanelModel(): SettingsThemePanelModel {
+        return MainActivitySettingsThemePanel(this).themeSettingsPanelModel()
     }
 
     fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {

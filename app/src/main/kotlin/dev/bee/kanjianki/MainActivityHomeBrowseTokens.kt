@@ -21,17 +21,10 @@ internal val BrowseCardShape = RoundedCornerShape(8.dp)
 
 @Composable
 internal fun browseSoftenedColor(color: ComposeColor): ComposeColor {
-    val colors = KaniTheme.colors
-    if (colors.isDark) {
+    if (KaniTheme.colors.isDark) {
         return color.copy(alpha = 0.16f)
     }
-    return when (color) {
-        colors.coral -> ComposeColor(0xFFFFEBF3)
-        colors.teal -> ComposeColor(0xFFE6FAFB)
-        colors.gold -> ComposeColor(0xFFFFF7DC)
-        colors.blue, ComposeColor(0xFFC9B9FF) -> ComposeColor(0xFFF2EEFF)
-        else -> ComposeColor(0xFFF8EEF5)
-    }
+    return color.copy(alpha = 0.10f)
 }
 
 internal fun browseNoFontPaddingStyle(sizeSp: Int): TextStyle {

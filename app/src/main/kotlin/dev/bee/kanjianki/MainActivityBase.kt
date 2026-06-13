@@ -173,6 +173,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var settingsSyncExpanded = false
 
     @JvmField
+    var settingsAppearanceExpanded = false
+
+    @JvmField
     var settingsAppExpanded = false
 
     @JvmField
@@ -242,6 +245,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
     }
 
+    fun screenshotScrollPositionLabel(): String? {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_SCROLL_POSITION)?.takeIf { it.isNotBlank() }
+    }
+
+    fun screenshotScrollY(): Int {
+        return intent?.getIntExtra(EXTRA_SCREENSHOT_SCROLL_Y, 0) ?: 0
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backCallback)
@@ -308,18 +319,19 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return super.dispatchTouchEvent(event)
     }
 
-    fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
-        shellHost.composeRoute(selected, initialScrollY, content)
+    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, content: @Composable () -> Unit) {
+        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, content)
     }
 
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        shellHost.composeRouteWithActionBar(selected, initialScrollY, beforeContent, content, actionBar)
+        shellHost.composeRouteWithActionBar(selected, initialScrollY, scrollPositionLabel, beforeContent, content, actionBar)
     }
 
     fun isActiveToken(token: String): Boolean {
@@ -427,6 +439,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
+        const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+        const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
+        const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L

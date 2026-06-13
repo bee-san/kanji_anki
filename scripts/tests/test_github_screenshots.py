@@ -69,9 +69,15 @@ class GithubScreenshotsTest(unittest.TestCase):
 
         self.assertIn('mktemp "${TMPDIR:-/tmp}/kani-ui.XXXXXX"', script)
         self.assertNotIn('mktemp -t kani-ui', script)
-        self.assertIn('adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" >/dev/null', script)
+        self.assertIn('screen_scroll_position_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"', script)
+        self.assertIn('screen_scroll_y_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"', script)
+        self.assertIn('--es "${screen_route_extra}" "${launch_target}"', script)
+        self.assertIn('--es "${screen_scroll_position_extra}" "${scroll_position}"', script)
+        self.assertIn('--ei "${screen_scroll_y_extra}" "${scroll_y}"', script)
         self.assertNotIn('-a android.intent.action.MAIN', script)
         self.assertNotIn('-c android.intent.category.LAUNCHER', script)
+        self.assertIn('captured_scroll_positions=()', script)
+        self.assertIn('captured_scroll_ys=()', script)
         self.assertIn('local status=0', script)
         self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
         self.assertIn('if len(captured_routes) != len(captured_files):', script)
@@ -179,6 +185,52 @@ class GithubScreenshotsTest(unittest.TestCase):
             result = github_screenshots.validate_artifact(out, expected_route="all")
             self.assertEqual("passed", result["status"])
             self.assertEqual(routes, result["routes"])
+
+    def test_validate_artifact_accepts_scroll_capture_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            route = "home"
+            positions = [("top", 0), ("middle", 1080), ("bottom", 2160)]
+            files = []
+            captures = []
+            for position, scroll_y in positions:
+                path = out / f"{route}-{position}.png"
+                path.write_bytes(f"png-{route}-{position}".encode("utf-8"))
+                sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+                files.append(str(path))
+                captures.append(
+                    {
+                        "route": route,
+                        "path": str(path),
+                        "sha256": sha256,
+                        "orientation": "portrait",
+                        "launch_target": route,
+                        "scroll_position": position,
+                        "scroll_y": scroll_y,
+                        "scrollable": True,
+                    }
+                )
+
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", route],
+                        "requested_route": route,
+                        "routes": [route],
+                        "files": files,
+                        "captures": captures,
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route=route)
+            self.assertEqual("passed", result["status"])
+            validated_captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(["top", "middle", "bottom"], [str(entry["scroll_position"]) for entry in validated_captures])
+            self.assertTrue(all(bool(entry["scrollable"]) for entry in validated_captures))
 
     def test_validate_artifact_verifies_capture_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

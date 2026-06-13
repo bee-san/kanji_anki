@@ -11,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 from subprocess import CompletedProcess
-from typing import Callable, Optional, Sequence, cast
+from typing import Callable, Iterable, Optional, Sequence, cast
 
 Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
@@ -99,6 +99,18 @@ def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> lis
         path = Path(raw_file)
         if not path.is_absolute():
             path = out_dir / path
+        raw_scroll_y = capture.get("scroll_y")
+        if isinstance(raw_scroll_y, str) and raw_scroll_y.strip():
+            try:
+                scroll_y: int | str | None = int(raw_scroll_y.strip())
+            except ValueError:
+                scroll_y = raw_scroll_y.strip()
+        elif isinstance(raw_scroll_y, int):
+            scroll_y = raw_scroll_y
+        elif isinstance(raw_scroll_y, float) and raw_scroll_y.is_integer():
+            scroll_y = int(raw_scroll_y)
+        else:
+            scroll_y = None
         normalized.append(
             {
                 "route": route or "",
@@ -106,9 +118,22 @@ def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> lis
                 "sha256": str(capture.get("sha256") or ""),
                 "orientation": str(capture.get("orientation") or ""),
                 "launch_target": str(capture.get("launch_target") or ""),
+                "scroll_position": str(capture.get("scroll_position") or ""),
+                "scroll_y": scroll_y,
+                "scrollable": bool(capture.get("scrollable")),
             }
         )
     return normalized
+
+
+def _unique_routes(routes: Iterable[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for route in routes:
+        if route and route not in seen:
+            seen.add(route)
+            unique.append(route)
+    return unique
 
 
 def _manifest_capture_path(capture: dict[str, object], out_dir: Path) -> Path | None:
@@ -224,6 +249,8 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} is not a JSON object.", manifest=str(manifests[0]))
 
     capture_entries = _manifest_capture_entries(manifest, out_dir)
+    manifest_routes = _manifest_routes(manifest)
+    manifest_files = _manifest_files(manifest, out_dir)
     if capture_entries:
         for index, entry in enumerate(capture_entries):
             route = str(entry["route"]).strip()
@@ -234,11 +261,9 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                     manifest=str(manifests[0]),
                     capture_path=str(cast(Path, entry["path"])),
                 )
-        manifest_routes = [str(entry["route"]) for entry in capture_entries]
+        if not manifest_routes:
+            manifest_routes = _unique_routes(str(entry["route"]) for entry in capture_entries)
         manifest_files = [cast(Path, entry["path"]) for entry in capture_entries]
-    else:
-        manifest_routes = _manifest_routes(manifest)
-        manifest_files = _manifest_files(manifest, out_dir)
     if not manifest_routes:
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} does not declare any routes.", manifest=str(manifests[0]))
 
@@ -408,6 +433,9 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 "path": str(cast(Path, entry["path"])),
                 "orientation": str(entry["orientation"]),
                 "launch_target": str(entry["launch_target"]),
+                "scroll_position": str(entry["scroll_position"]),
+                "scroll_y": entry["scroll_y"],
+                "scrollable": bool(entry["scrollable"]),
                 "sha256": str(entry["sha256"]),
             }
             for entry in capture_entries

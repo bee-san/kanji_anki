@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.theme.KaniThemeChoice
 
 @Composable
 internal fun MainActivityComposeRoute(
@@ -24,9 +25,15 @@ internal fun MainActivityComposeRoute(
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
     navActions: KaniNavActions? = null,
+    themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
+    isSystemDarkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MainActivityShellFrame(model) {
+    MainActivityShellFrame(
+        model = model,
+        themeChoice = themeChoice,
+        isSystemDarkTheme = isSystemDarkTheme,
+    ) {
         MainActivityRouteContent(
             model = model,
             initialScrollY = initialScrollY,
@@ -43,10 +50,16 @@ internal fun MainActivityComposeRouteWithActionBar(
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
     navActions: KaniNavActions? = null,
+    themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
+    isSystemDarkTheme: Boolean = false,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
-    MainActivityShellFrame(model) {
+    MainActivityShellFrame(
+        model = model,
+        themeChoice = themeChoice,
+        isSystemDarkTheme = isSystemDarkTheme,
+    ) {
         MainActivityRouteContentWithActionBar(
             model = model,
             initialScrollY = initialScrollY,
@@ -61,9 +74,11 @@ internal fun MainActivityComposeRouteWithActionBar(
 @Composable
 private fun MainActivityShellFrame(
     model: MainActivityShellModel,
+    themeChoice: KaniThemeChoice,
+    isSystemDarkTheme: Boolean,
     content: @Composable () -> Unit,
 ) {
-    KaniTheme {
+    KaniTheme(choice = themeChoice, isSystemInDarkTheme = isSystemDarkTheme) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

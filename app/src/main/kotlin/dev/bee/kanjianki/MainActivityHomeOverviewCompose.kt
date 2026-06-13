@@ -100,7 +100,7 @@ fun HomePrimaryCta(
             .fillMaxWidth()
             .fillMaxSize()
             .clip(shape)
-            .background(Color(color.toLong() and 0xFFFFFFFFL))
+            .background(kaniColor(color))
             .testTag(homePrimaryCtaTestTag(label))
             .semantics {
                 contentDescription = label
@@ -117,7 +117,7 @@ fun HomePrimaryCta(
     ) {
         Text(
             text = label,
-            color = Color.White,
+            color = KaniTheme.colors.onCoral,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
@@ -140,12 +140,12 @@ fun HomeStudyCta(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFFFF749C),
-                        Color(0xFFFF3A70)
+                        KaniTheme.colors.primary,
+                        KaniTheme.colors.coral
                     )
                 )
             )
-            .border(2.dp, Color(0xFFFFBED6), shape)
+            .border(2.dp, KaniTheme.colors.border, shape)
             .testTag(homeStudyCtaTestTag(title))
             .semantics {
                 contentDescription = title
@@ -167,7 +167,7 @@ fun HomeStudyCta(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = KaniTheme.colors.onPrimary,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -188,14 +188,14 @@ fun HomeStudyCta(
             Icon(
                 painter = painterResource(id = R.drawable.ic_arrow_forward_24),
                 contentDescription = null,
-                tint = Color(0xFFFF3A70)
+                tint = KaniTheme.colors.primary
             )
         }
 
         Icon(
             painter = painterResource(id = R.drawable.ic_sparkle_24),
             contentDescription = null,
-            tint = Color.White,
+            tint = KaniTheme.colors.onPrimary,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 10.dp, end = 78.dp)
@@ -204,7 +204,7 @@ fun HomeStudyCta(
         Icon(
             painter = painterResource(id = R.drawable.ic_sparkle_24),
             contentDescription = null,
-            tint = Color(0xFFFFD36A),
+            tint = KaniTheme.colors.gold,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 15.dp, bottom = 14.dp)

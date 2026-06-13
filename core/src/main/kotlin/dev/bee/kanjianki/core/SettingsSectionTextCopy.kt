@@ -27,6 +27,12 @@ object SettingsSectionTextCopy {
     fun settingsAutomationBody(): String = localizedText("Manage reminders, sync, and updates.", "リマインダー、同期、更新を管理。")
 
     @JvmStatic
+    fun settingsAppearanceTitle(): String = localizedText("Appearance", "外観")
+
+    @JvmStatic
+    fun settingsAppearanceBody(): String = localizedText("Choose your app theme.", "アプリのテーマを選ぶ。")
+
+    @JvmStatic
     fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
 
     @JvmStatic

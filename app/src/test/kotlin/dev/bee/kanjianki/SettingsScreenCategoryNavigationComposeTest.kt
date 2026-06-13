@@ -68,6 +68,8 @@ class SettingsScreenCategoryNavigationComposeTest {
         composeRule.onNodeWithText("1 card").assertIsDisplayed()
         composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
         composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
+        composeRule.onNodeWithTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG)
+            .assertExists()
 
         composeRule.onNodeWithContentDescription("Collapse Study settings").performClick()
         composeRule.waitForIdle()

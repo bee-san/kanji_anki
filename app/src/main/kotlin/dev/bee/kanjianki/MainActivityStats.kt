@@ -38,7 +38,11 @@ internal abstract class MainActivityStats : MainActivityGames() {
 
     private fun renderScreenshotStats() {
         val model = screenshotStatsScreenModel()
-        composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
+        composeRoute(
+            MainActivityBase.NAV_STATS_ROUTE,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             StatsRouteScreen(model = model, onHome = this::renderHome)
         }
     }

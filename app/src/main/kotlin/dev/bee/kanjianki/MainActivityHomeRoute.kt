@@ -12,10 +12,12 @@ import androidx.compose.runtime.Composable
  */
 internal fun MainActivityHome.renderHomeRoute(
     backAction: Runnable? = null,
+    initialScrollY: Int = 0,
+    scrollPositionLabel: String? = null,
     content: @Composable () -> Unit,
 ) {
     rememberHomeRouteContent(backAction, content)
-    composeRoute(MainActivityBase.NAV_HOME_ROUTE) {
+    composeRoute(MainActivityBase.NAV_HOME_ROUTE, initialScrollY, scrollPositionLabel) {
         content()
         HomeSyncConfirmDialog(pendingHomeSyncDialog)
     }
