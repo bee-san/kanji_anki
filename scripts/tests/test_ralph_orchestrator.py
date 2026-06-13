@@ -155,6 +155,7 @@ class RalphOrchestratorTest(unittest.TestCase):
             )
 
             calls: list[tuple[str, Path]] = []
+            screenshot_calls: list[tuple[str, Path]] = []
             scratch_checkout = root / "scratch-checkout" / "source"
             accepted_issue = {
                 "id": "home-primary-action-hierarchy",
@@ -247,6 +248,47 @@ class RalphOrchestratorTest(unittest.TestCase):
                     return CompletedProcess(args, 0, agent_stdout, "")
                 raise AssertionError(f"unexpected profile command: {args}")
 
+            def fake_capture_local_screenshots(
+                repo_root: Path,
+                out_dir: Path,
+                screenshot_route: str,
+                *,
+                label: str,
+                view_context: dict[str, object] | None = None,
+            ) -> dict[str, object]:
+                repo_path = Path(repo_root).resolve()
+                capture_dir = Path(out_dir).resolve()
+                screenshot_calls.append((label, repo_path))
+                capture_dir.mkdir(parents=True, exist_ok=True)
+                png_path = capture_dir / f"{label}.png"
+                png_path.write_bytes(b"fake-png")
+                result = {
+                    "schema": "ralph-local-screenshot-v1",
+                    "label": label,
+                    "status": "passed",
+                    "reason": "captured locally",
+                    "capture_dir": str(capture_dir),
+                    "requested_route": screenshot_route,
+                    "routes": [screenshot_route],
+                    "view_id": "home-default",
+                    "fixture_id": "home-fixture",
+                    "device_profile": "pixel-6",
+                    "fixture_set_hash": "fixture-hash-123",
+                    "pngs": [str(png_path)],
+                    "captures": [
+                        {
+                            "route": screenshot_route,
+                            "path": str(png_path),
+                            "orientation": "portrait",
+                            "launch_target": "home",
+                            "sha256": "a" * 64,
+                        }
+                    ],
+                }
+                if view_context is not None:
+                    result["view_context"] = view_context
+                return result
+
             with (
                 patch.object(
                     orchestrator.github_screenshots,
@@ -254,13 +296,14 @@ class RalphOrchestratorTest(unittest.TestCase):
                     side_effect=AssertionError("dry-run should not dispatch screenshots"),
                 ),
                 patch.object(orchestrator, "_prepare_scratch_checkout", side_effect=fake_prepare_scratch_checkout),
+                patch.object(orchestrator, "_capture_local_screenshots", side_effect=fake_capture_local_screenshots),
                 patch.object(orchestrator.subprocess, "run", side_effect=fake_run),
             ):
                 result = orchestrator.run(args)
 
             resolved_root = root.resolve()
             resolved_run_dir = (resolved_root / ".ralph-loop/current").resolve()
-            self.assertEqual("needs_host", result["status"])
+            self.assertEqual("failed", result["status"])
             self.assertEqual("dry-run", result["mode"])
             self.assertFalse(result["source_mutated"])
             self.assertTrue(result["cleanup_pending"])
@@ -270,7 +313,7 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertEqual(accepted_issue, cast(dict[str, object], result["accepted_issue"]))
             self.assertEqual(str(scratch_checkout), (scratch_pointer_dir / "path.txt").read_text(encoding="utf-8").strip())
             self.assertEqual("deadbeef", (scratch_pointer_dir / "head-sha.txt").read_text(encoding="utf-8").strip())
-            self.assertIn("before/after visual validation is not wired yet", str(result["reason"]))
+            self.assertIn("design comparison rejected the change", str(result["reason"]))
             self.assertEqual(source_texts, self._current_source_texts(root))
             self.assertEqual(
                 [
@@ -278,8 +321,13 @@ class RalphOrchestratorTest(unittest.TestCase):
                     ("uitester", resolved_root),
                     ("prepare", resolved_root),
                     ("agent", scratch_checkout.resolve()),
+                    ("design", resolved_root),
                 ],
                 calls,
+            )
+            self.assertEqual(
+                [("before", resolved_root), ("after", scratch_checkout.resolve())],
+                screenshot_calls,
             )
             mode_state = resolved_run_dir / "mode-state.json"
             self.assertTrue(mode_state.exists())

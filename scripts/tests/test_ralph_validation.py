@@ -18,8 +18,78 @@ class RalphValidationTest(unittest.TestCase):
             root = Path(temp)
             home_file, manifest, contract = self._build_home_ui_fixture(root, with_click_test=True)
 
+            before_screenshot = {
+                "status": "passed",
+                "requested_route": "home",
+                "view_id": "home-default",
+                "fixture_id": "home-fixture",
+                "device_profile": "pixel-6",
+                "fixture_set_hash": "fixture-hash-123",
+                "routes": ["home"],
+            }
+            after_screenshot = {
+                "status": "passed",
+                "requested_route": "home",
+                "view_id": "home-default",
+                "fixture_id": "home-fixture",
+                "device_profile": "pixel-6",
+                "fixture_set_hash": "fixture-hash-123",
+                "routes": ["home"],
+            }
             report = validation.build_validation_report(
                 {
+                    "mode": "apply-accepted",
+                    "branch": "feature/ralph-validation",
+                    "default_branch": "main",
+                    "changed_files": [home_file],
+                    "dirty_paths": [],
+                    "diff_lines": 42,
+                    "commits_ahead": 0,
+                    "manifest": manifest,
+                    "button_contract": contract,
+                    "targeted_compose_tests": [
+                        {
+                            "command": "./gradlew :app:testDebugUnitTest --tests dev.bee.kanjianki.HomeScreenComposeTest",
+                            "status": "passed",
+                        }
+                    ],
+                    "ci_fast_result": {"status": "passed"},
+                    "ci_quality_result": {"status": "passed"},
+                    "screenshot_result": {"before": before_screenshot, "after": after_screenshot},
+                    "design_review": self._passing_design_comparison(),
+                    "button_review": {
+                        "status": "passed",
+                        "passed": True,
+                        "missing_contract_rows": [],
+                        "missing_click_tests": [],
+                        "missing_disabled_state_tests": [],
+                        "a11y_gaps": [],
+                    },
+                    "reviewer_result": {"status": "passed", "model": "gpt5.4-codex-mini"},
+                    "require_remote_green": False,
+                }
+            )
+
+        self.assertEqual("passed", report["status"])
+        self.assertEqual("passed", self._gate(report, "branch_guard")["status"])
+        self.assertEqual("passed", self._gate(report, "diff_size_guard")["status"])
+        self.assertEqual("passed", self._gate(report, "button_contract_delta_guard")["status"])
+        self.assertEqual("passed", self._gate(report, "targeted_compose_tests")["status"])
+        self.assertEqual("passed", self._gate(report, "ci_fast_gate")["status"])
+        self.assertEqual("passed", self._gate(report, "ci_quality_gate")["status"])
+        self.assertEqual("passed", self._gate(report, "screenshot_availability")["status"])
+        self.assertEqual("passed", self._gate(report, "design_comparison")["status"])
+        self.assertEqual("passed", self._gate(report, "button_qa_review")["status"])
+        self.assertEqual("passed", self._gate(report, "commit_push_frequency")["status"])
+        self.assertEqual("passed", self._gate(report, "independent_review_gate")["status"])
+
+    def test_apply_mode_requires_before_after_screenshot_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home_file, manifest, contract = self._build_home_ui_fixture(root, with_click_test=True)
+            report = validation.build_validation_report(
+                {
+                    "mode": "apply-accepted",
                     "branch": "feature/ralph-validation",
                     "default_branch": "main",
                     "changed_files": [home_file],
@@ -51,18 +121,10 @@ class RalphValidationTest(unittest.TestCase):
                 }
             )
 
-        self.assertEqual("passed", report["status"])
-        self.assertEqual("passed", self._gate(report, "branch_guard")["status"])
-        self.assertEqual("passed", self._gate(report, "diff_size_guard")["status"])
-        self.assertEqual("passed", self._gate(report, "button_contract_delta_guard")["status"])
-        self.assertEqual("passed", self._gate(report, "targeted_compose_tests")["status"])
-        self.assertEqual("passed", self._gate(report, "ci_fast_gate")["status"])
-        self.assertEqual("passed", self._gate(report, "ci_quality_gate")["status"])
-        self.assertEqual("passed", self._gate(report, "screenshot_availability")["status"])
-        self.assertEqual("passed", self._gate(report, "design_comparison")["status"])
-        self.assertEqual("passed", self._gate(report, "button_qa_review")["status"])
-        self.assertEqual("passed", self._gate(report, "commit_push_frequency")["status"])
-        self.assertEqual("passed", self._gate(report, "independent_review_gate")["status"])
+        screenshot_gate = self._gate(report, "screenshot_availability")
+        self.assertEqual("needs_host", screenshot_gate["status"])
+        self.assertIn("before and after screenshot evidence", str(screenshot_gate["message"]))
+        self.assertEqual("needs_host", report["status"])
 
     def test_branch_guard_and_diff_size_guard_fail_on_protected_branch_and_large_diff(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

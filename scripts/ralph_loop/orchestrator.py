@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import shlex
 import subprocess
@@ -1083,6 +1084,125 @@ def _path_from_result(result: dict[str, object], key: str) -> Path | None:
     return None
 
 
+def _capture_local_screenshots(
+    repo_root: Path,
+    out_dir: Path,
+    screenshot_route: str,
+    *,
+    label: str,
+    view_context: dict[str, object] | None = None,
+) -> dict[str, object]:
+    capture_dir = out_dir.resolve()
+    capture_dir.mkdir(parents=True, exist_ok=True)
+
+    build_command = ["./gradlew", ":app:assembleDebug"]
+    build = subprocess.run(build_command, cwd=repo_root, text=True, capture_output=True, check=False)
+    if build.returncode != 0:
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": "failed",
+            "reason": "failed to assemble debug APK before screenshot capture",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+        }
+
+    script = repo_root / "ci" / "scripts" / "capture_android_screenshots.sh"
+    if not script.exists():
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": "failed",
+            "reason": f"missing screenshot capture script at {script}",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+        }
+
+    env = os.environ.copy()
+    env["SCREENSHOTS_DIR"] = str(capture_dir)
+    capture_command = [str(script), screenshot_route]
+    capture = subprocess.run(capture_command, cwd=repo_root, text=True, capture_output=True, check=False, env=env)
+    if capture.returncode != 0:
+        stderr = (capture.stderr or capture.stdout or "").strip()
+        status = "needs_host"
+        if "Unsupported screenshot route" in stderr:
+            status = "failed"
+        return {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "status": status,
+            "reason": stderr or "local screenshot capture failed",
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+            "capture_command": capture_command,
+            "capture_returncode": capture.returncode,
+            "capture_stdout": capture.stdout,
+            "capture_stderr": capture.stderr,
+        }
+
+    result = github_screenshots.validate_artifact(capture_dir, expected_route=screenshot_route)
+    result.update(
+        {
+            "schema": "ralph-local-screenshot-v1",
+            "label": label,
+            "capture_dir": str(capture_dir),
+            "build_command": build_command,
+            "build_returncode": build.returncode,
+            "build_stdout": build.stdout,
+            "build_stderr": build.stderr,
+            "capture_command": capture_command,
+            "capture_returncode": capture.returncode,
+            "capture_stdout": capture.stdout,
+            "capture_stderr": capture.stderr,
+        }
+    )
+    if view_context:
+        for key in ("view_id", "fixture_id", "device_profile", "fixture_set_hash", "route", "launch_route"):
+            value = view_context.get(key)
+            if value is not None:
+                result[key] = value
+    return result
+
+
+def _before_after_visual_prompt(
+    *,
+    repo_root: Path,
+    audit_report: dict[str, object],
+    selection: dict[str, object],
+    view_context: dict[str, object],
+    before_result: dict[str, object],
+    after_result: dict[str, object],
+) -> str:
+    artifacts = cast(dict[str, object], audit_report.get("artifacts", {}))
+    manifest_json = _read_json_file_or_default(
+        _path_from_result(artifacts, "manifest_json") if isinstance(artifacts, dict) else None,
+        {"schema": "ui-manifest-v1", "files": [], "status": "not_found"},
+    )
+    screenshots_json = _json_text(
+        {
+            "schema": "cheap-ralph-visual-evidence-v1",
+            "accepted_issue": selection["accepted_issue"],
+            "target_view_spec": selection["target_view_spec"],
+            "view_context": view_context,
+            "before": before_result,
+            "after": after_result,
+        }
+    )
+    return prompts.load_project_prompt(repo_root, "ralph_design_comparison.md").render(
+        screenshots_json=screenshots_json,
+        manifest_json=manifest_json,
+    )
+
+
 def _remote_visual_prompt(result: dict[str, object], repo_root: Path) -> str:
     manifest_json = _read_json_file_or_default(
         _path_from_result(result, "manifest"),
@@ -1346,10 +1466,112 @@ def _run_dry_run_mode(args: argparse.Namespace, repo_root: Path, run_dir: Path) 
                 "failing closed so source files are not mutated without visual gates."
             )
     else:
-        summary["reason"] = (
-            "dry-run prepared a detached scratch checkout and ran the UI implementer, but before/after visual "
-            "validation is not wired yet; failing closed so source files are not mutated without visual gates."
+        artifacts = cast(dict[str, object], audit_report.get("artifacts", {}))
+        manifest_path = _path_from_result(artifacts, "manifest_json")
+        view_matrix_path = _path_from_result(artifacts, "ui_view_matrix_json")
+        view_matrix = json.loads(view_matrix_path.read_text(encoding="utf-8")) if view_matrix_path and view_matrix_path.exists() else {}
+        selected_file = str(cast(dict[str, object], selection["review"]).get("file", ""))
+        view_matrix_slice = _view_matrix_slice(view_matrix, selected_file) if isinstance(view_matrix, dict) else {}
+        selected_views = cast(list[dict[str, object]], view_matrix_slice.get("views", [])) if isinstance(view_matrix_slice, dict) else []
+        selected_view = dict(selected_views[0]) if selected_views else {}
+        view_context: dict[str, object] = {
+            "selected_file": selected_file,
+            "view_id": selected_view.get("view_id"),
+            "fixture_id": selected_view.get("fixture_id"),
+            "device_profile": selected_view.get("device_profile"),
+            "route": selected_view.get("route"),
+            "launch_route": selected_view.get("launch_route"),
+            "fixture_set_hash": view_matrix.get("fixture_set_hash"),
+            "requested_route": args.screenshot_route,
+        }
+        visual_dir = run_dir / "dry-run" / "visual"
+        before_result = _capture_local_screenshots(
+            repo_root,
+            visual_dir / "before",
+            args.screenshot_route,
+            label="before",
+            view_context=view_context,
         )
+        after_result = _capture_local_screenshots(
+            scratch_checkout,
+            visual_dir / "after",
+            args.screenshot_route,
+            label="after",
+            view_context=view_context,
+        )
+        visual_status = "passed"
+        visual_reason = "before/after screenshot evidence captured successfully."
+        for phase_name, phase_result in (("before", before_result), ("after", after_result)):
+            phase_status = str(cast(object, phase_result.get("status", "")))
+            if phase_status != "passed":
+                visual_status = phase_status if phase_status in {"pending", "needs_host"} else "failed"
+                visual_reason = f"{phase_name} screenshot evidence is not ready: {phase_status or 'missing'}"
+                break
+
+        visual_result: dict[str, object] = {
+            "schema": "ralph-visual-pair-v1",
+            "label": "before-after",
+            "status": visual_status,
+            "requested_route": args.screenshot_route,
+            "view_context": view_context,
+            "before": before_result,
+            "after": after_result,
+        }
+        if visual_status == "passed":
+            design_review = _run_profile_command(
+                args.critic_cmd,
+                _before_after_visual_prompt(
+                    repo_root=repo_root,
+                    audit_report=audit_report,
+                    selection=selection,
+                    view_context=view_context,
+                    before_result=before_result,
+                    after_result=after_result,
+                ),
+                repo_root,
+                out_dir=visual_dir / "reviews",
+                label="design-comparison",
+                profile=args.critic_profile,
+            )
+            visual_result["design_review"] = design_review
+            summary["profile_reviews"] = {
+                "design_comparison": design_review,
+                "button_qa": cast(dict[str, object], selection["review"]).get("button"),
+            }
+            if design_review["status"] != "passed":
+                summary["status"] = "failed"
+                summary["reason"] = (
+                    "dry-run captured before/after screenshots, but the design comparison rejected the change; "
+                    "failing closed so source files are not mutated without visual gates."
+                )
+            else:
+                summary["status"] = "passed"
+                summary["reason"] = (
+                    "dry-run captured before/after screenshots in the scratch checkout and the design comparison passed; "
+                    "source checkout remains clean."
+                )
+        else:
+            summary["status"] = visual_status
+            summary["reason"] = (
+                "dry-run prepared a detached scratch checkout and ran the UI implementer, but "
+                f"{visual_reason}; failing closed so source files are not mutated without visual gates."
+            )
+        summary["screenshot_result"] = visual_result
+        summary["button_review"] = cast(dict[str, object], selection["review"]).get("button")
+        summary["visual_context"] = view_context
+        summary["visual_manifest"] = {
+            "schema": "ralph-visual-context-v1",
+            "manifest_path": str(manifest_path) if manifest_path else None,
+            "view_matrix_path": str(view_matrix_path) if view_matrix_path else None,
+            "selected_view": selected_view,
+            "visual_context": view_context,
+            "before_capture_dir": before_result.get("capture_dir"),
+            "after_capture_dir": after_result.get("capture_dir"),
+        }
+    summary.setdefault(
+        "next_step",
+        "Use --apply-accepted to mutate the source checkout after visual validation, or keep iterating in dry-run.",
+    )
     _write_json(run_dir / "mode-state.json", summary)
     return summary
 
