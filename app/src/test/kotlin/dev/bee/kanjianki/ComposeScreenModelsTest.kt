@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.SimilarKanjiExplanation
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.theme.KaniThemeChoice
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
@@ -699,6 +700,11 @@ class ComposeScreenModelsTest {
             "Manage reminders, sync, and updates.",
             dev.bee.kanjianki.core.SettingsTextCopy.settingsAutomationBody(),
         )
+        assertEquals("Appearance", dev.bee.kanjianki.core.SettingsTextCopy.settingsAppearanceTitle())
+        assertEquals(
+            "Choose your app theme.",
+            dev.bee.kanjianki.core.SettingsTextCopy.settingsAppearanceBody(),
+        )
         assertEquals("Display & data", dev.bee.kanjianki.core.SettingsTextCopy.settingsReferenceDataTitle())
         assertEquals(
             "Manage dictionaries, strokes, fonts, and credits.",
@@ -814,9 +820,11 @@ class ComposeScreenModelsTest {
             openUpdaterLabel = "Open updater",
             onOpenUpdater = {},
         )
+        val theme = SettingsThemePanelModels.themeSettingsPanelModel(KaniThemeChoice.GIRLYPOP) { }
 
         val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
         val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val appearance = settingsAppearanceCategoryModel(false, noop, theme)
         val referenceData = settingsReferenceDataCategoryModel(
             false,
             noop,
@@ -840,6 +848,9 @@ class ComposeScreenModelsTest {
         assertEquals("Automation", advanced.title)
         assertEquals("Manage reminders, sync, and updates.", advanced.summary)
         assertEquals("2 cards", advanced.panelCount)
+        assertEquals("Appearance", appearance.title)
+        assertEquals("Choose your app theme.", appearance.summary)
+        assertEquals("1 card", appearance.panelCount)
         assertEquals("Display & data", referenceData.title)
         assertEquals("Manage dictionaries, strokes, fonts, and credits.", referenceData.summary)
         assertEquals("1 card", referenceData.panelCount)
@@ -849,6 +860,7 @@ class ComposeScreenModelsTest {
         assertTrue(collapsedBehavior.panels.isEmpty())
 
         assertEquals(listOf(reminder, update), advanced.panels)
+        assertEquals(listOf(theme), appearance.panels)
     }
 
     @Test

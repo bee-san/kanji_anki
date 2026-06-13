@@ -173,6 +173,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var settingsSyncExpanded = false
 
     @JvmField
+    var settingsAppearanceExpanded = false
+
+    @JvmField
     var settingsAppExpanded = false
 
     @JvmField

@@ -45,6 +45,12 @@ object SettingsTextCopy {
     fun settingsAutomationBody(): String = SettingsSectionTextCopy.settingsAutomationBody()
 
     @JvmStatic
+    fun settingsAppearanceTitle(): String = SettingsSectionTextCopy.settingsAppearanceTitle()
+
+    @JvmStatic
+    fun settingsAppearanceBody(): String = SettingsSectionTextCopy.settingsAppearanceBody()
+
+    @JvmStatic
     fun settingsReferenceDataTitle(): String = SettingsSectionTextCopy.settingsReferenceDataTitle()
 
     @JvmStatic

@@ -131,6 +131,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsLadderThresholdPanel(this).ladderThresholdSettingsPanelModel()
     }
 
+    internal fun themeSettingsPanelModel(): SettingsThemePanelModel {
+        return MainActivitySettingsThemePanel(this).themeSettingsPanelModel()
+    }
+
     fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
         return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
     }
