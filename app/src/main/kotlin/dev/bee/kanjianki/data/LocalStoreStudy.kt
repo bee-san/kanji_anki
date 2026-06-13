@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.StudyReviewActions
+import dev.bee.kanjianki.theme.KaniThemeChoice
 
 internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
     private fun studySettings(): LocalStoreStudySettings = LocalStoreStudySettings(this)
@@ -248,6 +249,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun saveNewCardSortMode(mode: String?): NewCardSortSettingsPolicy.SaveRequest {
         return studySettings().saveNewCardSortMode(mode)
     }
+
+    fun appThemeChoice(): KaniThemeChoice = studySettings().appThemeChoice()
+
+    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = studySettings().saveAppThemeChoice(choice)
 
     fun reminderSettings(): ReminderSettings = studySettings().reminderSettings()
 

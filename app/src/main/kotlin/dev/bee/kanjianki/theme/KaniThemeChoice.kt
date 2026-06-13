@@ -1,0 +1,23 @@
+package dev.bee.kanjianki.theme
+
+internal enum class KaniThemeChoice(val storageKey: String) {
+    GIRLYPOP("girlypop"),
+    LIGHT("light"),
+    DARK("dark"),
+    SYSTEM("system"),
+    AUTUMN("autumn");
+
+    companion object {
+        const val SETTING_KEY = "app_theme_choice"
+
+        @JvmStatic
+        fun fromStorageKey(value: String?): KaniThemeChoice {
+            for (choice in entries) {
+                if (choice.storageKey == value) {
+                    return choice
+                }
+            }
+            return GIRLYPOP
+        }
+    }
+}

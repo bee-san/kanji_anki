@@ -8,10 +8,13 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.theme.KaniThemeChoiceRepository
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     private val newCardSortSettings = NewCardSortSettingsRepository(store.settingsRepository())
+    private val themeChoiceSettings = KaniThemeChoiceRepository(store.settingsRepository())
 
     fun getIntSetting(key: String, fallback: Int): Int = store.settingsRepository().getInt(key, fallback)
 
@@ -110,6 +113,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     }
 
     fun saveNewCardSortMode(mode: String?) = newCardSortSettings.saveMode(mode)
+
+    fun appThemeChoice(): KaniThemeChoice = themeChoiceSettings.currentChoice()
+
+    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = themeChoiceSettings.saveChoice(choice)
 
     fun reminderSettings(): LocalStoreBase.ReminderSettings {
         return LocalStoreBase.ReminderSettings(
