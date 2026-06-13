@@ -368,12 +368,16 @@ class RalphOrchestratorTest(unittest.TestCase):
         self.assertEqual([], orchestrator._review_schema_errors("design-critic", no_issue_review))
 
         old_errors = orchestrator._review_schema_errors("design-critic", old_multi_issue_review)
+        design_label_old_errors = orchestrator._review_schema_errors("design", old_multi_issue_review)
+        design_label_bare_errors = orchestrator._review_schema_errors("design", {"passed": True})
         missing_target_errors = orchestrator._review_schema_errors("design-critic", missing_target_spec)
         stale_field_errors = orchestrator._review_schema_errors("design-critic", stale_multi_issue_field)
 
         self.assertTrue(any("cheap-ralph-design-critic-v1" in error for error in old_errors))
         self.assertTrue(any("single 'accepted_issue'" in error for error in old_errors))
         self.assertTrue(any("highest_priority_issue" in error for error in old_errors))
+        self.assertTrue(any("single 'accepted_issue'" in error for error in design_label_old_errors))
+        self.assertTrue(any("expected file-auditor fields" in error for error in design_label_bare_errors))
         self.assertTrue(any("target_view_spec" in error for error in missing_target_errors))
         self.assertTrue(any("single 'accepted_issue'" in error for error in stale_field_errors))
 
@@ -387,6 +391,17 @@ class RalphOrchestratorTest(unittest.TestCase):
         self.assertEqual("design-accepted-issue", backlog[0]["kind"])
         self.assertEqual("app/src/main/kotlin/dev/bee/kanjianki/MainActivityHome.kt", backlog[0]["file"])
         self.assertIn("Target view:", str(backlog[0]["reason"]))
+
+        legacy_backlog = orchestrator._design_backlog_items(
+            {
+                "file": "app/src/main/kotlin/dev/bee/kanjianki/Fallback.kt",
+                "design": {"status": "failed", "parsed": old_multi_issue_review, "prompt_path": "p", "result_path": "r"},
+            }
+        )
+        self.assertEqual(1, len(legacy_backlog))
+        self.assertEqual("design-command-failure", legacy_backlog[0]["kind"])
+        self.assertIn("schema validation", str(legacy_backlog[0]["title"]))
+        self.assertIn("single 'accepted_issue'", str(legacy_backlog[0]["reason"]))
 
     def test_remote_visual_mode_uses_design_comparison_prompt_and_label(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

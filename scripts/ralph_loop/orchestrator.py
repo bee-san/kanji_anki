@@ -224,13 +224,19 @@ def _review_schema_errors(label: str, parsed: object) -> list[str]:
         if not isinstance(parsed.get("rationale"), str) or not parsed.get("rationale", "").strip():
             errors.append("design comparison JSON must include non-empty string 'rationale'")
         return errors
-    if label.startswith("design-critic") or parsed.get("schema") == "cheap-ralph-design-critic-v1" or "accepted_issue" in parsed or "target_view_spec" in parsed:
+    if (
+        label.startswith("design-critic")
+        or parsed.get("schema") == "cheap-ralph-design-critic-v1"
+        or "accepted_issue" in parsed
+        or "target_view_spec" in parsed
+        or "accepted_issues" in parsed
+        or "highest_priority_issue" in parsed
+    ):
         return _design_critic_schema_errors(parsed)
     if label.startswith("design"):
         has_file_audit_schema = "visual_problems" in parsed and "interaction_a11y_problems" in parsed
-        has_design_critic_schema = "accepted_issues" in parsed or isinstance(parsed.get("passed"), bool)
-        if not (has_file_audit_schema or has_design_critic_schema):
-            return ["design review JSON is missing expected issue fields"]
+        if not has_file_audit_schema:
+            return ["design review JSON is missing expected file-auditor fields"]
     return []
 
 
@@ -429,24 +435,23 @@ def _design_backlog_items(review: dict[str, object]) -> list[dict[str, object]]:
     design = raw_design if isinstance(raw_design, dict) else {}
     parsed = design.get("parsed")
     parsed = parsed if isinstance(parsed, dict) else {}
+    schema_errors = design.get("schema_errors")
+    if not isinstance(schema_errors, list):
+        schema_errors = _review_schema_errors("design", parsed) if parsed else []
+    if schema_errors:
+        return [
+            {
+                "priority": 1,
+                "kind": "design-command-failure",
+                "file": str(review["file"]),
+                "title": "Design review failed schema validation",
+                "reason": "; ".join(str(error) for error in schema_errors),
+                "source": "design",
+                "prompt_path": design.get("prompt_path"),
+                "result_path": design.get("result_path"),
+            }
+        ]
     items: list[dict[str, object]] = []
-    accepted_issues = parsed.get("accepted_issues", [])
-    if isinstance(accepted_issues, list):
-        for issue in accepted_issues:
-            if not isinstance(issue, dict):
-                continue
-            items.append(
-                {
-                    "priority": _severity_rank(issue.get("severity")),
-                    "kind": "design-accepted-issue",
-                    "file": str(issue.get("file") or review["file"]),
-                    "title": str(issue.get("title") or issue.get("summary") or "Accepted UI issue"),
-                    "reason": str(issue.get("expected_fix") or issue.get("evidence") or ""),
-                    "source": "design",
-                    "prompt_path": design.get("prompt_path"),
-                    "result_path": design.get("result_path"),
-                }
-            )
     accepted_issue = parsed.get("accepted_issue")
     if isinstance(accepted_issue, dict):
         target_spec = parsed.get("target_view_spec")
