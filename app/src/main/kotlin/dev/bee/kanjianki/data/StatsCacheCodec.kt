@@ -7,25 +7,27 @@ import org.json.JSONObject
 
 object StatsCacheCodec {
     @JvmStatic
-    fun outcomeToJson(
+    internal fun outcomeToJson(
         stats: StudyStatsStore.KaniOutcomeStats?,
         studyImpactStats: StudyStatsStore.StudyImpactStats? = null,
         recentMistakes: List<StudyStatsStore.RecentMistake>? = null,
         studyStreak: StudyStatsStore.StudyStreak? = null,
         studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats? = null,
+        reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>? = null,
     ): String {
         val safe = stats ?: StudyStatsStore.KaniOutcomeStats.empty()
         val root = JSONObject()
             .put("weakKanjiImproved", weakKanjiImprovedToJson(safe.weakKanjiImproved))
             .put("matureSupportGained", matureSupportGainedToJson(safe.matureSupportGained))
             .put("ladderHealth", ladderHealthToJson(safe.ladderHealth))
-        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null
+        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null || reviewDaySummaries != null
         if (hasExtras) {
             root.put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION)
             root.put("studyImpactStats", studyImpactStatsToJson(studyImpactStats ?: StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)))
             root.put("recentMistakes", recentMistakesToJson(recentMistakes ?: emptyList()))
             root.put("studyStreak", studyStreakToJson(studyStreak ?: StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)))
             root.put("studyTaskTimeStats", studyTaskTimeStatsToJson(studyTaskTimeStats ?: StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0)))
+            root.put("reviewDaySummaries", reviewDaySummariesToJson(reviewDaySummaries ?: emptyList()))
         } else {
             root.put("cacheFormatVersion", 1)
         }
@@ -119,6 +121,30 @@ object StatsCacheCodec {
                     json.optString("kanji", ""),
                     json.optString("rating", ""),
                     json.optLong("reviewedAtMillis", 0L),
+                )
+            )
+        }
+        return out
+    }
+
+    @JvmStatic
+    internal fun reviewDaySummariesFromJson(array: JSONArray?): List<StatsCacheStore.ReviewDaySummarySnapshot> {
+        if (array == null) {
+            return emptyList()
+        }
+        val out = ArrayList<StatsCacheStore.ReviewDaySummarySnapshot>()
+        for (index in 0 until minOf(array.length(), STATS_REVIEW_DAY_SUMMARY_LIMIT)) {
+            val json = array.optJSONObject(index) ?: continue
+            out.add(
+                StatsCacheStore.ReviewDaySummarySnapshot(
+                    dayStartMillis = json.optLong("dayStartMillis", 0L),
+                    total = json.optInt("total", 0),
+                    again = json.optInt("again", 0),
+                    hard = json.optInt("hard", 0),
+                    good = json.optInt("good", 0),
+                    easy = json.optInt("easy", 0),
+                    writingRequired = json.optInt("writingRequired", 0),
+                    writingFailed = json.optInt("writingFailed", 0),
                 )
             )
         }
@@ -234,6 +260,24 @@ object StatsCacheCodec {
                         .put("kanji", mistake.kanji)
                         .put("rating", mistake.rating)
                         .put("reviewedAtMillis", mistake.reviewedAtMillis)
+                )
+            }
+        }
+    }
+
+    private fun reviewDaySummariesToJson(summaries: List<StatsCacheStore.ReviewDaySummarySnapshot>): JSONArray {
+        return JSONArray().also { array ->
+            summaries.take(STATS_REVIEW_DAY_SUMMARY_LIMIT).forEach { summary ->
+                array.put(
+                    JSONObject()
+                        .put("dayStartMillis", summary.dayStartMillis)
+                        .put("total", summary.total)
+                        .put("again", summary.again)
+                        .put("hard", summary.hard)
+                        .put("good", summary.good)
+                        .put("easy", summary.easy)
+                        .put("writingRequired", summary.writingRequired)
+                        .put("writingFailed", summary.writingFailed)
                 )
             }
         }

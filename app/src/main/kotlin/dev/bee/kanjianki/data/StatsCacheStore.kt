@@ -7,10 +7,22 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 3
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 4
+internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 90
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
 internal class StatsCacheStore(private val store: LocalStore) {
+    data class ReviewDaySummarySnapshot(
+        val dayStartMillis: Long,
+        val total: Int,
+        val again: Int,
+        val hard: Int,
+        val good: Int,
+        val easy: Int,
+        val writingRequired: Int,
+        val writingFailed: Int,
+    )
+
     data class Snapshot(
         val outcomeStats: StudyStatsStore.KaniOutcomeStats,
         val impactReport: KanjiImpactAnalyzer.Report,
@@ -21,6 +33,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
         val studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         val cacheFormatVersion: Int = 1,
+        val reviewDaySummaries: List<ReviewDaySummarySnapshot> = emptyList(),
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -97,6 +110,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.recentMistakes,
                     snapshot.studyStreak,
                     snapshot.studyTaskTimeStats,
+                    snapshot.reviewDaySummaries,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -127,6 +141,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 studyStreak = StatsCacheCodec.studyStreakFromJson(outcomeRoot.optJSONObject("studyStreak")),
                 studyTaskTimeStats = StatsCacheCodec.studyTaskTimeStatsFromJson(outcomeRoot.optJSONObject("studyTaskTimeStats")),
                 cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
+                reviewDaySummaries = StatsCacheCodec.reviewDaySummariesFromJson(outcomeRoot.optJSONArray("reviewDaySummaries")),
             )
         } catch (_: Exception) {
             null

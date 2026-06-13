@@ -35,6 +35,7 @@ internal class StatsPrecomputeStore(
             statsStore.studyStreak(generatedAtMillis),
             statsStore.studyTaskTimeStats(generatedAtMillis),
             STATS_CACHE_FORMAT_VERSION,
+            StudyStatsQueries(store, db).reviewDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT),
         )
         cacheStore.write(db, snapshot)
         return snapshot
