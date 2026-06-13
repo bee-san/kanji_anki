@@ -124,7 +124,7 @@ class RalphOrchestratorTest(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     parser.parse_args(["--repo-root", str(root), *extra_args])
 
-    def test_unimplemented_mutation_modes_fail_closed_without_remote_or_profile_commands(self) -> None:
+    def test_dry_run_prepares_scratch_checkout_and_leaves_source_clean(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source_texts = self._write_fixture_repo(root)
@@ -138,12 +138,26 @@ class RalphOrchestratorTest(unittest.TestCase):
                 ]
             )
 
+            calls: list[tuple[Path, Path]] = []
+            scratch_checkout = root / "scratch-checkout" / "source"
+
+            def fake_prepare_scratch_checkout(repo_root: Path, run_dir: Path) -> Path:
+                calls.append((repo_root, run_dir))
+                scratch_checkout.parent.mkdir(parents=True, exist_ok=True)
+                scratch_checkout.mkdir(parents=True, exist_ok=True)
+                pointer_dir = run_dir / "scratch"
+                pointer_dir.mkdir(parents=True, exist_ok=True)
+                (pointer_dir / "path.txt").write_text(f"{scratch_checkout}\n", encoding="utf-8")
+                (pointer_dir / "head-sha.txt").write_text("deadbeef\n", encoding="utf-8")
+                return scratch_checkout
+
             with (
                 patch.object(
                     orchestrator.github_screenshots,
                     "run_remote_screenshots",
                     side_effect=AssertionError("dry-run placeholder should not dispatch screenshots"),
                 ),
+                patch.object(orchestrator, "_prepare_scratch_checkout", side_effect=fake_prepare_scratch_checkout),
                 patch.object(
                     orchestrator.subprocess,
                     "run",
@@ -152,12 +166,23 @@ class RalphOrchestratorTest(unittest.TestCase):
             ):
                 result = orchestrator.run(args)
 
+            resolved_root = root.resolve()
+            resolved_run_dir = (resolved_root / ".ralph-loop/current").resolve()
             self.assertEqual("failed", result["status"])
             self.assertEqual("dry-run", result["mode"])
             self.assertFalse(result["source_mutated"])
-            self.assertIn("failing closed", str(result["reason"]))
+            self.assertTrue(result["cleanup_pending"])
+            scratch_pointer_dir = resolved_run_dir / "scratch"
+            self.assertEqual(str(scratch_checkout), result["scratch_checkout"])
+            self.assertEqual(str(scratch_pointer_dir), result["scratch_pointer_dir"])
+            self.assertTrue((scratch_pointer_dir / "path.txt").exists())
+            self.assertTrue((scratch_pointer_dir / "head-sha.txt").exists())
+            self.assertEqual(str(scratch_checkout), (scratch_pointer_dir / "path.txt").read_text(encoding="utf-8").strip())
+            self.assertEqual("deadbeef", (scratch_pointer_dir / "head-sha.txt").read_text(encoding="utf-8").strip())
+            self.assertIn("prepared a detached scratch checkout", str(result["reason"]))
             self.assertEqual(source_texts, self._current_source_texts(root))
-            mode_state = root / ".ralph-loop/current/mode-state.json"
+            self.assertEqual([(resolved_root, resolved_run_dir)], calls)
+            mode_state = resolved_run_dir / "mode-state.json"
             self.assertTrue(mode_state.exists())
             saved_state = json.loads(mode_state.read_text(encoding="utf-8"))
             self.assertEqual(result, saved_state)

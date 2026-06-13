@@ -8,6 +8,7 @@ import math
 import re
 import shlex
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 from typing import Sequence, cast
@@ -951,6 +952,38 @@ def _read_json_file_or_default(path: Path | None, default: dict[str, object]) ->
     return path.read_text(encoding="utf-8")
 
 
+def _prepare_scratch_checkout(repo_root: Path, run_dir: Path) -> Path:
+    head_sha_process = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    head_sha = head_sha_process.stdout.strip() if head_sha_process.returncode == 0 else ""
+    if not head_sha:
+        raise RuntimeError("unable to resolve HEAD for scratch checkout")
+
+    scratch_root = Path(tempfile.mkdtemp(prefix=f"{repo_root.name}-ralph-scratch-", dir=str(repo_root.parent)))
+    scratch_checkout = scratch_root / "source"
+    worktree_process = subprocess.run(
+        ["git", "worktree", "add", "--detach", str(scratch_checkout), head_sha],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if worktree_process.returncode != 0:
+        stderr = (worktree_process.stderr or worktree_process.stdout or "").strip()
+        raise RuntimeError(f"git worktree add failed: {stderr or 'unknown error'}")
+
+    scratch_pointer_dir = run_dir / "scratch"
+    scratch_pointer_dir.mkdir(parents=True, exist_ok=True)
+    (scratch_pointer_dir / "path.txt").write_text(f"{scratch_checkout}\n", encoding="utf-8")
+    (scratch_pointer_dir / "head-sha.txt").write_text(f"{head_sha}\n", encoding="utf-8")
+    return scratch_checkout
+
+
 def _path_from_result(result: dict[str, object], key: str) -> Path | None:
     value = result.get(key)
     if isinstance(value, str) and value:
@@ -1057,6 +1090,31 @@ def _run_unimplemented_mode(args: argparse.Namespace, repo_root: Path, run_dir: 
         "source_mutated": False,
         "next_step": "Implement scratch checkout patch generation and before/after visual validation before enabling this mode.",
     }
+    if mode == "dry-run":
+        try:
+            scratch_checkout = _prepare_scratch_checkout(repo_root, run_dir)
+        except Exception as exc:  # pragma: no cover - defensive guard for runtime failures
+            summary["reason"] = (
+                f"dry-run is accepted by the CLI but failed to prepare a detached scratch checkout; "
+                f"failing closed so source files are not mutated without visual gates: {exc}"
+            )
+            summary["cleanup_pending"] = False
+            _write_json(run_dir / "mode-state.json", summary)
+            return summary
+
+        summary.update(
+            {
+                "reason": (
+                    "dry-run is accepted by the CLI and prepared a detached scratch checkout, but patch "
+                    "generation and before/after visual validation are not wired yet; failing closed so source "
+                    "files are not mutated without visual gates."
+                ),
+                "scratch_checkout": str(scratch_checkout),
+                "scratch_pointer_dir": str(run_dir / "scratch"),
+                "cleanup_pending": True,
+                "next_step": "Implement scratch patch generation and before/after visual validation before enabling this mode.",
+            }
+        )
     _write_json(run_dir / "mode-state.json", summary)
     return summary
 
