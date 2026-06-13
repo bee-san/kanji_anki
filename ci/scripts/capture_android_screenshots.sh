@@ -310,6 +310,8 @@ scroll_y_for_position() {
   esac
 }
 
+settings_bottom_scroll_extra=288
+
 launch_screenshot_route() {
   local launch_target="$1"
   local theme_choice="$2"
@@ -339,13 +341,14 @@ capture_route_variant() {
   local -a expected_terms=("$@")
   local scroll_y
   local output_path
-  local scroll_term="scroll ${scroll_position}"
-
   scroll_y="$(scroll_y_for_position "${orientation}" "${scroll_position}")"
+  if [[ "${route_name}" == "settings" && "${scroll_position}" == "bottom" ]]; then
+    scroll_y="$((scroll_y + settings_bottom_scroll_extra))"
+  fi
   log "Capturing ${capture_name} (${launch_target}, ${orientation}, ${scroll_position} @ ${scroll_y})"
   set_orientation "${orientation}"
   launch_screenshot_route "${launch_target}" "${capture_theme_choice}" "${scroll_position}" "${scroll_y}"
-  wait_for_route "${capture_name}" "${expected_terms[@]}" "${scroll_term}"
+  wait_for_route "${capture_name}" "${expected_terms[@]}"
   output_path="$(capture_png "${capture_name}")"
   captured_routes+=("${route_name}")
   captured_files+=("${output_path}")

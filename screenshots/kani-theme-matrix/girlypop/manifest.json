@@ -1,33 +1,16 @@
 {
   "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
-  "captured_at_utc": "2026-06-13T15:35:32Z",
+  "captured_at_utc": "2026-06-13T19:36:49Z",
   "captures": [
     {
-      "launch_target": "home",
+      "launch_target": "settings",
       "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/home.png",
-      "route": "home",
-      "sha256": "ee7299436c27e1af4fa9e7743262eaefc8cdae1bb68331e69286e705bf1ed186",
-      "system_mode": "",
-      "theme": "girlypop",
-      "theme_choice": "girlypop"
-    },
-    {
-      "launch_target": "study",
-      "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/study.png",
-      "route": "study",
-      "sha256": "4d11e1feed676bdb1c60e41b07cbc157a16b5f00dba6f5317efb1974f5d044aa",
-      "system_mode": "",
-      "theme": "girlypop",
-      "theme_choice": "girlypop"
-    },
-    {
-      "launch_target": "stats",
-      "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/stats.png",
-      "route": "stats",
-      "sha256": "95ab043dbc47ad90a9274516b4d2d3f0032b7c6cc91df3e0d5757c9cb9a392ee",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-top.png",
+      "route": "settings",
+      "scroll_position": "top",
+      "scroll_y": 0,
+      "scrollable": true,
+      "sha256": "00bc46c86a108fab2905d1840f3bff0de030d5e0d66919e42b9d96e89bba91f1",
       "system_mode": "",
       "theme": "girlypop",
       "theme_choice": "girlypop"
@@ -35,39 +18,25 @@
     {
       "launch_target": "settings",
       "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/settings.png",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-middle.png",
       "route": "settings",
-      "sha256": "a6973e3801310fbbece779bf1dc4e9454bae77c9a984ae345fd6fb4fc69adc14",
+      "scroll_position": "middle",
+      "scroll_y": 1920,
+      "scrollable": true,
+      "sha256": "985d2b437a7edd8228b3d0398ee7445c64a1ddaa071157bf1bef9ef09ede960d",
       "system_mode": "",
       "theme": "girlypop",
       "theme_choice": "girlypop"
     },
     {
-      "launch_target": "games",
+      "launch_target": "settings",
       "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/games.png",
-      "route": "games",
-      "sha256": "a3278ee4009c200cfca3b47adddfacd6e4a3405c1612ff8a52ddfb7fa2073023",
-      "system_mode": "",
-      "theme": "girlypop",
-      "theme_choice": "girlypop"
-    },
-    {
-      "launch_target": "home",
-      "orientation": "portrait",
-      "path": "screenshots/kani-theme-matrix/girlypop/narrow.png",
-      "route": "narrow",
-      "sha256": "b236d7762ad2386e1196d82cfb5dbdff5ae5833eb72fc8b3ece07480444f226e",
-      "system_mode": "",
-      "theme": "girlypop",
-      "theme_choice": "girlypop"
-    },
-    {
-      "launch_target": "home",
-      "orientation": "landscape",
-      "path": "screenshots/kani-theme-matrix/girlypop/wide.png",
-      "route": "wide",
-      "sha256": "8f9103caf75e310e40f940ede9468120186b857f97450265c774f9cb4b7985c8",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-bottom.png",
+      "route": "settings",
+      "scroll_position": "bottom",
+      "scroll_y": 4128,
+      "scrollable": true,
+      "sha256": "0ad0a6c6271de7b2e61bad8726a8d6e2460c07122bb840e707479b52b5ca64f7",
       "system_mode": "",
       "theme": "girlypop",
       "theme_choice": "girlypop"
@@ -75,43 +44,33 @@
   ],
   "command_argv": [
     "ci/scripts/capture_android_screenshots.sh",
-    "all",
+    "settings",
     "girlypop"
   ],
   "device": {
-    "api_level": "",
+    "api_level": "35",
     "manufacturer": "Google",
     "model": "sdk_gphone64_arm64",
     "profile": "",
     "sdk": "35"
   },
   "files": [
-    "screenshots/kani-theme-matrix/girlypop/home.png",
-    "screenshots/kani-theme-matrix/girlypop/study.png",
-    "screenshots/kani-theme-matrix/girlypop/stats.png",
-    "screenshots/kani-theme-matrix/girlypop/settings.png",
-    "screenshots/kani-theme-matrix/girlypop/games.png",
-    "screenshots/kani-theme-matrix/girlypop/narrow.png",
-    "screenshots/kani-theme-matrix/girlypop/wide.png"
+    "screenshots/kani-theme-matrix/girlypop/settings-top.png",
+    "screenshots/kani-theme-matrix/girlypop/settings-middle.png",
+    "screenshots/kani-theme-matrix/girlypop/settings-bottom.png"
   ],
   "git_ref": "feat/kani-theme-selector-20260613",
-  "git_sha": "0cd2aeedf24ec68c73b6b5c768148bf41eb91e46",
+  "git_sha": "eb517926f42f096d277a413ef945b32453ec73b7",
   "notes": [
     "Route capture waits for the requested screen and fails fast on Android ANR dialogs."
   ],
   "package": "dev.bee.kanjianki",
-  "requested_route": "all",
+  "requested_route": "settings",
   "requested_system_mode": "",
   "requested_theme": "girlypop",
   "requested_theme_choice": "girlypop",
   "routes": [
-    "home",
-    "study",
-    "stats",
-    "settings",
-    "games",
-    "narrow",
-    "wide"
+    "settings"
   ],
   "workflow_run_attempt": "",
   "workflow_run_id": ""

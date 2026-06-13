@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
+internal const val SETTINGS_SCREEN_BOTTOM_SPACER_TAG = "settings-screen-bottom-spacer"
+private val SettingsScreenBottomSpacerHeight = 96.dp
+
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
     val expandedCategories = remember(model.categories.map { it.sectionKey }) {
@@ -59,6 +62,11 @@ fun SettingsScreen(model: SettingsScreenModel) {
                 )
             }
         }
+        Spacer(
+            modifier = Modifier
+                .height(SettingsScreenBottomSpacerHeight)
+                .testTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG)
+        )
     }
 }
 
