@@ -73,6 +73,31 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("Needs improvement", snapshot.weaknessInsights.focusScore.status)
     }
 
+    @Test
+    fun legacyLatestSnapshotRecomputesSynchronouslyInsteadOfRenderingMissingExtras() {
+        val now = System.currentTimeMillis()
+        val source = CountingProgressStatsSource(
+            latest = progressSnapshot(
+                now = now,
+                totalReviews = 0,
+                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1,
+            ),
+            recomputed = progressSnapshot(
+                now = now,
+                totalReviews = 17,
+                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+            ),
+        )
+
+        val snapshot = progressAnalyticsSnapshot(source, nowMillis = now)
+
+        assertEquals(1, source.cachedReads)
+        assertEquals(1, source.latestReads)
+        assertEquals(listOf(now), source.recomputeReads)
+        assertEquals(17, snapshot.overview.totalReviews.value)
+        assertEquals("17", snapshot.overview.totalReviews.valueLabel)
+    }
+
     private fun writeFreshStatsSnapshot(now: Long, reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
@@ -167,6 +192,57 @@ class ProgressAnalyticsLiveDataSourceTest {
             easy = easy,
             writingRequired = writingRequired,
             writingFailed = writingFailed,
+        )
+    }
+
+    private class CountingProgressStatsSource(
+        private val latest: StatsCacheStore.Snapshot?,
+        private val recomputed: StatsCacheStore.Snapshot,
+    ) : ProgressAnalyticsStatsSource {
+        var cachedReads = 0
+        var latestReads = 0
+        val recomputeReads = mutableListOf<Long>()
+
+        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+            cachedReads += 1
+            return null
+        }
+
+        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
+            latestReads += 1
+            return latest
+        }
+
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+            recomputeReads += nowMillis
+            return recomputed
+        }
+
+        override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
+            return emptyList()
+        }
+    }
+
+    private fun progressSnapshot(
+        now: Long,
+        totalReviews: Int,
+        cacheFormatVersion: Int,
+    ): StatsCacheStore.Snapshot {
+        return StatsCacheStore.Snapshot(
+            outcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
+            impactReport = KanjiImpactAnalyzer.Report(0, 0, 0, emptyList()),
+            generatedAtMillis = now,
+            sourceVersion = 1L,
+            studyImpactStats = StudyStatsStore.StudyImpactStats(
+                totalReviews = totalReviews,
+                distinctReviewedKanji = 0,
+                writingRequired = 0,
+                writingPassed = 0,
+                writingFailed = 0,
+                manualOverrides = 0,
+            ),
+            cacheFormatVersion = cacheFormatVersion,
+            reviewDaySummaries = cachedReviewDaySummaries(now),
         )
     }
 }

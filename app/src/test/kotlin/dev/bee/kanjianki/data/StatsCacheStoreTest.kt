@@ -196,9 +196,49 @@ class StatsCacheStoreTest {
     @Test
     fun readFreshStatsReturnsNullWhenCacheFormatVersionChanges() {
         setSourceVersion(7L)
-        cacheStore.write(db, snapshot(7L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1))
+        val legacySnapshot = snapshot(7L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1)
+        val legacyOutcomeJson = JSONObject(
+            StatsCacheCodec.outcomeToJson(
+                legacySnapshot.outcomeStats,
+                legacySnapshot.studyImpactStats,
+                legacySnapshot.recentMistakes,
+                legacySnapshot.studyStreak,
+                legacySnapshot.studyTaskTimeStats,
+                legacySnapshot.reviewDaySummaries,
+            )
+        ).apply {
+            put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION - 1)
+        }
+        db.execSQL(
+            "INSERT OR REPLACE INTO stats_screen_cache " +
+                "(id, source_version, generated_at, cache_format_version, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?, ?)",
+            arrayOf<Any>(
+                7L,
+                1_234L,
+                STATS_CACHE_FORMAT_VERSION - 1,
+                legacyOutcomeJson.toString(),
+                StatsCacheCodec.impactReportToJson(legacySnapshot.impactReport),
+            ),
+        )
 
-        assertNull(cacheStore.readFresh(db))
+        val latest = cacheStore.readLatest(db)
+        assertNotNull(latest)
+        assertEquals(STATS_CACHE_FORMAT_VERSION - 1, latest!!.cacheFormatVersion)
+        assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = 1_234L))
+        assertNull(cacheStore.readFresh(db, nowMillis = 1_234L))
+    }
+
+    @Test
+    fun writeSnapshotUsesCurrentCacheFormatVersionForColumnAndJson() {
+        setSourceVersion(13L)
+        cacheStore.write(db, snapshot(13L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1))
+
+        assertEquals(STATS_CACHE_FORMAT_VERSION, cacheFormatVersionColumn())
+        val latest = cacheStore.readLatest(db)
+        assertNotNull(latest)
+        assertEquals(STATS_CACHE_FORMAT_VERSION, latest!!.cacheFormatVersion)
+        assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = 1_234L))
+        assertNotNull(cacheStore.readFresh(db, nowMillis = 1_234L))
     }
 
     @Test
@@ -344,6 +384,16 @@ class StatsCacheStoreTest {
 
     private fun cacheRowCount(): Int {
         val cursor = db.rawQuery("SELECT COUNT(*) FROM stats_screen_cache", null)
+        try {
+            cursor.moveToFirst()
+            return cursor.getInt(0)
+        } finally {
+            cursor.close()
+        }
+    }
+
+    private fun cacheFormatVersionColumn(): Int {
+        val cursor = db.rawQuery("SELECT cache_format_version FROM stats_screen_cache WHERE id=1", null)
         try {
             cursor.moveToFirst()
             return cursor.getInt(0)
