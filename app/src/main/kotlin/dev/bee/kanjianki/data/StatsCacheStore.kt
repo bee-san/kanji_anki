@@ -100,11 +100,12 @@ internal class StatsCacheStore(private val store: LocalStore) {
     }
 
     fun write(db: SQLiteDatabase, snapshot: Snapshot) {
+        val cacheFormatVersion = STATS_CACHE_FORMAT_VERSION
         val values = ContentValues().apply {
             put("id", 1)
             put("source_version", snapshot.sourceVersion)
             put("generated_at", snapshot.generatedAtMillis)
-            put("cache_format_version", snapshot.cacheFormatVersion)
+            put("cache_format_version", cacheFormatVersion)
             put(
                 "outcome_json",
                 StatsCacheCodec.outcomeToJson(

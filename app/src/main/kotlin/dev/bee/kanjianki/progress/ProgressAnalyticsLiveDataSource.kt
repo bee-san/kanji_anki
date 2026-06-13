@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.text.NumberFormat
@@ -61,8 +62,9 @@ internal fun progressAnalyticsSnapshot(
 ): ProgressAnalyticsState {
     val freshSnapshot = source.cachedStatsSnapshotOrNull()
     val latestSnapshot = if (freshSnapshot == null) source.latestStatsSnapshotOrNull() else null
-    val snapshot = freshSnapshot ?: latestSnapshot ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
-    if (latestSnapshot != null || (freshSnapshot != null && snapshot.reviewDaySummaries.isEmpty())) {
+    val currentFormatLatestSnapshot = latestSnapshot?.takeIf { it.cacheFormatVersion == STATS_CACHE_FORMAT_VERSION }
+    val snapshot = freshSnapshot ?: currentFormatLatestSnapshot ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    if (currentFormatLatestSnapshot != null || (freshSnapshot != null && snapshot.reviewDaySummaries.isEmpty())) {
         scheduleRefresh?.invoke()
     }
     val reviewDays30 = if (snapshot.reviewDaySummaries.isNotEmpty()) {

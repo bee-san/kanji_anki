@@ -99,7 +99,7 @@ internal class StudyStatsQueries(
                 "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, " +
                 "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, " +
                 "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, " +
-                "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, " +
+                WRITING_REQUIRED_COUNT_SELECT +
                 "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count " +
                 "FROM $TABLE_REVIEW_LOG WHERE review_day_start>=? AND review_day_start<? GROUP BY review_day_start ORDER BY review_day_start ASC",
             arrayOf(startDay.toString(), endDayExclusive.toString())
@@ -130,7 +130,7 @@ internal class StudyStatsQueries(
             "SELECT " +
                 "COUNT(*) AS total_reviews, " +
                 "COUNT(DISTINCT kanji) AS distinct_kanji, " +
-                "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, " +
+                WRITING_REQUIRED_COUNT_SELECT +
                 "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=1 THEN 1 ELSE 0 END), 0) AS writing_passed_count, " +
                 "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count, " +
                 "COALESCE(SUM(CASE WHEN manual_override=1 THEN 1 ELSE 0 END), 0) AS manual_override_count " +
@@ -186,7 +186,7 @@ internal class StudyStatsQueries(
                 "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, " +
                 "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, " +
                 "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, " +
-                "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, " +
+                WRITING_REQUIRED_COUNT_SELECT +
                 "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count " +
                 "FROM $TABLE_REVIEW_LOG WHERE reviewed_at>=?",
             arrayOf(sinceMillis.toString())
@@ -531,6 +531,9 @@ internal class StudyStatsQueries(
         const val COLUMN_RATING = "rating"
         const val COLUMN_REVIEWED_AT = "reviewed_at"
         const val STATE_RETIRED = "retired"
+        const val WRITING_REQUIRED_COUNT_SELECT =
+            "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) " +
+                "AS writing_required_count, "
 
         fun outcomeSnapshot(
             cursor: Cursor,
