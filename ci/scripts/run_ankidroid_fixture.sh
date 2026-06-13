@@ -39,6 +39,22 @@ wait_for_external_storage() {
   adb shell "mkdir -p ${ankidroid_dir}/collection.media && test -d ${ankidroid_dir}"
 }
 
+install_apk_once() {
+  local apk_path="$1"
+  adb wait-for-device
+  adb install -r "${apk_path}"
+}
+
+install_apk() {
+  local description="$1"
+  local apk_path="$2"
+  retry \
+    "${description}" \
+    "${KANJI_LIVE_APK_INSTALL_ATTEMPTS:-3}" \
+    "${KANJI_LIVE_APK_INSTALL_RETRY_DELAY_SECONDS:-10}" \
+    install_apk_once "${apk_path}"
+}
+
 probe_ankidroid_provider() {
   # AnkiDroid can recreate or tighten its app-specific external-storage
   # directory during first-run/provider startup. Re-apply the CI fixture
@@ -171,7 +187,7 @@ if [ ! -f "${app_apk}" ] || [ ! -f "${test_apk}" ]; then
 fi
 
 adb wait-for-device
-adb install -r "${ankidroid_apk}"
+install_apk "AnkiDroid APK install" "${ankidroid_apk}"
 launch_ankidroid
 sleep 5
 
@@ -186,8 +202,8 @@ adb shell am force-stop com.ichi2.anki
 launch_ankidroid
 sleep 5
 
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+install_apk "Debug app APK install" "${app_apk}"
+install_apk "Debug androidTest APK install" "${test_apk}"
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
 retry "AnkiDroid provider model readiness" 12 5 probe_ankidroid_provider
 adb shell am force-stop com.ichi2.anki || true
