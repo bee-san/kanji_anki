@@ -650,9 +650,9 @@ private fun ProgressMascotBadge() {
 
 @Composable
 private fun ProgressMetricGrid(
+    modifier: Modifier = Modifier,
     specs: List<ProgressMetricSpec>,
     columns: Int = 3,
-    modifier: Modifier = Modifier,
 ) {
     val rowSpacing = if (columns <= 2) 8.dp else 10.dp
     val rows = specs.chunked(columns)
