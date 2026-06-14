@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -260,18 +261,49 @@ private fun ProgressOverviewSection(state: ProgressOverviewState) {
         )
 
         Spacer(modifier = Modifier.height(2.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ProgressDistributionCard(
-                chart = state.cardTypeBreakdown,
-                modifier = Modifier.weight(1f),
-            )
-            ProgressDistributionCard(
-                chart = state.correctIncorrectBreakdown,
-                modifier = Modifier.weight(1f),
-            )
+        ProgressDistributionChartsRow(state)
+    }
+}
+
+@Composable
+private fun ProgressDistributionChartsRow(state: ProgressOverviewState) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 520.dp) {
+            Column(
+                modifier = Modifier.testTag("progress-distribution-charts-stacked"),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ProgressDistributionCard(
+                    chart = state.cardTypeBreakdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("progress-distribution-card-types"),
+                )
+                ProgressDistributionCard(
+                    chart = state.correctIncorrectBreakdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("progress-distribution-card-correctness"),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ProgressDistributionCard(
+                    chart = state.cardTypeBreakdown,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("progress-distribution-card-types"),
+                )
+                ProgressDistributionCard(
+                    chart = state.correctIncorrectBreakdown,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("progress-distribution-card-correctness"),
+                )
+            }
         }
     }
 }

@@ -17,21 +17,11 @@ internal abstract class MainActivityStats : MainActivityGames() {
             loadingTitle = HomeTextCopy.statsActionLabel(),
             load = { progressAnalyticsSnapshot(store, scheduleRefresh = this::scheduleStatsPrecomputeIfStaleAsync) },
             render = { model ->
-                composeRouteWithActionBar(
+                composeRoute(
                     selected = MainActivityBase.NAV_STATS_ROUTE,
-                    content = {
-                        ProgressAnalyticsDashboardScreen(state = model)
-                    },
-                    actionBar = {
-                        ProgressAnalyticsBottomNav(
-                            selectedTab = ProgressAnalyticsBottomNavTab.Progress,
-                            onHome = this::renderHome,
-                            onStudy = this::renderStudy,
-                            onProgress = this::renderStats,
-                            onProfile = this::renderSettings,
-                        )
-                    },
-                )
+                ) {
+                    ProgressAnalyticsDashboardScreen(state = model)
+                }
             },
         )
     }
