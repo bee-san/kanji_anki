@@ -348,6 +348,47 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual(str(dump), captures[0]["uiautomator_dump_path"])
             self.assertEqual(dump_sha256, str(captures[0]["uiautomator_dump_sha256"]))
 
+    def test_validate_artifact_accepts_relative_capture_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "stats-top.png"
+            dump = out / "stats-top.uiautomator.xml"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            dump.write_text("<hierarchy><node text=\"統計\" /></hierarchy>", encoding="utf-8")
+            png_sha256 = hashlib.sha256(png.read_bytes()).hexdigest()
+            dump_sha256 = hashlib.sha256(dump.read_bytes()).hexdigest()
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "stats"],
+                        "requested_route": "stats",
+                        "requested_locale": "ja",
+                        "routes": ["stats"],
+                        "files": ["stats-top.png"],
+                        "captures": [
+                            {
+                                "route": "stats",
+                                "launch_target": "stats",
+                                "orientation": "portrait",
+                                "path": "stats-top.png",
+                                "sha256": png_sha256,
+                                "uiautomator_dump_path": "stats-top.uiautomator.xml",
+                                "uiautomator_dump_sha256": dump_sha256,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="stats")
+            self.assertEqual("passed", result["status"])
+            captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(str(dump), captures[0]["uiautomator_dump_path"])
+            self.assertEqual(dump_sha256, str(captures[0]["uiautomator_dump_sha256"]))
+
     def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)

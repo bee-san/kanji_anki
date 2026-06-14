@@ -163,7 +163,7 @@ capture_png() {
   adb shell screencap -p "${remote_path}"
   adb pull "${remote_path}" "${output_path}" >/dev/null
   adb shell rm -f "${remote_path}" >/dev/null 2>&1 || true
-  printf '%s\n' "${output_path}"
+  printf '%s\n' "${capture_name}.png"
 }
 
 dump_ui_xml() {
@@ -193,7 +193,7 @@ capture_ui_xml() {
     return 0
   fi
   if mv "${local_xml}" "${output_path}" >/dev/null 2>&1; then
-    printf '%s\n' "${output_path}"
+    printf '%s\n' "${capture_name}.uiautomator.xml"
     return 0
   fi
   rm -f "${local_xml}"
