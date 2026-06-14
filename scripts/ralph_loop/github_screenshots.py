@@ -111,6 +111,12 @@ def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> lis
             scroll_y = int(raw_scroll_y)
         else:
             scroll_y = None
+        raw_uiautomator_dump = capture.get("uiautomator_dump_path") or capture.get("ui_dump_path")
+        ui_dump_path: Path | None = None
+        if isinstance(raw_uiautomator_dump, str) and raw_uiautomator_dump:
+            ui_dump_path = Path(raw_uiautomator_dump)
+            if not ui_dump_path.is_absolute():
+                ui_dump_path = out_dir / ui_dump_path
         normalized.append(
             {
                 "route": route or "",
@@ -121,6 +127,8 @@ def _manifest_capture_entries(manifest: dict[str, object], out_dir: Path) -> lis
                 "scroll_position": str(capture.get("scroll_position") or ""),
                 "scroll_y": scroll_y,
                 "scrollable": bool(capture.get("scrollable")),
+                "uiautomator_dump_path": ui_dump_path,
+                "uiautomator_dump_sha256": str(capture.get("uiautomator_dump_sha256") or capture.get("ui_dump_sha256") or ""),
             }
         )
     return normalized
@@ -372,6 +380,31 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 capture_path=str(capture_path),
                 sha256=provided_sha256,
             )
+        raw_ui_dump_path = capture.get("uiautomator_dump_path") or capture.get("ui_dump_path")
+        ui_dump_path = None
+        if isinstance(raw_ui_dump_path, str) and raw_ui_dump_path.strip():
+            ui_dump_path = Path(raw_ui_dump_path)
+            if not ui_dump_path.is_absolute():
+                ui_dump_path = out_dir / ui_dump_path
+        if ui_dump_path is not None:
+            if not ui_dump_path.exists():
+                return _status(
+                    "missing_artifact",
+                    f"Artifact manifest references missing UIAutomator dump file: {ui_dump_path}",
+                    manifest=str(manifests[0]),
+                    capture_path=str(ui_dump_path),
+                )
+            raw_ui_dump_sha256 = str(capture.get("uiautomator_dump_sha256") or capture.get("ui_dump_sha256") or "").strip().lower()
+            if raw_ui_dump_sha256:
+                actual_ui_dump_sha256 = hashlib.sha256(ui_dump_path.read_bytes()).hexdigest()
+                if raw_ui_dump_sha256 != actual_ui_dump_sha256:
+                    return _status(
+                        "missing_artifact",
+                        f"Artifact manifest UIAutomator dump hash mismatch for {ui_dump_path}: expected {actual_ui_dump_sha256}, got {raw_ui_dump_sha256}.",
+                        manifest=str(manifests[0]),
+                        capture_path=str(ui_dump_path),
+                        sha256=raw_ui_dump_sha256,
+                    )
         validated_pngs.append(capture_path)
 
     pngs = validated_pngs
@@ -422,7 +455,7 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
 
     return _status(
         "passed",
-        "Remote screenshot artifact contains a valid manifest, matching routes, capture hashes, and PNG screenshots.",
+        "Remote screenshot artifact contains a valid manifest, matching routes, capture hashes, PNG screenshots, and any declared UIAutomator dumps.",
         manifest=str(manifests[0]),
         pngs=[str(path) for path in pngs],
         routes=manifest_routes,
@@ -437,6 +470,8 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 "scroll_y": entry["scroll_y"],
                 "scrollable": bool(entry["scrollable"]),
                 "sha256": str(entry["sha256"]),
+                "uiautomator_dump_path": str(cast(Path, entry["uiautomator_dump_path"])) if entry.get("uiautomator_dump_path") else "",
+                "uiautomator_dump_sha256": str(entry["uiautomator_dump_sha256"]),
             }
             for entry in capture_entries
         ],

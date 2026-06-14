@@ -245,6 +245,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
     }
 
+    fun screenshotLocaleTag(): String? {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_LOCALE)?.trim()?.takeIf { it.isNotBlank() }
+    }
+
     fun screenshotScrollPositionLabel(): String? {
         return intent?.getStringExtra(EXTRA_SCREENSHOT_SCROLL_POSITION)?.takeIf { it.isNotBlank() }
     }
@@ -440,6 +444,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+        const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val REQUEST_POST_NOTIFICATIONS = 704
