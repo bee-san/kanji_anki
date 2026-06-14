@@ -570,7 +570,11 @@ for index in range(capture_count):
     system_mode = captured_system_modes[index] if index < len(captured_system_modes) else ""
     ui_dump_file = captured_uiautomator_dumps[index] if index < len(captured_uiautomator_dumps) else ""
     file_path = Path(file_name) if file_name else None
+    if file_path is not None and not file_path.is_absolute():
+        file_path = screenshots_dir / file_path
     ui_dump_path = Path(ui_dump_file) if ui_dump_file else None
+    if ui_dump_path is not None and not ui_dump_path.is_absolute():
+        ui_dump_path = screenshots_dir / ui_dump_path
     if raw_scroll_y and str(raw_scroll_y).strip():
         try:
             scroll_y = int(str(raw_scroll_y).strip())
