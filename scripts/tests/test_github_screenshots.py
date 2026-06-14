@@ -388,7 +388,6 @@ class GithubScreenshotsTest(unittest.TestCase):
             captures = cast(list[dict[str, object]], result["captures"])
             self.assertEqual(str(dump), captures[0]["uiautomator_dump_path"])
             self.assertEqual(dump_sha256, str(captures[0]["uiautomator_dump_sha256"]))
-
     def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
