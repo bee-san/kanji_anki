@@ -1,10 +1,14 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.progress.progressAnalyticsSampleSnapshot
 import dev.bee.kanjianki.progress.progressAnalyticsSnapshot
 
 internal abstract class MainActivityStats : MainActivityGames() {
@@ -27,13 +31,16 @@ internal abstract class MainActivityStats : MainActivityGames() {
     }
 
     private fun renderScreenshotStats() {
-        val model = screenshotStatsScreenModel()
+        val state = progressAnalyticsSampleSnapshot(0L)
         composeRoute(
             MainActivityBase.NAV_STATS_ROUTE,
             initialScrollY = screenshotScrollY(),
             scrollPositionLabel = screenshotScrollPositionLabel(),
         ) {
-            StatsRouteScreen(model = model, onHome = this::renderHome)
+            ProgressAnalyticsDashboardScreen(
+                state = state,
+                modifier = Modifier.padding(bottom = 24.dp),
+            )
         }
     }
 
