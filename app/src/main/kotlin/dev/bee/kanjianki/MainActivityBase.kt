@@ -205,6 +205,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun thresholdInput(value: Int): EditText
     abstract fun parseThresholdInput(input: EditText): Int
 
+    fun isScreenshotLaunchRequested(): Boolean {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startup.start()
@@ -386,6 +390,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"
+        const val SCREENSHOT_STUDY_SIMILAR_ROUTE = "study-similar"
         const val NAV_STATS_ROUTE = "stats"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"

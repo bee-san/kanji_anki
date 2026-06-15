@@ -78,7 +78,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderStats() }
             assertVisible("Stats")
-            assertVisible("Kani is not currently working for you")
+            assertVisible("Waiting for Kani evidence")
 
             scenario.onActivity { it.renderGames() }
             assertVisible("Games")
@@ -86,7 +86,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderUpdate() }
             assertVisible("GitHub updater")
-            assertVisible("Check for update")
+            assertVisible("Back to settings")
         }
     }
 

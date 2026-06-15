@@ -8,15 +8,32 @@ import dev.bee.kanjianki.data.StudyStatsStore
 
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
+        if (isScreenshotLaunchRequested()) {
+            renderScreenshotStats()
+            return
+        }
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.statsActionLabel(),
             load = { buildStatsScreenModel() },
             render = { model ->
                 composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
-                    StatsRouteScreen(model = model, onHome = this::renderHome)
+                    StatsRouteScreen(
+                        model = model,
+                        onHome = this::renderHome
+                    )
                 }
             },
         )
+    }
+
+    private fun renderScreenshotStats() {
+        val model = screenshotStatsScreenModel()
+        composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
+            StatsRouteScreen(
+                model = model,
+                onHome = this::renderHome
+            )
+        }
     }
 
     fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {

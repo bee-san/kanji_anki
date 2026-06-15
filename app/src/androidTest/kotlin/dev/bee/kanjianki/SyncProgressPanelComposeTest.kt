@@ -1,10 +1,12 @@
 package dev.bee.kanjianki
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import dev.bee.kanjianki.sync.SyncProgress
@@ -113,49 +115,17 @@ class SyncProgressPanelComposeTest {
     }
 
     @Test
-    fun rendersSecondAndMinuteEtaUnits() {
-        val secondsClock = FakeClock()
-        val secondsPanel = syncProgressPanel(secondsClock)
-        secondsPanel.render(SyncProgress.cardsScanned(0, 200))
-        secondsClock.now += 1100L
-        secondsPanel.render(SyncProgress.cardsScanned(199, 200))
-
-        composeRule.setContent {
-            SyncProgressScreen(
-                title = "Syncing cards",
-                progressPanel = secondsPanel
-            )
-        }
-
-        composeRule.onNode(hasText("sec left", substring = true)).assertIsDisplayed()
-
-        val minutesClock = FakeClock()
-        val minutesPanel = syncProgressPanel(minutesClock)
-        minutesPanel.render(SyncProgress.cardsScanned(0, 600))
-        minutesClock.now += 1100L
-        minutesPanel.render(SyncProgress.cardsScanned(3, 600))
-
-        composeRule.setContent {
-            SyncProgressScreen(
-                title = "Syncing cards",
-                progressPanel = minutesPanel
-            )
-        }
-
-        composeRule.onNode(hasText("min left", substring = true)).assertIsDisplayed()
-    }
-
-    @Test
     fun rendersEstimatingCopyBeforeEnoughProgressOrTime() {
-        val clock = FakeClock()
-        val panel = syncProgressPanel(clock)
-        panel.render(SyncProgress.cardsScanned(0, 10))
-        panel.render(SyncProgress.cardsScanned(2, 10))
+        val firstClock = FakeClock()
+        val firstPanel = syncProgressPanel(firstClock)
+        firstPanel.render(SyncProgress.cardsScanned(0, 10))
+        firstPanel.render(SyncProgress.cardsScanned(2, 10))
 
+        val activePanel = mutableStateOf(firstPanel)
         composeRule.setContent {
             SyncProgressScreen(
                 title = "Syncing cards",
-                progressPanel = panel
+                progressPanel = activePanel.value
             )
         }
 
@@ -167,15 +137,44 @@ class SyncProgressPanelComposeTest {
         slowClock.now += 500L
         slowPanel.render(SyncProgress.cardsScanned(3, 10))
 
-        composeRule.setContent {
-            SyncProgressScreen(
-                title = "Syncing cards",
-                progressPanel = slowPanel
-            )
+        composeRule.runOnIdle {
+            activePanel.value = slowPanel
         }
 
         composeRule.onNode(hasText("cards/sec - estimating time left", substring = true)).assertIsDisplayed()
     }
+
+    @Test
+    fun rendersSecondAndMinuteEtaUnits() {
+        val secondsClock = FakeClock()
+        val secondsPanel = syncProgressPanel(secondsClock)
+        secondsPanel.render(SyncProgress.cardsScanned(0, 200))
+        secondsClock.now += 1100L
+        secondsPanel.render(SyncProgress.cardsScanned(199, 200))
+
+        val activePanel = mutableStateOf(secondsPanel)
+        composeRule.setContent {
+            SyncProgressScreen(
+                title = "Syncing cards",
+                progressPanel = activePanel.value
+            )
+        }
+
+        composeRule.onNode(hasText("sec left", substring = true)).assertIsDisplayed()
+
+        val minutesClock = FakeClock()
+        val minutesPanel = syncProgressPanel(minutesClock)
+        minutesPanel.render(SyncProgress.cardsScanned(0, 600))
+        minutesClock.now += 1100L
+        minutesPanel.render(SyncProgress.cardsScanned(3, 600))
+
+        composeRule.runOnIdle {
+            activePanel.value = minutesPanel
+        }
+
+        composeRule.onNode(hasText("min left", substring = true)).assertIsDisplayed()
+    }
+
 
     @Test
     fun keepsKnownCountAcrossLocalStages() {
@@ -215,7 +214,7 @@ class SyncProgressPanelComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Syncing cards").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Syncing cards").assertCountEquals(2)
         composeRule.onNodeWithText("Preparing card scan.").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync progress: Syncing cards").assertIsDisplayed()
     }

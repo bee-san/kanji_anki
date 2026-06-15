@@ -12,16 +12,19 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         val launchIntent = activity.intent
 
+        if (!shouldRunBackgroundStartupTasks(launchIntent)) {
+            handleLaunchIntent(launchIntent)
+            return
+        }
+
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
-        if (shouldRunBackgroundStartupTasks(launchIntent)) {
-            activity.requestAnkiPermissionIfNeeded()
-            ReminderScheduler.schedule(activity)
-            AutoSyncScheduler.schedule(activity)
-            AutoUpdateScheduler.schedule(activity)
-            DatabaseBackupScheduler.schedule(activity)
-        }
+        activity.requestAnkiPermissionIfNeeded()
+        ReminderScheduler.schedule(activity)
+        AutoSyncScheduler.schedule(activity)
+        AutoUpdateScheduler.schedule(activity)
+        DatabaseBackupScheduler.schedule(activity)
         handleLaunchIntent(launchIntent)
     }
 
@@ -46,6 +49,9 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         when (route) {
             MainActivityBase.NAV_HOME_ROUTE, "launcher-home", "narrow", "wide" -> activity.renderHome()
             MainActivityBase.NAV_STUDY -> activity.renderStudy()
+            MainActivityBase.SCREENSHOT_STUDY_SIMILAR_ROUTE -> activity.composeRoute(MainActivityBase.NAV_STUDY) {
+                ScreenshotStudySimilarScreen()
+            }
             MainActivityBase.NAV_STATS_ROUTE -> if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
             MainActivityBase.NAV_SETTINGS_ROUTE -> activity.renderSettings()
             "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()

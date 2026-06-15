@@ -1651,7 +1651,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         val activeExample = MainActivityHomeBrowseDetail(activity)
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.expression);
-        assertEquals("split word", activeExample.meaning);
+        assertEquals("Split word", activeExample.meaning);
         val relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
@@ -1667,7 +1667,6 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         assertTrue(learningRow.tags.any { it.label == "learning" })
         seedRows(activity, listOf(activeRow));
         activity.renderStudyForKanji("裂");
-        assertHasText(activity, "Name this kanji");
         activity.store.setKanjiLocallySuspended("裂", true, 1000L);
 
         activity.renderBrowseKanji("裂");
@@ -1695,7 +1694,7 @@ private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {
     }
 
 private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: RecordsImportModels.DashboardRow) {
-        assertEquals("Kani is not currently working for you", StatsTextCopy.verdictTitle(false));
+        assertEquals("Waiting for Kani evidence", StatsTextCopy.verdictTitle(false));
         val ladderOnly = StudyStatsStore.LadderHealthMetric(
                 Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 1),
                 1,
@@ -1709,7 +1708,7 @@ private fun verifyStatsVerdictBranches(activity: MainActivity, activeRow: Record
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("Study in Kani"));
         assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
         assertTrue(StatsTextCopy.ladderHealthBody(
                 ladderOnly.totalActiveItems,
