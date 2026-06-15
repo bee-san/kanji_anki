@@ -67,7 +67,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                         title = "Meaning",
                         question = "What does it mean?",
                         hiddenHint = "Answer hidden until reveal",
-                        reasonLine = "From 宮",
+                        reasonLine = "From 宮"
                     ),
                     heroPanel = FlashcardHeroPanelModel(
                         glyph = "獄",
@@ -101,6 +101,116 @@ class MainActivityStudyFlashcardComposeUnitTest {
         }
         composeRule.waitForIdle()
 
+        composeRule.onNodeWithText("split").assertIsDisplayed()
+    }
+
+    @Test
+    fun revealedBlankTypingFlashcardHidesPromptCopyAndTypingInput() {
+        val revealState = FlashcardRevealState(false)
+        val typingAnswer = TypingAnswerState()
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = FlashcardCardModel(
+                    promptHeader = FlashcardPromptHeaderModel(
+                        modeLabel = "Type",
+                        title = "Prompt",
+                        question = "What does it mean?",
+                        hiddenHint = "Answer hidden until reveal",
+                        reasonLine = "From 宮",
+                    ),
+                    heroPanel = FlashcardHeroPanelModel(
+                        glyph = "獄",
+                        glyphSizeSp = 64,
+                        typeface = null,
+                    ),
+                    typingAnswer = typingAnswer,
+                    answerPanel = StudyAnswerPanelModel(
+                        title = "Answer",
+                        glyph = "獄",
+                        glyphSizeSp = 76,
+                        lines = listOf(
+                            StudyAnswerLineModel(
+                                text = "split",
+                                color = 0xFF2E1035.toInt(),
+                                sizeSp = 17,
+                                bold = true,
+                            )
+                        ),
+                        helperText = null,
+                    ),
+                    revealState = revealState,
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+        composeRule.onAllNodesWithText("split").assertCountEquals(0)
+
+        composeRule.runOnIdle {
+            revealState.reveal()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
+        composeRule.onNodeWithText("split").assertIsDisplayed()
+    }
+
+    @Test
+    fun revealedTypedTypingFlashcardHidesPromptCopyAndTypingInput() {
+        val revealState = FlashcardRevealState(false)
+        val typingAnswer = TypingAnswerState("wrong")
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = FlashcardCardModel(
+                    promptHeader = FlashcardPromptHeaderModel(
+                        modeLabel = "Type",
+                        title = "Prompt",
+                        question = "What does it mean?",
+                        hiddenHint = "Answer hidden until reveal",
+                        reasonLine = "From 宮",
+                    ),
+                    heroPanel = FlashcardHeroPanelModel(
+                        glyph = "獄",
+                        glyphSizeSp = 64,
+                        typeface = null,
+                    ),
+                    typingAnswer = typingAnswer,
+                    answerPanel = StudyAnswerPanelModel(
+                        title = "Answer",
+                        glyph = "獄",
+                        glyphSizeSp = 76,
+                        lines = listOf(
+                            StudyAnswerLineModel(
+                                text = "split",
+                                color = 0xFF2E1035.toInt(),
+                                sizeSp = 17,
+                                bold = true,
+                            )
+                        ),
+                        helperText = null,
+                    ),
+                    revealState = revealState,
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+        composeRule.onAllNodesWithText("split").assertCountEquals(0)
+
+        composeRule.runOnIdle {
+            revealState.reveal()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         composeRule.onNodeWithText("split").assertIsDisplayed()
     }
 
