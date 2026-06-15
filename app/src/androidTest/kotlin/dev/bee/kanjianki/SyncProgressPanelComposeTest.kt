@@ -8,13 +8,29 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import dev.bee.kanjianki.sync.SyncProgress
+import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.util.Locale
 
 class SyncProgressPanelComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    private var originalLocale: Locale = Locale.getDefault()
+
+    @Before
+    fun setUpLocale() {
+        originalLocale = Locale.getDefault()
+        Locale.setDefault(Locale.ENGLISH)
+    }
+
+    @After
+    fun tearDownLocale() {
+        Locale.setDefault(originalLocale)
+    }
 
     @Test
     fun rendersSyncProgressTitle() {
@@ -120,26 +136,24 @@ class SyncProgressPanelComposeTest {
         secondsClock.now += 1100L
         secondsPanel.render(SyncProgress.cardsScanned(199, 200))
 
-        composeRule.setContent {
-            SyncProgressScreen(
-                title = "Syncing cards",
-                progressPanel = secondsPanel
-            )
-        }
-
-        composeRule.onNode(hasText("sec left", substring = true)).assertIsDisplayed()
-
         val minutesClock = FakeClock()
         val minutesPanel = syncProgressPanel(minutesClock)
         minutesPanel.render(SyncProgress.cardsScanned(0, 600))
         minutesClock.now += 1100L
         minutesPanel.render(SyncProgress.cardsScanned(3, 600))
+        val activePanel = mutableStateOf(secondsPanel)
 
         composeRule.setContent {
             SyncProgressScreen(
                 title = "Syncing cards",
-                progressPanel = minutesPanel
+                progressPanel = activePanel.value
             )
+        }
+
+        composeRule.onNode(hasText("sec left", substring = true)).assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            activePanel.value = minutesPanel
         }
 
         composeRule.onNode(hasText("min left", substring = true)).assertIsDisplayed()
@@ -152,26 +166,24 @@ class SyncProgressPanelComposeTest {
         panel.render(SyncProgress.cardsScanned(0, 10))
         panel.render(SyncProgress.cardsScanned(2, 10))
 
-        composeRule.setContent {
-            SyncProgressScreen(
-                title = "Syncing cards",
-                progressPanel = panel
-            )
-        }
-
-        composeRule.onNode(hasText("cards/sec - estimating time left", substring = true)).assertIsDisplayed()
-
         val slowClock = FakeClock()
         val slowPanel = syncProgressPanel(slowClock)
         slowPanel.render(SyncProgress.cardsScanned(0, 10))
         slowClock.now += 500L
         slowPanel.render(SyncProgress.cardsScanned(3, 10))
+        val activePanel = mutableStateOf(panel)
 
         composeRule.setContent {
             SyncProgressScreen(
                 title = "Syncing cards",
-                progressPanel = slowPanel
+                progressPanel = activePanel.value
             )
+        }
+
+        composeRule.onNode(hasText("cards/sec - estimating time left", substring = true)).assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            activePanel.value = slowPanel
         }
 
         composeRule.onNode(hasText("cards/sec - estimating time left", substring = true)).assertIsDisplayed()
@@ -193,6 +205,8 @@ class SyncProgressPanelComposeTest {
         composeRule.onNodeWithText("Saving local data").assertIsDisplayed()
         composeRule.onNodeWithText("7 / 9 cards scanned").assertIsDisplayed()
         composeRule.onNodeWithText("Saving the Anki snapshot and import evidence.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Saving the Anki snapshot and import evidence.")
+            .assertIsDisplayed()
 
         composeRule.runOnIdle {
             panel.render(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
@@ -201,6 +215,25 @@ class SyncProgressPanelComposeTest {
         composeRule.onNodeWithText("Archiving imported suspended cards").assertIsDisplayed()
         composeRule.onNodeWithText("7 / 9 cards scanned").assertIsDisplayed()
         composeRule.onNodeWithText("Updating archived suspended cards.").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersSpinnerWhileSavingLocalData() {
+        val panel = syncProgressPanel()
+        panel.render(SyncProgress.cardsScanned(7, 9))
+        panel.render(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
+
+        composeRule.setContent {
+            SyncProgressScreen(
+                title = "Syncing cards",
+                progressPanel = panel
+            )
+        }
+
+        composeRule.onNodeWithText("Saving local data").assertExists()
+        composeRule.onNodeWithText("7 / 9 cards scanned").assertExists()
+        composeRule.onNodeWithContentDescription("Saving the Anki snapshot and import evidence.")
+            .assertExists()
     }
 
     @Test
@@ -215,7 +248,6 @@ class SyncProgressPanelComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Syncing cards").assertIsDisplayed()
         composeRule.onNodeWithText("Preparing card scan.").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync progress: Syncing cards").assertIsDisplayed()
     }

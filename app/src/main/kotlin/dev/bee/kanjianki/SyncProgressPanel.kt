@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,7 +42,8 @@ internal data class SyncProgressPanelState(
     val progressIndeterminate: Boolean = true,
     val progressMax: Int = 1000,
     val progressValue: Int = 0,
-    val progressDescription: String = initialProgressDescription()
+    val progressDescription: String = initialProgressDescription(),
+    val showSpinner: Boolean = false
 )
 
 class SyncProgressPanel @JvmOverloads constructor(
@@ -91,8 +94,19 @@ class SyncProgressPanel @JvmOverloads constructor(
             progressIndeterminate = false,
             progressMax = 1000,
             progressValue = SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards),
-            progressDescription = SyncProgressCopy.progressDescription(cardText)
+            progressDescription = SyncProgressCopy.progressDescription(cardText),
+            showSpinner = shouldShowSpinner(currentStage)
         )
+    }
+}
+
+private fun shouldShowSpinner(currentStage: SyncProgressCopy.Stage?): Boolean {
+    return when (currentStage) {
+        SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS,
+        SyncProgressCopy.Stage.SAVING_LOCAL_DATA,
+        SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE,
+        SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS -> true
+        else -> false
     }
 }
 
@@ -156,6 +170,17 @@ private fun SyncProgressPanelContent(state: SyncProgressPanelState) {
             bold = true,
             modifier = Modifier.fillMaxWidth()
         )
+        if (state.showSpinner) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .size(24.dp)
+                    .semantics {
+                        contentDescription = state.rate.ifBlank { state.stage }
+                    },
+                color = SyncProgressFill
+            )
+        }
         SyncProgressBar(
             indeterminate = state.progressIndeterminate,
             progressMax = state.progressMax,
