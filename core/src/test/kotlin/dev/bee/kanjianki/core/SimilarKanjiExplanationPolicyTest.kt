@@ -106,6 +106,30 @@ class SimilarKanjiExplanationPolicyTest {
         assertEquals("この漢字をよく見ましょう。", noPair.watchThisPart)
     }
 
+    @Test
+    fun englishLocaleUsesGenericWatchGuidanceWhenTargetKanjiMissing() {
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            "",
+            listOf(item("拉", "pull", "ら")),
+            listOf(pair("拉", "提")),
+            emptyList(),
+        )
+
+        assertEquals("Compare these kanji closely.", explanation.watchThisPart)
+    }
+
+    @Test
+    fun japaneseLocaleUsesGenericWatchGuidanceWhenTargetKanjiMissing() = withLocale(Locale.JAPAN) {
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            "",
+            listOf(item("拉", "pull", "ら")),
+            listOf(pair("拉", "提")),
+            emptyList(),
+        )
+
+        assertEquals("この漢字をよく見比べましょう。", explanation.watchThisPart)
+    }
+
     private fun item(kanji: String, meaning: String, readings: String): RecordsImportModels.KanjiInventoryItem {
         return RecordsImportModels.KanjiInventoryItem(kanji, meaning, readings, "", 1, 1, false, 0L)
     }
