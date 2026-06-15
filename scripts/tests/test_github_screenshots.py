@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
+from unittest.mock import patch
 
 from scripts.ralph_loop import github_screenshots
 
@@ -34,6 +37,10 @@ def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
 
 
 class GithubScreenshotsTest(unittest.TestCase):
+    @staticmethod
+    def _non_github_actions_env():
+        return patch.dict(os.environ, {"GITHUB_ACTIONS": ""}, clear=False)
+
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
 
@@ -78,70 +85,84 @@ class GithubScreenshotsTest(unittest.TestCase):
                 }
             )
 
-            result = github_screenshots.run_remote_screenshots(
-                repo_root=root,
-                workflow="android-screenshots.yml",
-                artifact="android-screenshots",
-                screenshot_route="home",
-                out_dir=out,
-                runner=runner,
-            )
+            with self._non_github_actions_env():
+                result = github_screenshots.run_remote_screenshots(
+                    repo_root=root,
+                    workflow="android-screenshots.yml",
+                    artifact="android-screenshots",
+                    screenshot_route="home",
+                    out_dir=out,
+                    runner=runner,
+                )
 
-            self.assertEqual("missing_artifact", result["status"])
-            self.assertIn("manifest.json", result["message"])
-            self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
+                self.assertEqual("missing_artifact", result["status"])
+                self.assertIn("manifest.json", str(result["message"]))
+                self.assertIn(["gh", "run", "download", "123", "--name", "android-screenshots", "--dir", str(out)], runner.calls)
 
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "manifest.json").write_text(
-                json.dumps(
-                    {
-                        "requested_route": "home",
-                        "routes": ["home"],
-                        "files": [str(out / "home.png")],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            (out / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+                payload = b"\x89PNG\r\n\x1a\n"
+                payload_sha256 = hashlib.sha256(payload).hexdigest()
 
-            result = github_screenshots.run_remote_screenshots(
-                repo_root=root,
-                workflow="android-screenshots.yml",
-                artifact="android-screenshots",
-                screenshot_route="home",
-                out_dir=out,
-                runner=runner,
-            )
+                out.mkdir(parents=True, exist_ok=True)
+                (out / "manifest.json").write_text(
+                    json.dumps(
+                        {
+                            "requested_route": "home",
+                            "routes": ["home"],
+                            "files": [str(out / "home.png")],
+                            "captures": [
+                                {"route": "home", "path": str(out / "home.png"), "sha256": payload_sha256}
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                (out / "home.png").write_bytes(payload)
 
-            self.assertEqual("passed", result["status"])
-            self.assertEqual(123, result["run_id"])
-            self.assertEqual(str(out / "manifest.json"), result["manifest"])
-            self.assertEqual([str(out / "home.png")], result["pngs"])
+                result = github_screenshots.run_remote_screenshots(
+                    repo_root=root,
+                    workflow="android-screenshots.yml",
+                    artifact="android-screenshots",
+                    screenshot_route="home",
+                    out_dir=out,
+                    runner=runner,
+                )
 
-            (out / "manifest.json").write_text(
-                json.dumps(
-                    {
-                        "requested_route": "stats",
-                        "routes": ["stats"],
-                        "files": [str(out / "stats.png")],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            (out / "stats.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-            mismatch = github_screenshots.validate_artifact(out, expected_route="home")
-            self.assertEqual("missing_artifact", mismatch["status"])
-            self.assertIn("home", mismatch["message"])
+                self.assertEqual("passed", result["status"])
+                self.assertEqual(123, result["run_id"])
+                self.assertEqual(str(out / "manifest.json"), result["manifest"])
+                self.assertEqual([str(out / "home.png")], result["pngs"])
+
+                (out / "manifest.json").write_text(
+                    json.dumps(
+                        {
+                            "requested_route": "stats",
+                            "routes": ["stats"],
+                            "files": [str(out / "stats.png")],
+                            "captures": [
+                                {"route": "stats", "path": str(out / "stats.png"), "sha256": payload_sha256}
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                (out / "stats.png").write_bytes(payload)
+                mismatch = github_screenshots.validate_artifact(out, expected_route="home")
+                self.assertEqual("missing_artifact", mismatch["status"])
+                self.assertIn("home", str(mismatch["message"]))
 
     def test_validate_artifact_accepts_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
             routes = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
             files = []
+            captures = []
+            payload = b"\x89PNG\r\n\x1a\n"
+            payload_sha256 = hashlib.sha256(payload).hexdigest()
             for route in routes:
                 path = out / f"{route}.png"
-                path.write_bytes(b"\x89PNG\r\n\x1a\n")
+                path.write_bytes(payload)
                 files.append(str(path))
+                captures.append({"route": route, "path": str(path), "sha256": payload_sha256})
 
             (out / "manifest.json").write_text(
                 json.dumps(
@@ -149,6 +170,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                         "requested_route": "all",
                         "routes": routes,
                         "files": files,
+                        "captures": captures,
                     }
                 ),
                 encoding="utf-8",
@@ -161,12 +183,34 @@ class GithubScreenshotsTest(unittest.TestCase):
     def test_requires_non_main_branch_and_explicit_push_flag(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            for protected_branch in ("main", "release-1.2", "releases/1.2", "trunk"):
-                main_runner = FakeRunner(
+            with self._non_github_actions_env():
+                for protected_branch in ("main", "release-1.2", "releases/1.2", "trunk"):
+                    main_runner = FakeRunner(
+                        {
+                            ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), f"{protected_branch}\n"),
+                            ("git", "rev-parse", "--abbrev-ref", "origin/HEAD"): ok(("git", "rev-parse", "--abbrev-ref", "origin/HEAD"), "origin/trunk\n"),
+                            ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                        }
+                    )
+
+                    result = github_screenshots.run_remote_screenshots(
+                        repo_root=root,
+                        workflow="android-screenshots.yml",
+                        artifact="android-screenshots",
+                        screenshot_route="all",
+                        out_dir=root / "out",
+                        push_pr_branch=True,
+                        runner=main_runner,
+                    )
+
+                    self.assertEqual("failed", result["status"], protected_branch)
+                    self.assertIn("Refusing to run on protected branch", str(result["message"]))
+
+                branch_runner = FakeRunner(
                     {
-                        ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), f"{protected_branch}\n"),
-                        ("git", "rev-parse", "--abbrev-ref", "origin/HEAD"): ok(("git", "rev-parse", "--abbrev-ref", "origin/HEAD"), "origin/trunk\n"),
+                        ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
                         ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                        ("gh", "auth", "status"): fail(("gh", "auth", "status"), "not logged in"),
                     }
                 )
 
@@ -176,61 +220,41 @@ class GithubScreenshotsTest(unittest.TestCase):
                     artifact="android-screenshots",
                     screenshot_route="all",
                     out_dir=root / "out",
-                    push_pr_branch=True,
-                    runner=main_runner,
+                    push_pr_branch=False,
+                    runner=branch_runner,
                 )
 
-                self.assertEqual("failed", result["status"], protected_branch)
-                self.assertIn("Refusing to run on protected branch", result["message"])
-
-            branch_runner = FakeRunner(
-                {
-                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
-                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
-                    ("gh", "auth", "status"): fail(("gh", "auth", "status"), "not logged in"),
-                }
-            )
-
-            result = github_screenshots.run_remote_screenshots(
-                repo_root=root,
-                workflow="android-screenshots.yml",
-                artifact="android-screenshots",
-                screenshot_route="all",
-                out_dir=root / "out",
-                push_pr_branch=False,
-                runner=branch_runner,
-            )
-
-            self.assertEqual("remote_visual_pending", result["status"])
-            self.assertFalse(any(call[:3] == ["git", "push", "-u"] for call in branch_runner.calls))
+                self.assertEqual("remote_visual_pending", result["status"])
+                self.assertFalse(any(call[:3] == ["git", "push", "-u"] for call in branch_runner.calls))
 
     def test_pushes_current_branch_only_when_explicitly_requested(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            runner = FakeRunner(
-                {
-                    ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
-                    ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
-                    ("gh", "auth", "status"): ok(("gh", "auth", "status")),
-                    ("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"): ok(("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"), "bee-san/kanji_anki\n"),
-                    ("git", "push", "-u", "origin", "feature/visual"): ok(("git", "push", "-u", "origin", "feature/visual")),
-                    ("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all"): ok(("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all")),
-                    ("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"): ok(("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"), [{"databaseId": 10, "headSha": "abc123", "status": "completed", "conclusion": "success"}]),
-                    ("gh", "run", "watch", "10", "--exit-status"): ok(("gh", "run", "watch", "10", "--exit-status")),
-                }
-            )
+            with self._non_github_actions_env():
+                runner = FakeRunner(
+                    {
+                        ("git", "branch", "--show-current"): ok(("git", "branch", "--show-current"), "feature/visual\n"),
+                        ("git", "rev-parse", "HEAD"): ok(("git", "rev-parse", "HEAD"), "abc123\n"),
+                        ("gh", "auth", "status"): ok(("gh", "auth", "status")),
+                        ("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"): ok(("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"), "bee-san/kanji_anki\n"),
+                        ("git", "push", "-u", "origin", "feature/visual"): ok(("git", "push", "-u", "origin", "feature/visual")),
+                        ("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all"): ok(("gh", "workflow", "run", "android-screenshots.yml", "--ref", "feature/visual", "-f", "screenshot_route=all")),
+                        ("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"): ok(("gh", "run", "list", "--workflow", "android-screenshots.yml", "--branch", "feature/visual", "--json", "databaseId,headSha,status,conclusion", "--limit", "20"), [{"databaseId": 10, "headSha": "abc123", "status": "completed", "conclusion": "success"}]),
+                        ("gh", "run", "watch", "10", "--exit-status"): ok(("gh", "run", "watch", "10", "--exit-status")),
+                    }
+                )
 
-            github_screenshots.run_remote_screenshots(
-                repo_root=root,
-                workflow="android-screenshots.yml",
-                artifact="android-screenshots",
-                screenshot_route="all",
-                out_dir=root / "out",
-                push_pr_branch=True,
-                runner=runner,
-            )
+                github_screenshots.run_remote_screenshots(
+                    repo_root=root,
+                    workflow="android-screenshots.yml",
+                    artifact="android-screenshots",
+                    screenshot_route="all",
+                    out_dir=root / "out",
+                    push_pr_branch=True,
+                    runner=runner,
+                )
 
-            self.assertIn(["git", "push", "-u", "origin", "feature/visual"], runner.calls)
+                self.assertIn(["git", "push", "-u", "origin", "feature/visual"], runner.calls)
 
 
 if __name__ == "__main__":
