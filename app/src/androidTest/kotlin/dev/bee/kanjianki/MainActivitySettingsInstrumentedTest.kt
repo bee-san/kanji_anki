@@ -69,11 +69,9 @@ class MainActivitySettingsInstrumentedTest {
             scenario.onActivity { activity ->
                 activity.renderSettings()
                 activity.contentScrollY = 48
-                val automationCategory = MainActivitySettingsScreenCoordinator(activity)
-                    .settingsScreenModel()
-                    .categories
-                    .single { it.title == SettingsTextCopy.settingsAutomationTitle() }
-                val updatePanel = automationCategory.panels
+                val automationScreen = MainActivitySettingsScreenCoordinator(activity)
+                    .settingsAutomationScreenModel()
+                val updatePanel = automationScreen.panels
                     .filterIsInstance<SettingsUpdateOverviewPanelModel>()
                     .single()
                 updatePanel.onOpenUpdater()

@@ -87,7 +87,7 @@ class SettingsChromeLocaleTest {
                     ),
                 )
 
-                activity.renderSettings()
+                activity.renderHome()
                 assertEquals(1, backgroundTasks.size)
 
                 backgroundTasks.removeFirst().run()
@@ -103,17 +103,14 @@ class SettingsChromeLocaleTest {
     }
 
     @Test
-    fun settingsCollapsedImportCategoryKeepsPanelsAvailableInJapaneseLocale() {
+    fun settingsImportSubmenuKeepsPanelsAvailableInJapaneseLocale() {
         withLocale(Locale.JAPAN) {
             withMainActivity { activity ->
-                activity.settingsAnkiExpanded = false
+                val screen = MainActivitySettingsScreenCoordinator(activity).settingsImportSyncScreenModel()
 
-                val screen = MainActivitySettingsScreenCoordinator(activity).settingsScreenModel()
-                val importCategory = screen.categories.first { it.title == "インポートと同期" }
-
-                assertEquals(false, importCategory.expanded)
-                assertEquals(4, importCategory.panels.size)
-                assertTrue(importCategory.panels.any { panel -> panel is SettingsNoteTypePanelModel })
+                assertEquals("インポートと同期", screen.title)
+                assertEquals(4, screen.panels.size)
+                assertTrue(screen.panels.any { panel -> panel is SettingsNoteTypePanelModel })
             }
         }
     }

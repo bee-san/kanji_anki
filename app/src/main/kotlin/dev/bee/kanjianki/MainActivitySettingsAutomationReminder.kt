@@ -101,7 +101,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         ) {
             onSaved()
             Toast.makeText(activity, toastMessage, toastLength).show()
-            activity.renderSettings(true)
+            activity.renderSettingsAutomation(true)
         }
     }
 

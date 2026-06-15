@@ -30,6 +30,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("Expand Automation", SettingsSectionTextCopy.categoryToggleDescription(false, "Automation"))
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+        assertEquals("Open Study settings", SettingsSectionTextCopy.sectionOpenDescription("Study settings"))
     }
 
     @Test
@@ -63,6 +64,7 @@ class SettingsSectionTextCopyTest {
             assertEquals("折りたたみ済み", SettingsSectionTextCopy.categoryStateDescription(false))
             assertEquals("1枚", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
             assertEquals("2枚", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
+            assertEquals("学習設定を開く", SettingsSectionTextCopy.sectionOpenDescription(SettingsSectionTextCopy.settingsStudyBehaviorTitle()))
         } finally {
             Locale.setDefault(originalLocale)
         }

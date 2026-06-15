@@ -13,14 +13,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
@@ -29,13 +28,6 @@ private val SettingsScreenBottomSpacerHeight = 96.dp
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
-    val expandedCategories = remember(model.categories.map { it.sectionKey }) {
-        mutableStateMapOf<String, Boolean>().apply {
-            model.categories.forEach { category ->
-                put(category.sectionKey, category.expanded)
-            }
-        }
-    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(modifier = Modifier.padding(bottom = 10.dp)) {
             HomeFullWidthHomeButton(
@@ -45,21 +37,70 @@ fun SettingsScreen(model: SettingsScreenModel) {
         }
         SettingsAutomationHero(model.hero)
         Spacer(modifier = Modifier.height(10.dp))
-        model.categories.forEach { category ->
-            key(category.sectionKey) {
-                val expanded = expandedCategories[category.sectionKey] ?: category.expanded
-                val onToggle = Runnable {
-                    val currentExpanded = expandedCategories[category.sectionKey] ?: category.expanded
-                    expandedCategories[category.sectionKey] = !currentExpanded
-                    category.onToggle.run()
-                }
-                SettingsCategorySection(
-                    category.copy(
-                        expanded = expanded,
-                        contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, category.title),
-                        onToggle = onToggle,
-                    )
+        model.cards.forEach { card ->
+            Box(
+                modifier = Modifier.padding(top = 7.dp, bottom = 9.dp)
+            ) {
+                SettingsHubCard(
+                    title = card.title,
+                    summary = card.summary,
+                    iconRes = card.iconRes,
+                    iconTint = KaniTheme.colors.primary,
+                    borderColor = KaniTheme.colors.border,
+                    countText = card.panelCount,
+                    titleColor = KaniTheme.colors.plum,
+                    summaryColor = KaniTheme.colors.muted,
+                    countColor = KaniTheme.colors.primary,
+                    contentDescription = card.contentDescription,
+                    testTagKey = card.routeKey,
+                    onOpen = { card.onOpen.run() },
                 )
+            }
+        }
+        Spacer(
+            modifier = Modifier
+                .height(SettingsScreenBottomSpacerHeight)
+                .testTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG)
+        )
+    }
+}
+
+@Composable
+fun SettingsSubmenuScreen(model: SettingsSubmenuScreenModel) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.padding(bottom = 10.dp)) {
+            HomeFullWidthHomeButton(
+                label = model.homeLabel,
+                onClick = { model.onHome.run() }
+            )
+        }
+        Box(modifier = Modifier.padding(bottom = 10.dp)) {
+            SettingsUpdateBackButton(
+                onClick = { model.onBack.run() },
+                label = model.backLabel,
+            )
+        }
+        Text(
+            text = model.title,
+            color = SettingsUpdateInk,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (model.body.isNotBlank()) {
+            Text(
+                text = model.body,
+                color = SettingsUpdateMuted,
+                fontSize = 15.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        model.panels.forEach { panel ->
+            Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
+                SettingsPanel(panel)
             }
         }
         Spacer(
@@ -180,13 +221,13 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
 
 internal fun settingsScreenModel(
     hero: SettingsAutomationHeroModel,
-    categories: List<SettingsCategorySectionModel>,
+    cards: List<SettingsHubCardModel>,
     onHome: Runnable,
 ): SettingsScreenModel {
     return SettingsScreenModel(
         homeLabel = HomeTextCopy.homeLabel(),
         onHome = onHome,
         hero = hero,
-        categories = categories,
+        cards = cards,
     )
 }

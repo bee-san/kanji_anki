@@ -158,3 +158,100 @@ internal fun SettingsCategoryHeader(
         }
     }
 }
+
+internal fun settingsHubCardTestTag(routeKey: String): String {
+    return "settings-hub-card-$routeKey"
+}
+
+@Composable
+internal fun SettingsHubCard(
+    title: String,
+    summary: String,
+    iconRes: Int,
+    iconTint: ComposeColor,
+    borderColor: ComposeColor,
+    countText: String,
+    titleColor: ComposeColor,
+    summaryColor: ComposeColor,
+    countColor: ComposeColor,
+    contentDescription: String,
+    testTagKey: String,
+    onOpen: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = KaniTheme.colors.surface,
+        shape = RoundedCornerShape(HEADER_CORNER_RADIUS.dp),
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        val icon: Painter = painterResource(id = iconRes)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
+                .testTag(settingsHubCardTestTag(testTagKey))
+                .semantics {
+                    this.contentDescription = contentDescription
+                }
+                .clickable(
+                    role = Role.Button,
+                    onClick = { withButtonTrace(title) { onOpen() } }
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(HEADER_ICON_SIZE.dp)
+                    .background(HEADER_ICON_BG, RoundedCornerShape(HEADER_ICON_RADIUS.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(iconTint)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = titleColor,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (summary.isNotBlank()) {
+                    Text(
+                        text = summary,
+                        color = summaryColor,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .wrapContentHeight()
+                    .padding(start = 10.dp, end = 8.dp),
+                color = HEADER_COUNT_BG,
+                shape = RoundedCornerShape(HEADER_COUNT_RADIUS.dp),
+                border = BorderStroke(1.dp, borderColor)
+            ) {
+                Text(
+                    text = countText,
+                    color = countColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}

@@ -90,6 +90,26 @@ class KaniBottomNavComposeTest {
     }
 
     @Test
+    fun settingsSubroutesStillSelectTheSettingsTab() {
+        composeRule.setContent {
+            MainActivityComposeRoute(
+                model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE),
+                navActions = navActions(mutableListOf()),
+            ) {
+                Text("Automation content")
+            }
+        }
+
+        composeRule.onNodeWithTag(kaniNavItemTestTag(MainActivityBase.NAV_SETTINGS_ROUTE))
+            .assertIsSelected()
+            .assert(
+                hasContentDescription(
+                    NavigationCopy.navItemContentDescription(NavigationCopy.settingsLabel(), true)
+                )
+            )
+    }
+
+    @Test
     fun actionBarRouteKeepsNavBelowActions() {
         composeRule.setContent {
             MainActivityComposeRouteWithActionBar(

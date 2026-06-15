@@ -107,7 +107,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 
@@ -133,7 +133,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 

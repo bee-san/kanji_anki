@@ -102,6 +102,9 @@ object SettingsTextCopy {
     fun backToSettingsLabel(): String = SettingsAutomationTextCopy.backToSettingsLabel()
 
     @JvmStatic
+    fun sectionOpenDescription(title: String): String = SettingsSectionTextCopy.sectionOpenDescription(title)
+
+    @JvmStatic
     fun settingsCockpitLabel(): String = SettingsSectionTextCopy.settingsCockpitLabel()
 
     @JvmStatic

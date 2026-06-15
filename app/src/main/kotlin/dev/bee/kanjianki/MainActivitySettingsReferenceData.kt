@@ -10,12 +10,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
             body = SettingsTextCopy.offlineDataLicensesBody(),
             actionLabel = SettingsTextCopy.openDataLicensesLabel(),
             onAction = Runnable {
-                val scrollY = activity.contentScrollY
-                activity.settingsScrollY = scrollY
-                val model = referenceDataScreenModel()
-                activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
-                    ReferenceDataScreen(model)
-                }
+                activity.renderReferenceDataDetails()
             }
         )
     }
@@ -31,7 +26,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
         )
     }
 
-    private fun referenceDataScreenModel(): SettingsReferenceDataScreenModel {
+    internal fun referenceDataScreenModel(): SettingsReferenceDataScreenModel {
         return SettingsReferenceDataScreenModel(
             homeLabel = HomeTextCopy.homeLabel(),
             onHome = Runnable { activity.renderHome() },
@@ -40,8 +35,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
                 title = SettingsTextCopy.dataLicensesTitle(),
                 body = SettingsTextCopy.dataLicensesBody(),
                 onBack = Runnable {
-                    activity.contentScrollY = activity.settingsScrollY
-                    activity.renderSettings(true)
+                    activity.renderSettingsDisplayData(true)
                 }
             ),
             dataSources = dataSourcesModel()
