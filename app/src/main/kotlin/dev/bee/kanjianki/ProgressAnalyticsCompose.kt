@@ -31,6 +31,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,11 +105,19 @@ internal fun progressAnalyticsDistributionUsesStackedLegendLayout(maxWidth: Dp):
 }
 
 internal fun progressAnalyticsOverviewSummaryText(state: ProgressOverviewState): String {
-    return listOf(
-        "${ProgressAnalyticsCopy.totalReviewsLabel()} ${state.totalReviews.valueLabel}",
-        "${ProgressAnalyticsCopy.accuracyLabel()} ${state.accuracy.valueLabel}",
-        "${ProgressAnalyticsCopy.streakLabel()} ${state.currentStreak.valueLabel}",
-    ).joinToString(" · ")
+    return buildString {
+        append(ProgressAnalyticsCopy.totalReviewsLabel())
+        append(' ')
+        append(state.totalReviews.valueLabel)
+        append(" · ")
+        append(ProgressAnalyticsCopy.accuracyLabel())
+        append(' ')
+        append(state.accuracy.valueLabel)
+        append(" · ")
+        append(ProgressAnalyticsCopy.streakLabel())
+        append(' ')
+        append(state.currentStreak.valueLabel)
+    }
 }
 
 private fun progressAnalyticsIsCompactWidth(maxWidth: Dp): Boolean {
@@ -703,7 +712,7 @@ private fun ProgressMetricGrid(
     compactLayout: Boolean = false,
 ) {
     val rowSpacing = if (compactLayout || columns <= 2) 6.dp else 10.dp
-    val rows = specs.chunked(columns)
+    val rows = rememberChunkedRows(specs, columns)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(rowSpacing)) {
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(rowSpacing), modifier = Modifier.fillMaxWidth()) {
@@ -927,7 +936,7 @@ private fun ProgressLineChartCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ProgressLineChartHeader(chart, selectedRange, accentColor)
-            ProgressLineChartPlot(chart, accentColor, secondaryColor)
+            ProgressLineChartCard(chart, accentColor, secondaryColor)
             ProgressLineChartXAxis(chart.xAxisLabels)
             ProgressLineChartLegend(chart.series, accentColor, secondaryColor)
         }
@@ -974,11 +983,13 @@ private fun ProgressLineChartTooltip(label: String?) {
 }
 
 @Composable
-private fun ProgressLineChartPlot(
+private fun ProgressLineChartCard(
     chart: ProgressLineChartState,
     accentColor: Color,
     secondaryColor: Color,
 ) {
+    val lineColors = rememberProgressLineChartColors(accentColor, secondaryColor)
+    val gridLineColor = KaniTheme.colors.track
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -992,10 +1003,8 @@ private fun ProgressLineChartPlot(
                     .weight(1f)
                     .height(140.dp),
             ) {
-                val extraLineColors = listOf(KaniUiTokens.Blue, KaniUiTokens.Gold)
-                val gridLineColor = KaniTheme.colors.track
                 Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                    drawProgressLineChart(chart, accentColor, secondaryColor, extraLineColors, gridLineColor)
+                    drawProgressLineChart(chart, lineColors, gridLineColor)
                 }
             }
         }
@@ -1058,19 +1067,16 @@ private fun ProgressLineChartLegend(
 
 private fun DrawScope.drawProgressLineChart(
     chart: ProgressLineChartState,
-    accentColor: Color,
-    secondaryColor: Color,
-    extraLineColors: List<Color>,
+    lineColors: List<Color>,
     gridLineColor: Color,
 ) {
     val values = chart.series.flatMap { it.values }
     val maxValue = (values.maxOrNull() ?: 1).coerceAtLeast(1)
-    val lineColors = listOf(accentColor, secondaryColor) + extraLineColors
     drawProgressGridLines(chart.yAxisLabels.size, gridLineColor)
     chart.series.forEachIndexed { index, series ->
         drawProgressSeries(
             series = series,
-            color = lineColors.getOrElse(index) { accentColor },
+            color = lineColors.getOrElse(index) { lineColors.first() },
             maxValue = maxValue,
         )
     }
@@ -1246,6 +1252,7 @@ private fun ProgressDistributionCard(
 ) {
     BoxWithConstraints(modifier = modifier) {
         val stackedLayout = progressAnalyticsDistributionUsesStackedLegendLayout(maxWidth)
+        val colors = rememberProgressDistributionColors()
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -1278,6 +1285,7 @@ private fun ProgressDistributionCard(
                         ) {
                             ProgressDonutChart(
                                 segments = chart.segments,
+                                colors = colors,
                                 modifier = Modifier
                                     .size(96.dp)
                                     .semantics { contentDescription = chart.accessibilitySummary },
@@ -1287,7 +1295,7 @@ private fun ProgressDistributionCard(
                             chart.segments.forEachIndexed { index, segment ->
                                 ProgressLegendRow(
                                     segment = segment,
-                                    color = donutColors[index % donutColors.size],
+                                    color = colors[index % colors.size],
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1301,6 +1309,7 @@ private fun ProgressDistributionCard(
                     ) {
                         ProgressDonutChart(
                             segments = chart.segments,
+                            colors = colors,
                             modifier = Modifier
                                 .size(104.dp)
                                 .semantics { contentDescription = chart.accessibilitySummary },
@@ -1309,7 +1318,7 @@ private fun ProgressDistributionCard(
                             chart.segments.forEachIndexed { index, segment ->
                                 ProgressLegendRow(
                                     segment = segment,
-                                    color = donutColors[index % donutColors.size],
+                                    color = colors[index % colors.size],
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1324,9 +1333,9 @@ private fun ProgressDistributionCard(
 @Composable
 private fun ProgressDonutChart(
     segments: List<ProgressDistributionSegmentState>,
+    colors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
-    val colors = donutColors
     val holeColor = KaniUiTokens.White
     Canvas(modifier = modifier) {
         val total = segments.sumOf { it.value }.coerceAtLeast(1)
@@ -1674,7 +1683,7 @@ private fun ProgressWeaknessRow(row: ProgressWeaknessRowState) {
 
 @Composable
 private fun ProgressMissedKanjiGrid(items: List<ProgressMissedKanjiState>) {
-    val rows = items.chunked(3)
+    val rows = rememberChunkedRows(items, 3)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1778,11 +1787,30 @@ private data class ProgressMetricSpec(
     val detail: String? = null,
 )
 
-private val donutColors: List<Color>
-    @Composable get() = listOf(
-        KaniUiTokens.Coral,
-        KaniUiTokens.Teal,
-        KaniUiTokens.Blue,
-        KaniUiTokens.Gold,
-        KaniUiTokens.StudyPlum,
-    )
+@Composable
+private fun <T> rememberChunkedRows(items: List<T>, chunkSize: Int): List<List<T>> {
+    return remember(items, chunkSize) {
+        items.chunked(chunkSize)
+    }
+}
+
+@Composable
+private fun rememberProgressDistributionColors(): List<Color> {
+    val coral = KaniUiTokens.Coral
+    val teal = KaniUiTokens.Teal
+    val blue = KaniUiTokens.Blue
+    val gold = KaniUiTokens.Gold
+    val plum = KaniUiTokens.StudyPlum
+    return remember(coral, teal, blue, gold, plum) {
+        listOf(coral, teal, blue, gold, plum)
+    }
+}
+
+@Composable
+private fun rememberProgressLineChartColors(accentColor: Color, secondaryColor: Color): List<Color> {
+    val blue = KaniUiTokens.Blue
+    val gold = KaniUiTokens.Gold
+    return remember(accentColor, secondaryColor, blue, gold) {
+        listOf(accentColor, secondaryColor, blue, gold)
+    }
+}
