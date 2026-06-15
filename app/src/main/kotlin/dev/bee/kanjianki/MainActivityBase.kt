@@ -455,6 +455,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val NAV_STATS_ROUTE = "stats"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"
+        const val SCREENSHOT_STUDY_SIMILAR_ROUTE = "study-similar"
         const val LABEL_BACK_HOME = "Back home"
         const val LABEL_MEANING = "Meaning"
         const val LABEL_FAIL = "Fail"
