@@ -2,15 +2,19 @@ package dev.bee.kanjianki.data
 
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.theme.KaniThemeChoiceRepository
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     private val newCardSortSettings = NewCardSortSettingsRepository(store.settingsRepository())
+    private val themeChoiceSettings = KaniThemeChoiceRepository(store.settingsRepository())
 
     fun getIntSetting(key: String, fallback: Int): Int = store.settingsRepository().getInt(key, fallback)
 
@@ -110,6 +114,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
 
     fun saveNewCardSortMode(mode: String?) = newCardSortSettings.saveMode(mode)
 
+    fun appThemeChoice(): KaniThemeChoice = themeChoiceSettings.currentChoice()
+
+    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = themeChoiceSettings.saveChoice(choice)
+
     fun reminderSettings(): LocalStoreBase.ReminderSettings {
         return LocalStoreBase.ReminderSettings(
             getIntSetting("reminder_enabled", 0) == 1,
@@ -124,6 +132,32 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
             putIntSetting("reminder_enabled", if (normalized.enabled) 1 else 0)
             putIntSetting("reminder_hour", normalized.hour)
             putIntSetting("reminder_minute", normalized.minute)
+        }
+    }
+
+    fun reviewReminderNotificationsToday(nowMillis: Long): Int {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        val storedDayStart = getLongSetting(KEY_REVIEW_REMINDER_DAY_START, 0L)
+        if (storedDayStart != todayStart) {
+            return 0
+        }
+        return getIntSetting(KEY_REVIEW_REMINDER_COUNT, 0).coerceAtLeast(0)
+    }
+
+    fun recordReviewReminderNotificationShown(nowMillis: Long) {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        val count = reviewReminderNotificationsToday(nowMillis) + 1
+        inTransaction {
+            putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
+            putIntSetting(KEY_REVIEW_REMINDER_COUNT, count)
+        }
+    }
+
+    fun clearReviewReminderNotifications(nowMillis: Long) {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        inTransaction {
+            putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
+            putIntSetting(KEY_REVIEW_REMINDER_COUNT, 0)
         }
     }
 
@@ -318,6 +352,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     private companion object {
         const val KEY_STUDY_LADDER_ORDER = "study_ladder_order"
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
+        const val KEY_REVIEW_REMINDER_DAY_START = "review_reminder_day_start"
+        const val KEY_REVIEW_REMINDER_COUNT = "review_reminder_count"
         val STATS_SETTING_KEYS = setOf(
             SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
             SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,

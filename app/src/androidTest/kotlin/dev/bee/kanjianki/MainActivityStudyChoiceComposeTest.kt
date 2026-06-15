@@ -63,20 +63,27 @@ class MainActivityStudyChoiceComposeTest {
     fun rendersSimilarChoiceSessionCardAndInvokesSelection() {
         var selected = ""
 
+        val explanationLines = listOf(
+            SimilarKanjiExplanationLineModel("Pair", "裂 vs 列", true),
+            SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
+            SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列.", true),
+        )
+
         composeRule.setContent {
             SimilarChoiceSessionCard(
                 model = SimilarChoiceSessionModel(
                     modeLabel = "Recognise",
                     title = "Choose the kanji",
                     taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-                    body = "Pick the kanji that matches the meaning.",
+                    body = "Pick the matching kanji.",
                     reasonLine = "Weak Anki evidence",
                     question = "Which kanji means split?",
                     gridModel = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = true,
                         onChoice = KanjiChoiceHandler { selected = it }
-                    )
+                    ),
+                    explanationLines = explanationLines,
                 )
             )
         }
@@ -84,9 +91,12 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
+        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
+        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
+        composeRule.onNodeWithText("Pair: 裂 vs 列").assertIsDisplayed()
+        composeRule.onNodeWithText("Source words: source one • source two").assertIsDisplayed()
+        composeRule.onNodeWithText("Watch: Watch how 裂 differs from 列.").assertIsDisplayed()
 
         composeRule.onNodeWithText("烈").performClick()
 
@@ -103,7 +113,7 @@ class MainActivityStudyChoiceComposeTest {
                     modeLabel = "Recall",
                     title = "Choose the kanji",
                     taskLabel = "Meaning -> kanji",
-                    body = "Pick the kanji that matches the meaning.",
+                    body = "Pick the matching kanji.",
                     reasonLine = "",
                     question = "Which kanji means split?",
                     choices = listOf("裂", "列", "烈", "劣"),
@@ -114,7 +124,7 @@ class MainActivityStudyChoiceComposeTest {
                         lines = listOf(
                             StudyAnswerLineModel(
                                 text = "Answer detail",
-                                color = Color(0xFF2D1635),
+                                color = MainActivityUiSupport.INK,
                                 sizeSp = 15,
                                 bold = false
                             )
@@ -160,7 +170,7 @@ class MainActivityStudyChoiceComposeTest {
 
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Meaning -> kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
+        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
     }
 
@@ -504,7 +514,7 @@ class MainActivityStudyChoiceComposeTest {
                 modeLabel = "Recall",
                 title = "Choose the kanji",
                 taskLabel = "Meaning -> kanji",
-                body = "Pick the kanji that matches the meaning.",
+                body = "Pick the matching kanji.",
                 reasonLine = reasonLine,
                 question = question,
                 choices = choices,
@@ -515,7 +525,7 @@ class MainActivityStudyChoiceComposeTest {
                     lines = listOf(
                         StudyAnswerLineModel(
                             text = answerDetail,
-                            color = Color(0xFF2D1635),
+                            color = MainActivityUiSupport.INK,
                             sizeSp = 15,
                             bold = false,
                         )

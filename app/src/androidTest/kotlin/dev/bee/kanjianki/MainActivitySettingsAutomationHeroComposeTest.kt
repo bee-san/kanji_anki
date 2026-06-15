@@ -11,11 +11,11 @@ class MainActivitySettingsAutomationHeroComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun rendersHeroBadgeTitleBodyAndStatusPills() {
+    fun rendersHeroBadgeTitleAndStatusPills() {
         composeRule.setContent {
             SettingsAutomationHero(
                 model = SettingsAutomationHeroModel(
-                    cockpitLabel = "Settings overview",
+                    cockpitLabel = "Overview",
                     title = "Settings",
                     body = "Sync, retention, and import controls live here.",
                     rows = listOf(
@@ -29,7 +29,7 @@ class MainActivitySettingsAutomationHeroComposeTest {
                         ),
                         listOf(
                             SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()),
-                            SettingsAutomationHeroPillModel("App updates", "Pending verified APK", 0xFFFF4C76.toInt())
+                            SettingsAutomationHeroPillModel("App updates", "Ready to install", 0xFFFF4C76.toInt())
                         ),
                         listOf(
                             SettingsAutomationHeroPillModel("Cards per kanji", "Kiku only", 0xFF7A245D.toInt())
@@ -39,9 +39,8 @@ class MainActivitySettingsAutomationHeroComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Settings overview").assertIsDisplayed()
+        composeRule.onNodeWithText("Overview").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync, retention, and import controls live here.").assertIsDisplayed()
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Kiku").assertIsDisplayed()
         composeRule.onNodeWithText("Import filters").assertIsDisplayed()

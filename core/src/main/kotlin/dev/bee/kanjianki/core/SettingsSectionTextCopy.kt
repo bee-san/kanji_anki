@@ -1,67 +1,97 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsSectionTextCopy {
-    @JvmStatic
-    fun settingsAnkiSourceTitle(): String = "Import & sync"
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
-    fun settingsAnkiSourceBody(): String = "AnkiDroid note fields, import filters, frequency range, and daily sync live together."
+    fun settingsTitle(): String = localizedText("Settings", "設定")
 
     @JvmStatic
-    fun settingsStudyBehaviorTitle(): String = "Deck options"
+    fun settingsAnkiSourceTitle(): String = localizedText("Import & sync", "インポートと同期")
 
     @JvmStatic
-    fun settingsStudyBehaviorBody(): String = "Study steps, deck limits, FSRS retention, workload, sorting, ahead limits, and ladder thresholds."
+    fun settingsAnkiSourceBody(): String = localizedText("Choose sources, filters, and rank range.", "ソース、フィルター、範囲を選ぶ。")
 
     @JvmStatic
-    fun settingsAutomationTitle(): String = "Advanced controls"
+    fun settingsStudyBehaviorTitle(): String = localizedText("Study settings", "学習設定")
 
     @JvmStatic
-    fun settingsAutomationBody(): String = "Reminders and app update checks that change how Kani runs in the background."
+    fun settingsStudyBehaviorBody(): String = localizedText("Set new cards, timing, workload, and ladder.", "新規カード、タイミング、負荷、ラダーを設定。")
 
     @JvmStatic
-    fun settingsReferenceDataTitle(): String = "Display & data"
+    fun settingsAutomationTitle(): String = localizedText("Automation", "自動化")
 
     @JvmStatic
-    fun settingsReferenceDataBody(): String = "Offline dictionaries, stroke data, fonts, and attribution shown by the app."
+    fun settingsAutomationBody(): String = localizedText("Manage reminders, sync, and updates.", "リマインダー、同期、更新を管理。")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = "Settings overview"
+    fun settingsAppearanceTitle(): String = localizedText("Appearance", "外観")
 
     @JvmStatic
-    fun settingsHeroBody(): String {
-        return "Choose a section below. Expanding it keeps the page in place and preserves your scroll position."
-    }
+    fun settingsAppearanceBody(): String = localizedText("Choose your app theme.", "アプリのテーマを選ぶ。")
 
     @JvmStatic
-    fun noteTypeStatusLabel(): String = "Note type"
+    fun settingsReferenceDataTitle(): String = localizedText("Display & data", "表示とデータ")
 
     @JvmStatic
-    fun importFiltersStatusLabel(): String = "Import filters"
+    fun settingsReferenceDataBody(): String = localizedText("Manage dictionaries, strokes, fonts, and credits.", "辞書、ストローク、フォント、クレジットを管理。")
 
     @JvmStatic
-    fun importRanksStatusLabel(): String = "Suspended card range"
+    fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
 
     @JvmStatic
-    fun reminderStatusLabel(): String = "Daily reminder"
+    fun settingsHeroBody(): String = localizedText("Choose a section.", "下のセクションを選ぶ。")
 
     @JvmStatic
-    fun dailySyncStatusLabel(): String = "Daily sync"
+    fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
 
     @JvmStatic
-    fun updatesStatusLabel(): String = "App updates"
+    fun importFiltersStatusLabel(): String = localizedText("Import filters", "インポートフィルター")
 
     @JvmStatic
-    fun matchingCardsStatusLabel(): String = "Cards per kanji"
+    fun importRanksStatusLabel(): String = localizedText("Suspended card range", "停止カードの範囲")
 
     @JvmStatic
-    fun statusPillDescription(label: String, value: String): String = "$label: $value"
+    fun reminderStatusLabel(): String = localizedText("Daily reminder", "毎日のリマインダー")
+
+    @JvmStatic
+    fun dailySyncStatusLabel(): String = localizedText("Daily sync", "毎日の同期")
+
+    @JvmStatic
+    fun updatesStatusLabel(): String = localizedText("App updates", "アプリ更新")
+
+    @JvmStatic
+    fun matchingCardsStatusLabel(): String = localizedText("Cards per kanji", "漢字ごとのカード数")
+
+    @JvmStatic
+    fun statusPillDescription(label: String, value: String): String =
+        if (isJapaneseLocale()) "$label：$value" else "$label: $value"
 
     @JvmStatic
     fun categoryToggleDescription(expanded: Boolean, title: String): String {
-        return (if (expanded) "Collapse " else "Expand ") + title
+        return if (isJapaneseLocale()) {
+            title + if (expanded) "を折りたたむ" else "を展開する"
+        } else {
+            (if (expanded) "Collapse " else "Expand ") + title
+        }
     }
 
     @JvmStatic
-    fun settingsCategoryPanelCount(panels: Int): String = panels.toString() + if (panels == 1) " card" else " cards"
+    fun categoryStateDescription(expanded: Boolean): String =
+        if (isJapaneseLocale()) if (expanded) "展開済み" else "折りたたみ済み" else if (expanded) "Expanded" else "Collapsed"
+
+    @JvmStatic
+    fun settingsCategoryPanelCount(panels: Int): String =
+        if (isJapaneseLocale()) {
+            "${panels}枚"
+        } else {
+            panels.toString() + if (panels == 1) " card" else " cards"
+        }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

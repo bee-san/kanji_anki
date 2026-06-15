@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun BrowseExampleCard(model: BrowseExampleCardModel) {
-    val accent = ComposeColor(model.color)
+    val accent = kaniColor(model.color)
     Surface(
         modifier = Modifier
             .fillMaxWidth()

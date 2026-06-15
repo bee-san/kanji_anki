@@ -66,6 +66,46 @@ class DateTextPolicyTest {
     }
 
     @Test
+    fun japaneseLocaleLocalizesRelativeStatusCopy() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            val now = 1_000_000L
+
+            assertEquals("日付不明", DateTextPolicy.humanSyncTime(0L, now))
+            assertEquals("今すぐ復習", DateTextPolicy.dueText(now, now))
+            assertEquals("1分後に復習", DateTextPolicy.dueText(now + 59_000L, now))
+            assertEquals("2分後に復習", DateTextPolicy.dueText(now + 120_000L, now))
+            assertEquals("3時間後に復習", DateTextPolicy.dueText(now + 3_600_000L * 3L, now))
+            assertEquals("時刻不明", DateTextPolicy.timelineDate(0L))
+            assertEquals("未確認", DateTextPolicy.autoUpdateLastCheckText(0L))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
+    fun japaneseLocaleLocalizesDueAndSyncDatePrefixes() {
+        val originalLocale = Locale.getDefault()
+        val originalTimeZone = TimeZone.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utcCalendar(2026, Calendar.MAY, 15, 12, 0)
+            val today = utcCalendar(2026, Calendar.MAY, 15, 9, 30)
+            val yesterday = utcCalendar(2026, Calendar.MAY, 14, 9, 30)
+            val later = 3L * 24L * 3_600_000L
+
+            assertTrue(DateTextPolicy.humanSyncTime(today.timeInMillis, now.timeInMillis).startsWith("今日 "))
+            assertTrue(DateTextPolicy.humanSyncTime(yesterday.timeInMillis, now.timeInMillis).startsWith("昨日 "))
+            assertTrue(DateTextPolicy.dueText(later, 0L).startsWith("期限 "))
+        } finally {
+            Locale.setDefault(originalLocale)
+            TimeZone.setDefault(originalTimeZone)
+        }
+    }
+
+    @Test
     fun computesLocalDayBoundaries() {
         val calendar = Calendar.getInstance()
         calendar.set(2026, Calendar.MAY, 15, 13, 45, 30)

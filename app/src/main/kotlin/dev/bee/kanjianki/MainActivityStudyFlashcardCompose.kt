@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import kotlin.math.roundToInt
 
 internal class FlashcardActionBarState(
@@ -51,32 +52,44 @@ fun StudyFlashcardActionBar(
     onReveal: () -> Unit,
     onFail: () -> Unit,
     onPass: () -> Unit,
+    undoMessage: String? = null,
+    onUndo: (() -> Unit)? = null,
 ) {
-    if (!revealed) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 3.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            StudyRevealButton(onReveal = onReveal)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (undoMessage != null && onUndo != null) {
+            StudyUndoBanner(
+                undoMessage = undoMessage,
+                onUndo = onUndo,
+            )
         }
-    } else {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 3.dp, vertical = 8.dp)
-                .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            StudyAgainButton(
-                onClick = onFail,
-                modifier = Modifier.weight(1f)
-            )
-            StudyGoodButton(
-                onClick = onPass,
-                modifier = Modifier.weight(1f)
-            )
+        if (!revealed) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                StudyRevealButton(onReveal = onReveal)
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                StudyAgainButton(
+                    onClick = onFail,
+                    modifier = Modifier.weight(1f)
+                )
+                StudyGoodButton(
+                    onClick = onPass,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -126,7 +139,7 @@ private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () 
 @Composable
 private fun StudyRevealButton(onReveal: () -> Unit) {
     StudyPrimaryActionButton(
-        label = "Reveal",
+        label = StudyReviewButtonCopy.revealLabel(),
         onClick = onReveal,
         modifier = Modifier
             .fillMaxWidth()
@@ -134,7 +147,7 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
         Icon(
             painter = painterResource(id = R.drawable.ic_eye_24),
             contentDescription = null,
-            tint = Color.White
+            tint = KaniTheme.colors.onPrimary
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
     }
@@ -142,18 +155,26 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
 
 @Composable
 private fun StudyAgainButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     StudySecondaryActionButton(
         StudyReviewButtonCopy.againLabel(),
-        onClick,
+        {
+            haptics.performHapticFeedback(HapticFeedbackType.Reject)
+            onClick()
+        },
         modifier.semantics { contentDescription = StudyReviewButtonCopy.againContentDescription() }
     )
 }
 
 @Composable
 private fun StudyGoodButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     StudyPrimaryActionButton(
         StudyReviewButtonCopy.goodLabel(),
-        onClick,
+        {
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            onClick()
+        },
         modifier.semantics { contentDescription = StudyReviewButtonCopy.goodContentDescription() }
     )
 }

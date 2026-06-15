@@ -2,6 +2,11 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +19,13 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
+
+internal const val SETTINGS_SCREEN_BOTTOM_SPACER_TAG = "settings-screen-bottom-spacer"
+private val SettingsScreenBottomSpacerHeight = 96.dp
 
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
@@ -53,6 +62,11 @@ fun SettingsScreen(model: SettingsScreenModel) {
                 )
             }
         }
+        Spacer(
+            modifier = Modifier
+                .height(SettingsScreenBottomSpacerHeight)
+                .testTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG)
+        )
     }
 }
 
@@ -67,20 +81,28 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
             title = model.title,
             summary = model.summary,
             iconRes = model.iconRes,
-            iconTint = ComposeColor(MainActivityUiSupport.STUDY_PINK_DARK),
-            borderColor = ComposeColor(MainActivityUiSupport.STUDY_BORDER),
+            iconTint = KaniTheme.colors.primary,
+            borderColor = KaniTheme.colors.border,
             expanded = model.expanded,
             countText = model.panelCount,
-            titleColor = ComposeColor(MainActivityUiSupport.STUDY_PLUM),
-            summaryColor = ComposeColor(MainActivityUiSupport.STUDY_MUTED),
-            countColor = ComposeColor(MainActivityUiSupport.STUDY_PINK_DARK),
+            titleColor = KaniTheme.colors.plum,
+            summaryColor = KaniTheme.colors.muted,
+            countColor = KaniTheme.colors.primary,
             contentDescription = model.contentDescription,
             testTagKey = model.sectionKey,
             onToggle = { model.onToggle.run() }
         )
-        if (model.expanded) {
-            model.panels.forEach { panel ->
-                SettingsPanel(panel)
+        AnimatedVisibility(
+            visible = model.expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                model.panels.forEach { panel ->
+                    Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
+                        SettingsPanel(panel)
+                    }
+                }
             }
         }
     }
@@ -103,6 +125,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsReminderPanelModel -> SettingsReminderPanel(panel)
         is SettingsAutoSyncPanelModel -> SettingsAutoSyncPanel(panel)
         is SettingsUpdateOverviewPanelModel -> SettingsUpdateOverviewPanel(panel)
+        is SettingsThemePanelModel -> SettingsThemePanel(panel)
         is SettingsReferenceDataLinkModel -> ReferenceDataLinkPanel(panel)
     }
 }
@@ -115,6 +138,7 @@ internal fun settingsCategorySectionModel(
     expanded: Boolean,
     onToggle: Runnable,
     panels: List<SettingsPanelModel>,
+    panelCount: Int = panels.size,
 ): SettingsCategorySectionModel {
     return SettingsCategorySectionModel(
         sectionKey = sectionKey,
@@ -122,7 +146,7 @@ internal fun settingsCategorySectionModel(
         summary = summary,
         iconRes = iconRes,
         expanded = expanded,
-        panelCount = SettingsTextCopy.settingsCategoryPanelCount(panels.size),
+        panelCount = SettingsTextCopy.settingsCategoryPanelCount(panelCount),
         contentDescription = SettingsTextCopy.categoryToggleDescription(expanded, title),
         onToggle = onToggle,
         panels = panels,
@@ -131,6 +155,27 @@ internal fun settingsCategorySectionModel(
 
 internal fun settingsCategoryHeaderTestTag(sectionKey: String): String {
     return "settings-category-$sectionKey"
+}
+
+internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
+    return when (panel) {
+        is SettingsNoteTypePanelModel -> "settings-panel-note-type"
+        is SettingsImportFiltersPanelModel -> "settings-panel-import-filters"
+        is SettingsFrequencyRangePanelModel -> "settings-panel-frequency-range"
+        is SettingsNewCardSortPanelModel -> "settings-panel-new-card-sort"
+        is SettingsDeckLimitsPanelModel -> "settings-panel-deck-limits"
+        is SettingsWorkloadPanelModel -> "settings-panel-workload"
+        is SettingsRetentionPanelModel -> "settings-panel-retention"
+        is SettingsLearningStepsPanelModel -> "settings-panel-learning-steps"
+        is SettingsStudyAheadPanelModel -> "settings-panel-study-ahead"
+        is SettingsStudyLadderPanelModel -> "settings-panel-study-ladder"
+        is SettingsLadderThresholdPanelModel -> "settings-panel-ladder-thresholds"
+        is SettingsReminderPanelModel -> "settings-panel-reminder"
+        is SettingsAutoSyncPanelModel -> "settings-panel-auto-sync"
+        is SettingsUpdateOverviewPanelModel -> "settings-panel-app-updates"
+        is SettingsThemePanelModel -> "settings-panel-theme"
+        is SettingsReferenceDataLinkModel -> "settings-panel-reference-data"
+    }
 }
 
 internal fun settingsScreenModel(

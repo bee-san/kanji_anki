@@ -43,7 +43,7 @@ object TypingAnswerMatcher {
 
     private fun addMeaningVariants(accepted: MutableList<String>, raw: String?) {
         val value = raw?.trim().orEmpty()
-        if (value.isEmpty() || value == "Collection clue") {
+        if (value.isEmpty() || StudyCueFormatter.isCollectionClue(value)) {
             return
         }
         for (part in ACCEPTED_MEANING_SPLIT.split(value)) {

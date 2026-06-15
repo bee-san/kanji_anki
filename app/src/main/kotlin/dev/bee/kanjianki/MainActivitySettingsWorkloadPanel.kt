@@ -41,7 +41,7 @@ internal class MainActivitySettingsWorkloadPanel(private val activity: MainActiv
         val plan = if (rows.isEmpty()) {
             null
         } else {
-            activity.adaptivePlan(rows, activity.store.studyItems(), System.currentTimeMillis())
+            activity.adaptivePlan(rows, activity.store.studyItemsForKanji(rows.map { it.kanji }), System.currentTimeMillis())
         }
         return SettingsTextCopy.autoWorkloadStatusText(plan)
     }
@@ -73,9 +73,15 @@ internal class MainActivitySettingsWorkloadPanel(private val activity: MainActiv
         request: WorkloadSettingsPolicy.SaveRequest,
         writer: SettingsWriteActions.WorkloadSettingsWriter,
     ) {
-        SettingsWriteActions.saveWorkload(request, writer)
-        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.workload.save",
+            write = {
+                SettingsWriteActions.saveWorkload(request, writer)
+            },
+        ) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
+            activity.renderSettings(true)
+        }
     }
 
     private class WorkloadSettingsStoreWriter(

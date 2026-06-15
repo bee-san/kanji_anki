@@ -120,7 +120,7 @@ fun GamesQuestionCard(
                 border = BorderStroke(1.dp, accent.copy(alpha = 0.34f))
             ) {
                 Text(
-                    text = question.mode.label,
+                    text = KanjiGameCopy.modeLabel(question.mode),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = TextStyle(
                         fontSize = 13.sp,
@@ -132,7 +132,7 @@ fun GamesQuestionCard(
             }
 
             Text(
-                text = question.prompt,
+                text = KanjiGameCopy.questionPrompt(question),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
                 style = TextStyle(
@@ -147,7 +147,7 @@ fun GamesQuestionCard(
             )
 
             Text(
-                text = question.promptDetail,
+                text = KanjiGameCopy.questionPromptDetail(question),
                 style = TextStyle(
                     fontSize = 16.sp,
                     lineHeight = 16.sp,
@@ -180,7 +180,11 @@ private fun GameChoiceButton(
     val label = KanjiGameCopy.choiceLabel(question, choice).orEmpty()
     val fontFamily = if (useKanjiTypography) GamesKanjiFontFamily else FontFamily.Default
     OutlinedButton(
-        onClick = { onChoiceSelected(choice) },
+        onClick = {
+            withButtonTrace("games-choice-$label") {
+                onChoiceSelected(choice)
+            }
+        },
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (useKanjiTypography) 74.dp else 56.dp)
@@ -207,10 +211,15 @@ private fun GameChoiceButton(
     }
 }
 
+@Composable
 internal fun gameModeColor(mode: KanjiGameEngine.GameMode): ComposeColor {
+    return gameModeColor(KaniTheme.colors, mode)
+}
+
+internal fun gameModeColor(colors: KaniColors, mode: KanjiGameEngine.GameMode): ComposeColor {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral
-        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue
+        KanjiGameEngine.GameMode.MEANING_POP -> colors.coral
+        KanjiGameEngine.GameMode.READING_RUSH -> colors.teal
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> colors.blue
     }
 }

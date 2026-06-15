@@ -12,7 +12,10 @@ class StrokeDiagnosisFormatterTest {
             .add(StrokeDiagnosis.Label.WRONG_ORDER, 1)
             .add(StrokeDiagnosis.Label.WRONG_DIRECTION, 2)
             .add(StrokeDiagnosis.Label.MISSING_STROKE, 3)
-            .add(StrokeDiagnosis.Label.ROUGH_SHAPE, 4)
+            .add(StrokeDiagnosis.Label.EXTRA_STROKE, 4)
+            .add(StrokeDiagnosis.Label.ROUGH_SHAPE, 5)
+            .add(StrokeDiagnosis.Label.FAR_FROM_GUIDE, 6)
+            .add(StrokeDiagnosis.Label.CONFUSED_WITH_SIMILAR_KANJI, 0)
             .add(StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY, 0)
             .build()
 
@@ -21,8 +24,11 @@ class StrokeDiagnosisFormatterTest {
                 "Stroke 1: likely wrong order",
                 "Stroke 2: likely wrong direction",
                 "Stroke 3: may be missing",
-                "Stroke 4: shape looks rough",
-                "Recognized, but the stroke path was messy",
+                "Stroke 4: may be extra",
+                "Stroke 5: component proportion or shape looks rough",
+                "Stroke 6: too far from the guide",
+                "It looked like a different kanji; compare the similar parts",
+                "Good enough, but the stroke path was messy",
             ).joinToString("\n"),
             StrokeDiagnosisFormatter.text(analysisWith(diagnosis, WritingAnalysis.Status.CLOSE)),
         )

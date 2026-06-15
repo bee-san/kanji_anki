@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyWritingCopy
 
 class WritingToolActionsView private constructor(
     private val sharedState: WritingActionsBarState?,
@@ -43,13 +44,13 @@ internal fun WritingToolActions(model: WritingToolActionsModel) {
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         WritingSecondaryButton(
-            label = "Erase",
+            label = StudyWritingCopy.eraseLabel(),
             onClick = { model.onErase.run() },
             modifier = Modifier.weight(1f),
             minHeight = 58.dp
         )
         WritingSecondaryButton(
-            label = "Undo",
+            label = StudyWritingCopy.undoLabel(),
             onClick = { model.onUndo.run() },
             modifier = Modifier.weight(1f),
             minHeight = 58.dp,

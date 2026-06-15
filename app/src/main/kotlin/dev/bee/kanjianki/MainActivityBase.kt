@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -103,6 +104,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardActionBarState: FlashcardActionBarState? = null
 
     @JvmField
+    val studyUndoState = StudyUndoState()
+
+    @JvmField
     var typingAnswerState: TypingAnswerState? = null
 
     @JvmField
@@ -169,6 +173,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var settingsSyncExpanded = false
 
     @JvmField
+    var settingsAppearanceExpanded = false
+
+    @JvmField
     var settingsAppExpanded = false
 
     @JvmField
@@ -176,6 +183,34 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var activeUpdateUiRunToken = 0
+
+    /**
+     * In-app destination for the system back gesture. Null means "no in-app
+     * destination": the callback defers to the system default (exit).
+     * The shell host sets a per-route default; sub-screens may override it
+     * after rendering.
+     */
+    @JvmField
+    var backAction: Runnable? = null
+
+    private val backCallback = object : androidx.activity.OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (!handleBackNavigation()) {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        }
+    }
+
+    /** Returns true when back was consumed by an in-app destination. */
+    fun handleBackNavigation(): Boolean {
+        val action = backAction ?: return false
+        withUiTrace("kani.button.system-back") {
+            action.run()
+        }
+        return true
+    }
 
     private val permissionHandler = MainActivityPermissionHandler(this)
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
@@ -186,6 +221,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     abstract fun renderHome()
     abstract fun renderUpdate()
+    abstract fun renderStats()
     abstract fun renderSettings()
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
@@ -209,8 +245,21 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
     }
 
+    fun screenshotLocaleTag(): String? {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_LOCALE)?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    fun screenshotScrollPositionLabel(): String? {
+        return intent?.getStringExtra(EXTRA_SCREENSHOT_SCROLL_POSITION)?.takeIf { it.isNotBlank() }
+    }
+
+    fun screenshotScrollY(): Int {
+        return intent?.getIntExtra(EXTRA_SCREENSHOT_SCROLL_Y, 0) ?: 0
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
     }
 
@@ -274,18 +323,19 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return super.dispatchTouchEvent(event)
     }
 
-    fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
-        shellHost.composeRoute(selected, initialScrollY, content)
+    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, content: @Composable () -> Unit) {
+        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, content)
     }
 
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        shellHost.composeRouteWithActionBar(selected, initialScrollY, beforeContent, content, actionBar)
+        shellHost.composeRouteWithActionBar(selected, initialScrollY, scrollPositionLabel, beforeContent, content, actionBar)
     }
 
     fun isActiveToken(token: String): Boolean {
@@ -340,6 +390,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return studyPlanProvider.adaptivePlan(rows, items, now)
     }
 
+    fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+    ): DailyStudyPlan {
+        return studyPlanProvider.dailyStudyPlan(rows, items, now)
+    }
+
     fun studyPlanForMode(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
@@ -385,15 +443,19 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
+        const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+        const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
+        const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
+        const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"
-        const val SCREENSHOT_STUDY_SIMILAR_ROUTE = "study-similar"
         const val NAV_STATS_ROUTE = "stats"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"
+        const val SCREENSHOT_STUDY_SIMILAR_ROUTE = "study-similar"
         const val LABEL_BACK_HOME = "Back home"
         const val LABEL_MEANING = "Meaning"
         const val LABEL_FAIL = "Fail"
@@ -418,7 +480,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val TASK_REPAIR_WRITING = "repair_writing"
         const val EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet"
         const val EMPTY_ACTIVE_PRACTICE_BODY =
-            "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus."
+            "Study now adds the next kanji."
 
         @JvmField
         val MUTED: Int = MainActivityUiSupport.MUTED

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -22,11 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-private val WorkloadInk = KaniUiTokens.Ink
-private val WorkloadMuted = KaniUiTokens.Muted
-private val WorkloadTeal = KaniUiTokens.Teal
-private val WorkloadPanelBorder = KaniUiTokens.PanelBorder
-private val WorkloadWhite = KaniUiTokens.White
+private val WorkloadInk: Color @Composable get() = KaniUiTokens.Ink
+private val WorkloadMuted: Color @Composable get() = KaniUiTokens.Muted
+private val WorkloadTeal: Color @Composable get() = KaniUiTokens.Teal
+private val WorkloadPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val WorkloadWhite: Color @Composable get() = KaniUiTokens.White
 private val WorkloadPanelShape = KaniUiTokens.PanelShape
 
 @Composable

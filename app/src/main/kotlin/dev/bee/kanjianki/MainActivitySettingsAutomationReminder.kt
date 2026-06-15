@@ -61,25 +61,48 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
             )
             return
         }
-        activity.store.saveReminderSettings(reminder)
-        ReminderScheduler.schedule(activity, reminder)
         val allowed = activity.notificationsAllowedForReminders()
-        Toast.makeText(
-            activity,
-            ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
-            if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
-        ).show()
-        activity.renderSettings(true)
+        saveReminderSettings(
+            traceSection = "kani.settings.reminder.save",
+            reminder = reminder,
+            toastMessage = ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
+            toastLength = if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
+            onSaved = {
+                ReminderScheduler.schedule(activity, reminder)
+            },
+        )
     }
 
     private fun disableReminder(reminder: LocalStoreBase.ReminderSettings) {
         val fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute)
-        activity.store.saveReminderSettings(
-            LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
+        saveReminderSettings(
+            traceSection = "kani.settings.reminder.disable",
+            reminder = LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute),
+            toastMessage = ReminderSettingsSavePolicy.disabledMessage(),
+            toastLength = Toast.LENGTH_SHORT,
+            onSaved = {
+                ReminderScheduler.cancel(activity)
+            },
         )
-        ReminderScheduler.cancel(activity)
-        Toast.makeText(activity, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show()
-        activity.renderSettings(true)
+    }
+
+    private fun saveReminderSettings(
+        traceSection: String,
+        reminder: LocalStoreBase.ReminderSettings,
+        toastMessage: String,
+        toastLength: Int,
+        onSaved: () -> Unit,
+    ) {
+        activity.runSettingsWrite(
+            traceSection = traceSection,
+            write = {
+                activity.store.saveReminderSettings(reminder)
+            },
+        ) {
+            onSaved()
+            Toast.makeText(activity, toastMessage, toastLength).show()
+            activity.renderSettings(true)
+        }
     }
 
     private fun reminderWarning(blocked: Boolean): String? {

@@ -209,6 +209,27 @@ OUT
         self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
         self.assertIn("Instrumentation reported a failure", result.stdout)
 
+    def test_fixture_retries_ankidroid_install_when_package_service_is_not_ready(self):
+        fake_adb = base_fake_adb(
+            """  install*ankidroid.apk*)
+    count_file="$RUNNER_TEMP/ankidroid-install-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'adb: failed to install ankidroid.apk: cmd: Failure calling service package: Broken pipe (32)' >&2
+      exit 1
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "ankidroid-install-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid APK install failed on attempt 1/3", result.stdout)
+
     def test_fixture_falls_back_to_explicit_ankidroid_activity_start(self):
         fake_adb = base_fake_adb(
             """  shell\\ monkey*) exit 1 ;;

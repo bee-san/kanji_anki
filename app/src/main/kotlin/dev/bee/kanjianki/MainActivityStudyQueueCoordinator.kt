@@ -11,17 +11,17 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, study.store.studyItems(), now)
-        if (renderPendingRepairOrDone(study.activeStudyPlan, now, ladder)) {
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
+        val plan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+        study.activeStudyPlan = plan
+        if (renderPendingRepairOrDone(plan, now, ladder)) {
             return
         }
         if (rows.isEmpty()) {
             study.renderEmptyStudyQueue()
             return
         }
-        val beforeSeed = study.store.studyItems()
-        val plan = study.studyPlanForMode(rows, beforeSeed, now)
-        val seeded = study.studyQueue(rows, now, true, plan)
+        val seeded = study.studyQueue(rows, now, true, plan, currentItems)
         val seededPlan = study.studyPlanForMode(rows, seeded, now)
         study.activeStudyPlan = seededPlan
         if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
@@ -37,7 +37,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.studyAheadMillis(),
             allowedKanji,
             study.settings(),
-            study.studyLadderSettings(),
+            ladder,
         )
         study.activeSimilarWritingRepair = null
         val session = study.activeSession
@@ -66,19 +66,21 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, study.store.studyItems(), now)
+        val ladder = study.studyLadderSettings()
+        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
+        study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
             study.renderStudyForKanjiNotAvailable()
             return
         }
-        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan)
+        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
         study.activeStudyPlan = study.adaptivePlan(rows, seeded, now)
         val session = BridgeScheduler().targetedSession(
             seeded,
             row,
             now,
-            study.studyLadderSettings()
+            ladder
         )
         if (session == null) {
             study.renderStudyForKanjiNotAvailable()
@@ -114,7 +116,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 )
                 val activeRepair = active.repair
                 study.activeSimilarWritingRepair = activeRepair
-                val item = BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, study.studyLadderSettings())
+                val item = BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, ladder)
                 val session = RecordsSchedulerModels.StudySession(
                     item.withToken(active.token),
                     null,

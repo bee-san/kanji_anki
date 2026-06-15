@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -61,6 +62,60 @@ class AttributionCopyTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun dictionarySourcesUsesJapaneseLabelsInJapaneseLocale() {
+        withJapaneseLocale {
+            val source = source(
+                id = "kanjidic2",
+                name = "KANJIDIC2",
+                license = "Creative Commons Attribution-ShareAlike 4.0",
+                upstreamUrl = "https://example.invalid/kanjidic2.xml",
+                sourcePath = "kanjidic2.xml",
+                fetchDate = "2026-05-14",
+                databaseVersion = "2026-05-01",
+                version = "ignored because database_version wins",
+                dateOfCreation = "ignored because database_version wins",
+                sourceSha256 = "abcd",
+            )
+
+            assertEquals(
+                listOf(
+                    "生成: 2026-05-15T08:30:00Z",
+                    "",
+                    "KANJIDIC2",
+                    "ライセンス: Creative Commons Attribution-ShareAlike 4.0",
+                    "URL: https://example.invalid/kanjidic2.xml",
+                    "出典: kanjidic2.xml",
+                    "取得日: 2026-05-14",
+                    "バージョン: 2026-05-01",
+                    "SHA-256: abcd",
+                    "",
+                    "辞書更新はDB、マニフェスト、チェックサムで配布されます。",
+                ).joinToString("\n"),
+                AttributionCopy.dictionarySources(
+                    "2026-05-15T08:30:00Z",
+                    listOf(source),
+                    listOf("辞書更新はDB、マニフェスト、チェックサムで配布されます。"),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun attributionFallbacksTranslateToJapaneseLocale() {
+        withJapaneseLocale {
+            assertEquals(
+                "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。",
+                AttributionCopy.dictionaryFallback(),
+            )
+            assertEquals("KanjiVG筆順データ、CC BY-SA 3.0。", AttributionCopy.kanjiVgFallback())
+            assertEquals(
+                "辞書マニフェストが空です。",
+                AttributionCopy.dictionarySources("generated", null, null),
+            )
+        }
     }
 
     @Test
@@ -174,6 +229,16 @@ class AttributionCopyTest {
         )
 
         assertEquals("null-heavy", lines.joinToString("\n").trim())
+    }
+
+    private fun withJapaneseLocale(block: () -> Unit) {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            block()
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     private fun source(

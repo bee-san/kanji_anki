@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -13,6 +15,13 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private var renderedPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
     private var renderedScreenModel: StudyDoneScreenModel? = null
     private var studyMoreDialog: StudyMoreNewCardsDialogModel? = null
+    private var cachedStudyMoreNewCardsSnapshot: StudyMoreNewCardsSnapshot? = null
+    private var cachedStudyMoreNewCardsAvailability: Int? = null
+
+    internal data class StudyMoreNewCardsSnapshot(
+        val rows: List<RecordsImportModels.DashboardRow>,
+        val existing: List<RecordsStudyModels.StudyItem>,
+    )
 
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
         if (!home.continueAllKanjiSession && seededPlan.focusComplete()) {
@@ -22,9 +31,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             seededPlan,
             studyDoneScreenModel(
-                "Nothing due now",
-                "All caught up",
-                "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
+                StudyTextCopy.nothingDueTitle(),
+                StudyTextCopy.allCaughtUpHeadline(),
+                StudyTextCopy.allCaughtUpBody(),
                 emptyList(),
                 false,
                 true,
@@ -57,7 +66,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()))
         summaryLines.add(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()))
-        summaryLines.add(StudyTextCopy.completedTaskSummary(home.studySessionTracker.completedCount()))
+        summaryLines.add(StudyTextCopy.completedTaskBreakdownSummary(home.studySessionTracker.completedTaskBreakdown()))
         if (plan != null && plan.status.isNotEmpty()) {
             summaryLines.add(plan.status)
         }
@@ -79,9 +88,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
-                "Study practice",
-                "Nothing to study yet",
-                "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.",
+                StudyTextCopy.studyPracticeTitle(),
+                StudyTextCopy.nothingToStudyHeadline(),
+                StudyTextCopy.syncAnkiDroidFirstBody(),
                 emptyList(),
                 false,
                 false,
@@ -94,9 +103,9 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
-                "Study practice",
-                "Kanji not available",
-                "This row may have changed after sync.",
+                StudyTextCopy.studyPracticeTitle(),
+                StudyTextCopy.kanjiNotAvailableHeadline(),
+                StudyTextCopy.kanjiChangedAfterSyncBody(),
                 emptyList(),
                 false,
                 false,
@@ -143,7 +152,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     ): StudyDoneScreenModel {
         val available = if (showDoneActions) availableStudyMoreNewCards() else 0
         return StudyDoneScreenModel(
-            MainActivityBase.LABEL_PRACTICE,
+            StudyTextCopy.practiceLabel(),
             title,
             headline,
             body,
@@ -161,44 +170,74 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private fun continueAllKanji() {
         home.studyMoreNewCardKanji.clear()
         home.continueAllKanjiSession = true
+        clearStudyMoreNewCardsSnapshot()
         home.renderStudy()
     }
 
     private fun backHome() {
+        clearStudyMoreNewCardsSnapshot()
         home.clearStudyModeOverrides()
         home.renderHome()
     }
 
     fun availableStudyMoreNewCards(): Int {
-        val rows = home.store.activeDashboardRows()
-        if (rows.isEmpty()) {
-            return 0
+        return withUiTrace("kani.study.more-new-cards.available") {
+            val availability = resolveStudyMoreNewCardsAvailability(
+                cachedStudyMoreNewCardsSnapshot,
+                cachedStudyMoreNewCardsAvailability,
+                loadRows = { home.store.activeDashboardRows() },
+                loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
+                countAvailable = { loadData ->
+                    val now = System.currentTimeMillis()
+                    BridgeScheduler().countExtraNewCardsAvailable(
+                        loadData.rows,
+                        loadData.existing,
+                        home.settings(),
+                        now,
+                        home.startOfDay(now),
+                        home.studyLadderSettings(),
+                    )
+                },
+            )
+            if (availability == null) {
+                clearStudyMoreNewCardsSnapshot()
+                return@withUiTrace 0
+            }
+            if (cachedStudyMoreNewCardsSnapshot == null) {
+                cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(
+                    availability.loadData.rows,
+                    availability.loadData.existing,
+                )
+            }
+            if (cachedStudyMoreNewCardsAvailability == null) {
+                cachedStudyMoreNewCardsAvailability = availability.availableCount
+            }
+            availability.availableCount
         }
-        val now = System.currentTimeMillis()
-        val result = BridgeScheduler().seedExtraNewCards(
-            rows,
-            home.store.studyItems(),
-            home.settings(),
-            now,
-            home.startOfDay(now),
-            Int.MAX_VALUE,
-            home.studyLadderSettings()
-        )
-        return result.availableCount
+    }
+
+    fun studyMoreNewCardsSnapshot(): StudyMoreNewCardsSnapshot? {
+        return cachedStudyMoreNewCardsSnapshot
+    }
+
+    fun clearStudyMoreNewCardsSnapshot() {
+        cachedStudyMoreNewCardsSnapshot = null
+        cachedStudyMoreNewCardsAvailability = null
     }
 
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
         val defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen)
         studyMoreDialog = StudyMoreNewCardsDialogModel(
-            title = "Study more new cards",
-            message = "How many extra new cards do you want to study now?",
-            inputLabel = MainActivityBase.LABEL_NEW_CARDS,
+            title = StudyTextCopy.studyMoreNewCardsLabel(),
+            message = StudyTextCopy.studyMoreNewCardsDialogMessage(),
+            inputLabel = StudyTextCopy.newCardsLabel(),
             initialCount = defaultCount,
-            confirmLabel = MainActivityBase.LABEL_STUDY,
-            cancelLabel = "Cancel",
+            confirmLabel = StudyTextCopy.studyLabel(),
+            cancelLabel = StudyTextCopy.cancelLabel(),
             onConfirm = ::applyStudyMoreNewCardsRequest,
             onDismiss = Runnable {
                 studyMoreDialog = null
+                clearStudyMoreNewCardsSnapshot()
                 rerenderStudyDone()
             }
         )

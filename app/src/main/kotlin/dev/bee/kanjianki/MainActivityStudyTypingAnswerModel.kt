@@ -29,4 +29,8 @@ class TypingAnswerState @JvmOverloads constructor(initialText: String = "") {
     internal fun updateBounds(bounds: Rect) {
         boundsInWindow = bounds
     }
+
+    internal fun clearBounds() {
+        boundsInWindow = null
+    }
 }

@@ -36,7 +36,7 @@ internal fun gamesSyncButtonTestTag(): String = "games-sync-button"
 
 private fun gamesModeCardDescription(model: GamesModeCardModel): String {
     return listOfNotNull(
-        "Games mode card",
+        KanjiGameCopy.modeCardAccessibilityPrefix(),
         model.title,
         model.label,
         model.body,
@@ -54,7 +54,7 @@ fun GamesPlayScreen(
     Column(modifier = Modifier.fillMaxWidth()) {
         HomeSectionHeader(
             title = title,
-            actionLabel = KanjiGameCopy.LABEL_GAMES,
+            actionLabel = KanjiGameCopy.gamesLabel(),
             onAction = onGames
         )
         score?.let { GamesScoreStrip(it) }
@@ -105,7 +105,11 @@ fun GamesScreen(model: GamesScreenModel) {
             )
             if (model.showSyncButton) {
                 Button(
-                    onClick = { model.onSync.run() },
+                    onClick = {
+                        withButtonTrace("games-sync") {
+                            model.onSync.run()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(gamesSyncButtonTestTag()),
@@ -115,7 +119,7 @@ fun GamesScreen(model: GamesScreenModel) {
                         contentColor = GamesWhite
                     )
                 ) {
-                    Text(text = KanjiGameCopy.LABEL_SYNC_ANKIDROID)
+                    Text(text = KanjiGameCopy.syncAnkiDroidLabel())
                 }
             }
         } else {
@@ -148,7 +152,7 @@ private fun GamesEmptyState(title: String, body: String) {
 
 @Composable
 private fun GamesModeCard(model: GamesModeCardModel) {
-    val accent = ComposeColor(model.accentColor)
+    val accent = kaniColor(model.accentColor)
     val availableAccent = if (model.available) accent else GamesGrey
     val fill = if (model.available) accent.copy(alpha = 0.06f) else GamesWhite
     val stroke = availableAccent.copy(alpha = 0.34f)
@@ -163,7 +167,15 @@ private fun GamesModeCard(model: GamesModeCardModel) {
             .semantics {
                 contentDescription = gamesModeCardDescription(model)
             }
-            .clickable(enabled = model.available, role = Role.Button, onClick = { model.onClick.run() }),
+            .clickable(
+                enabled = model.available,
+                role = Role.Button,
+                onClick = {
+                    withButtonTrace("games-mode-${model.title}") {
+                        model.onClick.run()
+                    }
+                }
+            ),
         shape = GamesChoiceShape,
         color = fill,
         border = BorderStroke(1.dp, stroke)

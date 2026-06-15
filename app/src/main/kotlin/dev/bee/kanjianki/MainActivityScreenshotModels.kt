@@ -2,28 +2,6 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -182,14 +160,15 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 onToggle = Runnable {},
                 panels = emptyList(),
             ),
-            settingsCategorySectionModel(
-                sectionKey = "settings-reference-data",
-                title = SettingsTextCopy.settingsReferenceDataTitle(),
-                summary = SettingsTextCopy.settingsReferenceDataBody(),
-                iconRes = R.drawable.ic_sparkle_24,
+            settingsAppearanceCategoryModel(
                 expanded = true,
                 onToggle = Runnable {},
-                panels = listOf(MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel()),
+                theme = activity.themeSettingsPanelModel(),
+            ),
+            settingsReferenceDataCategoryModel(
+                expanded = false,
+                onToggle = Runnable {},
+                dataLicense = MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
             ),
         ),
         onHome = Runnable { activity.renderHome() },
@@ -199,18 +178,17 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
 internal fun screenshotUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
     return SettingsUpdatePageModel(
         title = SettingsTextCopy.updatePageTitle(),
-        body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
         onHome = activity::renderHome,
         onBack = { activity.renderSettings(true) },
         onCheckForUpdate = {},
         panel = SettingsUpdatePanelModel(
             title = SettingsTextCopy.automaticUpdatesTitle(),
             statusLine = "Static screenshot fixture",
-            statusColor = Color(0xFF00AEB5),
+            statusColor = Color(0xFF00AEB5).toArgb(),
             lastCheckLine = "Last check: never",
             lastResultLine = "Last result: no update run",
             installPermissionLine = "Install permission: not needed in screenshots",
-            installPermissionColor = Color(0xFF6C5674),
+            installPermissionColor = Color(0xFF6C5674).toArgb(),
             hasPendingUpdate = false,
             pendingVersionLine = null,
             pendingMessageLine = null,
@@ -223,118 +201,10 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
     )
 }
 
-@Composable
-internal fun ScreenshotStudySimilarScreen() {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        SimilarChoiceSessionCard(
-            model = screenshotStudySimilarSessionModel(),
-            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        ScreenshotStudyBottomNav()
-    }
-}
-
-@Composable
-private fun ScreenshotStudyBottomNav() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, StudyChoiceBorder),
-        shadowElevation = 5.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ScreenshotStudyBottomNavItem(
-                label = HomeTextCopy.homeLabel(),
-                iconRes = R.drawable.ic_home_24,
-                selected = false,
-                modifier = Modifier.weight(1f),
-            )
-            ScreenshotStudyBottomNavItem(
-                label = MainActivityBase.LABEL_STUDY,
-                iconRes = R.drawable.ic_study_24,
-                selected = true,
-                modifier = Modifier.weight(1f),
-            )
-            ScreenshotStudyBottomNavItem(
-                label = HomeTextCopy.statsActionLabel(),
-                iconRes = R.drawable.ic_stats_24,
-                selected = false,
-                modifier = Modifier.weight(1f),
-            )
-            ScreenshotStudyBottomNavItem(
-                label = MainActivityBase.NAV_SETTINGS,
-                iconRes = R.drawable.ic_settings_24,
-                selected = false,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ScreenshotStudyBottomNavItem(
-    label: String,
-    iconRes: Int,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val containerColor = if (selected) Color(MainActivityUiSupport.STUDY_PILL) else Color.Transparent
-    val contentColor = if (selected) Color(MainActivityUiSupport.STUDY_PINK_DARK) else StudyChoicePlum
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor,
-        border = if (selected) BorderStroke(1.dp, StudyChoiceBorder) else null,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                tint = contentColor,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = label,
-                color = contentColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-internal fun screenshotStudySimilarSessionModel(): SimilarChoiceSessionModel {
-    return SimilarChoiceSessionModel(
-        modeLabel = "Recognise",
-        title = "Choose the kanji",
-        taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-        body = "Pick the matching kanji.",
-        reasonLine = "Static screenshot fixture",
-        question = "Which kanji means burden, load, responsibility?",
-        gridModel = SimilarChoiceGridModel(
-            choices = listOf("胆", "担", "迫"),
-            balanceLastRow = true,
-            onChoice = KanjiChoiceHandler {},
-        ),
-    )
-}
-
 private fun screenshotGameColor(mode: KanjiGameEngine.GameMode): Int {
     return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> GamesCoral.toArgb()
-        KanjiGameEngine.GameMode.READING_RUSH -> GamesTeal.toArgb()
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> GamesBlue.toArgb()
+        KanjiGameEngine.GameMode.MEANING_POP -> Color(0xFFFF4C76).toArgb()
+        KanjiGameEngine.GameMode.READING_RUSH -> Color(0xFF00AEB5).toArgb()
+        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> Color(0xFF6E5CE6).toArgb()
     }
 }

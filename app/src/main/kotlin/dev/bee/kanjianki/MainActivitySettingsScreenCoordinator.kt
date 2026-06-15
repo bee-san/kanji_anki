@@ -22,7 +22,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
         val reminderBlocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(activity)
         return SettingsAutomationHeroModel(
             cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
-            title = MainActivityBase.NAV_SETTINGS,
+            title = SettingsTextCopy.settingsTitle(),
             body = SettingsTextCopy.settingsHeroBody(),
             rows = listOf(
                 listOf(
@@ -97,58 +97,82 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     }
 
     private fun settingsCategoryModels(current: RecordsSyncModels.Settings): List<SettingsCategorySectionModel> {
+        val ankiSourcePanels = listOf(
+            activity.noteTypeSettingsPanelModel(current),
+            activity.importFilterSettingsPanelModel(current),
+            activity.frequencyRangeSettingsPanelModel(current),
+            activity.autoSyncSettingsPanelModel(),
+        )
+        val studyBehaviorPanels = listOf(
+            MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
+            MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
+            MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
+            MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
+            activity.learningStepsSettingsPanelModel(),
+            MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
+            MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
+            activity.ladderThresholdSettingsPanelModel(),
+        )
+        val automationPanels = listOf(
+            activity.reminderSettingsPanelModel(),
+            SettingsUpdateOverviewPanelModel(
+                settingsUpdatePanelModel(
+                    activity = activity,
+                    title = SettingsTextCopy.appUpdatesTitle(),
+                ),
+                SettingsTextCopy.openUpdaterLabel(),
+            ) {
+                activity.settingsScrollY = activity.contentScrollY
+                activity.renderUpdate()
+            },
+        )
+        val appearancePanels = listOf(
+            activity.themeSettingsPanelModel(),
+        )
+        val referencePanels = listOf(
+            MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+        )
+
         return listOf(
             settingsAnkiSourceCategoryModel(
                 activity.settingsAnkiExpanded,
                 Runnable {
                     activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
-                    activity.renderSettings(true)
                 },
-                activity.noteTypeSettingsPanelModel(current),
-                activity.importFilterSettingsPanelModel(current),
-                activity.frequencyRangeSettingsPanelModel(current),
-                activity.autoSyncSettingsPanelModel(),
+                panelCount = 4,
+                panels = ankiSourcePanels,
             ),
             settingsStudyBehaviorCategoryModel(
                 activity.settingsStudyExpanded,
                 Runnable {
                     activity.settingsStudyExpanded = !activity.settingsStudyExpanded
-                    activity.renderSettings(true)
                 },
-                MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
-                MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
-                MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
-                MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
-                activity.learningStepsSettingsPanelModel(),
-                MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
-                MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
-                activity.ladderThresholdSettingsPanelModel(),
+                panelCount = 8,
+                panels = studyBehaviorPanels,
             ),
             settingsAutomationCategoryModel(
                 activity.settingsSyncExpanded,
                 Runnable {
                     activity.settingsSyncExpanded = !activity.settingsSyncExpanded
-                    activity.renderSettings(true)
                 },
-                activity.reminderSettingsPanelModel(),
-                SettingsUpdateOverviewPanelModel(
-                    settingsUpdatePanelModel(
-                        activity = activity,
-                        title = SettingsTextCopy.appUpdatesTitle(),
-                    ),
-                    SettingsTextCopy.openUpdaterLabel(),
-                ) {
-                    activity.settingsScrollY = activity.contentScrollY
-                    activity.renderUpdate()
+                panelCount = 2,
+                panels = automationPanels,
+            ),
+            settingsAppearanceCategoryModel(
+                activity.settingsAppearanceExpanded,
+                Runnable {
+                    activity.settingsAppearanceExpanded = !activity.settingsAppearanceExpanded
                 },
+                panelCount = 1,
+                panels = appearancePanels,
             ),
             settingsReferenceDataCategoryModel(
                 activity.settingsAppExpanded,
                 Runnable {
                     activity.settingsAppExpanded = !activity.settingsAppExpanded
-                    activity.renderSettings(true)
                 },
-                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+                panelCount = 1,
+                panels = referencePanels,
             ),
         )
     }

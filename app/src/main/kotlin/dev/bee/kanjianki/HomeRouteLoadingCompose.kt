@@ -33,10 +33,10 @@ internal fun HomeRouteLoadingScreen(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF2D1635),
+            color = KaniTheme.colors.ink,
         )
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = KaniTheme.colors.surface),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
@@ -46,12 +46,12 @@ internal fun HomeRouteLoadingScreen(
                 Text(
                     text = HomeTextCopy.loadingLabel(),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF5E5366),
+                    color = KaniTheme.colors.muted,
                 )
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
-        Button(onClick = onHome) {
+        Button(onClick = { withButtonTrace(homeLabel) { onHome() } }) {
             Text("$homeLabel >")
         }
     }

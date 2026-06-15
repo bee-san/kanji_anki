@@ -31,14 +31,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val StudyLadderInk = Color(0xFF2D1635)
-private val StudyLadderMuted = Color(0xFF6C5674)
-private val StudyLadderPlum = Color(0xFF6E2B73)
-private val StudyLadderPinkDark = Color(0xFFDA3A7A)
-private val StudyLadderPanelBorder = Color(0xFFFFC7DE)
-private val StudyLadderButtonBorder = Color(0xFFEEBDDA)
-private val StudyLadderDivider = Color(0xFFF3D4E4)
-private val StudyLadderWhite = Color(0xFFFFFFFF)
+private val StudyLadderInk: Color @Composable get() = KaniTheme.colors.ink
+private val StudyLadderMuted: Color @Composable get() = KaniTheme.colors.muted
+private val StudyLadderPlum: Color @Composable get() = KaniTheme.colors.plum
+private val StudyLadderPinkDark: Color @Composable get() = KaniTheme.colors.primary
+private val StudyLadderPanelBorder: Color @Composable get() = KaniTheme.colors.border
+private val StudyLadderButtonBorder: Color @Composable get() = KaniTheme.colors.borderSoft
+private val StudyLadderDivider: Color @Composable get() = KaniTheme.colors.track
+private val StudyLadderWhite: Color @Composable get() = KaniTheme.colors.surface
 private val StudyLadderPanelShape = RoundedCornerShape(24.dp)
 private val StudyLadderButtonShape = RoundedCornerShape(12.dp)
 
@@ -78,7 +78,7 @@ fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
                 }
             }
             Button(
-                onClick = { model.onRestore.run() },
+                onClick = { withUiTrace(model.restoreTraceSection) { model.onRestore.run() } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 54.dp)
@@ -126,6 +126,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.toggleDescription,
                 enabled = true,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.toggleTraceSection,
                 onClick = { rung.onToggle.run() }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -134,6 +135,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.moveUpDescription,
                 enabled = rung.canMoveUp,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.moveUpTraceSection,
                 onClick = { rung.onMoveUp.run() }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -142,6 +144,7 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
                 description = rung.moveDownDescription,
                 enabled = rung.canMoveDown,
                 modifier = Modifier.weight(1f),
+                traceSection = rung.moveDownTraceSection,
                 onClick = { rung.onMoveDown.run() }
             )
         }
@@ -154,10 +157,11 @@ private fun StudyLadderOutlinedButton(
     description: String,
     enabled: Boolean,
     modifier: Modifier,
+    traceSection: String,
     onClick: () -> Unit,
 ) {
     OutlinedButton(
-        onClick = onClick,
+        onClick = { withUiTrace(traceSection) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .heightIn(min = 48.dp)

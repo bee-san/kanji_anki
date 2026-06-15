@@ -48,21 +48,38 @@ private fun homeRecentMistakesCardDescription(model: HomeRecentMistakesCardModel
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
     mistakes: List<StudyStatsStore.RecentMistake>,
-    rows: List<RecordsImportModels.DashboardRow>,
+    rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 ): HomeRecentMistakesPanelModel {
-    val cards = mistakes.map { mistake ->
-        val row = home.findRow(rows, mistake.kanji)
-        HomeRecentMistakesCardModel(
-            kanji = mistake.kanji,
-            title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
-            subtitle = HomeTextCopy.recentMistakeSubtitle(
-                mistake.rating,
-                DateTextPolicy.timelineDate(mistake.reviewedAtMillis)
-            ),
-            sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
-            accentColor = recentMistakeAccentColor(mistake.rating),
-            onClick = { home.renderDetail(mistake.kanji, false, "") }
-        )
+    return homeRecentMistakesPanelModel(
+        mistakes = mistakes,
+        rowsByKanji = rowsByKanji,
+        onCardClick = { kanji -> home.renderDetail(kanji, false, "") },
+    )
+}
+
+internal fun homeRecentMistakesPanelModel(
+    mistakes: List<StudyStatsStore.RecentMistake>,
+    rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
+    onCardClick: (String) -> Unit,
+): HomeRecentMistakesPanelModel {
+    val cards = buildList(mistakes.size) {
+        mistakes.forEach { mistake ->
+            val row = rowsByKanji[mistake.kanji]
+            add(
+                HomeRecentMistakesCardModel(
+                    kanji = mistake.kanji,
+                    title = HomeTextCopy.recentMistakeTitle(row?.let { StudyTextCopy.rowMeaning(it) } ?: ""),
+                    subtitle = HomeTextCopy.recentMistakeSubtitle(
+                        mistake.rating,
+                        DateTextPolicy.timelineDate(mistake.reviewedAtMillis)
+                    ),
+                    sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
+                    accentColor = recentMistakeAccentColor(mistake.rating),
+                    onClick = { onCardClick(mistake.kanji) },
+                    traceSection = buttonTraceSection("recent-mistake-${mistake.kanji}"),
+                )
+            )
+        }
     }
     return HomeRecentMistakesPanelModel(
         emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
@@ -97,18 +114,26 @@ fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
 
 @Composable
 private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
-    val cardFill = model.accentColor.copy(alpha = 0.06f)
-    val cardStroke = model.accentColor.copy(alpha = 0.58f)
-    val tileFill = model.accentColor.copy(alpha = 0.14f)
-    val tileStroke = model.accentColor.copy(alpha = 0.34f)
+    val accentColor = kaniColor(model.accentColor)
+    val cardFill = accentColor.copy(alpha = 0.06f)
+    val cardStroke = accentColor.copy(alpha = 0.58f)
+    val tileFill = accentColor.copy(alpha = 0.14f)
+    val tileStroke = accentColor.copy(alpha = 0.34f)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(homeRecentMistakesCardTestTag(model.kanji))
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 contentDescription = homeRecentMistakesCardDescription(model)
             }
-            .clickable(role = Role.Button, onClick = model.onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace(model.traceSection) {
+                        model.onClick()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
         border = BorderStroke(1.dp, cardStroke)
@@ -142,9 +167,9 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(text = model.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(text = model.subtitle, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF6E6E78))
+                Text(text = model.subtitle, style = MaterialTheme.typography.bodySmall, color = KaniTheme.colors.greyText)
                 model.sourceEvidence?.let { evidence ->
-                    Text(text = evidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
+                    Text(text = evidence, style = MaterialTheme.typography.bodySmall, color = KaniTheme.colors.ink)
                 }
             }
 
@@ -152,16 +177,16 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
                 text = ">",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = model.accentColor
+                color = accentColor
             )
         }
     }
 }
 
-private fun recentMistakeAccentColor(rating: String): ComposeColor {
+private fun recentMistakeAccentColor(rating: String): Int {
     return when (rating) {
-        StudyRatings.AGAIN -> ComposeColor(0xFFFF4C76)
-        StudyRatings.HARD -> ComposeColor(0xFFF0B548)
-        else -> ComposeColor(0xFFF6CAE1)
+        StudyRatings.AGAIN -> MainActivityUiSupport.CORAL
+        StudyRatings.HARD -> MainActivityUiSupport.GOLD
+        else -> MainActivityUiSupport.PINK_STROKE
     }
 }

@@ -1,26 +1,33 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object SettingsLadderThresholdTextCopy {
-    @JvmStatic
-    fun ladderThresholdsTitle(): String = "Ladder thresholds"
+    private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
-    fun ladderThresholdsBody(): String {
-        return "Only due reviews move the ladder. Learning and relearning repeats are practice only."
-    }
+    fun ladderThresholdsTitle(): String = localizedText("Ladder movement", "ラダー移動")
 
     @JvmStatic
-    fun fsrsDaysToGoUpLabel(): String = "Days before promotion"
+    fun ladderThresholdsBody(): String = localizedText("Due reviews move cards. Repeats stay practice-only.", "期限レビューでカードが移動する。繰り返しは練習のみ。")
 
     @JvmStatic
-    fun failsToGoDownLabel(): String = "Fail streak before demotion"
+    fun fsrsDaysToGoUpLabel(): String = localizedText("Days to move up", "上がるまでの日数")
 
     @JvmStatic
-    fun useDefaultLadderThresholdsLabel(): String = "Use default ladder thresholds"
+    fun failsToGoDownLabel(): String = localizedText("Fails to move down", "下がるまでの失敗数")
 
     @JvmStatic
-    fun saveLadderThresholdsLabel(): String = "Save ladder thresholds"
+    fun useDefaultLadderThresholdsLabel(): String = localizedText("Use default movement rules", "既定の移動ルールを使う")
 
     @JvmStatic
-    fun ladderThresholdsSavedToast(): String = "Ladder thresholds saved."
+    fun saveLadderThresholdsLabel(): String = localizedText("Save rules", "ルールを保存")
+
+    @JvmStatic
+    fun ladderThresholdsSavedToast(): String = localizedText("Movement rules saved.", "移動ルールを保存しました。")
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 }

@@ -66,7 +66,10 @@ class HintProgression {
         if (analysis == null) {
             return afterReview(state, false, 0)
         }
-        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+        if (analysis.status == WritingAnalysis.Status.CLOSE ||
+            analysis.status == WritingAnalysis.Status.MODEL_UNAVAILABLE ||
+            analysis.status == WritingAnalysis.Status.RECOGNITION_ERROR
+        ) {
             val safeState = state ?: HintState.initial()
             return HintState(safeState.level(), 0, 0)
         }

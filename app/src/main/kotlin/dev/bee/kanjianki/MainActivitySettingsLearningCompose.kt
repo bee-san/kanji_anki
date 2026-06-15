@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,10 +30,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val LearningStepsInk = KaniUiTokens.Ink
-private val LearningStepsMuted = KaniUiTokens.Muted
-private val LearningStepsPanelBorder = KaniUiTokens.PanelBorder
-private val LearningStepsWhite = KaniUiTokens.White
+private val LearningStepsInk: Color @Composable get() = KaniUiTokens.Ink
+private val LearningStepsMuted: Color @Composable get() = KaniUiTokens.Muted
+private val LearningStepsPanelBorder: Color @Composable get() = KaniUiTokens.PanelBorder
+private val LearningStepsWhite: Color @Composable get() = KaniUiTokens.White
 private val LearningStepsPanelShape = KaniUiTokens.PanelShape
 
 @Composable

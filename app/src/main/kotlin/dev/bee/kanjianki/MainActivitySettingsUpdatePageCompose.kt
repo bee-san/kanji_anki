@@ -27,13 +27,13 @@ internal fun settingsUpdatePanelModel(
     return SettingsUpdatePanelModel(
         title = title,
         statusLine = SettingsTextCopy.autoUpdatePanelStatus(status.enabled),
-        statusColor = if (status.enabled) SettingsUpdateTeal else SettingsUpdateMuted,
+        statusColor = if (status.enabled) MainActivityUiSupport.TEAL else MainActivityUiSupport.MUTED,
         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine(
             DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)
         ),
         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine(status.lastResult),
         installPermissionLine = SettingsTextCopy.installPermissionLine(canInstallUpdates),
-        installPermissionColor = if (canInstallUpdates) SettingsUpdateTeal else SettingsUpdateCoral,
+        installPermissionColor = if (canInstallUpdates) MainActivityUiSupport.TEAL else MainActivityUiSupport.CORAL,
         hasPendingUpdate = status.hasPendingUpdate(),
         pendingVersionLine = if (status.hasPendingUpdate()) {
             SettingsTextCopy.verifiedApkReadyLine(status.lastVersion)
@@ -42,7 +42,7 @@ internal fun settingsUpdatePanelModel(
         },
         pendingMessageLine = if (status.hasPendingUpdate()) {
             if (status.pendingMessage.isEmpty()) {
-                SettingsTextCopy.pendingUpdateFallback()
+                SettingsTextCopy.pendingUpdateFallback(canInstallUpdates)
             } else {
                 status.pendingMessage
             }
@@ -72,12 +72,6 @@ fun SettingsUpdatePage(model: SettingsUpdatePageModel) {
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = model.body,
-            modifier = Modifier.fillMaxWidth(),
-            color = SettingsUpdateMuted,
-            fontSize = 16.sp
-        )
         SettingsUpdatePanel(model = model.panel)
         SettingsUpdateFilledButton(
             label = SettingsTextCopy.checkForUpdateLabel(),
@@ -97,12 +91,18 @@ private fun canInstallUpdates(activity: MainActivitySettings): Boolean {
 
 private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Boolean) {
     val result = AutoUpdateSettingsTogglePolicy.toggle(enabled)
-    activity.store.saveAutoUpdateEnabled(result.enabled())
-    if (result.enabled()) {
-        AutoUpdateScheduler.schedule(activity)
-    } else {
-        AutoUpdateScheduler.cancel(activity)
+    activity.runSettingsWrite(
+        traceSection = "kani.settings.auto-update.toggle",
+        write = {
+            activity.store.saveAutoUpdateEnabled(result.enabled())
+        },
+    ) {
+        if (result.enabled()) {
+            AutoUpdateScheduler.schedule(activity)
+        } else {
+            AutoUpdateScheduler.cancel(activity)
+        }
+        Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
+        activity.renderUpdate()
     }
-    Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
-    activity.renderUpdate()
 }

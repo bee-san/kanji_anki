@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.widget.EditText
 import android.widget.Toast
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.RecordsStudyModels
 
@@ -33,15 +34,21 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
     }
 
     fun startStudyMoreNewCards(requestedCount: Int): Boolean {
-        val rows = study.store.activeDashboardRows()
-        if (rows.isEmpty()) {
-            Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
+        val loadData = resolveStudyMoreNewCardsLoadData(
+            study.doneActions.studyMoreNewCardsSnapshot(),
+            loadRows = { study.store.activeDashboardRows() },
+            loadExisting = { kanji -> study.store.studyItemsForKanji(kanji) },
+        )
+        if (loadData == null) {
+            Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
             return false
         }
+        val rows = loadData.rows
+        val existing = loadData.existing
         val now = System.currentTimeMillis()
         val result = BridgeScheduler().seedExtraNewCards(
             rows,
-            study.store.studyItems(),
+            existing,
             study.settings(),
             now,
             study.startOfDay(now),
@@ -49,7 +56,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             study.studyLadderSettings()
         )
         if (!result.admittedAny()) {
-            Toast.makeText(study, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show()
+            Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
             return false
         }
         val admission = StudyMoreNewCardActions.applyAdmission(
@@ -69,6 +76,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             study::resetStudyRunProgress,
             study.studySessionTracker::setTargetCount
         )
+        study.doneActions.clearStudyMoreNewCardsSnapshot()
         study.continueAllKanjiSession = false
         if (admission.admittedCount < requestedCount) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount), Toast.LENGTH_SHORT).show()
@@ -76,4 +84,41 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
         study.renderStudy()
         return true
     }
+}
+
+internal data class StudyMoreNewCardsLoadData(
+    val rows: List<RecordsImportModels.DashboardRow>,
+    val existing: List<RecordsStudyModels.StudyItem>,
+)
+
+internal data class StudyMoreNewCardsAvailability(
+    val loadData: StudyMoreNewCardsLoadData,
+    val availableCount: Int,
+)
+
+internal fun resolveStudyMoreNewCardsLoadData(
+    snapshot: MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot?,
+    loadRows: () -> List<RecordsImportModels.DashboardRow>,
+    loadExisting: (List<String>) -> List<RecordsStudyModels.StudyItem>,
+): StudyMoreNewCardsLoadData? {
+    val rows = snapshot?.rows ?: loadRows()
+    if (rows.isEmpty()) {
+        return null
+    }
+    val existing = snapshot?.existing ?: loadExisting(rows.map { it.kanji })
+    return StudyMoreNewCardsLoadData(rows, existing)
+}
+
+internal fun resolveStudyMoreNewCardsAvailability(
+    snapshot: MainActivityStudyDoneActions.StudyMoreNewCardsSnapshot?,
+    cachedAvailableCount: Int?,
+    loadRows: () -> List<RecordsImportModels.DashboardRow>,
+    loadExisting: (List<String>) -> List<RecordsStudyModels.StudyItem>,
+    countAvailable: (StudyMoreNewCardsLoadData) -> Int,
+): StudyMoreNewCardsAvailability? {
+    val loadData = resolveStudyMoreNewCardsLoadData(snapshot, loadRows, loadExisting) ?: return null
+    if (cachedAvailableCount != null) {
+        return StudyMoreNewCardsAvailability(loadData, cachedAvailableCount)
+    }
+    return StudyMoreNewCardsAvailability(loadData, countAvailable(loadData))
 }

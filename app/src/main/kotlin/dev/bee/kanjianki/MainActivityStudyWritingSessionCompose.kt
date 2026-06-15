@@ -22,7 +22,7 @@ fun WritingSessionCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = KaniTheme.colors.surface,
         shadowElevation = 8.dp
     ) {
         Column(

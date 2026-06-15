@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.StudyReviewActions
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -9,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.sync.SyncSettings
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,6 +67,35 @@ class StatsCacheInvalidationTest {
     }
 
     @Test
+    fun undoLastAppliedReviewRestoresStudyItemAndMarksStatsCacheDirty() {
+        val before = studyItem("痛")
+        val after = before.copyBuilder().totalReviews(2).build()
+
+        store.saveStudyItem(after)
+        store.saveReview(reviewRequest("痛", "token-review"), "good", 2_000L, before, after)
+        val versionBeforeUndo = sourceVersion()
+
+        val undone = store.undoLastAppliedReview(
+            StudyReviewActions.AppliedReviewSnapshot("token-review", before, after),
+        )
+
+        assertTrue(undone)
+        assertStudyItemRestored(before, store.studyItemsForKanji(listOf("痛")).single())
+        assertEquals(versionBeforeUndo + 1L, sourceVersion())
+        val reviewRows = store.readableDatabase.query(
+            LocalStoreBase.TABLE_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_TOKEN),
+            "${LocalStoreBase.COLUMN_TOKEN} = ?",
+            arrayOf("token-review"),
+            null,
+            null,
+            null,
+        ).use { it.count }
+        assertEquals(0, reviewRows)
+        assertTrue(store.timelineForKanji("痛").events.none { it.dedupeKey == "review:token-review" })
+    }
+
+    @Test
     fun saveSuccessfulSyncMarksStatsCacheDirty() {
         val before = sourceVersion()
 
@@ -97,6 +128,41 @@ class StatsCacheInvalidationTest {
     }
 
     private fun sourceVersion(): Long = cacheStore.currentSourceVersion(store.readableDatabase)
+
+    private fun assertStudyItemRestored(expected: RecordsStudyModels.StudyItem, actual: RecordsStudyModels.StudyItem) {
+        assertEquals(expected.kanji, actual.kanji)
+        assertEquals(expected.state, actual.state)
+        assertEquals(expected.dueAtMillis, actual.dueAtMillis)
+        assertEquals(expected.stability, actual.stability, 0.0)
+        assertEquals(expected.difficulty, actual.difficulty, 0.0)
+        assertEquals(expected.totalReviews, actual.totalReviews)
+        assertEquals(expected.lapses, actual.lapses)
+        assertEquals(expected.learningStep, actual.learningStep)
+        assertEquals(expected.writingLevel, actual.writingLevel)
+        assertEquals(expected.recognitionStage, actual.recognitionStage)
+        assertEquals(expected.consecutiveFailedRecognitionDays, actual.consecutiveFailedRecognitionDays)
+        assertEquals(expected.lastFailedRecognitionDayMillis, actual.lastFailedRecognitionDayMillis)
+        assertEquals(expected.writingRemediationPending, actual.writingRemediationPending)
+        assertEquals(expected.suppressedByTaskType, actual.suppressedByTaskType)
+        assertEquals(expected.suppressedAtMillis, actual.suppressedAtMillis)
+        assertEquals(expected.matureIntervalDays, actual.matureIntervalDays)
+        assertEquals(expected.answerSignature, actual.answerSignature)
+        assertEquals(expected.activeToken, actual.activeToken)
+        assertEquals(expected.createdAtMillis, actual.createdAtMillis)
+        assertEquals(expected.rung, actual.rung)
+        assertEquals(expected.phase, actual.phase)
+        assertEquals(expected.realPassStreak, actual.realPassStreak)
+        assertEquals(expected.realAgainStreak, actual.realAgainStreak)
+        assertEquals(expected.lastRealReviewDueAtMillis, actual.lastRealReviewDueAtMillis)
+        assertEquals(expected.hasSimilarKanji, actual.hasSimilarKanji)
+        assertEquals(expected.typingMeaningMemory.encode(), actual.typingMeaningMemory.encode())
+        assertEquals(expected.meaningKanjiMemory.encode(), actual.meaningKanjiMemory.encode())
+        assertEquals(expected.kanjiMeaningMemory.encode(), actual.kanjiMeaningMemory.encode())
+        assertEquals(expected.fontMeaningMemory.encode(), actual.fontMeaningMemory.encode())
+        assertEquals(expected.wordReadingMemory.encode(), actual.wordReadingMemory.encode())
+        assertEquals(expected.writingRemediationMemory.encode(), actual.writingRemediationMemory.encode())
+        assertEquals(expected.similarKanjiMemory.encode(), actual.similarKanjiMemory.encode())
+    }
 
     private fun reviewRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
         return RecordsSchedulerModels.ReviewRequest(kanji, token, "good", false, true, false, 0)

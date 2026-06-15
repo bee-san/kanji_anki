@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,20 +27,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
+import java.util.Locale
 
 private val INK = 0xFF2D1635.toInt()
 private val MUTED = 0xFF6C5674.toInt()
-private val SyncProgressTrack = Color(0xFFFBDDEC)
-private val SyncProgressFill = Color(0xFFF82D72)
+private val SyncProgressTrack: Color @Composable get() = KaniTheme.colors.track
+private val SyncProgressFill: Color @Composable get() = KaniTheme.colors.primary
+private const val JAPANESE_LANGUAGE = "ja"
 
 internal data class SyncProgressPanelState(
-    val stage: String = "Finding note type",
-    val count: String = "Reading collection details.",
+    val stage: String = SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE),
+    val count: String = initialCountText(),
     val rate: String = "",
     val progressIndeterminate: Boolean = true,
     val progressMax: Int = 1000,
     val progressValue: Int = 0,
-    val progressDescription: String = "Sync progress"
+    val progressDescription: String = initialProgressDescription(),
+    val showSpinner: Boolean = false
 )
 
 class SyncProgressPanel @JvmOverloads constructor(
@@ -70,7 +75,7 @@ class SyncProgressPanel @JvmOverloads constructor(
                 progressIndeterminate = true,
                 progressMax = 1000,
                 progressValue = 0,
-                progressDescription = "Sync progress: $stageTitle"
+                progressDescription = SyncProgressCopy.progressDescription(stageTitle)
             )
         }
     }
@@ -89,10 +94,39 @@ class SyncProgressPanel @JvmOverloads constructor(
             progressIndeterminate = false,
             progressMax = 1000,
             progressValue = SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards),
-            progressDescription = "Sync progress: $cardText"
+            progressDescription = SyncProgressCopy.progressDescription(cardText),
+            showSpinner = shouldShowSpinner(currentStage)
         )
     }
 }
+
+private fun shouldShowSpinner(currentStage: SyncProgressCopy.Stage?): Boolean {
+    return when (currentStage) {
+        SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS,
+        SyncProgressCopy.Stage.SAVING_LOCAL_DATA,
+        SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE,
+        SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS -> true
+        else -> false
+    }
+}
+
+private fun initialCountText(): String {
+    return if (isJapaneseLocale()) {
+        "コレクションの詳細を読み込み中です。"
+    } else {
+        "Reading collection details."
+    }
+}
+
+private fun initialProgressDescription(): String {
+    return if (isJapaneseLocale()) {
+        SyncProgressCopy.progressDescription(SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
+    } else {
+        "Sync progress"
+    }
+}
+
+private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
 @Composable
 internal fun SyncProgressScreen(title: String, progressPanel: SyncProgressPanel) {
@@ -112,7 +146,7 @@ internal fun SyncProgressTitle(title: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        color = Color(INK),
+        color = kaniColor(INK),
         fontSize = 34.sp,
         fontWeight = FontWeight.Bold,
         lineHeight = 36.sp,
@@ -136,6 +170,17 @@ private fun SyncProgressPanelContent(state: SyncProgressPanelState) {
             bold = true,
             modifier = Modifier.fillMaxWidth()
         )
+        if (state.showSpinner) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .size(24.dp)
+                    .semantics {
+                        contentDescription = state.rate.ifBlank { state.stage }
+                    },
+                color = SyncProgressFill
+            )
+        }
         SyncProgressBar(
             indeterminate = state.progressIndeterminate,
             progressMax = state.progressMax,
@@ -173,7 +218,7 @@ private fun SyncProgressText(
     Text(
         text = value,
         modifier = modifier.padding(vertical = 4.dp),
-        color = Color(color),
+        color = kaniColor(color),
         fontSize = sizeSp.sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))

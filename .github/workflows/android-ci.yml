@@ -16,6 +16,7 @@ on:
       - 'update-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
+      - 'scripts/**'
       - 'tools/**'
       - '.github/workflows/**'
       - 'build.gradle*'
@@ -40,6 +41,7 @@ on:
       - 'update-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
+      - 'scripts/**'
       - 'tools/**'
       - '.github/workflows/**'
       - 'build.gradle*'
@@ -51,6 +53,7 @@ on:
       - 'renovate.json'
       - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
+      - 'README.md'
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -92,9 +95,14 @@ jobs:
               app/build/reports/tests/**
               app/build/reports/jacoco/**
               app/build/test-results/**
-          - id: app-static
-            label: App lint and androidTest compile
-            tasks: ':app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
+          - id: app-lint
+            label: App lint
+            tasks: ':app:lintDebug'
+            reports: |
+              app/build/reports/**
+          - id: app-androidtest-compile
+            label: App androidTest compile
+            tasks: ':app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac'
             reports: |
               app/build/reports/**
               app/build/outputs/androidTest-results/**
@@ -111,14 +119,21 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Cache Robolectric android-all jars
+        if: matrix.id == 'app-unit'
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-android-all-${{ runner.os }}-v1
 
       - name: Run deterministic fast gate
         run: ./gradlew ${{ matrix.tasks }} --parallel -Dorg.gradle.parallel=true
@@ -132,7 +147,7 @@ jobs:
           path: ${{ matrix.reports }}
 
   asset-tests:
-    name: Dictionary and asset tests
+    name: Dictionary, asset, and Ralph loop tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -144,6 +159,9 @@ jobs:
 
       - name: Run deterministic asset tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
+
+      - name: Run Ralph loop script tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
   dependency-safety:
     name: Dependency safety

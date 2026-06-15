@@ -1,15 +1,13 @@
 package dev.bee.kanjianki
 
-import androidx.compose.ui.graphics.Color as ComposeColor
-
 data class SettingsUpdatePanelModel(
     val title: String,
     val statusLine: String,
-    val statusColor: ComposeColor,
+    val statusColor: Int,
     val lastCheckLine: String,
     val lastResultLine: String,
     val installPermissionLine: String,
-    val installPermissionColor: ComposeColor,
+    val installPermissionColor: Int,
     val hasPendingUpdate: Boolean,
     val pendingVersionLine: String?,
     val pendingMessageLine: String?,

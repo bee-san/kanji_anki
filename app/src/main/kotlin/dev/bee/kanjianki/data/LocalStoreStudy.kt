@@ -12,6 +12,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
+import dev.bee.kanjianki.StudyReviewActions
+import dev.bee.kanjianki.theme.KaniThemeChoice
 
 internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
     private fun studySettings(): LocalStoreStudySettings = LocalStoreStudySettings(this)
@@ -40,9 +42,9 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
                 appendStudyStateTimelineEvents(this, previous, items, syncId, occurredAt, settings)
             }
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            clearStudyItemsCache()
         }
     }
-
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
         val items = HashMap<String, StudySnapshot>()
         db.query(TABLE_STUDY_ITEMS, arrayOf(COLUMN_KANJI, COLUMN_ANSWER_SIGNATURE, COLUMN_STATE), null, null, null, null, null).use { cursor ->
@@ -59,6 +61,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         writableDatabase.transaction {
             upsertStudyItem(this, item)
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            clearStudyItemsCache()
         }
     }
 
@@ -70,8 +73,8 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         request: RecordsSchedulerModels.ReviewRequest,
         appliedRating: String?,
         reviewedAt: Long,
-        beforeReview: RecordsStudyModels.StudyItem?,
-        afterReview: RecordsStudyModels.StudyItem?,
+        beforeReview: RecordsStudyModels.StudyItem? = null,
+        afterReview: RecordsStudyModels.StudyItem? = null,
     ) {
         writableDatabase.transaction {
             val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, afterReview)
@@ -82,10 +85,23 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         }
     }
 
-    fun kanjiImpactReport(): KanjiImpactAnalyzer.Report = KanjiImpactReportStore(this as LocalStore).report()
+    fun undoLastAppliedReview(snapshot: StudyReviewActions.AppliedReviewSnapshot): Boolean {
+        return writableDatabase.transaction {
+            val deleted = delete(TABLE_REVIEW_LOG, "$COLUMN_TOKEN = ?", arrayOf(snapshot.token))
+            if (deleted <= 0) {
+                false
+            } else {
+                delete(TABLE_KANJI_TIMELINE_EVENTS, "$COLUMN_DEDUPE_KEY = ?", arrayOf("review:${snapshot.token}"))
+                upsertStudyItem(this, snapshot.beforeReview)
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+                clearStudyItemsCache()
+                true
+            }
+        }
+    }
 
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-        return StatsCacheStore(this as LocalStore).readFresh()
+        return StatsCacheStore(this as LocalStore).readFresh(nowMillis = System.currentTimeMillis())
     }
 
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
@@ -178,6 +194,12 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun getDoubleSetting(key: String, fallback: Double): Double = studySettings().getDoubleSetting(key, fallback)
 
+    fun reviewReminderNotificationsToday(nowMillis: Long): Int = studySettings().reviewReminderNotificationsToday(nowMillis)
+
+    fun recordReviewReminderNotificationShown(nowMillis: Long) = studySettings().recordReviewReminderNotificationShown(nowMillis)
+
+    fun clearReviewReminderNotifications(nowMillis: Long) = studySettings().clearReviewReminderNotifications(nowMillis)
+
     fun putIntSetting(key: String, value: Int) {
         studySettings().putIntSetting(key, value)
     }
@@ -227,6 +249,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun saveNewCardSortMode(mode: String?): NewCardSortSettingsPolicy.SaveRequest {
         return studySettings().saveNewCardSortMode(mode)
     }
+
+    fun appThemeChoice(): KaniThemeChoice = studySettings().appThemeChoice()
+
+    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = studySettings().saveAppThemeChoice(choice)
 
     fun reminderSettings(): ReminderSettings = studySettings().reminderSettings()
 
@@ -322,7 +348,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         activeElapsedMillis: Long,
         outcome: String?,
     ): Boolean {
-        return studyLog().recordStudyTaskAnswered(
+        val inserted = studyLog().recordStudyTaskAnswered(
             taskKey,
             kanji,
             taskType,
@@ -331,6 +357,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             activeElapsedMillis,
             outcome
         )
+        if (inserted) {
+            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty()
+        }
+        return inserted
     }
 
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
@@ -351,6 +381,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun kaniOutcomeStats(): StudyStatsStore.KaniOutcomeStats {
         return StudyStatsStore(this as LocalStore).kaniOutcomeStats()
+    }
+
+    fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+        return StudyStatsStore(this as LocalStore).kanjiRepairEvidence()
     }
 
     fun studiedKanjiSince(sinceMillis: Long): Set<String> {

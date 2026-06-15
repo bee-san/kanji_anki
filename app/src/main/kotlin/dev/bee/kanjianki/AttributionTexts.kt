@@ -12,7 +12,7 @@ internal object AttributionTexts {
     @JvmStatic
     fun kanjiVg(context: Context?): String {
         val text = rawResourceText(context, R.raw.kanjivg_attribution).trim()
-        return text.ifEmpty { AttributionCopy.KANJIVG_FALLBACK }
+        return text.ifEmpty { AttributionCopy.kanjiVgFallback() }
     }
 
     @JvmStatic
@@ -20,7 +20,7 @@ internal object AttributionTexts {
         return try {
             dictionarySourcesFromManifestText(DictionaryStore.activeManifestText(context!!))
         } catch (_: Exception) {
-            AttributionCopy.DICTIONARY_FALLBACK
+            AttributionCopy.dictionaryFallback()
         }
     }
 
@@ -29,14 +29,14 @@ internal object AttributionTexts {
         return try {
             dictionarySourcesFromManifest(JSONObject(manifestText ?: throw NullPointerException()))
         } catch (_: Exception) {
-            AttributionCopy.DICTIONARY_FALLBACK
+            AttributionCopy.dictionaryFallback()
         }
     }
 
     @JvmStatic
     fun dictionarySourcesFromManifest(manifest: JSONObject?): String {
         return try {
-            val sources = manifest?.optJSONArray("sources") ?: return AttributionCopy.DICTIONARY_FALLBACK
+            val sources = manifest?.optJSONArray("sources") ?: return AttributionCopy.dictionaryFallback()
             if (sources.length() == 0) {
                 return AttributionCopy.dictionarySources("", emptyList(), emptyList())
             }
@@ -46,7 +46,7 @@ internal object AttributionTexts {
                 notesFromJson(manifest.optJSONArray("notes")),
             )
         } catch (_: Exception) {
-            AttributionCopy.DICTIONARY_FALLBACK
+            AttributionCopy.dictionaryFallback()
         }
     }
 

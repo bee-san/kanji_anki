@@ -167,6 +167,27 @@ class StudySessionProgressTrackerTest {
         assertEquals(2, tracker.missedCount())
     }
 
+    @Test
+    fun completedTaskBreakdownGroupsStudySummaryCategories() {
+        val tracker = StudySessionProgressTracker()
+        tracker.markTaskCompleted("session:write_kanji:裂:token-1")
+        tracker.markTaskCompleted("session:targeted_writing:浅:token-2")
+        tracker.markTaskCompleted("session:similar_kanji:裂:token-3")
+        tracker.markTaskCompleted("session:word_reading:語:token-4")
+        tracker.markTaskCompleted("repair:42")
+        tracker.markTaskCompleted("repair:42")
+        tracker.markTaskCompleted("session:kanji_meaning:宮:token-5")
+
+        val breakdown = tracker.completedTaskBreakdown()
+
+        assertEquals(2, breakdown.writingChecks)
+        assertEquals(1, breakdown.similarKanjiChoices)
+        assertEquals(1, breakdown.similarKanjiRepairs)
+        assertEquals(1, breakdown.wordReadingReviews)
+        assertEquals(1, breakdown.otherReviews)
+        assertEquals(6, breakdown.total)
+    }
+
     private fun row(kanji: String): RecordsImportModels.DashboardRow =
         RecordsImportModels.DashboardRow(
             kanji,

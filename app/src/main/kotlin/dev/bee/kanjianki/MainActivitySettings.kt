@@ -11,6 +11,7 @@ import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
+    internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
@@ -26,7 +27,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdatePage(
                 SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
-                    body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
                     onHome = this@MainActivitySettings::renderHome,
                     onBack = {
                         contentScrollY = settingsScrollY
@@ -39,6 +39,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     )
                 )
             )
+        }
+        backAction = Runnable {
+            contentScrollY = settingsScrollY
+            renderSettings(true)
         }
     }
 
@@ -58,7 +62,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             return
         }
         renderAsyncHomeRoute(
-            loadingTitle = MainActivityBase.NAV_SETTINGS,
+            loadingTitle = SettingsTextCopy.settingsTitle(),
             load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
             render = { model ->
                 composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
@@ -70,15 +74,36 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun renderScreenshotSettings() {
         val model = screenshotSettingsScreenModel(this)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(
+            MainActivityBase.NAV_SETTINGS_ROUTE,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             SettingsScreen(model)
         }
     }
 
     private fun renderScreenshotUpdate() {
         val model = screenshotUpdatePageModel(this)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+        composeRoute(
+            MainActivityBase.NAV_SETTINGS_ROUTE,
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             SettingsUpdatePage(model)
+        }
+    }
+
+    fun runSettingsWrite(
+        traceSection: String,
+        write: () -> Unit,
+        onComplete: () -> Unit,
+    ) {
+        io.execute {
+            withUiTrace(traceSection) {
+                write()
+            }
+            main.post(onComplete)
         }
     }
 
@@ -114,6 +139,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsLadderThresholdPanel(this).ladderThresholdSettingsPanelModel()
     }
 
+    internal fun themeSettingsPanelModel(): SettingsThemePanelModel {
+        return MainActivitySettingsThemePanel(this).themeSettingsPanelModel()
+    }
+
     fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
         return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
     }
@@ -146,7 +175,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),
-                    body = copy.body(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
                     onBack = {
@@ -155,6 +183,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     },
                 )
             )
+        }
+        backAction = Runnable {
+            contentScrollY = settingsScrollY
+            renderSettings(true)
         }
         val updateUiRun = ++updateUiRunCounter
         activeUpdateUiRunToken = updateUiRun

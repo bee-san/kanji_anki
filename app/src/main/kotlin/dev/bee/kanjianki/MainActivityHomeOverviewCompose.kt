@@ -40,8 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val HomeInk = Color(0xFF2D1635)
-private val HomeMuted = Color(0xFF6C5674)
+private val HomeInk: Color @Composable get() = KaniTheme.colors.ink
+private val HomeMuted: Color @Composable get() = KaniTheme.colors.muted
 
 internal fun homePrimaryCtaTestTag(label: String): String = "home-primary-cta-$label"
 
@@ -68,13 +68,15 @@ fun HomeHeader(
                 textAlign = TextAlign.Start,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
-            Text(
-                text = subtitle,
-                color = HomeMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    color = HomeMuted,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                )
+            }
         }
         Spacer(modifier = Modifier.width(10.dp))
         Image(
@@ -98,17 +100,24 @@ fun HomePrimaryCta(
             .fillMaxWidth()
             .fillMaxSize()
             .clip(shape)
-            .background(Color(color.toLong() and 0xFFFFFFFFL))
+            .background(kaniColor(color))
             .testTag(homePrimaryCtaTestTag(label))
             .semantics {
                 contentDescription = label
             }
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-sync-cta") {
+                        onClick()
+                    }
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            color = Color.White,
+            color = KaniTheme.colors.onCoral,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
@@ -119,7 +128,6 @@ fun HomePrimaryCta(
 @Composable
 fun HomeStudyCta(
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(24.dp)
@@ -132,17 +140,24 @@ fun HomeStudyCta(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFFFF749C),
-                        Color(0xFFFF3A70)
+                        KaniTheme.colors.primary,
+                        KaniTheme.colors.coral
                     )
                 )
             )
-            .border(2.dp, Color(0xFFFFBED6), shape)
+            .border(2.dp, KaniTheme.colors.border, shape)
             .testTag(homeStudyCtaTestTag(title))
             .semantics {
                 contentDescription = title
             }
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClick = {
+                    withUiTrace("kani.button.home-study-cta") {
+                        onClick()
+                    }
+                }
+            )
     ) {
         Column(
             modifier = Modifier
@@ -152,21 +167,11 @@ fun HomeStudyCta(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = KaniTheme.colors.onPrimary,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = noFontPadding
-            )
-            Text(
-                text = subtitle,
-                color = Color(0xFFFFF5FA),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp),
                 style = noFontPadding
             )
         }
@@ -183,14 +188,14 @@ fun HomeStudyCta(
             Icon(
                 painter = painterResource(id = R.drawable.ic_arrow_forward_24),
                 contentDescription = null,
-                tint = Color(0xFFFF3A70)
+                tint = KaniTheme.colors.primary
             )
         }
 
         Icon(
             painter = painterResource(id = R.drawable.ic_sparkle_24),
             contentDescription = null,
-            tint = Color.White,
+            tint = KaniTheme.colors.onPrimary,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 10.dp, end = 78.dp)
@@ -199,7 +204,7 @@ fun HomeStudyCta(
         Icon(
             painter = painterResource(id = R.drawable.ic_sparkle_24),
             contentDescription = null,
-            tint = Color(0xFFFFD36A),
+            tint = KaniTheme.colors.gold,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 15.dp, bottom = 14.dp)

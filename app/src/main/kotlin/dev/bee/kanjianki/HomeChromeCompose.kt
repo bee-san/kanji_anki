@@ -5,11 +5,13 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,7 +20,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal fun homeActionButtonTestTag(label: String): String = "home-action-button-$label"
 
@@ -28,23 +32,26 @@ internal fun homeFullWidthHomeButtonTestTag(label: String): String = "home-full-
 
 internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
     return buildList {
-        add(HomeActionModel(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24) { home.renderBrowseKanji("") })
-        add(HomeActionModel(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, home::renderRecentMistakes))
-        add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats))
-        add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, home::renderGames))
-        add(HomeActionModel(MainActivityBase.NAV_SETTINGS, R.drawable.ic_settings_24, home::renderSettings))
+        add(HomeActionModel(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, onClick = { home.renderBrowseKanji("") }))
+        add(HomeActionModel(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, onClick = home::renderRecentMistakes))
+        add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, onClick = home::renderStats))
+        add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, onClick = home::renderGames))
+        add(HomeActionModel(SettingsTextCopy.settingsTitle(), R.drawable.ic_settings_24, onClick = home::renderSettings))
     }
 }
 
 @Composable
 fun HomeActionGrid(actions: List<HomeActionModel>) {
+    val actionRows = remember(actions) {
+        actions.chunked(2)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        actions.chunked(2).forEach { rowActions ->
+        actionRows.forEach { rowActions ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -70,7 +77,11 @@ fun HomeActionButton(action: HomeActionModel, modifier: Modifier = Modifier) {
         modifier = modifier.testTag(homeActionButtonTestTag(action.label)),
         minHeightDp = 58,
         textSizeSp = 15,
-        onClick = action.onClick
+        onClick = {
+            withUiTrace(action.traceSection) {
+                action.onClick()
+            }
+        }
     )
 }
 
@@ -93,9 +104,24 @@ fun HomeSectionHeader(
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (onAction != null) {
+                        Modifier.clickable(role = Role.Button) {
+                            withUiTrace("kani.button.home-section-header-title") {
+                                onAction.invoke()
+                            }
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
         )
         if (actionLabel != null && onAction != null) {
+            val actionTraceSection = remember(actionLabel) {
+                buttonTraceSection("home-section-header-${actionLabel.ifBlank { "action" }}")
+            }
             KaniOutlinedButton(
                 label = actionLabel,
                 modifier = Modifier
@@ -104,7 +130,11 @@ fun HomeSectionHeader(
                     .testTag(homeSectionActionButtonTestTag(actionLabel)),
                 minHeightDp = 42,
                 textSizeSp = 14,
-                onClick = onAction
+                onClick = {
+                    withUiTrace(actionTraceSection) {
+                        onAction()
+                    }
+                }
             )
         }
     }

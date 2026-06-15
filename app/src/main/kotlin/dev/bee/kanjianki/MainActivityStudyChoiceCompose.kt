@@ -23,17 +23,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal val StudyChoicePlum = Color(MainActivityUiSupport.STUDY_PLUM)
-internal val StudyChoiceButtonFill = Color(MainActivityUiSupport.STUDY_BG)
-internal val StudyChoiceBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-internal val StudyChoiceCorrectFill = Color(MainActivityUiSupport.TEAL)
-internal val StudyChoiceIncorrectFill = Color(MainActivityUiSupport.CORAL)
+internal val StudyChoicePlum: Color @Composable get() = KaniTheme.colors.plum
+internal val StudyChoiceButtonFill: Color @Composable get() = KaniTheme.colors.studyBg
+internal val StudyChoiceBorder: Color @Composable get() = KaniTheme.colors.border
+internal val StudyChoiceCorrectFill: Color @Composable get() = KaniTheme.colors.teal
+internal val StudyChoiceIncorrectFill: Color @Composable get() = KaniTheme.colors.coral
 internal val StudyChoiceFeedbackContent = Color.White
-private val StudyCardFill = Color(MainActivityUiSupport.STUDY_CARD)
-private val StudyPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
-private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
-private val StudyPinkDark = Color(MainActivityUiSupport.STUDY_PINK_DARK)
-private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
+private val StudyCardFill: Color @Composable get() = KaniTheme.colors.surface
+private val StudyPanelFill: Color @Composable get() = KaniTheme.colors.panel
+private val StudyPillFill: Color @Composable get() = KaniTheme.colors.pill
+private val StudyPinkDark: Color @Composable get() = KaniTheme.colors.primary
+private val StudyMuted: Color @Composable get() = KaniTheme.colors.muted
 
 class MeaningChoiceSessionState(selectedChoice: String? = null) {
     var selectedChoice by mutableStateOf(selectedChoice)
@@ -60,7 +60,11 @@ fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): Meaning
 }
 
 @Composable
-fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifier = Modifier) {
+fun SimilarChoiceSessionCard(
+    model: SimilarChoiceSessionModel,
+    modifier: Modifier = Modifier,
+    showInlineChoices: Boolean = true,
+) {
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
@@ -68,7 +72,18 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
         body = model.body,
         modifier = modifier,
     ) {
-        SimilarChoiceInsetPanel(model)
+        SimilarChoiceInsetPanel(model, showInlineChoices)
+    }
+}
+
+@Composable
+internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp, bottom = 2.dp)
+    ) {
+        SimilarChoiceGrid(model)
     }
 }
 
@@ -153,7 +168,7 @@ private fun SimilarChoiceModePill(label: String) {
 }
 
 @Composable
-private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel) {
+private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoices: Boolean) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,7 +179,39 @@ private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             StudyChoiceText(model.question, sizeSp = 22, color = StudyChoicePlum, bold = true)
-            SimilarChoiceGrid(model.gridModel)
+            if (model.reasonLine.isNotBlank()) {
+                StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
+            }
+            SimilarKanjiExplanationPanel(model.explanationLines)
+            if (showChoices) {
+                SimilarChoiceGrid(model.gridModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarKanjiExplanationPanel(lines: List<SimilarKanjiExplanationLineModel>) {
+    if (lines.isEmpty()) {
+        return
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = StudyCardFill,
+        border = BorderStroke(1.dp, StudyChoiceBorder)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            lines.forEach { line ->
+                StudyChoiceText(
+                    text = "${line.label}: ${line.value}",
+                    sizeSp = if (line.emphasized) 15 else 14,
+                    color = if (line.emphasized) StudyChoicePlum else StudyMuted,
+                    bold = line.emphasized,
+                )
+            }
         }
     }
 }

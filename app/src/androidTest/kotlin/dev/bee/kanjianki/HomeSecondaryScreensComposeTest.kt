@@ -28,8 +28,8 @@ class HomeSecondaryScreensComposeTest {
                     onHome = { homeClicked = true },
                     queue = HomeFocusQueuePanelModel(
                         planText = "Adaptive focus is waiting for sync",
-                        emptyTitle = "No kanji queued yet",
-                        emptyBody = "Sync AnkiDroid to find problem cards.",
+                        emptyTitle = "No kanji queued",
+                        emptyBody = "Sync AnkiDroid to load your kanji queue.",
                         showSyncButton = true,
                         cards = emptyList()
                     ),
@@ -46,6 +46,30 @@ class HomeSecondaryScreensComposeTest {
     }
 
     @Test
+    fun focusQueueScreenRendersActivePracticeEmptyState() {
+        composeRule.setContent {
+            HomeFocusQueueScreen(
+                HomeFocusQueueScreenModel(
+                    title = "Focus queue",
+                    homeLabel = "Home",
+                    onHome = {},
+                    queue = HomeFocusQueuePanelModel(
+                        planText = "Adaptive focus is ready",
+                        emptyTitle = MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE,
+                        emptyBody = MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY,
+                        showSyncButton = false,
+                        cards = emptyList()
+                    ),
+                    onSync = {}
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE).assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY).assertIsDisplayed()
+    }
+
+    @Test
     fun recentMistakesScreenRendersHeaderAndCards() {
         var homeClicked = false
         var cardClicked = false
@@ -57,15 +81,15 @@ class HomeSecondaryScreensComposeTest {
                     homeLabel = "Home",
                     onHome = { homeClicked = true },
                     mistakes = HomeRecentMistakesPanelModel(
-                        emptyTitle = "No recent mistakes yet",
-                        emptyBody = "Missed reviews will appear here.",
+                        emptyTitle = "No mistakes yet",
+                        emptyBody = "Missed or hard reviews.",
                         cards = listOf(
                             HomeRecentMistakesCardModel(
                                 kanji = "裂",
                                 title = "split",
                                 subtitle = "Rated again",
                                 sourceEvidence = "From 裂語",
-                                accentColor = Color(0xFFFF4C76),
+                                accentColor = MainActivityUiSupport.CORAL,
                                 onClick = { cardClicked = true }
                             )
                         )

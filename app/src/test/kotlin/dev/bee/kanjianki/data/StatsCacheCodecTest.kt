@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.json.JSONObject
 import java.util.Arrays
 import java.util.LinkedHashMap
 
@@ -14,7 +15,7 @@ import java.util.LinkedHashMap
 @Config(sdk = [35])
 class StatsCacheCodecTest {
     @Test
-    fun outcomeStatsRoundTripPreservesWeakSupportAndLadderMetrics() {
+    fun outcomeStatsRoundTripPreservesCachedExtras() {
         val rungCounts = LinkedHashMap<RecordsBase.LadderRung, Int>()
         rungCounts[RecordsBase.LadderRung.WRITE_KANJI] = 4
         rungCounts[RecordsBase.LadderRung.KANJI_MEANING] = 7
@@ -44,36 +45,67 @@ class StatsCacheCodecTest {
                 7,
             ),
         )
+        val studyImpact = StudyStatsStore.StudyImpactStats(12, 4, 3, 2, 1, 0)
+        val mistakes = Arrays.asList(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        )
+        val streak = StudyStatsStore.StudyStreak(5, 9, true, 4, 7_000L)
+        val taskTimes = StudyStatsStore.StudyTaskTimeStats(5_500L, 12_000L, 3)
 
-        val json = StatsCacheCodec.outcomeToJson(stats)
+        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes, streak, taskTimes)
+        val root = JSONObject(json)
         val decoded = StatsCacheCodec.outcomeFromJson(json)
+        val decodedImpact = StatsCacheCodec.studyImpactStatsFromJson(root.optJSONObject("studyImpactStats"))
+        val decodedMistakes = StatsCacheCodec.recentMistakesFromJson(root.optJSONArray("recentMistakes"))
+        val decodedStreak = StatsCacheCodec.studyStreakFromJson(root.optJSONObject("studyStreak"))
+        val decodedTaskTimes = StatsCacheCodec.studyTaskTimeStatsFromJson(root.optJSONObject("studyTaskTimeStats"))
 
+        assertEquals(STATS_CACHE_FORMAT_VERSION, root.optInt("cacheFormatVersion", 0))
         assertEquals(2, decoded.weakKanjiImproved.improvedCount)
-        assertEquals(80.0, decoded.weakKanjiImproved.averageBeforeWeakness, 0.001)
-        assertEquals(45.5, decoded.weakKanjiImproved.averageAfterWeakness, 0.001)
-        assertEquals(2, decoded.weakKanjiImproved.examples.size)
-        assertEquals("痛", decoded.weakKanjiImproved.examples[0].kanji)
-        assertEquals(90.0, decoded.weakKanjiImproved.examples[0].beforeWeakness, 0.001)
-        assertEquals(40.0, decoded.weakKanjiImproved.examples[0].afterWeakness, 0.001)
-        assertEquals("弱", decoded.weakKanjiImproved.examples[1].kanji)
+        assertEquals(12, decodedImpact.totalReviews)
+        assertEquals(4, decodedImpact.distinctReviewedKanji)
+        assertEquals(2, decodedMistakes.size)
+        assertEquals("痛", decodedMistakes[0].kanji)
+        assertEquals("again", decodedMistakes[0].rating)
+        assertEquals(1_000L, decodedMistakes[0].reviewedAtMillis)
 
-        assertEquals(3, decoded.matureSupportGained.gainedSupportCount)
-        assertEquals(4, decoded.matureSupportGained.matureSupportGained)
-        assertEquals(1, decoded.matureSupportGained.firstSupportCount)
-        assertEquals(1, decoded.matureSupportGained.examples.size)
-        assertEquals("漢", decoded.matureSupportGained.examples[0].kanji)
-        assertEquals(0, decoded.matureSupportGained.examples[0].beforeMatureSupport)
-        assertEquals(2, decoded.matureSupportGained.examples[0].afterMatureSupport)
+        assertEquals(5, decodedStreak.currentDays)
+        assertEquals(9, decodedStreak.bestDays)
+        assertEquals(true, decodedStreak.studiedToday)
+        assertEquals(4, decodedStreak.reviewsToday)
+        assertEquals(7_000L, decodedStreak.lastStudyAtMillis)
 
-        assertEquals(11, decoded.ladderHealth.totalActiveItems)
-        assertEquals(21, decoded.ladderHealth.ladderPromotionIntervalDays)
-        assertEquals(3, decoded.ladderHealth.ladderDemotionFailStreak)
-        assertEquals(5, decoded.ladderHealth.promotionReadyCount)
-        assertEquals(6, decoded.ladderHealth.demotionRiskCount)
-        assertEquals(7, decoded.ladderHealth.demotionReadyCount)
-        assertEquals(4, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WRITE_KANJI))
-        assertEquals(7, decoded.ladderHealth.countFor(RecordsBase.LadderRung.KANJI_MEANING))
-        assertEquals(0, decoded.ladderHealth.countFor(RecordsBase.LadderRung.WORD_READING))
+        assertEquals(5_500L, decodedTaskTimes.todayMillis)
+        assertEquals(12_000L, decodedTaskTimes.lastSevenDaysMillis)
+        assertEquals(3, decodedTaskTimes.answeredTasks)
+    }
+
+    @Test
+    fun outcomeStatsRoundTripPreservesReviewDaySummaries() {
+        val stats = StudyStatsStore.KaniOutcomeStats(
+            StudyStatsStore.WeakKanjiImprovedMetric(1, 91.0, 44.0, emptyList()),
+            StudyStatsStore.MatureSupportGainedMetric.empty(),
+            StudyStatsStore.LadderHealthMetric.empty(),
+        )
+        val studyImpact = StudyStatsStore.StudyImpactStats(12, 4, 3, 2, 1, 0)
+        val mistakes = Arrays.asList(
+            StudyStatsStore.RecentMistake("痛", "again", 1_000L),
+            StudyStatsStore.RecentMistake("弱", "hard", 2_000L),
+        )
+        val streak = StudyStatsStore.StudyStreak(5, 9, true, 4, 7_000L)
+        val taskTimes = StudyStatsStore.StudyTaskTimeStats(5_500L, 12_000L, 3)
+        val reviewDaySummaries = listOf(
+            StatsCacheStore.ReviewDaySummarySnapshot(1_000L, 8, 2, 1, 3, 2, 4, 1),
+            StatsCacheStore.ReviewDaySummarySnapshot(2_000L, 4, 1, 1, 1, 1, 0, 0),
+        )
+
+        val json = StatsCacheCodec.outcomeToJson(stats, studyImpact, mistakes, streak, taskTimes, reviewDaySummaries)
+        val root = JSONObject(json)
+        val decoded = StatsCacheCodec.reviewDaySummariesFromJson(root.optJSONArray("reviewDaySummaries"))
+
+        assertEquals(STATS_CACHE_FORMAT_VERSION, root.optInt("cacheFormatVersion", 0))
+        assertEquals(reviewDaySummaries, decoded)
     }
 
     @Test

@@ -1,14 +1,14 @@
 package dev.bee.kanjianki
 
-import androidx.compose.ui.graphics.Color as ComposeColor
-
 data class HomeRecentMistakesCardModel(
     val kanji: String,
     val title: String,
     val subtitle: String,
     val sourceEvidence: String?,
-    val accentColor: ComposeColor,
+    /** Legacy palette ARGB; resolve with [kaniColor] at render time. */
+    val accentColor: Int,
     val onClick: () -> Unit,
+    val traceSection: String = "",
 )
 
 data class HomeRecentMistakesPanelModel(

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsImportPreset
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
@@ -45,6 +46,29 @@ internal object SettingsWriteActions {
             return
         }
         writer.saveLearningStepSettings(request.settings!!)
+    }
+
+    @JvmStatic
+    fun toggleStudyLadder(
+        current: RecordsBase.StudyLadderSettings,
+        rung: RecordsBase.LadderRung,
+    ): RecordsBase.StudyLadderSettings? {
+        val wasEnabled = current.isEnabled(rung)
+        val next = current.withRungEnabled(rung, !wasEnabled)
+        return if (wasEnabled && next.enabledText() == current.enabledText()) {
+            null
+        } else {
+            next
+        }
+    }
+
+    @JvmStatic
+    fun moveStudyLadder(
+        current: RecordsBase.StudyLadderSettings,
+        rung: RecordsBase.LadderRung,
+        delta: Int,
+    ): RecordsBase.StudyLadderSettings {
+        return current.moveRung(rung, delta)
     }
 
     @JvmStatic

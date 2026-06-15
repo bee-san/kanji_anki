@@ -1,18 +1,31 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
+
 object AttributionCopy {
     const val DICTIONARY_FALLBACK: String =
         "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data."
     const val KANJIVG_FALLBACK: String = "KanjiVG stroke data, CC BY-SA 3.0."
 
+    private const val DICTIONARY_FALLBACK_JAPANESE: String =
+        "EDRDGのKANJIDIC2辞書データ、Jiten順位データ、KanjiVG筆順データ。"
+    private const val KANJIVG_FALLBACK_JAPANESE: String = "KanjiVG筆順データ、CC BY-SA 3.0。"
+    private const val JAPANESE_LANGUAGE = "ja"
+
+    @JvmStatic
+    fun dictionaryFallback(): String = localizedText(DICTIONARY_FALLBACK, DICTIONARY_FALLBACK_JAPANESE)
+
+    @JvmStatic
+    fun kanjiVgFallback(): String = localizedText(KANJIVG_FALLBACK, KANJIVG_FALLBACK_JAPANESE)
+
     @JvmStatic
     fun dictionarySources(generatedAt: String?, sources: List<Source?>?, notes: List<String?>?): String {
         if (sources.isNullOrEmpty()) {
-            return "Dictionary manifest is empty."
+            return localizedText("Dictionary manifest is empty.", "辞書マニフェストが空です。")
         }
         val lines = ArrayList<String>()
         if (safe(generatedAt).isNotEmpty()) {
-            lines.add("Generated: " + safe(generatedAt))
+            lines.add(localizedLabel("Generated") + ": " + safe(generatedAt))
         }
         for (source in sources) {
             appendSource(lines, source)
@@ -28,20 +41,20 @@ object AttributionCopy {
         }
         lines.add("")
         lines.add(firstNonEmpty(source.name, source.id))
-        addSourceLine(lines, "License", source.license)
-        addSourceLine(lines, "URL", source.upstreamUrl)
-        addSourceLine(lines, "Source", source.sourcePath)
-        addSourceLine(lines, "Fetched", source.fetchDate)
+        addSourceLine(lines, localizedLabel("License"), source.license)
+        addSourceLine(lines, localizedLabel("URL"), source.upstreamUrl)
+        addSourceLine(lines, localizedLabel("Source"), source.sourcePath)
+        addSourceLine(lines, localizedLabel("Fetched"), source.fetchDate)
         addSourceLine(
             lines,
-            "Version",
+            localizedLabel("Version"),
             firstNonEmpty(
                 source.databaseVersion,
                 source.version,
                 source.dateOfCreation,
             ),
         )
-        addSourceLine(lines, "SHA-256", source.sourceSha256)
+        addSourceLine(lines, localizedLabel("SHA-256"), source.sourceSha256)
     }
 
     @JvmStatic
@@ -61,6 +74,25 @@ object AttributionCopy {
             lines.add("$label: $safeValue")
         }
     }
+
+    private fun localizedLabel(english: String): String {
+        if (!isJapaneseLocale()) {
+            return english
+        }
+        return when (english) {
+            "Generated" -> "生成"
+            "License" -> "ライセンス"
+            "Source" -> "出典"
+            "Fetched" -> "取得日"
+            "Version" -> "バージョン"
+            else -> english
+        }
+    }
+
+    private fun localizedText(english: String, japanese: String): String =
+        if (isJapaneseLocale()) japanese else english
+
+    private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
     private fun firstNonEmpty(vararg values: String?): String {
         for (value in values) {

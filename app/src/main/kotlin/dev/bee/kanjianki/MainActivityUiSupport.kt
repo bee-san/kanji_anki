@@ -6,6 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.graphics.toArgb
+import dev.bee.kanjianki.theme.KaniSystemBars
+import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.theme.resolveSystemBars
 import androidx.core.view.isEmpty
 import androidx.core.view.isGone
 import kotlin.math.max
@@ -14,10 +18,18 @@ import kotlin.math.roundToInt
 
 internal abstract class MainActivityUiSupport : ComponentActivity() {
     fun styleSystemBars() {
-        window.decorView.setBackgroundColor(BG)
+        val night = isNightMode(resources.configuration)
+        styleSystemBars(KaniThemeChoice.SYSTEM.resolveSystemBars(night))
+    }
+
+    fun styleSystemBars(systemBars: KaniSystemBars) {
+        val backgroundArgb = systemBars.backgroundColor.toArgb()
+        window.statusBarColor = backgroundArgb
+        window.navigationBarColor = backgroundArgb
+        window.decorView.setBackgroundColor(backgroundArgb)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.isAppearanceLightStatusBars = true
-        controller.isAppearanceLightNavigationBars = true
+        controller.isAppearanceLightStatusBars = systemBars.appearanceLightStatusBars
+        controller.isAppearanceLightNavigationBars = systemBars.appearanceLightNavigationBars
     }
 
     fun dp(value: Int): Int {
@@ -114,7 +126,13 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
     }
 
     companion object {
+        fun isNightMode(configuration: android.content.res.Configuration): Boolean {
+            val mask = configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+            return mask == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+
         @JvmField val BG: Int = 0xFFFFF7FB.toInt()
+        @JvmField val BG_DARK: Int = 0xFF1C1220.toInt()
         @JvmField val INK: Int = 0xFF2D1635.toInt()
         @JvmField val MUTED: Int = 0xFF6C5674.toInt()
         @JvmField val CORAL: Int = 0xFFFF4C76.toInt()

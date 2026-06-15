@@ -99,6 +99,26 @@ class HintProgressionTest {
     }
 
     @Test
+    fun modelAndRecognitionErrorsHoldCurrentLevel() {
+        val progression = HintProgression()
+
+        assertEquals(
+            HintLevel.BLIND,
+            progression.afterWriting(
+                HintState.fromWritingLevel(3),
+                WritingAnalysisEngine.modelUnavailable("not ready", HintLevel.BLIND, 0),
+            ).level(),
+        )
+        assertEquals(
+            HintLevel.BLIND,
+            progression.afterWriting(
+                HintState.fromWritingLevel(3),
+                WritingAnalysisEngine.recognitionError(HintLevel.BLIND, 0),
+            ).level(),
+        )
+    }
+
+    @Test
     fun revealNextTraceAndOutlineUseBroaderHelpRules() {
         val progression = HintProgression()
 

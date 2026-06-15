@@ -10,6 +10,7 @@ data class SettingsStudyLadderPanelModel(
     val rungs: List<SettingsStudyLadderRungModel>,
     val restoreLabel: String,
     val restoreDescription: String,
+    val restoreTraceSection: String = "",
     val onRestore: SettingsStudyLadderAction,
 ) : SettingsPanelModel
 
@@ -24,6 +25,9 @@ data class SettingsStudyLadderRungModel(
     val toggleDescription: String,
     val moveUpDescription: String,
     val moveDownDescription: String,
+    val toggleTraceSection: String = "",
+    val moveUpTraceSection: String = "",
+    val moveDownTraceSection: String = "",
     val onToggle: SettingsStudyLadderAction,
     val onMoveUp: SettingsStudyLadderAction,
     val onMoveDown: SettingsStudyLadderAction,

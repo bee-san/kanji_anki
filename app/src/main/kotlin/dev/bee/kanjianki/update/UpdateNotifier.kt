@@ -42,8 +42,11 @@ object UpdateNotifier {
             return false
         }
         val body = UpdateTextPolicy.notificationBody(version, message)
-        controller.ensureChannel()
-        controller.notifyUpdate("Kani update ready to install", body)
+        controller.ensureChannel(
+            UpdateTextPolicy.notificationChannelName(),
+            UpdateTextPolicy.notificationChannelDescription(),
+        )
+        controller.notifyUpdate(UpdateTextPolicy.notificationTitle(), body)
         return true
     }
 
@@ -52,7 +55,7 @@ object UpdateNotifier {
 
         fun areNotificationsEnabled(): Boolean
 
-        fun ensureChannel()
+        fun ensureChannel(name: String, description: String)
 
         fun notifyUpdate(title: String, body: String)
     }
@@ -74,14 +77,14 @@ object UpdateNotifier {
             return notificationsEnabled(manager(), NotificationManager::areNotificationsEnabled)
         }
 
-        override fun ensureChannel() {
+        override fun ensureChannel(name: String, description: String) {
             val manager = manager() ?: return
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "App updates",
+                name,
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
-            channel.description = "Friendly Kani update prompts."
+            channel.description = description
             channel.setShowBadge(true)
             manager.createNotificationChannel(channel)
         }

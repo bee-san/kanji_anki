@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,5 +23,28 @@ class AutoSyncSettingsTogglePolicyTest {
 
         assertFalse(result.enabled)
         assertEquals("Daily sync turned off.", result.message)
+    }
+
+    @Test
+    fun toggleCopyLocalizesInJapaneseLocale() {
+        withDefaultLocale(Locale.JAPANESE) {
+            val enabled = AutoSyncSettingsTogglePolicy.enable()
+            val disabled = AutoSyncSettingsTogglePolicy.disable()
+
+            assertTrue(enabled.enabled)
+            assertEquals("毎日の同期をオンにしました。", enabled.message)
+            assertFalse(disabled.enabled)
+            assertEquals("毎日の同期をオフにしました。", disabled.message)
+        }
+    }
+
+    private fun withDefaultLocale(locale: Locale, block: () -> Unit) {
+        val previousLocale = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 }

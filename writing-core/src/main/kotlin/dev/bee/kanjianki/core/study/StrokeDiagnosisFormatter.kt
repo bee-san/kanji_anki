@@ -46,8 +46,12 @@ class StrokeDiagnosisFormatter private constructor() {
                 StrokeDiagnosis.Label.WRONG_ORDER -> strokeLine(entry, "likely wrong order")
                 StrokeDiagnosis.Label.WRONG_DIRECTION -> strokeLine(entry, "likely wrong direction")
                 StrokeDiagnosis.Label.MISSING_STROKE -> strokeLine(entry, "may be missing")
-                StrokeDiagnosis.Label.ROUGH_SHAPE -> strokeLine(entry, "shape looks rough")
-                StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY -> "Recognized, but the stroke path was messy"
+                StrokeDiagnosis.Label.EXTRA_STROKE -> strokeLine(entry, "may be extra")
+                StrokeDiagnosis.Label.ROUGH_SHAPE -> strokeLine(entry, "component proportion or shape looks rough")
+                StrokeDiagnosis.Label.FAR_FROM_GUIDE -> strokeLine(entry, "too far from the guide")
+                StrokeDiagnosis.Label.CONFUSED_WITH_SIMILAR_KANJI ->
+                    "It looked like a different kanji; compare the similar parts"
+                StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY -> "Good enough, but the stroke path was messy"
             }
         }
 

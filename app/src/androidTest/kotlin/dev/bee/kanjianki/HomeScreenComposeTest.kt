@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,8 +32,9 @@ class HomeScreenComposeTest {
                 model = baseModel(
                     showSyncCta = true,
                     onSync = { syncClicked = true },
-                    emptyTitle = "No kanji queued yet",
-                    emptyBody = "Sync AnkiDroid to find problem cards."
+                    syncMetricBody = "AnkiDroid",
+                    emptyTitle = "No kanji queued",
+                    emptyBody = HomeTextCopy.homeNoKanjiQueuedBody()
                 )
             )
         }
@@ -41,15 +43,47 @@ class HomeScreenComposeTest {
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
         composeRule.onAllNodesWithText("View all").assertCountEquals(0)
-        composeRule.onNodeWithText("No kanji queued yet").assertIsDisplayed()
-        composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync AnkiDroid"))
+        composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.homeNoKanjiQueuedBody()).assertIsDisplayed()
+        composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync with AnkiDroid"))
             .assertIsDisplayed()
             .assertHasClickAction()
-        composeRule.onNodeWithContentDescription("Sync AnkiDroid")
+        composeRule.onNodeWithContentDescription("Sync with AnkiDroid")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
+        composeRule.onNodeWithText("Sync").assertHasClickAction().performClick()
+        composeRule.onNodeWithText("AnkiDroid").assertHasClickAction().performClick()
         assertTrue(syncClicked)
+    }
+
+    @Test
+    fun rendersTodayPlanCardAndTriggersAction() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomeScreen(
+                model = baseModel(
+                    showSyncCta = false,
+                    deckOverviewRows = listOf("Due 2"),
+                    todayPlan = HomeTodayPlanModel(
+                        title = HomeTextCopy.todayPlanTitle(),
+                        summary = "4 due now · about 2 min",
+                        details = listOf("Needs one calm review", "Keeps the streak safe"),
+                        actionLabel = HomeTextCopy.studyNowLabel(),
+                        onClick = { clicked = true },
+                    ),
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(homeTodayPlanTestTag())
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .performClick()
+        composeRule.onNodeWithText("4 due now · about 2 min").assertIsDisplayed()
+        composeRule.onNodeWithText("Needs one calm review").assertIsDisplayed()
+        assertTrue(clicked)
     }
 
     @Test
@@ -58,25 +92,27 @@ class HomeScreenComposeTest {
         var focusClicked = false
         var cardClicked = false
         var actionClicked = false
+        var metricSyncClicked = false
 
         composeRule.setContent {
             HomeScreen(
                 model = baseModel(
                     showSyncCta = false,
                     onStudy = { studyClicked = true },
+                    onSync = { metricSyncClicked = true },
                     deckOverviewRows = listOf("Due 2", "New 1"),
-                    focusActionLabel = "View all",
+                    focusActionLabel = "View all >",
                     onFocusAction = { focusClicked = true },
-                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) { actionClicked = true }),
+                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = { actionClicked = true })),
                     previewCards = listOf(
                         HomeFocusQueueCardModel(
                             kanji = "裂",
                             meaning = "split",
                             sourceEvidence = "From 裂語",
                             reasonLine = "due now",
-                            body = "Needs focused kanji practice.",
-                            tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", Color(0xFF6E5CE6))),
-                            accentColor = Color(0xFFFF4C76),
+                            body = "Needs kanji practice.",
+                            tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", MainActivityUiSupport.BLUE)),
+                            accentColor = MainActivityUiSupport.CORAL,
                             onClick = { cardClicked = true }
                         )
                     )
@@ -95,7 +131,10 @@ class HomeScreenComposeTest {
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
-        composeRule.onNodeWithText("View all").performClick()
+        composeRule.onNodeWithText("Focus queue").assertIsDisplayed().assertHasClickAction().performClick()
+        composeRule.onNodeWithText("View all >").assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Sync").assertHasClickAction().performClick()
+        composeRule.onNodeWithContentDescription("Study").performClick()
         composeRule.onNodeWithText("Deck overview").assertIsDisplayed()
         composeRule.onNodeWithText("Due 2").assertIsDisplayed()
         composeRule.onNodeWithText("New 1").assertIsDisplayed()
@@ -103,6 +142,7 @@ class HomeScreenComposeTest {
         assertTrue(studyClicked)
         assertTrue(actionClicked)
         assertTrue(focusClicked)
+        assertTrue(metricSyncClicked)
         assertTrue(cardClicked)
     }
 
@@ -115,22 +155,28 @@ class HomeScreenComposeTest {
         onFocusAction: (() -> Unit)? = null,
         emptyTitle: String? = null,
         emptyBody: String? = null,
-        actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24) {}),
+        actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})),
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
+        syncMetricBody: String = "Ready",
+        todayPlan: HomeTodayPlanModel = HomeTodayPlanModel(
+            title = HomeTextCopy.todayPlanTitle(),
+            summary = "Nothing useful now",
+            details = emptyList(),
+        ),
     ): HomeScreenModel {
         return HomeScreenModel(
             title = "Kani",
             subtitle = "Repair weak kanji from AnkiDroid.",
             metrics = listOf(
-                HomeMetricModel(R.drawable.ic_sync_24, MainActivityUiSupport.TEAL, "Sync", "Today", "Ready", onSync),
+                HomeMetricModel(R.drawable.ic_sync_24, MainActivityUiSupport.TEAL, "Sync", "Today", syncMetricBody, onSync),
                 HomeMetricModel(R.drawable.ic_flame_24, MainActivityUiSupport.GOLD, "Streak", "2 days", "Done today", null),
                 HomeMetricModel(R.drawable.ic_target_24, MainActivityUiSupport.CORAL, "Focus", "1 left", null, null)
             ),
+            todayPlan = todayPlan,
             deckOverviewRows = deckOverviewRows,
             showSyncCta = showSyncCta,
             syncLabel = "Sync AnkiDroid",
             studyLabel = "Study now",
-            studySubtitle = "Repair the next weak kanji.",
             onSync = onSync,
             onStudy = onStudy,
             actions = actions,

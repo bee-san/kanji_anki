@@ -708,6 +708,22 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun countExtraNewCardsAvailableMatchesSeededAvailability() {
+        var scheduler: BridgeScheduler = BridgeScheduler()
+        var active: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
+                .createdAtMillis(1000L)
+                .build()
+        var count: Int = scheduler.countExtraNewCardsAvailable(
+                listOf(row("裂", 50), row("謎", 40), row("示", 30), row("浸", 20)),
+                listOf(active),
+                settingsWithQueue(4, 1),
+                2000L,
+                0L
+        )
+        assertEquals(3, count)
+    }
+
+    @Test
     public fun seedExtraNewCardsHonorsConfiguredNewCardSortMode() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var rows: List<RecordsImportModels.DashboardRow> = listOf(

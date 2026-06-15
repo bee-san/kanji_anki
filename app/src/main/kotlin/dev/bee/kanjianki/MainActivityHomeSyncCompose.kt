@@ -30,9 +30,9 @@ import dev.bee.kanjianki.core.HomeTextCopy
 
 @Composable
 fun SyncResultScreen(model: SyncResultScreenModel) {
-    val accent = ComposeColor(model.accentColor)
+    val accent = kaniColor(model.accentColor)
     val contentColor = KaniUiTokens.readableTextColor(accent)
-    val primaryColor = ComposeColor(model.primaryColor)
+    val primaryColor = kaniColor(model.primaryColor)
     val primaryContentColor = KaniUiTokens.readableTextColor(primaryColor)
     val warningSemantics = if (model.title == HomeTextCopy.syncNeedsAttentionTitle()) {
         Modifier.semantics {
@@ -82,7 +82,11 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
         }
         model.primaryLabel?.let { label ->
             Button(
-                onClick = { model.onPrimary?.run() },
+                onClick = {
+                    withButtonTrace(label) {
+                        model.onPrimary?.run()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = KaniUiTokens.ButtonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -98,7 +102,11 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
             }
         }
         OutlinedButton(
-            onClick = { model.onSecondary.run() },
+            onClick = {
+                withButtonTrace(model.secondaryLabel) {
+                    model.onSecondary.run()
+                }
+            },
             modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, KaniUiTokens.SubtleButtonBorder),

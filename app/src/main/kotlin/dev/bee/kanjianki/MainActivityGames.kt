@@ -12,6 +12,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private val gameEngine = KanjiGameEngine()
     private val gameRandom: Random = SecureRandom()
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+    private var cachedGameData: GameData? = null
 
     override fun renderGames() {
         if (isScreenshotLaunchRequested()) {
@@ -23,7 +24,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             loadingTitle = HomeTextCopy.gamesActionLabel(),
             load = { gamesScreenModel() },
             render = { model ->
-                renderHomeRoute {
+                renderHomeRoute(backAction = Runnable { renderHome() }) {
                     GamesMenuScreen(
                         model = model,
                         onHome = this::renderHome
@@ -35,7 +36,10 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun renderScreenshotGames() {
         val model = screenshotGamesScreenModel()
-        renderHomeRoute {
+        renderHomeRoute(
+            initialScrollY = screenshotScrollY(),
+            scrollPositionLabel = screenshotScrollPositionLabel(),
+        ) {
             GamesMenuScreen(
                 model = model,
                 onHome = this::renderHome
@@ -49,21 +53,22 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun clearGameSession() {
         gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+        cachedGameData = null
     }
 
     fun gamesScreenModel(): GamesScreenModel {
-        val data = gameData()
+        val data = currentGameData()
         val cards = if (data.hasKanji()) {
             val available = gameEngine.availableModes(data.rows, data.inventory, data.pairs)
             KanjiGameEngine.GameMode.values().map { mode ->
                 val modeAvailable = available.contains(mode)
                 GamesModeCardModel(
-                    title = mode.title,
-                    label = mode.label,
+                    title = KanjiGameCopy.modeTitle(mode),
+                    label = KanjiGameCopy.modeLabel(mode),
                     body = KanjiGameCopy.modeBody(mode, modeAvailable),
                     accentColor = colorForGameMode(mode),
                     available = modeAvailable,
-                    chipLabel = if (modeAvailable) KanjiGameCopy.LABEL_PLAY else KanjiGameCopy.LABEL_LOCKED,
+                    chipLabel = if (modeAvailable) KanjiGameCopy.playLabel() else KanjiGameCopy.lockedLabel(),
                     onClick = if (modeAvailable) Runnable { startGame(mode) } else Runnable {}
                 )
             }
@@ -71,10 +76,10 @@ internal abstract class MainActivityGames : MainActivityHome() {
             emptyList()
         }
         return GamesScreenModel(
-            title = KanjiGameCopy.LABEL_GAMES,
-            subtitle = KanjiGameCopy.GAMES_SUBTITLE,
-            emptyTitle = if (data.hasKanji()) null else KanjiGameCopy.EMPTY_NO_KANJI_TITLE,
-            emptyBody = if (data.hasKanji()) null else KanjiGameCopy.EMPTY_NO_KANJI_BODY,
+            title = KanjiGameCopy.gamesLabel(),
+            subtitle = KanjiGameCopy.gamesSubtitle(),
+            emptyTitle = if (data.hasKanji()) null else KanjiGameCopy.emptyNoKanjiTitle(),
+            emptyBody = if (data.hasKanji()) null else KanjiGameCopy.emptyNoKanjiBody(),
             showSyncButton = !data.hasKanji(),
             onSync = Runnable { confirmSync() },
             modeCards = cards
@@ -91,14 +96,14 @@ internal abstract class MainActivityGames : MainActivityHome() {
             renderGameRoundComplete(mode)
             return
         }
-        val data = gameData()
+        val data = currentGameData()
         val question = gameEngine.nextQuestion(mode, data.rows, data.inventory, data.pairs, gameRandom)
         if (question == null) {
             renderGameUnavailable(mode)
             return
         }
-        renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
+        renderHomeRoute(backAction = Runnable { returnToGames() }) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
                 GamesQuestionCard(
                     question = question,
                     onChoiceSelected = { choice -> answerGameQuestion(question, choice) }
@@ -108,9 +113,9 @@ internal abstract class MainActivityGames : MainActivityHome() {
     }
 
     private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
-        val model = GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
-        renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames) {
+        val model = GamesUnavailableModel(KanjiGameCopy.gameNotReadyTitle(), KanjiGameCopy.gameNotReadyBody())
+        renderHomeRoute(backAction = Runnable { returnToGames() }) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames) {
                 GamesUnavailableCard(model)
             }
         }
@@ -119,11 +124,11 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private fun gameScoreModel(awaitingAnswer: Boolean): GamesScoreStripModel {
         val roundProgress = gameRound.progress(awaitingAnswer)
         return GamesScoreStripModel(
-            roundLabel = KanjiGameCopy.LABEL_ROUND,
+            roundLabel = KanjiGameCopy.roundLabel(),
             roundValue = "$roundProgress/${gameRound.totalQuestions}",
-            scoreLabel = KanjiGameCopy.LABEL_SCORE,
+            scoreLabel = KanjiGameCopy.scoreLabel(),
             scoreValue = "${gameRound.correct}/${gameRound.totalQuestions}",
-            streakLabel = KanjiGameCopy.LABEL_STREAK,
+            streakLabel = KanjiGameCopy.streakLabel(),
             streakValue = gameRound.streak.toString()
         )
     }
@@ -143,8 +148,8 @@ internal abstract class MainActivityGames : MainActivityHome() {
         val color = gameResultTitleColor(roundComplete, correct)
         val primaryLabel = gamePrimaryLabel(roundComplete)
         val primaryAction = gamePrimaryAction(question.mode, roundComplete)
-        renderHomeRoute {
-            GamesPlayScreen(title = question.mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+        renderHomeRoute(backAction = Runnable { returnToGames() }) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(question.mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
                         title = KanjiGameCopy.resultTitle(roundComplete, correct),
@@ -165,18 +170,18 @@ internal abstract class MainActivityGames : MainActivityHome() {
     }
 
     private fun renderGameRoundComplete(mode: KanjiGameEngine.GameMode) {
-        renderHomeRoute {
-            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+        renderHomeRoute(backAction = Runnable { returnToGames() }) {
+            GamesPlayScreen(title = KanjiGameCopy.modeTitle(mode), onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
-                        title = KanjiGameCopy.LABEL_ROUND_COMPLETE,
+                        title = KanjiGameCopy.roundCompleteLabel(),
                         titleColor = BLUE,
                         finalScore = KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions),
                         accuracy = KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered),
                         answer = null,
                         selectedAnswer = null,
                         explanation = null,
-                        primaryLabel = KanjiGameCopy.LABEL_NEW_ROUND,
+                        primaryLabel = KanjiGameCopy.newRoundLabel(),
                         primaryColor = colorForGameMode(mode),
                         onPrimary = Runnable { startGame(mode) },
                         onGames = Runnable { renderGames() }
@@ -221,8 +226,12 @@ internal abstract class MainActivityGames : MainActivityHome() {
         return if (correct) null else KanjiGameCopy.selectedAnswerText(selected)
     }
 
+    private fun currentGameData(): GameData {
+        return cachedGameData ?: gameData().also { cachedGameData = it }
+    }
+
     private fun gamePrimaryLabel(roundComplete: Boolean): String {
-        return if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT
+        return if (roundComplete) KanjiGameCopy.newRoundLabel() else KanjiGameCopy.nextLabel()
     }
 
     private fun gamePrimaryAction(
@@ -236,7 +245,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         }
     }
 
-    private fun gameData(): GameData {
+    protected open fun gameData(): GameData {
         return GameData(
             rows = store.activeDashboardRows().orEmpty(),
             inventory = store.searchKanjiInventory("").orEmpty(),
@@ -244,7 +253,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         )
     }
 
-    private data class GameData(
+    internal data class GameData(
         val rows: List<RecordsImportModels.DashboardRow>,
         val inventory: List<RecordsImportModels.KanjiInventoryItem>,
         val pairs: List<RecordsImportModels.SimilarKanjiPair>

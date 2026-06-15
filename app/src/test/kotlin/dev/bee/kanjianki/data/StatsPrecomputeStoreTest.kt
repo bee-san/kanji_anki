@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -40,22 +41,74 @@ class StatsPrecomputeStoreTest {
 
     @Test
     fun refreshWritesFreshCacheMatchingDirectQueries() {
+        val generatedAtMillis = 1_700_000_000_000L
+        val startDay = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(generatedAtMillis), -(STATS_REVIEW_DAY_SUMMARY_LIMIT - 1))
         seedRepresentativeStatsInputs()
+        seedReviewDaySummaryInputs(startDay)
         cacheStore.markDirty(db)
         val directOutcome = StudyStatsStore(localStore).kaniOutcomeStats()
         val directImpact = KanjiImpactReportStore(localStore).report()
+        val directStudyImpact = StudyStatsStore(localStore).studyImpactStats()
+        val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
+        val directStreak = StudyStatsStore(localStore).studyStreak(generatedAtMillis)
+        val directTaskTime = StudyStatsStore(localStore).studyTaskTimeStats(generatedAtMillis)
 
-        StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = 12_345L)
+        StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = generatedAtMillis)
 
-        val cached = cacheStore.readFresh(db)
+        val cached = cacheStore.readFresh(db, nowMillis = generatedAtMillis)
         assertNotNull(cached)
         cached!!
-        assertEquals(12_345L, cached.generatedAtMillis)
+        assertEquals(generatedAtMillis, cached.generatedAtMillis)
         assertOutcomeStatsEquals(directOutcome, cached.outcomeStats)
         assertImpactReportEquals(directImpact, cached.impactReport)
+        assertStudyImpactStatsEquals(directStudyImpact, cached.studyImpactStats)
+        assertRecentMistakesEquals(directRecentMistakes, cached.recentMistakes)
+        assertStudyStreakEquals(directStreak, cached.studyStreak)
+        assertStudyTaskTimeStatsEquals(directTaskTime, cached.studyTaskTimeStats)
+        assertEquals(STATS_CACHE_FORMAT_VERSION, cached.cacheFormatVersion)
+        assertEquals(STATS_REVIEW_DAY_SUMMARY_LIMIT, cached.reviewDaySummaries.size)
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(startDay, 1, 0, 0, 1, 0, 1, 0),
+            cached.reviewDaySummaries[0],
+        )
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(LocalDayPolicy.moveLocalDays(startDay, 2), 1, 1, 0, 0, 0, 1, 1),
+            cached.reviewDaySummaries[2],
+        )
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(LocalDayPolicy.moveLocalDays(startDay, 4), 3, 0, 0, 2, 1, 2, 0),
+            cached.reviewDaySummaries[4],
+        )
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(LocalDayPolicy.moveLocalDays(startDay, STATS_REVIEW_DAY_SUMMARY_LIMIT - 1), 1, 0, 1, 0, 0, 0, 0),
+            cached.reviewDaySummaries[STATS_REVIEW_DAY_SUMMARY_LIMIT - 1],
+        )
         assertTrue("fixture should exercise weak-kanji improvement", cached.outcomeStats.weakKanjiImproved.improvedCount > 0)
         assertTrue("fixture should exercise ladder aggregate", cached.outcomeStats.ladderHealth.totalActiveItems > 0)
         assertTrue("fixture should exercise impact rows", cached.impactReport.rows.isNotEmpty())
+    }
+
+    @Test
+    fun refreshZeroFillsMissingReviewDaysWithinBoundedWindow() {
+        val generatedAtMillis = 1_700_000_000_000L
+        val startDay = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(generatedAtMillis), -(STATS_REVIEW_DAY_SUMMARY_LIMIT - 1))
+        seedReviewDaySummaryInputs(startDay)
+        cacheStore.markDirty(db)
+
+        StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = generatedAtMillis)
+
+        val cached = cacheStore.readFresh(db, nowMillis = generatedAtMillis)
+        assertNotNull(cached)
+        cached!!
+        assertEquals(STATS_REVIEW_DAY_SUMMARY_LIMIT, cached.reviewDaySummaries.size)
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(LocalDayPolicy.moveLocalDays(startDay, 1), 0, 0, 0, 0, 0, 0, 0),
+            cached.reviewDaySummaries[1],
+        )
+        assertEquals(
+            StatsCacheStore.ReviewDaySummarySnapshot(LocalDayPolicy.moveLocalDays(startDay, 2), 1, 1, 0, 0, 0, 1, 1),
+            cached.reviewDaySummaries[2],
+        )
     }
 
     @Test
@@ -69,6 +122,11 @@ class StatsPrecomputeStoreTest {
             KanjiImpactAnalyzer.Report(1, 0, 0, emptyList()),
             1_111L,
             cacheStore.currentSourceVersion(db),
+            StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0),
+            emptyList(),
+            StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
+            StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
+            STATS_CACHE_FORMAT_VERSION,
         )
         cacheStore.write(db, previous)
         val throwing = object : StatsPrecomputeStore.Computations {
@@ -110,6 +168,18 @@ class StatsPrecomputeStoreTest {
         insertStudyItem("弱", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 2, 1)
     }
 
+    private fun seedReviewDaySummaryInputs(startDay: Long) {
+        val day2 = LocalDayPolicy.moveLocalDays(startDay, 2)
+        val day4 = LocalDayPolicy.moveLocalDays(startDay, 4)
+        val day89 = LocalDayPolicy.moveLocalDays(startDay, STATS_REVIEW_DAY_SUMMARY_LIMIT - 1)
+        insertReview("日", "good", startDay + 1_000L, dayStart = startDay, writingRequired = true, writingPassed = true)
+        insertReview("月", "again", day2 + 2_000L, dayStart = day2, writingRequired = true, writingPassed = false, manualOverride = false)
+        insertReview("火", "good", day4 + 3_000L, dayStart = day4, writingRequired = true, writingPassed = true)
+        insertReview("水", "good", day4 + 4_000L, dayStart = day4, writingRequired = true, writingPassed = false, manualOverride = true)
+        insertReview("木", "easy", day4 + 5_000L, dayStart = day4, writingRequired = false, writingPassed = true)
+        insertReview("金", "hard", day89 + 6_000L, dayStart = day89, writingRequired = false, writingPassed = true)
+    }
+
     private fun insertSyncRun(id: Long, finishedAt: Long) {
         db.execSQL(
             "INSERT INTO sync_runs " +
@@ -140,12 +210,29 @@ class StatsPrecomputeStoreTest {
         )
     }
 
-    private fun insertReview(kanji: String, rating: String, reviewedAt: Long) {
+    private fun insertReview(
+        kanji: String,
+        rating: String,
+        reviewedAt: Long,
+        dayStart: Long = 0L,
+        writingRequired: Boolean = true,
+        writingPassed: Boolean = true,
+        manualOverride: Boolean = false,
+    ) {
         db.execSQL(
             "INSERT INTO review_log " +
                 "(kanji, token, rating, writing_required, writing_passed, manual_override, reviewed_at, review_day_start) " +
-                "VALUES (?, ?, ?, 1, 1, 0, ?, 0)",
-            arrayOf<Any>(kanji, "$kanji-$reviewedAt", rating, reviewedAt),
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any>(
+                kanji,
+                "$kanji-$reviewedAt",
+                rating,
+                if (writingRequired) 1 else 0,
+                if (writingPassed) 1 else 0,
+                if (manualOverride) 1 else 0,
+                reviewedAt,
+                dayStart,
+            ),
         )
     }
 
@@ -195,5 +282,40 @@ class StatsPrecomputeStoreTest {
             assertEquals(expectedRow.retentionDelta, actualRow.retentionDelta, 0.0001)
             assertEquals(expectedRow.difficultyDelta, actualRow.difficultyDelta, 0.0001)
         }
+    }
+
+    private fun assertStudyImpactStatsEquals(expected: StudyStatsStore.StudyImpactStats, actual: StudyStatsStore.StudyImpactStats) {
+        assertEquals(expected.totalReviews, actual.totalReviews)
+        assertEquals(expected.distinctReviewedKanji, actual.distinctReviewedKanji)
+        assertEquals(expected.writingRequired, actual.writingRequired)
+        assertEquals(expected.writingPassed, actual.writingPassed)
+        assertEquals(expected.writingFailed, actual.writingFailed)
+        assertEquals(expected.manualOverrides, actual.manualOverrides)
+    }
+
+    private fun assertRecentMistakesEquals(expected: List<StudyStatsStore.RecentMistake>, actual: List<StudyStatsStore.RecentMistake>) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (expectedMistake, actualMistake) ->
+            assertEquals(expectedMistake.kanji, actualMistake.kanji)
+            assertEquals(expectedMistake.rating, actualMistake.rating)
+            assertEquals(expectedMistake.reviewedAtMillis, actualMistake.reviewedAtMillis)
+        }
+    }
+
+    private fun assertStudyStreakEquals(expected: StudyStatsStore.StudyStreak, actual: StudyStatsStore.StudyStreak) {
+        assertEquals(expected.currentDays, actual.currentDays)
+        assertEquals(expected.bestDays, actual.bestDays)
+        assertEquals(expected.studiedToday, actual.studiedToday)
+        assertEquals(expected.reviewsToday, actual.reviewsToday)
+        assertEquals(expected.lastStudyAtMillis, actual.lastStudyAtMillis)
+    }
+
+    private fun assertStudyTaskTimeStatsEquals(
+        expected: StudyStatsStore.StudyTaskTimeStats,
+        actual: StudyStatsStore.StudyTaskTimeStats,
+    ) {
+        assertEquals(expected.todayMillis, actual.todayMillis)
+        assertEquals(expected.lastSevenDaysMillis, actual.lastSevenDaysMillis)
+        assertEquals(expected.answeredTasks, actual.answeredTasks)
     }
 }

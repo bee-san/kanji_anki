@@ -2,7 +2,6 @@ package dev.bee.kanjianki
 
 data class SettingsUpdatePageModel(
     val title: String,
-    val body: String,
     val onHome: () -> Unit,
     val onBack: () -> Unit,
     val onCheckForUpdate: () -> Unit,
@@ -11,7 +10,6 @@ data class SettingsUpdatePageModel(
 
 data class SettingsUpdateRunModel(
     val title: String,
-    val body: String,
     val progressLabel: String,
     val onHome: () -> Unit,
     val onBack: () -> Unit,

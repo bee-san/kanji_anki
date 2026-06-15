@@ -1,0 +1,77 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-06-13T19:36:49Z",
+  "captures": [
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-top.png",
+      "route": "settings",
+      "scroll_position": "top",
+      "scroll_y": 0,
+      "scrollable": true,
+      "sha256": "00bc46c86a108fab2905d1840f3bff0de030d5e0d66919e42b9d96e89bba91f1",
+      "system_mode": "",
+      "theme": "girlypop",
+      "theme_choice": "girlypop"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-middle.png",
+      "route": "settings",
+      "scroll_position": "middle",
+      "scroll_y": 1920,
+      "scrollable": true,
+      "sha256": "985d2b437a7edd8228b3d0398ee7445c64a1ddaa071157bf1bef9ef09ede960d",
+      "system_mode": "",
+      "theme": "girlypop",
+      "theme_choice": "girlypop"
+    },
+    {
+      "launch_target": "settings",
+      "orientation": "portrait",
+      "path": "screenshots/kani-theme-matrix/girlypop/settings-bottom.png",
+      "route": "settings",
+      "scroll_position": "bottom",
+      "scroll_y": 4128,
+      "scrollable": true,
+      "sha256": "0ad0a6c6271de7b2e61bad8726a8d6e2460c07122bb840e707479b52b5ca64f7",
+      "system_mode": "",
+      "theme": "girlypop",
+      "theme_choice": "girlypop"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "settings",
+    "girlypop"
+  ],
+  "device": {
+    "api_level": "35",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "screenshots/kani-theme-matrix/girlypop/settings-top.png",
+    "screenshots/kani-theme-matrix/girlypop/settings-middle.png",
+    "screenshots/kani-theme-matrix/girlypop/settings-bottom.png"
+  ],
+  "git_ref": "feat/kani-theme-selector-20260613",
+  "git_sha": "eb517926f42f096d277a413ef945b32453ec73b7",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_route": "settings",
+  "requested_system_mode": "",
+  "requested_theme": "girlypop",
+  "requested_theme_choice": "girlypop",
+  "routes": [
+    "settings"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

@@ -1,5 +1,8 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,28 +18,32 @@ class HomeEmptyStateComposeTest {
     fun rendersLegacyBandEmptyState() {
         composeRule.setContent {
             HomeEmptyState(
-                title = "No kanji queued yet",
-                body = "Sync AnkiDroid to find problem cards.",
+                title = "No kanji queued",
+                body = "Sync AnkiDroid to load your kanji queue.",
                 style = HomeEmptyStateStyle.LegacyBand
             )
         }
 
-        composeRule.onNodeWithTag(homeEmptyStateTestTag("No kanji queued yet")).assertIsDisplayed()
-        composeRule.onNodeWithText("No kanji queued yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid to find problem cards.").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No kanji queued")).assertIsDisplayed()
+        composeRule.onNodeWithText("No kanji queued")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
+        composeRule.onNodeWithText("Sync AnkiDroid to load your kanji queue.").assertIsDisplayed()
     }
 
     @Test
     fun rendersPanelEmptyState() {
         composeRule.setContent {
             HomeEmptyState(
-                title = "No recent mistakes yet",
-                body = "Missed and hard reviews will show here after you study."
+                title = "No mistakes yet",
+                body = "Missed or hard reviews."
             )
         }
 
-        composeRule.onNodeWithTag(homeEmptyStateTestTag("No recent mistakes yet")).assertIsDisplayed()
-        composeRule.onNodeWithText("No recent mistakes yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Missed and hard reviews will show here after you study.").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeEmptyStateTestTag("No mistakes yet")).assertIsDisplayed()
+        composeRule.onNodeWithText("No mistakes yet")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
+        composeRule.onNodeWithText("Missed or hard reviews.").assertIsDisplayed()
     }
 }

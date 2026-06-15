@@ -9,47 +9,62 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.theme.KaniThemeChoice
 
 @Composable
-fun MainActivityComposeRoute(
+internal fun MainActivityComposeRoute(
     model: MainActivityShellModel = MainActivityShellModel(),
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
+    navActions: KaniNavActions? = null,
+    themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
+    isSystemDarkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MainActivityShellFrame(model) {
+    MainActivityShellFrame(
+        model = model,
+        themeChoice = themeChoice,
+        isSystemDarkTheme = isSystemDarkTheme,
+    ) {
         MainActivityRouteContent(
             model = model,
             initialScrollY = initialScrollY,
             onScrollY = onScrollY,
+            navActions = navActions,
             content = content
         )
     }
 }
 
 @Composable
-fun MainActivityComposeRouteWithActionBar(
+internal fun MainActivityComposeRouteWithActionBar(
     model: MainActivityShellModel = MainActivityShellModel(),
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
+    navActions: KaniNavActions? = null,
+    themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
+    isSystemDarkTheme: Boolean = false,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
-    MainActivityShellFrame(model) {
+    MainActivityShellFrame(
+        model = model,
+        themeChoice = themeChoice,
+        isSystemDarkTheme = isSystemDarkTheme,
+    ) {
         MainActivityRouteContentWithActionBar(
             model = model,
             initialScrollY = initialScrollY,
             onScrollY = onScrollY,
+            navActions = navActions,
             content = content,
             actionBar = actionBar,
         )
@@ -59,9 +74,11 @@ fun MainActivityComposeRouteWithActionBar(
 @Composable
 private fun MainActivityShellFrame(
     model: MainActivityShellModel,
+    themeChoice: KaniThemeChoice,
+    isSystemDarkTheme: Boolean,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme {
+    KaniTheme(choice = themeChoice, isSystemInDarkTheme = isSystemDarkTheme) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,6 +97,7 @@ internal fun MainActivityRouteContent(
     model: MainActivityShellModel,
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
+    navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
 ) {
     val scrollState = rememberScrollState(initial = initialScrollY)
@@ -87,42 +105,9 @@ internal fun MainActivityRouteContent(
         snapshotFlow { scrollState.value }.collect { onScrollY(it) }
     }
     val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
-        MainActivityUiSupport.STUDY_BG_SOFT
+        KaniTheme.colors.studyBg
     } else {
-        MainActivityUiSupport.BG
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(model.routeTestTag)
-            .semantics {
-                contentDescription = model.routeContentDescription
-            }
-            .background(Color(backgroundColor))
-            .systemBarsPadding()
-            .padding(18.dp)
-            .verticalScroll(scrollState),
-    ) {
-        content()
-    }
-}
-
-@Composable
-internal fun MainActivityRouteContentWithActionBar(
-    model: MainActivityShellModel,
-    initialScrollY: Int = 0,
-    onScrollY: (Int) -> Unit = {},
-    content: @Composable () -> Unit,
-    actionBar: @Composable () -> Unit,
-) {
-    val scrollState = rememberScrollState(initial = initialScrollY)
-    LaunchedEffect(scrollState, onScrollY) {
-        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
-    }
-    val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
-        MainActivityUiSupport.STUDY_BG_SOFT
-    } else {
-        MainActivityUiSupport.BG
+        KaniTheme.colors.bg
     }
     Column(
         modifier = Modifier
@@ -131,7 +116,53 @@ internal fun MainActivityRouteContentWithActionBar(
             .semantics {
                 contentDescription = model.routeContentDescription
             }
-            .background(Color(backgroundColor))
+            .background(backgroundColor)
+            .systemBarsPadding()
+            .padding(18.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(scrollState),
+        ) {
+            content()
+        }
+        if (navActions != null) {
+            KaniBottomNavBar(
+                selectedRoute = model.selectedRoute,
+                actions = navActions,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun MainActivityRouteContentWithActionBar(
+    model: MainActivityShellModel,
+    initialScrollY: Int = 0,
+    onScrollY: (Int) -> Unit = {},
+    navActions: KaniNavActions? = null,
+    content: @Composable () -> Unit,
+    actionBar: @Composable () -> Unit,
+) {
+    val scrollState = rememberScrollState(initial = initialScrollY)
+    LaunchedEffect(scrollState, onScrollY) {
+        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+    }
+    val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
+        KaniTheme.colors.studyBg
+    } else {
+        KaniTheme.colors.bg
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag(model.routeTestTag)
+            .semantics {
+                contentDescription = model.routeContentDescription
+            }
+            .background(backgroundColor)
             .systemBarsPadding()
             .padding(18.dp),
     ) {
@@ -144,5 +175,11 @@ internal fun MainActivityRouteContentWithActionBar(
             content()
         }
         actionBar()
+        if (navActions != null) {
+            KaniBottomNavBar(
+                selectedRoute = model.selectedRoute,
+                actions = navActions,
+            )
+        }
     }
 }

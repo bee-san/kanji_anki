@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.core
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StudyCueFormatterTest {
@@ -8,6 +10,24 @@ class StudyCueFormatterTest {
     fun answerLinesFallbackWhenCueHasNoVisibleText() {
         assertEquals(listOf("Collection clue"), StudyCueFormatter.answerLines(null))
         assertEquals(listOf("Collection clue"), StudyCueFormatter.answerLines(StudyCue("", "", "", "")))
+    }
+
+    @Test
+    fun answerLineLabelsTranslateToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals(
+                listOf("sorrow", "読み：ひ", "例：悲しみ"),
+                StudyCueFormatter.answerLines(StudyCue("sorrow", "ヒ", "悲しみ", DictionaryLookup.SOURCE_KANJIDIC2)),
+            )
+            assertEquals(listOf("コレクションのヒント"), StudyCueFormatter.answerLines(StudyCue("", "", "", "")))
+            assertEquals("コレクションのヒント", StudyCueFormatter.cleanFallbackMeaning(null, " ", 96))
+            assertEquals(
+                "個別の漢字の意味：Undress, removing",
+                StudyCueFormatter.individualKanjiMeaningsLine("Undress, removing"),
+            )
+            assertTrue(StudyCueFormatter.isReadingLine("読み：ひ"))
+            assertTrue(StudyCueFormatter.isCollectionClue("コレクションのヒント"))
+        }
     }
 
     @Test
@@ -110,5 +130,15 @@ class StudyCueFormatterTest {
             "StudyCue{meaning='meaning', reading='ヒ', fromExpression='悲しみ', meaningSource='KANJIDIC2'}",
             cue.toString(),
         )
+    }
+
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val previous = Locale.getDefault()
+        Locale.setDefault(locale)
+        try {
+            block()
+        } finally {
+            Locale.setDefault(previous)
+        }
     }
 }
