@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -147,6 +148,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
+        typingAnswer.updateBounds(Rect(10f, 10f, 200f, 80f))
+        assertTrue(typingAnswer.containsWindowPoint(20f, 20f))
 
         composeRule.runOnIdle {
             revealState.reveal()
@@ -156,6 +159,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
+        assertFalse(typingAnswer.containsWindowPoint(20f, 20f))
         composeRule.onNodeWithText("split").assertIsDisplayed()
     }
 
@@ -202,6 +206,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
+        typingAnswer.updateBounds(Rect(10f, 10f, 200f, 80f))
+        assertTrue(typingAnswer.containsWindowPoint(20f, 20f))
 
         composeRule.runOnIdle {
             revealState.reveal()
@@ -211,6 +217,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
+        assertFalse(typingAnswer.containsWindowPoint(20f, 20f))
         composeRule.onNodeWithText("split").assertIsDisplayed()
     }
 
