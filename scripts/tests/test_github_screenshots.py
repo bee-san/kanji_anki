@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
+from unittest.mock import patch
 
 from scripts.ralph_loop import github_screenshots
 
@@ -34,6 +36,11 @@ def fail(args: tuple[str, ...], stderr: str) -> CompletedProcess[str]:
 
 
 class GithubScreenshotsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        github_actions_env = patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
+        github_actions_env.start()
+        self.addCleanup(github_actions_env.stop)
+
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
 
