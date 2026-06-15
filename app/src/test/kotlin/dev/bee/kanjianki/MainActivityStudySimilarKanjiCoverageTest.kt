@@ -15,7 +15,6 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -38,7 +37,7 @@ class MainActivityStudySimilarKanjiCoverageTest {
     fun tearDown() {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         store?.close()
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        store = null
     }
 
     @Test
