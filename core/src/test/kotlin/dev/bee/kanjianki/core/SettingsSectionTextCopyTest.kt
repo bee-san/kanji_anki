@@ -31,6 +31,7 @@ class SettingsSectionTextCopyTest {
         assertEquals("1 card", SettingsSectionTextCopy.settingsCategoryPanelCount(1))
         assertEquals("2 cards", SettingsSectionTextCopy.settingsCategoryPanelCount(2))
         assertEquals("Open Study settings", SettingsSectionTextCopy.sectionOpenDescription("Study settings"))
+        assertEquals("Open Study settings", SettingsTextCopy.sectionOpenDescription("Study settings"))
     }
 
     @Test

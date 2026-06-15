@@ -41,20 +41,7 @@ fun SettingsScreen(model: SettingsScreenModel) {
             Box(
                 modifier = Modifier.padding(top = 7.dp, bottom = 9.dp)
             ) {
-                SettingsHubCard(
-                    title = card.title,
-                    summary = card.summary,
-                    iconRes = card.iconRes,
-                    iconTint = KaniTheme.colors.primary,
-                    borderColor = KaniTheme.colors.border,
-                    countText = card.panelCount,
-                    titleColor = KaniTheme.colors.plum,
-                    summaryColor = KaniTheme.colors.muted,
-                    countColor = KaniTheme.colors.primary,
-                    contentDescription = card.contentDescription,
-                    testTagKey = card.routeKey,
-                    onOpen = { card.onOpen.run() },
-                )
+                SettingsHubCard(card = card)
             }
         }
         Spacer(

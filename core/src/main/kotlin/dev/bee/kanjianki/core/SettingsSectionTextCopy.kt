@@ -90,13 +90,7 @@ object SettingsSectionTextCopy {
             panels.toString() + if (panels == 1) " card" else " cards"
         }
 
-    @JvmStatic
-    fun sectionOpenDescription(title: String): String =
-        if (isJapaneseLocale()) {
-            "${title}を開く"
-        } else {
-            "Open $title"
-        }
+    fun sectionOpenDescription(title: String): String = if (isJapaneseLocale()) "${title}を開く" else "Open $title"
 
     private fun localizedText(english: String, japanese: String): String =
         if (isJapaneseLocale()) japanese else english
