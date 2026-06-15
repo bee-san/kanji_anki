@@ -33,6 +33,7 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.theme.KaniThemeChoice
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -57,6 +58,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var contentScrollY = 0
+
+    @JvmField
+    var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
     @JvmField
     var activeSession: RecordsSchedulerModels.StudySession? = null

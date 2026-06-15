@@ -7,6 +7,11 @@ internal val DarkKaniColors: KaniColors = dev.bee.kanjianki.DarkKaniColors
 internal val GirlypopKaniColors: KaniColors = dev.bee.kanjianki.GirlypopKaniColors
 internal val NeutralLightKaniColors: KaniColors = dev.bee.kanjianki.NeutralLightKaniColors
 internal val AutumnKaniColors: KaniColors = dev.bee.kanjianki.AutumnKaniColors
+internal val MatchaMilkKaniColors: KaniColors = dev.bee.kanjianki.MatchaMilkKaniColors
+internal val OceanStudyKaniColors: KaniColors = dev.bee.kanjianki.OceanStudyKaniColors
+internal val MidnightArcadeKaniColors: KaniColors = dev.bee.kanjianki.MidnightArcadeKaniColors
+internal val GrapeSodaKaniColors: KaniColors = dev.bee.kanjianki.GrapeSodaKaniColors
+internal val ForestMossKaniColors: KaniColors = dev.bee.kanjianki.ForestMossKaniColors
 
 internal data class KaniSystemBars(
     val backgroundColor: Color,
@@ -21,6 +26,11 @@ internal fun KaniThemeChoice.resolvePalette(isSystemInDarkTheme: Boolean): KaniC
         KaniThemeChoice.DARK -> DarkKaniColors
         KaniThemeChoice.SYSTEM -> if (isSystemInDarkTheme) DarkKaniColors else NeutralLightKaniColors
         KaniThemeChoice.AUTUMN -> AutumnKaniColors
+        KaniThemeChoice.MATCHA_MILK -> MatchaMilkKaniColors
+        KaniThemeChoice.OCEAN_STUDY -> OceanStudyKaniColors
+        KaniThemeChoice.MIDNIGHT_ARCADE -> MidnightArcadeKaniColors
+        KaniThemeChoice.GRAPE_SODA -> GrapeSodaKaniColors
+        KaniThemeChoice.FOREST_MOSS -> ForestMossKaniColors
     }
 }
 

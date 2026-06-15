@@ -50,6 +50,7 @@ class MainActivityStartupTest {
 
             controller.create().start().resume()
 
+            assertEquals(KaniThemeChoice.DARK, activity.screenshotThemeChoiceOverride)
             assertEquals(KaniThemeChoice.DARK, activity.store.appThemeChoice())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)

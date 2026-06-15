@@ -22,6 +22,11 @@ internal object SettingsThemeCopy {
             KaniThemeChoice.DARK -> localizedText("Dark", "ダーク")
             KaniThemeChoice.SYSTEM -> localizedText("System", "システム")
             KaniThemeChoice.AUTUMN -> localizedText("Autumn", "オータム")
+            KaniThemeChoice.MATCHA_MILK -> localizedText("Matcha Milk", "抹茶ミルク")
+            KaniThemeChoice.OCEAN_STUDY -> localizedText("Ocean Study", "海の勉強")
+            KaniThemeChoice.MIDNIGHT_ARCADE -> localizedText("Midnight Arcade", "真夜中のアーケード")
+            KaniThemeChoice.GRAPE_SODA -> localizedText("Grape Soda", "グレープソーダ")
+            KaniThemeChoice.FOREST_MOSS -> localizedText("Forest Moss", "森のコケ")
         }
     }
 
@@ -33,6 +38,11 @@ internal object SettingsThemeCopy {
             KaniThemeChoice.DARK -> localizedText("Low-light and high-contrast.", "暗い画面向けの高コントラスト。")
             KaniThemeChoice.SYSTEM -> localizedText("Follows the device setting.", "端末の設定に合わせる。")
             KaniThemeChoice.AUTUMN -> localizedText("Warm brown and gold.", "あたたかいブラウンとゴールド。")
+            KaniThemeChoice.MATCHA_MILK -> localizedText("Soft matcha and cream.", "やさしい抹茶とミルク。")
+            KaniThemeChoice.OCEAN_STUDY -> localizedText("Cool ocean blue and paper.", "海の青と紙みたいな落ち着き。")
+            KaniThemeChoice.MIDNIGHT_ARCADE -> localizedText("Neon lights on a dark stage.", "深夜のネオンが光るダークテーマ。")
+            KaniThemeChoice.GRAPE_SODA -> localizedText("Playful violet and fizz.", "ぶどうソーダみたいな紫と泡。")
+            KaniThemeChoice.FOREST_MOSS -> localizedText("Moss green with warm leaf tones.", "森のコケとあたたかい葉の色。")
         }
     }
 
@@ -61,9 +71,6 @@ internal object SettingsThemeCopy {
     @JvmStatic
     internal fun previewSwatches(choice: KaniThemeChoice): List<Int> {
         return when (choice) {
-            KaniThemeChoice.GIRLYPOP -> themeSwatches(choice.resolvePalette(false))
-            KaniThemeChoice.LIGHT -> themeSwatches(choice.resolvePalette(false))
-            KaniThemeChoice.DARK -> themeSwatches(choice.resolvePalette(false))
             KaniThemeChoice.SYSTEM -> {
                 val light = KaniThemeChoice.LIGHT.resolvePalette(false)
                 val dark = KaniThemeChoice.DARK.resolvePalette(true)
@@ -74,7 +81,7 @@ internal object SettingsThemeCopy {
                     dark.primary.toArgb(),
                 )
             }
-            KaniThemeChoice.AUTUMN -> themeSwatches(choice.resolvePalette(false))
+            else -> themeSwatches(choice.resolvePalette(false))
         }
     }
 

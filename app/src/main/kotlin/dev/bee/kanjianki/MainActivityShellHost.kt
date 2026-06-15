@@ -9,7 +9,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
-            val themeChoice = activity.store.appThemeChoice()
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
@@ -39,7 +39,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
             beforeContent()
-            val themeChoice = activity.store.appThemeChoice()
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
