@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
+import dev.bee.kanjianki.core.StudyCueFormatter
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
@@ -20,10 +21,32 @@ internal fun similarKanjiExplanationSourceWords(session: RecordsSchedulerModels.
     for (example in examples) {
         val expression = example.expression.trim()
         if (expression.isNotEmpty()) {
-            out.add(expression)
+            out.add(formatSimilarKanjiSourceWord(example))
         }
     }
     return ArrayList(out)
+}
+
+private fun formatSimilarKanjiSourceWord(example: RecordsImportModels.Example): String {
+    val expression = example.expression.trim()
+    if (expression.isEmpty()) {
+        return ""
+    }
+    val details = ArrayList<String>(2)
+    val reading = StudyCueFormatter.hiraganaReading(example.reading).trim()
+    if (reading.isNotEmpty()) {
+        details.add(reading)
+    }
+    val meaning = StudyCueFormatter.cleanCollectionMeaning(example.meaning, 42)
+    if (meaning.isNotEmpty()) {
+        details.add(meaning)
+    }
+    val value = if (details.isEmpty()) {
+        expression
+    } else {
+        "$expression (${details.joinToString(" · ")})"
+    }
+    return StudyCueFormatter.compact(value, 64)
 }
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
@@ -104,7 +127,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         }
         choices.shuffle()
 
-        val meaning = choiceCard.primaryMeaning
+        val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
         val reason = StudyTextCopy.studyReasonLine(
             home.activeSimilarWritingRepair != null,
             session,
@@ -126,7 +149,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             StudyTextCopy.studyChoiceQuestion(meaning),
             SimilarChoiceGridModel(
                 choices,
-                true
+                false
             ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
             similarKanjiExplanationLines(explanation),
         )
@@ -147,7 +170,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val now = System.currentTimeMillis()
         val targetKanji = session.item?.kanji ?: ""
         val stored = home.store.dueSimilarChoiceForActiveTarget(targetKanji, now)
-        val meaning = if (session.row == null) "" else StudyTextCopy.rowMeaning(session.row)
+        val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
         return SimilarKanjiChoicePlanner.choiceCardForSession(
             stored,
             targetKanji,

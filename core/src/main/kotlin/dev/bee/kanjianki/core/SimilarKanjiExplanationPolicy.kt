@@ -160,17 +160,16 @@ object SimilarKanjiExplanationPolicy {
         if (isJapaneseLocale()) {
             return japaneseWatchThisPart(targetKanji, confusedWith)
         }
+        if (targetKanji.isEmpty()) {
+            return "Compare these kanji closely."
+        }
         if (confusedWith.isEmpty()) {
-            return if (targetKanji.isNotEmpty()) {
-                "Watch this kanji closely."
-            } else {
-                "Watch this pair closely."
-            }
+            return "Look closely at this kanji."
         }
         return if (confusedWith.size == 1) {
-            "Watch how $targetKanji differs from ${confusedWith.first()}."
+            "Compare $targetKanji with ${confusedWith.first()}."
         } else {
-            "Watch how $targetKanji differs from ${joinWithAnd(confusedWith)}."
+            "Compare $targetKanji with ${joinWithAnd(confusedWith)}."
         }
     }
 
@@ -178,12 +177,11 @@ object SimilarKanjiExplanationPolicy {
         targetKanji: String,
         confusedWith: List<String>,
     ): String {
+        if (targetKanji.isEmpty()) {
+            return "この漢字をよく見比べましょう。"
+        }
         if (confusedWith.isEmpty()) {
-            return if (targetKanji.isNotEmpty()) {
-                "この漢字をよく見ましょう。"
-            } else {
-                "このペアをよく見比べましょう。"
-            }
+            return "この漢字をよく見ましょう。"
         }
         return if (confusedWith.size == 1) {
             "${targetKanji}と${confusedWith.first()}の違いを見比べましょう。"
