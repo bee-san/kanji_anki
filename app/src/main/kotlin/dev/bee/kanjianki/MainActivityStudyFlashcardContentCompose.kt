@@ -72,16 +72,19 @@ fun FlashcardCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            FlashcardPromptHeader(model.promptHeader)
+            FlashcardPromptHeader(
+                model = model.promptHeader,
+                showHiddenHint = !model.revealState.isRevealed,
+            )
             if (!model.revealState.isRevealed) {
                 FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
-            }
-            model.typingAnswer?.let { typingAnswerState ->
-                TypingMeaningAnswer(
-                    label = StudyTextCopy.meaningLabel(),
-                    state = typingAnswerState,
-                    onDone = onTypingDone,
-                )
+                model.typingAnswer?.let { typingAnswerState ->
+                    TypingMeaningAnswer(
+                        label = StudyTextCopy.meaningLabel(),
+                        state = typingAnswerState,
+                        onDone = onTypingDone,
+                    )
+                }
             }
             if (model.revealState.isRevealed) {
                 StudyAnswerPanel(
@@ -96,7 +99,7 @@ fun FlashcardCard(
 }
 
 @Composable
-fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel) {
+fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel, showHiddenHint: Boolean = true) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -119,14 +122,16 @@ fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel) {
             bold = true,
             includeFontPadding = false
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        FlashcardHeaderText(
-            text = model.hiddenHint,
-            sizeSp = 14,
-            color = HeroMuted,
-            bold = false,
-            includeFontPadding = false
-        )
+        if (showHiddenHint) {
+            Spacer(modifier = Modifier.height(6.dp))
+            FlashcardHeaderText(
+                text = model.hiddenHint,
+                sizeSp = 14,
+                color = HeroMuted,
+                bold = false,
+                includeFontPadding = false
+            )
+        }
     }
 }
 
