@@ -14,6 +14,7 @@ final command sequence.
 - `ci/scripts/capture_android_screenshots.sh`
 - `scripts/ralph_loop/github_screenshots.py`
 - `scripts/ralph_loop/orchestrator.py`
+- `scripts/ralph_loop/button_latency_inventory.py`
 - `scripts/ralph_loop/validation.py`
 
 ## What the screenshot workflow produces
@@ -32,9 +33,30 @@ Expected run-dir outputs after the full Ralph loop:
 - `.ralph-loop/current/ui-manifest.json`
 - `.ralph-loop/current/button-contract.json`
 - `.ralph-loop/current/button-contract.md`
+- `.ralph-loop/current/button-latency-measurements.json`
+- `.ralph-loop/current/button-latency-inventory.json`
+- `.ralph-loop/current/button-latency-inventory.md`
 - `.ralph-loop/current/audit-report.json`
 - `.ralph-loop/current/audit-report.md`
 - `.ralph-loop/current/validation.json`
+
+## Loop modes and mutation guardrails
+
+- No mutation flag: run the remote visual review path. This captures/downloads the GitHub Actions
+  screenshots, asks the design comparison and button reviewers, and writes review artifacts. It does not
+  edit source files.
+- `--audit-only`: build the UI manifest, view matrix, button contract, latency inventory, and audit report.
+  This is the safest inventory/proposal mode and never dispatches screenshots or edits the checkout.
+- `--dry-run`: reserved for the scratch-checkout implementation path. Until that path is wired, the
+  orchestrator accepts the flag but fails closed, writes `.ralph-loop/current/mode-state.json`, and leaves
+  source files untouched.
+- `--apply-accepted`: reserved for applying one accepted scratch patch after before/after screenshots,
+  tests, forbidden-path guards, diff limits, and design-comparison gates pass.
+- `--commit-accepted`: reserved for committing the accepted patch after `--apply-accepted` succeeds. The
+  CLI rejects `--commit-accepted` unless `--apply-accepted` is also set.
+
+Invalid combinations fail during argument parsing: `--audit-only` with any mutation mode, `--dry-run` with
+apply/commit, and `--commit-accepted` without `--apply-accepted`.
 
 ## Preferred command sequence
 
@@ -69,7 +91,32 @@ Expected run-dir outputs after the full Ralph loop:
    The controller writes `remote-visual-context.json` and the review artifacts under
    `.ralph-loop/current/remote-visual/`.
 
-3. Validate the bundle and gate state:
+3. Import manual before/after timing numbers (if captured separately):
+
+   ```sh
+   cat > .ralph-loop/current/button-latency-measurements.json <<'JSON'
+   {
+     "schema": "button-latency-measurements-v1",
+     "rows": [
+       {
+         "id": "home-study-cta",
+         "baseline_ms": 850,
+         "after_ms": 610
+       }
+     ]
+   }
+   JSON
+
+   python3 scripts/ralph_loop/button_latency_inventory.py \
+     --repo-root . \
+     --manifest .ralph-loop/current/ui-manifest.json \
+     --button-contract .ralph-loop/current/button-contract.json \
+     --timings .ralph-loop/current/button-latency-measurements.json \
+     --out-json .ralph-loop/current/button-latency-inventory.json \
+     --out-md .ralph-loop/current/button-latency-inventory.md
+   ```
+
+4. Validate the bundle and gate state:
 
    ```sh
    python3 scripts/ralph_loop/validation.py \
@@ -120,7 +167,7 @@ Local capture requires:
 - A built debug APK under `app/build/outputs/apk`.
 - A Google APIs AVD, not the bundled ATD image. Local validation here only produced usable PNGs with `system-images;android-35;google_apis;arm64-v8a` (for example the `kanji_anki_api35_google_apis_local` AVD).
 
-If the local run still produces black PNGs, ANR/dialog text, or the wrong route, treat that as a debugging signal and fall back to GitHub Actions for the final artifact.
+If the local run produces black PNGs, ANR/dialog text, or the wrong route, treat that as a debugging signal and fall back to GitHub Actions for the final artifact.
 
 ## Failure states
 
