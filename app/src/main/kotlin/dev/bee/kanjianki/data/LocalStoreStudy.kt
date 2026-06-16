@@ -89,7 +89,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-        return StatsCacheStore(this as LocalStore).readFresh(nowMillis = System.currentTimeMillis())
+        return StatsCacheStore(this as LocalStore).readLatest()
     }
 
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {

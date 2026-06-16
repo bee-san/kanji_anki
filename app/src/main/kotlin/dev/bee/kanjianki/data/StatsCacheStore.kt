@@ -56,7 +56,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
 
     fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Boolean {
         val cursor = db.rawQuery(
-            "SELECT source_version, generated_at FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+            "SELECT source_version, generated_at, outcome_json FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
             null,
         )
         cursor.use {
@@ -65,8 +65,10 @@ internal class StatsCacheStore(private val store: LocalStore) {
             }
             val snapshotSourceVersion = it.getLong(0)
             val generatedAtMillis = it.getLong(1)
+            val outcomeJson = it.getString(2) ?: return false
             return snapshotSourceVersion == currentSourceVersion(db) &&
-                LocalDayPolicy.sameLocalDay(generatedAtMillis, nowMillis)
+                LocalDayPolicy.sameLocalDay(generatedAtMillis, nowMillis) &&
+                outcomeJson.contains("\"cacheFormatVersion\":$STATS_CACHE_FORMAT_VERSION")
         }
     }
 

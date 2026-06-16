@@ -109,25 +109,36 @@ class StatsCacheStoreTest {
 
     @Test
     fun readFreshStatsReturnsNullWhenCacheFormatVersionChanges() {
+        val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(7L)
-        cacheStore.write(db, snapshot(7L, 1_234L, 2, 5, cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1))
+        writeLegacyCacheRow(sourceVersion = 7L, generatedAtMillis = now + 12_000L)
 
-        assertNull(cacheStore.readFresh(db))
+        assertNull(cacheStore.readFresh(db, nowMillis = now + 6_000L))
     }
 
     @Test
-    fun hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
+    fun latestStatsSnapshotOrNullReturnsStaleSnapshotWhenFreshCacheMissing() {
+        val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
+        setSourceVersion(7L)
+        writeLegacyCacheRow(sourceVersion = 7L, generatedAtMillis = now + 12_000L)
+
+        assertNull(cacheStore.readFresh(db, nowMillis = now + 6_000L))
+
+        val latest = localStore!!.latestStatsSnapshotOrNull()
+
+        assertNotNull(latest)
+        assertEquals(1, latest!!.cacheFormatVersion)
+    }
+
+    @Test
+    fun hasFreshSnapshotChecksCacheFormatVersion() {
         val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(11L)
-        db.execSQL(
-            "INSERT OR REPLACE INTO stats_screen_cache " +
-                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, 11, ?, 'not-json', '{}')",
-            arrayOf<Any>(now + 12_000L),
-        )
+        cacheStore.write(db, snapshot(11L, now + 12_000L, 1, 3))
 
         assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
 
-        cacheStore.markDirty(db)
+        writeLegacyCacheRow(sourceVersion = 11L, generatedAtMillis = now + 12_000L)
 
         assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
     }
@@ -204,6 +215,19 @@ class StatsCacheStoreTest {
         } finally {
             cursor.close()
         }
+    }
+
+    private fun writeLegacyCacheRow(sourceVersion: Long, generatedAtMillis: Long) {
+        db.execSQL(
+            "INSERT OR REPLACE INTO stats_screen_cache " +
+                "(id, source_version, generated_at, outcome_json, impact_report_json) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any>(
+                sourceVersion,
+                generatedAtMillis,
+                StatsCacheCodec.outcomeToJson(StudyStatsStore.KaniOutcomeStats.empty()),
+                StatsCacheCodec.impactReportToJson(KanjiImpactAnalyzer.Report(0, 0, 0, Collections.emptyList())),
+            ),
+        )
     }
 
     private fun snapshot(
