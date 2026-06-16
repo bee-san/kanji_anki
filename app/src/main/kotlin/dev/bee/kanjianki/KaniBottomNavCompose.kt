@@ -78,7 +78,9 @@ internal fun KaniBottomNavBar(
             items.forEach { item ->
                 KaniBottomNavItem(
                     item = item,
-                    selected = item.route == selectedRoute,
+                    selected = item.route == selectedRoute || (
+                        item.route == MainActivityBase.NAV_SETTINGS_ROUTE && MainActivityBase.isSettingsRoute(selectedRoute)
+                    ),
                     modifier = Modifier.weight(1f),
                 )
             }

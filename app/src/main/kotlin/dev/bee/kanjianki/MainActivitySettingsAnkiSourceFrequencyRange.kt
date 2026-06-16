@@ -56,7 +56,7 @@ internal class MainActivitySettingsAnkiSourceFrequencyRange(
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 

@@ -103,6 +103,6 @@ private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Bool
             AutoUpdateScheduler.cancel(activity)
         }
         Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
-        activity.renderUpdate()
+        activity.renderUpdate(true)
     }
 }

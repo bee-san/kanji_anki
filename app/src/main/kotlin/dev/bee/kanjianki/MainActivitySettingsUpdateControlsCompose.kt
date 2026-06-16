@@ -55,9 +55,12 @@ internal fun SettingsUpdateHomeButton(onClick: () -> Unit) {
 }
 
 @Composable
-internal fun SettingsUpdateBackButton(onClick: () -> Unit) {
+internal fun SettingsUpdateBackButton(
+    onClick: () -> Unit,
+    label: String = SettingsTextCopy.backToSettingsLabel(),
+) {
     SettingsUpdateOutlinedButton(
-        label = SettingsTextCopy.backToSettingsLabel(),
+        label = label,
         minHeight = 54.dp,
         shape = SettingsUpdatePrimaryButtonShape,
         fontSize = 16.sp,

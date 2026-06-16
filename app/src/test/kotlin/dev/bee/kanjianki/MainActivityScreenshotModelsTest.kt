@@ -28,12 +28,14 @@ class MainActivityScreenshotModelsTest {
             .get()
 
         val model = screenshotSettingsScreenModel(activity)
-        val appearance = model.categories.single { it.sectionKey == "settings-appearance" }
-        val referenceData = model.categories.single { it.sectionKey == "settings-reference-data" }
+        val appearance = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE }
+        val referenceData = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE }
 
         assertEquals(SettingsTextCopy.settingsAppearanceTitle(), appearance.title)
-        assertTrue(appearance.expanded)
-        assertTrue(appearance.panels.single() is SettingsThemePanelModel)
-        assertFalse(referenceData.expanded)
+        assertEquals("1 card", appearance.panelCount)
+        assertEquals(SettingsTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAppearanceTitle()), appearance.contentDescription)
+        assertEquals(SettingsTextCopy.settingsReferenceDataTitle(), referenceData.title)
+        assertEquals("1 card", referenceData.panelCount)
+        assertFalse(referenceData.contentDescription.isBlank())
     }
 }

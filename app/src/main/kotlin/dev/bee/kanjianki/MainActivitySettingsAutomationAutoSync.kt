@@ -38,7 +38,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         ) {
             AutoSyncScheduler.schedule(activity)
             Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 
@@ -52,7 +52,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         ) {
             AutoSyncScheduler.cancel(activity)
             Toast.makeText(activity, result.message, Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 
