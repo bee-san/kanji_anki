@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,6 +49,111 @@ private const val HEADER_ICON_SIZE = 40
 private const val HEADER_COUNT_RADIUS = 16
 private const val HEADER_ICON_RADIUS = 16
 
+private data class SettingsCardChromeModel(
+    val title: String,
+    val summary: String,
+    val iconRes: Int,
+    val iconTint: ComposeColor,
+    val borderColor: ComposeColor,
+    val countText: String,
+    val titleColor: ComposeColor,
+    val summaryColor: ComposeColor,
+    val countColor: ComposeColor,
+    val contentDescription: String,
+    val testTag: String,
+)
+
+@Composable
+private fun SettingsCardChrome(
+    model: SettingsCardChromeModel,
+    surfaceColor: ComposeColor,
+    stateDescription: String? = null,
+    onClick: () -> Unit,
+    trailingContent: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = surfaceColor,
+        shape = RoundedCornerShape(HEADER_CORNER_RADIUS.dp),
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, model.borderColor)
+    ) {
+        val icon: Painter = painterResource(id = model.iconRes)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
+                .testTag(model.testTag)
+                .semantics {
+                    this.contentDescription = model.contentDescription
+                    if (stateDescription != null) {
+                        this.stateDescription = stateDescription
+                    }
+                }
+                .clickable(
+                    role = Role.Button,
+                    onClick = { onClick() }
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(HEADER_ICON_SIZE.dp)
+                    .background(HEADER_ICON_BG, RoundedCornerShape(HEADER_ICON_RADIUS.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(model.iconTint)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = model.title,
+                    color = model.titleColor,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (model.summary.isNotBlank()) {
+                    Text(
+                        text = model.summary,
+                        color = model.summaryColor,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .wrapContentHeight()
+                    .padding(start = 10.dp, end = 8.dp),
+                color = HEADER_COUNT_BG,
+                shape = RoundedCornerShape(HEADER_COUNT_RADIUS.dp),
+                border = BorderStroke(1.dp, model.borderColor)
+            ) {
+                Text(
+                    text = model.countText,
+                    color = model.countColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                )
+            }
+
+            trailingContent()
+        }
+    }
+}
+
 @Composable
 internal fun SettingsCategoryHeader(
     title: String,
@@ -64,88 +170,28 @@ internal fun SettingsCategoryHeader(
     testTagKey: String,
     onToggle: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = if (expanded) KaniTheme.colors.surface else HEADER_COLLAPSED_BG,
-        shape = RoundedCornerShape(HEADER_CORNER_RADIUS.dp),
-        shadowElevation = 3.dp,
-        border = BorderStroke(1.dp, borderColor)
-    ) {
-        val icon: Painter = painterResource(id = iconRes)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
-                .testTag(settingsCategoryHeaderTestTag(testTagKey))
-                .semantics {
-                    this.contentDescription = contentDescription
-                    this.stateDescription = SettingsTextCopy.categoryStateDescription(expanded)
-                }
-                .clickable(
-                    role = Role.Button,
-                    onClick = { withButtonTrace(title) { onToggle() } }
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(HEADER_ICON_SIZE.dp)
-                    .background(HEADER_ICON_BG, RoundedCornerShape(HEADER_ICON_RADIUS.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = ColorFilter.tint(iconTint)
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Category titles like Study settings, Automation, and Display & data
-                // all reuse this header row.
-                Text(
-                    text = title,
-                    color = titleColor,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (summary.isNotBlank()) {
-                    Text(
-                        text = summary,
-                        color = summaryColor,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .wrapContentHeight()
-                    .padding(start = 10.dp, end = 8.dp),
-                color = HEADER_COUNT_BG,
-                shape = RoundedCornerShape(HEADER_COUNT_RADIUS.dp),
-                border = BorderStroke(1.dp, borderColor)
-            ) {
-                Text(
-                    text = countText,
-                    color = countColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
-                )
-            }
-
-            val chevronRotation by animateFloatAsState(
-                targetValue = if (expanded) 90f else 0f,
-                label = "settings-category-chevron"
-            )
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        label = "settings-category-chevron"
+    )
+    SettingsCardChrome(
+        model = SettingsCardChromeModel(
+            title = title,
+            summary = summary,
+            iconRes = iconRes,
+            iconTint = iconTint,
+            borderColor = borderColor,
+            countText = countText,
+            titleColor = titleColor,
+            summaryColor = summaryColor,
+            countColor = countColor,
+            contentDescription = contentDescription,
+            testTag = settingsCategoryHeaderTestTag(testTagKey),
+        ),
+        surfaceColor = if (expanded) KaniTheme.colors.surface else HEADER_COLLAPSED_BG,
+        stateDescription = SettingsTextCopy.categoryStateDescription(expanded),
+        onClick = { withButtonTrace(title) { onToggle() } },
+        trailingContent = {
             Image(
                 painter = painterResource(id = R.drawable.ic_arrow_forward_24),
                 contentDescription = null,
@@ -155,6 +201,33 @@ internal fun SettingsCategoryHeader(
                 contentScale = ContentScale.Fit,
                 colorFilter = ColorFilter.tint(iconTint)
             )
-        }
-    }
+        },
+    )
+}
+
+internal fun settingsHubCardTestTag(routeKey: String): String {
+    return "settings-hub-card-$routeKey"
+}
+
+@Composable
+internal fun SettingsHubCard(
+    card: SettingsHubCardModel,
+) {
+    SettingsCardChrome(
+        model = SettingsCardChromeModel(
+            title = card.title,
+            summary = card.summary,
+            iconRes = card.iconRes,
+            iconTint = KaniTheme.colors.primary,
+            borderColor = KaniTheme.colors.border,
+            countText = card.panelCount,
+            titleColor = KaniTheme.colors.plum,
+            summaryColor = KaniTheme.colors.muted,
+            countColor = KaniTheme.colors.primary,
+            contentDescription = card.contentDescription,
+            testTag = settingsHubCardTestTag(card.routeKey),
+        ),
+        surfaceColor = KaniTheme.colors.surface,
+        onClick = { withButtonTrace(card.title) { card.onOpen.run() } },
+    )
 }

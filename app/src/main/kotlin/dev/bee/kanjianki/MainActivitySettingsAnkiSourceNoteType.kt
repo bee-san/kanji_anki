@@ -70,7 +70,7 @@ internal class MainActivitySettingsAnkiSourceNoteType(private val activity: Main
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show()
-            activity.renderSettings(true)
+            activity.renderSettingsImportSync(true)
         }
     }
 }

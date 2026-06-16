@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +48,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.progress.AnalyticsRange
@@ -86,22 +90,75 @@ internal fun progressAnalyticsBottomNavItemTestTag(tab: ProgressAnalyticsBottomN
     return "progress-bottom-nav-${tab.name.lowercase()}"
 }
 
+internal const val ProgressOverviewHeroSummaryTag = "progress-overview-hero-summary"
+internal const val ProgressOverviewMetricsCompactTag = "progress-overview-metrics-compact"
+internal const val ProgressDistributionCardCompactLayoutTag = "progress-distribution-card-compact-layout"
+
+private const val ProgressAnalyticsCompactWidthBreakpointDp = 420
+
+internal fun progressAnalyticsOverviewMetricColumns(maxWidth: Dp): Int {
+    return if (progressAnalyticsIsCompactWidth(maxWidth)) 2 else 3
+}
+
+internal fun progressAnalyticsDistributionUsesStackedLegendLayout(maxWidth: Dp): Boolean {
+    return progressAnalyticsIsCompactWidth(maxWidth)
+}
+
+internal fun progressAnalyticsOverviewSummaryText(state: ProgressOverviewState): String {
+    return buildString {
+        append(ProgressAnalyticsCopy.totalReviewsLabel())
+        append(' ')
+        append(state.totalReviews.valueLabel)
+        append(" · ")
+        append(ProgressAnalyticsCopy.accuracyLabel())
+        append(' ')
+        append(state.accuracy.valueLabel)
+        append(" · ")
+        append(ProgressAnalyticsCopy.streakLabel())
+        append(' ')
+        append(state.currentStreak.valueLabel)
+    }
+}
+
+private fun progressAnalyticsIsCompactWidth(maxWidth: Dp): Boolean {
+    return maxWidth < ProgressAnalyticsCompactWidthBreakpointDp.dp
+}
+
 @Composable
 internal fun ProgressAnalyticsDashboardScreen(
     state: ProgressAnalyticsState,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        ProgressOverviewSection(state.overview)
-        ProgressReviewsAnalyticsSection(state.reviewsAnalytics)
-        ProgressAccuracyRetentionSection(state.accuracyRetention)
-        ProgressByLevelSection(state.progressByLevel)
-        ProgressWeaknessInsightsSection(state.weaknessInsights)
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compactLayout = progressAnalyticsIsCompactWidth(maxWidth)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = if (compactLayout) 20.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 12.dp else 16.dp),
+        ) {
+            ProgressOverviewSection(
+                state = state.overview,
+                compactLayout = compactLayout,
+            )
+            ProgressReviewsAnalyticsSection(
+                state = state.reviewsAnalytics,
+                compactLayout = compactLayout,
+            )
+            ProgressAccuracyRetentionSection(
+                state = state.accuracyRetention,
+                compactLayout = compactLayout,
+            )
+            ProgressByLevelSection(
+                state = state.progressByLevel,
+                compactLayout = compactLayout,
+            )
+            ProgressWeaknessInsightsSection(
+                state = state.weaknessInsights,
+                compactLayout = compactLayout,
+            )
+        }
     }
 }
 
@@ -190,96 +247,188 @@ private fun RowScope.ProgressBottomNavItem(
 }
 
 @Composable
-private fun ProgressOverviewSection(state: ProgressOverviewState) {
-    ProgressSectionCard(
-        title = state.title,
-        subtitle = state.subtitle,
-        trailing = {
-            ProgressMascotBadge()
-        },
-    ) {
-        ProgressMetricGrid(
-            specs = listOf(
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.totalReviewsLabel(),
-                    value = state.totalReviews.valueLabel,
-                    detail = state.totalReviews.detailLabel,
-                    delta = state.totalReviews.deltaLabel,
-                    iconRes = R.drawable.ic_stats_24,
-                    accent = KaniUiTokens.Coral,
-                ),
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.accuracyLabel(),
-                    value = state.accuracy.valueLabel,
-                    detail = state.accuracy.detailLabel,
-                    delta = state.accuracy.deltaLabel,
-                    iconRes = R.drawable.ic_target_24,
-                    accent = KaniUiTokens.Teal,
-                ),
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.streakLabel(),
-                    value = state.currentStreak.valueLabel,
-                    detail = state.currentStreak.detailLabel,
-                    delta = ProgressAnalyticsCopy.bestStreakLabel(state.currentStreak.bestDays),
-                    iconRes = R.drawable.ic_flame_24,
-                    accent = KaniUiTokens.Gold,
-                ),
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.kanjiLearnedLabel(),
-                    value = state.kanjiLearned.valueLabel,
-                    detail = state.kanjiLearned.detailLabel,
-                    delta = state.kanjiLearned.deltaLabel,
-                    iconRes = R.drawable.ic_book_24,
-                    accent = KaniUiTokens.Blue,
-                ),
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.focusSessionsLabel(),
-                    value = state.focusSessions.valueLabel,
-                    detail = state.focusSessions.detailLabel,
-                    delta = state.focusSessions.deltaLabel,
-                    iconRes = R.drawable.ic_sparkle_24,
-                    accent = KaniUiTokens.StudyPlum,
-                ),
-                ProgressMetricSpec(
-                    label = ProgressAnalyticsCopy.studyTimeLabel(),
-                    value = state.studyTime.valueLabel,
-                    detail = state.studyTime.detailLabel,
-                    delta = state.studyTime.deltaLabel,
-                    iconRes = R.drawable.ic_trending_24,
-                    accent = KaniUiTokens.Primary,
-                ),
-            ),
-        )
+private fun ProgressOverviewSection(
+    state: ProgressOverviewState,
+    compactLayout: Boolean,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val columns = progressAnalyticsOverviewMetricColumns(maxWidth)
 
-        Spacer(modifier = Modifier.height(2.dp))
-        ProgressLineChartCard(
-            chart = state.reviewsOverTime,
-            selectedRange = AnalyticsRange.THIRTY_DAYS,
-            accentColor = KaniUiTokens.Coral,
-            secondaryColor = KaniUiTokens.Teal,
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ProgressSectionCard(
+            title = state.title,
+            subtitle = state.subtitle,
+            compactLayout = compactLayout,
+            trailing = {
+                ProgressMascotBadge(compactLayout = compactLayout)
+            },
         ) {
-            ProgressDistributionCard(
-                chart = state.cardTypeBreakdown,
-                modifier = Modifier.weight(1f),
+            ProgressOverviewHeroSummaryCard(
+                state = state,
+                compactLayout = compactLayout,
             )
-            ProgressDistributionCard(
-                chart = state.correctIncorrectBreakdown,
-                modifier = Modifier.weight(1f),
+
+            Spacer(modifier = Modifier.height(if (compactLayout) 8.dp else 12.dp))
+
+            ProgressMetricGrid(
+                specs = listOf(
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.totalReviewsLabel(),
+                        value = state.totalReviews.valueLabel,
+                        detail = state.totalReviews.detailLabel,
+                        delta = state.totalReviews.deltaLabel,
+                        iconRes = R.drawable.ic_stats_24,
+                        accent = KaniUiTokens.Coral,
+                    ),
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.accuracyLabel(),
+                        value = state.accuracy.valueLabel,
+                        detail = state.accuracy.detailLabel,
+                        delta = state.accuracy.deltaLabel,
+                        iconRes = R.drawable.ic_target_24,
+                        accent = KaniUiTokens.Teal,
+                    ),
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.streakLabel(),
+                        value = state.currentStreak.valueLabel,
+                        detail = state.currentStreak.detailLabel,
+                        delta = ProgressAnalyticsCopy.bestStreakLabel(state.currentStreak.bestDays),
+                        iconRes = R.drawable.ic_flame_24,
+                        accent = KaniUiTokens.Gold,
+                    ),
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.kanjiLearnedLabel(),
+                        value = state.kanjiLearned.valueLabel,
+                        detail = state.kanjiLearned.detailLabel,
+                        delta = state.kanjiLearned.deltaLabel,
+                        iconRes = R.drawable.ic_book_24,
+                        accent = KaniUiTokens.Blue,
+                    ),
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.focusSessionsLabel(),
+                        value = state.focusSessions.valueLabel,
+                        detail = state.focusSessions.detailLabel,
+                        delta = state.focusSessions.deltaLabel,
+                        iconRes = R.drawable.ic_sparkle_24,
+                        accent = KaniUiTokens.StudyPlum,
+                    ),
+                    ProgressMetricSpec(
+                        label = ProgressAnalyticsCopy.studyTimeLabel(),
+                        value = state.studyTime.valueLabel,
+                        detail = state.studyTime.detailLabel,
+                        delta = state.studyTime.deltaLabel,
+                        iconRes = R.drawable.ic_trending_24,
+                        accent = KaniUiTokens.Primary,
+                    ),
+                ),
+                columns = columns,
+                compactLayout = compactLayout,
+                modifier = if (compactLayout) Modifier.testTag(ProgressOverviewMetricsCompactTag) else Modifier,
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+            ProgressLineChartCard(
+                chart = state.reviewsOverTime,
+                selectedRange = AnalyticsRange.THIRTY_DAYS,
+                accentColor = KaniUiTokens.Coral,
+                secondaryColor = KaniUiTokens.Teal,
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+            ProgressDistributionChartsRow(state)
+        }
+    }
+}
+
+@Composable
+private fun ProgressOverviewHeroSummaryCard(
+    state: ProgressOverviewState,
+    compactLayout: Boolean,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(ProgressOverviewHeroSummaryTag),
+        shape = RoundedCornerShape(18.dp),
+        color = KaniTheme.colors.panelSoft,
+        border = BorderStroke(1.dp, KaniTheme.colors.border),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (compactLayout) 10.dp else 14.dp, vertical = if (compactLayout) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = state.subtitle,
+                color = KaniUiTokens.Muted,
+                fontSize = if (compactLayout) 10.sp else 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = if (compactLayout) 12.sp else 16.sp,
+                maxLines = 2,
+            )
+            Text(
+                text = progressAnalyticsOverviewSummaryText(state),
+                color = KaniUiTokens.Ink,
+                fontSize = if (compactLayout) 11.sp else 13.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = if (compactLayout) 14.sp else 18.sp,
+                maxLines = 2,
             )
         }
     }
 }
 
 @Composable
-private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState) {
+private fun ProgressDistributionChartsRow(state: ProgressOverviewState) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 520.dp) {
+            Column(
+                modifier = Modifier.testTag("progress-distribution-charts-stacked"),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ProgressDistributionCard(
+                    chart = state.cardTypeBreakdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("progress-distribution-card-types"),
+                )
+                ProgressDistributionCard(
+                    chart = state.correctIncorrectBreakdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("progress-distribution-card-correctness"),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ProgressDistributionCard(
+                    chart = state.cardTypeBreakdown,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("progress-distribution-card-types"),
+                )
+                ProgressDistributionCard(
+                    chart = state.correctIncorrectBreakdown,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("progress-distribution-card-correctness"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressReviewsAnalyticsSection(
+    state: ProgressReviewsAnalyticsState,
+    compactLayout: Boolean,
+) {
     ProgressSectionCard(
         title = state.title,
+        compactLayout = compactLayout,
         trailing = {
             ProgressRangeChipRow(
                 ranges = state.availableRanges,
@@ -294,6 +443,7 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
 
         ProgressMetricGrid(
             columns = 2,
+            compactLayout = compactLayout,
             specs = listOf(
                 ProgressMetricSpec(
                     label = ProgressAnalyticsCopy.totalReviewsLabel(),
@@ -331,6 +481,7 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
                 value = state.bestDayLabel,
                 detail = state.currentStreak.valueLabel,
                 accent = KaniUiTokens.Coral,
+                compactLayout = compactLayout,
                 modifier = Modifier.weight(1f),
             )
             ProgressMiniSummaryCard(
@@ -338,6 +489,7 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
                 value = state.currentStreak.valueLabel,
                 detail = state.currentStreak.detailLabel ?: "",
                 accent = KaniUiTokens.Teal,
+                compactLayout = compactLayout,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -347,9 +499,13 @@ private fun ProgressReviewsAnalyticsSection(state: ProgressReviewsAnalyticsState
 }
 
 @Composable
-private fun ProgressAccuracyRetentionSection(state: ProgressAccuracyRetentionState) {
+private fun ProgressAccuracyRetentionSection(
+    state: ProgressAccuracyRetentionState,
+    compactLayout: Boolean,
+) {
     ProgressSectionCard(
         title = state.title,
+        compactLayout = compactLayout,
         trailing = {
             ProgressRangeChipRow(
                 ranges = state.availableRanges,
@@ -399,9 +555,13 @@ private fun ProgressAccuracyRetentionSection(state: ProgressAccuracyRetentionSta
 }
 
 @Composable
-private fun ProgressByLevelSection(state: ProgressByLevelState) {
+private fun ProgressByLevelSection(
+    state: ProgressByLevelState,
+    compactLayout: Boolean,
+) {
     ProgressSectionCard(
         title = state.title,
+        compactLayout = compactLayout,
         trailing = {
             ProgressChip(
                 text = state.selectedFilterLabel,
@@ -410,7 +570,7 @@ private fun ProgressByLevelSection(state: ProgressByLevelState) {
             )
         },
     ) {
-        ProgressFractionCard(state.overallLearned)
+        ProgressFractionCard(state.overallLearned, compactLayout = compactLayout)
         ProgressLineChartCard(
             chart = state.cumulativeProgress,
             selectedRange = state.cumulativeProgress.selectedRange,
@@ -427,8 +587,14 @@ private fun ProgressByLevelSection(state: ProgressByLevelState) {
 }
 
 @Composable
-private fun ProgressWeaknessInsightsSection(state: ProgressWeaknessInsightsState) {
-    ProgressSectionCard(title = state.title) {
+private fun ProgressWeaknessInsightsSection(
+    state: ProgressWeaknessInsightsState,
+    compactLayout: Boolean,
+) {
+    ProgressSectionCard(
+        title = state.title,
+        compactLayout = compactLayout,
+    ) {
         ProgressFocusScoreCard(state.focusScore)
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -464,6 +630,7 @@ private fun ProgressSectionCard(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    compactLayout: Boolean = false,
     trailing: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -476,8 +643,8 @@ private fun ProgressSectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(if (compactLayout) 12.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 10.dp else 14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -487,21 +654,21 @@ private fun ProgressSectionCard(
                     Text(
                         text = title,
                         color = KaniUiTokens.Ink,
-                        fontSize = 22.sp,
+                        fontSize = if (compactLayout) 19.sp else 22.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 24.sp,
+                        lineHeight = if (compactLayout) 21.sp else 24.sp,
                     )
                     if (subtitle != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(if (compactLayout) 2.dp else 4.dp))
                         Text(
                             text = subtitle,
                             color = KaniUiTokens.Muted,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
+                            fontSize = if (compactLayout) 10.sp else 12.sp,
+                            lineHeight = if (compactLayout) 13.sp else 16.sp,
                         )
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (compactLayout) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     trailing()
                 }
             }
@@ -511,41 +678,50 @@ private fun ProgressSectionCard(
 }
 
 @Composable
-private fun ProgressMascotBadge() {
+private fun ProgressMascotBadge(compactLayout: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .size(if (compactLayout) 52.dp else 72.dp)
+                .clip(RoundedCornerShape(if (compactLayout) 18.dp else 24.dp))
                 .background(KaniTheme.colors.track),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "🦀",
-                fontSize = 31.sp,
+                fontSize = if (compactLayout) 24.sp else 31.sp,
             )
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Kani",
-            color = KaniUiTokens.Coral,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        if (!compactLayout) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Kani",
+                color = KaniUiTokens.Coral,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
 @Composable
 private fun ProgressMetricGrid(
+    modifier: Modifier = Modifier,
     specs: List<ProgressMetricSpec>,
     columns: Int = 3,
+    compactLayout: Boolean = false,
 ) {
-    val rows = specs.chunked(columns)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val rowSpacing = if (compactLayout || columns <= 2) 6.dp else 10.dp
+    val rows = rememberChunkedRows(specs, columns)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(rowSpacing)) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(rowSpacing), modifier = Modifier.fillMaxWidth()) {
                 row.forEach { spec ->
-                    ProgressMetricCard(spec = spec, modifier = Modifier.weight(1f))
+                    ProgressMetricCard(
+                        spec = spec,
+                        compactLayout = compactLayout,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
                 if (row.size < columns) {
                     repeat(columns - row.size) {
@@ -561,6 +737,7 @@ private fun ProgressMetricGrid(
 private fun ProgressMetricCard(
     spec: ProgressMetricSpec,
     modifier: Modifier = Modifier,
+    compactLayout: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
@@ -571,12 +748,12 @@ private fun ProgressMetricCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(if (compactLayout) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 4.dp else 8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(if (compactLayout) 28.dp else 34.dp)
                     .clip(CircleShape)
                     .background(spec.accent.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
@@ -585,39 +762,39 @@ private fun ProgressMetricCard(
                     painter = painterResource(spec.iconRes),
                     contentDescription = spec.label,
                     tint = spec.accent,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(if (compactLayout) 14.dp else 18.dp),
                 )
             }
             Text(
                 text = spec.label,
                 color = KaniUiTokens.Muted,
-                fontSize = 11.sp,
+                fontSize = if (compactLayout) 10.sp else 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
             Text(
                 text = spec.value,
                 color = KaniUiTokens.Ink,
-                fontSize = 20.sp,
+                fontSize = if (compactLayout) 16.sp else 20.sp,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 22.sp,
+                lineHeight = if (compactLayout) 18.sp else 22.sp,
                 maxLines = 2,
             )
             if (!spec.delta.isNullOrBlank()) {
                 Text(
                     text = spec.delta,
                     color = spec.accent,
-                    fontSize = 11.sp,
+                    fontSize = if (compactLayout) 9.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    lineHeight = 14.sp,
+                    lineHeight = if (compactLayout) 11.sp else 14.sp,
                 )
             }
             if (!spec.detail.isNullOrBlank()) {
                 Text(
                     text = spec.detail,
                     color = KaniUiTokens.Muted,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
+                    fontSize = if (compactLayout) 9.sp else 11.sp,
+                    lineHeight = if (compactLayout) 11.sp else 14.sp,
                 )
             }
         }
@@ -631,6 +808,7 @@ private fun ProgressMiniSummaryCard(
     detail: String,
     accent: Color,
     modifier: Modifier = Modifier,
+    compactLayout: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
@@ -641,26 +819,26 @@ private fun ProgressMiniSummaryCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(if (compactLayout) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 2.dp else 4.dp),
         ) {
             Text(
                 text = title,
                 color = KaniUiTokens.Muted,
-                fontSize = 11.sp,
+                fontSize = if (compactLayout) 9.sp else 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = value,
                 color = KaniUiTokens.Ink,
-                fontSize = 18.sp,
+                fontSize = if (compactLayout) 14.sp else 18.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
             if (detail.isNotBlank()) {
                 Text(
                     text = detail,
                     color = accent,
-                    fontSize = 11.sp,
+                    fontSize = if (compactLayout) 9.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
@@ -687,7 +865,10 @@ private fun ProgressTipCard(text: String) {
 }
 
 @Composable
-private fun ProgressFractionCard(state: ProgressFractionMetricState) {
+private fun ProgressFractionCard(
+    state: ProgressFractionMetricState,
+    compactLayout: Boolean = false,
+) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = KaniUiTokens.White,
@@ -697,7 +878,7 @@ private fun ProgressFractionCard(state: ProgressFractionMetricState) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(if (compactLayout) 12.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -711,9 +892,9 @@ private fun ProgressFractionCard(state: ProgressFractionMetricState) {
                 Text(
                     text = state.valueLabel ?: "${state.value} / ${state.total}",
                     color = KaniUiTokens.Ink,
-                    fontSize = 26.sp,
+                    fontSize = if (compactLayout) 24.sp else 26.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 28.sp,
+                    lineHeight = if (compactLayout) 26.sp else 28.sp,
                 )
             }
             Surface(
@@ -722,7 +903,10 @@ private fun ProgressFractionCard(state: ProgressFractionMetricState) {
             ) {
                 Text(
                     text = "${state.percent}%",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(
+                        horizontal = if (compactLayout) 10.dp else 12.dp,
+                        vertical = if (compactLayout) 6.dp else 8.dp,
+                    ),
                     color = KaniUiTokens.White,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -752,7 +936,7 @@ private fun ProgressLineChartCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ProgressLineChartHeader(chart, selectedRange, accentColor)
-            ProgressLineChartPlot(chart, accentColor, secondaryColor)
+            ProgressLineChartCard(chart, accentColor, secondaryColor)
             ProgressLineChartXAxis(chart.xAxisLabels)
             ProgressLineChartLegend(chart.series, accentColor, secondaryColor)
         }
@@ -799,11 +983,13 @@ private fun ProgressLineChartTooltip(label: String?) {
 }
 
 @Composable
-private fun ProgressLineChartPlot(
+private fun ProgressLineChartCard(
     chart: ProgressLineChartState,
     accentColor: Color,
     secondaryColor: Color,
 ) {
+    val lineColors = rememberProgressLineChartColors(accentColor, secondaryColor)
+    val gridLineColor = KaniTheme.colors.track
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -817,10 +1003,8 @@ private fun ProgressLineChartPlot(
                     .weight(1f)
                     .height(140.dp),
             ) {
-                val extraLineColors = listOf(KaniUiTokens.Blue, KaniUiTokens.Gold)
-                val gridLineColor = KaniTheme.colors.track
                 Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                    drawProgressLineChart(chart, accentColor, secondaryColor, extraLineColors, gridLineColor)
+                    drawProgressLineChart(chart, lineColors, gridLineColor)
                 }
             }
         }
@@ -883,19 +1067,16 @@ private fun ProgressLineChartLegend(
 
 private fun DrawScope.drawProgressLineChart(
     chart: ProgressLineChartState,
-    accentColor: Color,
-    secondaryColor: Color,
-    extraLineColors: List<Color>,
+    lineColors: List<Color>,
     gridLineColor: Color,
 ) {
     val values = chart.series.flatMap { it.values }
     val maxValue = (values.maxOrNull() ?: 1).coerceAtLeast(1)
-    val lineColors = listOf(accentColor, secondaryColor) + extraLineColors
     drawProgressGridLines(chart.yAxisLabels.size, gridLineColor)
     chart.series.forEachIndexed { index, series ->
         drawProgressSeries(
             series = series,
-            color = lineColors.getOrElse(index) { accentColor },
+            color = lineColors.getOrElse(index) { lineColors.first() },
             maxValue = maxValue,
         )
     }
@@ -1069,41 +1250,79 @@ private fun ProgressDistributionCard(
     chart: ProgressDistributionChartState,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = KaniUiTokens.White,
-        border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    BoxWithConstraints(modifier = modifier) {
+        val stackedLayout = progressAnalyticsDistributionUsesStackedLegendLayout(maxWidth)
+        val colors = rememberProgressDistributionColors()
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = KaniUiTokens.White,
+            border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
         ) {
-            Text(
-                text = chart.title,
-                color = KaniUiTokens.Ink,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ProgressDonutChart(
-                    segments = chart.segments,
-                    modifier = Modifier
-                        .size(104.dp)
-                        .semantics { contentDescription = chart.accessibilitySummary },
+                Text(
+                    text = chart.title,
+                    color = KaniUiTokens.Ink,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    chart.segments.forEachIndexed { index, segment ->
-                        ProgressLegendRow(
-                            segment = segment,
-                            color = donutColors[index % donutColors.size],
+                if (stackedLayout) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(ProgressDistributionCardCompactLayoutTag),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            ProgressDonutChart(
+                                segments = chart.segments,
+                                colors = colors,
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .semantics { contentDescription = chart.accessibilitySummary },
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            chart.segments.forEachIndexed { index, segment ->
+                                ProgressLegendRow(
+                                    segment = segment,
+                                    color = colors[index % colors.size],
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ProgressDonutChart(
+                            segments = chart.segments,
+                            colors = colors,
+                            modifier = Modifier
+                                .size(104.dp)
+                                .semantics { contentDescription = chart.accessibilitySummary },
                         )
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            chart.segments.forEachIndexed { index, segment ->
+                                ProgressLegendRow(
+                                    segment = segment,
+                                    color = colors[index % colors.size],
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1114,9 +1333,9 @@ private fun ProgressDistributionCard(
 @Composable
 private fun ProgressDonutChart(
     segments: List<ProgressDistributionSegmentState>,
+    colors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
-    val colors = donutColors
     val holeColor = KaniUiTokens.White
     Canvas(modifier = modifier) {
         val total = segments.sumOf { it.value }.coerceAtLeast(1)
@@ -1147,25 +1366,34 @@ private fun ProgressDonutChart(
 private fun ProgressLegendRow(
     segment: ProgressDistributionSegmentState,
     color: Color,
+    modifier: Modifier = Modifier,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
                 .clip(CircleShape)
                 .background(color),
         )
-        Column {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = segment.label,
                 color = KaniUiTokens.Ink,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "${segment.value} · ${segment.percent}%",
                 color = KaniUiTokens.Muted,
                 fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -1455,7 +1683,7 @@ private fun ProgressWeaknessRow(row: ProgressWeaknessRowState) {
 
 @Composable
 private fun ProgressMissedKanjiGrid(items: List<ProgressMissedKanjiState>) {
-    val rows = items.chunked(3)
+    val rows = rememberChunkedRows(items, 3)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1559,11 +1787,30 @@ private data class ProgressMetricSpec(
     val detail: String? = null,
 )
 
-private val donutColors: List<Color>
-    @Composable get() = listOf(
-        KaniUiTokens.Coral,
-        KaniUiTokens.Teal,
-        KaniUiTokens.Blue,
-        KaniUiTokens.Gold,
-        KaniUiTokens.StudyPlum,
-    )
+@Composable
+private fun <T> rememberChunkedRows(items: List<T>, chunkSize: Int): List<List<T>> {
+    return remember(items, chunkSize) {
+        items.chunked(chunkSize)
+    }
+}
+
+@Composable
+private fun rememberProgressDistributionColors(): List<Color> {
+    val coral = KaniUiTokens.Coral
+    val teal = KaniUiTokens.Teal
+    val blue = KaniUiTokens.Blue
+    val gold = KaniUiTokens.Gold
+    val plum = KaniUiTokens.StudyPlum
+    return remember(coral, teal, blue, gold, plum) {
+        listOf(coral, teal, blue, gold, plum)
+    }
+}
+
+@Composable
+private fun rememberProgressLineChartColors(accentColor: Color, secondaryColor: Color): List<Color> {
+    val blue = KaniUiTokens.Blue
+    val gold = KaniUiTokens.Gold
+    return remember(accentColor, secondaryColor, blue, gold) {
+        listOf(accentColor, secondaryColor, blue, gold)
+    }
+}

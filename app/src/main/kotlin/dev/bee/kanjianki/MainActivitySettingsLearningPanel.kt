@@ -27,7 +27,7 @@ internal class MainActivitySettingsLearningPanel(private val activity: MainActiv
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 }

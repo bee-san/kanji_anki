@@ -3,15 +3,20 @@ package dev.bee.kanjianki
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class MainActivitySettingsScreenComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
@@ -19,7 +24,6 @@ class MainActivitySettingsScreenComposeTest {
     @Test
     fun rendersHubCardsAndUpdatesCardDescription() {
         val titleState = mutableStateOf("Import & sync")
-
         composeRule.setContent {
             SettingsScreen(
                 model = SettingsScreenModel(

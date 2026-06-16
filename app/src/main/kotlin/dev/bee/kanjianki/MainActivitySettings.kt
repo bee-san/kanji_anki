@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
+import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.update.GitHubUpdater
@@ -11,6 +12,7 @@ import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
+    private val settingsRouteScrolls = mutableMapOf<String, Int>()
     internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
@@ -18,32 +20,11 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderUpdate() {
-        cancelPendingHomeRouteLoads()
-        if (isScreenshotLaunchRequested()) {
-            renderScreenshotUpdate()
-            return
-        }
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, contentScrollY) {
-            SettingsUpdatePage(
-                SettingsUpdatePageModel(
-                    title = SettingsTextCopy.updatePageTitle(),
-                    onHome = this@MainActivitySettings::renderHome,
-                    onBack = {
-                        contentScrollY = settingsScrollY
-                        renderSettings(true)
-                    },
-                    onCheckForUpdate = { runUpdate(false) },
-                    panel = settingsUpdatePanelModel(
-                        activity = this@MainActivitySettings,
-                        title = SettingsTextCopy.automaticUpdatesTitle()
-                    )
-                )
-            )
-        }
-        backAction = Runnable {
-            contentScrollY = settingsScrollY
-            renderSettings(true)
-        }
+        renderUpdate(false)
+    }
+
+    internal fun renderUpdate(preserveScroll: Boolean) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE, preserveScroll)
     }
 
     override fun renderSettings() {
@@ -51,25 +32,120 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderSettings(preserveScroll: Boolean) {
-        val scrollY = if (preserveScroll) {
-            contentScrollY
-        } else {
-            0
-        }
-        settingsScrollY = scrollY
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_ROUTE, preserveScroll)
+    }
+
+    internal fun renderSettingsImportSync(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE, preserveScroll)
+    }
+
+    internal fun renderSettingsStudyBehavior(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE, preserveScroll)
+    }
+
+    internal fun renderSettingsAutomation(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE, preserveScroll)
+    }
+
+    internal fun renderSettingsAppearance(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE, preserveScroll)
+    }
+
+    internal fun renderSettingsDisplayData(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE, preserveScroll)
+    }
+
+    internal fun renderReferenceDataDetails(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE, preserveScroll)
+    }
+
+    private fun renderSettingsRoute(route: String, preserveScroll: Boolean = false) {
+        cancelPendingHomeRouteLoads()
         if (isScreenshotLaunchRequested()) {
-            renderScreenshotSettings()
-            return
+            when (route) {
+                MainActivityBase.NAV_SETTINGS_ROUTE -> {
+                    renderScreenshotSettings()
+                    return
+                }
+                MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE -> {
+                    renderScreenshotUpdate()
+                    return
+                }
+            }
         }
-        renderAsyncHomeRoute(
-            loadingTitle = SettingsTextCopy.settingsTitle(),
-            load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
-            render = { model ->
-                composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
+        val scrollY = if (preserveScroll) settingsScrollFor(route) else 0
+        val onScrollY: (Int) -> Unit = { rememberSettingsScroll(route, it) }
+        when (route) {
+            MainActivityBase.NAV_SETTINGS_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
                     SettingsScreen(model)
                 }
-            },
-        )
+                backAction = Runnable { renderHome() }
+            }
+            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsImportSyncScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsStudyBehaviorScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsAutomationScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsAppearanceScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsDisplayDataScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE -> {
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsUpdatePage(
+                        model = SettingsUpdatePageModel(
+                            title = SettingsTextCopy.updatePageTitle(),
+                            onHome = this@MainActivitySettings::renderHome,
+                            onBack = { renderSettingsAutomation(true) },
+                            onCheckForUpdate = { runUpdate(false) },
+                            panel = settingsUpdatePanelModel(
+                                activity = this@MainActivitySettings,
+                                title = SettingsTextCopy.automaticUpdatesTitle(),
+                            ),
+                        ),
+                    )
+                }
+                backAction = Runnable { renderSettingsAutomation(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE -> {
+                val model = MainActivitySettingsReferenceData(this).referenceDataScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    ReferenceDataScreen(model)
+                }
+                backAction = Runnable { renderSettingsDisplayData(true) }
+            }
+            else -> {
+                renderSettings()
+            }
+        }
     }
 
     private fun renderScreenshotSettings() {
@@ -86,12 +162,27 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     private fun renderScreenshotUpdate() {
         val model = screenshotUpdatePageModel(this)
         composeRoute(
-            MainActivityBase.NAV_SETTINGS_ROUTE,
+            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE,
             initialScrollY = screenshotScrollY(),
             scrollPositionLabel = screenshotScrollPositionLabel(),
         ) {
             SettingsUpdatePage(model)
         }
+    }
+
+    private fun composeSettingsRoute(route: String, initialScrollY: Int, onScrollY: (Int) -> Unit, content: @Composable () -> Unit) {
+        composeRoute(route, initialScrollY, onScrollY = onScrollY, content = content)
+    }
+
+    private fun rememberSettingsScroll(route: String, scrollY: Int) {
+        settingsRouteScrolls[route] = scrollY
+        if (route == MainActivityBase.NAV_SETTINGS_ROUTE) {
+            settingsScrollY = scrollY
+        }
+    }
+
+    private fun settingsScrollFor(route: String): Int {
+        return settingsRouteScrolls[route] ?: if (route == MainActivityBase.NAV_SETTINGS_ROUTE) settingsScrollY else 0
     }
 
     fun runSettingsWrite(
@@ -171,22 +262,20 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun runUpdate(cachedPending: Boolean) {
         val copy = UpdateRunScreenCopy.forRun(cachedPending)
-        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, contentScrollY) {
+        composeSettingsRoute(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE, settingsScrollFor(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE), { rememberSettingsScroll(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE, it) }) {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),
                     progressLabel = copy.progressLabel(),
                     onHome = ::renderHome,
                     onBack = {
-                        contentScrollY = settingsScrollY
-                        renderSettings(true)
+                        renderSettingsAutomation(true)
                     },
                 )
             )
         }
         backAction = Runnable {
-            contentScrollY = settingsScrollY
-            renderSettings(true)
+            renderSettingsAutomation(true)
         }
         val updateUiRun = ++updateUiRunCounter
         activeUpdateUiRunToken = updateUiRun
@@ -203,7 +292,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 }
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 result.intent?.let(::startActivity)
-                renderUpdate()
+                renderUpdate(true)
             }
         }
     }

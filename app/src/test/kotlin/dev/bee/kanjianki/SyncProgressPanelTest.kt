@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -40,6 +41,18 @@ class SyncProgressPanelTest {
             assertEquals("1 / 2 枚をスキャン済み", panel.state.count)
             assertEquals("同期の進捗: 1 / 2 枚をスキャン済み", panel.state.progressDescription)
         }
+    }
+
+    @Test
+    fun syncProgressPanelShowsSpinnerWhileSavingLocalData() {
+        val panel = SyncProgressPanel { 1_000L }
+
+        panel.render(SyncProgress.cardsScanned(7, 9))
+        panel.render(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
+
+        assertTrue(panel.state.showSpinner)
+        assertEquals("7 / 9 cards scanned", panel.state.count)
+        assertEquals("Saving the Anki snapshot and import evidence.", panel.state.rate)
     }
 
     private inline fun withLocale(locale: Locale, block: () -> Unit) {

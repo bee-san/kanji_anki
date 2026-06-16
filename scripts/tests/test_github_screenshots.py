@@ -11,6 +11,7 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any, cast
 from unittest import mock
+from unittest.mock import patch
 
 from scripts.ralph_loop import github_screenshots
 
@@ -42,15 +43,24 @@ def run_remote_screenshots_for_test(**kwargs: Any) -> dict[str, object]:
         return github_screenshots.run_remote_screenshots(**kwargs)
 
 
-def _capture_entry(path: Path, route: str | None = None) -> dict[str, str]:
-    return {
+def _capture_entry(path: Path, route: str | None = None, ui_dump_path: Path | None = None) -> dict[str, str]:
+    entry = {
         "route": route or path.stem,
         "path": str(path),
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
     }
+    if ui_dump_path is not None:
+        entry["uiautomator_dump_path"] = str(ui_dump_path)
+        entry["uiautomator_dump_sha256"] = hashlib.sha256(ui_dump_path.read_bytes()).hexdigest()
+    return entry
 
 
 class GithubScreenshotsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        github_actions_env = patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
+        github_actions_env.start()
+        self.addCleanup(github_actions_env.stop)
+
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
 
@@ -71,13 +81,22 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertNotIn('mktemp -t kani-ui', script)
         self.assertIn('screen_scroll_position_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"', script)
         self.assertIn('screen_scroll_y_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"', script)
+        self.assertIn('screen_locale_extra="dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"', script)
+        self.assertIn('requested_locale="${SCREENSHOT_LOCALE:-}"', script)
+        self.assertIn('stats_label="Stats"', script)
+        self.assertIn('stats_label="統計"', script)
         self.assertIn('--es "${screen_route_extra}" "${launch_target}"', script)
+        self.assertIn('--es "${screen_locale_extra}" "${requested_locale}"', script)
         self.assertIn('--es "${screen_scroll_position_extra}" "${scroll_position}"', script)
         self.assertIn('--ei "${screen_scroll_y_extra}" "${scroll_y}"', script)
         self.assertNotIn('-a android.intent.action.MAIN', script)
         self.assertNotIn('-c android.intent.category.LAUNCHER', script)
         self.assertIn('captured_scroll_positions=()', script)
         self.assertIn('captured_scroll_ys=()', script)
+        self.assertIn('captured_uiautomator_dumps=()', script)
+        self.assertIn('capture_ui_xml()', script)
+        self.assertIn('uiautomator_dump_path": ui_dump_file', script)
+        self.assertIn('"requested_locale": requested_locale,', script)
         self.assertIn('local status=0', script)
         self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
         self.assertIn('if len(captured_routes) != len(captured_files):', script)
@@ -294,6 +313,87 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual("missing_artifact", mismatch["status"])
             self.assertIn("SHA-256", cast(str, mismatch["message"]))
 
+    def test_validate_artifact_verifies_uiautomator_dumps(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "stats-top.png"
+            dump = out / "stats-top.uiautomator.xml"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            dump.write_text("<hierarchy><node text=\"統計\" /></hierarchy>", encoding="utf-8")
+            png_sha256 = hashlib.sha256(png.read_bytes()).hexdigest()
+            dump_sha256 = hashlib.sha256(dump.read_bytes()).hexdigest()
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "stats"],
+                        "requested_route": "stats",
+                        "requested_locale": "ja",
+                        "routes": ["stats"],
+                        "files": [str(png)],
+                        "captures": [
+                            {
+                                "route": "stats",
+                                "launch_target": "stats",
+                                "orientation": "portrait",
+                                "file": str(png),
+                                "sha256": png_sha256,
+                                "uiautomator_dump_path": str(dump),
+                                "uiautomator_dump_sha256": dump_sha256,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="stats")
+            self.assertEqual("passed", result["status"])
+            captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(str(dump), captures[0]["uiautomator_dump_path"])
+            self.assertEqual(dump_sha256, str(captures[0]["uiautomator_dump_sha256"]))
+
+    def test_validate_artifact_accepts_relative_capture_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "stats-top.png"
+            dump = out / "stats-top.uiautomator.xml"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            dump.write_text("<hierarchy><node text=\"統計\" /></hierarchy>", encoding="utf-8")
+            png_sha256 = hashlib.sha256(png.read_bytes()).hexdigest()
+            dump_sha256 = hashlib.sha256(dump.read_bytes()).hexdigest()
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "captured_at_utc": "2026-06-13T00:00:00Z",
+                        "command_argv": ["ci/scripts/capture_android_screenshots.sh", "stats"],
+                        "requested_route": "stats",
+                        "requested_locale": "ja",
+                        "routes": ["stats"],
+                        "files": ["stats-top.png"],
+                        "captures": [
+                            {
+                                "route": "stats",
+                                "launch_target": "stats",
+                                "orientation": "portrait",
+                                "path": "stats-top.png",
+                                "sha256": png_sha256,
+                                "uiautomator_dump_path": "stats-top.uiautomator.xml",
+                                "uiautomator_dump_sha256": dump_sha256,
+                            }
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="stats")
+            self.assertEqual("passed", result["status"])
+            captures = cast(list[dict[str, object]], result["captures"])
+            self.assertEqual(str(dump), captures[0]["uiautomator_dump_path"])
+            self.assertEqual(dump_sha256, str(captures[0]["uiautomator_dump_sha256"]))
     def test_validate_artifact_rejects_non_exact_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
@@ -345,9 +445,9 @@ class GithubScreenshotsTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            missing_captures = github_screenshots.validate_artifact(out, expected_route="home")
-            self.assertEqual("missing_artifact", missing_captures["status"])
-            self.assertIn("captures", str(missing_captures["message"]))
+            files_only_manifest = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("passed", files_only_manifest["status"])
+            self.assertEqual([str(png)], files_only_manifest["pngs"])
 
             manifest_path.write_text(
                 json.dumps(

@@ -31,7 +31,7 @@ class SimilarKanjiExplanationPolicyTest {
         assertEquals(listOf("拉: pull", "提: carry", "謎: riddle"), explanation.meaningClues)
         assertEquals(listOf("拉: ら", "提: てい", "謎: なぞ"), explanation.readingClues)
         assertEquals(listOf("source one", "source two"), explanation.failedSourceWords)
-        assertEquals("Watch how 拉 differs from 提 and 謎.", explanation.watchThisPart)
+        assertEquals("Compare 拉 with 提 and 謎.", explanation.watchThisPart)
         assertEquals(ExplanationConfidence.HIGH, explanation.confidence)
     }
 
@@ -51,7 +51,7 @@ class SimilarKanjiExplanationPolicyTest {
         assertTrue(explanation.meaningClues.isEmpty())
         assertTrue(explanation.readingClues.isEmpty())
         assertTrue(explanation.failedSourceWords.isEmpty())
-        assertEquals("Watch how 拉 differs from 提.", explanation.watchThisPart)
+        assertEquals("Compare 拉 with 提.", explanation.watchThisPart)
         assertEquals(ExplanationConfidence.LOW, explanation.confidence)
     }
 
@@ -71,7 +71,7 @@ class SimilarKanjiExplanationPolicyTest {
         assertEquals(listOf("拉: pull"), explanation.meaningClues)
         assertEquals(listOf("拉: ら"), explanation.readingClues)
         assertTrue(explanation.failedSourceWords.isEmpty())
-        assertEquals("Watch this kanji closely.", explanation.watchThisPart)
+        assertEquals("Look closely at this kanji.", explanation.watchThisPart)
         assertEquals(ExplanationConfidence.LOW, explanation.confidence)
     }
 
@@ -104,6 +104,30 @@ class SimilarKanjiExplanationPolicyTest {
 
         assertEquals("拉と提の違いを見比べましょう。", singlePair.watchThisPart)
         assertEquals("この漢字をよく見ましょう。", noPair.watchThisPart)
+    }
+
+    @Test
+    fun englishLocaleUsesGenericWatchGuidanceWhenTargetKanjiMissing() {
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            "",
+            listOf(item("拉", "pull", "ら")),
+            listOf(pair("拉", "提")),
+            emptyList(),
+        )
+
+        assertEquals("Compare these kanji closely.", explanation.watchThisPart)
+    }
+
+    @Test
+    fun japaneseLocaleUsesGenericWatchGuidanceWhenTargetKanjiMissing() = withLocale(Locale.JAPAN) {
+        val explanation = SimilarKanjiExplanationPolicy.explain(
+            "",
+            listOf(item("拉", "pull", "ら")),
+            listOf(pair("拉", "提")),
+            emptyList(),
+        )
+
+        assertEquals("この漢字をよく見比べましょう。", explanation.watchThisPart)
     }
 
     private fun item(kanji: String, meaning: String, readings: String): RecordsImportModels.KanjiInventoryItem {

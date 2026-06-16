@@ -1,6 +1,8 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SettingsSectionTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.reminders.ReminderScheduler
@@ -9,9 +11,80 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     fun settingsScreenModel(): SettingsScreenModel {
         val current = activity.settings()
         return settingsScreenModel(
-            settingsHeroModel(current),
-            settingsCategoryModels(current),
-            Runnable { activity.renderHome() },
+            hero = settingsHeroModel(current),
+            cards = settingsHubCardModels(),
+            onHome = Runnable { activity.renderHome() },
+        )
+    }
+
+    fun settingsImportSyncScreenModel(): SettingsSubmenuScreenModel {
+        val current = activity.settings()
+        return submenuScreenModel(
+            title = SettingsTextCopy.settingsAnkiSourceTitle(),
+            body = SettingsTextCopy.settingsAnkiSourceBody(),
+            panels = listOf(
+                activity.noteTypeSettingsPanelModel(current),
+                activity.importFilterSettingsPanelModel(current),
+                activity.frequencyRangeSettingsPanelModel(current),
+                activity.autoSyncSettingsPanelModel(),
+            ),
+        )
+    }
+
+    fun settingsStudyBehaviorScreenModel(): SettingsSubmenuScreenModel {
+        val current = activity.settings()
+        return submenuScreenModel(
+            title = SettingsTextCopy.settingsStudyBehaviorTitle(),
+            body = SettingsTextCopy.settingsStudyBehaviorBody(),
+            panels = listOf(
+                MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
+                MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
+                MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
+                MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
+                activity.learningStepsSettingsPanelModel(),
+                MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
+                MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
+                activity.ladderThresholdSettingsPanelModel(),
+            ),
+        )
+    }
+
+    fun settingsAutomationScreenModel(): SettingsSubmenuScreenModel {
+        return submenuScreenModel(
+            title = SettingsTextCopy.settingsAutomationTitle(),
+            body = SettingsTextCopy.settingsAutomationBody(),
+            panels = listOf(
+                activity.reminderSettingsPanelModel(),
+                SettingsUpdateOverviewPanelModel(
+                    settingsUpdatePanelModel(
+                        activity = activity,
+                        title = SettingsTextCopy.appUpdatesTitle(),
+                    ),
+                    SettingsTextCopy.openUpdaterLabel(),
+                ) {
+                    activity.renderUpdate()
+                },
+            ),
+        )
+    }
+
+    fun settingsAppearanceScreenModel(): SettingsSubmenuScreenModel {
+        return submenuScreenModel(
+            title = SettingsTextCopy.settingsAppearanceTitle(),
+            body = SettingsTextCopy.settingsAppearanceBody(),
+            panels = listOf(
+                activity.themeSettingsPanelModel(),
+            ),
+        )
+    }
+
+    fun settingsDisplayDataScreenModel(): SettingsSubmenuScreenModel {
+        return submenuScreenModel(
+            title = SettingsTextCopy.settingsReferenceDataTitle(),
+            body = SettingsTextCopy.settingsReferenceDataBody(),
+            panels = listOf(
+                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
+            ),
         )
     }
 
@@ -96,84 +169,69 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
         )
     }
 
-    private fun settingsCategoryModels(current: RecordsSyncModels.Settings): List<SettingsCategorySectionModel> {
-        val ankiSourcePanels = listOf(
-            activity.noteTypeSettingsPanelModel(current),
-            activity.importFilterSettingsPanelModel(current),
-            activity.frequencyRangeSettingsPanelModel(current),
-            activity.autoSyncSettingsPanelModel(),
-        )
-        val studyBehaviorPanels = listOf(
-            MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
-            MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
-            MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
-            MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
-            activity.learningStepsSettingsPanelModel(),
-            MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
-            MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
-            activity.ladderThresholdSettingsPanelModel(),
-        )
-        val automationPanels = listOf(
-            activity.reminderSettingsPanelModel(),
-            SettingsUpdateOverviewPanelModel(
-                settingsUpdatePanelModel(
-                    activity = activity,
-                    title = SettingsTextCopy.appUpdatesTitle(),
-                ),
-                SettingsTextCopy.openUpdaterLabel(),
-            ) {
-                activity.settingsScrollY = activity.contentScrollY
-                activity.renderUpdate()
-            },
-        )
-        val appearancePanels = listOf(
-            activity.themeSettingsPanelModel(),
-        )
-        val referencePanels = listOf(
-            MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
-        )
-
+    private fun settingsHubCardModels(): List<SettingsHubCardModel> {
         return listOf(
-            settingsAnkiSourceCategoryModel(
-                activity.settingsAnkiExpanded,
-                Runnable {
-                    activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded
-                },
-                panelCount = 4,
-                panels = ankiSourcePanels,
+            SettingsHubCardModel(
+                routeKey = MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE,
+                title = SettingsTextCopy.settingsAnkiSourceTitle(),
+                summary = SettingsTextCopy.settingsAnkiSourceBody(),
+                iconRes = R.drawable.ic_book_24,
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(4),
+                contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAnkiSourceTitle()),
+                onOpen = Runnable { activity.renderSettingsImportSync() },
             ),
-            settingsStudyBehaviorCategoryModel(
-                activity.settingsStudyExpanded,
-                Runnable {
-                    activity.settingsStudyExpanded = !activity.settingsStudyExpanded
-                },
-                panelCount = 8,
-                panels = studyBehaviorPanels,
+            SettingsHubCardModel(
+                routeKey = MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,
+                title = SettingsTextCopy.settingsStudyBehaviorTitle(),
+                summary = SettingsTextCopy.settingsStudyBehaviorBody(),
+                iconRes = R.drawable.ic_study_24,
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(8),
+                contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsStudyBehaviorTitle()),
+                onOpen = Runnable { activity.renderSettingsStudyBehavior() },
             ),
-            settingsAutomationCategoryModel(
-                activity.settingsSyncExpanded,
-                Runnable {
-                    activity.settingsSyncExpanded = !activity.settingsSyncExpanded
-                },
-                panelCount = 2,
-                panels = automationPanels,
+            SettingsHubCardModel(
+                routeKey = MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE,
+                title = SettingsTextCopy.settingsAutomationTitle(),
+                summary = SettingsTextCopy.settingsAutomationBody(),
+                iconRes = R.drawable.ic_sync_24,
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(2),
+                contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAutomationTitle()),
+                onOpen = Runnable { activity.renderSettingsAutomation() },
             ),
-            settingsAppearanceCategoryModel(
-                activity.settingsAppearanceExpanded,
-                Runnable {
-                    activity.settingsAppearanceExpanded = !activity.settingsAppearanceExpanded
-                },
-                panelCount = 1,
-                panels = appearancePanels,
+            SettingsHubCardModel(
+                routeKey = MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE,
+                title = SettingsTextCopy.settingsAppearanceTitle(),
+                summary = SettingsTextCopy.settingsAppearanceBody(),
+                iconRes = R.drawable.ic_eye_24,
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(1),
+                contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAppearanceTitle()),
+                onOpen = Runnable { activity.renderSettingsAppearance() },
             ),
-            settingsReferenceDataCategoryModel(
-                activity.settingsAppExpanded,
-                Runnable {
-                    activity.settingsAppExpanded = !activity.settingsAppExpanded
-                },
-                panelCount = 1,
-                panels = referencePanels,
+            SettingsHubCardModel(
+                routeKey = MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE,
+                title = SettingsTextCopy.settingsReferenceDataTitle(),
+                summary = SettingsTextCopy.settingsReferenceDataBody(),
+                iconRes = R.drawable.ic_sparkle_24,
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(1),
+                contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsReferenceDataTitle()),
+                onOpen = Runnable { activity.renderSettingsDisplayData() },
             ),
+        )
+    }
+
+    private fun submenuScreenModel(
+        title: String,
+        body: String,
+        panels: List<SettingsPanelModel>,
+    ): SettingsSubmenuScreenModel {
+        return SettingsSubmenuScreenModel(
+            homeLabel = HomeTextCopy.homeLabel(),
+            onHome = Runnable { activity.renderHome() },
+            backLabel = SettingsTextCopy.backToSettingsLabel(),
+            onBack = Runnable { activity.renderSettings(true) },
+            title = title,
+            body = body,
+            panels = panels,
         )
     }
 }

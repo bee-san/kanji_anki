@@ -41,17 +41,17 @@ class MainActivityStudyChoiceComposeUnitTest {
             question = "Which kanji means split?",
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
-                balanceLastRow = true,
+                balanceLastRow = false,
                 onChoice = KanjiChoiceHandler { selected = it },
             ),
             explanationLines = listOf(
-                SimilarKanjiExplanationLineModel("Pair", "裂 vs 列", true),
-                SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
-                SimilarKanjiExplanationLineModel("Meaning clues", "split • tear • rend"),
-                SimilarKanjiExplanationLineModel("Reading clues", "れつ"),
-                SimilarKanjiExplanationLineModel("Shared components", "刀"),
-                SimilarKanjiExplanationLineModel("Different components", "衣 vs 歹"),
-                SimilarKanjiExplanationLineModel("Watch", "Watch the lower component before choosing.", true),
+                SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列", true),
+                SimilarKanjiExplanationLineModel("Seen in", "source one • source two"),
+                SimilarKanjiExplanationLineModel("Meaning hint", "split • tear • rend"),
+                SimilarKanjiExplanationLineModel("Reading hint", "れつ"),
+                SimilarKanjiExplanationLineModel("Shared part", "刀"),
+                SimilarKanjiExplanationLineModel("Different part", "衣 vs 歹"),
+                SimilarKanjiExplanationLineModel("Shape hint", "Look closely at the lower component before choosing.", true),
             ),
         )
 

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import java.util.Locale
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.data.LocalStore
@@ -30,6 +31,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun handleLaunchIntent(intent: Intent?) {
         val screenshotRoute = intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)?.takeIf { it.isNotBlank() }
         if (screenshotRoute != null) {
+            activity.screenshotLocaleTag()?.let(::applyScreenshotLocale)
             val screenshotThemeChoice = screenshotThemeChoiceOrNull(intent.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME))
             activity.screenshotThemeChoiceOverride = screenshotThemeChoice
             screenshotThemeChoice?.let {
@@ -60,5 +62,9 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             "update" -> activity.renderUpdate()
             else -> activity.renderHome()
         }
+    }
+
+    private fun applyScreenshotLocale(localeTag: String) {
+        Locale.setDefault(Locale.forLanguageTag(localeTag.replace('_', '-')))
     }
 }

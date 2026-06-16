@@ -3,6 +3,7 @@ set -euo pipefail
 
 requested_route="${1:-all}"
 requested_theme="${2:-}"
+requested_locale="${SCREENSHOT_LOCALE:-}"
 screenshots_dir="${SCREENSHOTS_DIR:-screenshots}"
 mkdir -p "${screenshots_dir}"
 
@@ -58,6 +59,7 @@ fi
 
 screen_route_extra="dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
 screen_theme_extra="dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+screen_locale_extra="dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
 screen_scroll_position_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
 screen_scroll_y_extra="dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
 
@@ -69,6 +71,7 @@ captured_scroll_positions=()
 captured_scroll_ys=()
 captured_themes=()
 captured_theme_choices=()
+captured_uiautomator_dumps=()
 captured_system_modes=()
 
 original_accelerometer_rotation="$(adb shell settings get system accelerometer_rotation 2>/dev/null | tr -d '\r' || true)"
@@ -160,7 +163,7 @@ capture_png() {
   adb shell screencap -p "${remote_path}"
   adb pull "${remote_path}" "${output_path}" >/dev/null
   adb shell rm -f "${remote_path}" >/dev/null 2>&1 || true
-  printf '%s\n' "${output_path}"
+  printf '%s\n' "${capture_name}.png"
 }
 
 dump_ui_xml() {
@@ -178,6 +181,23 @@ dump_ui_xml() {
   fi
   adb shell rm -f /sdcard/kani-ui.xml >/dev/null 2>&1 || true
   printf '%s\n' "${local_xml}"
+}
+
+capture_ui_xml() {
+  local capture_name="$1"
+  local output_path="${screenshots_dir}/${capture_name}.uiautomator.xml"
+  local local_xml
+  local_xml="$(dump_ui_xml)"
+  if [ -z "${local_xml}" ] || [ ! -f "${local_xml}" ]; then
+    printf '\n'
+    return 0
+  fi
+  if mv "${local_xml}" "${output_path}" >/dev/null 2>&1; then
+    printf '%s\n' "${capture_name}.uiautomator.xml"
+    return 0
+  fi
+  rm -f "${local_xml}"
+  printf '\n'
 }
 
 ui_dump_matches() {
@@ -297,7 +317,7 @@ scroll_y_for_position() {
       printf '%s\n' "${screen_height}"
       ;;
     bottom)
-      printf '%s\n' "$((screen_height * 2))"
+      printf '%s\n' "$((screen_height * 8))"
       ;;
     *)
       if [[ "${position}" =~ ^-?[0-9]+$ ]]; then
@@ -321,6 +341,9 @@ launch_screenshot_route() {
   local -a start_args=(am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}")
   if [ -n "${theme_choice}" ]; then
     start_args+=(--es "${screen_theme_extra}" "${theme_choice}")
+  fi
+  if [ -n "${requested_locale}" ]; then
+    start_args+=(--es "${screen_locale_extra}" "${requested_locale}")
   fi
   if [ -n "${scroll_position}" ]; then
     start_args+=(--es "${screen_scroll_position_extra}" "${scroll_position}")
@@ -350,6 +373,7 @@ capture_route_variant() {
   launch_screenshot_route "${launch_target}" "${capture_theme_choice}" "${scroll_position}" "${scroll_y}"
   wait_for_route "${capture_name}" "${expected_terms[@]}"
   output_path="$(capture_png "${capture_name}")"
+  ui_dump_path="$(capture_ui_xml "${capture_name}")"
   captured_routes+=("${route_name}")
   captured_files+=("${output_path}")
   captured_orientations+=("${orientation}")
@@ -358,6 +382,7 @@ capture_route_variant() {
   captured_scroll_ys+=("${scroll_y}")
   captured_themes+=("${capture_theme_label}")
   captured_theme_choices+=("${capture_theme_choice}")
+  captured_uiautomator_dumps+=("${ui_dump_path}")
   captured_system_modes+=("${capture_theme_system_mode}")
 }
 
@@ -387,11 +412,20 @@ if [ -n "${capture_theme_system_mode}" ]; then
   set_system_night_mode "${capture_theme_system_mode}"
 fi
 
+stats_label="Stats"
+requested_locale_lower="$(printf '%s' "${requested_locale}" | tr '[:upper:]' '[:lower:]')"
+if [[ "${requested_locale_lower}" == ja* ]]; then
+  stats_label="統計"
+fi
+if [ -n "${requested_locale}" ]; then
+  log "Using screenshot locale ${requested_locale}"
+fi
+
 case "${requested_route}" in
   all)
     capture_route_triplet home home portrait "Kani route home"
     capture_route_triplet study study portrait "Kani route study" "学習"
-    capture_route_triplet stats stats portrait "Kani route stats" "Stats"
+    capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
     capture_route_triplet settings settings portrait "Kani route settings" "Settings"
     capture_route_triplet games games portrait "Games"
     capture_route_triplet narrow home portrait "Kani route home"
@@ -404,7 +438,7 @@ case "${requested_route}" in
     capture_route_triplet study study portrait "Kani route study" "学習"
     ;;
   stats)
-    capture_route_triplet stats stats portrait "Kani route stats" "Stats"
+    capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
     ;;
   settings)
     capture_route_triplet settings settings portrait "Kani route settings" "Settings"
@@ -431,6 +465,7 @@ export APK_PATH="${apk_path}"
 export PACKAGE_NAME="${package_name}"
 export REQUESTED_ROUTE="${requested_route}"
 export REQUESTED_THEME="${requested_theme}"
+export REQUESTED_LOCALE="${requested_locale}"
 export REQUESTED_THEME_CHOICE="${capture_theme_choice}"
 export REQUESTED_SYSTEM_MODE="${capture_theme_system_mode}"
 export CAPTURED_ROUTES_RAW="$(printf '%s\n' "${captured_routes[@]}")"
@@ -441,6 +476,7 @@ export CAPTURED_SCROLL_POSITIONS_RAW="$(printf '%s\n' "${captured_scroll_positio
 export CAPTURED_SCROLL_YS_RAW="$(printf '%s\n' "${captured_scroll_ys[@]}")"
 export CAPTURED_THEMES_RAW="$(printf '%s\n' "${captured_themes[@]}")"
 export CAPTURED_THEME_CHOICES_RAW="$(printf '%s\n' "${captured_theme_choices[@]}")"
+export CAPTURED_UIAUTOMATOR_DUMPS_RAW="$(printf '%s\n' "${captured_uiautomator_dumps[@]}")"
 export CAPTURED_SYSTEM_MODES_RAW="$(printf '%s\n' "${captured_system_modes[@]}")"
 export CAPTURE_SCRIPT_PATH="${0}"
 
@@ -457,6 +493,7 @@ apk_path = os.environ["APK_PATH"]
 package_name = os.environ["PACKAGE_NAME"]
 requested_route = os.environ["REQUESTED_ROUTE"]
 requested_theme = os.environ.get("REQUESTED_THEME", "")
+requested_locale = os.environ.get("REQUESTED_LOCALE", "")
 capture_script_path = os.environ.get("CAPTURE_SCRIPT_PATH", "ci/scripts/capture_android_screenshots.sh")
 
 
@@ -474,6 +511,7 @@ captured_scroll_positions = [line for line in os.environ.get("CAPTURED_SCROLL_PO
 captured_scroll_ys = [line for line in os.environ.get("CAPTURED_SCROLL_YS_RAW", "").splitlines() if line]
 captured_themes = [line for line in os.environ.get("CAPTURED_THEMES_RAW", "").splitlines() if line]
 captured_theme_choices = [line for line in os.environ.get("CAPTURED_THEME_CHOICES_RAW", "").splitlines() if line]
+captured_uiautomator_dumps = [line for line in os.environ.get("CAPTURED_UIAUTOMATOR_DUMPS_RAW", "").splitlines() if line]
 captured_system_modes = [line for line in os.environ.get("CAPTURED_SYSTEM_MODES_RAW", "").splitlines() if line]
 if not captured_routes:
     captured_routes = [path.stem for path in sorted(screenshots_dir.glob("*.png"))]
@@ -491,6 +529,8 @@ if not captured_themes:
     captured_themes = [os.environ.get("REQUESTED_THEME", "")] * len(captured_routes)
 if not captured_theme_choices:
     captured_theme_choices = [os.environ.get("REQUESTED_THEME_CHOICE", "")] * len(captured_routes)
+if not captured_uiautomator_dumps:
+    captured_uiautomator_dumps = [""] * len(captured_routes)
 if not captured_system_modes:
     captured_system_modes = [os.environ.get("REQUESTED_SYSTEM_MODE", "")] * len(captured_routes)
 
@@ -528,7 +568,13 @@ for index in range(capture_count):
     theme_label = captured_themes[index] if index < len(captured_themes) else ""
     theme_choice = captured_theme_choices[index] if index < len(captured_theme_choices) else ""
     system_mode = captured_system_modes[index] if index < len(captured_system_modes) else ""
+    ui_dump_file = captured_uiautomator_dumps[index] if index < len(captured_uiautomator_dumps) else ""
     file_path = Path(file_name) if file_name else None
+    if file_path is not None and not file_path.is_absolute():
+        file_path = screenshots_dir / file_path
+    ui_dump_path = Path(ui_dump_file) if ui_dump_file else None
+    if ui_dump_path is not None and not ui_dump_path.is_absolute():
+        ui_dump_path = screenshots_dir / ui_dump_path
     if raw_scroll_y and str(raw_scroll_y).strip():
         try:
             scroll_y = int(str(raw_scroll_y).strip())
@@ -549,6 +595,8 @@ for index in range(capture_count):
             "scrollable": True,
             "path": file_name,
             "sha256": sha256(file_path) if file_path is not None and file_path.exists() else "",
+            "uiautomator_dump_path": ui_dump_file,
+            "uiautomator_dump_sha256": sha256(ui_dump_path) if ui_dump_path is not None and ui_dump_path.exists() else "",
         }
     )
 captured_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -571,6 +619,7 @@ manifest = {
     },
     "requested_route": requested_route,
     "requested_theme": requested_theme,
+    "requested_locale": requested_locale,
     "requested_theme_choice": os.environ.get("REQUESTED_THEME_CHOICE", ""),
     "requested_system_mode": os.environ.get("REQUESTED_SYSTEM_MODE", ""),
     "routes": unique_routes(captured_routes),
@@ -578,6 +627,7 @@ manifest = {
     "captures": captures,
     "notes": [
         "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions.",
     ],
 }
 (screenshots_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")

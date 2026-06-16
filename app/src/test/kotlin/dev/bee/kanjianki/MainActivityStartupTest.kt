@@ -12,6 +12,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
+import java.util.Locale
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
 
@@ -53,6 +54,27 @@ class MainActivityStartupTest {
             assertEquals(KaniThemeChoice.DARK, activity.screenshotThemeChoiceOverride)
             assertEquals(KaniThemeChoice.DARK, activity.store.appThemeChoice())
         } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    @Test
+    fun screenshotLaunchAppliesRequestedLocaleBeforeRendering() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val previousLocale = Locale.getDefault()
+        try {
+            val intent = Intent(context, NoopStartupActivity::class.java).apply {
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_LOCALE, "ja")
+            }
+            val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
+
+            controller.create().start().resume()
+
+            assertEquals("ja", Locale.getDefault().language)
+        } finally {
+            Locale.setDefault(previousLocale)
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
     }
