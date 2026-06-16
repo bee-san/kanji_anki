@@ -17,6 +17,11 @@ class KaniThemeChoiceResolutionTest {
         assertEquals(false, KaniThemeChoice.SYSTEM.resolveDarkTheme(isSystemInDarkTheme = false))
         assertEquals(true, KaniThemeChoice.SYSTEM.resolveDarkTheme(isSystemInDarkTheme = true))
         assertEquals(false, KaniThemeChoice.AUTUMN.resolveDarkTheme(isSystemInDarkTheme = true))
+        assertEquals(false, KaniThemeChoice.MATCHA_MILK.resolveDarkTheme(isSystemInDarkTheme = true))
+        assertEquals(false, KaniThemeChoice.OCEAN_STUDY.resolveDarkTheme(isSystemInDarkTheme = true))
+        assertEquals(true, KaniThemeChoice.MIDNIGHT_ARCADE.resolveDarkTheme(isSystemInDarkTheme = false))
+        assertEquals(false, KaniThemeChoice.GRAPE_SODA.resolveDarkTheme(isSystemInDarkTheme = true))
+        assertEquals(false, KaniThemeChoice.FOREST_MOSS.resolveDarkTheme(isSystemInDarkTheme = false))
     }
 
     @Test
@@ -27,6 +32,11 @@ class KaniThemeChoiceResolutionTest {
         assertEquals(NeutralLightKaniColors.bg, KaniThemeChoice.SYSTEM.resolvePalette(false).bg)
         assertEquals(DarkKaniColors.bg, KaniThemeChoice.SYSTEM.resolvePalette(true).bg)
         assertEquals(AutumnKaniColors.bg, KaniThemeChoice.AUTUMN.resolvePalette(false).bg)
+        assertEquals(MatchaMilkKaniColors.bg, KaniThemeChoice.MATCHA_MILK.resolvePalette(false).bg)
+        assertEquals(OceanStudyKaniColors.bg, KaniThemeChoice.OCEAN_STUDY.resolvePalette(false).bg)
+        assertEquals(MidnightArcadeKaniColors.bg, KaniThemeChoice.MIDNIGHT_ARCADE.resolvePalette(false).bg)
+        assertEquals(GrapeSodaKaniColors.bg, KaniThemeChoice.GRAPE_SODA.resolvePalette(false).bg)
+        assertEquals(ForestMossKaniColors.bg, KaniThemeChoice.FOREST_MOSS.resolvePalette(false).bg)
         assertTrue(GirlypopKaniColors.bg != NeutralLightKaniColors.bg)
     }
 
@@ -42,6 +52,7 @@ class KaniThemeChoiceResolutionTest {
         assertTrue(lightSystemBars.appearanceLightStatusBars)
         assertTrue(lightSystemBars.appearanceLightNavigationBars)
     }
+
     @Test
     fun palettesKeepReadableTextOnKeySurfaces() {
         listOf(
@@ -49,6 +60,11 @@ class KaniThemeChoiceResolutionTest {
             NeutralLightKaniColors,
             DarkKaniColors,
             AutumnKaniColors,
+            MatchaMilkKaniColors,
+            OceanStudyKaniColors,
+            MidnightArcadeKaniColors,
+            GrapeSodaKaniColors,
+            ForestMossKaniColors,
         ).forEach { colors ->
             assertContrastAtLeast(
                 foreground = colors.ink,

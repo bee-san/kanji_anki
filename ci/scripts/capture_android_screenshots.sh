@@ -94,14 +94,14 @@ resolve_theme_choice() {
     "")
       printf '\n'
       ;;
-    girlypop|light|dark|system|autumn)
+    girlypop|light|dark|system|autumn|matcha_milk|ocean_study|midnight_arcade|grape_soda|forest_moss)
       printf '%s\n' "${theme_label}"
       ;;
     system-light|system-dark)
       printf 'system\n'
       ;;
     *)
-      echo "Unsupported screenshot theme '${1}'. Expected girlypop, light, dark, system, system-light, system-dark, or autumn." >&2
+      echo "Unsupported screenshot theme '${1}'. Expected girlypop, light, dark, system, system-light, system-dark, autumn, matcha_milk, ocean_study, midnight_arcade, grape_soda, or forest_moss." >&2
       return 1
       ;;
   esac
@@ -218,8 +218,8 @@ if "isn't responding" in lower or "is not responding" in lower or "aerr_" in low
             print(line.strip(), file=sys.stderr)
     sys.exit(2)
 
-expected_terms = [term for term in sys.argv[2:] if term]
-if expected_terms and not all(term in xml for term in expected_terms):
+expected_terms = [term.lower() for term in sys.argv[2:] if term]
+if expected_terms and not all(term in lower for term in expected_terms):
     sys.exit(1)
 
 sys.exit(0)
@@ -424,7 +424,7 @@ fi
 case "${requested_route}" in
   all)
     capture_route_triplet home home portrait "Kani route home"
-    capture_route_triplet study study portrait "Kani route study" "Study"
+    capture_route_triplet study study portrait "Kani route study" "学習"
     capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
     capture_route_triplet settings settings portrait "Kani route settings" "Settings"
     capture_route_triplet games games portrait "Games"
@@ -435,7 +435,7 @@ case "${requested_route}" in
     capture_route_triplet home home portrait "Kani route home"
     ;;
   study)
-    capture_route_triplet study study portrait "Kani route study" "Study"
+    capture_route_triplet study study portrait "Kani route study" "学習"
     ;;
   stats)
     capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
