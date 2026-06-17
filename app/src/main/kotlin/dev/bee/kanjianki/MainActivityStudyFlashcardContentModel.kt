@@ -28,7 +28,7 @@ class FlashcardRevealState(initialRevealed: Boolean = false) {
     }
 }
 
-data class FlashcardCardModel(
+internal data class FlashcardCardModel(
     val promptHeader: FlashcardPromptHeaderModel,
     val heroPanel: FlashcardHeroPanelModel,
     val typingAnswer: TypingAnswerState?,

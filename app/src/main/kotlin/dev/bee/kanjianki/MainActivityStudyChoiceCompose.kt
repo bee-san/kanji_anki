@@ -50,7 +50,7 @@ class MeaningChoiceSessionState(selectedChoice: String? = null) {
 }
 
 @Composable
-fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
+internal fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
     return remember(
         model.question,
         model.choices,
@@ -88,7 +88,7 @@ internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Mod
 }
 
 @Composable
-fun MeaningChoiceSessionCard(
+internal fun MeaningChoiceSessionCard(
     model: MeaningChoiceSessionModel,
     state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
     showInlineResultAction: Boolean = true,

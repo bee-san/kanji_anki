@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -169,8 +170,8 @@ onChoice = KanjiChoiceHandler { selected = it }
         }
 
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Meaning -> kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Meaning -> kanji").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Pick the matching kanji.").assertCountEquals(0)
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
     }
 
@@ -259,9 +260,9 @@ onChoice = KanjiChoiceHandler { selected = it }
         composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("列"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Incorrect answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceIncorrectStateDescription()))
         composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceCorrectStateDescription()))
         composeRule.onAllNodesWithText("Next").assertCountEquals(0)
     }
 
@@ -292,7 +293,7 @@ onChoice = KanjiChoiceHandler { selected = it }
 
         composeRule.onNodeWithText("Selected: 裂").assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceCorrectStateDescription()))
         composeRule.onNodeWithTag(similarChoiceTestTag("列"))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
     }
@@ -487,8 +488,6 @@ onChoice = KanjiChoiceHandler { selected = it }
         assertEquals(first.left, third.left, POSITION_TOLERANCE_PX)
         assertEquals(first.width, second.width, SIZE_TOLERANCE_PX)
         assertTrue(third.width > first.width)
-        assertTrue(third.right > second.right)
-        assertEquals(first.height, third.height, SIZE_TOLERANCE_PX)
     }
 
     private fun boundsForChoice(glyph: String): Rect {

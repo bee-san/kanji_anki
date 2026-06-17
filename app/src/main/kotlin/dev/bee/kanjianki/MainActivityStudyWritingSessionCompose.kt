@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun WritingSessionCard(
+internal fun WritingSessionCard(
     model: WritingSessionCardModel,
     modifier: Modifier = Modifier,
 ) {
