@@ -110,7 +110,7 @@ data class SimilarChoiceSessionModel(
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
 )
 
-data class MeaningChoiceSessionModel(
+internal data class MeaningChoiceSessionModel(
     val modeLabel: String,
     val title: String,
     val taskLabel: String,

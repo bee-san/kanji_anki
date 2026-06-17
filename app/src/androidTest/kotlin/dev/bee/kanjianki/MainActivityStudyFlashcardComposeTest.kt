@@ -1,6 +1,11 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,7 +17,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -23,6 +31,20 @@ import org.junit.Test
 class MainActivityStudyFlashcardComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    private fun setStudyAnswerPanelContent(
+        model: StudyAnswerPanelModel,
+        onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
+    ) {
+        composeRule.setContent {
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                StudyAnswerPanel(
+                    model = model,
+                    onAnkiTapAction = onAnkiTapAction,
+                )
+            }
+        }
+    }
 
     @Test
     fun rendersRevealButtonAndInvokesAction() {
@@ -221,4 +243,185 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
         composeRule.onNodeWithText("Trace it below, then check.").assertIsDisplayed()
     }
+
+    @Test
+    fun expandsOnlyOneStudyAnswerAccordionAtATime() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    breakdownComponentRows = listOf("left component", "right component"),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(1)
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Breakdown")).performScrollTo().performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText("Components").assertCountEquals(1)
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Stroke order")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText("Stroke count").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Components").assertCountEquals(0)
+    }
+
+    @Test
+    fun usedInAnkiShowAllToggleExpandsRows() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    examples = sampleUsedInAnkiExamples(),
+                    currentExample = sampleUsedInAnkiExamples().first(),
+                    openAnkiDroidSupported = false,
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText("甲").assertCountEquals(1)
+        composeRule.onAllNodesWithText("丁").assertCountEquals(1)
+        composeRule.onAllNodesWithText("丙").assertCountEquals(1)
+        composeRule.onAllNodesWithText("乙").assertCountEquals(0)
+
+        composeRule.onNodeWithTag(studyAnswerUsedInAnkiToggleTestTag()).performScrollTo().assertIsDisplayed().performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText("乙").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Show fewer").assertCountEquals(1)
+    }
+
+    @Test
+    fun emptyStudyAnswerAccordionsShowFriendlyCopy() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = studyAnswerKanjiDetailsModel(
+                    kanji = "裂",
+                    dictionaryEntry = null,
+                    examples = emptyList(),
+                    currentExample = null,
+                    openAnkiDroidSupported = false,
+                    deckNamesByCardId = emptyMap(),
+                    modelNamesByNoteId = emptyMap(),
+                    strokeOrderAssetAvailable = false,
+                    strokeOrderAssetReference = null,
+                    breakdownComponentRows = emptyList(),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Kani couldn't find local details for this kanji yet.").assertIsDisplayed()
+        composeRule.onNodeWithText("Review still works; this drawer can fill in after dictionary data syncs.").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("No other synced Anki words yet.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync more cards and Kani will connect them here.").assertIsDisplayed()
+    }
+
+    @Test
+    fun usedInAnkiRowTapReturnsCopyFallbackAction() {
+        val examples = sampleUsedInAnkiExamples()
+        var tappedAction: StudyAnswerAnkiTapActionModel? = null
+
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    examples = examples,
+                    currentExample = examples.first(),
+                    openAnkiDroidSupported = false,
+                ),
+            ),
+            onAnkiTapAction = { tappedAction = it },
+        )
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
+        composeRule.onNodeWithTag(studyAnswerUsedInAnkiRowTestTag(0)).performClick()
+
+        assertNotNull(tappedAction)
+        when (val action = tappedAction) {
+            is StudyAnswerAnkiTapActionModel.CopyId -> assertEquals(101L, action.value)
+            else -> throw AssertionError("Expected CopyId, got $action")
+        }
+    }
+}
+
+private fun sampleStudyAnswerPanelModel(details: StudyAnswerKanjiDetailsModel): StudyAnswerPanelModel {
+    return StudyAnswerPanelModel(
+        title = "Answer",
+        glyph = "裂",
+        glyphSizeSp = 76,
+        lines = listOf(
+            StudyAnswerLineModel("split", MainActivityUiSupport.STUDY_PLUM, 17, true),
+            StudyAnswerLineModel("Reading: レツ", MainActivityUiSupport.STUDY_PINK_DARK, 15, true),
+        ),
+        helperText = "Trace it below, then check.",
+        stateKey = "study-answer-test",
+        kanjiDetails = details,
+    )
+}
+
+private fun sampleStudyAnswerDetails(
+    examples: List<RecordsImportModels.Example> = sampleUsedInAnkiExamples(),
+    currentExample: RecordsImportModels.Example? = examples.firstOrNull(),
+    openAnkiDroidSupported: Boolean = false,
+    breakdownComponentRows: List<String> = emptyList(),
+): StudyAnswerKanjiDetailsModel {
+    return studyAnswerKanjiDetailsModel(
+        kanji = "裂",
+        dictionaryEntry = sampleDictionaryEntry(),
+        examples = examples,
+        currentExample = currentExample,
+        showAllUsedInAnki = false,
+        openAnkiDroidSupported = openAnkiDroidSupported,
+        deckNamesByCardId = mapOf(
+            201L to "Core Deck",
+            202L to "Study Deck",
+        ),
+        modelNamesByNoteId = mapOf(
+            101L to "Basic Model",
+            102L to "Reading Model",
+        ),
+        strokeOrderAssetAvailable = false,
+        strokeOrderAssetReference = null,
+        breakdownComponentRows = breakdownComponentRows,
+    )
+}
+
+private fun sampleDictionaryEntry(): DictionaryLookup.KanjiEntry {
+    return DictionaryLookup.KanjiEntry(
+        DictionaryLookup.KanjiEntryFields(
+            literal = "裂",
+            meanings = listOf("tear apart", "separate"),
+            onReadings = listOf("レツ"),
+            kunReadings = listOf("さ.ける"),
+            nanoriReadings = listOf("さけ"),
+            strokeCount = 12,
+            grade = 6,
+            radical = 129,
+            kanjidicFrequency = 321,
+            jitenRank = 14,
+        ),
+    )
+}
+
+private fun sampleUsedInAnkiExamples(): List<RecordsImportModels.Example> {
+    return listOf(
+        RecordsImportModels.Example("anki", 201L, 101L, "甲", "こう", "first", "", false, 0),
+        RecordsImportModels.Example("anki", 202L, 102L, "乙", "おつ", "second", "", false, 0),
+        RecordsImportModels.Example("anki", 203L, 103L, "丙", "へい", "third", "", false, 0),
+        RecordsImportModels.Example("anki", 204L, 104L, "丁", "てい", "fourth", "", false, 0),
+    )
 }

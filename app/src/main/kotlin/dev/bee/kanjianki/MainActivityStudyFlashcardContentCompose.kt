@@ -45,7 +45,7 @@ private val HeroPink: Color @Composable get() = KaniTheme.colors.primary
 private val HeroPillFill: Color @Composable get() = KaniTheme.colors.pill
 
 @Composable
-fun FlashcardCard(
+internal fun FlashcardCard(
     model: FlashcardCardModel,
     modifier: Modifier = Modifier,
     onTypingDone: Runnable? = null,

@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-data class WritingSessionCardModel(
+internal data class WritingSessionCardModel(
     val promptHeader: WritingPromptHeaderModel,
     val answerPanel: StudyAnswerPanelModel,
     val answerPanelState: WritingAnswerPanelState,
