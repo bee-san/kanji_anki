@@ -79,6 +79,36 @@ object StudyTextCopy {
     fun studyChoiceBody(): String = localizedText("Pick the matching kanji.", "一致する漢字を選んでください。")
 
     @JvmStatic
+    fun viewKanjiDetailsLabel(): String = localizedText("View kanji details", "漢字の詳細を見る")
+
+    @JvmStatic
+    fun openInBrowseLabel(): String = localizedText("Open in Browse", "Browseで開く")
+
+    @JvmStatic
+    fun exploreDifferencesLabel(): String = localizedText("Explore the differences", "違いを見比べる")
+
+    @JvmStatic
+    fun similarKanjiDifferencesTitle(): String = localizedText("Explore the differences", "違いを見比べる")
+
+    @JvmStatic
+    fun similarKanjiDifferencesBody(): String = localizedText(
+        "Compare the target kanji with the similar choices. Exact stroke or component claims only appear when Kani has reliable local data; otherwise use the shape hint as a safe visual fallback.",
+        "正解の漢字と似ている選択肢を見比べます。Kaniが信頼できるローカルデータを持つ場合だけ画数や部品の違いを表示し、それ以外は形のヒントで安全に確認します。"
+    )
+
+    @JvmStatic
+    fun similarKanjiCorrectLabel(): String = localizedText("Correct kanji", "正解の漢字")
+
+    @JvmStatic
+    fun similarKanjiChoicesLabel(): String = localizedText("Similar choices", "似ている選択肢")
+
+    @JvmStatic
+    fun similarKanjiChoiceLabel(kanji: String): String = localizedText("Kanji $kanji", "$kanji")
+
+    @JvmStatic
+    fun backToStudyLabel(): String = localizedText("Back to study", "学習に戻る")
+
+    @JvmStatic
     fun choiceCorrectStateDescription(): String = localizedText("Correct answer", "正解")
 
     @JvmStatic

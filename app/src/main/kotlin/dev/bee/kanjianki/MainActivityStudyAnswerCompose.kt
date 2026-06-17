@@ -29,6 +29,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyCuePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val StudyAnswerPlum: Color @Composable get() = KaniTheme.colors.plum
 private val StudyAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
@@ -124,6 +125,7 @@ internal fun StudyAnswerPanel(
     onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
     initialExpandedSectionLabel: String? = null,
     initialUsedInAnkiShowAll: Boolean = false,
+    onBrowseAction: Runnable? = null,
 ) {
     val panelStateKey = studyAnswerPanelStateKey(model)
     Surface(
@@ -184,9 +186,25 @@ internal fun StudyAnswerPanel(
                     initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
                 )
             }
+            if (onBrowseAction != null && model.glyph.isNotBlank()) {
+                Text(
+                    text = StudyTextCopy.viewKanjiDetailsLabel(),
+                    color = StudyAnswerMuted,
+                    style = studyAnswerTextStyle(13),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.openInBrowseLabel(),
+                    onClick = { onBrowseAction.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
         }
     }
 }
+
 
 private fun studyAnswerTextStyle(sizeSp: Int): TextStyle {
     val size = sizeSp.sp

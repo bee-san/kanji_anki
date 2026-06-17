@@ -49,6 +49,7 @@ internal fun FlashcardCard(
     model: FlashcardCardModel,
     modifier: Modifier = Modifier,
     onTypingDone: Runnable? = null,
+    onBrowseAction: Runnable? = null,
 ) {
     val cardHeightModifier = if (model.revealState.isRevealed) {
         val windowHeight = with(LocalDensity.current) {
@@ -92,6 +93,7 @@ internal fun FlashcardCard(
                     Modifier
                         .padding(top = 12.dp, bottom = 10.dp)
                         .weight(1f),
+                    onBrowseAction = onBrowseAction,
                 )
             }
         }

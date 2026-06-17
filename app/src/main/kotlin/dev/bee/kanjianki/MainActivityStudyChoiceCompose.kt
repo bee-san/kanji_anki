@@ -22,6 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 internal val StudyChoicePlum: Color @Composable get() = KaniTheme.colors.plum
 internal val StudyChoiceButtonFill: Color @Composable get() = KaniTheme.colors.studyBg
@@ -64,6 +65,7 @@ fun SimilarChoiceSessionCard(
     model: SimilarChoiceSessionModel,
     modifier: Modifier = Modifier,
     showInlineChoices: Boolean = true,
+    onExploreDifferences: Runnable? = null,
 ) {
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
@@ -72,7 +74,7 @@ fun SimilarChoiceSessionCard(
         body = model.body,
         modifier = modifier,
     ) {
-        SimilarChoiceInsetPanel(model, showInlineChoices)
+        SimilarChoiceInsetPanel(model, showInlineChoices, onExploreDifferences)
     }
 }
 
@@ -88,10 +90,73 @@ internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Mod
 }
 
 @Composable
+internal fun SimilarKanjiDifferenceScreen(model: SimilarKanjiDifferenceModel, modifier: Modifier = Modifier) {
+    StudyChoiceSessionSurface(
+        modeLabel = model.modeLabel,
+        title = model.title,
+        taskLabel = model.correctLabel,
+        body = model.body,
+        modifier = modifier,
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 10.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = StudyPanelFill,
+            border = BorderStroke(1.dp, StudyChoiceBorder),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                StudyChoiceText(model.correctKanji, sizeSp = 40, color = StudyChoicePlum, bold = true)
+                SimilarKanjiExplanationPanel(model.explanationLines)
+                StudyChoiceText(model.choicesTitle, sizeSp = 16, color = StudyPinkDark, bold = true)
+                model.choices.forEach { choice ->
+                    SimilarKanjiDifferenceChoiceRow(choice)
+                }
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.backToStudyLabel(),
+                    onClick = { model.onBack.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarKanjiDifferenceChoiceRow(choice: SimilarKanjiDifferenceChoiceModel) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = StudyCardFill,
+        border = BorderStroke(1.dp, StudyChoiceBorder),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            StudyChoiceText(choice.label, sizeSp = 18, color = StudyChoicePlum, bold = true)
+            if (choice.onOpenBrowse != null) {
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.openInBrowseLabel(),
+                    onClick = { choice.onOpenBrowse.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    minHeight = 52.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun MeaningChoiceSessionCard(
     model: MeaningChoiceSessionModel,
     state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
     showInlineResultAction: Boolean = true,
+    onBrowseAction: Runnable? = null,
 ) {
     val selectedChoice = state.selectedChoice
     val answered = state.answered
@@ -115,8 +180,9 @@ internal fun MeaningChoiceSessionCard(
             },
             selectedChoice = selectedChoice,
             showInlineResultAction = showInlineResultAction,
+            onBrowseAction = onBrowseAction,
         )
-    }
+}
 }
 
 @Composable
@@ -168,7 +234,11 @@ private fun SimilarChoiceModePill(label: String) {
 }
 
 @Composable
-private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoices: Boolean) {
+private fun SimilarChoiceInsetPanel(
+    model: SimilarChoiceSessionModel,
+    showChoices: Boolean,
+    onExploreDifferences: Runnable? = null,
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,6 +253,15 @@ private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoice
                 StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
             }
             SimilarKanjiExplanationPanel(model.explanationLines)
+            if (onExploreDifferences != null) {
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.exploreDifferencesLabel(),
+                    onClick = { onExploreDifferences.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 8.dp)
+                )
+            }
             if (showChoices) {
                 SimilarChoiceGrid(model.gridModel)
             }
@@ -223,6 +302,7 @@ private fun MeaningChoiceInsetPanel(
     onAnswered: (String) -> Unit,
     selectedChoice: String?,
     showInlineResultAction: Boolean,
+    onBrowseAction: Runnable? = null,
 ) {
     Surface(
         modifier = Modifier
@@ -244,7 +324,8 @@ private fun MeaningChoiceInsetPanel(
                     model = model.answerPanel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp)
+                        .padding(top = 10.dp),
+                    onBrowseAction = onBrowseAction,
                 )
                 if (showInlineResultAction && result != null) {
                     MeaningChoiceResultActionBar(
