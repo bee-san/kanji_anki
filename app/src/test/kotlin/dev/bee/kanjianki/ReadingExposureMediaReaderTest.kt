@@ -91,6 +91,28 @@ class ReadingExposureMediaReaderTest {
     }
 
     @Test
+    fun readerFallsBackToLegacyKaniManifestWhenGenericExportIsBroken() {
+        val media = temporaryFolder.newFolder("mixed.media")
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"missing.gz"}""",
+            Charsets.UTF_8,
+        )
+        File(media, ReadingExposureMediaReader.LEGACY_KANI_MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"${ReadingExposureMediaReader.LEGACY_KANI_KANJI_FILE}"}""",
+            Charsets.UTF_8,
+        )
+        gzip(
+            File(media, ReadingExposureMediaReader.LEGACY_KANI_KANJI_FILE),
+            """{"kanji":[{"kanji":"戻","totalCount":5,"last7DaysCount":2,"last14DaysCount":3,"last31DaysCount":4,"lastSeenAtMillis":555}]}""",
+        )
+
+        val index = ReadingExposureMediaReader(listOf(media)).read()
+
+        assertEquals(5, index.statFor("戻")?.totalCount)
+        assertTrue(index.priorityBoost("戻") > 0.0)
+    }
+
+    @Test
     fun readerReturnsEmptyIndexWhenManifestIsMissing() {
         val index = ReadingExposureMediaReader(listOf(temporaryFolder.newFolder("empty"))).read()
 

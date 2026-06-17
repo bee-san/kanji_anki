@@ -23,7 +23,7 @@ internal class ReadingExposureMediaReader(
     }
 
     private fun readFromMediaDir(dir: File): ReadingExposureModels.ExposureIndex? {
-        for (candidate in manifestCandidates()) {
+        for (candidate in MANIFEST_CANDIDATES) {
             val manifest = File(dir, candidate.manifestFile)
             if (!manifest.isFile) {
                 continue
@@ -58,6 +58,10 @@ internal class ReadingExposureMediaReader(
         const val LEGACY_KANI_KANJI_FILE: String = "_kani_reading_exposure_kanji.json.gz"
         private const val KANJI_FILE_KEY = "kanjiFile"
         private const val TAG = "ReadingExposure"
+        private val MANIFEST_CANDIDATES = listOf(
+            ManifestCandidate(MANIFEST_FILE, DEFAULT_KANJI_FILE),
+            ManifestCandidate(LEGACY_KANI_MANIFEST_FILE, LEGACY_KANI_KANJI_FILE),
+        )
 
         @JvmStatic
         fun defaultCollectionMediaDirs(): List<File> {
@@ -98,13 +102,6 @@ internal class ReadingExposureMediaReader(
 
         private fun longField(row: JSONObject, primary: String, fallback: String): Long {
             return if (row.has(primary)) row.optLong(primary, 0L) else row.optLong(fallback, 0L)
-        }
-
-        private fun manifestCandidates(): List<ManifestCandidate> {
-            return listOf(
-                ManifestCandidate(MANIFEST_FILE, DEFAULT_KANJI_FILE),
-                ManifestCandidate(LEGACY_KANI_MANIFEST_FILE, LEGACY_KANI_KANJI_FILE),
-            )
         }
     }
 

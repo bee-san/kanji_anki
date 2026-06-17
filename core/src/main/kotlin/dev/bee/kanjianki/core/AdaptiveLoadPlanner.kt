@@ -320,8 +320,9 @@ class AdaptiveLoadPlanner {
         private const val AUTO_PARETO_CAP = 20
 
         private val CANDIDATE_ORDER: Comparator<Candidate> = compareBy<Candidate> { if (it.recoveryDue) 0 else 1 }
-            .thenByDescending { it.exposureBoost }
             .thenByDescending { it.fsrsRisk }
+            .thenByDescending { it.priorityScore }
+            .thenByDescending { it.exposureBoost }
             .thenByDescending { it.suspendedCount }
             .thenByDescending { it.lapseScore }
             .thenByDescending { it.supportDeficit }

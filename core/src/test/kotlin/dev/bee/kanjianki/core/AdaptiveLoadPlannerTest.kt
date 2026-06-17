@@ -957,6 +957,32 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    fun lightReadingExposureDoesNotOverrideHigherRiskCandidate() {
+        val exposed = ReadingExposureModels.ExposureIndex(
+                listOf(ReadingExposureModels.KanjiStats("読", 1, 1, 1, 1, 1000L))
+        );
+        val plan = plan(
+                AdaptiveLoadPlanner.PlanRequest.builder(
+                                listOf(
+                                        row("危", 5, 0.10, 8.0, 1.0, 3, 10),
+                                        row("読", 5, null, null, null, 3, 1)
+                                ),
+                                emptyList(),
+                                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                                0,
+                                emptySet(),
+                                AdaptiveLoadPlanner.WorkloadPolicy.of(AdaptiveLoadPlanner.WorkloadMode.MANUAL, 0, 1),
+                                1000L
+                        )
+                        .settings(RecordsSyncModels.Settings.kikuDefaults())
+                        .readingExposure(exposed)
+                        .build()
+        );
+
+        assertEquals("危", plan.focusKanji.get(0));
+    }
+
+    @Test
     fun dueRecoveryStaysAheadOfReadingExposure() {
         val exposed = ReadingExposureModels.ExposureIndex(
                 listOf(ReadingExposureModels.KanjiStats("読", 200, 60, 80, 120, 1000L))
