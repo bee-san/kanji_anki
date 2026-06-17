@@ -23,22 +23,23 @@ internal class ReadingExposureMediaReader(
     }
 
     private fun readFromMediaDir(dir: File): ReadingExposureModels.ExposureIndex? {
-        val manifest = File(dir, MANIFEST_FILE)
-        if (!manifest.isFile) {
-            return null
+        for (candidate in manifestCandidates()) {
+            val manifest = File(dir, candidate.manifestFile)
+            if (!manifest.isFile) {
+                continue
+            }
+            try {
+                val manifestJson = JSONObject(manifest.readText(Charsets.UTF_8))
+                val kanjiFile = manifestJson.optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
+                val statsJson = readStatsText(File(dir, kanjiFile))
+                return ReadingExposureModels.ExposureIndex(parseKanjiStats(statsJson))
+            } catch (error: IOException) {
+                Log.w(TAG, "Could not read optional reading exposure media.", error)
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Could not parse optional reading exposure media.", error)
+            }
         }
-        return try {
-            val manifestJson = JSONObject(manifest.readText(Charsets.UTF_8))
-            val kanjiFile = manifestJson.optString(KANJI_FILE_KEY, DEFAULT_KANJI_FILE)
-            val statsJson = readStatsText(File(dir, kanjiFile))
-            ReadingExposureModels.ExposureIndex(parseKanjiStats(statsJson))
-        } catch (error: IOException) {
-            Log.w(TAG, "Could not read optional reading exposure media.", error)
-            null
-        } catch (error: RuntimeException) {
-            Log.w(TAG, "Could not parse optional reading exposure media.", error)
-            null
-        }
+        return null
     }
 
     private fun readStatsText(file: File): String {
@@ -51,8 +52,10 @@ internal class ReadingExposureMediaReader(
     }
 
     companion object {
-        const val MANIFEST_FILE: String = "_kani_reading_exposure_manifest.json"
-        const val DEFAULT_KANJI_FILE: String = "_kani_reading_exposure_kanji.json.gz"
+        const val MANIFEST_FILE: String = "_reading_exposure_manifest.json"
+        const val DEFAULT_KANJI_FILE: String = "_reading_exposure_kanji.json.gz"
+        const val LEGACY_KANI_MANIFEST_FILE: String = "_kani_reading_exposure_manifest.json"
+        const val LEGACY_KANI_KANJI_FILE: String = "_kani_reading_exposure_kanji.json.gz"
         private const val KANJI_FILE_KEY = "kanjiFile"
         private const val TAG = "ReadingExposure"
 
@@ -96,5 +99,17 @@ internal class ReadingExposureMediaReader(
         private fun longField(row: JSONObject, primary: String, fallback: String): Long {
             return if (row.has(primary)) row.optLong(primary, 0L) else row.optLong(fallback, 0L)
         }
+
+        private fun manifestCandidates(): List<ManifestCandidate> {
+            return listOf(
+                ManifestCandidate(MANIFEST_FILE, DEFAULT_KANJI_FILE),
+                ManifestCandidate(LEGACY_KANI_MANIFEST_FILE, LEGACY_KANI_KANJI_FILE),
+            )
+        }
     }
+
+    private class ManifestCandidate(
+        val manifestFile: String,
+        val defaultKanjiFile: String,
+    )
 }

@@ -53,7 +53,7 @@ class ReadingExposureMediaReaderTest {
     }
 
     @Test
-    fun readerLoadsGzippedKanjiStatsFromManifest() {
+    fun readerLoadsGzippedKanjiStatsFromGenericManifest() {
         val media = temporaryFolder.newFolder("collection.media")
         File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
             """{"schemaVersion":1,"kanjiFile":"${ReadingExposureMediaReader.DEFAULT_KANJI_FILE}"}""",
@@ -69,6 +69,25 @@ class ReadingExposureMediaReaderTest {
         val stat = index.statFor("見")
         assertEquals(12, stat?.totalCount)
         assertTrue(index.priorityBoost("見") > 0.0)
+    }
+
+    @Test
+    fun readerFallsBackToLegacyKaniManifest() {
+        val media = temporaryFolder.newFolder("legacy.media")
+        File(media, ReadingExposureMediaReader.LEGACY_KANI_MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"${ReadingExposureMediaReader.LEGACY_KANI_KANJI_FILE}"}""",
+            Charsets.UTF_8,
+        )
+        gzip(
+            File(media, ReadingExposureMediaReader.LEGACY_KANI_KANJI_FILE),
+            """{"kanji":[{"kanji":"旧","totalCount":7,"last7DaysCount":3,"last14DaysCount":4,"last31DaysCount":6,"lastSeenAtMillis":777}]}""",
+        )
+
+        val index = ReadingExposureMediaReader(listOf(media)).read()
+
+        val stat = index.statFor("旧")
+        assertEquals(7, stat?.totalCount)
+        assertTrue(index.priorityBoost("旧") > 0.0)
     }
 
     @Test
