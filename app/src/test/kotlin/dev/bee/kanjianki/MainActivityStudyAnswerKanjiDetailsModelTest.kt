@@ -43,7 +43,7 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals(12, model.details.body!!.jitenRank)
 
         assertEquals(StudyAnswerSectionContentState.READY, model.breakdown.contentState)
-        assertEquals("Component breakdown is still molting. Radical data is shown for now.", model.breakdown.summary)
+        assertEquals("Radical only", model.breakdown.summary)
         assertEquals(64, model.breakdown.body!!.radicalNumber)
         assertTrue(model.breakdown.body!!.componentRows.isEmpty())
         assertEquals("Component breakdown is still molting. Radical data is shown for now.", model.breakdown.body!!.fallbackCopy)

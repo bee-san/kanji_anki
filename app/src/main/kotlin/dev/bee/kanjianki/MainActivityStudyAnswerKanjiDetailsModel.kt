@@ -16,6 +16,7 @@ private const val DETAILS_EMPTY_TITLE = "Kani couldn't find local details for th
 private const val DETAILS_EMPTY_BODY = "Review still works; this drawer can fill in after dictionary data syncs."
 private const val BREAKDOWN_EMPTY_TITLE = "No radical or component data yet."
 private const val BREAKDOWN_EMPTY_BODY = "Component breakdown is still molting. Radical data is shown for now."
+private const val BREAKDOWN_RADICAL_ONLY_SUMMARY = "Radical only"
 private const val STROKE_ORDER_EMPTY_TITLE = "Stroke data is not available for this kanji yet."
 private const val STROKE_ORDER_EMPTY_BODY = "Stroke-order animation needs a licensed offline asset before Kani can draw it here."
 private const val USED_IN_ANKI_EMPTY_TITLE = "No other synced Anki words yet."
@@ -275,7 +276,7 @@ internal fun studyAnswerBreakdownSection(
     )
     return StudyAnswerDetailSectionModel(
         label = BREAKDOWN_LABEL,
-        summary = if (normalizedComponents.isEmpty()) BREAKDOWN_EMPTY_BODY else "Radical + components",
+        summary = if (normalizedComponents.isEmpty()) BREAKDOWN_RADICAL_ONLY_SUMMARY else "Radical + components",
         contentState = StudyAnswerSectionContentState.READY,
         body = body,
     )

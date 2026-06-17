@@ -63,14 +63,17 @@ internal fun KanjiChoiceGrid(
         choiceRows.forEach { rowChoices ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 rowChoices.forEach { glyph ->
+                    val cellModifier = if (rowChoices.size == 1) {
+                        Modifier.fillMaxWidth().choiceCellSpacing()
+                    } else {
+                        Modifier.weight(1f).choiceCellSpacing()
+                    }
                     SimilarChoiceButton(
                         glyph = glyph,
                         enabled = enabled,
                         feedback = feedbackForChoice(glyph),
                         onClick = { onChoice(glyph) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .choiceCellSpacing()
+                        modifier = cellModifier
                     )
                 }
                 if (balanceLastRow && rowChoices.size == 1) {

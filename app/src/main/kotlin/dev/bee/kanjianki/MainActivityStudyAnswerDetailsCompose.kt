@@ -6,7 +6,6 @@ package dev.bee.kanjianki
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
@@ -30,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.core.net.toUri
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.stateDescription
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 private const val ANKI_DROID_PACKAGE = "com.ichi2.anki"
 private const val ANKI_DROID_FLASHCARDS_AUTHORITY = "com.ichi2.anki.flashcards"
@@ -381,28 +384,32 @@ private fun StudyAnswerAccordionSection(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
+                Text(
+                    text = label,
+                    color = StudyAnswerPlum,
+                    style = detailTextStyle(14),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                if (summary.isNotBlank()) {
                     Text(
-                        text = label,
-                        color = StudyAnswerPlum,
-                        style = detailTextStyle(14),
-                        fontWeight = FontWeight.Bold,
+                        text = summary,
+                        color = StudyAnswerMuted,
+                        style = detailTextStyle(12),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    if (summary.isNotBlank()) {
-                        Text(
-                            text = summary,
-                            color = StudyAnswerMuted,
-                            style = detailTextStyle(12),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
                 Text(
                     text = if (expanded) "▴" else "▾",
@@ -541,13 +548,25 @@ private fun StudyAnswerUsedInAnkiBody(
 ) {
     val storageKey = "$panelStateKey|${USED_IN_ANKI_LABEL_KEY}"
     var showAll by rememberSaveable(storageKey) { mutableStateOf(initialShowAll || body.showAll) }
+    var feedbackMessage by rememberSaveable(storageKey) { mutableStateOf<String?>(null) }
+    LaunchedEffect(feedbackMessage) {
+        val message = feedbackMessage ?: return@LaunchedEffect
+        delay(2200)
+        if (feedbackMessage == message) {
+            feedbackMessage = null
+        }
+    }
     val rows = if (showAll) body.rows else body.visibleRows
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        feedbackMessage?.let { message ->
+            StudyAnswerInlineFeedbackBanner(message = message)
+        }
         rows.forEachIndexed { index, row ->
             StudyAnswerUsedInAnkiRow(
                 row = row,
                 index = index,
                 onAnkiTapAction = onAnkiTapAction,
+                onFeedback = { message -> feedbackMessage = message },
             )
         }
         if (body.rows.size > body.visibleRowLimit) {
@@ -615,6 +634,26 @@ private fun StudyAnswerEmptyState(
 }
 
 @Composable
+private fun StudyAnswerInlineFeedbackBanner(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = StudyAnswerPanelFillSoft,
+        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
+    ) {
+        Text(
+            text = message,
+            color = StudyAnswerPlum,
+            style = detailTextStyle(12),
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun StudyAnswerBodyNote(
     text: String,
     bold: Boolean = false,
@@ -677,7 +716,9 @@ private fun StudyAnswerMetricGrid(metrics: List<StudyAnswerMetric>) {
     if (metrics.isEmpty()) {
         return
     }
-    val twoColumn = LocalConfiguration.current.screenWidthDp > 360
+    val twoColumn = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width.toDp() > 360.dp
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (!twoColumn) {
             metrics.forEach { metric ->
@@ -782,6 +823,7 @@ private fun StudyAnswerUsedInAnkiRow(
     row: StudyAnswerUsedInAnkiRowModel,
     index: Int,
     onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)?,
+    onFeedback: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -793,11 +835,13 @@ private fun StudyAnswerUsedInAnkiRow(
             .clickable(
                 role = Role.Button,
                 onClick = {
-                    if (onAnkiTapAction != null) {
-                        onAnkiTapAction.invoke(row.tapAction)
-                    } else {
-                        performStudyAnswerAnkiTapAction(context, clipboardManager, row.tapAction)
-                    }
+                    onAnkiTapAction?.invoke(row.tapAction)
+                    performStudyAnswerAnkiTapAction(
+                        context = context,
+                        clipboardManager = clipboardManager,
+                        action = row.tapAction,
+                        onFeedback = onFeedback,
+                    )
                 },
             )
     } else {
@@ -815,8 +859,8 @@ private fun StudyAnswerUsedInAnkiRow(
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -836,18 +880,12 @@ private fun StudyAnswerUsedInAnkiRow(
                     StudyAnswerChip("Current")
                 }
             }
-            if (row.reading.isNotBlank()) {
+            val secondaryText = listOf(row.reading.trim(), row.meaning.trim())
+                .filter { it.isNotBlank() }
+                .joinToString(" • ")
+            if (secondaryText.isNotBlank()) {
                 Text(
-                    text = row.reading,
-                    color = StudyAnswerMuted,
-                    style = detailTextStyle(12),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (row.meaning.isNotBlank()) {
-                Text(
-                    text = row.meaning,
+                    text = secondaryText,
                     color = StudyAnswerMuted,
                     style = detailTextStyle(12),
                     maxLines = 2,
@@ -915,6 +953,7 @@ private fun performStudyAnswerAnkiTapAction(
     context: Context,
     clipboardManager: ClipboardManager,
     action: StudyAnswerAnkiTapActionModel,
+    onFeedback: (String) -> Unit = {},
 ) {
     when (action) {
         is StudyAnswerAnkiTapActionModel.OpenAnkiDroid -> {
@@ -925,13 +964,18 @@ private fun performStudyAnswerAnkiTapAction(
                     openAnkiDroidSupported = false,
                 )
                 if (fallback !== StudyAnswerAnkiTapActionModel.Unavailable) {
-                    performStudyAnswerAnkiTapAction(context, clipboardManager, fallback)
+                    performStudyAnswerAnkiTapAction(
+                        context = context,
+                        clipboardManager = clipboardManager,
+                        action = fallback,
+                        onFeedback = onFeedback,
+                    )
                 }
             }
         }
         is StudyAnswerAnkiTapActionModel.CopyId -> {
             clipboardManager.setText(AnnotatedString(action.value.toString()))
-            Toast.makeText(context, action.toastMessage, Toast.LENGTH_SHORT).show()
+            onFeedback(action.toastMessage)
         }
         StudyAnswerAnkiTapActionModel.Unavailable -> Unit
     }
@@ -956,8 +1000,8 @@ private fun studyAnswerAnkiViewUri(
     cardId: Long?,
 ): Uri? {
     return when {
-        noteId != null -> Uri.parse("content://$ANKI_DROID_FLASHCARDS_AUTHORITY/notes/$noteId/cards")
-        cardId != null -> Uri.parse("content://$ANKI_DROID_FLASHCARDS_AUTHORITY/cards/$cardId")
+        noteId != null -> "content://$ANKI_DROID_FLASHCARDS_AUTHORITY/notes/$noteId/cards".toUri()
+        cardId != null -> "content://$ANKI_DROID_FLASHCARDS_AUTHORITY/cards/$cardId".toUri()
         else -> null
     }
 }

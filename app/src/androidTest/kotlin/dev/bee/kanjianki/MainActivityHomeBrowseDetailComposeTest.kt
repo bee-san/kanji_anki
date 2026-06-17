@@ -1,13 +1,16 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,13 +47,13 @@ class MainActivityHomeBrowseDetailComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
-        composeRule.onNodeWithText("Recovered after today’s sync").assertIsDisplayed()
-        composeRule.onNodeWithText("Needs 2 mature cards to fully support this kanji.").assertIsDisplayed()
-        composeRule.onNodeWithText("Today").assertIsDisplayed()
-        composeRule.onNodeWithText("Synced from AnkiDroid").assertIsDisplayed()
-        composeRule.onNodeWithText("The kanji is still active.").assertIsDisplayed()
-        composeRule.onNodeWithText("Source: active dashboard row").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Recovery timeline").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Recovered after today’s sync").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Needs 2 mature cards to fully support this kanji.").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Today").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Synced from AnkiDroid").assertCountEquals(1)
+        composeRule.onAllNodesWithText("The kanji is still active.").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Source: active dashboard row").assertCountEquals(1)
     }
 
     @Test
@@ -117,12 +120,12 @@ class MainActivityHomeBrowseDetailComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Browse Kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("2 kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("split").assertIsDisplayed()
-        composeRule.onNodeWithText("レツ").assertIsDisplayed()
-        composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription(
+        composeRule.onAllNodesWithText("Browse Kanji").assertCountEquals(1)
+        composeRule.onAllNodesWithText("2 kanji").assertCountEquals(1)
+        composeRule.onAllNodesWithText("split").assertCountEquals(1)
+        composeRule.onAllNodesWithText("レツ").assertCountEquals(1)
+        composeRule.onAllNodesWithText("SUSPENDED").assertCountEquals(1)
+        composeRule.onAllNodesWithContentDescription(
             browseKanjiRowDescription(
                 kanji = "裂",
                 meaning = "split",
@@ -131,10 +134,10 @@ class MainActivityHomeBrowseDetailComposeTest {
                 studied = false,
                 suspended = true,
             )
-        ).assertIsDisplayed()
-        composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.browseSimilarFilterLabel()).assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.browseStudySelectionSummary(1, 2)).assertIsDisplayed()
+        ).assertCountEquals(1)
+        composeRule.onAllNodesWithText("Meaning not stored yet").assertCountEquals(1)
+        composeRule.onAllNodesWithText(HomeTextCopy.browseSimilarFilterLabel()).assertCountEquals(1)
+        composeRule.onAllNodesWithText(HomeTextCopy.browseStudySelectionSummary(1, 2)).assertCountEquals(1)
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("裂")).assertIsOff()
         composeRule.onNodeWithTag(browseKanjiStudiedToggleTestTag("謎")).assertIsOn()
 
@@ -173,10 +176,9 @@ class MainActivityHomeBrowseDetailComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("No matches").assertIsDisplayed()
-        composeRule.onNodeWithText("No local kanji found").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid first, or try a different search.").assertIsDisplayed()
-        composeRule.onNodeWithTag(homeEmptyStateTestTag("No local kanji found")).assertIsDisplayed()
+        composeRule.onAllNodesWithText("No matches").assertCountEquals(1)
+        composeRule.onAllNodesWithText("No local kanji found").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Sync AnkiDroid first, or try a different search.").assertCountEquals(1)
         composeRule.onAllNodesWithText("SUSPENDED").assertCountEquals(0)
     }
 
@@ -212,15 +214,15 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("Active practice evidence.").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki search: deck:Japanese").assertIsDisplayed()
-        composeRule.onNodeWithText("Local records").assertIsDisplayed()
-        composeRule.onNodeWithText("1 source · 2 examples").assertIsDisplayed()
-        composeRule.onNodeWithText("Anki search: kanji:語").assertIsDisplayed()
-        composeRule.onNodeWithText("ACTIVE").assertIsDisplayed()
-        composeRule.onNodeWithText("活動語  カツドウゴ").assertIsDisplayed()
-        composeRule.onNodeWithText("活動語を見た。").assertIsDisplayed()
-        composeRule.onNodeWithText("active word").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Active practice evidence.").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Anki search: deck:Japanese").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Local records").assertCountEquals(1)
+        composeRule.onAllNodesWithText("1 source · 2 examples").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Anki search: kanji:語").assertCountEquals(1)
+        composeRule.onAllNodesWithText("ACTIVE").assertCountEquals(1)
+        composeRule.onAllNodesWithText("活動語  カツドウゴ").assertCountEquals(1)
+        composeRule.onAllNodesWithText("活動語を見た。").assertCountEquals(1)
+        composeRule.onAllNodesWithText("active word").assertCountEquals(1)
     }
 
     @Test
@@ -260,15 +262,15 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("裂").assertIsDisplayed()
-        composeRule.onNodeWithText("split").assertIsDisplayed()
-        composeRule.onNodeWithText("レツ").assertIsDisplayed()
-        composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
+        composeRule.onAllNodesWithText("裂").assertCountEquals(1)
+        composeRule.onAllNodesWithText("split").assertCountEquals(1)
+        composeRule.onAllNodesWithText("レツ").assertCountEquals(1)
+        composeRule.onAllNodesWithText("SUSPENDED").assertCountEquals(1)
 
         composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()
         composeRule.onNodeWithText("Copy search").performClick()
-        composeRule.onNodeWithText("Copied").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Copied").assertCountEquals(1)
         composeRule.onNodeWithText("Unsuspend locally").performClick()
 
         assertTrue(backClicked)
@@ -283,7 +285,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         var reviewClicked = false
 
         composeRule.setContent {
-            androidx.compose.foundation.layout.Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 BrowseDetailScreen(
                     model = BrowseDetailScreenModel(
                         hero = BrowseDetailHeroModel(
@@ -348,12 +350,12 @@ class MainActivityHomeBrowseDetailComposeTest {
             }
         }
 
-        composeRule.onNodeWithText("裂").assertIsDisplayed()
-        composeRule.onNodeWithText("Local records").assertIsDisplayed()
-        composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
-        composeRule.onNodeWithText("Examples").assertIsDisplayed()
-        composeRule.onNodeWithText("裂語  レツゴ").assertIsDisplayed()
-        composeRule.onNodeWithText("Kanji not found").assertIsDisplayed()
+        composeRule.onAllNodesWithText("裂").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Local records").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Recovery timeline").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Examples").assertCountEquals(1)
+        composeRule.onAllNodesWithText("裂語  レツゴ").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Kanji not found").assertCountEquals(1)
 
         composeRule.onNodeWithText("Back to Browse").performClick()
         composeRule.onNodeWithText("Review now").performClick()

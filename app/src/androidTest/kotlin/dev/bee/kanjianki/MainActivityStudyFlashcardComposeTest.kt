@@ -4,21 +4,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
@@ -27,6 +32,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivityStudyFlashcardComposeTest {
     @get:Rule
@@ -354,6 +361,92 @@ class MainActivityStudyFlashcardComposeTest {
         when (val action = tappedAction) {
             is StudyAnswerAnkiTapActionModel.CopyId -> assertEquals(101L, action.value)
             else -> throw AssertionError("Expected CopyId, got $action")
+        }
+    }
+
+    @Test
+    fun capturesStudyAnswerDropdownScreenshots() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    breakdownComponentRows = listOf("left component", "right component"),
+                ),
+            ),
+        )
+        composeRule.waitForIdle()
+        captureStudyScreenshot("01-rich-collapsed.png")
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        captureStudyScreenshot("02-rich-details-expanded.png")
+
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .performScrollTo()
+            .performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        captureStudyScreenshot("03-rich-used-in-anki-collapsed.png")
+
+        composeRule.onNodeWithText("Show all 4").performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        captureStudyScreenshot("04-rich-used-in-anki-expanded.png")
+    }
+
+    @Test
+    fun capturesStudyAnswerDropdownFallbackBanner() {
+        val examples = sampleUsedInAnkiExamples()
+
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    examples = examples,
+                    currentExample = examples.first(),
+                    openAnkiDroidSupported = false,
+                ),
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .performScrollTo()
+            .performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerUsedInAnkiRowTestTag(0)).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Anki link unavailable — copied note ID.").assertIsDisplayed()
+        captureStudyScreenshot("05-fallback-banner.png")
+    }
+
+    @Test
+    fun capturesStudyAnswerDropdownEmptyState() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    examples = emptyList(),
+                    currentExample = null,
+                    openAnkiDroidSupported = false,
+                ),
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .performScrollTo()
+            .performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("No other synced Anki words yet.").assertIsDisplayed()
+        captureStudyScreenshot("06-empty-used-in-anki.png")
+    }
+    private fun captureStudyScreenshot(fileName: String) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val screenshotDir = File(context.getExternalFilesDir(null), "study-answer-compose-screenshots")
+        screenshotDir.mkdirs()
+        val bitmap = composeRule.onRoot().captureToImage().asAndroidBitmap()
+        FileOutputStream(File(screenshotDir, fileName)).use { output ->
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
         }
     }
 }
