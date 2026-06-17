@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
@@ -362,6 +363,7 @@ object ReminderScheduler {
                 nowMillis
             )
                 .settings(RecordsSyncModels.Settings.kikuDefaults())
+                .readingExposure(ReadingExposureMediaReader().read())
                 .build()
         )
     }

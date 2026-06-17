@@ -33,6 +33,7 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                 now,
             )
                 .settings(activity.settings())
+                .readingExposure(ReadingExposureMediaReader().read())
                 .build()
         )
     }
