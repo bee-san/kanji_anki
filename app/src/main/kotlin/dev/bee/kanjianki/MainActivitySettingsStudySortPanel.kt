@@ -47,8 +47,13 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
                     activity.newCardSortPreviewRefreshPending = false
                     previewRowsData?.let { snapshot ->
                         activity.cachedNewCardSortPreviewRows = snapshot
-                        if (activity.currentRoute == MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE && !activity.activityPaused) {
-                            activity.renderSettingsStudyBehavior(true)
+                        if (activity.currentRoute == MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE) {
+                            if (activity.activityPaused) {
+                                activity.newCardSortPreviewRerenderOnResumePending = true
+                            } else {
+                                activity.newCardSortPreviewRerenderOnResumePending = false
+                                activity.renderSettingsStudyBehavior(true)
+                            }
                         }
                     }
                 }
