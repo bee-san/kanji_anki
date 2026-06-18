@@ -43,10 +43,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean) {
-        renderDetail(kanji, fromBrowse, if (fromBrowse) home.activeBrowseQuery else "")
+        renderDetail(kanji, fromBrowse, if (fromBrowse) home.activeBrowseQuery else "", null)
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
+        renderDetail(kanji, fromBrowse, browseQuery, null)
+    }
+
+    fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?, customBackAction: Runnable?) {
         val requestedQuery = browseQuery ?: ""
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
@@ -57,8 +61,8 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 val isMissing = inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()
                 val missingModel = if (isMissing) {
                     BrowseDetailMissingModel(
-                        HomeTextCopy.homeLabel(),
-                        Runnable { home.renderHome() },
+                        if (customBackAction != null) StudyTextCopy.backToStudyLabel() else HomeTextCopy.homeLabel(),
+                        customBackAction ?: Runnable { home.renderHome() },
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
                     )
@@ -76,12 +80,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                         fromBrowse,
                         requestedQuery,
                         inventory != null && inventory.suspended,
+                        customBackAction,
                     )
                 }
                 BrowseDetailRouteData(detailModel, missingModel)
             },
             render = { data ->
-                val detailBackAction = if (fromBrowse) {
+                val detailBackAction = customBackAction ?: if (fromBrowse) {
                     Runnable { renderBrowseKanji(requestedQuery, home.activeBrowseSimilarOnly) }
                 } else {
                     Runnable { home.renderHome() }
@@ -108,9 +113,10 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         fromBrowse: Boolean,
         browseQuery: String?,
         suspended: Boolean,
+        customBackAction: Runnable? = null,
     ): BrowseDetailScreenModel {
         return BrowseDetailScreenModel(
-            detailHeroModel(displayKanji, fromBrowse, browseQuery ?: ""),
+            detailHeroModel(displayKanji, fromBrowse, browseQuery ?: "", customBackAction),
             detailIdentityModel(row, inventory, suspended),
             detailReasonPanelModel(row, inventory),
             inventory?.let(::localInventoryPanelModel),
@@ -121,11 +127,24 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         )
     }
 
-    fun detailHeroModel(displayKanji: String, fromBrowse: Boolean, browseQuery: String?): BrowseDetailHeroModel {
+    fun detailHeroModel(
+        displayKanji: String,
+        fromBrowse: Boolean,
+        browseQuery: String?,
+        customBackAction: Runnable? = null,
+    ): BrowseDetailHeroModel {
         return BrowseDetailHeroModel(
             displayKanji,
-            if (fromBrowse) HomeTextCopy.backToBrowseKanjiLabel() else HomeTextCopy.homeLabel(),
-            if (fromBrowse) Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) } else Runnable { home.renderHome() }
+            when {
+                customBackAction != null -> StudyTextCopy.backToStudyLabel()
+                fromBrowse -> HomeTextCopy.backToBrowseKanjiLabel()
+                else -> HomeTextCopy.homeLabel()
+            },
+            customBackAction ?: if (fromBrowse) {
+                Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) }
+            } else {
+                Runnable { home.renderHome() }
+            }
         )
     }
 
