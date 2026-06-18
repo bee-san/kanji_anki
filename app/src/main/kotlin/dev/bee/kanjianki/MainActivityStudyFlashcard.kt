@@ -19,15 +19,16 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     private val interaction = MainActivityStudyFlashcardInteraction(activity)
 
     fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        val route = composeFlashcardRouteModel(session)
-        renderComposeFlashcardRoute(route)
+        renderComposeFlashcardRoute { composeFlashcardRouteModel(session) }
     }
 
-    private fun renderComposeFlashcardRoute(route: ComposeFlashcardRouteModel) {
+    private fun renderComposeFlashcardRoute(routeProvider: () -> ComposeFlashcardRouteModel) {
         activity.initializeSessionProgressTarget(activity.activeStudyPlan)
         val progress = activity.studySessionTracker.topBarProgress(activity.activeSession != null, activity.continueAllKanjiSession)
+        lateinit var route: ComposeFlashcardRouteModel
         activity.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
+            beforeContent = { route = routeProvider() },
             content = {
                 Column {
                     StudyTopBar(
@@ -141,7 +142,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     @Composable
     private fun ComposeFlashcardCard(route: ComposeFlashcardRouteModel) {
         val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
-            Runnable { activity.renderDetail(glyph, false, null, Runnable { renderComposeFlashcardRoute(route) }) }
+            Runnable { activity.renderDetail(glyph, false, null, Runnable { renderComposeFlashcardRoute { route } }) }
         }
         FlashcardCard(
             model = route.cardModel,
