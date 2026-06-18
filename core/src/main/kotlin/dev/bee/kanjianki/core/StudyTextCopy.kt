@@ -85,6 +85,12 @@ object StudyTextCopy {
     fun choiceIncorrectStateDescription(): String = localizedText("Incorrect answer", "不正解")
 
     @JvmStatic
+    fun similarKanjiDetailsLabel(): String = localizedText("Details", "詳細")
+
+    @JvmStatic
+    fun similarKanjiHideDetailsLabel(): String = localizedText("Hide details", "詳細を隠す")
+
+    @JvmStatic
     fun studyChoiceQuestion(meaning: String): String {
         return if (isJapaneseLocale()) {
             "「$meaning」はどの漢字ですか？"
@@ -347,6 +353,12 @@ object StudyTextCopy {
         }
         return if (passed) "Repair saved." else "Saved. Try that repair again."
     }
+
+    @JvmStatic
+    fun similarWritingRepairSkippedToast(): String = localizedText(
+        "Repair skipped.",
+        "修正をスキップしました。",
+    )
 
     @JvmStatic
     fun similarRepairPrompt(repair: RecordsImportModels.SimilarKanjiWritingRepair): String {

@@ -3,18 +3,24 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
@@ -22,6 +28,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.StudyTextCopy
 
 internal val StudyChoicePlum: Color @Composable get() = KaniTheme.colors.plum
 internal val StudyChoiceButtonFill: Color @Composable get() = KaniTheme.colors.studyBg
@@ -65,14 +72,21 @@ fun SimilarChoiceSessionCard(
     modifier: Modifier = Modifier,
     showInlineChoices: Boolean = true,
 ) {
+    var detailsExpanded by rememberSaveable(model.question, showInlineChoices) { mutableStateOf(showInlineChoices) }
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
         taskLabel = model.taskLabel,
         body = model.body,
         modifier = modifier,
+        showTaskCopy = showInlineChoices,
     ) {
-        SimilarChoiceInsetPanel(model, showInlineChoices)
+        SimilarChoiceInsetPanel(
+            model = model,
+            showChoices = showInlineChoices,
+            detailsExpanded = detailsExpanded,
+            onToggleDetails = { detailsExpanded = !detailsExpanded },
+        )
     }
 }
 
@@ -84,38 +98,6 @@ internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Mod
             .padding(top = 2.dp, bottom = 2.dp)
     ) {
         SimilarChoiceGrid(model)
-    }
-}
-
-@Composable
-fun MeaningChoiceSessionCard(
-    model: MeaningChoiceSessionModel,
-    state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
-    showInlineResultAction: Boolean = true,
-) {
-    val selectedChoice = state.selectedChoice
-    val answered = state.answered
-    StudyChoiceSessionSurface(
-        modeLabel = model.modeLabel,
-        title = model.title,
-        taskLabel = model.taskLabel,
-        body = model.body,
-        showTaskCopy = false,
-    ) {
-        MeaningChoiceInsetPanel(
-            model = model,
-            answered = answered,
-            onAnswered = { glyph ->
-                if (!answered) {
-                    state.select(glyph)
-                    if (model.resultResolver == null) {
-                        model.onChoice.onChoice(glyph)
-                    }
-                }
-            },
-            selectedChoice = selectedChoice,
-            showInlineResultAction = showInlineResultAction,
-        )
     }
 }
 
@@ -168,7 +150,12 @@ private fun SimilarChoiceModePill(label: String) {
 }
 
 @Composable
-private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoices: Boolean) {
+private fun SimilarChoiceInsetPanel(
+    model: SimilarChoiceSessionModel,
+    showChoices: Boolean,
+    detailsExpanded: Boolean,
+    onToggleDetails: () -> Unit,
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -179,14 +166,89 @@ private fun SimilarChoiceInsetPanel(model: SimilarChoiceSessionModel, showChoice
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             StudyChoiceText(model.question, sizeSp = 22, color = StudyChoicePlum, bold = true)
-            if (model.reasonLine.isNotBlank()) {
-                StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
+            if (detailsExpanded) {
+                SimilarKanjiDetailsToggleRow(expanded = true, onToggleDetails = onToggleDetails)
+                if (model.reasonLine.isNotBlank()) {
+                    StudyChoiceText(model.reasonLine, sizeSp = 14, color = StudyMuted, bold = false)
+                }
+                SimilarKanjiExplanationPanel(model.explanationLines)
+            } else {
+                SimilarKanjiCollapsedSummaryRow(
+                    summaryLine = model.explanationLines.firstOrNull(),
+                    onToggleDetails = onToggleDetails,
+                )
             }
-            SimilarKanjiExplanationPanel(model.explanationLines)
             if (showChoices) {
                 SimilarChoiceGrid(model.gridModel)
             }
         }
+    }
+}
+
+@Composable
+private fun SimilarKanjiCollapsedSummaryRow(
+    summaryLine: SimilarKanjiExplanationLineModel?,
+    onToggleDetails: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (summaryLine != null) {
+            StudyChoiceText(
+                text = "${summaryLine.label}: ${summaryLine.value}",
+                sizeSp = if (summaryLine.emphasized) 15 else 14,
+                color = if (summaryLine.emphasized) StudyChoicePlum else StudyMuted,
+                bold = summaryLine.emphasized,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            StudyChoiceText(
+                text = StudyTextCopy.similarKanjiDetailsLabel(),
+                sizeSp = 14,
+                color = StudyMuted,
+                bold = false,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        SimilarKanjiDetailsButton(expanded = false, onToggleDetails = onToggleDetails)
+    }
+}
+
+@Composable
+private fun SimilarKanjiDetailsToggleRow(
+    expanded: Boolean,
+    onToggleDetails: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        SimilarKanjiDetailsButton(expanded = expanded, onToggleDetails = onToggleDetails)
+    }
+}
+
+@Composable
+private fun SimilarKanjiDetailsButton(
+    expanded: Boolean,
+    onToggleDetails: () -> Unit,
+) {
+    TextButton(
+        onClick = onToggleDetails,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = if (expanded) StudyTextCopy.similarKanjiHideDetailsLabel() else StudyTextCopy.similarKanjiDetailsLabel(),
+            color = StudyPinkDark,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+        )
     }
 }
 
@@ -213,6 +275,38 @@ private fun SimilarKanjiExplanationPanel(lines: List<SimilarKanjiExplanationLine
                 )
             }
         }
+    }
+}
+
+@Composable
+fun MeaningChoiceSessionCard(
+    model: MeaningChoiceSessionModel,
+    state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
+    showInlineResultAction: Boolean = true,
+) {
+    val selectedChoice = state.selectedChoice
+    val answered = state.answered
+    StudyChoiceSessionSurface(
+        modeLabel = model.modeLabel,
+        title = model.title,
+        taskLabel = model.taskLabel,
+        body = model.body,
+        showTaskCopy = false,
+    ) {
+        MeaningChoiceInsetPanel(
+            model = model,
+            answered = answered,
+            onAnswered = { glyph ->
+                if (!answered) {
+                    state.select(glyph)
+                    if (model.resultResolver == null) {
+                        model.onChoice.onChoice(glyph)
+                    }
+                }
+            },
+            selectedChoice = selectedChoice,
+            showInlineResultAction = showInlineResultAction,
+        )
     }
 }
 
@@ -272,9 +366,11 @@ private fun StudyChoiceText(
     sizeSp: Int,
     color: Color,
     bold: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     Text(
         text = text,
+        modifier = modifier,
         color = color,
         fontSize = sizeSp.sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal

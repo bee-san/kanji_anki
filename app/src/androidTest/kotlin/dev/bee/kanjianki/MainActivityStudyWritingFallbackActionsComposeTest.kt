@@ -18,7 +18,7 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
     @Test
     fun rendersVisibleFallbackActionsAndInvokesCallbacks() {
         var replayed = false
-        var manuallyAccepted = false
+        var continuedAnyway = false
         var retried = false
 
         composeRule.setContent {
@@ -28,21 +28,22 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
                     manualOverrideVisible = true,
                     practiceWithGuideVisible = true,
                     onReplay = Runnable { replayed = true },
-                    onManualOverride = Runnable { manuallyAccepted = true },
-                    onPracticeWithGuide = Runnable { retried = true }
+                    onManualOverride = Runnable { continuedAnyway = true },
+                    onPracticeWithGuide = Runnable { retried = true },
+                    manualOverrideLabel = StudyWritingCopy.continueAnywayLabel(),
                 )
             )
         }
 
         composeRule.onNodeWithText(StudyWritingCopy.replayLabel()).assertIsDisplayed()
-        composeRule.onNodeWithText(StudyWritingCopy.manualOverrideLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyWritingCopy.continueAnywayLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(StudyWritingCopy.practiceWithGuideLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(StudyWritingCopy.replayLabel()).performClick()
-        composeRule.onNodeWithText(StudyWritingCopy.manualOverrideLabel()).performClick()
+        composeRule.onNodeWithText(StudyWritingCopy.continueAnywayLabel()).performClick()
         composeRule.onNodeWithText(StudyWritingCopy.practiceWithGuideLabel()).performClick()
 
         assertTrue(replayed)
-        assertTrue(manuallyAccepted)
+        assertTrue(continuedAnyway)
         assertTrue(retried)
     }
 

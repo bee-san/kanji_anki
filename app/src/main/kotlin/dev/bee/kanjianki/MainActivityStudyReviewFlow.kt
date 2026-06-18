@@ -12,6 +12,8 @@ import dev.bee.kanjianki.core.StudyReviewRequestPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
+private const val REPAIR_OUTCOME_SKIP = "skip"
+
 internal class MainActivityStudyReviewFlow(private val activity: MainActivityStudy) {
     fun submitReview(
         rating: String,
@@ -49,6 +51,27 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             activity,
             StudyTextCopy.similarWritingRepairSavedToast(completion.passed),
             Toast.LENGTH_SHORT
+        ).show()
+        activity.activeSimilarWritingRepair = null
+        activity.renderStudy()
+        ReminderScheduler.schedule(activity)
+    }
+
+    fun skipSimilarWritingRepair() {
+        val repair = activity.activeSimilarWritingRepair ?: return
+        val now = System.currentTimeMillis()
+        activity.completeActiveRepairStudyTask(activity.similarRepairStudyTaskKey(repair), REPAIR_OUTCOME_SKIP, now)
+        StudyRepairActions.skipSimilarWritingRepair(
+            repair,
+            now,
+            activity.store::skipSimilarWritingRepair,
+            activity.studySessionTracker::recordRepairOutcome,
+            activity::markStudyTaskCompleted,
+        )
+        Toast.makeText(
+            activity,
+            StudyTextCopy.similarWritingRepairSkippedToast(),
+            Toast.LENGTH_SHORT,
         ).show()
         activity.activeSimilarWritingRepair = null
         activity.renderStudy()

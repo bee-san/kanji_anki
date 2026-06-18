@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import android.view.View
 import dev.bee.kanjianki.core.StudyTaskCopy
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
@@ -85,14 +86,20 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
     }
 
     fun updateFallbackActionButtons(presentation: WritingActionPresentation) {
+        val repairActive = activity.activeSimilarWritingRepair != null
         activity.writingFallbackActionsView?.render(
             WritingFallbackActionsModel(
                 presentation.replayVisible,
-                presentation.manualOverrideVisible,
+                presentation.manualOverrideVisible || repairActive,
                 presentation.practiceWithGuideVisible,
                 Runnable { activity.replayWritingAnalysis() },
-                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
-                Runnable { activity.startGuidedWritingRetry() }
+                if (repairActive) {
+                    Runnable { activity.skipSimilarWritingRepair() }
+                } else {
+                    Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) }
+                },
+                Runnable { activity.startGuidedWritingRetry() },
+                if (repairActive) StudyWritingCopy.continueAnywayLabel() else StudyWritingCopy.manualOverrideLabel(),
             )
         )
     }

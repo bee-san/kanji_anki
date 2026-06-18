@@ -53,6 +53,9 @@ object StudyWritingCopy {
     fun manualOverrideLabel(): String = localizedText("Mark right anyway", "それでも合格にする")
 
     @JvmStatic
+    fun continueAnywayLabel(): String = localizedText("Continue anyway", "このまま続行")
+
+    @JvmStatic
     fun practiceWithGuideLabel(): String = localizedText("Try again with full guide", "フルガイドで再挑戦")
 
     @JvmStatic
