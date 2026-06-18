@@ -14,6 +14,8 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
     private val settingsRouteScrolls = mutableMapOf<String, Int>()
     internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
+    internal var newCardSortPreviewRefreshPending = false
+    internal var newCardSortPreviewRerenderOnResumePending = false
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
@@ -41,6 +43,16 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     internal fun renderSettingsStudyBehavior(preserveScroll: Boolean = false) {
         renderSettingsRoute(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE, preserveScroll)
+    }
+
+    override fun renderDeferredStudyBehaviorPreviewIfNeeded() {
+        if (!newCardSortPreviewRerenderOnResumePending) {
+            return
+        }
+        newCardSortPreviewRerenderOnResumePending = false
+        if (currentRoute == MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE) {
+            renderSettingsStudyBehavior(true)
+        }
     }
 
     internal fun renderSettingsAutomation(preserveScroll: Boolean = false) {

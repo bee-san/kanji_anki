@@ -60,6 +60,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var contentScrollY = 0
 
     @JvmField
+    var currentRoute: String = NAV_HOME_ROUTE
+
+    @JvmField
     var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
     @JvmField
@@ -230,6 +233,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
     }
+    open fun renderDeferredStudyBehaviorPreviewIfNeeded() = Unit
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
     abstract fun renderStudyForKanji(kanji: String?)
