@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -119,6 +120,46 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
 
                 assertNotNull(activity.cachedNewCardSortPreviewRows)
                 assertEquals(0, ioTasks.pendingCount())
+            }
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
+
+    @Test
+    fun renderStudyBehaviorUsesFreshPreviewCacheWithoutSchedulingRefresh() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val ioTasks = QueueingExecutorService()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            }
+            val activity = Robolectric.buildActivity(MainActivity::class.java, intent)
+                .create()
+                .start()
+                .resume()
+                .get()
+            activity.cancelPendingHomeRouteLoads()
+            activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
+            replaceBaseField(activity, "io", ioTasks)
+
+            LocalStore(context).use { store ->
+                prepareEmptyStore(store)
+                activity.store = store
+                val cached = SettingsNewCardSortPreviewRowsSnapshot(
+                    sourceRows = emptyList(),
+                    sourceVersion = store.newCardSortPreviewCacheVersion(),
+                    previewRowsByMode = emptyMap(),
+                    previewWarningsByMode = emptyMap(),
+                )
+                activity.cachedNewCardSortPreviewRows = cached
+
+                activity.renderSettingsStudyBehavior()
+                shadowOf(Looper.getMainLooper()).idle()
+
+                assertEquals(0, ioTasks.pendingCount())
+                assertSame(cached, activity.cachedNewCardSortPreviewRows)
             }
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
