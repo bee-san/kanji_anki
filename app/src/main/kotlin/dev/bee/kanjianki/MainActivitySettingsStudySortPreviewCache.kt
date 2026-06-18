@@ -8,6 +8,7 @@ import java.util.Locale
 
 internal data class SettingsNewCardSortPreviewRowsSnapshot(
     val sourceRows: List<RecordsImportModels.DashboardRow>,
+    val sourceVersion: Long = 0L,
     val previewRowsByMode: Map<String, List<SettingsNewCardSortPreviewRowModel>>,
     val previewWarningsByMode: Map<String, String>,
 )
@@ -16,14 +17,16 @@ internal object SettingsNewCardSortPreviewCache {
     fun resolve(
         rows: List<RecordsImportModels.DashboardRow>,
         cached: SettingsNewCardSortPreviewRowsSnapshot?,
+        sourceVersion: Long = 0L,
         hasSimilarLocalPair: (String?, String?) -> Boolean,
     ): SettingsNewCardSortPreviewRowsSnapshot {
-        if (cached != null && cached.sourceRows === rows) {
+        if (cached != null && cached.sourceRows === rows && cached.sourceVersion == sourceVersion) {
             return cached
         }
         val previewRowsByMode = buildPreviewRowsByMode(rows)
         return SettingsNewCardSortPreviewRowsSnapshot(
             sourceRows = rows,
+            sourceVersion = sourceVersion,
             previewRowsByMode = previewRowsByMode,
             previewWarningsByMode = buildPreviewWarningsByMode(
                 previewRowsByMode = previewRowsByMode,

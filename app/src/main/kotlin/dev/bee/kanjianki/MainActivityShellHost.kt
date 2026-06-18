@@ -69,6 +69,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     }
 
     private fun prepareRoute(selected: String) {
+        activity.currentRoute = selected
         activity.activeUpdateUiRunToken = 0
         if (MainActivityBase.NAV_STUDY != selected) {
             activity.abandonActiveStudyTask()
