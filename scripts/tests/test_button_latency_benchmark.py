@@ -154,7 +154,7 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
     def test_launch_route_args_request_single_top_for_warm_reroutes(self) -> None:
         config = benchmark.RunConfig(
             repo_root=Path("/tmp"),
-            adb="adb",
+            adb="missing-adb-for-unit-test",
             aapt="aapt",
             apk_path=Path("/tmp/app.apk"),
             package_name="dev.bee.kanjianki",
@@ -181,7 +181,7 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
     def test_build_report_and_measurements_json_classify_slow_controls(self) -> None:
         config = benchmark.RunConfig(
             repo_root=Path("/tmp"),
-            adb="adb",
+            adb="missing-adb-for-unit-test",
             aapt="aapt",
             apk_path=Path("/tmp/app.apk"),
             package_name="dev.bee.kanjianki",

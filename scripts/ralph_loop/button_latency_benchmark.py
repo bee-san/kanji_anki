@@ -788,8 +788,12 @@ def _device_info(config: RunConfig) -> dict[str, str]:
         except Exception:
             return ""
 
+    try:
+        adb_serials = _run([config.adb, "devices"], timeout_seconds=30)
+    except Exception:
+        adb_serials = ""
     return {
-        "adb_serials": _run([config.adb, "devices"], timeout_seconds=30),
+        "adb_serials": adb_serials,
         "model": shell_getprop("ro.product.model"),
         "sdk": shell_getprop("ro.build.version.sdk"),
         "fingerprint": shell_getprop("ro.build.fingerprint"),
