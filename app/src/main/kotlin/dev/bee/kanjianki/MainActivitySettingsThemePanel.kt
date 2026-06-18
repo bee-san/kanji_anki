@@ -7,7 +7,7 @@ internal class MainActivitySettingsThemePanel(private val activity: MainActivity
             activity.runSettingsWrite(
                 traceSection = "kani.settings.theme.save",
                 write = { activity.store.saveAppThemeChoice(choice) },
-                onComplete = { activity.renderSettings(true) },
+                onComplete = { activity.renderSettingsAppearance(true) },
             )
         }
     }

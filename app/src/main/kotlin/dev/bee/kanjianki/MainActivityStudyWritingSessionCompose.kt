@@ -15,9 +15,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun WritingSessionCard(
+internal fun WritingSessionCard(
     model: WritingSessionCardModel,
     modifier: Modifier = Modifier,
+    onBrowseAction: Runnable? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -31,7 +32,11 @@ fun WritingSessionCard(
         ) {
             WritingPromptHeader(model.promptHeader)
             if (model.answerPanelState.visible) {
-                StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+                StudyAnswerPanel(
+                    model.answerPanel,
+                    Modifier.padding(top = 12.dp, bottom = 10.dp),
+                    onBrowseAction = onBrowseAction,
+                )
             }
             if (model.writingTitle.isNotEmpty()) {
                 WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)

@@ -32,7 +32,11 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
             disableReminderAfterDeniedPermission(pending)
         }
         activity.pendingReminderSettings = null
-        activity.renderSettings(true)
+        if (activity is MainActivitySettings) {
+            activity.renderSettingsAutomation(true)
+        } else {
+            activity.renderSettings(true)
+        }
     }
 
     fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {

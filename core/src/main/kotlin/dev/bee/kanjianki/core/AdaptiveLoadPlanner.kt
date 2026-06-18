@@ -94,6 +94,7 @@ class AdaptiveLoadPlanner {
         internal val workloadPolicy: WorkloadPolicy? = builder.workloadPolicy
         private val nowMillis: Long = builder.nowMillis
         internal val settings: RecordsSyncModels.Settings? = builder.settings
+        internal val readingExposure: ReadingExposureModels.ExposureIndex? = builder.readingExposure
 
         fun rows(): List<RecordsImportModels.DashboardRow>? = rows
 
@@ -116,6 +117,8 @@ class AdaptiveLoadPlanner {
                 private set
             var settings: RecordsSyncModels.Settings? = RecordsSyncModels.Settings.kikuDefaults()
                 private set
+            var readingExposure: ReadingExposureModels.ExposureIndex? = ReadingExposureModels.ExposureIndex.EMPTY
+                private set
 
             fun workloadPolicy(workloadPolicy: WorkloadPolicy?): Builder {
                 this.workloadPolicy = workloadPolicy
@@ -129,6 +132,11 @@ class AdaptiveLoadPlanner {
 
             fun settings(settings: RecordsSyncModels.Settings?): Builder {
                 this.settings = settings
+                return this
+            }
+
+            fun readingExposure(readingExposure: ReadingExposureModels.ExposureIndex?): Builder {
+                this.readingExposure = readingExposure ?: ReadingExposureModels.ExposureIndex.EMPTY
                 return this
             }
 
@@ -176,6 +184,7 @@ class AdaptiveLoadPlanner {
         val itemCap: Int
         val nowMillis: Long
         val settings: RecordsSyncModels.Settings
+        val readingExposure: ReadingExposureModels.ExposureIndex
         val itemByKanji: Map<String, RecordsStudyModels.StudyItem>
 
         init {
@@ -189,6 +198,7 @@ class AdaptiveLoadPlanner {
             itemCap = policy.maxItems()
             nowMillis = request.nowMillis()
             settings = request.settings ?: RecordsSyncModels.Settings.kikuDefaults()
+            readingExposure = request.readingExposure ?: ReadingExposureModels.ExposureIndex.EMPTY
             itemByKanji = itemIndex(request.items())
         }
 
@@ -228,14 +238,17 @@ class AdaptiveLoadPlanner {
         val row: RecordsImportModels.DashboardRow,
         item: RecordsStudyModels.StudyItem?,
         nowMillis: Long,
-        settings: RecordsSyncModels.Settings
+        settings: RecordsSyncModels.Settings,
+        exposure: ReadingExposureModels.ExposureIndex,
     ) {
         val recoveryDue: Boolean = recoveryDue(item, nowMillis)
+        val exposureBoost: Double = exposure.priorityBoost(row.kanji)
         val fsrsRisk: Double = fsrsRisk(row, settings)
         val suspendedCount: Int = row.suspendedExampleCount
         val lapseScore: Int = lapseScore(row, item)
         val supportDeficit: Int = max(0, settings.matureSupportThreshold - row.matureSupportCount)
         val priorityScore: Double = row.weaknessScore +
+            exposureBoost +
             fsrsRisk +
             suspendedCount * 8.0 +
             lapseScore * 2.0 +
@@ -308,6 +321,8 @@ class AdaptiveLoadPlanner {
 
         private val CANDIDATE_ORDER: Comparator<Candidate> = compareBy<Candidate> { if (it.recoveryDue) 0 else 1 }
             .thenByDescending { it.fsrsRisk }
+            .thenByDescending { it.priorityScore }
+            .thenByDescending { it.exposureBoost }
             .thenByDescending { it.suspendedCount }
             .thenByDescending { it.lapseScore }
             .thenByDescending { it.supportDeficit }
@@ -321,7 +336,7 @@ class AdaptiveLoadPlanner {
         private fun candidatesFor(inputs: PlanInputs): List<Candidate> {
             val candidates = ArrayList<Candidate>()
             for (row in inputs.rows) {
-                candidates.add(Candidate(row, inputs.itemByKanji[row.kanji], inputs.nowMillis, inputs.settings))
+                candidates.add(Candidate(row, inputs.itemByKanji[row.kanji], inputs.nowMillis, inputs.settings, inputs.readingExposure))
             }
             candidates.sortWith(if (inputs.autoMode) AUTO_CANDIDATE_ORDER else CANDIDATE_ORDER)
             return candidates

@@ -100,7 +100,7 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
             },
         ) {
             toastMessage?.let { Toast.makeText(activity, it, Toast.LENGTH_SHORT).show() }
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 

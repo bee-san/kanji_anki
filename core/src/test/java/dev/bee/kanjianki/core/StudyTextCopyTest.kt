@@ -156,6 +156,45 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun kanjiExplorationCopyPreservesEnglishLabels() {
+        assertEquals("View kanji details", StudyTextCopy.viewKanjiDetailsLabel())
+        assertEquals("Open in Browse", StudyTextCopy.openInBrowseLabel())
+        assertEquals("Explore the differences", StudyTextCopy.exploreDifferencesLabel())
+        assertEquals("Explore the differences", StudyTextCopy.similarKanjiDifferencesTitle())
+        assertEquals(
+            "Compare the target kanji with the similar choices. Exact stroke or component claims only appear when Kani has reliable local data; otherwise use the shape hint as a safe visual fallback.",
+            StudyTextCopy.similarKanjiDifferencesBody(),
+        )
+        assertEquals("Correct kanji", StudyTextCopy.similarKanjiCorrectLabel())
+        assertEquals("Similar choices", StudyTextCopy.similarKanjiChoicesLabel())
+        assertEquals("Kanji 拉", StudyTextCopy.similarKanjiChoiceLabel("拉"))
+        assertEquals("Back to study", StudyTextCopy.backToStudyLabel())
+    }
+
+    @Test
+    fun kanjiExplorationCopyTranslatesToJapaneseLocale() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("漢字の詳細を見る", StudyTextCopy.viewKanjiDetailsLabel())
+            assertEquals("Browseで開く", StudyTextCopy.openInBrowseLabel())
+            assertEquals("違いを見比べる", StudyTextCopy.exploreDifferencesLabel())
+            assertEquals("違いを見比べる", StudyTextCopy.similarKanjiDifferencesTitle())
+            assertEquals(
+                "正解の漢字と似ている選択肢を見比べます。Kaniが信頼できるローカルデータを持つ場合だけ画数や部品の違いを表示し、それ以外は形のヒントで安全に確認します。",
+                StudyTextCopy.similarKanjiDifferencesBody(),
+            )
+            assertEquals("正解の漢字", StudyTextCopy.similarKanjiCorrectLabel())
+            assertEquals("似ている選択肢", StudyTextCopy.similarKanjiChoicesLabel())
+            assertEquals("拉", StudyTextCopy.similarKanjiChoiceLabel("拉"))
+            assertEquals("学習に戻る", StudyTextCopy.backToStudyLabel())
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun meaningKanjiChoiceCopyUsesTestedCompoundMeaningOverIndividualKanjiGloss() {
         val lookup = DictionaryLookup.fromKanjiEntries(listOf(kanjiEntry("脱", "undress", "removing")))
         val card = RecordsImportModels.MeaningKanjiChoiceCard(

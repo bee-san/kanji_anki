@@ -657,41 +657,37 @@ class ComposeScreenModelsTest {
             actionLabel = "Open licenses",
             onAction = Runnable {},
         )
-        val category = settingsCategorySectionModel(
-            sectionKey = "settings-study-behavior",
+        val card = SettingsHubCardModel(
+            routeKey = MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,
             title = "Study",
             summary = "Tune review behavior.",
             iconRes = R.drawable.ic_target_24,
-            expanded = true,
-            onToggle = toggle,
-            panels = listOf(panel),
+            panelCount = "1 card",
+            contentDescription = "Open Study",
+            onOpen = Runnable {},
         )
         val screen = SettingsScreenModel(
             homeLabel = "Home",
             onHome = home,
             hero = hero,
-            categories = listOf(category),
+            cards = listOf(card),
         )
 
         assertEquals("Home", screen.homeLabel)
         assertSame(home, screen.onHome)
         assertSame(hero, screen.hero)
-        assertEquals(listOf(category), screen.categories)
-        assertEquals("settings-study-behavior", category.sectionKey)
-        assertEquals("Study", category.title)
-        assertEquals("Tune review behavior.", category.summary)
-        assertEquals(R.drawable.ic_target_24, category.iconRes)
-        assertEquals(true, category.expanded)
-        assertEquals("1 card", category.panelCount)
-        assertEquals("Collapse Study", category.contentDescription)
-        assertSame(toggle, category.onToggle)
-        assertEquals(listOf(panel), category.panels)
+        assertEquals(listOf(card), screen.cards)
+        assertEquals(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE, card.routeKey)
+        assertEquals("Study", card.title)
+        assertEquals("Tune review behavior.", card.summary)
+        assertEquals(R.drawable.ic_target_24, card.iconRes)
+        assertEquals("1 card", card.panelCount)
+        assertEquals("Open Study", card.contentDescription)
+        card.onOpen.run()
         screen.onHome.run()
-        category.onToggle.run()
         assertEquals(true, homeClicked)
-        assertEquals(true, toggled)
         assertEquals(screen, screen.copy())
-        assertEquals(category, category.copy())
+        assertEquals(card, card.copy())
     }
 
     @Test

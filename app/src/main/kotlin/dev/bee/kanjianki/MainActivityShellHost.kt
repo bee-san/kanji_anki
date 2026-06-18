@@ -5,18 +5,18 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.theme.resolveSystemBars
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
-    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, content: @Composable () -> Unit) {
+    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, onScrollY: (Int) -> Unit = {}, content: @Composable () -> Unit) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
-            val themeChoice = activity.store.appThemeChoice()
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRoute(
                     model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
                     initialScrollY = initialScrollY,
-                    onScrollY = { activity.contentScrollY = it },
+                    onScrollY = onScrollY,
                     navActions = navActions(),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,
@@ -31,6 +31,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         selected: String,
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
+        onScrollY: (Int) -> Unit = {},
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
@@ -39,14 +40,14 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
             beforeContent()
-            val themeChoice = activity.store.appThemeChoice()
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRouteWithActionBar(
                     model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
                     initialScrollY = initialScrollY,
-                    onScrollY = { activity.contentScrollY = it },
+                    onScrollY = onScrollY,
                     navActions = navActions(),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,

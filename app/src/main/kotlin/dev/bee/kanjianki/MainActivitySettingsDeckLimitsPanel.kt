@@ -22,7 +22,7 @@ internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainAct
             },
         ) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 }

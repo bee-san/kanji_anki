@@ -3,10 +3,11 @@ package dev.bee.kanjianki
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -16,7 +17,7 @@ class MainActivitySettingsScreenComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun preservesExpandedCategoryWhenTitleChanges() {
+    fun rendersHubCardsAndUpdatesCardDescription() {
         val titleState = mutableStateOf("Import & sync")
 
         composeRule.setContent {
@@ -32,124 +33,66 @@ class MainActivitySettingsScreenComposeTest {
                             listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
                         ),
                     ),
-                    categories = listOf(
-                        SettingsCategorySectionModel(
-                            sectionKey = "settings-anki-source",
+                    cards = listOf(
+                        SettingsHubCardModel(
+                            routeKey = MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE,
                             title = titleState.value,
                             summary = "Choose what gets imported.",
                             iconRes = R.drawable.ic_book_24,
-                            expanded = false,
-                            panelCount = "1 panel",
-                            contentDescription = "Expand ${titleState.value}",
-                            onToggle = Runnable {},
-                            panels = listOf(
-                                SettingsReferenceDataLinkModel(
-                                    title = "Import details",
-                                    body = "Review the import mapping before enabling it.",
-                                    actionLabel = "Open import details",
-                                    onAction = Runnable {},
-                                ),
-                            ),
+                            panelCount = "4 cards",
+                            contentDescription = SettingsTextCopy.sectionOpenDescription(titleState.value),
+                            onOpen = Runnable {},
                         ),
                     ),
                 ),
             )
         }
 
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).performClick()
-        composeRule.onNodeWithText("Open import details").assertIsDisplayed()
+        composeRule.onNodeWithText("Home").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeRule.onNodeWithText("Import & sync").assertIsDisplayed()
+        composeRule.onNodeWithText("4 cards").assertIsDisplayed()
+        composeRule.onNodeWithTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG).assertExists()
 
-        composeRule.runOnIdle {
-            titleState.value = "Import sources"
-        }
+        composeRule.runOnIdle { titleState.value = "Import sources" }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Open import details").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Collapse Import sources").assertIsDisplayed()
+        composeRule.onNodeWithText("Import sources").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.sectionOpenDescription("Import sources")).assertIsDisplayed()
     }
 
     @Test
-    fun rendersSettingsRouteAndInvokesShellActions() {
+    fun rendersSubmenuScreenWithBackButtonAndPanels() {
         var homeClicked = false
-        var categoryToggled = false
-        var importClicked = false
+        var backClicked = false
+        val panel = SettingsReferenceDataLinkModel(
+            title = "Data licenses",
+            body = "Dictionary, stroke, and font attributions.",
+            actionLabel = "Open licenses",
+            onAction = Runnable {},
+        )
 
         composeRule.setContent {
-            SettingsScreen(
-                model = SettingsScreenModel(
+            SettingsSubmenuScreen(
+                model = SettingsSubmenuScreenModel(
                     homeLabel = "Home",
                     onHome = Runnable { homeClicked = true },
-                    hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Overview",
-                        title = "Settings",
-                        body = "Configure Kani behavior.",
-                        rows = listOf(
-                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
-                            listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
-                        )
-                    ),
-                    categories = listOf(
-                        SettingsCategorySectionModel(
-                            sectionKey = "settings-anki-source",
-                            title = "Import & sync",
-                            summary = "Choose what gets imported.",
-                            iconRes = R.drawable.ic_book_24,
-                            expanded = false,
-                            panelCount = "3 cards",
-                            contentDescription = "Expand Import & sync",
-                            onToggle = Runnable { categoryToggled = true },
-                            panels = listOf(
-                                SettingsReferenceDataLinkModel(
-                                    title = "Import details",
-                                    body = "Review the import mapping before enabling it.",
-                                    actionLabel = "Open import details",
-                                    onAction = Runnable { importClicked = true }
-                                )
-                            )
-                        ),
-                        SettingsCategorySectionModel(
-                            sectionKey = "settings-reference-data",
-                            title = "Display & data",
-                            summary = "Display & data and licenses.",
-                            iconRes = R.drawable.ic_sparkle_24,
-                            expanded = true,
-                            panelCount = "1 card",
-                            contentDescription = "Collapse Display & data",
-                            onToggle = Runnable {},
-                            panels = listOf(
-                                SettingsReferenceDataLinkModel(
-                                    title = "Data licenses",
-                                    body = "Dictionary, stroke, and font attributions.",
-                                    actionLabel = "Open licenses",
-                                    onAction = Runnable {}
-                                )
-                            )
-                        )
-                    )
-                )
+                    backLabel = SettingsTextCopy.backToSettingsLabel(),
+                    onBack = Runnable { backClicked = true },
+                    title = "Display & data",
+                    body = "Manage dictionaries and credits.",
+                    panels = listOf(panel),
+                ),
             )
         }
 
-        composeRule.onNodeWithText("Home").assertIsDisplayed()
-        composeRule.onNodeWithText("Settings").assertIsDisplayed()
-        composeRule.onNodeWithText("Note type").assertIsDisplayed()
-        composeRule.onNodeWithText("Import & sync").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-anki-source")).assertIsDisplayed()
-        composeRule.onNodeWithText("3 cards").assertIsDisplayed()
+        composeRule.onNodeWithText("Home").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed().performClick()
         composeRule.onNodeWithText("Display & data").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-reference-data")).assertIsDisplayed()
-        composeRule.onNodeWithText("Open import details").assertDoesNotExist()
-        composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
-
-        composeRule.onNodeWithText("Home").performClick()
-        composeRule.onNodeWithContentDescription("Expand Import & sync").performClick()
-        composeRule.onNodeWithContentDescription("Collapse Import & sync").assertIsDisplayed()
-        composeRule.onNodeWithText("Open import details").assertExists()
-        composeRule.onNodeWithText("Open import details").performClick()
-        composeRule.onNodeWithText("Open licenses").assertExists()
+        composeRule.onNodeWithText("Manage dictionaries and credits.").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsPanelTestTag(panel)).assertIsDisplayed()
 
         assertTrue(homeClicked)
-        assertTrue(categoryToggled)
-        assertTrue(importClicked)
+        assertTrue(backClicked)
     }
 }

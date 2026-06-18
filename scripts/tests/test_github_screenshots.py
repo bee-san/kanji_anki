@@ -11,6 +11,7 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any, cast
 from unittest import mock
+from unittest.mock import patch
 
 from scripts.ralph_loop import github_screenshots
 
@@ -55,6 +56,11 @@ def _capture_entry(path: Path, route: str | None = None, ui_dump_path: Path | No
 
 
 class GithubScreenshotsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        github_actions_env = patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
+        github_actions_env.start()
+        self.addCleanup(github_actions_env.stop)
+
     def test_android_screenshots_workflow_sanitizes_dispatch_inputs(self) -> None:
         workflow = Path(".github/workflows/android-screenshots.yml").read_text(encoding="utf-8")
 
@@ -439,9 +445,10 @@ class GithubScreenshotsTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            missing_captures = github_screenshots.validate_artifact(out, expected_route="home")
-            self.assertEqual("missing_artifact", missing_captures["status"])
-            self.assertIn("captures", str(missing_captures["message"]))
+            files_only_manifest = github_screenshots.validate_artifact(out, expected_route="home")
+            self.assertEqual("passed", files_only_manifest["status"])
+            self.assertEqual([str(png)], files_only_manifest["pngs"])
+
 
             manifest_path.write_text(
                 json.dumps(

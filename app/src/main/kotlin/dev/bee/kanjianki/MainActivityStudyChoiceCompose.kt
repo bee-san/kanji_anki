@@ -57,7 +57,7 @@ class MeaningChoiceSessionState(selectedChoice: String? = null) {
 }
 
 @Composable
-fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
+internal fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
     return remember(
         model.question,
         model.choices,
@@ -71,6 +71,7 @@ fun SimilarChoiceSessionCard(
     model: SimilarChoiceSessionModel,
     modifier: Modifier = Modifier,
     showInlineChoices: Boolean = true,
+    onExploreDifferences: Runnable? = null,
 ) {
     var detailsExpanded by rememberSaveable(model.question, showInlineChoices) { mutableStateOf(showInlineChoices) }
     StudyChoiceSessionSurface(
@@ -86,6 +87,7 @@ fun SimilarChoiceSessionCard(
             showChoices = showInlineChoices,
             detailsExpanded = detailsExpanded,
             onToggleDetails = { detailsExpanded = !detailsExpanded },
+            onExploreDifferences = onExploreDifferences,
         )
     }
 }
@@ -99,6 +101,102 @@ internal fun SimilarChoiceActionBar(model: SimilarChoiceGridModel, modifier: Mod
     ) {
         SimilarChoiceGrid(model)
     }
+}
+
+@Composable
+internal fun SimilarKanjiDifferenceScreen(model: SimilarKanjiDifferenceModel, modifier: Modifier = Modifier) {
+    StudyChoiceSessionSurface(
+        modeLabel = model.modeLabel,
+        title = model.title,
+        taskLabel = model.correctLabel,
+        body = model.body,
+        modifier = modifier,
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 10.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = StudyPanelFill,
+            border = BorderStroke(1.dp, StudyChoiceBorder),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                StudyChoiceText(model.correctKanji, sizeSp = 40, color = StudyChoicePlum, bold = true)
+                SimilarKanjiExplanationPanel(model.explanationLines)
+                StudyChoiceText(model.choicesTitle, sizeSp = 16, color = StudyPinkDark, bold = true)
+                model.choices.forEach { choice ->
+                    SimilarKanjiDifferenceChoiceRow(choice)
+                }
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.backToStudyLabel(),
+                    onClick = { model.onBack.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarKanjiDifferenceChoiceRow(choice: SimilarKanjiDifferenceChoiceModel) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = StudyCardFill,
+        border = BorderStroke(1.dp, StudyChoiceBorder),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            StudyChoiceText(choice.label, sizeSp = 18, color = StudyChoicePlum, bold = true)
+            if (choice.onOpenBrowse != null) {
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.openInBrowseLabel(),
+                    onClick = { choice.onOpenBrowse.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    minHeight = 52.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MeaningChoiceSessionCard(
+    model: MeaningChoiceSessionModel,
+    state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
+    showInlineResultAction: Boolean = true,
+    onBrowseAction: Runnable? = null,
+) {
+    val selectedChoice = state.selectedChoice
+    val answered = state.answered
+    StudyChoiceSessionSurface(
+        modeLabel = model.modeLabel,
+        title = model.title,
+        taskLabel = model.taskLabel,
+        body = model.body,
+        showTaskCopy = false,
+    ) {
+        MeaningChoiceInsetPanel(
+            model = model,
+            answered = answered,
+            onAnswered = { glyph ->
+                if (!answered) {
+                    state.select(glyph)
+                    if (model.resultResolver == null) {
+                        model.onChoice.onChoice(glyph)
+                    }
+                }
+            },
+            selectedChoice = selectedChoice,
+            showInlineResultAction = showInlineResultAction,
+            onBrowseAction = onBrowseAction,
+        )
+}
 }
 
 @Composable
@@ -155,6 +253,7 @@ private fun SimilarChoiceInsetPanel(
     showChoices: Boolean,
     detailsExpanded: Boolean,
     onToggleDetails: () -> Unit,
+    onExploreDifferences: Runnable? = null,
 ) {
     Surface(
         modifier = Modifier
@@ -176,6 +275,15 @@ private fun SimilarChoiceInsetPanel(
                 SimilarKanjiCollapsedSummaryRow(
                     summaryLine = model.explanationLines.firstOrNull(),
                     onToggleDetails = onToggleDetails,
+                )
+            }
+            if (onExploreDifferences != null) {
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.exploreDifferencesLabel(),
+                    onClick = { onExploreDifferences.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 8.dp)
                 )
             }
             if (showChoices) {
@@ -279,44 +387,13 @@ private fun SimilarKanjiExplanationPanel(lines: List<SimilarKanjiExplanationLine
 }
 
 @Composable
-fun MeaningChoiceSessionCard(
-    model: MeaningChoiceSessionModel,
-    state: MeaningChoiceSessionState = rememberMeaningChoiceSessionState(model),
-    showInlineResultAction: Boolean = true,
-) {
-    val selectedChoice = state.selectedChoice
-    val answered = state.answered
-    StudyChoiceSessionSurface(
-        modeLabel = model.modeLabel,
-        title = model.title,
-        taskLabel = model.taskLabel,
-        body = model.body,
-        showTaskCopy = false,
-    ) {
-        MeaningChoiceInsetPanel(
-            model = model,
-            answered = answered,
-            onAnswered = { glyph ->
-                if (!answered) {
-                    state.select(glyph)
-                    if (model.resultResolver == null) {
-                        model.onChoice.onChoice(glyph)
-                    }
-                }
-            },
-            selectedChoice = selectedChoice,
-            showInlineResultAction = showInlineResultAction,
-        )
-    }
-}
-
-@Composable
 private fun MeaningChoiceInsetPanel(
     model: MeaningChoiceSessionModel,
     answered: Boolean,
     onAnswered: (String) -> Unit,
     selectedChoice: String?,
     showInlineResultAction: Boolean,
+    onBrowseAction: Runnable? = null,
 ) {
     Surface(
         modifier = Modifier
@@ -338,7 +415,8 @@ private fun MeaningChoiceInsetPanel(
                     model = model.answerPanel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp)
+                        .padding(top = 10.dp),
+                    onBrowseAction = onBrowseAction,
                 )
                 if (showInlineResultAction && result != null) {
                     MeaningChoiceResultActionBar(

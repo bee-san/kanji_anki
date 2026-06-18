@@ -110,7 +110,25 @@ data class SimilarChoiceSessionModel(
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
 )
 
-data class MeaningChoiceSessionModel(
+internal data class SimilarKanjiDifferenceChoiceModel(
+    val kanji: String,
+    val label: String,
+    val onOpenBrowse: Runnable? = null,
+)
+
+internal data class SimilarKanjiDifferenceModel(
+    val modeLabel: String,
+    val title: String,
+    val body: String,
+    val correctLabel: String,
+    val correctKanji: String,
+    val choicesTitle: String,
+    val choices: List<SimilarKanjiDifferenceChoiceModel>,
+    val explanationLines: List<SimilarKanjiExplanationLineModel>,
+    val onBack: Runnable,
+)
+
+internal data class MeaningChoiceSessionModel(
     val modeLabel: String,
     val title: String,
     val taskLabel: String,

@@ -2,10 +2,12 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -27,6 +29,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyCuePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 
 private val StudyAnswerPlum: Color @Composable get() = KaniTheme.colors.plum
 private val StudyAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
@@ -109,14 +112,24 @@ private fun answerPanelModel(
         glyph = session.item?.kanji ?: "",
         glyphSizeSp = glyphSizeSp,
         lines = lines,
-        helperText = helperText
+        helperText = helperText,
+        stateKey = studyAnswerPanelStateKey(session),
+        kanjiDetails = studyAnswerKanjiDetailsModel(activity, session),
     )
 }
 
 @Composable
-fun StudyAnswerPanel(model: StudyAnswerPanelModel, modifier: Modifier = Modifier) {
+internal fun StudyAnswerPanel(
+    model: StudyAnswerPanelModel,
+    modifier: Modifier = Modifier,
+    onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
+    initialExpandedSectionLabel: String? = null,
+    initialUsedInAnkiShowAll: Boolean = false,
+    onBrowseAction: Runnable? = null,
+) {
+    val panelStateKey = studyAnswerPanelStateKey(model)
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().animateContentSize(),
         shape = RoundedCornerShape(22.dp),
         color = StudyAnswerPanelFill,
         border = BorderStroke(1.dp, StudyAnswerBorder)
@@ -163,9 +176,35 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel, modifier: Modifier = Modifier
                     style = studyAnswerTextStyle(13)
                 )
             }
+            model.kanjiDetails?.let { details ->
+                Spacer(modifier = Modifier.height(12.dp))
+                StudyAnswerKanjiDetailsStack(
+                    details = details,
+                    panelStateKey = panelStateKey,
+                    onAnkiTapAction = onAnkiTapAction,
+                    initialExpandedSectionLabel = initialExpandedSectionLabel,
+                    initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
+                )
+            }
+            if (onBrowseAction != null && model.glyph.isNotBlank()) {
+                Text(
+                    text = StudyTextCopy.viewKanjiDetailsLabel(),
+                    color = StudyAnswerMuted,
+                    style = studyAnswerTextStyle(13),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                StudySecondaryActionButton(
+                    label = StudyTextCopy.openInBrowseLabel(),
+                    onClick = { onBrowseAction.run() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
         }
     }
 }
+
 
 private fun studyAnswerTextStyle(sizeSp: Int): TextStyle {
     val size = sizeSp.sp

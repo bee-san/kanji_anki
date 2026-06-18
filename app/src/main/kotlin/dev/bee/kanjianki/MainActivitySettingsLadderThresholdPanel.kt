@@ -29,7 +29,7 @@ internal class MainActivitySettingsLadderThresholdPanel(private val activity: Ma
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 }

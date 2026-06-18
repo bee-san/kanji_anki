@@ -80,7 +80,7 @@ internal class MainActivitySettingsWorkloadPanel(private val activity: MainActiv
             },
         ) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 
