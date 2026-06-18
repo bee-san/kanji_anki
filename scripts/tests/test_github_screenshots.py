@@ -449,6 +449,7 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual("passed", files_only_manifest["status"])
             self.assertEqual([str(png)], files_only_manifest["pngs"])
 
+
             manifest_path.write_text(
                 json.dumps(
                     {

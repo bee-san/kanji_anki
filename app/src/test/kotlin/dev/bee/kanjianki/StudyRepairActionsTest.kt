@@ -130,6 +130,33 @@ class StudyRepairActionsTest {
         assertNull(marker.taskKey)
     }
 
+    @Test
+    fun skipSimilarWritingRepairRecordsOutcomeAndMarksTaskComplete() {
+        val repair = repair("active-token")
+        val events = mutableListOf<String>()
+        val skipper = RecordingSkipper(events, true)
+        val recorder = RecordingOutcomeRecorder(events)
+        val marker = RecordingMarker(events)
+
+        val completion = StudyRepairActions.skipSimilarWritingRepair(
+            repair,
+            3333L,
+            skipper,
+            recorder,
+            marker,
+        )
+
+        assertTrue(completion.saved)
+        assertFalse(completion.passed)
+        assertEquals(listOf("skip", "record", "mark"), events)
+        assertEquals(42L, skipper.repairId)
+        assertEquals("active-token", skipper.activeToken)
+        assertEquals(3333L, skipper.nowMillis)
+        assertEquals("未", recorder.kanji)
+        assertFalse(recorder.passed)
+        assertEquals("repair:42", marker.taskKey)
+    }
+
     private fun repair(activeToken: String): RecordsImportModels.SimilarKanjiWritingRepair {
         return RecordsImportModels.SimilarKanjiWritingRepair(
             42L,
@@ -167,6 +194,27 @@ class StudyRepairActionsTest {
             this.repairId = repairId
             this.activeToken = activeToken
             this.passed = passed
+            this.nowMillis = nowMillis
+            return saved
+        }
+    }
+
+    private class RecordingSkipper(
+        private val events: MutableList<String>,
+        private val saved: Boolean,
+    ) : StudyRepairActions.SimilarWritingRepairSkipper {
+        var repairId: Long = 0L
+        var activeToken: String? = null
+        var nowMillis: Long = 0L
+
+        override fun skipSimilarWritingRepair(
+            repairId: Long,
+            activeToken: String?,
+            nowMillis: Long,
+        ): Boolean {
+            events.add("skip")
+            this.repairId = repairId
+            this.activeToken = activeToken
             this.nowMillis = nowMillis
             return saved
         }

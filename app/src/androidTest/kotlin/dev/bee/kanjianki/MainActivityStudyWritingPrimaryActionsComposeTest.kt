@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.StudyWritingCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -80,6 +81,66 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
         composeRule.onNodeWithTag(studyActionButtonTestTag("Save hard")).performClick()
 
         assertTrue(submitted)
+    }
+
+    @Test
+    fun rendersRepairSkipActionInPrimaryAreaAndInvokesCallback() {
+        var skipped = false
+
+        composeRule.setContent {
+            WritingPrimaryActions(
+                WritingPrimaryActionsModel(
+                    checkText = "Checking...",
+                    checkVisible = true,
+                    checkEnabled = true,
+                    downloadText = "Download checker",
+                    downloadVisible = false,
+                    nextText = StudyWritingCopy.continueAnywayLabel(),
+                    nextVisible = true,
+                    nextEnabled = true,
+                    onCheck = Runnable {},
+                    onDownload = Runnable {},
+                    onNext = Runnable { skipped = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(StudyWritingCopy.continueAnywayLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyWritingCopy.continueAnywayLabel()))
+            .assertIsDisplayed()
+            .performClick()
+
+        assertTrue(skipped)
+    }
+
+    @Test
+    fun disablesRepairSkipActionWhileChecking() {
+        var skipped = false
+
+        composeRule.setContent {
+            WritingPrimaryActions(
+                WritingPrimaryActionsModel(
+                    checkText = "Checking...",
+                    checkVisible = true,
+                    checkEnabled = false,
+                    downloadText = "Download checker",
+                    downloadVisible = false,
+                    nextText = StudyWritingCopy.continueAnywayLabel(),
+                    nextVisible = true,
+                    nextEnabled = false,
+                    onCheck = Runnable {},
+                    onDownload = Runnable {},
+                    onNext = Runnable { skipped = true }
+                )
+            )
+        }
+
+        val button = composeRule.onNodeWithTag(studyActionButtonTestTag(StudyWritingCopy.continueAnywayLabel()))
+        button.assertIsDisplayed().assertIsNotEnabled()
+        val clickFailure = runCatching { button.performClick() }.exceptionOrNull()
+
+        assertTrue(clickFailure is AssertionError)
+        assertEquals(false, skipped)
     }
 
     @Test

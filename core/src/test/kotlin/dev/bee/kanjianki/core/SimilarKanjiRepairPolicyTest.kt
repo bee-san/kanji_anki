@@ -80,6 +80,18 @@ class SimilarKanjiRepairPolicyTest {
         assertEquals(6000L, update.dueAtMillis())
     }
 
+    @Test
+    fun skipUpdateCompletesRepairWithoutMarkingItPassed() {
+        val update = SimilarKanjiRepairPolicy.skipUpdate(repair(2), 7000L)
+
+        assertEquals("", update.activeToken())
+        assertEquals(7000L, update.updatedAtMillis())
+        assertEquals(SimilarKanjiRepairPolicy.STATUS_SKIPPED, update.status())
+        assertEquals(7000L, update.completedAtMillis())
+        assertNull(update.attempts())
+        assertNull(update.dueAtMillis())
+    }
+
     private fun repair(attempts: Int): RecordsImportModels.SimilarKanjiWritingRepair {
         return RecordsImportModels.SimilarKanjiWritingRepair(
             9L,

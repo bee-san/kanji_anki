@@ -413,9 +413,11 @@ if [ -n "${capture_theme_system_mode}" ]; then
 fi
 
 stats_label="Stats"
+study_label="Study"
 requested_locale_lower="$(printf '%s' "${requested_locale}" | tr '[:upper:]' '[:lower:]')"
 if [[ "${requested_locale_lower}" == ja* ]]; then
   stats_label="統計"
+  study_label="学習"
 fi
 if [ -n "${requested_locale}" ]; then
   log "Using screenshot locale ${requested_locale}"
@@ -424,7 +426,7 @@ fi
 case "${requested_route}" in
   all)
     capture_route_triplet home home portrait "Kani route home"
-    capture_route_triplet study study portrait "Kani route study" "学習"
+    capture_route_triplet study study portrait "Kani route study" "${study_label}"
     capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
     capture_route_triplet settings settings portrait "Kani route settings" "Settings"
     capture_route_triplet games games portrait "Games"
@@ -435,7 +437,7 @@ case "${requested_route}" in
     capture_route_triplet home home portrait "Kani route home"
     ;;
   study)
-    capture_route_triplet study study portrait "Kani route study" "学習"
+    capture_route_triplet study study portrait "Kani route study" "${study_label}"
     ;;
   stats)
     capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"

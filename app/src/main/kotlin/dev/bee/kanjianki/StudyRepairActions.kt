@@ -40,12 +40,32 @@ internal object StudyRepairActions {
         return RepairCompletion(saved, passed)
     }
 
+    @JvmStatic
+    fun skipSimilarWritingRepair(
+        repair: RecordsImportModels.SimilarKanjiWritingRepair,
+        nowMillis: Long,
+        skipper: SimilarWritingRepairSkipper,
+        recorder: RepairOutcomeRecorder,
+        marker: RepairTaskMarker,
+    ): RepairCompletion {
+        val saved = skipper.skipSimilarWritingRepair(repair.id, repair.activeToken, nowMillis)
+        if (saved) {
+            recorder.recordRepairOutcome(repair.repairKanji, false)
+            marker.markStudyTaskCompleted(StudySessionTracker.similarRepairProgressKey(repair))
+        }
+        return RepairCompletion(saved, false)
+    }
+
     fun interface SimilarWritingRepairWriter {
         fun saveSimilarWritingRepair(repair: RecordsImportModels.SimilarKanjiWritingRepair)
     }
 
     fun interface SimilarWritingRepairFinisher {
         fun finishSimilarWritingRepair(repairId: Long, activeToken: String?, passed: Boolean, nowMillis: Long): Boolean
+    }
+
+    fun interface SimilarWritingRepairSkipper {
+        fun skipSimilarWritingRepair(repairId: Long, activeToken: String?, nowMillis: Long): Boolean
     }
 
     fun interface RepairOutcomeRecorder {

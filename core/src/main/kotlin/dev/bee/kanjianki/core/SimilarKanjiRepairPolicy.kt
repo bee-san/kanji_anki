@@ -7,6 +7,9 @@ object SimilarKanjiRepairPolicy {
     @JvmField
     val STATUS_COMPLETE: String = "complete"
 
+    @JvmField
+    val STATUS_SKIPPED: String = "skipped"
+
     @JvmStatic
     fun newRepair(
         card: RecordsImportModels.SimilarKanjiChoiceCard?,
@@ -48,6 +51,14 @@ object SimilarKanjiRepairPolicy {
         }
         val attempts = if (current == null) 1 else current.attempts + 1
         return FinishUpdate("", nowMillis, null, null, attempts, nowMillis)
+    }
+
+    @JvmStatic
+    fun skipUpdate(
+        @Suppress("UNUSED_PARAMETER") current: RecordsImportModels.SimilarKanjiWritingRepair?,
+        nowMillis: Long,
+    ): FinishUpdate {
+        return FinishUpdate("", nowMillis, STATUS_SKIPPED, nowMillis, null, null)
     }
 
     class FinishUpdate(
