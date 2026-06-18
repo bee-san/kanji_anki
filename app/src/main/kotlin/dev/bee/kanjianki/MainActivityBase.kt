@@ -60,6 +60,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var contentScrollY = 0
 
     @JvmField
+    var currentRoute: String = NAV_HOME_ROUTE
+
+    @JvmField
     var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
     @JvmField

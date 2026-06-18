@@ -14,6 +14,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
     private val settingsRouteScrolls = mutableMapOf<String, Int>()
     internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
+    internal var newCardSortPreviewRefreshPending = false
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
