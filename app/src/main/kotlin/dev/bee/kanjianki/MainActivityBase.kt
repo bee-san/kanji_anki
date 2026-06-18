@@ -233,6 +233,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
     }
+    open fun renderDeferredStudyBehaviorPreviewIfNeeded() = Unit
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
     abstract fun renderStudyForKanji(kanji: String?)
