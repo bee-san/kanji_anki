@@ -139,6 +139,129 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertTrue(benchmark._matches_expected_term("settings", "Settings||設定"))
         self.assertFalse(benchmark._matches_expected_term("ホーム", "Settings||設定"))
 
+    def test_maybe_allow_permission_dialog_taps_allow_button(self) -> None:
+        config = benchmark.RunConfig(
+            repo_root=Path("/tmp"),
+            adb="missing-adb-for-unit-test",
+            aapt="aapt",
+            apk_path=Path("/tmp/app.apk"),
+            package_name="dev.bee.kanjianki",
+            out_dir=Path("/tmp/out"),
+            repeat_count=2,
+            slow_threshold_ms=1_000,
+            settle_timeout_ms=6_000,
+            dump_timeout_ms=8_000,
+            stable_polls=2,
+            poll_interval_ms=120,
+            include_unsafe=False,
+            include_stateful=False,
+            max_controls=None,
+            routes=("home",),
+            scroll_positions=("top",),
+            dry_run_inventory=False,
+        )
+        xml = """
+        <hierarchy>
+          <node resource-id="com.android.permissioncontroller:id/permission_allow_button" bounds="[100,200][300,400]" />
+        </hierarchy>
+        """
+        calls: list[tuple[str, ...]] = []
+
+        def fake_adb(_config: benchmark.RunConfig, *args: str, **_kwargs: object) -> str:
+            calls.append(args)
+            return ""
+
+        original_adb = benchmark._adb
+        benchmark._adb = fake_adb
+        try:
+            allowed = benchmark.maybe_allow_permission_dialog(config, xml)
+        finally:
+            benchmark._adb = original_adb
+
+        self.assertTrue(allowed)
+        self.assertEqual(("shell", "input", "tap", "200", "300"), calls[0])
+
+    def test_timed_dump_ui_xml_uses_shell_dump_output_with_status_prefix(self) -> None:
+        config = benchmark.RunConfig(
+            repo_root=Path("/tmp"),
+            adb="missing-adb-for-unit-test",
+            aapt="aapt",
+            apk_path=Path("/tmp/app.apk"),
+            package_name="dev.bee.kanjianki",
+            out_dir=Path("/tmp/out"),
+            repeat_count=2,
+            slow_threshold_ms=1_000,
+            settle_timeout_ms=6_000,
+            dump_timeout_ms=8_000,
+            stable_polls=2,
+            poll_interval_ms=120,
+            include_unsafe=False,
+            include_stateful=False,
+            max_controls=None,
+            routes=("home",),
+            scroll_positions=("top",),
+            dry_run_inventory=False,
+        )
+        calls: list[tuple[str, ...]] = []
+        shell_xml = "UI hierchary dumped to: /sdcard/window.xml\n<hierarchy><node text=\"Kani route home\" /></hierarchy>"
+
+        def fake_adb(_config: benchmark.RunConfig, *args: str, **_kwargs: object) -> str:
+            calls.append(args)
+            if args[:4] == ("shell", "timeout", "-k", "2s"):
+                return "UI hierchary dumped to: /sdcard/kani-button-latency.xml"
+            if args[:2] == ("shell", "cat"):
+                return shell_xml
+            if args[:3] == ("shell", "rm", "-f"):
+                return ""
+            raise AssertionError(args)
+
+        original_adb = benchmark._adb
+        benchmark._adb = fake_adb
+        try:
+            xml, elapsed_ms = benchmark.timed_dump_ui_xml(config)
+        finally:
+            benchmark._adb = original_adb
+
+        self.assertIn("Kani route home", xml)
+        self.assertGreaterEqual(elapsed_ms, 0)
+        self.assertTrue(any(call[:4] == ("shell", "timeout", "-k", "2s") for call in calls))
+        self.assertTrue(any(call[:2] == ("shell", "cat") for call in calls))
+        self.assertFalse(any(call[:3] == ("exec-out", "uiautomator", "dump") for call in calls))
+
+    def test_route_variants_cover_default_matrix_with_route_specific_wait_terms(self) -> None:
+        config = benchmark.RunConfig(
+            repo_root=Path("/tmp"),
+            adb="missing-adb-for-unit-test",
+            aapt="aapt",
+            apk_path=Path("/tmp/app.apk"),
+            package_name="dev.bee.kanjianki",
+            out_dir=Path("/tmp/out"),
+            repeat_count=2,
+            slow_threshold_ms=1_000,
+            settle_timeout_ms=6_000,
+            stable_polls=2,
+            poll_interval_ms=120,
+            include_unsafe=False,
+            include_stateful=False,
+            max_controls=None,
+            routes=benchmark.DEFAULT_ROUTES,
+            scroll_positions=benchmark.DEFAULT_SCROLL_POSITIONS,
+            dry_run_inventory=False,
+        )
+        original_logical_screen_height = benchmark.logical_screen_height
+        benchmark.logical_screen_height = lambda _config: 2400
+        try:
+            variants = benchmark.route_variants(config)
+        finally:
+            benchmark.logical_screen_height = original_logical_screen_height
+
+        by_capture = {variant.capture_id: variant for variant in variants}
+        self.assertEqual(len(benchmark.DEFAULT_ROUTES) * len(benchmark.DEFAULT_SCROLL_POSITIONS), len(variants))
+        self.assertEqual("settings", by_capture["settings-bottom"].launch_route)
+        self.assertEqual(2400 * 2 + benchmark.SETTINGS_BOTTOM_SCROLL_EXTRA, by_capture["settings-bottom"].scroll_y)
+        self.assertEqual(("Kani route settings",), by_capture["settings-middle"].expected_terms)
+        self.assertEqual(("Games||ゲーム",), by_capture["games-top"].expected_terms)
+
     def test_find_debug_apk_ignores_android_test_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -175,7 +298,7 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         args = benchmark.launch_route_args(config, HOME_VARIANT)
 
         self.assertIn("--activity-single-top", args)
-        self.assertIn(benchmark.BENCHMARK_ROUTE_EXTRA, args)
+        self.assertIn(benchmark.SCREEN_ROUTE_EXTRA, args)
         self.assertIn("home", args)
 
     def test_build_report_and_measurements_json_classify_slow_controls(self) -> None:

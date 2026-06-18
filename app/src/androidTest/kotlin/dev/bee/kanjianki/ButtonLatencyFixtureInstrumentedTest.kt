@@ -14,6 +14,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 private const val BUTTON_LATENCY_DATABASE_NAME = "kanji_anki_simple.db"
+private val REPRESENTATIVE_DASHBOARD_KANJI = setOf(
+    "認", "改", "善", "統", "計", "復", "習", "集", "書", "字", "記", "録", "検", "索", "類", "似", "未", "熟", "弱", "点", "保", "留",
+)
+private val REPRESENTATIVE_STUDY_KANJI = setOf("保", "弱", "点")
 
 @RunWith(AndroidJUnit4::class)
 class ButtonLatencyFixtureInstrumentedTest {
@@ -31,8 +35,10 @@ class ButtonLatencyFixtureInstrumentedTest {
             ).run()
 
             assertTrue(result.success)
-            assertTrue(store.dashboardRows().size >= 8)
-            assertTrue(store.studyItems().isNotEmpty())
+            val dashboardKanji = store.dashboardRows().map { it.kanji }.toSet()
+            assertTrue("dashboard rows should include benchmark representative kanji; actual=$dashboardKanji", dashboardKanji.containsAll(REPRESENTATIVE_DASHBOARD_KANJI))
+            val studyKanji = store.studyItems().map { it.kanji }.toSet()
+            assertTrue("study items should include benchmark representative study kanji; actual=$studyKanji", studyKanji.containsAll(REPRESENTATIVE_STUDY_KANJI))
         }
         benchmarkHoldMillis()?.takeIf { it > 0L }?.let { Thread.sleep(it) }
     }

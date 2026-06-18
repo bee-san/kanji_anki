@@ -32,7 +32,7 @@ DEFAULT_ROUTES = ("home", "study", "stats", "settings", "games")
 DEFAULT_SCROLL_POSITIONS = ("top", "middle", "bottom")
 DEFAULT_REPEAT_COUNT = 3
 DEFAULT_SLOW_THRESHOLD_MS = 1_000
-DEFAULT_SETTLE_TIMEOUT_MS = 6_000
+DEFAULT_SETTLE_TIMEOUT_MS = 15_000
 DEFAULT_DUMP_TIMEOUT_MS = 8_000
 DEFAULT_STABLE_POLLS = 2
 DEFAULT_POLL_INTERVAL_MS = 120
@@ -43,7 +43,6 @@ LOCALIZED_ROUTE_TERMS = {
     "games": ("Games||ゲーム",),
 }
 SCREEN_ROUTE_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
-BENCHMARK_ROUTE_EXTRA = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
 SCREEN_SCROLL_POSITION_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
 SCREEN_SCROLL_Y_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
 SETTINGS_BOTTOM_SCROLL_EXTRA = 288
@@ -391,7 +390,21 @@ def install_apk(config: RunConfig) -> None:
     _adb(config, "wait-for-device", timeout_seconds=180)
     _adb(config, "install", "-r", "-d", str(config.apk_path), timeout_seconds=240)
     wait_for_package(config)
+    prepare_benchmark_device(config)
+
+
+def prepare_benchmark_device(config: RunConfig) -> None:
+    wait_for_package(config)
     disable_animations(config)
+    grant_benchmark_permissions(config)
+
+
+def grant_benchmark_permissions(config: RunConfig) -> None:
+    for permission in ("android.permission.POST_NOTIFICATIONS",):
+        try:
+            _adb(config, "shell", "pm", "grant", config.package_name, permission, timeout_seconds=10)
+        except ButtonLatencyBenchmarkError:
+            pass
 
 
 def wait_for_package(config: RunConfig) -> None:
@@ -444,7 +457,7 @@ def launch_route_args(config: RunConfig, variant: RouteVariant) -> tuple[str, ..
         "-n",
         f"{config.package_name}/.MainActivity",
         "--es",
-        BENCHMARK_ROUTE_EXTRA,
+        SCREEN_ROUTE_EXTRA,
         variant.launch_route,
         "--es",
         SCREEN_SCROLL_POSITION_EXTRA,
@@ -456,27 +469,53 @@ def launch_route_args(config: RunConfig, variant: RouteVariant) -> tuple[str, ..
 
 
 def timed_dump_ui_xml(config: RunConfig) -> tuple[str, float]:
-    last_error = ""
+    return timed_dump_ui_xml_via_shell(config)
+
+
+def timed_dump_ui_xml_via_shell(config: RunConfig, *, prior_error: str = "") -> tuple[str, float]:
     dump_timeout_seconds = max(1.0, config.dump_timeout_ms / 1_000.0)
-    for attempt in range(1, 3):
-        started = time.perf_counter()
+    device_path = f"/sdcard/kani-button-latency-{os.getpid()}.xml"
+    started = time.perf_counter()
+    try:
+        timeout_value = f"{max(1, int(dump_timeout_seconds))}s"
+        dump_output = _adb(
+            config,
+            "shell",
+            "timeout",
+            "-k",
+            "2s",
+            timeout_value,
+            "uiautomator",
+            "dump",
+            device_path,
+            timeout_seconds=dump_timeout_seconds + 5.0,
+        )
+        xml = _adb(config, "shell", "cat", device_path, timeout_seconds=dump_timeout_seconds)
+        elapsed_ms = (time.perf_counter() - started) * 1_000.0
+        parsed = _extract_hierarchy_xml(xml)
+        if parsed:
+            return parsed, elapsed_ms
+        last_error = f"uiautomator shell dump returned no XML: {dump_output[:120]} {xml[:120]}".strip()
+    except (ButtonLatencyBenchmarkError, subprocess.TimeoutExpired) as exc:
+        last_error = str(exc)
+    finally:
         try:
-            xml = _adb(config, "exec-out", "uiautomator", "dump", "/dev/tty", timeout_seconds=dump_timeout_seconds)
-            elapsed_ms = (time.perf_counter() - started) * 1_000.0
-            xml_start = xml.find("<?xml")
-            if xml_start < 0:
-                xml_start = xml.find("<hierarchy")
-            if xml_start >= 0:
-                xml_end = xml.rfind("</hierarchy>")
-                return (
-                    xml[xml_start : xml_end + len("</hierarchy>")] if xml_end >= 0 else xml[xml_start:],
-                    elapsed_ms,
-                )
-            last_error = f"uiautomator exec-out returned no XML: {xml[:160]}"
-        except (ButtonLatencyBenchmarkError, subprocess.TimeoutExpired) as exc:
-            last_error = str(exc)
-        time.sleep(0.2 * attempt)
+            _adb(config, "shell", "rm", "-f", device_path, timeout_seconds=2)
+        except (ButtonLatencyBenchmarkError, subprocess.TimeoutExpired):
+            pass
+    if prior_error:
+        last_error = f"{prior_error}; fallback: {last_error}"
     raise ButtonLatencyBenchmarkError(f"uiautomator dump failed after retries: {last_error}")
+
+
+def _extract_hierarchy_xml(xml: str) -> str:
+    xml_start = xml.find("<?xml")
+    if xml_start < 0:
+        xml_start = xml.find("<hierarchy")
+    if xml_start < 0:
+        return ""
+    xml_end = xml.rfind("</hierarchy>")
+    return xml[xml_start : xml_end + len("</hierarchy>")] if xml_end >= 0 else xml[xml_start:]
 
 
 def dump_ui_xml(config: RunConfig) -> str:
@@ -496,6 +535,10 @@ def wait_for_route(config: RunConfig, variant: RouteVariant) -> str:
             time.sleep(config.poll_interval_ms / 1_000.0)
             continue
         last_xml = xml
+        if maybe_allow_permission_dialog(config, xml):
+            last_error = "dismissed permission prompt"
+            time.sleep(0.5)
+            continue
         _raise_on_anr(xml, variant.capture_id)
         lower = xml.lower()
         if all(_matches_expected_term(lower, term) for term in variant.expected_terms):
@@ -509,6 +552,24 @@ def wait_for_route(config: RunConfig, variant: RouteVariant) -> str:
 
 def _matches_expected_term(xml_lower: str, term: str) -> bool:
     return any(option.strip().lower() in xml_lower for option in term.split("||") if option.strip())
+
+
+def maybe_allow_permission_dialog(config: RunConfig, xml: str) -> bool:
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return False
+    for node in root.iter("node"):
+        resource_id = node.attrib.get("resource-id", "")
+        if not resource_id.endswith("permission_allow_button"):
+            continue
+        bounds = parse_bounds(node.attrib.get("bounds", ""))
+        if not bounds:
+            return False
+        left, top, right, bottom = bounds
+        _adb(config, "shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2), timeout_seconds=10)
+        return True
+    return False
 
 
 def _raise_on_anr(xml: str, context: str) -> None:
@@ -1103,6 +1164,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     contract_index = contract_label_index(contract_path if contract_path.exists() else None)
     if not args.skip_install:
         install_apk(config)
+    else:
+        prepare_benchmark_device(config)
     rows = discover_controls(config, contract_index)
     measure_rows(config, rows)
     report = build_report(config, rows)

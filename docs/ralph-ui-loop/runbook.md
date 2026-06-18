@@ -118,9 +118,10 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
    kill "$FIXTURE_PID" || true
    ```
 
-   The fixture seeds a representative local store, and the benchmark launches real-data benchmark routes
-   with `EXTRA_BENCHMARK_ROUTE` so route selection does not fall back to screenshot-only sample/empty models.
-   It discovers visible clickable controls from `uiautomator` XML, measures first and warmed `adb input tap`
+   The fixture seeds a representative local store, and the benchmark launches screenshot routes with explicit
+   scroll extras so top/middle/bottom captures exercise distinct route positions rather than normal renderers
+   that ignore screenshot scroll state. It discovers visible clickable controls from `uiautomator` XML,
+   measures first and warmed `adb input tap`
    to XML-stable settle time, subtracts measured XML dump overhead from the latency fields while retaining raw
    settle time columns for audit, and writes:
 
