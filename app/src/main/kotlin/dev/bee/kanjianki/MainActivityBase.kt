@@ -271,6 +271,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         startup.start()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleLaunchIntent(intent)
+    }
+
     override fun onPause() {
         activityLifecycle.onPause()
         super.onPause()
@@ -462,6 +468,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
+        const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L

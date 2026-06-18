@@ -15,6 +15,7 @@ final command sequence.
 - `scripts/ralph_loop/github_screenshots.py`
 - `scripts/ralph_loop/orchestrator.py`
 - `scripts/ralph_loop/button_latency_inventory.py`
+- `scripts/ralph_loop/button_latency_benchmark.py`
 - `scripts/ralph_loop/validation.py`
 
 ## What the screenshot workflow produces
@@ -91,7 +92,47 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
    The controller writes `remote-visual-context.json` and the review artifacts under
    `.ralph-loop/current/remote-visual/`.
 
-3. Import manual before/after timing numbers (if captured separately):
+3. Capture coarse local emulator button timings when latency evidence is needed:
+
+   ```sh
+   ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+   adb install -r -d app/build/outputs/apk/debug/app-debug.apk
+   adb install -r -d app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+   adb shell am instrument -w -r \
+     -e class dev.bee.kanjianki.ButtonLatencyFixtureInstrumentedTest \
+     -e hold_ms 1800000 \
+     dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner &
+   FIXTURE_PID=$!
+   sleep 3
+
+   python3 scripts/ralph_loop/button_latency_benchmark.py \
+     --repo-root . \
+     --button-contract .ralph-loop/current/button-contract.json \
+     --routes home,study,stats,settings,games \
+     --scroll-positions top,middle,bottom \
+     --repeat-count 3 \
+     --skip-install \
+     --settle-timeout-ms 15000 \
+     --dump-timeout-ms 8000
+
+   kill "$FIXTURE_PID" || true
+   ```
+
+   The fixture seeds a representative local store, and the benchmark launches real-data benchmark routes
+   with `EXTRA_BENCHMARK_ROUTE` so route selection does not fall back to screenshot-only sample/empty models.
+   It discovers visible clickable controls from `uiautomator` XML, measures first and warmed `adb input tap`
+   to XML-stable settle time, subtracts measured XML dump overhead from the latency fields while retaining raw
+   settle time columns for audit, and writes:
+
+   - `.ralph-loop/current/button-latency-benchmark.json`
+   - `.ralph-loop/current/button-latency-benchmark.csv`
+   - `.ralph-loop/current/button-latency-benchmark.md`
+   - `.ralph-loop/current/button-latency-measurements.json`
+
+   By default it skips controls likely to open external/provider/destructive paths and stateful inputs such as
+   switches/sliders. Use `--include-unsafe` or `--include-stateful` only on a disposable emulator/app install.
+
+4. Import manual before/after timing numbers (if captured separately):
 
    ```sh
    cat > .ralph-loop/current/button-latency-measurements.json <<'JSON'
@@ -116,7 +157,7 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
      --out-md .ralph-loop/current/button-latency-inventory.md
    ```
 
-4. Validate the bundle and gate state:
+5. Validate the bundle and gate state:
 
    ```sh
    python3 scripts/ralph_loop/validation.py \
