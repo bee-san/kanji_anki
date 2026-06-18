@@ -6,6 +6,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyWritingCopy
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,14 +21,19 @@ class MainActivityStudyWritingUiTest {
     fun similarWritingRepairShowsContinueAnywayBeforeChecking() {
         val activity = createActivity()
         try {
+            activity.writingPrimaryActionsView = WritingPrimaryActionsView(activity)
             activity.writingFallbackActionsView = WritingFallbackActionsView(activity)
             activity.activeSimilarWritingRepair = repair()
+            activity.checkingWriting = true
 
             activity.updateResultActions()
 
+            val primary = requireNotNull(activity.writingPrimaryActionsView).currentModel()
             val fallback = requireNotNull(activity.writingFallbackActionsView).currentModel()
-            assertTrue(fallback.manualOverrideVisible)
-            assertEquals(StudyWritingCopy.continueAnywayLabel(), fallback.manualOverrideLabel)
+            assertTrue(primary.nextVisible)
+            assertEquals(StudyWritingCopy.continueAnywayLabel(), primary.nextText)
+            assertFalse(primary.nextEnabled)
+            assertFalse(fallback.manualOverrideVisible)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

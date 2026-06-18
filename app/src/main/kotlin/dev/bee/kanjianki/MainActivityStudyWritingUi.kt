@@ -65,41 +65,41 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
     }
 
     fun updatePrimaryActionRow(presentation: WritingActionPresentation) {
+        val repairSkipVisible = activity.activeSimilarWritingRepair != null && !presentation.hasResult
         activity.writingPrimaryActionsView?.render(
             WritingPrimaryActionsModel(
-                presentation.checkText,
-                presentation.checkVisible,
-                presentation.checkEnabled,
-                WritingFeedbackCopy.downloadCheckerLabel(),
-                presentation.downloadVisible,
-                presentation.nextLabel,
-                presentation.nextVisible,
-                if (presentation.messyPass) {
+                checkText = presentation.checkText,
+                checkVisible = presentation.checkVisible,
+                checkEnabled = presentation.checkEnabled,
+                downloadText = WritingFeedbackCopy.downloadCheckerLabel(),
+                downloadVisible = presentation.downloadVisible,
+                nextText = if (repairSkipVisible) StudyWritingCopy.continueAnywayLabel() else presentation.nextLabel,
+                nextVisible = presentation.nextVisible || repairSkipVisible,
+                nextEnabled = if (repairSkipVisible) presentation.checkEnabled else true,
+                onCheck = if (presentation.messyPass) {
                     Runnable { activity.startCleanerRetry() }
                 } else {
                     Runnable { activity.checkWriting() }
                 },
-                Runnable { writingStatus.downloadWritingModel() },
-                Runnable { activity.submitReview(presentation.nextRating, false) }
+                onDownload = Runnable { writingStatus.downloadWritingModel() },
+                onNext = if (repairSkipVisible) {
+                    Runnable { activity.skipSimilarWritingRepair() }
+                } else {
+                    Runnable { activity.submitReview(presentation.nextRating, false) }
+                },
             )
         )
     }
 
     fun updateFallbackActionButtons(presentation: WritingActionPresentation) {
-        val repairActive = activity.activeSimilarWritingRepair != null
         activity.writingFallbackActionsView?.render(
             WritingFallbackActionsModel(
                 presentation.replayVisible,
-                presentation.manualOverrideVisible || repairActive,
+                presentation.manualOverrideVisible,
                 presentation.practiceWithGuideVisible,
                 Runnable { activity.replayWritingAnalysis() },
-                if (repairActive) {
-                    Runnable { activity.skipSimilarWritingRepair() }
-                } else {
-                    Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) }
-                },
+                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
                 Runnable { activity.startGuidedWritingRetry() },
-                if (repairActive) StudyWritingCopy.continueAnywayLabel() else StudyWritingCopy.manualOverrideLabel(),
             )
         )
     }

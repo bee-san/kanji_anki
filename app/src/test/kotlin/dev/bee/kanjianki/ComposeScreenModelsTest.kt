@@ -595,6 +595,7 @@ class ComposeScreenModelsTest {
         assertEquals(true, initial.downloadVisible)
         assertEquals(MainActivityBase.LABEL_PASS, initial.nextText)
         assertEquals(false, initial.nextVisible)
+        assertEquals(true, initial.nextEnabled)
 
         var checked = false
         var downloaded = false
@@ -610,6 +611,7 @@ class ComposeScreenModelsTest {
             downloadVisible = false,
             nextText = "Save hard",
             nextVisible = true,
+            nextEnabled = false,
             onCheck = check,
             onDownload = download,
             onNext = next,
@@ -622,6 +624,7 @@ class ComposeScreenModelsTest {
         assertEquals(false, model.downloadVisible)
         assertEquals("Save hard", model.nextText)
         assertEquals(true, model.nextVisible)
+        assertEquals(false, model.nextEnabled)
         assertSame(check, model.onCheck)
         assertSame(download, model.onDownload)
         assertSame(next, model.onNext)
