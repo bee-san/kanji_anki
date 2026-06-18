@@ -11,6 +11,7 @@ data class WritingPrimaryActionsModel(
     val downloadVisible: Boolean,
     val nextText: String,
     val nextVisible: Boolean,
+    val nextEnabled: Boolean = true,
     val onCheck: Runnable,
     val onDownload: Runnable,
     val onNext: Runnable,
@@ -25,6 +26,7 @@ data class WritingPrimaryActionsModel(
                 downloadVisible = true,
                 nextText = StudyTextCopy.passLabel(),
                 nextVisible = false,
+                nextEnabled = true,
                 onCheck = Runnable {},
                 onDownload = Runnable {},
                 onNext = Runnable {}

@@ -57,7 +57,7 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
         }
         if (model.manualOverrideVisible) {
             WritingSecondaryButton(
-                label = StudyWritingCopy.manualOverrideLabel(),
+                label = model.manualOverrideLabel,
                 onClick = { model.onManualOverride.run() },
                 modifier = Modifier.weight(1f),
                 minHeight = 56.dp
