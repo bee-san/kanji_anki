@@ -214,6 +214,7 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 val startup = MainActivityStartup(activity)
                 assertTrue(startup.shouldRunBackgroundStartupTasks(Intent()))
                 assertFalse(startup.shouldRunBackgroundStartupTasks(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)))
+                assertFalse(startup.shouldRunBackgroundStartupTasks(Intent().putExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)))
 
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true));
                 assertHasText(activity, "App updates");
@@ -234,6 +235,9 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 assertHasText(activity, "Settings");
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, "games"));
                 assertHasText(activity, "Games");
+
+                activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE));
+                assertHasText(activity, "Settings");
 
                 activity.handlePermissionResult(7, intArrayOf(PackageManager.PERMISSION_DENIED));
                 assertHasText(activity, "Kani");
