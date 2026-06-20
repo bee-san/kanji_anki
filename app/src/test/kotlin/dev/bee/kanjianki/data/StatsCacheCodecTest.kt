@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -109,6 +110,58 @@ class StatsCacheCodecTest {
     }
 
     @Test
+    fun outcomeStatsRoundTripPreservesRepairEvidence() {
+        val stats = StudyStatsStore.KaniOutcomeStats.empty()
+        val repairEvidence = listOf(
+            StudyStatsStore.repairEvidence(
+                KanjiRepairEvidencePolicy.Evidence(
+                    kanjiArg = "弱",
+                    statusArg = KanjiRepairEvidencePolicy.Status.REGRESSING,
+                    reasonArg = "regressing_weakness_after_reviews",
+                    explanationArg = "After Kani reviews, AnkiDroid weakness moved 40 → 70.",
+                    beforeWeaknessArg = 40,
+                    afterWeaknessArg = 70,
+                    beforeMatureSupportArg = 3,
+                    afterMatureSupportArg = 1,
+                    kaniReviewsArg = 4,
+                    writingFailuresArg = 2,
+                    lastMistakeAtMillisArg = 9_000L,
+                    lastSyncAtMillisArg = 10_000L,
+                    confidenceArg = 0.79,
+                    confidenceReasonArg = "Weakness moved 40 → 70 after 4 Kani reviews.",
+                )
+            ),
+            StudyStatsStore.repairEvidence(
+                KanjiRepairEvidencePolicy.Evidence(
+                    kanjiArg = "痛",
+                    statusArg = KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE,
+                    reasonArg = "no_post_review_sync",
+                    explanationArg = "Study recorded; waiting for a later AnkiDroid sync.",
+                    beforeWeaknessArg = 65,
+                    afterWeaknessArg = null,
+                    beforeMatureSupportArg = 2,
+                    afterMatureSupportArg = null,
+                    kaniReviewsArg = 1,
+                    writingFailuresArg = 0,
+                    lastMistakeAtMillisArg = 0L,
+                    lastSyncAtMillisArg = 6_000L,
+                    confidenceArg = 0.10,
+                    confidenceReasonArg = "A later AnkiDroid sync is still missing.",
+                )
+            ),
+        )
+
+        val json = StatsCacheCodec.outcomeToJson(stats, kanjiRepairEvidence = repairEvidence)
+        val root = JSONObject(json)
+        val decoded = StatsCacheCodec.kanjiRepairEvidenceFromJson(root.optJSONArray("kanjiRepairEvidence"))
+
+        assertEquals(STATS_CACHE_FORMAT_VERSION, root.optInt("cacheFormatVersion", 0))
+        assertEquals(2, decoded.size)
+        assertRepairEvidenceEquals(repairEvidence[0], decoded[0])
+        assertRepairEvidenceEquals(repairEvidence[1], decoded[1])
+    }
+
+    @Test
     fun outcomeStatsInvalidJsonReturnsEmptyStats() {
         val decoded = StatsCacheCodec.outcomeFromJson("not-json")
 
@@ -177,6 +230,23 @@ class StatsCacheCodecTest {
         assertEquals(0, decoded.notHelpingCount)
         assertEquals(0, decoded.needsMoreCardsCount)
         assertEquals(0, decoded.rows.size)
+    }
+
+    private fun assertRepairEvidenceEquals(expected: StudyStatsStore.KanjiRepairEvidence, actual: StudyStatsStore.KanjiRepairEvidence) {
+        assertEquals(expected.kanji, actual.kanji)
+        assertEquals(expected.status, actual.status)
+        assertEquals(expected.reason, actual.reason)
+        assertEquals(expected.explanation, actual.explanation)
+        assertEquals(expected.beforeWeakness, actual.beforeWeakness)
+        assertEquals(expected.afterWeakness, actual.afterWeakness)
+        assertEquals(expected.beforeMatureSupport, actual.beforeMatureSupport)
+        assertEquals(expected.afterMatureSupport, actual.afterMatureSupport)
+        assertEquals(expected.kaniReviews, actual.kaniReviews)
+        assertEquals(expected.writingFailures, actual.writingFailures)
+        assertEquals(expected.lastMistakeAtMillis, actual.lastMistakeAtMillis)
+        assertEquals(expected.lastSyncAtMillis, actual.lastSyncAtMillis)
+        assertEquals(expected.confidence, actual.confidence, 0.001)
+        assertEquals(expected.confidenceReason, actual.confidenceReason)
     }
 
     private fun assertImpactRowEquals(expected: KanjiImpactAnalyzer.Row, actual: KanjiImpactAnalyzer.Row) {
