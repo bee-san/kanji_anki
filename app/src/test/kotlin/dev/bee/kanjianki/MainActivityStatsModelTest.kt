@@ -29,6 +29,7 @@ class MainActivityStatsModelTest {
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
+        assertEquals(0, source.repairEvidenceReads)
         assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(emptyList<Long>(), source.studyTimeReads)
@@ -66,6 +67,7 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
+        assertEquals(0, source.repairEvidenceReads)
         assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(listOf(22_222L), source.recomputeTimes)
@@ -89,6 +91,7 @@ class MainActivityStatsModelTest {
         assertEquals(1, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(1, source.studyImpactReads)
+        assertEquals(1, source.repairEvidenceReads)
         assertEquals(listOf(33_333L), source.studyStreakReads)
         assertEquals(listOf(STATS_RECENT_MISTAKE_LIMIT), source.recentMistakeLimits)
         assertEquals(listOf(33_333L), source.studyTimeReads)
@@ -138,26 +141,31 @@ class MainActivityStatsModelTest {
 
     @Test
     fun buildStatsScreenModelShowsRepairEvidenceCardWhenAvailable() {
-        val source = FakeStatsSource(
-            repairEvidenceRows = listOf(
-                StudyStatsStore.repairEvidence(
-                    KanjiRepairEvidencePolicy.Evidence(
-                        kanjiArg = "弱",
-                        statusArg = KanjiRepairEvidencePolicy.Status.IMPROVING,
-                        reasonArg = "improved_weakness_after_reviews",
-                        explanationArg = "After Kani reviews, AnkiDroid weakness moved 70 → 40.",
-                        beforeWeaknessArg = 70,
-                        afterWeaknessArg = 40,
-                        beforeMatureSupportArg = 0,
-                        afterMatureSupportArg = 3,
-                        kaniReviewsArg = 3,
-                        writingFailuresArg = 0,
-                        lastMistakeAtMillisArg = 2_000L,
-                        lastSyncAtMillisArg = 5_000L,
-                        confidenceArg = 0.84,
-                        confidenceReasonArg = "Weakness moved 70 → 40 after 3 Kani reviews and 2 post-review samples.",
-                    )
+        val repairEvidence = listOf(
+            StudyStatsStore.repairEvidence(
+                KanjiRepairEvidencePolicy.Evidence(
+                    kanjiArg = "弱",
+                    statusArg = KanjiRepairEvidencePolicy.Status.IMPROVING,
+                    reasonArg = "improved_weakness_after_reviews",
+                    explanationArg = "After Kani reviews, AnkiDroid weakness moved 70 → 40.",
+                    beforeWeaknessArg = 70,
+                    afterWeaknessArg = 40,
+                    beforeMatureSupportArg = 0,
+                    afterMatureSupportArg = 3,
+                    kaniReviewsArg = 3,
+                    writingFailuresArg = 0,
+                    lastMistakeAtMillisArg = 2_000L,
+                    lastSyncAtMillisArg = 5_000L,
+                    confidenceArg = 0.84,
+                    confidenceReasonArg = "Weakness moved 70 → 40 after 3 Kani reviews and 2 post-review samples.",
                 )
+            )
+        )
+        val source = FakeStatsSource(
+            fresh = snapshot(
+                improvedCount = 1,
+                sourceVersion = 7,
+                repairEvidence = repairEvidence,
             ),
         )
 
@@ -191,7 +199,7 @@ class MainActivityStatsModelTest {
         assertEquals("Latest entries first.", repairCard.body)
         assertEquals(1, repairCard.lines.size)
         assertEquals("弱 · Improving · 70 → 40", repairCard.lines.first().text)
-        assertEquals(1, source.repairEvidenceReads)
+        assertEquals(0, source.repairEvidenceReads)
     }
 
     private class FakeStatsSource(
@@ -265,6 +273,7 @@ class MainActivityStatsModelTest {
             cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
             studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(0, 0, false, 0, 0L),
             studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(4_000L, 9_000L, 2),
+            repairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
         ): StatsCacheStore.Snapshot {
             return StatsCacheStore.Snapshot(
                 StudyStatsStore.KaniOutcomeStats(
@@ -283,6 +292,7 @@ class MainActivityStatsModelTest {
                 studyStreak,
                 studyTaskTimeStats,
                 cacheFormatVersion,
+                kanjiRepairEvidence = repairEvidence,
             )
         }
     }

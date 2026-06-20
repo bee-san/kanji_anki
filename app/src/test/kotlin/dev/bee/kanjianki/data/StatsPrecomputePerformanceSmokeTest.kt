@@ -18,6 +18,7 @@ class StatsPrecomputePerformanceSmokeTest {
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, source.studyImpactReads)
+        assertEquals(0, source.repairEvidenceReads)
         assertEquals(emptyList<Long>(), source.studyStreakReads)
         assertEquals(emptyList<Int>(), source.recentMistakeLimits)
         assertEquals(emptyList<Long>(), source.studyTimeReads)
@@ -30,6 +31,7 @@ class StatsPrecomputePerformanceSmokeTest {
         var latestReads = 0
         var directRecomputes = 0
         var studyImpactReads = 0
+        var repairEvidenceReads = 0
         val studyStreakReads = mutableListOf<Long>()
         val recentMistakeLimits = mutableListOf<Int>()
         val studyTimeReads = mutableListOf<Long>()
@@ -70,6 +72,7 @@ class StatsPrecomputePerformanceSmokeTest {
         }
 
         override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
+            repairEvidenceReads += 1
             return emptyList()
         }
     }

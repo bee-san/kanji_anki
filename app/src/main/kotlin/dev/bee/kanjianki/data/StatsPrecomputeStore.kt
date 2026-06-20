@@ -13,6 +13,7 @@ internal class StatsPrecomputeStore(
         fun impactReport(db: SQLiteDatabase): KanjiImpactAnalyzer.Report
         fun studyImpactStats(db: SQLiteDatabase): StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)
         fun recentMistakes(db: SQLiteDatabase, limit: Int): List<StudyStatsStore.RecentMistake> = emptyList()
+        fun kanjiRepairEvidence(db: SQLiteDatabase): List<StudyStatsStore.KanjiRepairEvidence> = emptyList()
     }
 
     fun refresh(
@@ -36,6 +37,7 @@ internal class StatsPrecomputeStore(
             statsStore.studyTaskTimeStats(generatedAtMillis),
             STATS_CACHE_FORMAT_VERSION,
             StudyStatsQueries(store, db).reviewDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT),
+            computations.kanjiRepairEvidence(db),
         )
         cacheStore.write(db, snapshot)
         return snapshot
@@ -56,6 +58,10 @@ internal class StatsPrecomputeStore(
 
         override fun recentMistakes(db: SQLiteDatabase, limit: Int): List<StudyStatsStore.RecentMistake> {
             return StudyStatsStore(store, db).recentMistakes(limit)
+        }
+
+        override fun kanjiRepairEvidence(db: SQLiteDatabase): List<StudyStatsStore.KanjiRepairEvidence> {
+            return StudyStatsStore(store, db).kanjiRepairEvidence()
         }
     }
 }
