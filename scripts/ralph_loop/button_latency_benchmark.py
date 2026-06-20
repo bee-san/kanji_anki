@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import csv
 import hashlib
 import json
@@ -43,6 +44,7 @@ LOCALIZED_ROUTE_TERMS = {
     "games": ("Games||ゲーム",),
 }
 SCREEN_ROUTE_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
+BENCHMARK_ROUTE_EXTRA = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
 SCREEN_SCROLL_POSITION_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
 SCREEN_SCROLL_Y_EXTRA = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
 SETTINGS_BOTTOM_SCROLL_EXTRA = 288
@@ -62,16 +64,33 @@ class ButtonLatencyBenchmarkError(ValueError):
 
 
 @dataclass(frozen=True)
+class ScenarioStep:
+    label: str
+    expected_terms: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class RouteVariant:
     route: str
     launch_route: str
     scroll_position: str
     scroll_y: int
     expected_terms: tuple[str, ...]
+    launch_extra: str = SCREEN_ROUTE_EXTRA
+    prep_steps: tuple[ScenarioStep, ...] = ()
 
     @property
     def capture_id(self) -> str:
         return f"{self.route}-{self.scroll_position}"
+
+
+@dataclass(frozen=True)
+class ScenarioSpec:
+    launch_route: str
+    expected_terms: tuple[str, ...]
+    scroll_positions: tuple[str, ...] | None = None
+    prep_steps: tuple[ScenarioStep, ...] = ()
+    launch_extra: str = BENCHMARK_ROUTE_EXTRA
 
 
 @dataclass(frozen=True)
@@ -137,6 +156,7 @@ class Measurement:
     phase: str = "measurement"
     raw_latency_ms: float | None = None
     dump_overhead_ms: float = 0.0
+    transition_kind: str = ""
 
 
 @dataclass
@@ -221,6 +241,16 @@ class BenchmarkRow:
         return max(values) if values else None
 
     @property
+    def transition_kind(self) -> str:
+        kinds = [item.transition_kind or "visible_change" for item in self.measurements if item.latency_ms is not None]
+        if not kinds:
+            return ""
+        counts = Counter(kinds)
+        if len(counts) == 1:
+            return kinds[0]
+        return "mixed"
+
+    @property
     def status(self) -> str:
         if self.skip_reason:
             return "skipped"
@@ -251,6 +281,69 @@ class RunConfig:
     scroll_positions: tuple[str, ...]
     dry_run_inventory: bool
     dump_timeout_ms: int = DEFAULT_DUMP_TIMEOUT_MS
+
+
+NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
+    "cold-start": ScenarioSpec(
+        launch_route="home",
+        expected_terms=("Kani route home",),
+        scroll_positions=("top",),
+    ),
+    "bottom-nav": ScenarioSpec(
+        launch_route="home",
+        expected_terms=("Kani route home",),
+        scroll_positions=("bottom",),
+    ),
+    "study-reveal": ScenarioSpec(
+        launch_route="study",
+        expected_terms=("Study||学習",),
+        scroll_positions=("top",),
+    ),
+    "study-rating": ScenarioSpec(
+        launch_route="study",
+        expected_terms=("Study||学習",),
+        scroll_positions=("top",),
+        prep_steps=(ScenarioStep("Reveal", ("Again||Good",)),),
+    ),
+    "study-close": ScenarioSpec(
+        launch_route="study",
+        expected_terms=("Study||学習",),
+        scroll_positions=("top",),
+    ),
+    "browse-detail": ScenarioSpec(
+        launch_route="home",
+        expected_terms=("Kani route home",),
+        scroll_positions=("top",),
+        prep_steps=(ScenarioStep("Browse Kanji", ("Search||Home",)),),
+    ),
+    "browse-back": ScenarioSpec(
+        launch_route="home",
+        expected_terms=("Kani route home",),
+        scroll_positions=("top",),
+        prep_steps=(
+            ScenarioStep("Browse Kanji", ("Search||Home",)),
+            ScenarioStep("browse-kanji-row-裂", ("Back to study||Home||Review now",)),
+        ),
+    ),
+    "provider-dialog": ScenarioSpec(
+        launch_route="home",
+        expected_terms=("Kani route home",),
+        scroll_positions=("top",),
+        prep_steps=(
+            ScenarioStep(
+                "Sync",
+                (
+                    "Install AnkiDroid||Grant permission||Review import settings||Fix permission||Try sync again||Sync again||Sync cards||Syncing AnkiDroid",
+                ),
+            ),
+        ),
+    ),
+    "settings-targets": ScenarioSpec(
+        launch_route="settings",
+        expected_terms=("Settings||設定",),
+        scroll_positions=("top", "middle", "bottom"),
+    ),
+}
 
 
 def _slug(value: str) -> str:
@@ -337,20 +430,39 @@ def route_variants(config: RunConfig) -> list[RouteVariant]:
     fixtures = _fixtures_by_route()
     variants: list[RouteVariant] = []
     for route in config.routes:
-        if route not in fixtures:
-            raise ButtonLatencyBenchmarkError(f"Unsupported route '{route}'. Known routes: {', '.join(sorted(fixtures))}")
-        fixture = fixtures[route]
-        for scroll_position in config.scroll_positions:
+        if route in fixtures:
+            fixture = fixtures[route]
+            launch_route = str(fixture["launch_route"])
+            launch_extra = SCREEN_ROUTE_EXTRA
+            prep_steps: tuple[ScenarioStep, ...] = ()
             expected_terms = tuple(str(term) for term in cast(list[object], fixture.get("expected_terms", [])))
             route_markers = tuple(term for term in expected_terms if term.startswith("Kani route "))
             route_expected_terms = LOCALIZED_ROUTE_TERMS.get(route)
+            scroll_positions = config.scroll_positions
+            row_expected_terms = route_markers or route_expected_terms or expected_terms or (route,)
+        elif route in NORMAL_APP_SCENARIOS:
+            scenario = NORMAL_APP_SCENARIOS[route]
+            launch_route = scenario.launch_route
+            launch_extra = scenario.launch_extra
+            prep_steps = scenario.prep_steps
+            scroll_positions = scenario.scroll_positions or config.scroll_positions
+            row_expected_terms = scenario.expected_terms or (route,)
+        else:
+            known_routes = ", ".join(sorted(fixtures))
+            known_scenarios = ", ".join(sorted(NORMAL_APP_SCENARIOS))
+            raise ButtonLatencyBenchmarkError(
+                f"Unsupported route '{route}'. Known screenshot routes: {known_routes}; normal-app scenarios: {known_scenarios}"
+            )
+        for scroll_position in scroll_positions:
             variants.append(
                 RouteVariant(
                     route=route,
-                    launch_route=str(fixture["launch_route"]),
+                    launch_route=launch_route,
                     scroll_position=scroll_position,
-                    scroll_y=scroll_y_for_position(config, route, scroll_position),
-                    expected_terms=route_markers or route_expected_terms or expected_terms or (route,),
+                    scroll_y=scroll_y_for_position(config, launch_route, scroll_position),
+                    expected_terms=row_expected_terms,
+                    launch_extra=launch_extra,
+                    prep_steps=prep_steps,
                 )
             )
     return variants
@@ -457,7 +569,7 @@ def launch_route_args(config: RunConfig, variant: RouteVariant) -> tuple[str, ..
         "-n",
         f"{config.package_name}/.MainActivity",
         "--es",
-        SCREEN_ROUTE_EXTRA,
+        variant.launch_extra,
         variant.launch_route,
         "--es",
         SCREEN_SCROLL_POSITION_EXTRA,
@@ -523,7 +635,7 @@ def dump_ui_xml(config: RunConfig) -> str:
     return xml
 
 
-def wait_for_route(config: RunConfig, variant: RouteVariant) -> str:
+def wait_for_terms(config: RunConfig, expected_terms: Sequence[str], context: str) -> str:
     deadline = time.perf_counter() + (config.settle_timeout_ms / 1_000.0)
     last_xml = ""
     last_error = ""
@@ -539,15 +651,70 @@ def wait_for_route(config: RunConfig, variant: RouteVariant) -> str:
             last_error = "dismissed permission prompt"
             time.sleep(0.5)
             continue
-        _raise_on_anr(xml, variant.capture_id)
+        _raise_on_anr(xml, context)
         lower = xml.lower()
-        if all(_matches_expected_term(lower, term) for term in variant.expected_terms):
+        if all(_matches_expected_term(lower, term) for term in expected_terms):
             return xml
         time.sleep(config.poll_interval_ms / 1_000.0)
     raise ButtonLatencyBenchmarkError(
-        f"Timed out waiting for route {variant.capture_id}; expected terms: {', '.join(variant.expected_terms)}; "
+        f"Timed out waiting for {context}; expected terms: {', '.join(expected_terms)}; "
         f"last UI digest: {_sha256_text(last_xml)}; last dump error: {last_error}"
     )
+
+
+def wait_for_route(config: RunConfig, variant: RouteVariant) -> str:
+    return wait_for_terms(config, variant.expected_terms, variant.capture_id)
+
+
+def prepare_variant_state(
+    config: RunConfig,
+    variant: RouteVariant,
+    contract_index: Mapping[str, dict[str, str]],
+) -> str:
+    xml = wait_for_route(config, variant)
+    if not variant.prep_steps:
+        return xml
+    return apply_prelude_steps(config, variant, contract_index, xml)
+
+
+def apply_prelude_steps(
+    config: RunConfig,
+    variant: RouteVariant,
+    contract_index: Mapping[str, dict[str, str]],
+    xml: str,
+) -> str:
+    current_xml = xml
+    for step in variant.prep_steps:
+        controls = parse_controls(current_xml, variant, contract_index)
+        control = _find_prelude_control(controls, step)
+        x, y = control.center
+        _adb(config, "shell", "input", "tap", str(x), str(y), timeout_seconds=30)
+        step_terms = step.expected_terms or variant.expected_terms
+        current_xml = wait_for_terms(config, step_terms, f"{variant.capture_id}:{step.label}")
+    return current_xml
+
+
+def _find_prelude_control(controls: Sequence[UiControl], step: ScenarioStep) -> UiControl:
+    normalized_step = _normalize_label(step.label)
+    scored: list[tuple[int, UiControl]] = []
+    for control in controls:
+        candidates = (
+            control.label,
+            control.text,
+            control.content_desc,
+            control.contract_id,
+            control.contract_title,
+            _resource_tail(control.resource_id),
+        )
+        normalized_candidates = [_normalize_label(candidate) for candidate in candidates if candidate]
+        if normalized_step in normalized_candidates:
+            return control
+        if any(normalized_step in candidate or candidate in normalized_step for candidate in normalized_candidates):
+            scored.append((len(control.label), control))
+    if scored:
+        scored.sort(key=lambda item: item[0])
+        return scored[0][1]
+    raise ButtonLatencyBenchmarkError(f"Could not find control for prelude step '{step.label}'")
 
 
 def _matches_expected_term(xml_lower: str, term: str) -> bool:
@@ -693,7 +860,7 @@ def discover_controls(config: RunConfig, contract_index: Mapping[str, dict[str, 
     for variant in route_variants(config):
         _progress(f"discover {variant.capture_id}")
         launch_route(config, variant)
-        xml = wait_for_route(config, variant)
+        xml = prepare_variant_state(config, variant, contract_index)
         controls = parse_controls(xml, variant, contract_index)
         for control in controls:
             rows.append(
@@ -709,7 +876,8 @@ def discover_controls(config: RunConfig, contract_index: Mapping[str, dict[str, 
     return rows[: config.max_controls] if config.max_controls else rows
 
 
-def measure_rows(config: RunConfig, rows: list[BenchmarkRow]) -> None:
+def measure_rows(config: RunConfig, rows: list[BenchmarkRow], contract_index: Mapping[str, dict[str, str]] | None = None) -> None:
+    contract_index = contract_index or {}
     variants = {variant.capture_id: variant for variant in route_variants(config)}
     measureable = [row for row in rows if not row.skip_reason and not config.dry_run_inventory]
     for measured_index, row in enumerate(measureable, start=1):
@@ -718,7 +886,7 @@ def measure_rows(config: RunConfig, rows: list[BenchmarkRow]) -> None:
         for attempt in range(config.repeat_count):
             phase = "first" if attempt == 0 else "warm"
             row.measurements.append(
-                measure_control(config, variant, row.control, phase=phase, cold_start=attempt == 0)
+                measure_control(config, variant, row.control, contract_index, phase=phase, cold_start=attempt == 0)
             )
 
 
@@ -726,17 +894,21 @@ def measure_control(
     config: RunConfig,
     variant: RouteVariant,
     control: UiControl,
+    contract_index: Mapping[str, dict[str, str]] | None = None,
     *,
     phase: str,
     cold_start: bool,
 ) -> Measurement:
     try:
+        contract_index = contract_index or {}
         launch_route(config, variant, force_stop=cold_start)
-        wait_for_route(config, variant)
+        xml = prepare_variant_state(config, variant, contract_index)
+        pre_tap_digest = _sha256_text(xml)
         x, y = control.center
         started = time.perf_counter()
         _adb(config, "shell", "input", "tap", str(x), str(y), timeout_seconds=30)
         latency_ms, raw_latency_ms, dump_overhead_ms, polls, xml_sha = wait_for_stable_ui(config, started)
+        transition_kind = "no_visible_change" if xml_sha == pre_tap_digest else "visible_change"
         return Measurement(
             latency_ms=latency_ms,
             status="measured",
@@ -745,6 +917,7 @@ def measure_control(
             phase=phase,
             raw_latency_ms=raw_latency_ms,
             dump_overhead_ms=dump_overhead_ms,
+            transition_kind=transition_kind,
         )
     except Exception as exc:  # pragma: no cover - exercised on real devices.
         return Measurement(latency_ms=None, status="error", error=str(exc), phase=phase)
@@ -800,6 +973,7 @@ def build_report(config: RunConfig, rows: list[BenchmarkRow]) -> dict[str, objec
     measured = [row for row in rows if row.median_latency_ms is not None]
     latencies = [cast(float, row.median_latency_ms) for row in measured]
     slow_rows = [row for row in measured if cast(float, row.median_latency_ms) > config.slow_threshold_ms]
+    transition_kinds = [row.transition_kind or "visible_change" for row in measured]
     return {
         "schema": SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -821,6 +995,8 @@ def build_report(config: RunConfig, rows: list[BenchmarkRow]) -> dict[str, objec
             "skipped_rows": sum(1 for row in rows if row.skip_reason),
             "error_rows": sum(1 for row in rows if row.status == "error"),
             "slow_rows": len(slow_rows),
+            "no_visible_change_rows": sum(1 for kind in transition_kinds if kind == "no_visible_change"),
+            "visible_change_rows": sum(1 for kind in transition_kinds if kind == "visible_change"),
             "median_ms": _median_or_none(latencies),
             "first_tap_median_ms": _median_or_none(
                 [cast(float, row.first_tap_latency_ms) for row in measured if row.first_tap_latency_ms is not None]
@@ -909,6 +1085,7 @@ def row_to_dict(row: BenchmarkRow, config: RunConfig) -> dict[str, object]:
         "median_dump_overhead_ms": row.median_dump_overhead_ms,
         "min_latency_ms": row.min_latency_ms,
         "max_latency_ms": row.max_latency_ms,
+        "transition_kind": row.transition_kind,
         "slow": median is not None and median > config.slow_threshold_ms,
         "measurements": [measurement_to_dict(item) for item in row.measurements],
     }
@@ -924,6 +1101,7 @@ def measurement_to_dict(item: Measurement) -> dict[str, object]:
         "xml_settle_polls": item.xml_settle_polls,
         "final_xml_sha256": item.final_xml_sha256,
         "phase": item.phase,
+        "transition_kind": item.transition_kind or ("visible_change" if item.latency_ms is not None else ""),
     }
 
 
@@ -940,6 +1118,7 @@ def build_measurements_json(report: Mapping[str, object]) -> dict[str, object]:
                 "route": row["route"],
                 "scroll_position": row["scroll_position"],
                 "label": row["label"],
+                "transition_kind": row.get("transition_kind", "visible_change"),
                 "source": "button_latency_benchmark.py",
             }
         )
@@ -977,6 +1156,7 @@ def write_csv(report: Mapping[str, object], path: Path) -> None:
         "label",
         "class_name",
         "status",
+        "transition_kind",
         "skip_reason",
         "first_tap_latency_ms",
         "first_tap_raw_latency_ms",
@@ -1022,19 +1202,21 @@ def render_markdown(report: Mapping[str, object]) -> str:
         f"- Warmed median latency: {_format_ms(summary.get('warmed_median_ms'))}",
         f"- P95 latency: {_format_ms(summary.get('p95_ms'))}",
         f"- Max latency: {_format_ms(summary.get('max_ms'))}",
+        f"- No visible change rows: {summary.get('no_visible_change_rows', 0)}",
+        f"- Visible change rows: {summary.get('visible_change_rows', 0)}",
         "",
         "## Slow measured controls",
         "",
     ]
     if slow_rows:
         lines.extend([
-            "| ID | Route | Label | First tap | Warmed | Max |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| ID | Route | Label | Transition | First tap | Warmed | Max |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
         ])
         for row in sorted(slow_rows, key=lambda item: cast(float, item.get("median_latency_ms") or 0), reverse=True):
             lines.append(
                 f"| `{row.get('id', '')}` | `{row.get('route', '')}`/{row.get('scroll_position', '')} | "
-                f"{row.get('label', '') or '—'} | {_format_ms(row.get('first_tap_latency_ms'))} | "
+                f"{row.get('label', '') or '—'} | {row.get('transition_kind', 'visible_change') or 'visible_change'} | {_format_ms(row.get('first_tap_latency_ms'))} | "
                 f"{_format_ms(row.get('warmed_median_latency_ms'))} | "
                 f"{_format_ms(row.get('max_latency_ms'))} |"
             )
@@ -1044,8 +1226,8 @@ def render_markdown(report: Mapping[str, object]) -> str:
         "",
         "## All measured controls",
         "",
-        "| ID | Route | Label | Status | First tap | Warmed | Median | Raw median | Dump overhead | Max |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| ID | Route | Label | Status | Transition | First tap | Warmed | Median | Raw median | Dump overhead | Max |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ])
     for row in rows:
         if row.get("status") != "measured":
@@ -1053,6 +1235,7 @@ def render_markdown(report: Mapping[str, object]) -> str:
         lines.append(
             f"| `{row.get('id', '')}` | `{row.get('route', '')}`/{row.get('scroll_position', '')} | "
             f"{row.get('label', '') or '—'} | `{row.get('status', '')}` | "
+            f"{row.get('transition_kind', 'visible_change') or 'visible_change'} | "
             f"{_format_ms(row.get('first_tap_latency_ms'))} | "
             f"{_format_ms(row.get('warmed_median_latency_ms'))} | "
             f"{_format_ms(row.get('median_latency_ms'))} | "
@@ -1096,7 +1279,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--adb", default="", help="adb binary; defaults to PATH/ANDROID_HOME")
     parser.add_argument("--aapt", default="", help="aapt binary; defaults to PATH/ANDROID_HOME")
     parser.add_argument("--button-contract", type=Path, default=DEFAULT_BUTTON_CONTRACT)
-    parser.add_argument("--routes", default=",".join(DEFAULT_ROUTES), help="Comma-separated screenshot routes")
+    parser.add_argument("--routes", default=",".join(DEFAULT_ROUTES), help="Comma-separated screenshot routes or normal-app scenarios")
     parser.add_argument("--scroll-positions", default=",".join(DEFAULT_SCROLL_POSITIONS), help="Comma-separated scroll positions")
     parser.add_argument("--repeat-count", type=int, default=DEFAULT_REPEAT_COUNT)
     parser.add_argument("--slow-threshold-ms", type=int, default=DEFAULT_SLOW_THRESHOLD_MS)
@@ -1167,7 +1350,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         prepare_benchmark_device(config)
     rows = discover_controls(config, contract_index)
-    measure_rows(config, rows)
+    measure_rows(config, rows, contract_index)
     report = build_report(config, rows)
     measurements = build_measurements_json(report)
     write_outputs(

@@ -29,6 +29,8 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
                 "pending_timing_rows": 3,
                 "high_risk_rows": 1,
                 "missing_click_coverage_rows": 1,
+                "no_visible_change_rows": 0,
+                "visible_change_rows": 0,
             },
             inventory["summary"],
         )
@@ -94,13 +96,43 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         self.assertEqual(610, study["after_ms"])
         self.assertEqual(-240, study["timing_delta_ms"])
         self.assertEqual("measured", study["timing_status"])
+        self.assertEqual("visible_change", study["transition_kind"])
         self.assertIn("timing is within the target budget", cast(list[str], study["latency_risk_reasons"]))
         self.assertLess(cast(int, study["timing_delta_ms"]), 0)
         self.assertLessEqual(cast(int, study["latency_risk_score"]), 40)
+        summary = cast(dict[str, object], inventory["summary"])
+        self.assertEqual(0, summary["no_visible_change_rows"])
+        self.assertEqual(1, summary["visible_change_rows"])
 
         sync = rows["home-sync-cta"]
         self.assertEqual("missing_timing_fields", sync["timing_status"])
         self.assertEqual("partial_manual_timings", inventory["measurement_status"])
+
+    def test_inventory_tracks_no_visible_change_rows_in_summary_and_notes(self) -> None:
+        inventory = button_latency_inventory.build_inventory(
+            Path("/"),
+            self._manifest(),
+            self._button_contract(),
+            {
+                "schema": "button-latency-measurements-v1",
+                "rows": [
+                    {
+                        "id": "home-study-cta",
+                        "baseline_ms": 850,
+                        "after_ms": 610,
+                        "transition_kind": "no_visible_change",
+                    }
+                ],
+            },
+        )
+
+        summary = cast(dict[str, object], inventory["summary"])
+        rows = {row["id"]: row for row in cast(list[dict[str, object]], inventory["rows"])}
+        study = rows["home-study-cta"]
+        self.assertEqual("no_visible_change", study["transition_kind"])
+        self.assertEqual(1, summary["no_visible_change_rows"])
+        self.assertEqual(0, summary["visible_change_rows"])
+        self.assertIn("no_visible_change", button_latency_inventory.render_markdown(inventory))
 
     def test_inventory_preserves_fractional_manual_timings(self) -> None:
         inventory = button_latency_inventory.build_inventory(
@@ -185,6 +217,8 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
             md = out_md.read_text(encoding="utf-8")
             self.assertTrue(md.startswith("# Ralph Button Latency Inventory"))
             self.assertIn("620 -> 590 ms", md)
+            self.assertIn("Transition", md)
+            self.assertIn("visible_change", md)
             self.assertIn("Measurement status: `partial_manual_timings`", md)
 
     def test_risk_score_includes_manifest_source_keywords(self) -> None:
