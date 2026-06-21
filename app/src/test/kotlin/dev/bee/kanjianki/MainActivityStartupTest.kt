@@ -2,14 +2,17 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ProviderInfo
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
 import java.util.Locale
@@ -35,6 +38,24 @@ class MainActivityStartupTest {
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
+    }
+
+    @Test
+    @Config(sdk = [32])
+    fun normalLaunchDoesNotPromptForAnkiPermissionBeforeHomeRender() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        registerAnkiDroidProvider(context)
+
+        val controller = Robolectric.buildActivity(
+            PermissionTrackingStartupActivity::class.java,
+            Intent(context, PermissionTrackingStartupActivity::class.java),
+        )
+        val activity = controller.get()
+
+        controller.create().start().resume()
+
+        assertEquals(1, activity.renderHomeCalls)
+        assertNull(shadowOf(activity).lastRequestedPermission)
     }
 
     @Test
@@ -100,6 +121,24 @@ class MainActivityStartupTest {
         override fun renderHome() {
             // Keep the test focused on startup scheduling, not home rendering.
         }
+    }
+
+    private class PermissionTrackingStartupActivity : MainActivity() {
+        var renderHomeCalls = 0
+
+        override fun renderHome() {
+            renderHomeCalls += 1
+        }
+    }
+
+    private fun registerAnkiDroidProvider(context: Context) {
+        shadowOf(context.packageManager).addOrUpdateProvider(
+            ProviderInfo().apply {
+                authority = "com.ichi2.anki.api.provider"
+                name = "FakeAnkiDroidProvider"
+                packageName = "com.ichi2.anki"
+            },
+        )
     }
 
     private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {

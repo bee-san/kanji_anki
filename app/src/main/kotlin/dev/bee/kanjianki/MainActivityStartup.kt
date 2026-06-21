@@ -17,7 +17,6 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
         if (shouldRunBackgroundStartupTasks(launchIntent)) {
-            activity.requestAnkiPermissionIfNeeded()
             activity.io.execute {
                 ReminderScheduler.schedule(activity)
                 AutoSyncScheduler.schedule(activity)
