@@ -332,6 +332,88 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertEqual("settings", by_capture["settings-targets-bottom"].launch_route)
         self.assertEqual(2400 * 2 + benchmark.SETTINGS_BOTTOM_SCROLL_EXTRA, by_capture["settings-targets-bottom"].scroll_y)
 
+    def test_cold_start_suite_expands_to_reproducible_all_button_routes(self) -> None:
+        args = benchmark.build_parser().parse_args(
+            [
+                "--repo-root",
+                "/tmp",
+                "--apk",
+                "/tmp/app.apk",
+                "--package",
+                "dev.bee.kanjianki",
+                "--adb",
+                "adb",
+                "--aapt",
+                "aapt",
+                "--suite",
+                "cold-start-all-buttons",
+                "--routes",
+                "home",
+            ]
+        )
+
+        config = benchmark.config_from_args(args)
+
+        self.assertEqual("cold-start-all-buttons", config.suite)
+        self.assertEqual(benchmark.routes_for_suite("cold-start-all-buttons"), config.routes)
+        self.assertEqual(len(set(config.routes)), len(config.routes))
+        self.assertIn("home", config.routes)
+        self.assertIn("cold-start", config.routes)
+        self.assertIn("settings-targets", config.routes)
+
+    def test_build_report_includes_reproducible_methodology_for_suite(self) -> None:
+        config = benchmark.RunConfig(
+            repo_root=Path("/tmp"),
+            adb="missing-adb-for-unit-test",
+            aapt="aapt",
+            apk_path=Path("/tmp/app.apk"),
+            package_name="dev.bee.kanjianki",
+            out_dir=Path("/tmp/out"),
+            repeat_count=2,
+            slow_threshold_ms=1_000,
+            settle_timeout_ms=6_000,
+            stable_polls=2,
+            poll_interval_ms=120,
+            include_unsafe=False,
+            include_stateful=False,
+            max_controls=None,
+            routes=benchmark.routes_for_suite("cold-start-all-buttons"),
+            scroll_positions=("top", "middle", "bottom"),
+            dry_run_inventory=False,
+            suite="cold-start-all-buttons",
+        )
+        row = benchmark.BenchmarkRow(
+            control=benchmark.UiControl(
+                route="cold-start",
+                launch_route="home",
+                scroll_position="top",
+                index=0,
+                text="Browse Kanji",
+                content_desc="",
+                resource_id="",
+                class_name="android.widget.Button",
+                bounds=(0, 0, 100, 100),
+            ),
+            measurements=[benchmark.Measurement(latency_ms=420.0, status="measured", phase="first")],
+        )
+
+        report = benchmark.build_report(config, [row])
+        methodology = cast(dict[str, object], report["methodology"])
+        route_plan = cast(list[dict[str, object]], methodology["route_plan"])
+        artifacts = cast(list[dict[str, object]], report["artifacts"])
+        markdown = benchmark.render_markdown(report)
+
+        self.assertEqual("cold-start-all-buttons", report["benchmark_suite"])
+        self.assertEqual("cold-start-all-buttons", methodology["suite"])
+        self.assertGreaterEqual(cast(int, methodology["variant_count"]), 20)
+        self.assertTrue(any(route["route"] == "cold-start" for route in route_plan))
+        self.assertTrue(any(route["route"] == "home" and route["source"] == "screenshot_fixture" for route in route_plan))
+        self.assertTrue(any(artifact["name"] == "measurements_json" for artifact in artifacts))
+        self.assertIn("## Methodology", markdown)
+        self.assertIn("cold-start-all-buttons", markdown)
+        self.assertIn("first repeat force-stops", markdown)
+        self.assertIn("button-latency-measurements.json", markdown)
+
     def test_find_debug_apk_ignores_android_test_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

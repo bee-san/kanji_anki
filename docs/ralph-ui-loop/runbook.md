@@ -108,7 +108,7 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
    python3 scripts/ralph_loop/button_latency_benchmark.py \
      --repo-root . \
      --button-contract .ralph-loop/current/button-contract.json \
-     --routes home,study,stats,settings,games \
+     --suite cold-start-all-buttons \
      --scroll-positions top,middle,bottom \
      --repeat-count 3 \
      --skip-install \
@@ -118,7 +118,10 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
    kill "$FIXTURE_PID" || true
    ```
 
-   The fixture seeds a representative local store, and the benchmark launches screenshot routes with explicit
+   The fixture seeds a representative local store. The `cold-start-all-buttons` suite combines the deterministic
+   screenshot fixture routes with normal-app cold-start, bottom-nav, study, browse, provider-dialog, and settings
+   target scenarios so the JSON/Markdown report records a reproducible route plan and artifact manifest instead
+   of an ad-hoc comma-separated route list. Screenshot routes use explicit
    scroll extras so top/middle/bottom captures exercise distinct route positions rather than normal renderers
    that ignore screenshot scroll state. It discovers visible clickable controls from `uiautomator` XML,
    measures first and warmed `adb input tap`
@@ -129,6 +132,9 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
    - `.ralph-loop/current/button-latency-benchmark.csv`
    - `.ralph-loop/current/button-latency-benchmark.md`
    - `.ralph-loop/current/button-latency-measurements.json`
+
+   The benchmark JSON and Markdown include the selected suite, route-plan matrix, cold-start/warm-repeat policy,
+   downstream latency-inventory pipeline, and artifact names so another run can reproduce the same coverage shape.
 
    By default it skips controls likely to open external/provider/destructive paths and stateful inputs such as
    switches/sliders. Use `--include-unsafe` or `--include-stateful` only on a disposable emulator/app install.
