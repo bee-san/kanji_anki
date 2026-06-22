@@ -69,7 +69,7 @@ internal fun buildStatsScreenModel(
     val studyStreak = if (needsLiveFallback) source.studyStreak(nowMillis) else snapshot.studyStreak
     val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
     val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
-    val repairEvidence = source.kanjiRepairEvidence()
+    val repairEvidence = if (needsLiveFallback) source.kanjiRepairEvidence() else snapshot.kanjiRepairEvidence
     val repairEvidenceCohort = StudyStatsStore.repairEvidenceCohortStats(repairEvidence)
     return statsScreenModel(
         snapshot.outcomeStats,

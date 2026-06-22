@@ -102,6 +102,8 @@ def _measurement_notes(rows: list[dict[str, object]], source_timings: str) -> li
         notes.append(f"{measured_rows}/{len(rows)} buttons currently have measured baseline+after timing.")
     if any(row["timing_status"] in {"measured", "pending_after_ms"} for row in rows):
         notes.append("Timing rows should use baseline_ms and after_ms in milliseconds.")
+    if any(row.get("transition_kind") == "no_visible_change" for row in rows):
+        notes.append("Rows marked no_visible_change are screenshot-only no-op seams and should not be described as route transitions.")
     return notes
 
 
@@ -199,6 +201,7 @@ def _inventory_row(
         "target_budget_ms": target_budget_ms,
         "baseline_ms": baseline_ms,
         "after_ms": after_ms,
+        "transition_kind": str(timing.get("transition_kind", "")) or ("visible_change" if timing_status == "measured" else ""),
         "timing_status": timing_status,
         "timing_delta_ms": timing_delta,
         "timing_source": source_timings,
@@ -350,6 +353,8 @@ def _summary(rows: list[dict[str, object]]) -> dict[str, object]:
         "pending_timing_rows": sum(1 for row in rows if row["timing_status"] != "measured"),
         "high_risk_rows": sum(1 for row in rows if row["latency_risk_level"] == "high"),
         "missing_click_coverage_rows": sum(1 for row in rows if row["missing_tests"]),
+        "no_visible_change_rows": sum(1 for row in rows if row.get("transition_kind") == "no_visible_change"),
+        "visible_change_rows": sum(1 for row in rows if row.get("transition_kind") == "visible_change"),
     }
 
 
@@ -386,18 +391,19 @@ def render_markdown(inventory: dict[str, object]) -> str:
         f"Default target budget: `{inventory['target_budget_ms']} ms`",
         f"Measurement status: `{inventory['measurement_status']}`",
         "",
-        "| ID | Source | Labels | Trace | Budget | Timing | Risk | Gaps |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| ID | Source | Labels | Trace | Budget | Timing | Transition | Risk | Gaps |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in cast(list[dict[str, object]], inventory["rows"]):
         lines.append(
-            "| {id} | {source} | {labels} | `{trace}` | {budget} ms | {timing} | {risk} ({score}) | {gaps} |".format(
+            "| {id} | {source} | {labels} | `{trace}` | {budget} ms | {timing} | {transition} | {risk} ({score}) | {gaps} |".format(
                 id=row["id"],
                 source=row["source_file"] or "—",
                 labels="<br>".join(cast(list[str], row["labels"])) or "—",
                 trace=row["trace_name"],
                 budget=row["target_budget_ms"],
                 timing=_render_timing_cell(row),
+                transition=row.get("transition_kind") or "—",
                 risk=row["latency_risk_level"],
                 score=row["latency_risk_score"],
                 gaps="<br>".join(cast(list[str], row["missing_tests"])) or "—",

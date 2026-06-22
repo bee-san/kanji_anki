@@ -59,14 +59,14 @@ data class SimilarKanjiExplanationLineModel(
 internal fun similarKanjiExplanationLines(explanation: SimilarKanjiExplanation): List<SimilarKanjiExplanationLineModel> {
     val out = ArrayList<SimilarKanjiExplanationLineModel>()
     if (explanation.confusedWith.isNotEmpty()) {
-        out.add(SimilarKanjiExplanationLineModel(localizedText("Pair", "ペア"), similarPairValue(explanation), true))
+        out.add(SimilarKanjiExplanationLineModel(localizedText("Compare shapes", "見比べ"), similarPairValue(explanation), true))
     }
-    addJoinedLine(out, localizedText("Source words", "出典語"), explanation.failedSourceWords, false)
-    addJoinedLine(out, localizedText("Meaning clues", "意味の手がかり"), explanation.meaningClues, false)
-    addJoinedLine(out, localizedText("Reading clues", "読みの手がかり"), explanation.readingClues, false)
-    addJoinedLine(out, localizedText("Shared components", "共通部品"), explanation.sharedComponents, false)
-    addJoinedLine(out, localizedText("Different components", "異なる部品"), explanation.differingComponents, false)
-    out.add(SimilarKanjiExplanationLineModel(localizedText("Watch", "注目"), explanation.watchThisPart, true))
+    addJoinedLine(out, localizedText("Seen in", "使用例"), explanation.failedSourceWords, false)
+    addJoinedLine(out, localizedText("Meaning hint", "意味のヒント"), explanation.meaningClues, false)
+    addJoinedLine(out, localizedText("Reading hint", "読みのヒント"), explanation.readingClues, false)
+    addJoinedLine(out, localizedText("Shared part", "共通部"), explanation.sharedComponents, false)
+    addJoinedLine(out, localizedText("Different part", "違い"), explanation.differingComponents, false)
+    out.add(SimilarKanjiExplanationLineModel(localizedText("Shape hint", "形のヒント"), explanation.watchThisPart, true))
     return out
 }
 
@@ -110,7 +110,25 @@ data class SimilarChoiceSessionModel(
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
 )
 
-data class MeaningChoiceSessionModel(
+internal data class SimilarKanjiDifferenceChoiceModel(
+    val kanji: String,
+    val label: String,
+    val onOpenBrowse: Runnable? = null,
+)
+
+internal data class SimilarKanjiDifferenceModel(
+    val modeLabel: String,
+    val title: String,
+    val body: String,
+    val correctLabel: String,
+    val correctKanji: String,
+    val choicesTitle: String,
+    val choices: List<SimilarKanjiDifferenceChoiceModel>,
+    val explanationLines: List<SimilarKanjiExplanationLineModel>,
+    val onBack: Runnable,
+)
+
+internal data class MeaningChoiceSessionModel(
     val modeLabel: String,
     val title: String,
     val taskLabel: String,

@@ -343,6 +343,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingReview.submitReview(rating, override, ladder)
     }
 
+    fun skipSimilarWritingRepair() {
+        writingReview.skipSimilarWritingRepair()
+    }
+
     fun undoLastRating() {
         writingReview.undoLastRating()
     }

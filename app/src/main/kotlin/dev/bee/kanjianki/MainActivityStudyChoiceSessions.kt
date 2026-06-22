@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
+import dev.bee.kanjianki.core.StudyCueFormatter
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
@@ -20,10 +21,32 @@ internal fun similarKanjiExplanationSourceWords(session: RecordsSchedulerModels.
     for (example in examples) {
         val expression = example.expression.trim()
         if (expression.isNotEmpty()) {
-            out.add(expression)
+            out.add(formatSimilarKanjiSourceWord(example))
         }
     }
     return ArrayList(out)
+}
+
+private fun formatSimilarKanjiSourceWord(example: RecordsImportModels.Example): String {
+    val expression = example.expression.trim()
+    if (expression.isEmpty()) {
+        return ""
+    }
+    val details = ArrayList<String>(2)
+    val reading = StudyCueFormatter.hiraganaReading(example.reading).trim()
+    if (reading.isNotEmpty()) {
+        details.add(reading)
+    }
+    val meaning = StudyCueFormatter.cleanCollectionMeaning(example.meaning, 42)
+    if (meaning.isNotEmpty()) {
+        details.add(meaning)
+    }
+    val value = if (details.isEmpty()) {
+        expression
+    } else {
+        "$expression (${details.joinToString(" · ")})"
+    }
+    return StudyCueFormatter.compact(value, 64)
 }
 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
@@ -66,6 +89,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             },
         )
         val state = MeaningChoiceSessionState()
+        renderMeaningChoiceRoute(model, state)
+    }
+
+    private fun renderMeaningChoiceRoute(model: MeaningChoiceSessionModel, state: MeaningChoiceSessionState) {
+        val browseAction = model.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
+            Runnable { home.renderDetail(glyph, false, null, Runnable { renderMeaningChoiceRoute(model, state) }) }
+        }
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
             content = {
@@ -73,6 +103,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     model = model,
                     state = state,
                     showInlineResultAction = false,
+                    onBrowseAction = browseAction,
                 )
             },
             actionBar = { MeaningChoiceResultActionBar(model = model, state = state) },
@@ -104,7 +135,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         }
         choices.shuffle()
 
-        val meaning = choiceCard.primaryMeaning
+        val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
         val reason = StudyTextCopy.studyReasonLine(
             home.activeSimilarWritingRepair != null,
             session,
@@ -117,6 +148,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.store.similarPairsForKanji(choiceCard.targetKanji),
             similarKanjiExplanationSourceWords(session),
         )
+        val explanationLines = similarKanjiExplanationLines(explanation)
         val model = SimilarChoiceSessionModel(
             StudyTaskCopy.studyModeLabel(session),
             StudyTextCopy.studyChoiceTitle(),
@@ -126,10 +158,22 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             StudyTextCopy.studyChoiceQuestion(meaning),
             SimilarChoiceGridModel(
                 choices,
-                true
+                false
             ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
-            similarKanjiExplanationLines(explanation),
+            explanationLines,
         )
+        lateinit var differenceModel: SimilarKanjiDifferenceModel
+        differenceModel = similarKanjiDifferenceModel(
+            choiceCard.targetKanji,
+            choices,
+            model.modeLabel,
+            explanationLines,
+            onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
+        )
+        renderSimilarChoiceRoute(model, differenceModel)
+    }
+
+    private fun renderSimilarChoiceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
             content = {
@@ -137,9 +181,72 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     model = model,
                     modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
                     showInlineChoices = false,
+                    onExploreDifferences = Runnable { renderSimilarDifferenceRoute(model, differenceModel) },
                 )
             },
             actionBar = { SimilarChoiceActionBar(model.gridModel) },
+        )
+    }
+
+    private fun renderSimilarDifferenceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
+        val withBrowseActions = differenceModel.copy(
+            choices = differenceModel.choices.map { choice ->
+                choice.copy(
+                    onOpenBrowse = choice.kanji.takeIf { it.isNotBlank() }?.let { glyph ->
+                        Runnable {
+                            home.renderDetail(
+                                glyph,
+                                false,
+                                null,
+                                Runnable { renderSimilarDifferenceRoute(model, differenceModel) }
+                            )
+                        }
+                    }
+                )
+            },
+            onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
+        )
+        home.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
+            content = {
+                SimilarKanjiDifferenceScreen(
+                    model = withBrowseActions,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                )
+            },
+            actionBar = { SimilarChoiceActionBar(model.gridModel) },
+        )
+    }
+
+    private fun similarKanjiDifferenceModel(
+        targetKanji: String,
+        choices: List<String>,
+        modeLabel: String,
+        explanationLines: List<SimilarKanjiExplanationLineModel>,
+        onBack: Runnable,
+    ): SimilarKanjiDifferenceModel {
+        val orderedChoices = buildList {
+            if (targetKanji.isNotBlank()) {
+                add(targetKanji)
+            }
+            choices.forEach { glyph ->
+                if (glyph.isNotBlank() && glyph != targetKanji && !contains(glyph)) {
+                    add(glyph)
+                }
+            }
+        }
+        return SimilarKanjiDifferenceModel(
+            modeLabel = modeLabel,
+            title = StudyTextCopy.similarKanjiDifferencesTitle(),
+            body = StudyTextCopy.similarKanjiDifferencesBody(),
+            correctLabel = StudyTextCopy.similarKanjiCorrectLabel(),
+            correctKanji = targetKanji,
+            choicesTitle = StudyTextCopy.similarKanjiChoicesLabel(),
+            choices = orderedChoices.map { glyph ->
+                SimilarKanjiDifferenceChoiceModel(glyph, StudyTextCopy.similarKanjiChoiceLabel(glyph))
+            },
+            explanationLines = explanationLines,
+            onBack = onBack,
         )
     }
 
@@ -147,7 +254,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val now = System.currentTimeMillis()
         val targetKanji = session.item?.kanji ?: ""
         val stored = home.store.dueSimilarChoiceForActiveTarget(targetKanji, now)
-        val meaning = if (session.row == null) "" else StudyTextCopy.rowMeaning(session.row)
+        val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
         return SimilarKanjiChoicePlanner.choiceCardForSession(
             stored,
             targetKanji,

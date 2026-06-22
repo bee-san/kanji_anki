@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.json.JSONArray
 import org.json.JSONObject
@@ -14,13 +15,14 @@ object StatsCacheCodec {
         studyStreak: StudyStatsStore.StudyStreak? = null,
         studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats? = null,
         reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>? = null,
+        kanjiRepairEvidence: List<StudyStatsStore.KanjiRepairEvidence>? = null,
     ): String {
         val safe = stats ?: StudyStatsStore.KaniOutcomeStats.empty()
         val root = JSONObject()
             .put("weakKanjiImproved", weakKanjiImprovedToJson(safe.weakKanjiImproved))
             .put("matureSupportGained", matureSupportGainedToJson(safe.matureSupportGained))
             .put("ladderHealth", ladderHealthToJson(safe.ladderHealth))
-        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null || reviewDaySummaries != null
+        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null || reviewDaySummaries != null || kanjiRepairEvidence != null
         if (hasExtras) {
             root.put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION)
             root.put("studyImpactStats", studyImpactStatsToJson(studyImpactStats ?: StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)))
@@ -28,6 +30,7 @@ object StatsCacheCodec {
             root.put("studyStreak", studyStreakToJson(studyStreak ?: StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)))
             root.put("studyTaskTimeStats", studyTaskTimeStatsToJson(studyTaskTimeStats ?: StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0)))
             root.put("reviewDaySummaries", reviewDaySummariesToJson(reviewDaySummaries ?: emptyList()))
+            root.put("kanjiRepairEvidence", kanjiRepairEvidenceToJson(kanjiRepairEvidence ?: emptyList()))
         } else {
             root.put("cacheFormatVersion", 1)
         }
@@ -145,6 +148,38 @@ object StatsCacheCodec {
                     easy = json.optInt("easy", 0),
                     writingRequired = json.optInt("writingRequired", 0),
                     writingFailed = json.optInt("writingFailed", 0),
+                )
+            )
+        }
+        return out
+    }
+
+    @JvmStatic
+    internal fun kanjiRepairEvidenceFromJson(array: JSONArray?): List<StudyStatsStore.KanjiRepairEvidence> {
+        if (array == null) {
+            return emptyList()
+        }
+        val out = ArrayList<StudyStatsStore.KanjiRepairEvidence>()
+        for (index in 0 until array.length()) {
+            val json = array.optJSONObject(index) ?: continue
+            out.add(
+                StudyStatsStore.repairEvidence(
+                    KanjiRepairEvidencePolicy.Evidence(
+                        kanjiArg = json.optString("kanji", ""),
+                        statusArg = repairEvidenceStatusFromJson(json.optString("status", "")),
+                        reasonArg = json.optString("reason", ""),
+                        explanationArg = json.optString("explanation", ""),
+                        beforeWeaknessArg = nullableInt(json, "beforeWeakness"),
+                        afterWeaknessArg = nullableInt(json, "afterWeakness"),
+                        beforeMatureSupportArg = nullableInt(json, "beforeMatureSupport"),
+                        afterMatureSupportArg = nullableInt(json, "afterMatureSupport"),
+                        kaniReviewsArg = json.optInt("kaniReviews", 0),
+                        writingFailuresArg = json.optInt("writingFailures", 0),
+                        lastMistakeAtMillisArg = json.optLong("lastMistakeAtMillis", 0L),
+                        lastSyncAtMillisArg = json.optLong("lastSyncAtMillis", 0L),
+                        confidenceArg = json.optDouble("confidence", 0.0),
+                        confidenceReasonArg = json.optString("confidenceReason", ""),
+                    )
                 )
             )
         }
@@ -283,6 +318,30 @@ object StatsCacheCodec {
         }
     }
 
+    private fun kanjiRepairEvidenceToJson(evidence: List<StudyStatsStore.KanjiRepairEvidence>): JSONArray {
+        return JSONArray().also { array ->
+            evidence.forEach { item ->
+                array.put(
+                    JSONObject()
+                        .put("kanji", item.kanji)
+                        .put("status", item.status.name)
+                        .put("reason", item.reason)
+                        .put("explanation", item.explanation)
+                        .putNullableInt("beforeWeakness", item.beforeWeakness)
+                        .putNullableInt("afterWeakness", item.afterWeakness)
+                        .putNullableInt("beforeMatureSupport", item.beforeMatureSupport)
+                        .putNullableInt("afterMatureSupport", item.afterMatureSupport)
+                        .put("kaniReviews", item.kaniReviews)
+                        .put("writingFailures", item.writingFailures)
+                        .put("lastMistakeAtMillis", item.lastMistakeAtMillis)
+                        .put("lastSyncAtMillis", item.lastSyncAtMillis)
+                        .put("confidence", item.confidence)
+                        .put("confidenceReason", item.confidenceReason)
+                )
+            }
+        }
+    }
+
     private fun studyTaskTimeStatsToJson(stats: StudyStatsStore.StudyTaskTimeStats): JSONObject {
         return JSONObject()
             .put("todayMillis", stats.todayMillis)
@@ -406,6 +465,22 @@ object StatsCacheCodec {
             )
         }
         return out
+    }
+
+    private fun repairEvidenceStatusFromJson(value: String): KanjiRepairEvidencePolicy.Status {
+        return try {
+            KanjiRepairEvidencePolicy.Status.valueOf(value)
+        } catch (_: Exception) {
+            KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE
+        }
+    }
+
+    private fun nullableInt(json: JSONObject, key: String): Int? {
+        return if (json.has(key) && !json.isNull(key)) json.optInt(key, 0) else null
+    }
+
+    private fun JSONObject.putNullableInt(key: String, value: Int?): JSONObject {
+        return put(key, value ?: JSONObject.NULL)
     }
 
     private fun emptyImpactReport(): KanjiImpactAnalyzer.Report {

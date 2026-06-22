@@ -455,4 +455,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery)
     }
+
+    fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?, customBackAction: Runnable?) {
+        browseDetail.renderDetail(kanji, fromBrowse, browseQuery, customBackAction)
+    }
 }

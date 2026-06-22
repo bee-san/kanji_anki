@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import org.json.JSONArray
 import org.json.JSONObject
@@ -68,6 +69,9 @@ class StatsCacheStoreTest {
         assertEquals("痛", fresh.recentMistakes[0].kanji)
         assertEquals("again", fresh.recentMistakes[0].rating)
         assertEquals(reviewDaySummaries, fresh.reviewDaySummaries)
+        assertEquals(1, fresh.kanjiRepairEvidence.size)
+        assertEquals("弱", fresh.kanjiRepairEvidence[0].kanji)
+        assertEquals(KanjiRepairEvidencePolicy.Status.IMPROVING, fresh.kanjiRepairEvidence[0].status)
     }
 
     @Test
@@ -101,6 +105,7 @@ class StatsCacheStoreTest {
         assertEquals(0, latest.studyTaskTimeStats.answeredTasks)
         assertTrue(latest.recentMistakes.isEmpty())
         assertTrue(latest.reviewDaySummaries.isEmpty())
+        assertTrue(latest.kanjiRepairEvidence.isEmpty())
     }
 
     @Test
@@ -416,6 +421,7 @@ class StatsCacheStoreTest {
         studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         cacheFormatVersion: Int = STATS_CACHE_FORMAT_VERSION,
         reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot> = emptyList(),
+        repairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = listOf(repairEvidence()),
     ): StatsCacheStore.Snapshot {
         return StatsCacheStore.Snapshot(
             outcomeStats = StudyStatsStore.KaniOutcomeStats(
@@ -437,6 +443,28 @@ class StatsCacheStoreTest {
             studyTaskTimeStats = studyTaskTimeStats,
             cacheFormatVersion = cacheFormatVersion,
             reviewDaySummaries = reviewDaySummaries,
+            kanjiRepairEvidence = repairEvidence,
+        )
+    }
+
+    private fun repairEvidence(): StudyStatsStore.KanjiRepairEvidence {
+        return StudyStatsStore.repairEvidence(
+            KanjiRepairEvidencePolicy.Evidence(
+                kanjiArg = "弱",
+                statusArg = KanjiRepairEvidencePolicy.Status.IMPROVING,
+                reasonArg = "improved_weakness_after_reviews",
+                explanationArg = "After Kani reviews, AnkiDroid weakness moved 70 → 40.",
+                beforeWeaknessArg = 70,
+                afterWeaknessArg = 40,
+                beforeMatureSupportArg = 0,
+                afterMatureSupportArg = 3,
+                kaniReviewsArg = 3,
+                writingFailuresArg = 0,
+                lastMistakeAtMillisArg = 2_000L,
+                lastSyncAtMillisArg = 5_000L,
+                confidenceArg = 0.84,
+                confidenceReasonArg = "Weakness moved 70 → 40 after 3 Kani reviews and 2 post-review samples.",
+            )
         )
     }
 }

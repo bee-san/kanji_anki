@@ -13,6 +13,11 @@ class MainActivityScreenshotThemesTest {
         assertEquals(KaniThemeChoice.DARK, screenshotThemeChoiceOrNull(" dark "))
         assertEquals(KaniThemeChoice.SYSTEM, screenshotThemeChoiceOrNull("system"))
         assertEquals(KaniThemeChoice.AUTUMN, screenshotThemeChoiceOrNull("AUTUMN"))
+        assertEquals(KaniThemeChoice.MATCHA_MILK, screenshotThemeChoiceOrNull("matcha_milk"))
+        assertEquals(KaniThemeChoice.OCEAN_STUDY, screenshotThemeChoiceOrNull("OCEAN_STUDY"))
+        assertEquals(KaniThemeChoice.MIDNIGHT_ARCADE, screenshotThemeChoiceOrNull(" midnight_arcade "))
+        assertEquals(KaniThemeChoice.GRAPE_SODA, screenshotThemeChoiceOrNull("grape_soda"))
+        assertEquals(KaniThemeChoice.FOREST_MOSS, screenshotThemeChoiceOrNull("FOREST_MOSS"))
     }
 
     @Test

@@ -17,12 +17,16 @@ import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
     fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
-        lateinit var route: WritingSessionRouteModel
+        renderComposeWritingRoute { composeWritingRouteModel(session) }
+    }
+
+    private fun renderComposeWritingRoute(routeProvider: () -> WritingSessionRouteModel) {
         home.initializeSessionProgressTarget(home.activeStudyPlan)
         val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        lateinit var route: WritingSessionRouteModel
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
-            beforeContent = { route = composeWritingRouteModel(session) },
+            beforeContent = { route = routeProvider() },
             content = {
                 Column {
                     StudyTopBar(
@@ -157,11 +161,15 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     @Composable
     private fun ComposeWritingSessionCard(route: WritingSessionRouteModel) {
         val model = remember(route) { route.cardModel }
+        val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
+            Runnable { home.renderDetail(glyph, false, null, Runnable { renderComposeWritingRoute { route } }) }
+        }
         WritingSessionCard(
             model = model,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 10.dp, bottom = 14.dp),
+            onBrowseAction = browseAction,
         )
     }
 

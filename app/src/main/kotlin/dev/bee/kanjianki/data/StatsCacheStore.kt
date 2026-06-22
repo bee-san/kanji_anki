@@ -7,7 +7,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 4
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 5
 internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 90
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
@@ -34,6 +34,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0),
         val cacheFormatVersion: Int = 1,
         val reviewDaySummaries: List<ReviewDaySummarySnapshot> = emptyList(),
+        val kanjiRepairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -115,6 +116,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.studyStreak,
                     snapshot.studyTaskTimeStats,
                     snapshot.reviewDaySummaries,
+                    snapshot.kanjiRepairEvidence,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -146,6 +148,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 studyTaskTimeStats = StatsCacheCodec.studyTaskTimeStatsFromJson(outcomeRoot.optJSONObject("studyTaskTimeStats")),
                 cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
                 reviewDaySummaries = StatsCacheCodec.reviewDaySummariesFromJson(outcomeRoot.optJSONArray("reviewDaySummaries")),
+                kanjiRepairEvidence = StatsCacheCodec.kanjiRepairEvidenceFromJson(outcomeRoot.optJSONArray("kanjiRepairEvidence")),
             )
         } catch (_: Exception) {
             null

@@ -69,7 +69,7 @@ internal fun WritingPrimaryActions(model: WritingPrimaryActionsModel) {
         if (model.nextVisible) {
             WritingPrimaryButton(
                 label = model.nextText,
-                enabled = true,
+                enabled = model.nextEnabled,
                 onClick = { model.onNext.run() },
                 modifier = Modifier.weight(1f)
             )

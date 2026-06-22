@@ -1,11 +1,13 @@
 package dev.bee.kanjianki
 
-data class StudyAnswerPanelModel(
+internal data class StudyAnswerPanelModel(
     val title: String,
     val glyph: String,
     val glyphSizeSp: Int,
     val lines: List<StudyAnswerLineModel>,
     val helperText: String?,
+    val stateKey: String = "",
+    val kanjiDetails: StudyAnswerKanjiDetailsModel? = null,
 )
 
 data class StudyAnswerLineModel(

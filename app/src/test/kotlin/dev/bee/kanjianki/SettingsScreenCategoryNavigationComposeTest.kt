@@ -1,10 +1,13 @@
 package dev.bee.kanjianki
 
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -18,13 +21,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.theme.KaniThemeChoice
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import dev.bee.kanjianki.core.SettingsTextCopy
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -33,109 +38,83 @@ class SettingsScreenCategoryNavigationComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun categoryToggleCollapsesAndExpandsInPlace() {
-        var toggleRuns = 0
-        val panel = SettingsReferenceDataLinkModel(
-            title = "Deep setting",
-            body = "A nested Settings panel stays on the same composed page.",
-            actionLabel = "Open",
-            onAction = Runnable {},
-        )
-        val panelTag = settingsPanelTestTag(panel)
-        val screen = settingsScreenModel(
+    fun hubCardsExposeDescriptionsAndInvokeOpenCallbacks() {
+        var openRuns = 0
+        val screen = SettingsScreenModel(
+            homeLabel = "Home",
+            onHome = Runnable {},
             hero = SettingsAutomationHeroModel(
-                cockpitLabel = "Settings",
+                cockpitLabel = "Overview",
                 title = "Settings",
-                body = "Tune Kani.",
+                body = "Configure Kani behavior.",
                 rows = emptyList(),
             ),
-            categories = listOf(
-                settingsCategorySectionModel(
-                    sectionKey = "settings-study-behavior",
+            cards = listOf(
+                SettingsHubCardModel(
+                    routeKey = MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,
                     title = "Study settings",
                     summary = "Review pace and learning controls.",
                     iconRes = R.drawable.ic_study_24,
-                    expanded = true,
-                    onToggle = Runnable { toggleRuns += 1 },
-                    panels = listOf(panel),
+                    panelCount = "8 cards",
+                    contentDescription = "Open Study settings",
+                    onOpen = Runnable { openRuns += 1 },
                 ),
             ),
-            onHome = Runnable {},
         )
 
-        composeRule.setContent {
-            SettingsScreen(screen)
-        }
+        composeRule.setContent { SettingsScreen(screen) }
 
-        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
-            .assertHasClickAction()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
-        composeRule.onNodeWithText("1 card").assertIsDisplayed()
-        composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
-        composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
-        composeRule.onNodeWithTag(SETTINGS_SCREEN_BOTTOM_SPACER_TAG)
-            .assertExists()
+        composeRule.onNodeWithText("Home").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeRule.onNodeWithText("Study settings").assertIsDisplayed()
+        composeRule.onNodeWithText("8 cards").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Open Study settings").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsHubCardTestTag(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE))
+            .assertIsDisplayed()
+            .performClick()
 
-        composeRule.onNodeWithContentDescription("Collapse Study settings").performClick()
-        composeRule.waitForIdle()
-
-        assertEquals(1, toggleRuns)
-        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
-        composeRule.onAllNodesWithTag(panelTag).assertCountEquals(0)
-        composeRule.onAllNodesWithText("Deep setting").assertCountEquals(0)
-
-        composeRule.onNodeWithContentDescription("Expand Study settings").performClick()
-        composeRule.waitForIdle()
-
-        assertEquals(2, toggleRuns)
-        composeRule.onNodeWithContentDescription("Collapse Study settings").assertIsDisplayed()
-        composeRule.onNodeWithTag(panelTag).assertIsDisplayed()
-        composeRule.onNodeWithText("Deep setting").assertIsDisplayed()
+        assertTrue(openRuns == 1)
     }
 
     @Test
-    fun categoryHeaderTitleIsClickable() {
-        var toggleRuns = 0
-        val screen = settingsScreenModel(
-            hero = SettingsAutomationHeroModel(
-                cockpitLabel = "Settings",
-                title = "Settings",
-                body = "Tune Kani.",
-                rows = emptyList(),
-            ),
-            categories = listOf(
-                settingsCategorySectionModel(
-                    sectionKey = "settings-study-behavior",
-                    title = "Study settings",
-                    summary = "Review pace and learning controls.",
-                    iconRes = R.drawable.ic_study_24,
-                    expanded = true,
-                    onToggle = Runnable { toggleRuns += 1 },
-                    panels = emptyList(),
-                ),
-            ),
-            onHome = Runnable {},
+    fun submenuBackButtonReturnsToSettingsAndKeepsContentVisible() {
+        var homeClicked = false
+        var backClicked = false
+        val panel = SettingsReferenceDataLinkModel(
+            title = "Data licenses",
+            body = "Dictionary, stroke, and font attributions.",
+            actionLabel = SettingsTextCopy.openDataLicensesLabel(),
+            onAction = Runnable {},
         )
 
         composeRule.setContent {
-            SettingsScreen(screen)
+            SettingsSubmenuScreen(
+                model = SettingsSubmenuScreenModel(
+                    homeLabel = "Home",
+                    onHome = Runnable { homeClicked = true },
+                    backLabel = SettingsTextCopy.backToSettingsLabel(),
+                    onBack = Runnable { backClicked = true },
+                    title = "Display & data",
+                    body = "Manage dictionaries and credits.",
+                    panels = listOf(panel),
+                ),
+            )
         }
 
-        composeRule.onNodeWithText("Study settings").assertIsDisplayed().assertHasClickAction().performClick()
-        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Home").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("Display & data").assertIsDisplayed()
+        composeRule.onNodeWithText("Manage dictionaries and credits.").assertIsDisplayed()
+        composeRule.onNodeWithTag(settingsPanelTestTag(panel)).assertIsDisplayed()
 
-        assertEquals(1, toggleRuns)
-        composeRule.onNodeWithContentDescription("Expand Study settings").assertIsDisplayed()
-        composeRule.onNodeWithTag(settingsCategoryHeaderTestTag("settings-study-behavior"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+        assertTrue(homeClicked)
+        assertTrue(backClicked)
     }
 
     @Test
     fun studySettingsPanelsRenderInsideScrollingShell() {
         var toggleRuns = 0
+        var expanded by mutableStateOf(false)
         val studySort = SettingsNewCardSortPanelModel(
             title = "New card sort",
             body = "Choose the order used for new cards.",
@@ -164,139 +143,135 @@ class SettingsScreenCategoryNavigationComposeTest {
             ),
             onSave = SettingsNewCardSortSaver {},
         )
-        val screen = settingsScreenModel(
-            hero = SettingsAutomationHeroModel(
-                cockpitLabel = "Settings",
-                title = "Settings",
-                body = "Tune Kani.",
-                rows = emptyList(),
-            ),
-            categories = listOf(
-                settingsCategorySectionModel(
-                    sectionKey = "settings-study-behavior",
-                    title = "Study settings",
-                    summary = "Review pace and learning controls.",
-                    iconRes = R.drawable.ic_study_24,
-                    expanded = false,
-                    onToggle = Runnable { toggleRuns += 1 },
-                    panels = listOf(studySort),
-                ),
-            ),
-            onHome = Runnable {},
-        )
 
         composeRule.setContent {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                SettingsScreen(screen)
+                SettingsCategorySection(
+                    settingsCategorySectionModel(
+                        sectionKey = "settings-study-behavior",
+                        title = "Study settings",
+                        summary = "Review pace and learning controls.",
+                        iconRes = R.drawable.ic_study_24,
+                        expanded = expanded,
+                        onToggle = Runnable {
+                            toggleRuns += 1
+                            expanded = !expanded
+                        },
+                        panels = listOf(studySort),
+                    ),
+                )
             }
         }
 
-        composeRule.onNodeWithText("Study settings").assertIsDisplayed().performClick()
+        val headerTag = settingsCategoryHeaderTestTag("settings-study-behavior")
+        composeRule.onNodeWithTag(headerTag)
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+            .performClick()
         composeRule.waitForIdle()
 
         assertEquals(1, toggleRuns)
+        composeRule.onNodeWithTag(headerTag)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+        composeRule.onNodeWithTag(settingsPanelTestTag(studySort)).assertIsDisplayed()
         composeRule.onNodeWithText("New card sort").assertIsDisplayed()
         composeRule.onNodeWithText("Choose the order used for new cards.").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Study settings").performClick()
+        composeRule.onNodeWithTag(headerTag).performClick()
         composeRule.waitForIdle()
 
         assertEquals(2, toggleRuns)
+        composeRule.onNodeWithTag(headerTag)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
         composeRule.onAllNodesWithText("New card sort").assertCountEquals(0)
         composeRule.onAllNodesWithText("Choose the order used for new cards.").assertCountEquals(0)
     }
 
     @Test
     fun siblingSettingsCategoriesToggleInsideScrollingShell() {
-        val cases = listOf(
-            CategoryReachabilityCase(
-                sectionKey = "settings-anki-source",
-                title = SettingsTextCopy.settingsAnkiSourceTitle(),
-                summary = SettingsTextCopy.settingsAnkiSourceBody(),
-                panelTitle = "Import & sync detail",
-            ),
-            CategoryReachabilityCase(
-                sectionKey = "settings-automation",
-                title = SettingsTextCopy.settingsAutomationTitle(),
-                summary = SettingsTextCopy.settingsAutomationBody(),
-                panelTitle = "Automation detail",
-            ),
-            CategoryReachabilityCase(
-                sectionKey = "settings-appearance",
-                title = SettingsTextCopy.settingsAppearanceTitle(),
-                summary = SettingsTextCopy.settingsAppearanceBody(),
-                panelTitle = "Appearance detail",
-            ),
-            CategoryReachabilityCase(
-                sectionKey = "settings-reference-data",
-                title = SettingsTextCopy.settingsReferenceDataTitle(),
-                summary = SettingsTextCopy.settingsReferenceDataBody(),
-                panelTitle = "Display & data detail",
-            ),
+        var importExpanded by mutableStateOf(false)
+        var appearanceExpanded by mutableStateOf(false)
+        var importToggleRuns = 0
+        var appearanceToggleRuns = 0
+        val importPanel = SettingsReferenceDataLinkModel(
+            title = "Data licenses",
+            body = "Dictionary, stroke, and font attributions.",
+            actionLabel = SettingsTextCopy.openDataLicensesLabel(),
+            onAction = Runnable {},
         )
-        val toggleRuns = mutableMapOf<String, Int>()
-        val screen = settingsScreenModel(
-            hero = SettingsAutomationHeroModel(
-                cockpitLabel = "Settings",
-                title = "Settings",
-                body = "Tune Kani.",
-                rows = emptyList(),
-            ),
-            categories = cases.map { case ->
-                settingsCategorySectionModel(
-                    sectionKey = case.sectionKey,
-                    title = case.title,
-                    summary = case.summary,
-                    iconRes = R.drawable.ic_book_24,
-                    expanded = false,
-                    onToggle = Runnable {
-                        toggleRuns[case.sectionKey] = toggleRuns.getOrDefault(case.sectionKey, 0) + 1
-                    },
-                    panels = listOf(
-                        SettingsReferenceDataLinkModel(
-                            title = case.panelTitle,
-                            body = "A nested panel for ${case.title} stays on the same composed page.",
-                            actionLabel = "Open ${case.title}",
-                            onAction = Runnable {},
-                        )
-                    ),
-                )
-            },
-            onHome = Runnable {},
+        val appearancePanel = SettingsThemePanelModels.themeSettingsPanelModel(
+            currentChoice = KaniThemeChoice.SYSTEM,
+            onSelectChoice = {},
         )
 
         composeRule.setContent {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                SettingsScreen(screen)
+                SettingsCategorySection(
+                    settingsCategorySectionModel(
+                        sectionKey = "settings-reference-data",
+                        title = SettingsTextCopy.settingsReferenceDataTitle(),
+                        summary = SettingsTextCopy.settingsReferenceDataBody(),
+                        iconRes = R.drawable.ic_book_24,
+                        expanded = importExpanded,
+                        onToggle = Runnable {
+                            importToggleRuns += 1
+                            importExpanded = !importExpanded
+                        },
+                        panels = listOf(importPanel),
+                    ),
+                )
+                SettingsCategorySection(
+                    settingsCategorySectionModel(
+                        sectionKey = "settings-appearance",
+                        title = SettingsTextCopy.settingsAppearanceTitle(),
+                        summary = SettingsTextCopy.settingsAppearanceBody(),
+                        iconRes = R.drawable.ic_book_24,
+                        expanded = appearanceExpanded,
+                        onToggle = Runnable {
+                            appearanceToggleRuns += 1
+                            appearanceExpanded = !appearanceExpanded
+                        },
+                        panels = listOf(appearancePanel),
+                    ),
+                )
             }
         }
 
-        cases.forEach { case ->
-            composeRule.onNodeWithTag(settingsCategoryHeaderTestTag(case.sectionKey))
-                .assertHasClickAction()
-                .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
-            composeRule.onNodeWithText(case.title).performScrollTo().assertIsDisplayed().performClick()
-            composeRule.waitForIdle()
+        val importHeader = settingsCategoryHeaderTestTag("settings-reference-data")
+        val appearanceHeader = settingsCategoryHeaderTestTag("settings-appearance")
 
-            assertEquals(1, toggleRuns.getOrDefault(case.sectionKey, 0))
-            composeRule.onNodeWithTag(settingsCategoryHeaderTestTag(case.sectionKey))
-                .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
-            composeRule.onNodeWithText(case.panelTitle).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(importHeader)
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+            .performClick()
+        composeRule.waitForIdle()
+        assertEquals(1, importToggleRuns)
+        composeRule.onNodeWithTag(importHeader)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+        composeRule.onNodeWithTag(settingsPanelTestTag(importPanel)).assertIsDisplayed()
 
-            composeRule.onNodeWithText(case.title).performClick()
-            composeRule.waitForIdle()
+        composeRule.onNodeWithTag(appearanceHeader)
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+            .performClick()
+        composeRule.waitForIdle()
+        assertEquals(1, appearanceToggleRuns)
+        composeRule.onNodeWithTag(appearanceHeader)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+        composeRule.onNodeWithTag(settingsPanelTestTag(appearancePanel)).assertIsDisplayed()
 
-            assertEquals(2, toggleRuns.getOrDefault(case.sectionKey, 0))
-            composeRule.onNodeWithTag(settingsCategoryHeaderTestTag(case.sectionKey))
-                .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
-            composeRule.onAllNodesWithText(case.panelTitle).assertCountEquals(0)
-        }
+        composeRule.onNodeWithTag(importHeader).performClick()
+        composeRule.waitForIdle()
+        assertEquals(2, importToggleRuns)
+        composeRule.onNodeWithTag(importHeader)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+        composeRule.onAllNodesWithText("Data licenses").assertCountEquals(0)
+
+        composeRule.onNodeWithTag(appearanceHeader).performClick()
+        composeRule.waitForIdle()
+        assertEquals(2, appearanceToggleRuns)
+        composeRule.onNodeWithTag(appearanceHeader)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+        composeRule.onAllNodesWithTag(settingsPanelTestTag(appearancePanel)).assertCountEquals(0)
     }
 }
-
-private data class CategoryReachabilityCase(
-    val sectionKey: String,
-    val title: String,
-    val summary: String,
-    val panelTitle: String,
-)

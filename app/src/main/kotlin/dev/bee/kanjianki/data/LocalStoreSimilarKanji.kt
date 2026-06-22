@@ -309,4 +309,32 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         }
         return finished
     }
+
+    fun skipSimilarWritingRepair(
+        repairId: Long,
+        token: String?,
+        nowMillis: Long,
+    ): Boolean {
+        var finished = false
+        writableDatabase.transaction {
+            val current = similarWritingRepair(this, repairId)
+            if (current == null || current.status != STATUS_PENDING) {
+                return@transaction
+            }
+            if (current.activeToken.isNotEmpty() && current.activeToken != (token ?: "")) {
+                return@transaction
+            }
+            val finishUpdate = SimilarKanjiRepairPolicy.skipUpdate(current, nowMillis)
+            val values = ContentValues()
+            values.put(COLUMN_ACTIVE_TOKEN, finishUpdate.activeToken())
+            values.put(COLUMN_UPDATED_AT, finishUpdate.updatedAtMillis())
+            finishUpdate.status()?.let { values.put(COLUMN_STATUS, it) }
+            finishUpdate.completedAtMillis()?.let { values.put(COLUMN_COMPLETED_AT, it) }
+            finishUpdate.attempts()?.let { values.put(COLUMN_ATTEMPTS, it) }
+            finishUpdate.dueAtMillis()?.let { values.put(COLUMN_DUE_AT, it) }
+            update(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, values, "id=?", arrayOf(repairId.toString()))
+            finished = true
+        }
+        return finished
+    }
 }

@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.widget.Toast
-import dev.bee.kanjianki.core.NewCardSortPlanner
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -9,24 +8,57 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
-        val rows = activity.store.activeDashboardRows()
-        val previewRowsData = SettingsNewCardSortPreviewCache.resolve(
-            rows = rows,
-            cached = activity.cachedNewCardSortPreviewRows,
-            hasSimilarLocalPair = activity.store::hasSimilarLocalPair,
-        )
-        activity.cachedNewCardSortPreviewRows = previewRowsData
-        val previewRowsByMode = previewRowsData.previewRowsByMode
+        val previewRowsData = activity.cachedNewCardSortPreviewRows
+        val previewVersion = activity.store.newCardSortPreviewCacheVersion()
+        if (previewRowsData == null || previewRowsData.sourceVersion != previewVersion) {
+            schedulePreviewRefresh()
+        }
         return SettingsNewCardSortPanelModel(
             title = SettingsTextCopy.newCardSortTitle(),
             body = SettingsTextCopy.newCardSortBody(),
             initialMode = current.newCardSortMode,
             options = newCardSortOptions(),
             saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
-            previewRowsByMode = previewRowsByMode,
-            previewWarningsByMode = previewRowsData.previewWarningsByMode,
+            previewRowsByMode = previewRowsData?.previewRowsByMode.orEmpty(),
+            previewWarningsByMode = previewRowsData?.previewWarningsByMode.orEmpty(),
             onSave = SettingsNewCardSortSaver { mode -> saveNewCardSort(mode) }
         )
+    }
+
+    private fun schedulePreviewRefresh() {
+        if (activity.newCardSortPreviewRefreshPending) {
+            return
+        }
+        activity.newCardSortPreviewRefreshPending = true
+        val cached = activity.cachedNewCardSortPreviewRows
+        activity.io.execute {
+            var previewRowsData: SettingsNewCardSortPreviewRowsSnapshot? = null
+            try {
+                val sourceVersion = activity.store.newCardSortPreviewCacheVersion()
+                val rows = activity.store.activeDashboardRows()
+                previewRowsData = SettingsNewCardSortPreviewCache.resolve(
+                    rows = rows,
+                    cached = cached,
+                    sourceVersion = sourceVersion,
+                    hasSimilarLocalPair = activity.store::hasSimilarLocalPair,
+                )
+            } finally {
+                activity.main.post {
+                    activity.newCardSortPreviewRefreshPending = false
+                    previewRowsData?.let { snapshot ->
+                        activity.cachedNewCardSortPreviewRows = snapshot
+                        if (activity.currentRoute == MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE) {
+                            if (activity.activityPaused) {
+                                activity.newCardSortPreviewRerenderOnResumePending = true
+                            } else {
+                                activity.newCardSortPreviewRerenderOnResumePending = false
+                                activity.renderSettingsStudyBehavior(true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun newCardSortOptions(): List<SettingsNewCardSortOptionModel> {
@@ -56,7 +88,7 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             },
         ) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
-            activity.renderSettings(true)
+            activity.renderSettingsStudyBehavior(true)
         }
     }
 }

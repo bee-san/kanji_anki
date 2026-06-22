@@ -17,7 +17,6 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
         if (shouldRunBackgroundStartupTasks(launchIntent)) {
-            activity.requestAnkiPermissionIfNeeded()
             activity.io.execute {
                 ReminderScheduler.schedule(activity)
                 AutoSyncScheduler.schedule(activity)
@@ -29,15 +28,24 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     }
 
     fun handleLaunchIntent(intent: Intent?) {
+        val benchmarkRoute = intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE)?.takeIf { it.isNotBlank() }
+        if (benchmarkRoute != null) {
+            activity.screenshotThemeChoiceOverride = null
+            renderRoute(benchmarkRoute)
+            return
+        }
         val screenshotRoute = intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)?.takeIf { it.isNotBlank() }
         if (screenshotRoute != null) {
             activity.screenshotLocaleTag()?.let(::applyScreenshotLocale)
-            screenshotThemeChoiceOrNull(intent.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME))?.let {
+            val screenshotThemeChoice = screenshotThemeChoiceOrNull(intent.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME))
+            activity.screenshotThemeChoiceOverride = screenshotThemeChoice
+            screenshotThemeChoice?.let {
                 activity.store.saveAppThemeChoice(it)
             }
-            renderScreenshotRoute(screenshotRoute)
+            renderRoute(screenshotRoute)
             return
         }
+        activity.screenshotThemeChoiceOverride = null
         if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
             activity.renderUpdate()
         } else {
@@ -46,10 +54,11 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     }
 
     internal fun shouldRunBackgroundStartupTasks(intent: Intent?): Boolean {
-        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank()
+        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
+            intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
     }
 
-    private fun renderScreenshotRoute(route: String) {
+    private fun renderRoute(route: String) {
         when (route) {
             MainActivityBase.NAV_HOME_ROUTE, "launcher-home", "narrow", "wide" -> activity.renderHome()
             MainActivityBase.NAV_STUDY -> activity.renderStudy()

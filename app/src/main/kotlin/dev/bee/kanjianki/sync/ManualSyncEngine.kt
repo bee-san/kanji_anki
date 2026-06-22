@@ -2,6 +2,7 @@ package dev.bee.kanjianki.sync
 
 import android.content.Context
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
@@ -195,6 +196,7 @@ internal class ManualSyncEngine {
                 nowMillis,
             )
                 .settings(settings)
+                .readingExposure(ReadingExposureMediaReader().read())
                 .build(),
         )
     }

@@ -596,9 +596,11 @@ class ComposeScreenModelsTest {
         assertEquals(true, initial.downloadVisible)
         assertEquals(MainActivityBase.LABEL_PASS, initial.nextText)
         assertEquals(false, initial.nextVisible)
+        assertEquals(true, initial.nextEnabled)
         assertEquals(StudyWritingCopy.skipLabel(), initial.skipText)
         assertEquals(false, initial.skipVisible)
         assertEquals(true, initial.skipEnabled)
+
 
         var checked = false
         var downloaded = false
@@ -616,6 +618,7 @@ class ComposeScreenModelsTest {
             downloadVisible = false,
             nextText = "Save hard",
             nextVisible = true,
+            nextEnabled = false,
             onCheck = check,
             onDownload = download,
             onNext = next,
@@ -632,9 +635,11 @@ class ComposeScreenModelsTest {
         assertEquals(false, model.downloadVisible)
         assertEquals("Save hard", model.nextText)
         assertEquals(true, model.nextVisible)
+        assertEquals(false, model.nextEnabled)
         assertEquals("Skip", model.skipText)
         assertEquals(true, model.skipVisible)
         assertEquals(false, model.skipEnabled)
+
         assertSame(check, model.onCheck)
         assertSame(download, model.onDownload)
         assertSame(next, model.onNext)
@@ -670,41 +675,37 @@ class ComposeScreenModelsTest {
             actionLabel = "Open licenses",
             onAction = Runnable {},
         )
-        val category = settingsCategorySectionModel(
-            sectionKey = "settings-study-behavior",
+        val card = SettingsHubCardModel(
+            routeKey = MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,
             title = "Study",
             summary = "Tune review behavior.",
             iconRes = R.drawable.ic_target_24,
-            expanded = true,
-            onToggle = toggle,
-            panels = listOf(panel),
+            panelCount = "1 card",
+            contentDescription = "Open Study",
+            onOpen = Runnable {},
         )
         val screen = SettingsScreenModel(
             homeLabel = "Home",
             onHome = home,
             hero = hero,
-            categories = listOf(category),
+            cards = listOf(card),
         )
 
         assertEquals("Home", screen.homeLabel)
         assertSame(home, screen.onHome)
         assertSame(hero, screen.hero)
-        assertEquals(listOf(category), screen.categories)
-        assertEquals("settings-study-behavior", category.sectionKey)
-        assertEquals("Study", category.title)
-        assertEquals("Tune review behavior.", category.summary)
-        assertEquals(R.drawable.ic_target_24, category.iconRes)
-        assertEquals(true, category.expanded)
-        assertEquals("1 card", category.panelCount)
-        assertEquals("Collapse Study", category.contentDescription)
-        assertSame(toggle, category.onToggle)
-        assertEquals(listOf(panel), category.panels)
+        assertEquals(listOf(card), screen.cards)
+        assertEquals(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE, card.routeKey)
+        assertEquals("Study", card.title)
+        assertEquals("Tune review behavior.", card.summary)
+        assertEquals(R.drawable.ic_target_24, card.iconRes)
+        assertEquals("1 card", card.panelCount)
+        assertEquals("Open Study", card.contentDescription)
+        card.onOpen.run()
         screen.onHome.run()
-        category.onToggle.run()
         assertEquals(true, homeClicked)
-        assertEquals(true, toggled)
         assertEquals(screen, screen.copy())
-        assertEquals(category, category.copy())
+        assertEquals(card, card.copy())
     }
 
     @Test
@@ -1507,7 +1508,7 @@ class ComposeScreenModelsTest {
             meaningClues = listOf("裂: split", "列: row"),
             readingClues = listOf("裂: れつ", "列: れつ"),
             failedSourceWords = listOf("source one", "source two"),
-            watchThisPart = "Watch how 裂 differs from 列 and 烈.",
+            watchThisPart = "Compare 裂 with 列 and 烈.",
             confidence = ExplanationConfidence.HIGH,
         )
         val explanationLines = similarKanjiExplanationLines(explanation)
@@ -1545,20 +1546,20 @@ class ComposeScreenModelsTest {
         assertSame(grid, similar.gridModel)
         assertEquals(
             listOf(
-                SimilarKanjiExplanationLineModel("Pair", "裂 vs 列 / 烈", true),
-                SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
-                SimilarKanjiExplanationLineModel("Meaning clues", "裂: split • 列: row"),
-                SimilarKanjiExplanationLineModel("Reading clues", "裂: れつ • 列: れつ"),
-                SimilarKanjiExplanationLineModel("Shared components", "⿰"),
-                SimilarKanjiExplanationLineModel("Different components", "歹 • 衣"),
-                SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列 and 烈.", true),
+                SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Seen in", "source one • source two"),
+                SimilarKanjiExplanationLineModel("Meaning hint", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("Reading hint", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("Shared part", "⿰"),
+                SimilarKanjiExplanationLineModel("Different part", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("Shape hint", "Compare 裂 with 列 and 烈.", true),
             ),
             explanationLines,
         )
         assertEquals(
             listOf(
-                SimilarKanjiExplanationLineModel("Pair", "列 / 烈", true),
-                SimilarKanjiExplanationLineModel("Watch", "Watch this pair closely.", true),
+                SimilarKanjiExplanationLineModel("Compare shapes", "列 / 烈", true),
+                SimilarKanjiExplanationLineModel("Shape hint", "Compare these kanji closely.", true),
             ),
             similarKanjiExplanationLines(
                 SimilarKanjiExplanation(
@@ -1569,7 +1570,7 @@ class ComposeScreenModelsTest {
                     meaningClues = emptyList(),
                     readingClues = emptyList(),
                     failedSourceWords = emptyList(),
-                    watchThisPart = "Watch this pair closely.",
+                    watchThisPart = "Compare these kanji closely.",
                     confidence = ExplanationConfidence.LOW,
                 )
             ),
@@ -1623,13 +1624,13 @@ class ComposeScreenModelsTest {
 
         assertEquals(
             listOf(
-                SimilarKanjiExplanationLineModel("ペア", "裂と列・烈", true),
-                SimilarKanjiExplanationLineModel("出典語", "source one"),
-                SimilarKanjiExplanationLineModel("意味の手がかり", "裂: split • 列: row"),
-                SimilarKanjiExplanationLineModel("読みの手がかり", "裂: れつ • 列: れつ"),
-                SimilarKanjiExplanationLineModel("共通部品", "⿰"),
-                SimilarKanjiExplanationLineModel("異なる部品", "歹 • 衣"),
-                SimilarKanjiExplanationLineModel("注目", "裂と列・烈の違いを見比べましょう。", true),
+                SimilarKanjiExplanationLineModel("見比べ", "裂と列・烈", true),
+                SimilarKanjiExplanationLineModel("使用例", "source one"),
+                SimilarKanjiExplanationLineModel("意味のヒント", "裂: split • 列: row"),
+                SimilarKanjiExplanationLineModel("読みのヒント", "裂: れつ • 列: れつ"),
+                SimilarKanjiExplanationLineModel("共通部", "⿰"),
+                SimilarKanjiExplanationLineModel("違い", "歹 • 衣"),
+                SimilarKanjiExplanationLineModel("形のヒント", "裂と列・烈の違いを見比べましょう。", true),
             ),
             similarKanjiExplanationLines(explanation),
         )
@@ -1664,7 +1665,13 @@ class ComposeScreenModelsTest {
             prompt = "split",
         )
 
-        assertEquals(listOf("分裂", "裂ける"), similarKanjiExplanationSourceWords(session))
+        assertEquals(
+            listOf(
+                "分裂 (れつ · split)",
+                "裂ける (れつ · split)",
+            ),
+            similarKanjiExplanationSourceWords(session),
+        )
         assertEquals(emptyList<String>(), similarKanjiExplanationSourceWords(null))
     }
 

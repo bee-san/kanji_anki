@@ -33,6 +33,7 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.theme.KaniThemeChoice
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -57,6 +58,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var contentScrollY = 0
+
+    @JvmField
+    var currentRoute: String = NAV_HOME_ROUTE
+
+    @JvmField
+    var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
     @JvmField
     var activeSession: RecordsSchedulerModels.StudySession? = null
@@ -226,6 +233,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     open fun renderSettings(preserveScroll: Boolean) {
         renderSettings()
     }
+    open fun renderDeferredStudyBehaviorPreviewIfNeeded() = Unit
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
     abstract fun renderStudyForKanji(kanji: String?)
@@ -261,6 +269,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleLaunchIntent(intent)
     }
 
     override fun onPause() {
@@ -323,19 +337,26 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return super.dispatchTouchEvent(event)
     }
 
-    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, content: @Composable () -> Unit) {
-        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, content)
+    fun composeRoute(
+        selected: String,
+        initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
+        onScrollY: (Int) -> Unit = {},
+        content: @Composable () -> Unit,
+    ) {
+        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, onScrollY, content)
     }
 
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
+        onScrollY: (Int) -> Unit = {},
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        shellHost.composeRouteWithActionBar(selected, initialScrollY, scrollPositionLabel, beforeContent, content, actionBar)
+        shellHost.composeRouteWithActionBar(selected, initialScrollY, scrollPositionLabel, onScrollY, beforeContent, content, actionBar)
     }
 
     fun isActiveToken(token: String): Boolean {
@@ -447,6 +468,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
+        const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L
@@ -455,7 +477,27 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val NAV_STATS_ROUTE = "stats"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"
-        const val SCREENSHOT_STUDY_SIMILAR_ROUTE = "study-similar"
+        const val NAV_SETTINGS_IMPORT_SYNC_ROUTE = "settings/import-sync"
+        const val NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE = "settings/study-behavior"
+        const val NAV_SETTINGS_AUTOMATION_ROUTE = "settings/automation"
+        const val NAV_SETTINGS_APPEARANCE_ROUTE = "settings/appearance"
+        const val NAV_SETTINGS_DISPLAY_DATA_ROUTE = "settings/display-data"
+        const val NAV_SETTINGS_UPDATE_ROUTE = "settings/automation/update"
+        const val NAV_SETTINGS_LICENSES_ROUTE = "settings/display-data/licenses"
+
+        @JvmStatic
+        fun isSettingsRoute(route: String): Boolean {
+            return route == NAV_SETTINGS_ROUTE || route.startsWith("$NAV_SETTINGS_ROUTE/")
+        }
+
+        @JvmStatic
+        fun settingsParentRoute(route: String): String {
+            return when {
+                route == NAV_SETTINGS_ROUTE -> NAV_HOME_ROUTE
+                route.startsWith("$NAV_SETTINGS_ROUTE/") -> route.substringBeforeLast('/')
+                else -> NAV_HOME_ROUTE
+            }
+        }
         const val LABEL_BACK_HOME = "Back home"
         const val LABEL_MEANING = "Meaning"
         const val LABEL_FAIL = "Fail"

@@ -11,6 +11,7 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
     fun onResume() {
         activity.activityPaused = false
         activity.resumeActiveStudyTask()
+        activity.renderDeferredStudyBehaviorPreviewIfNeeded()
     }
 
     fun onDestroy() {

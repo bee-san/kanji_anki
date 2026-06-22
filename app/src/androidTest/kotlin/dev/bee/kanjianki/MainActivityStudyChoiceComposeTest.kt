@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,8 +45,8 @@ class MainActivityStudyChoiceComposeTest {
             SimilarChoiceGrid(
                 model = SimilarChoiceGridModel(
                     choices = listOf("裂", "列", "烈"),
-                    balanceLastRow = true,
-                    onChoice = KanjiChoiceHandler { selected = it }
+                    balanceLastRow = false,
+onChoice = KanjiChoiceHandler { selected = it }
                 )
             )
         }
@@ -64,9 +65,9 @@ class MainActivityStudyChoiceComposeTest {
         var selected = ""
 
         val explanationLines = listOf(
-            SimilarKanjiExplanationLineModel("Pair", "裂 vs 列", true),
-            SimilarKanjiExplanationLineModel("Source words", "source one • source two"),
-            SimilarKanjiExplanationLineModel("Watch", "Watch how 裂 differs from 列.", true),
+            SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列", true),
+            SimilarKanjiExplanationLineModel("Seen in", "source one • source two"),
+            SimilarKanjiExplanationLineModel("Shape hint", "Compare 裂 with 列.", true),
         )
 
         composeRule.setContent {
@@ -80,7 +81,7 @@ class MainActivityStudyChoiceComposeTest {
                     question = "Which kanji means split?",
                     gridModel = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
-                        balanceLastRow = true,
+                        balanceLastRow = false,
                         onChoice = KanjiChoiceHandler { selected = it }
                     ),
                     explanationLines = explanationLines,
@@ -94,9 +95,9 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
         composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
-        composeRule.onNodeWithText("Pair: 裂 vs 列").assertIsDisplayed()
-        composeRule.onNodeWithText("Source words: source one • source two").assertIsDisplayed()
-        composeRule.onNodeWithText("Watch: Watch how 裂 differs from 列.").assertIsDisplayed()
+        composeRule.onNodeWithText("Compare shapes: 裂 vs 列").assertIsDisplayed()
+        composeRule.onNodeWithText("Seen in: source one • source two").assertIsDisplayed()
+        composeRule.onNodeWithText("Shape hint: Compare 裂 with 列.").assertIsDisplayed()
 
         composeRule.onNodeWithText("烈").performClick()
 
@@ -169,8 +170,8 @@ class MainActivityStudyChoiceComposeTest {
         }
 
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Meaning -> kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Meaning -> kanji").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Pick the matching kanji.").assertCountEquals(0)
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
     }
 
@@ -259,9 +260,9 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
         composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("列"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Incorrect answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceIncorrectStateDescription()))
         composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceCorrectStateDescription()))
         composeRule.onAllNodesWithText("Next").assertCountEquals(0)
     }
 
@@ -292,7 +293,7 @@ class MainActivityStudyChoiceComposeTest {
 
         composeRule.onNodeWithText("Selected: 裂").assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Correct answer"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceCorrectStateDescription()))
         composeRule.onNodeWithTag(similarChoiceTestTag("列"))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
     }
@@ -463,13 +464,13 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
-    fun preservesOddRowBalanceWithInsetCells() {
+    fun expandsOddRowTailCellToFullWidth() {
         composeRule.setContent {
             Box(modifier = Modifier.width(200.dp)) {
                 SimilarChoiceGrid(
                     model = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
-                        balanceLastRow = true,
+                        balanceLastRow = false,
                         onChoice = KanjiChoiceHandler { }
                     )
                 )
@@ -486,7 +487,8 @@ class MainActivityStudyChoiceComposeTest {
         assertTrue(third.top > first.bottom)
         assertEquals(first.left, third.left, POSITION_TOLERANCE_PX)
         assertEquals(first.width, second.width, SIZE_TOLERANCE_PX)
-        assertEquals(first.width, third.width, SIZE_TOLERANCE_PX)
+        assertTrue(third.width > first.width)
+        assertTrue(third.right > second.right)
         assertEquals(first.height, third.height, SIZE_TOLERANCE_PX)
     }
 

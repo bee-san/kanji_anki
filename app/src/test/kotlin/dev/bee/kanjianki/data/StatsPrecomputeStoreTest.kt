@@ -52,6 +52,7 @@ class StatsPrecomputeStoreTest {
         val directRecentMistakes = StudyStatsStore(localStore).recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
         val directStreak = StudyStatsStore(localStore).studyStreak(generatedAtMillis)
         val directTaskTime = StudyStatsStore(localStore).studyTaskTimeStats(generatedAtMillis)
+        val directRepairEvidence = StudyStatsStore(localStore).kanjiRepairEvidence()
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = generatedAtMillis)
 
@@ -65,6 +66,7 @@ class StatsPrecomputeStoreTest {
         assertRecentMistakesEquals(directRecentMistakes, cached.recentMistakes)
         assertStudyStreakEquals(directStreak, cached.studyStreak)
         assertStudyTaskTimeStatsEquals(directTaskTime, cached.studyTaskTimeStats)
+        assertRepairEvidenceEquals(directRepairEvidence, cached.kanjiRepairEvidence)
         assertEquals(STATS_CACHE_FORMAT_VERSION, cached.cacheFormatVersion)
         assertEquals(STATS_REVIEW_DAY_SUMMARY_LIMIT, cached.reviewDaySummaries.size)
         assertEquals(
@@ -308,6 +310,29 @@ class StatsPrecomputeStoreTest {
         assertEquals(expected.studiedToday, actual.studiedToday)
         assertEquals(expected.reviewsToday, actual.reviewsToday)
         assertEquals(expected.lastStudyAtMillis, actual.lastStudyAtMillis)
+    }
+
+    private fun assertRepairEvidenceEquals(
+        expected: List<StudyStatsStore.KanjiRepairEvidence>,
+        actual: List<StudyStatsStore.KanjiRepairEvidence>,
+    ) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (expectedRow, actualRow) ->
+            assertEquals(expectedRow.kanji, actualRow.kanji)
+            assertEquals(expectedRow.status, actualRow.status)
+            assertEquals(expectedRow.reason, actualRow.reason)
+            assertEquals(expectedRow.explanation, actualRow.explanation)
+            assertEquals(expectedRow.beforeWeakness, actualRow.beforeWeakness)
+            assertEquals(expectedRow.afterWeakness, actualRow.afterWeakness)
+            assertEquals(expectedRow.beforeMatureSupport, actualRow.beforeMatureSupport)
+            assertEquals(expectedRow.afterMatureSupport, actualRow.afterMatureSupport)
+            assertEquals(expectedRow.kaniReviews, actualRow.kaniReviews)
+            assertEquals(expectedRow.writingFailures, actualRow.writingFailures)
+            assertEquals(expectedRow.lastMistakeAtMillis, actualRow.lastMistakeAtMillis)
+            assertEquals(expectedRow.lastSyncAtMillis, actualRow.lastSyncAtMillis)
+            assertEquals(expectedRow.confidence, actualRow.confidence, 0.0001)
+            assertEquals(expectedRow.confidenceReason, actualRow.confidenceReason)
+        }
     }
 
     private fun assertStudyTaskTimeStatsEquals(

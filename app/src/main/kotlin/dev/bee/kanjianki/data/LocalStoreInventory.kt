@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicLong
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
     private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
@@ -21,12 +22,22 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
     private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
+    private val newCardSortPreviewCacheVersion = AtomicLong(0L)
+
+    fun newCardSortPreviewCacheVersion(): Long {
+        return newCardSortPreviewCacheVersion.get()
+    }
+
+    private fun bumpNewCardSortPreviewCacheVersion() {
+        newCardSortPreviewCacheVersion.incrementAndGet()
+    }
 
     internal fun clearDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
         clearTimelineCache()
+        bumpNewCardSortPreviewCacheVersion()
     }
 
     internal fun clearLocallySuspendedCache() {
@@ -34,12 +45,14 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         cachedActiveDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
         clearKanjiInventoryAllCache()
+        bumpNewCardSortPreviewCacheVersion()
     }
 
     internal override fun clearStudyItemsCache() {
         cachedStudyItems = null
         cachedStudyItemsByKanji = null
         clearTimelineCache()
+        bumpNewCardSortPreviewCacheVersion()
     }
 
     internal override fun clearKanjiInventoryAllCache() {
@@ -54,6 +67,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     internal override fun clearSimilarKanjiNeighborsCache() {
         cachedKanjiWithSimilarNeighbors = null
+        bumpNewCardSortPreviewCacheVersion()
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
