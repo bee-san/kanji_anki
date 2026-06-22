@@ -126,6 +126,60 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
+    fun persistentQueueSkipsReplaceWhenAnnotatedQueueMatchesCurrentItems() {
+        val currentItem = studyItem()
+        val current = listOf(currentItem)
+        val annotated = listOf(studyItem())
+        val writer = RecordingWriter(annotated)
+
+        val result = HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = current,
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> listOf(studyItem()) },
+                writer = writer,
+            ),
+            currentItems = current,
+        )
+
+        assertSame(annotated, result)
+        assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenSchedulerStateChanges() {
+        val variants = listOf(
+            "state" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().state("learning").build() },
+            "due" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().dueAtMillis(456L).build() },
+            "answer signature" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().answerSignature("changed-signature").build() },
+            "token" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().activeToken("changed-token").build() },
+            "rung" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).build() },
+            "phase" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().phase(RecordsBase.SchedulerPhase.RELEARNING).build() },
+        )
+
+        for ((name, mutate) in variants) {
+            val currentItem = studyItem()
+            val changed = mutate(currentItem)
+            val writer = RecordingWriter(listOf(changed))
+
+            HomeStudyQueueActions.studyQueue(
+                baseRequest(
+                    persist = true,
+                    current = listOf(currentItem),
+                    providedPlan = null,
+                    seeder = { _, _, _, _, _, _, _ -> listOf(changed) },
+                    writer = writer,
+                ),
+                currentItems = listOf(currentItem),
+            )
+
+            assertTrue("$name changes must be persisted", writer.replaced)
+        }
+    }
+
+    @Test
     fun studyQueueRequestKeepsJavaRecordSemantics() {
         val seeder = HomeStudyQueueActions.StudyQueueSeeder {
             _: List<RecordsImportModels.DashboardRow>,
@@ -187,6 +241,53 @@ class HomeStudyQueueActionsTest {
             1,
             false,
             "status",
+        )
+    }
+
+    private fun studyItem(
+        kanji: String = "裂",
+        state: String = "review",
+        dueAtMillis: Long = 123L,
+        answerSignature: String = "signature",
+        activeToken: String? = "token",
+        rung: RecordsBase.LadderRung = RecordsBase.LadderRung.KANJI_MEANING,
+        phase: RecordsBase.SchedulerPhase = RecordsBase.SchedulerPhase.REVIEW,
+        hasSimilarKanji: Boolean = true,
+    ): RecordsStudyModels.StudyItem {
+        val memory = RecordsStudyModels.TaskMemory.initial()
+        return RecordsStudyModels.StudyItem(
+            kanji,
+            state,
+            dueAtMillis,
+            1.0,
+            2.0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0L,
+            false,
+            "",
+            0L,
+            0,
+            answerSignature,
+            activeToken,
+            111L,
+            memory,
+            memory,
+            memory,
+            memory,
+            memory,
+            memory,
+            rung,
+            phase,
+            1,
+            0,
+            dueAtMillis,
+            hasSimilarKanji,
+            memory,
         )
     }
 
