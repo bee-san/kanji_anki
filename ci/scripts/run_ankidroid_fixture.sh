@@ -7,6 +7,7 @@ logcat_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-logcat.txt"
 instrumentation_output_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-instrumentation.txt"
 provider_probe_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-provider-probe.txt"
 ankidroid_dir="/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid"
+legacy_ankidroid_dir="/storage/emulated/0/AnkiDroid"
 
 retry() {
   local description="$1"
@@ -36,7 +37,7 @@ dump_logcat() {
 }
 
 wait_for_external_storage() {
-  adb shell "mkdir -p ${ankidroid_dir}/collection.media && test -d ${ankidroid_dir}"
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && test -d ${ankidroid_dir} && test -d ${legacy_ankidroid_dir}"
 }
 
 install_apk_once() {
@@ -64,11 +65,30 @@ probe_ankidroid_provider() {
   repair_ankidroid_dir_permissions || return 1
   adb shell content query --uri content://com.ichi2.anki.flashcards/models \
     | tee "${provider_probe_path}"
-  grep -Eq 'Row:|Kiku' "${provider_probe_path}"
+  grep -Fq 'name=Kiku' "${provider_probe_path}"
 }
 
 repair_ankidroid_dir_permissions() {
-  adb shell "mkdir -p ${ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; test -w ${ankidroid_dir}"
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; chown -R \"\$owner_uid\":ext_data_rw ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
+}
+
+remove_collection_sidecars() {
+  adb shell "rm -f ${ankidroid_dir}/collection.anki2-wal ${ankidroid_dir}/collection.anki2-shm ${ankidroid_dir}/collection.anki2-journal ${legacy_ankidroid_dir}/collection.anki2-wal ${legacy_ankidroid_dir}/collection.anki2-shm ${legacy_ankidroid_dir}/collection.anki2-journal"
+}
+
+seed_collection_fixture() {
+  # AnkiDroid may create a default Basic collection during first launch. If a
+  # SQLite WAL/SHM sidecar from that collection is left beside our pushed Kiku
+  # fixture, SQLite can replay the stale Basic collection over the replacement
+  # database. Force-stop AnkiDroid and delete sidecars before and after pushing.
+  adb shell am force-stop com.ichi2.anki || true
+  remove_collection_sidecars
+  adb push "${collection_path}" "${ankidroid_dir}/collection.anki2"
+  # Some AnkiDroid APK variants can still default to the legacy public folder
+  # when all-files/legacy storage is available. Seed both plausible locations so
+  # the provider reads Kiku regardless of the first-run deckPath decision.
+  adb push "${collection_path}" "${legacy_ankidroid_dir}/collection.anki2"
+  remove_collection_sidecars
 }
 
 launch_ankidroid() {
@@ -194,7 +214,7 @@ sleep 5
 adb root || true
 adb wait-for-device
 retry "External storage fixture directory readiness" 12 5 wait_for_external_storage
-adb push "${collection_path}" "${ankidroid_dir}/collection.anki2"
+seed_collection_fixture
 retry "AnkiDroid fixture directory permissions" 6 2 repair_ankidroid_dir_permissions
 
 adb shell "prefs=/data/user/0/com.ichi2.anki/shared_prefs/com.ichi2.anki_preferences.xml; if [ -f \"\$prefs\" ]; then sed -i 's#/storage/emulated/0/AnkiDroid#${ankidroid_dir}#g' \"\$prefs\"; fi"
