@@ -31,7 +31,12 @@ internal object HomeStudyQueueActions {
             request.ladderProvider.studyLadderSettings(),
         )
         val annotated = request.writer.annotateSimilarKanjiAvailability(seeded)
-        if (annotated.isEmpty() || !sameStudyQueue(current, annotated)) {
+        val persisted = if (currentItems == null) {
+            current
+        } else {
+            request.reader.studyItems()
+        }
+        if (!sameStudyQueue(persisted, annotated)) {
             request.writer.replaceStudyItems(annotated)
         }
         return annotated

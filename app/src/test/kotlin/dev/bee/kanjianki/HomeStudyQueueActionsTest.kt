@@ -42,8 +42,8 @@ class HomeStudyQueueActionsTest {
     @Test
     fun persistentQueueSeedsAnnotatesPersistsAndReturnsAnnotatedItems() {
         val current = mutableListOf<RecordsStudyModels.StudyItem>()
-        val seeded = mutableListOf<RecordsStudyModels.StudyItem>()
-        val annotated = mutableListOf<RecordsStudyModels.StudyItem>()
+        val seeded = mutableListOf(studyItem())
+        val annotated = mutableListOf(studyItem())
         val writer = RecordingWriter(annotated)
         val startOfDay = AtomicLong()
         val seenPlan = AtomicReference<RecordsSchedulerModels.AdaptiveLoadPlan?>(null)
@@ -100,9 +100,11 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
-    fun persistentQueueUsesProvidedCurrentItemsWithoutReadingStoreAgain() {
-        val current = mutableListOf<RecordsStudyModels.StudyItem>()
-        val writer = RecordingWriter(current)
+    fun persistentQueueUsesProvidedCurrentItemsForSeedingButReadsFullQueueBeforeNoopSkip() {
+        val suppliedCurrent = listOf(studyItem())
+        val fullPersistedQueue = listOf(studyItem())
+        val readerCalled = AtomicBoolean(false)
+        val writer = RecordingWriter(fullPersistedQueue)
 
         val result = HomeStudyQueueActions.studyQueue(
             HomeStudyQueueActions.StudyQueueRequest(
@@ -110,19 +112,49 @@ class HomeStudyQueueActionsTest {
                 123L,
                 true,
                 null,
-                { throw AssertionError("reader should not be called when current items are supplied") },
+                {
+                    readerCalled.set(true)
+                    fullPersistedQueue
+                },
                 RecordsSyncModels.Settings::kikuDefaults,
                 { 100L },
                 RecordsBase.StudyLadderSettings::defaults,
-                { _, _, _ -> plan(true) },
-                { _, currentItems, _, _, _, _, _ -> currentItems },
+                { _, currentItems, _ ->
+                    assertSame(suppliedCurrent, currentItems)
+                    plan(true)
+                },
+                { _, currentItems, _, _, _, _, _ ->
+                    assertSame(suppliedCurrent, currentItems)
+                    currentItems
+                },
                 writer,
             ),
-            currentItems = current,
+            currentItems = suppliedCurrent,
         )
 
-        assertSame(current, result)
+        assertSame(fullPersistedQueue, result)
+        assertTrue(readerCalled.get())
         assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenSuppliedCurrentItemsOmitPersistedRows() {
+        val activeItem = studyItem()
+        val staleItem = studyItem(kanji = "空")
+        val writer = RecordingWriter(listOf(activeItem))
+
+        HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = listOf(activeItem, staleItem),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> listOf(activeItem) },
+                writer = writer,
+            ),
+            currentItems = listOf(activeItem),
+        )
+
         assertTrue(writer.replaced)
     }
 
@@ -142,6 +174,26 @@ class HomeStudyQueueActionsTest {
                 writer = writer,
             ),
             currentItems = current,
+        )
+
+        assertSame(annotated, result)
+        assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueueSkipsReplaceWhenFullCurrentAndAnnotatedQueuesAreEmpty() {
+        val annotated = emptyList<RecordsStudyModels.StudyItem>()
+        val writer = RecordingWriter(annotated)
+
+        val result = HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = emptyList(),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> emptyList() },
+                writer = writer,
+            ),
         )
 
         assertSame(annotated, result)
