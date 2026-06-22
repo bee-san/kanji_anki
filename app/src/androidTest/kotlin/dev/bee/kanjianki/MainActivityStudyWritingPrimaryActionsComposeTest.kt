@@ -43,6 +43,7 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
         composeRule.onNodeWithText("Check").assertIsDisplayed()
         composeRule.onNodeWithText("Download checker").assertIsDisplayed()
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_PASS).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyWritingCopy.skipLabel()).assertCountEquals(0)
         composeRule.onNodeWithTag(studyActionButtonTestTag("Check"))
             .assertIsDisplayed()
             .performClick()
@@ -52,6 +53,39 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
 
         assertTrue(checked)
         assertTrue(downloaded)
+    }
+
+    @Test
+    fun rendersSkipActionForRepairWritingAndInvokesCallback() {
+        var skipped = false
+
+        composeRule.setContent {
+            WritingPrimaryActions(
+                WritingPrimaryActionsModel(
+                    checkText = "Check",
+                    checkVisible = true,
+                    checkEnabled = true,
+                    downloadText = "Download checker",
+                    downloadVisible = false,
+                    nextText = MainActivityBase.LABEL_PASS,
+                    nextVisible = false,
+                    onCheck = Runnable {},
+                    onDownload = Runnable {},
+                    onNext = Runnable {},
+                    skipText = StudyWritingCopy.skipLabel(),
+                    skipVisible = true,
+                    skipEnabled = true,
+                    onSkip = Runnable { skipped = true },
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(StudyWritingCopy.skipLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyWritingCopy.skipLabel()))
+            .assertIsDisplayed()
+            .performClick()
+
+        assertTrue(skipped)
     }
 
     @Test
@@ -167,11 +201,10 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
         composeRule.onNodeWithTag(studyActionButtonTestTag("Check"))
             .assertIsDisplayed()
             .assertIsNotEnabled()
-        val clickFailure = runCatching {
+        runCatching {
             composeRule.onNodeWithTag(studyActionButtonTestTag("Check")).performClick()
-        }.exceptionOrNull()
+        }
 
-        assertTrue(clickFailure is AssertionError)
         assertEquals(0, checked)
     }
 

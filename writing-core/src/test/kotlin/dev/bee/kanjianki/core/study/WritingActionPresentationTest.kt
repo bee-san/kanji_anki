@@ -24,6 +24,8 @@ class WritingActionPresentationTest {
         assertTrue(presentation.undoEnabled)
         assertTrue(presentation.downloadVisible)
         assertFalse(presentation.nextVisible)
+        assertFalse(presentation.skipVisible)
+        assertFalse(presentation.skipEnabled)
         assertFalse(presentation.manualOverrideVisible)
         assertFalse(presentation.practiceWithGuideVisible)
         assertFalse(presentation.replayVisible)
@@ -109,12 +111,28 @@ class WritingActionPresentationTest {
         val input = WritingActionPresentation.Input(null)
         input.checkingWriting = true
         input.canUndoStroke = true
+        input.repairTask = true
 
         val presentation = WritingActionPresentation.from(input)
 
         assertFalse(presentation.checkEnabled)
         assertEquals("Checking...", presentation.checkText)
         assertFalse(presentation.undoEnabled)
+        assertFalse(presentation.skipEnabled)
+        assertTrue(presentation.skipVisible)
+    }
+
+    @Test
+    fun repairWritingShowsSkipButtonBeforeChecking() {
+        val input = WritingActionPresentation.Input(null)
+        input.repairTask = true
+
+        val presentation = WritingActionPresentation.from(input)
+
+        assertTrue(presentation.skipVisible)
+        assertTrue(presentation.skipEnabled)
+        assertTrue(presentation.checkVisible)
+        assertTrue(presentation.checkEnabled)
     }
 
     @Test

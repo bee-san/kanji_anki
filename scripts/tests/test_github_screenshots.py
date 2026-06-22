@@ -180,15 +180,20 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual("missing_artifact", mismatch["status"])
             self.assertIn("home", mismatch["message"])
 
+
     def test_validate_artifact_accepts_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
             routes = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
             files = []
+            captures = []
+            payload = b"\x89PNG\r\n\x1a\n"
+            payload_sha256 = hashlib.sha256(payload).hexdigest()
             for route in routes:
                 path = out / f"{route}.png"
-                path.write_bytes(b"\x89PNG\r\n\x1a\n")
+                path.write_bytes(payload)
                 files.append(str(path))
+                captures.append({"route": route, "path": str(path), "sha256": payload_sha256})
 
             (out / "manifest.json").write_text(
                 json.dumps(
@@ -523,7 +528,7 @@ class GithubScreenshotsTest(unittest.TestCase):
                     }
                 )
 
-                result = run_remote_screenshots_for_test(
+                result = github_screenshots.run_remote_screenshots(
                     repo_root=root,
                     workflow="android-screenshots.yml",
                     artifact="android-screenshots",

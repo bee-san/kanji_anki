@@ -58,8 +58,12 @@ internal fun withButtonTrace(label: String, action: () -> Unit) {
     withUiTrace(buttonTraceSection(label), action)
 }
 
+internal fun asyncLoadTraceSection(route: String, phase: String): String {
+    return "kani.${traceToken(phase)}.${traceToken(route)}"
+}
+
 internal fun <T> withAsyncLoadTrace(route: String, phase: String, action: () -> T): T {
-    return withUiTrace("kani.${traceToken(phase)}.${traceToken(route)}", action)
+    return withUiTrace(asyncLoadTraceSection(route, phase), action)
 }
 
 internal fun traceToken(value: String): String {

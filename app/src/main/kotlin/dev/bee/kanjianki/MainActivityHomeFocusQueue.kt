@@ -42,6 +42,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     fun renderFocusQueue() {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.focusQueueTitle(),
+            traceName = "focus-queue-route",
             load = {
                 val now = System.currentTimeMillis()
                 val rows = home.store.activeDashboardRows()
@@ -82,6 +83,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     fun renderRecentMistakes() {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.recentMistakesTitle(),
+            traceName = "recent-mistakes-route",
             load = {
                 recentMistakesRouteData(
                     object : RecentMistakesRouteDataSource {

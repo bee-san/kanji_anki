@@ -49,6 +49,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
+        activeUpdateUiRunToken = 0
         clearStudyModeOverrides()
         cachedImportOnboardingPlan = null
         if (isScreenshotRouteRequested()) {

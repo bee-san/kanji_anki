@@ -1,5 +1,11 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -8,7 +14,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.assertCountEquals
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
@@ -20,10 +25,18 @@ class SettingsStudySortComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private fun setScrollableContent(content: @Composable () -> Unit) {
+        composeRule.setContent {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                content()
+            }
+        }
+    }
+
     @Test
     fun updatesStatusAndSavesSelectedSortMode() {
         val savedMode = AtomicReference<String>()
-        composeRule.setContent {
+        setScrollableContent {
             SettingsNewCardSortPanel(
                 model = SettingsNewCardSortPanelModel(
                     title = SettingsTextCopy.newCardSortTitle(),
@@ -60,7 +73,7 @@ class SettingsStudySortComposeTest {
         composeRule
             .onNodeWithText(SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
             .assertExists()
-        composeRule.onNodeWithText("Save new card sort").performScrollTo().assertIsEnabled().performClick()
+        composeRule.onNodeWithTag("new-card-sort-save").performScrollTo().assertIsEnabled().performClick()
 
         composeRule.runOnIdle {
             assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, savedMode.get())
@@ -71,7 +84,7 @@ class SettingsStudySortComposeTest {
     fun rendersAllSortOptionsWithLiteralSelectorsAndSavesSelectedMode() {
         val savedMode = AtomicReference<String>()
 
-        composeRule.setContent {
+        setScrollableContent {
             SettingsNewCardSortPanel(
                 model = SettingsNewCardSortPanelModel(
                     title = SettingsTextCopy.newCardSortTitle(),
@@ -110,12 +123,12 @@ class SettingsStudySortComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Frequency").assertIsEnabled().performScrollTo().performClick()
-        composeRule.onNodeWithText("Anki difficulty").assertIsEnabled().performScrollTo().performClick()
-        composeRule.onNodeWithText("Retrievability risk").assertIsEnabled().performScrollTo().performClick()
-        composeRule.onNodeWithText("Kani weakness").assertIsEnabled().performScrollTo().performClick()
-        composeRule.onNodeWithText("Balanced priority").assertIsEnabled().performScrollTo().performClick()
-        composeRule.onNodeWithText("Save new card sort").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-option-${RecordsBase.NEW_CARD_SORT_FREQUENCY}").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-option-${RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY}").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-option-${RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK}").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-option-${RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS}").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-option-${RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY}").assertIsEnabled().performScrollTo().performClick()
+        composeRule.onNodeWithTag("new-card-sort-save").assertIsEnabled().performScrollTo().performClick()
 
         composeRule.runOnIdle {
             assertEquals(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY, savedMode.get())
@@ -124,7 +137,7 @@ class SettingsStudySortComposeTest {
 
     @Test
     fun updatesPreviewRowsForSelectedSortMode() {
-        composeRule.setContent {
+        setScrollableContent {
             SettingsNewCardSortPanel(
                 model = SettingsNewCardSortPanelModel(
                     title = SettingsTextCopy.newCardSortTitle(),
@@ -176,7 +189,7 @@ class SettingsStudySortComposeTest {
     @Test
     fun updatesPreviewWarningForSelectedSortMode() {
         val warning = SettingsTextCopy.newCardSortConfusablePreviewWarning(listOf("人/入"))
-        composeRule.setContent {
+        setScrollableContent {
             SettingsNewCardSortPanel(
                 model = SettingsNewCardSortPanelModel(
                     title = SettingsTextCopy.newCardSortTitle(),

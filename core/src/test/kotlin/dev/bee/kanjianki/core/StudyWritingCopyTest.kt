@@ -40,6 +40,7 @@ class StudyWritingCopyTest {
             assertEquals("Replay", StudyWritingCopy.replayLabel())
             assertEquals("Mark right anyway", StudyWritingCopy.manualOverrideLabel())
             assertEquals("Continue anyway", StudyWritingCopy.continueAnywayLabel())
+            assertEquals("Skip", StudyWritingCopy.skipLabel())
             assertEquals("Try again with full guide", StudyWritingCopy.practiceWithGuideLabel())
             assertEquals("Checking handwriting...", StudyWritingCopy.checkingStatus())
             assertEquals(
@@ -74,6 +75,7 @@ class StudyWritingCopyTest {
             assertEquals("再生", StudyWritingCopy.replayLabel())
             assertEquals("それでも合格にする", StudyWritingCopy.manualOverrideLabel())
             assertEquals("このまま続行", StudyWritingCopy.continueAnywayLabel())
+            assertEquals("スキップ", StudyWritingCopy.skipLabel())
             assertEquals("フルガイドで再挑戦", StudyWritingCopy.practiceWithGuideLabel())
             assertEquals("手書き判定中...", StudyWritingCopy.checkingStatus())
             assertEquals(

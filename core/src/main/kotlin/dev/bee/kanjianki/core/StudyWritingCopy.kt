@@ -56,6 +56,9 @@ object StudyWritingCopy {
     fun continueAnywayLabel(): String = localizedText("Continue anyway", "このまま続行")
 
     @JvmStatic
+    fun skipLabel(): String = localizedText("Skip", "スキップ")
+
+    @JvmStatic
     fun practiceWithGuideLabel(): String = localizedText("Try again with full guide", "フルガイドで再挑戦")
 
     @JvmStatic

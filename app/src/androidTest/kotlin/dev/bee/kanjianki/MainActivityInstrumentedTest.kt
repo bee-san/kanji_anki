@@ -740,21 +740,21 @@ fun testNoteTypeSettingsValidateCustomSaveAndReset() {
     }
 
     @Test
-fun testReferenceDataLicensesRoundTripFromSettings() {
+    fun testReferenceDataLicensesRoundTripFromSettings() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            clickText(scenario, "Settings");
-            clickText(scenario, "Display & data");
-            waitForText(scenario, "Open data licenses");
-            clickText(scenario, "Open data licenses");
-            waitForText(scenario, "Data licenses");
+            clickText(scenario, SettingsTextCopy.settingsTitle())
+            clickText(scenario, SettingsTextCopy.settingsReferenceDataTitle())
+            waitForText(scenario, SettingsTextCopy.openDataLicensesLabel())
+            clickText(scenario, SettingsTextCopy.openDataLicensesLabel())
+            waitForText(scenario, SettingsTextCopy.dataLicensesTitle())
             scenario.onActivity { activity ->
-                assertHasText(activity, "Dictionary data");
-                assertHasText(activity, "Stroke data");
-                assertHasText(activity, "Fonts");
-                assertHasText(activity, "Back to settings");
+                assertHasText(activity, SettingsTextCopy.dictionaryDataTitle())
+                assertHasText(activity, SettingsTextCopy.strokeDataTitle())
+                assertHasText(activity, SettingsTextCopy.fontsTitle())
+                assertHasText(activity, SettingsTextCopy.backToSettingsLabel())
             }
-            clickText(scenario, "Back to settings");
-            waitForText(scenario, "Display & data");
+            clickText(scenario, SettingsTextCopy.backToSettingsLabel())
+            waitForText(scenario, SettingsTextCopy.settingsReferenceDataTitle())
         }
     }
 

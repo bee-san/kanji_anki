@@ -41,6 +41,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
         input.hasInk = drawingPad != null && drawingPad.hasInk()
         input.guide = session?.item?.let { activity.strokeGuide(it.kanji) }
         input.canRevealMoreHelp = canRevealMoreHelp()
+        input.repairTask = session != null && StudyTaskCopy.isRepairWritingTask(session)
         input.recallTask = session != null && StudyTaskCopy.isRecallTask(session)
         input.teachingTask = session != null && StudyTaskCopy.isTeachingTask(session)
         input.currentPracticeLevel = activity.currentPracticeLevel
@@ -87,6 +88,11 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 } else {
                     Runnable { activity.submitReview(presentation.nextRating, false) }
                 },
+                skipText = StudyWritingCopy.skipLabel(),
+                skipVisible = presentation.skipVisible,
+                skipEnabled = presentation.skipEnabled,
+                onSkip = Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
+
             )
         )
     }

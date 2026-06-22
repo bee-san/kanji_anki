@@ -51,6 +51,14 @@ internal fun WritingPrimaryActions(model: WritingPrimaryActionsModel) {
                 modifier = Modifier.weight(1f)
             )
         }
+        if (model.skipVisible) {
+            WritingSecondaryButton(
+                label = model.skipText,
+                onClick = { model.onSkip.run() },
+                modifier = Modifier.weight(1f),
+                enabled = model.skipEnabled
+            )
+        }
         if (model.downloadVisible) {
             WritingSecondaryButton(
                 label = model.downloadText,
