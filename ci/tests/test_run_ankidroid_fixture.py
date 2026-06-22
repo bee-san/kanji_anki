@@ -342,6 +342,48 @@ OUT
         self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
+    def test_fixture_retries_provider_probe_until_kiku_model_is_visible_not_any_row(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ content\\ query*)
+    count_file="$RUNNER_TEMP/provider-probe-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 2 ]; then
+      echo 'Row: 0 _id=1782161628423, name=Basic'
+    else
+      echo 'Row: 0 _id=1700000000000, name=Kiku'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
+        self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
+
+    def test_fixture_removes_default_collection_sqlite_sidecars_around_push(self):
+        result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        sidecar_calls = [
+            index
+            for index, call in enumerate(adb_calls)
+            if call.startswith("shell rm -f ") and "collection.anki2-wal" in call
+        ]
+        push_calls = [
+            index
+            for index, call in enumerate(adb_calls)
+            if call.startswith("push ") and "collection.anki2" in call
+        ]
+        self.assertGreaterEqual(len(sidecar_calls), 2)
+        self.assertEqual(len(push_calls), 2)
+        self.assertLess(sidecar_calls[0], push_calls[0])
+        self.assertGreater(sidecar_calls[-1], push_calls[-1])
+
     def test_fixture_fails_when_instrumentation_omits_ok_marker(self):
         fake_adb = base_fake_adb(
             """  shell\\ am\\ instrument*)
