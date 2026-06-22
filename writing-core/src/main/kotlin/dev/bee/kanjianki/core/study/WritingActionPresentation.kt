@@ -12,6 +12,8 @@ class WritingActionPresentation private constructor(input: Input?) {
     @JvmField val nextVisible: Boolean
     @JvmField val nextLabel: String
     @JvmField val nextRating: String
+    @JvmField val skipVisible: Boolean
+    @JvmField val skipEnabled: Boolean
     @JvmField val manualOverrideVisible: Boolean
     @JvmField val practiceWithGuideVisible: Boolean
     @JvmField val replayVisible: Boolean
@@ -34,6 +36,8 @@ class WritingActionPresentation private constructor(input: Input?) {
         nextVisible = WritingFeedbackCopy.canSubmitAnalysis(analysis)
         nextLabel = WritingFeedbackCopy.submitLabel(analysis)
         nextRating = WritingFeedbackCopy.submitRating(analysis)
+        skipVisible = safeInput.repairTask && !hasResult
+        skipEnabled = skipVisible && !safeInput.checkingWriting
         manualOverrideVisible = hasResult && WritingFeedbackCopy.canManualOverride(analysis)
         practiceWithGuideVisible = hasResult && !passed && WritingFeedbackCopy.canPracticeAfterAnalysis(analysis)
         replayVisible = hasResult &&
@@ -59,6 +63,7 @@ class WritingActionPresentation private constructor(input: Input?) {
         @JvmField var hasInk: Boolean = false
         @JvmField var guide: StrokeGuide? = null
         @JvmField var canRevealMoreHelp: Boolean = false
+        @JvmField var repairTask: Boolean = false
         @JvmField var recallTask: Boolean = false
         @JvmField var teachingTask: Boolean = false
         @JvmField var currentPracticeLevel: Int = 0

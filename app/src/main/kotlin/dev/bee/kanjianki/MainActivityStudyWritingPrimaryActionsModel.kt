@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.StudyWritingCopy
 
 data class WritingPrimaryActionsModel(
     val checkText: String,
@@ -14,6 +15,10 @@ data class WritingPrimaryActionsModel(
     val onCheck: Runnable,
     val onDownload: Runnable,
     val onNext: Runnable,
+    val skipText: String = StudyWritingCopy.skipLabel(),
+    val skipVisible: Boolean = false,
+    val skipEnabled: Boolean = true,
+    val onSkip: Runnable = Runnable {},
 ) {
     companion object {
         fun initial(): WritingPrimaryActionsModel {
@@ -27,7 +32,11 @@ data class WritingPrimaryActionsModel(
                 nextVisible = false,
                 onCheck = Runnable {},
                 onDownload = Runnable {},
-                onNext = Runnable {}
+                onNext = Runnable {},
+                skipText = StudyWritingCopy.skipLabel(),
+                skipVisible = false,
+                skipEnabled = true,
+                onSkip = Runnable {},
             )
         }
     }

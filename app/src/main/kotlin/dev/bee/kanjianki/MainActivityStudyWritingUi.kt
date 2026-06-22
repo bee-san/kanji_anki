@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import android.view.View
 import dev.bee.kanjianki.core.StudyTaskCopy
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
@@ -40,6 +41,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
         input.hasInk = drawingPad != null && drawingPad.hasInk()
         input.guide = session?.item?.let { activity.strokeGuide(it.kanji) }
         input.canRevealMoreHelp = canRevealMoreHelp()
+        input.repairTask = session != null && StudyTaskCopy.isRepairWritingTask(session)
         input.recallTask = session != null && StudyTaskCopy.isRecallTask(session)
         input.teachingTask = session != null && StudyTaskCopy.isTeachingTask(session)
         input.currentPracticeLevel = activity.currentPracticeLevel
@@ -79,7 +81,11 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                     Runnable { activity.checkWriting() }
                 },
                 Runnable { writingStatus.downloadWritingModel() },
-                Runnable { activity.submitReview(presentation.nextRating, false) }
+                Runnable { activity.submitReview(presentation.nextRating, false) },
+                StudyWritingCopy.skipLabel(),
+                presentation.skipVisible,
+                presentation.skipEnabled,
+                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) }
             )
         )
     }

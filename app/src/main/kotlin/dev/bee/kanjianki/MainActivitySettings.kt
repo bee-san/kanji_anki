@@ -57,12 +57,14 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             0
         }
         settingsScrollY = scrollY
+        activeUpdateUiRunToken = 0
         if (isScreenshotLaunchRequested()) {
             renderScreenshotSettings()
             return
         }
         renderAsyncHomeRoute(
             loadingTitle = SettingsTextCopy.settingsTitle(),
+            traceName = "settings-route",
             load = { MainActivitySettingsScreenCoordinator(this).settingsScreenModel() },
             render = { model ->
                 composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {

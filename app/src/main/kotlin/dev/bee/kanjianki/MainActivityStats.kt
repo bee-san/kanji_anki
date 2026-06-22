@@ -19,6 +19,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
         }
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.statsActionLabel(),
+            traceName = "stats-route",
             load = { progressAnalyticsSnapshot(store, scheduleRefresh = this::scheduleStatsPrecomputeIfStaleAsync) },
             render = { model ->
                 composeRoute(

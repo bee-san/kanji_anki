@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.SimilarKanjiExplanation
 import dev.bee.kanjianki.core.StudyTaskTypes
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import androidx.compose.ui.geometry.Rect
@@ -595,13 +596,18 @@ class ComposeScreenModelsTest {
         assertEquals(true, initial.downloadVisible)
         assertEquals(MainActivityBase.LABEL_PASS, initial.nextText)
         assertEquals(false, initial.nextVisible)
+        assertEquals(StudyWritingCopy.skipLabel(), initial.skipText)
+        assertEquals(false, initial.skipVisible)
+        assertEquals(true, initial.skipEnabled)
 
         var checked = false
         var downloaded = false
         var advanced = false
+        var skipped = false
         val check = Runnable { checked = true }
         val download = Runnable { downloaded = true }
         val next = Runnable { advanced = true }
+        val skip = Runnable { skipped = true }
         val model = WritingPrimaryActionsModel(
             checkText = "Try cleaner",
             checkVisible = true,
@@ -613,6 +619,10 @@ class ComposeScreenModelsTest {
             onCheck = check,
             onDownload = download,
             onNext = next,
+            skipText = "Skip",
+            skipVisible = true,
+            skipEnabled = false,
+            onSkip = skip,
         )
 
         assertEquals("Try cleaner", model.checkText)
@@ -622,15 +632,21 @@ class ComposeScreenModelsTest {
         assertEquals(false, model.downloadVisible)
         assertEquals("Save hard", model.nextText)
         assertEquals(true, model.nextVisible)
+        assertEquals("Skip", model.skipText)
+        assertEquals(true, model.skipVisible)
+        assertEquals(false, model.skipEnabled)
         assertSame(check, model.onCheck)
         assertSame(download, model.onDownload)
         assertSame(next, model.onNext)
+        assertSame(skip, model.onSkip)
         model.onCheck.run()
         model.onDownload.run()
         model.onNext.run()
+        model.onSkip.run()
         assertEquals(true, checked)
         assertEquals(true, downloaded)
         assertEquals(true, advanced)
+        assertEquals(true, skipped)
         assertEquals(model, model.copy())
     }
 

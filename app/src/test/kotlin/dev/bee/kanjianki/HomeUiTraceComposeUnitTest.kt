@@ -33,6 +33,12 @@ class HomeUiTraceComposeUnitTest {
     }
 
     @Test
+    fun asyncLoadTraceSectionUsesRouteSpecificLabels() {
+        assertEquals("kani.load.stats-route", asyncLoadTraceSection("stats-route", "load"))
+        assertEquals("kani.show-loading.stats-route", asyncLoadTraceSection("stats-route", "show-loading"))
+    }
+
+    @Test
     fun homePrimaryCtaInvokesItsCallback() {
         var clicked = false
 

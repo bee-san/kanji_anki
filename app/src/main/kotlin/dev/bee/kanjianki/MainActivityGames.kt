@@ -22,6 +22,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
         clearGameSession()
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.gamesActionLabel(),
+            traceName = "games-route",
             load = { gamesScreenModel() },
             render = { model ->
                 renderHomeRoute(backAction = Runnable { renderHome() }) {
