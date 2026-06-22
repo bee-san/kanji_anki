@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -149,14 +150,86 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
-    fun persistentQueuePersistsWhenSchedulerStateChanges() {
+    fun persistentQueuePersistsWhenQueueSizeChanges() {
+        val currentItem = studyItem()
+        val annotated = listOf(currentItem, studyItem(kanji = "空"))
+        val writer = RecordingWriter(annotated)
+
+        HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = listOf(currentItem),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> annotated },
+                writer = writer,
+            ),
+            currentItems = listOf(currentItem),
+        )
+
+        assertTrue(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenStudyItemPersistenceFieldsChange() {
         val variants = listOf(
+            "kanji" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().apply { kanji = "空" }.build() },
             "state" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().state("learning").build() },
             "due" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().dueAtMillis(456L).build() },
-            "answer signature" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().answerSignature("changed-signature").build() },
+            "stability" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().stability(1.5).build() },
+            "difficulty" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().difficulty(4.0).build() },
+            "total reviews" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().totalReviews(4).build() },
+            "lapses" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().lapses(1).build() },
+            "learning step" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().learningStep(2).build() },
+            "writing level" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().writingLevel(1).build() },
+            "recognition stage" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().recognitionStage(1).build() },
+            "failed recognition days" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().consecutiveFailedRecognitionDays(2).build()
+            },
+            "last failed recognition day" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().lastFailedRecognitionDayMillis(789L).build()
+            },
+            "writing remediation" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().writingRemediationPending(true).build()
+            },
+            "suppressed task" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().suppressedByTaskType(BridgeScheduler.TASK_TYPE_MEANING).build()
+            },
+            "suppressed time" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().suppressedAtMillis(789L).build() },
+            "mature interval" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().matureIntervalDays(7).build() },
+            "answer signature" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().answerSignature("changed-signature").build()
+            },
             "token" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().activeToken("changed-token").build() },
+            "created" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().createdAtMillis(222L).build() },
+            "typing memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().typingMeaningMemory(changedMemory()).build()
+            },
+            "meaning memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().meaningKanjiMemory(changedMemory()).build()
+            },
+            "kanji memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().kanjiMeaningMemory(changedMemory()).build()
+            },
+            "font memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().fontMeaningMemory(changedMemory()).build()
+            },
+            "word memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().wordReadingMemory(changedMemory()).build()
+            },
+            "writing memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().writingRemediationMemory(changedMemory()).build()
+            },
             "rung" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).build() },
             "phase" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().phase(RecordsBase.SchedulerPhase.RELEARNING).build() },
+            "real pass streak" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().realPassStreak(2).build() },
+            "real again streak" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().realAgainStreak(1).build() },
+            "last real review" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().lastRealReviewDueAtMillis(789L).build()
+            },
+            "similar kanji flag" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().hasSimilarKanji(false).build() },
+            "similar kanji memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().similarKanjiMemory(changedMemory()).build()
+            },
         )
 
         for ((name, mutate) in variants) {
@@ -242,6 +315,10 @@ class HomeStudyQueueActionsTest {
             false,
             "status",
         )
+    }
+
+    private fun changedMemory(): RecordsStudyModels.TaskMemory {
+        return RecordsStudyModels.TaskMemory.initial().withDueAtMillis(999L)
     }
 
     private fun studyItem(
