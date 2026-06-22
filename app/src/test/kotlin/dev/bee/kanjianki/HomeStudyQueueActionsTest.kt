@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -41,8 +42,8 @@ class HomeStudyQueueActionsTest {
     @Test
     fun persistentQueueSeedsAnnotatesPersistsAndReturnsAnnotatedItems() {
         val current = mutableListOf<RecordsStudyModels.StudyItem>()
-        val seeded = mutableListOf<RecordsStudyModels.StudyItem>()
-        val annotated = mutableListOf<RecordsStudyModels.StudyItem>()
+        val seeded = mutableListOf(studyItem())
+        val annotated = mutableListOf(studyItem())
         val writer = RecordingWriter(annotated)
         val startOfDay = AtomicLong()
         val seenPlan = AtomicReference<RecordsSchedulerModels.AdaptiveLoadPlan?>(null)
@@ -99,9 +100,11 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
-    fun persistentQueueUsesProvidedCurrentItemsWithoutReadingStoreAgain() {
-        val current = mutableListOf<RecordsStudyModels.StudyItem>()
-        val writer = RecordingWriter(current)
+    fun persistentQueueUsesProvidedCurrentItemsForSeedingButReadsFullQueueBeforeNoopSkip() {
+        val suppliedCurrent = listOf(studyItem())
+        val fullPersistedQueue = listOf(studyItem())
+        val readerCalled = AtomicBoolean(false)
+        val writer = RecordingWriter(fullPersistedQueue)
 
         val result = HomeStudyQueueActions.studyQueue(
             HomeStudyQueueActions.StudyQueueRequest(
@@ -109,20 +112,196 @@ class HomeStudyQueueActionsTest {
                 123L,
                 true,
                 null,
-                { throw AssertionError("reader should not be called when current items are supplied") },
+                {
+                    readerCalled.set(true)
+                    fullPersistedQueue
+                },
                 RecordsSyncModels.Settings::kikuDefaults,
                 { 100L },
                 RecordsBase.StudyLadderSettings::defaults,
-                { _, _, _ -> plan(true) },
-                { _, currentItems, _, _, _, _, _ -> currentItems },
+                { _, currentItems, _ ->
+                    assertSame(suppliedCurrent, currentItems)
+                    plan(true)
+                },
+                { _, currentItems, _, _, _, _, _ ->
+                    assertSame(suppliedCurrent, currentItems)
+                    currentItems
+                },
                 writer,
+            ),
+            currentItems = suppliedCurrent,
+        )
+
+        assertSame(fullPersistedQueue, result)
+        assertTrue(readerCalled.get())
+        assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenSuppliedCurrentItemsOmitPersistedRows() {
+        val activeItem = studyItem()
+        val staleItem = studyItem(kanji = "空")
+        val writer = RecordingWriter(listOf(activeItem))
+
+        HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = listOf(activeItem, staleItem),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> listOf(activeItem) },
+                writer = writer,
+            ),
+            currentItems = listOf(activeItem),
+        )
+
+        assertTrue(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueueSkipsReplaceWhenAnnotatedQueueMatchesCurrentItems() {
+        val currentItem = studyItem()
+        val current = listOf(currentItem)
+        val annotated = listOf(studyItem())
+        val writer = RecordingWriter(annotated)
+
+        val result = HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = current,
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> listOf(studyItem()) },
+                writer = writer,
             ),
             currentItems = current,
         )
 
-        assertSame(current, result)
+        assertSame(annotated, result)
         assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueueSkipsReplaceWhenFullCurrentAndAnnotatedQueuesAreEmpty() {
+        val annotated = emptyList<RecordsStudyModels.StudyItem>()
+        val writer = RecordingWriter(annotated)
+
+        val result = HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = emptyList(),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> emptyList() },
+                writer = writer,
+            ),
+        )
+
+        assertSame(annotated, result)
+        assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenQueueSizeChanges() {
+        val currentItem = studyItem()
+        val annotated = listOf(currentItem, studyItem(kanji = "空"))
+        val writer = RecordingWriter(annotated)
+
+        HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = listOf(currentItem),
+                providedPlan = null,
+                seeder = { _, _, _, _, _, _, _ -> annotated },
+                writer = writer,
+            ),
+            currentItems = listOf(currentItem),
+        )
+
         assertTrue(writer.replaced)
+    }
+
+    @Test
+    fun persistentQueuePersistsWhenStudyItemPersistenceFieldsChange() {
+        val variants = listOf(
+            "kanji" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().apply { kanji = "空" }.build() },
+            "state" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().state("learning").build() },
+            "due" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().dueAtMillis(456L).build() },
+            "stability" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().stability(1.5).build() },
+            "difficulty" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().difficulty(4.0).build() },
+            "total reviews" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().totalReviews(4).build() },
+            "lapses" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().lapses(1).build() },
+            "learning step" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().learningStep(2).build() },
+            "writing level" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().writingLevel(1).build() },
+            "recognition stage" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().recognitionStage(1).build() },
+            "failed recognition days" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().consecutiveFailedRecognitionDays(2).build()
+            },
+            "last failed recognition day" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().lastFailedRecognitionDayMillis(789L).build()
+            },
+            "writing remediation" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().writingRemediationPending(true).build()
+            },
+            "suppressed task" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().suppressedByTaskType(BridgeScheduler.TASK_TYPE_MEANING).build()
+            },
+            "suppressed time" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().suppressedAtMillis(789L).build() },
+            "mature interval" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().matureIntervalDays(7).build() },
+            "answer signature" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().answerSignature("changed-signature").build()
+            },
+            "token" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().activeToken("changed-token").build() },
+            "created" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().createdAtMillis(222L).build() },
+            "typing memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().typingMeaningMemory(changedMemory()).build()
+            },
+            "meaning memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().meaningKanjiMemory(changedMemory()).build()
+            },
+            "kanji memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().kanjiMeaningMemory(changedMemory()).build()
+            },
+            "font memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().fontMeaningMemory(changedMemory()).build()
+            },
+            "word memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().wordReadingMemory(changedMemory()).build()
+            },
+            "writing memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().writingRemediationMemory(changedMemory()).build()
+            },
+            "rung" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).build() },
+            "phase" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().phase(RecordsBase.SchedulerPhase.RELEARNING).build() },
+            "real pass streak" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().realPassStreak(2).build() },
+            "real again streak" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().realAgainStreak(1).build() },
+            "last real review" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().lastRealReviewDueAtMillis(789L).build()
+            },
+            "similar kanji flag" to { item: RecordsStudyModels.StudyItem -> item.copyBuilder().hasSimilarKanji(false).build() },
+            "similar kanji memory" to { item: RecordsStudyModels.StudyItem ->
+                item.copyBuilder().similarKanjiMemory(changedMemory()).build()
+            },
+        )
+
+        for ((name, mutate) in variants) {
+            val currentItem = studyItem()
+            val changed = mutate(currentItem)
+            val writer = RecordingWriter(listOf(changed))
+
+            HomeStudyQueueActions.studyQueue(
+                baseRequest(
+                    persist = true,
+                    current = listOf(currentItem),
+                    providedPlan = null,
+                    seeder = { _, _, _, _, _, _, _ -> listOf(changed) },
+                    writer = writer,
+                ),
+                currentItems = listOf(currentItem),
+            )
+
+            assertTrue("$name changes must be persisted", writer.replaced)
+        }
     }
 
     @Test
@@ -187,6 +366,57 @@ class HomeStudyQueueActionsTest {
             1,
             false,
             "status",
+        )
+    }
+
+    private fun changedMemory(): RecordsStudyModels.TaskMemory {
+        return RecordsStudyModels.TaskMemory.initial().withDueAtMillis(999L)
+    }
+
+    private fun studyItem(
+        kanji: String = "裂",
+        state: String = "review",
+        dueAtMillis: Long = 123L,
+        answerSignature: String = "signature",
+        activeToken: String? = "token",
+        rung: RecordsBase.LadderRung = RecordsBase.LadderRung.KANJI_MEANING,
+        phase: RecordsBase.SchedulerPhase = RecordsBase.SchedulerPhase.REVIEW,
+        hasSimilarKanji: Boolean = true,
+    ): RecordsStudyModels.StudyItem {
+        val memory = RecordsStudyModels.TaskMemory.initial()
+        return RecordsStudyModels.StudyItem(
+            kanji,
+            state,
+            dueAtMillis,
+            1.0,
+            2.0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0L,
+            false,
+            "",
+            0L,
+            0,
+            answerSignature,
+            activeToken,
+            111L,
+            memory,
+            memory,
+            memory,
+            memory,
+            memory,
+            memory,
+            rung,
+            phase,
+            1,
+            0,
+            dueAtMillis,
+            hasSimilarKanji,
+            memory,
         )
     }
 
