@@ -281,6 +281,7 @@ class RunConfig:
     scroll_positions: tuple[str, ...]
     dry_run_inventory: bool
     dump_timeout_ms: int = DEFAULT_DUMP_TIMEOUT_MS
+    suite: str = ""
 
 
 NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
@@ -342,6 +343,19 @@ NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
         launch_route="settings",
         expected_terms=("Settings||設定",),
         scroll_positions=("top", "middle", "bottom"),
+    ),
+}
+
+DEFAULT_SUITE = "screenshot-all-buttons"
+COLD_START_ALL_BUTTONS_SUITE = "cold-start-all-buttons"
+BENCHMARK_SUITES: dict[str, tuple[str, ...]] = {
+    DEFAULT_SUITE: DEFAULT_ROUTES,
+    COLD_START_ALL_BUTTONS_SUITE: (*DEFAULT_ROUTES, *tuple(NORMAL_APP_SCENARIOS)),
+}
+SUITE_DESCRIPTIONS = {
+    DEFAULT_SUITE: "screenshot fixture routes across top/middle/bottom scroll positions",
+    COLD_START_ALL_BUTTONS_SUITE: (
+        "screenshot fixture routes plus normal-app cold-start, navigation, study, browse, provider, and settings scenarios"
     ),
 }
 
@@ -471,6 +485,122 @@ def route_variants(config: RunConfig) -> list[RouteVariant]:
 def _fixtures_by_route() -> dict[str, dict[str, object]]:
     registry = screenshot_fixtures.fixture_registry()
     return {str(fixture["route"]): fixture for fixture in cast(list[dict[str, object]], registry["fixtures"])}
+
+
+def routes_for_suite(suite: str) -> tuple[str, ...]:
+    try:
+        return BENCHMARK_SUITES[suite]
+    except KeyError as exc:
+        known = ", ".join(sorted(BENCHMARK_SUITES))
+        raise ButtonLatencyBenchmarkError(f"Unsupported benchmark suite '{suite}'. Known suites: {known}") from exc
+
+
+def route_plan_from_config(config: RunConfig) -> list[dict[str, object]]:
+    fixtures = _fixtures_by_route()
+    plan: list[dict[str, object]] = []
+    for route in config.routes:
+        if route in fixtures:
+            fixture = fixtures[route]
+            expected_terms = tuple(str(term) for term in cast(list[object], fixture.get("expected_terms", [])))
+            route_markers = tuple(term for term in expected_terms if term.startswith("Kani route "))
+            row_expected_terms = route_markers or LOCALIZED_ROUTE_TERMS.get(route) or expected_terms or (route,)
+            plan.append(
+                {
+                    "route": route,
+                    "source": "screenshot_fixture",
+                    "launch_route": str(fixture["launch_route"]),
+                    "launch_extra": SCREEN_ROUTE_EXTRA,
+                    "scroll_positions": list(config.scroll_positions),
+                    "expected_terms": list(row_expected_terms),
+                    "prep_steps": [],
+                }
+            )
+        elif route in NORMAL_APP_SCENARIOS:
+            scenario = NORMAL_APP_SCENARIOS[route]
+            plan.append(
+                {
+                    "route": route,
+                    "source": "normal_app_scenario",
+                    "launch_route": scenario.launch_route,
+                    "launch_extra": scenario.launch_extra,
+                    "scroll_positions": list(scenario.scroll_positions or config.scroll_positions),
+                    "expected_terms": list(scenario.expected_terms),
+                    "prep_steps": [
+                        {"label": step.label, "expected_terms": list(step.expected_terms)} for step in scenario.prep_steps
+                    ],
+                }
+            )
+        else:
+            known_routes = ", ".join(sorted(fixtures))
+            known_scenarios = ", ".join(sorted(NORMAL_APP_SCENARIOS))
+            raise ButtonLatencyBenchmarkError(
+                f"Unsupported route '{route}'. Known screenshot routes: {known_routes}; normal-app scenarios: {known_scenarios}"
+            )
+    return plan
+
+
+def build_artifact_plan(config: RunConfig, artifacts: Mapping[str, Path | str] | None = None) -> list[dict[str, str]]:
+    paths: dict[str, Path | str] = {
+        "benchmark_json": DEFAULT_INVENTORY_JSON,
+        "benchmark_csv": DEFAULT_INVENTORY_CSV,
+        "benchmark_markdown": DEFAULT_INVENTORY_MD,
+        "measurements_json": DEFAULT_MEASUREMENTS_JSON,
+    }
+    if artifacts:
+        paths.update(artifacts)
+    schemas = {
+        "benchmark_json": SCHEMA,
+        "benchmark_csv": "csv",
+        "benchmark_markdown": "markdown",
+        "measurements_json": TIMINGS_SCHEMA,
+    }
+    purposes = {
+        "benchmark_json": "full per-control benchmark report with raw and adjusted settle timings",
+        "benchmark_csv": "spreadsheet-friendly per-control benchmark rows",
+        "benchmark_markdown": "human-readable benchmark summary and slow-control table",
+        "measurements_json": "portable timing input for button_latency_inventory.py",
+    }
+    return [
+        {
+            "name": name,
+            "path": _artifact_path_label(config.repo_root, path),
+            "schema": schemas[name],
+            "purpose": purposes[name],
+        }
+        for name, path in paths.items()
+    ]
+
+
+def _artifact_path_label(repo_root: Path, path: Path | str) -> str:
+    artifact_path = path if isinstance(path, Path) else Path(path)
+    return _relative_or_abs(repo_root, artifact_path if artifact_path.is_absolute() else repo_root / artifact_path)
+
+
+def build_methodology(config: RunConfig, artifacts: list[dict[str, str]]) -> dict[str, object]:
+    route_plan = route_plan_from_config(config)
+    return {
+        "suite": config.suite or "custom",
+        "suite_description": SUITE_DESCRIPTIONS.get(config.suite, "custom route list supplied by --routes"),
+        "route_plan": route_plan,
+        "variant_count": sum(len(cast(list[object], item.get("scroll_positions", []))) for item in route_plan),
+        "cold_start_policy": {
+            "first_tap_phase": "force-stop app, relaunch target route, prepare state, then tap once",
+            "warm_phase": "reuse the installed app with --activity-single-top reroutes before repeated taps",
+            "reported_latency": "adb input tap to XML-stable settle time minus measured uiautomator dump overhead",
+        },
+        "device_prep": [
+            "install the debug APK unless --skip-install is passed",
+            "wait for the package to be visible",
+            "disable system window/transition/animator animation scales",
+            "grant POST_NOTIFICATIONS when available so permission prompts do not pollute timings",
+        ],
+        "inventory_pipeline": [
+            "Run ui_manifest.py and button_contract.py to create .ralph-loop/current/ui-manifest.json and button-contract.json.",
+            "Run button_latency_benchmark.py with this suite to create the benchmark and measurements artifacts.",
+            "Run button_latency_inventory.py with --timings .ralph-loop/current/button-latency-measurements.json to rank every contracted button by risk and timing evidence.",
+        ],
+        "artifacts": artifacts,
+    }
 
 
 def scroll_y_for_position(config: RunConfig, route: str, position: str) -> int:
@@ -969,11 +1099,16 @@ def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8", errors="ignore")).hexdigest()
 
 
-def build_report(config: RunConfig, rows: list[BenchmarkRow]) -> dict[str, object]:
+def build_report(
+    config: RunConfig,
+    rows: list[BenchmarkRow],
+    artifacts: Mapping[str, Path | str] | None = None,
+) -> dict[str, object]:
     measured = [row for row in rows if row.median_latency_ms is not None]
     latencies = [cast(float, row.median_latency_ms) for row in measured]
     slow_rows = [row for row in measured if cast(float, row.median_latency_ms) > config.slow_threshold_ms]
     transition_kinds = [row.transition_kind or "visible_change" for row in measured]
+    artifact_plan = build_artifact_plan(config, artifacts)
     return {
         "schema": SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -982,6 +1117,7 @@ def build_report(config: RunConfig, rows: list[BenchmarkRow]) -> dict[str, objec
         "apk_path": _relative_or_abs(config.repo_root, config.apk_path),
         "package_name": config.package_name,
         "device": _device_info(config),
+        "benchmark_suite": config.suite or "custom",
         "routes": list(config.routes),
         "scroll_positions": list(config.scroll_positions),
         "repeat_count": config.repeat_count,
@@ -989,6 +1125,8 @@ def build_report(config: RunConfig, rows: list[BenchmarkRow]) -> dict[str, objec
         "settle_timeout_ms": config.settle_timeout_ms,
         "dump_timeout_ms": config.dump_timeout_ms,
         "measurement_model": "adb input tap to repeated uiautomator XML-stable settle; row latency is raw settle time minus measured uiautomator dump overhead, with raw fields retained for audit; coarse emulator timing, not frame-perfect tracing",
+        "methodology": build_methodology(config, artifact_plan),
+        "artifacts": artifact_plan,
         "summary": {
             "row_count": len(rows),
             "measured_rows": len(measured),
@@ -1182,6 +1320,9 @@ def render_markdown(report: Mapping[str, object]) -> str:
     rows = cast(list[dict[str, object]], report.get("rows", []))
     slow_rows = [row for row in rows if row.get("slow")]
     skipped_rows = [row for row in rows if row.get("skip_reason")]
+    methodology = cast(dict[str, object], report.get("methodology", {}))
+    route_plan = cast(list[dict[str, object]], methodology.get("route_plan", []))
+    artifact_rows = cast(list[dict[str, object]], report.get("artifacts", methodology.get("artifacts", [])))
     lines = [
         "# Ralph Button Latency Benchmark",
         "",
@@ -1205,9 +1346,41 @@ def render_markdown(report: Mapping[str, object]) -> str:
         f"- No visible change rows: {summary.get('no_visible_change_rows', 0)}",
         f"- Visible change rows: {summary.get('visible_change_rows', 0)}",
         "",
+        "## Methodology",
+        "",
+        f"- Suite: `{methodology.get('suite', report.get('benchmark_suite', 'custom'))}` — {methodology.get('suite_description', '')}",
+        f"- Route variants: {methodology.get('variant_count', 0)}",
+        "- Cold-start policy: first repeat force-stops the app before launch; warm repeats use single-top reroutes before tapping.",
+        "- Inventory pipeline: feed `button-latency-measurements.json` into `button_latency_inventory.py` with the current UI manifest and button contract.",
+        "",
+        "### Route plan",
+        "",
+        "| Route | Source | Launch route | Scroll positions | Prep steps |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for route in route_plan:
+        prep_steps = cast(list[dict[str, object]], route.get("prep_steps", []))
+        lines.append(
+            f"| `{route.get('route', '')}` | `{route.get('source', '')}` | `{route.get('launch_route', '')}` | "
+            f"{', '.join(cast(list[str], route.get('scroll_positions', [])))} | "
+            f"{', '.join(str(step.get('label', '')) for step in prep_steps) or '—'} |"
+        )
+    lines.extend([
+        "",
+        "### Generated artifacts",
+        "",
+        "| Name | Path | Schema | Purpose |",
+        "| --- | --- | --- | --- |",
+    ])
+    for artifact in artifact_rows:
+        lines.append(
+            f"| `{artifact.get('name', '')}` | `{artifact.get('path', '')}` | `{artifact.get('schema', '')}` | {artifact.get('purpose', '')} |"
+        )
+    lines.extend([
+        "",
         "## Slow measured controls",
         "",
-    ]
+    ])
     if slow_rows:
         lines.extend([
             "| ID | Route | Label | Transition | First tap | Warmed | Max |",
@@ -1279,7 +1452,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--adb", default="", help="adb binary; defaults to PATH/ANDROID_HOME")
     parser.add_argument("--aapt", default="", help="aapt binary; defaults to PATH/ANDROID_HOME")
     parser.add_argument("--button-contract", type=Path, default=DEFAULT_BUTTON_CONTRACT)
-    parser.add_argument("--routes", default=",".join(DEFAULT_ROUTES), help="Comma-separated screenshot routes or normal-app scenarios")
+    suite_help = "; ".join(f"{name}: {description}" for name, description in sorted(SUITE_DESCRIPTIONS.items()))
+    parser.add_argument(
+        "--suite",
+        choices=sorted(BENCHMARK_SUITES),
+        default="",
+        help=f"Named reproducible route suite. When set, this overrides --routes. Suites: {suite_help}",
+    )
+    parser.add_argument(
+        "--routes",
+        default=",".join(DEFAULT_ROUTES),
+        help="Comma-separated screenshot routes or normal-app scenarios; ignored when --suite is set",
+    )
     parser.add_argument("--scroll-positions", default=",".join(DEFAULT_SCROLL_POSITIONS), help="Comma-separated scroll positions")
     parser.add_argument("--repeat-count", type=int, default=DEFAULT_REPEAT_COUNT)
     parser.add_argument("--slow-threshold-ms", type=int, default=DEFAULT_SLOW_THRESHOLD_MS)
@@ -1318,6 +1502,9 @@ def config_from_args(args: argparse.Namespace) -> RunConfig:
         raise ButtonLatencyBenchmarkError("--settle-timeout-ms must be >= 1")
     if args.dump_timeout_ms < 1:
         raise ButtonLatencyBenchmarkError("--dump-timeout-ms must be >= 1")
+    routes = routes_for_suite(args.suite) if args.suite else _split_csv(args.routes)
+    if not routes:
+        raise ButtonLatencyBenchmarkError("at least one route or suite route is required")
     return RunConfig(
         repo_root=repo_root,
         adb=adb,
@@ -1334,9 +1521,10 @@ def config_from_args(args: argparse.Namespace) -> RunConfig:
         include_unsafe=args.include_unsafe,
         include_stateful=args.include_stateful,
         max_controls=args.max_controls,
-        routes=_split_csv(args.routes),
+        routes=routes,
         scroll_positions=_split_csv(args.scroll_positions),
         dry_run_inventory=args.dry_run_inventory,
+        suite=args.suite,
     )
 
 
@@ -1351,15 +1539,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         prepare_benchmark_device(config)
     rows = discover_controls(config, contract_index)
     measure_rows(config, rows, contract_index)
-    report = build_report(config, rows)
+    out_json = args.out_json if args.out_json.is_absolute() else config.repo_root / args.out_json
+    out_csv = args.out_csv if args.out_csv.is_absolute() else config.repo_root / args.out_csv
+    out_md = args.out_md if args.out_md.is_absolute() else config.repo_root / args.out_md
+    measurements_json = (
+        args.measurements_json if args.measurements_json.is_absolute() else config.repo_root / args.measurements_json
+    )
+    report = build_report(
+        config,
+        rows,
+        {
+            "benchmark_json": out_json,
+            "benchmark_csv": out_csv,
+            "benchmark_markdown": out_md,
+            "measurements_json": measurements_json,
+        },
+    )
     measurements = build_measurements_json(report)
     write_outputs(
         report,
         measurements,
-        args.out_json if args.out_json.is_absolute() else config.repo_root / args.out_json,
-        args.out_csv if args.out_csv.is_absolute() else config.repo_root / args.out_csv,
-        args.out_md if args.out_md.is_absolute() else config.repo_root / args.out_md,
-        args.measurements_json if args.measurements_json.is_absolute() else config.repo_root / args.measurements_json,
+        out_json,
+        out_csv,
+        out_md,
+        measurements_json,
     )
     print(json.dumps(report["summary"], sort_keys=True))
     return 0
