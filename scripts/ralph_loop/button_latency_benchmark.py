@@ -37,6 +37,7 @@ DEFAULT_SETTLE_TIMEOUT_MS = 15_000
 DEFAULT_DUMP_TIMEOUT_MS = 8_000
 DEFAULT_STABLE_POLLS = 2
 DEFAULT_POLL_INTERVAL_MS = 120
+BENCHMARK_BROWSE_DETAIL_ROW = "browse-kanji-row-認"
 LOCALIZED_ROUTE_TERMS = {
     "study": ("Study||学習",),
     "stats": ("Stats||統計",),
@@ -297,12 +298,12 @@ NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
     ),
     "study-reveal": ScenarioSpec(
         launch_route="study",
-        expected_terms=("Study||学習",),
+        expected_terms=("Study||学習", "Reveal"),
         scroll_positions=("top",),
     ),
     "study-rating": ScenarioSpec(
         launch_route="study",
-        expected_terms=("Study||学習",),
+        expected_terms=("Study||学習", "Reveal"),
         scroll_positions=("top",),
         prep_steps=(ScenarioStep("Reveal", ("Again||Good",)),),
     ),
@@ -315,15 +316,15 @@ NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
         launch_route="home",
         expected_terms=("Kani route home",),
         scroll_positions=("top",),
-        prep_steps=(ScenarioStep("Browse Kanji", ("Search||Home",)),),
+        prep_steps=(ScenarioStep("Browse Kanji", ("Search",)),),
     ),
     "browse-back": ScenarioSpec(
         launch_route="home",
         expected_terms=("Kani route home",),
         scroll_positions=("top",),
         prep_steps=(
-            ScenarioStep("Browse Kanji", ("Search||Home",)),
-            ScenarioStep("browse-kanji-row-裂", ("Back to study||Home||Review now",)),
+            ScenarioStep("Browse Kanji", ("Search",)),
+            ScenarioStep(BENCHMARK_BROWSE_DETAIL_ROW, ("Back to study||Review now",)),
         ),
     ),
     "provider-dialog": ScenarioSpec(
@@ -341,7 +342,7 @@ NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
     ),
     "settings-targets": ScenarioSpec(
         launch_route="settings",
-        expected_terms=("Settings||設定",),
+        expected_terms=("Kani route settings",),
         scroll_positions=("top", "middle", "bottom"),
     ),
 }
