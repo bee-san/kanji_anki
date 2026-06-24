@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.Context
 import android.content.Intent
 import java.util.Locale
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -31,6 +32,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         val benchmarkRoute = intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE)?.takeIf { it.isNotBlank() }
         if (benchmarkRoute != null) {
             activity.screenshotThemeChoiceOverride = null
+            seedBenchmarkFixtureForDebugBuild()
             renderRoute(benchmarkRoute)
             return
         }
@@ -67,6 +69,25 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
             "update" -> activity.renderUpdate()
             else -> activity.renderHome()
+        }
+    }
+
+    private fun seedBenchmarkFixtureForDebugBuild() {
+        val fixtureSeederClass = try {
+            Class.forName("dev.bee.kanjianki.ButtonLatencyBenchmarkFixtureSeeder")
+        } catch (_: ClassNotFoundException) {
+            return
+        }
+        val seedResult = runCatching {
+            fixtureSeederClass
+                .getMethod("seedIfNeeded", Context::class.java, LocalStore::class.java)
+                .invoke(null, activity, activity.store)
+        }
+        if (seedResult.isFailure) {
+            throw IllegalStateException(
+                "Unable to seed button latency benchmark fixture",
+                seedResult.exceptionOrNull(),
+            )
         }
     }
 
