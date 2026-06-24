@@ -37,7 +37,10 @@ DEFAULT_SETTLE_TIMEOUT_MS = 15_000
 DEFAULT_DUMP_TIMEOUT_MS = 8_000
 DEFAULT_STABLE_POLLS = 2
 DEFAULT_POLL_INTERVAL_MS = 120
-BENCHMARK_BROWSE_DETAIL_ROW = "browse-kanji-row-裂"
+BROWSE_KANJI_ROW_SELECTOR = "browse-kanji-row"
+BROWSE_KANJI_ROW_PREFIX = f"{BROWSE_KANJI_ROW_SELECTOR}-"
+BROWSE_KANJI_ROW_DESCRIPTION_PREFIX = "open details for "
+BENCHMARK_BROWSE_DETAIL_ROW = BROWSE_KANJI_ROW_SELECTOR
 LOCALIZED_ROUTE_TERMS = {
     "study": ("Study||学習",),
     "stats": ("Stats||統計",),
@@ -324,7 +327,7 @@ NORMAL_APP_SCENARIOS: dict[str, ScenarioSpec] = {
         scroll_positions=("top",),
         prep_steps=(
             ScenarioStep("Browse Kanji", ("Search",)),
-            ScenarioStep(BENCHMARK_BROWSE_DETAIL_ROW, ("Back to study||Review now",)),
+            ScenarioStep(BENCHMARK_BROWSE_DETAIL_ROW, ("Back to Browse",)),
         ),
     ),
     "provider-dialog": ScenarioSpec(
@@ -827,6 +830,9 @@ def apply_prelude_steps(
 
 def _find_prelude_control(controls: Sequence[UiControl], step: ScenarioStep) -> UiControl:
     normalized_step = _normalize_label(step.label)
+    dynamic_browse_row = _find_dynamic_browse_row_control(controls, normalized_step)
+    if dynamic_browse_row is not None:
+        return dynamic_browse_row
     scored: list[tuple[int, UiControl]] = []
     for control in controls:
         candidates = (
@@ -846,6 +852,26 @@ def _find_prelude_control(controls: Sequence[UiControl], step: ScenarioStep) -> 
         scored.sort(key=lambda item: item[0])
         return scored[0][1]
     raise ButtonLatencyBenchmarkError(f"Could not find control for prelude step '{step.label}'")
+
+
+def _find_dynamic_browse_row_control(controls: Sequence[UiControl], normalized_step: str) -> UiControl | None:
+    if normalized_step != BROWSE_KANJI_ROW_SELECTOR:
+        return None
+    for control in controls:
+        candidates = (
+            control.label,
+            control.text,
+            control.content_desc,
+            control.contract_id,
+            control.contract_title,
+            _resource_tail(control.resource_id),
+        )
+        normalized_candidates = [_normalize_label(candidate) for candidate in candidates if candidate]
+        if any(candidate.startswith(BROWSE_KANJI_ROW_PREFIX) for candidate in normalized_candidates):
+            return control
+        if any(candidate.startswith(BROWSE_KANJI_ROW_DESCRIPTION_PREFIX) for candidate in normalized_candidates):
+            return control
+    return None
 
 
 def _matches_expected_term(xml_lower: str, term: str) -> bool:
