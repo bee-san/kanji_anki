@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from typing import cast
 
+from scripts.ralph_loop import button_contract
 from scripts.ralph_loop import button_latency_benchmark as benchmark
 
 
@@ -67,6 +68,12 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertEqual(1, len(controls))
         self.assertEqual("Study now", controls[0].label)
         self.assertEqual("home-study-cta", controls[0].id)
+
+    def test_browse_back_prelude_uses_the_contract_seed_row(self) -> None:
+        browse_row_seed = next(seed for seed in button_contract.SEEDS if seed.id == "browse-kanji-row")
+        browse_back = benchmark.NORMAL_APP_SCENARIOS["browse-back"]
+
+        self.assertEqual(browse_row_seed.expected_labels[0], browse_back.prep_steps[1].label)
 
     def test_find_prelude_control_uses_text_and_selector_fallbacks(self) -> None:
         controls = [
