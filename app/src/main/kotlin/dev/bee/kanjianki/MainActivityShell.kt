@@ -101,43 +101,13 @@ internal fun MainActivityRouteContent(
     navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
 ) {
-    val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
-        KaniTheme.colors.studyBg
-    } else {
-        KaniTheme.colors.bg
-    }
-    key(model.selectedRoute, initialScrollY) {
-        val scrollState = rememberScrollState(initial = initialScrollY)
-        LaunchedEffect(scrollState, onScrollY) {
-            snapshotFlow { scrollState.value }.collect { onScrollY(it) }
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag(model.routeTestTag)
-                .semantics {
-                    contentDescription = model.routeContentDescription
-                }
-                .background(backgroundColor)
-                .systemBarsPadding()
-                .padding(18.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scrollState),
-            ) {
-                content()
-            }
-            if (navActions != null) {
-                KaniBottomNavBar(
-                    selectedRoute = model.selectedRoute,
-                    actions = navActions,
-                )
-            }
-        }
-    }
+    MainActivityScrollableRouteColumn(
+        model = model,
+        initialScrollY = initialScrollY,
+        onScrollY = onScrollY,
+        navActions = navActions,
+        content = content,
+    )
 }
 
 @Composable
@@ -148,6 +118,25 @@ internal fun MainActivityRouteContentWithActionBar(
     navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
+) {
+    MainActivityScrollableRouteColumn(
+        model = model,
+        initialScrollY = initialScrollY,
+        onScrollY = onScrollY,
+        navActions = navActions,
+        content = content,
+        footerContent = actionBar,
+    )
+}
+
+@Composable
+private fun MainActivityScrollableRouteColumn(
+    model: MainActivityShellModel,
+    initialScrollY: Int,
+    onScrollY: (Int) -> Unit,
+    navActions: KaniNavActions?,
+    content: @Composable () -> Unit,
+    footerContent: @Composable () -> Unit = {},
 ) {
     val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
         KaniTheme.colors.studyBg
@@ -178,7 +167,7 @@ internal fun MainActivityRouteContentWithActionBar(
             ) {
                 content()
             }
-            actionBar()
+            footerContent()
             if (navActions != null) {
                 KaniBottomNavBar(
                     selectedRoute = model.selectedRoute,
