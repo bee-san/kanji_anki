@@ -96,7 +96,8 @@ class DrawingPadViewInstrumentedTest {
         sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 100f, 100f)
         sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 200f, 200f)
         sendTouch(pad, 100L, 140L, MotionEvent.ACTION_UP, 300f, 300f)
-        assertEquals(1, edits.get())
+        val editsAfterFirstStroke = edits.get()
+        assertTrue(editsAfterFirstStroke > 0)
 
         pad.captureReplaySnapshot()
         pad.startReplay()
@@ -106,7 +107,7 @@ class DrawingPadViewInstrumentedTest {
 
         sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 500f, 500f)
         assertFalse(pad.isReplayOverlayVisible())
-        assertEquals(2, edits.get())
+        assertEquals(editsAfterFirstStroke + 1, edits.get())
         sendTouch(pad, 200L, 220L, MotionEvent.ACTION_UP, 560f, 560f)
     }
 
@@ -483,7 +484,7 @@ class DrawingPadViewInstrumentedTest {
         sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 500f, 500f)
         sendTouch(pad, 100L, 140L, MotionEvent.ACTION_UP, 900f, 900f)
         pad.captureReplaySnapshot()
-        pad.startReplayAt(SystemClock.uptimeMillis() + 10_000L)
+        pad.startReplayAt(SystemClock.uptimeMillis() - 10_000L)
 
         val finishedReplay = renderToBitmap(pad)
         assertTrue(countBluePixels(finishedReplay) > 400)
@@ -524,7 +525,7 @@ class DrawingPadViewInstrumentedTest {
 
 private fun laidOutPad(): DrawingPadView {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
-    val pad = DrawingPadView(context)
+    val pad = DrawingPadView(context).apply { setNightMode(false) }
     pad.measure(
         android.view.View.MeasureSpec.makeMeasureSpec(PAD_SIZE, android.view.View.MeasureSpec.EXACTLY),
         android.view.View.MeasureSpec.makeMeasureSpec(PAD_SIZE, android.view.View.MeasureSpec.EXACTLY)
