@@ -47,6 +47,20 @@ internal fun homePrimaryCtaTestTag(label: String): String = "home-primary-cta-$l
 
 internal fun homeStudyCtaTestTag(title: String): String = "home-study-cta-$title"
 
+internal val HomeStudyCtaMinHeight = 110.dp
+internal val HomeStudyCtaCornerRadius = 30.dp
+internal val HomeStudyCtaLabelStartPadding = 32.dp
+internal val HomeStudyCtaLabelEndPadding = 124.dp
+internal val HomeStudyCtaLabelVerticalPadding = 26.dp
+internal val HomeStudyCtaArrowCircleSize = 60.dp
+internal val HomeStudyCtaArrowEndPadding = 26.dp
+internal val HomeStudyCtaTopSparkleSize = 20.dp
+internal val HomeStudyCtaTopSparkleTopPadding = 16.dp
+internal val HomeStudyCtaTopSparkleEndPadding = 112.dp
+internal val HomeStudyCtaBottomSparkleSize = 16.dp
+internal val HomeStudyCtaBottomSparkleStartPadding = 22.dp
+internal val HomeStudyCtaBottomSparkleBottomPadding = 18.dp
+
 @Composable
 fun HomeHeader(
     title: String,
@@ -130,7 +144,7 @@ fun HomeStudyCta(
     title: String,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(HomeStudyCtaCornerRadius)
     val noFontPadding = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     Box(
         modifier = Modifier
@@ -162,7 +176,12 @@ fun HomeStudyCta(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 26.dp, end = 92.dp),
+                .padding(
+                    start = HomeStudyCtaLabelStartPadding,
+                    top = HomeStudyCtaLabelVerticalPadding,
+                    end = HomeStudyCtaLabelEndPadding,
+                    bottom = HomeStudyCtaLabelVerticalPadding
+                ),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
@@ -179,8 +198,8 @@ fun HomeStudyCta(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 22.dp)
-                .size(50.dp)
+                .padding(end = HomeStudyCtaArrowEndPadding)
+                .size(HomeStudyCtaArrowCircleSize)
                 .clip(CircleShape)
                 .background(Color.White),
             contentAlignment = Alignment.Center
@@ -198,8 +217,11 @@ fun HomeStudyCta(
             tint = KaniTheme.colors.onPrimary,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 10.dp, end = 78.dp)
-                .size(18.dp)
+                .padding(
+                    top = HomeStudyCtaTopSparkleTopPadding,
+                    end = HomeStudyCtaTopSparkleEndPadding
+                )
+                .size(HomeStudyCtaTopSparkleSize)
         )
         Icon(
             painter = painterResource(id = R.drawable.ic_sparkle_24),
@@ -207,8 +229,11 @@ fun HomeStudyCta(
             tint = KaniTheme.colors.gold,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 15.dp, bottom = 14.dp)
-                .size(14.dp)
+                .padding(
+                    start = HomeStudyCtaBottomSparkleStartPadding,
+                    bottom = HomeStudyCtaBottomSparkleBottomPadding
+                )
+                .size(HomeStudyCtaBottomSparkleSize)
         )
     }
 }
