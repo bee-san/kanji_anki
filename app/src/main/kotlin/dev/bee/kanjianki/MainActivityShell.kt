@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -100,41 +101,13 @@ internal fun MainActivityRouteContent(
     navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
 ) {
-    val scrollState = rememberScrollState(initial = initialScrollY)
-    LaunchedEffect(scrollState, onScrollY) {
-        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
-    }
-    val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
-        KaniTheme.colors.studyBg
-    } else {
-        KaniTheme.colors.bg
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(model.routeTestTag)
-            .semantics {
-                contentDescription = model.routeContentDescription
-            }
-            .background(backgroundColor)
-            .systemBarsPadding()
-            .padding(18.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(scrollState),
-        ) {
-            content()
-        }
-        if (navActions != null) {
-            KaniBottomNavBar(
-                selectedRoute = model.selectedRoute,
-                actions = navActions,
-            )
-        }
-    }
+    MainActivityScrollableRouteColumn(
+        model = model,
+        initialScrollY = initialScrollY,
+        onScrollY = onScrollY,
+        navActions = navActions,
+        content = content,
+    )
 }
 
 @Composable
@@ -146,40 +119,61 @@ internal fun MainActivityRouteContentWithActionBar(
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
-    val scrollState = rememberScrollState(initial = initialScrollY)
-    LaunchedEffect(scrollState, onScrollY) {
-        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
-    }
+    MainActivityScrollableRouteColumn(
+        model = model,
+        initialScrollY = initialScrollY,
+        onScrollY = onScrollY,
+        navActions = navActions,
+        content = content,
+        footerContent = actionBar,
+    )
+}
+
+@Composable
+private fun MainActivityScrollableRouteColumn(
+    model: MainActivityShellModel,
+    initialScrollY: Int,
+    onScrollY: (Int) -> Unit,
+    navActions: KaniNavActions?,
+    content: @Composable () -> Unit,
+    footerContent: @Composable () -> Unit = {},
+) {
     val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
         KaniTheme.colors.studyBg
     } else {
         KaniTheme.colors.bg
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(model.routeTestTag)
-            .semantics {
-                contentDescription = model.routeContentDescription
-            }
-            .background(backgroundColor)
-            .systemBarsPadding()
-            .padding(18.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(scrollState),
-        ) {
-            content()
+    key(model.selectedRoute, initialScrollY) {
+        val scrollState = rememberScrollState(initial = initialScrollY)
+        LaunchedEffect(scrollState, onScrollY) {
+            snapshotFlow { scrollState.value }.collect { onScrollY(it) }
         }
-        actionBar()
-        if (navActions != null) {
-            KaniBottomNavBar(
-                selectedRoute = model.selectedRoute,
-                actions = navActions,
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(model.routeTestTag)
+                .semantics {
+                    contentDescription = model.routeContentDescription
+                }
+                .background(backgroundColor)
+                .systemBarsPadding()
+                .padding(18.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState),
+            ) {
+                content()
+            }
+            footerContent()
+            if (navActions != null) {
+                KaniBottomNavBar(
+                    selectedRoute = model.selectedRoute,
+                    actions = navActions,
+                )
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -60,5 +61,32 @@ class MainActivityShellComposeTest {
         composeRule.waitUntil {
             latestScrollY > 24
         }
+    }
+
+    @Test
+    fun routeChangeResetsScrollToTop() {
+        val selectedRoute = mutableStateOf(MainActivityBase.NAV_STATS_ROUTE)
+
+        composeRule.setContent {
+            val route = selectedRoute.value
+            MainActivityComposeRoute(
+                model = MainActivityShellModel(selectedRoute = route),
+            ) {
+                Column {
+                    Text("$route route top")
+                    Spacer(modifier = Modifier.width(1.dp).height(1600.dp))
+                    Text("$route route bottom")
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("${MainActivityBase.NAV_STATS_ROUTE} route bottom")
+            .performScrollTo()
+        composeRule.runOnIdle {
+            selectedRoute.value = MainActivityBase.NAV_HOME_ROUTE
+        }
+
+        composeRule.onNodeWithText("${MainActivityBase.NAV_HOME_ROUTE} route top")
+            .assertIsDisplayed()
     }
 }
