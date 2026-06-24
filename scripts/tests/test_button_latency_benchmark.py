@@ -326,10 +326,19 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertEqual("home", by_capture["cold-start-top"].launch_route)
         self.assertEqual("bottom-nav", by_capture["bottom-nav-bottom"].route)
         self.assertEqual(2400 * 2, by_capture["bottom-nav-bottom"].scroll_y)
+        self.assertEqual(("Study||学習", "Reveal"), by_capture["study-rating-top"].expected_terms)
         self.assertEqual("Reveal", by_capture["study-rating-top"].prep_steps[0].label)
         self.assertEqual("Browse Kanji", by_capture["browse-detail-top"].prep_steps[0].label)
+        self.assertEqual(("Search",), by_capture["browse-detail-top"].prep_steps[0].expected_terms)
+        self.assertEqual(benchmark.BENCHMARK_BROWSE_DETAIL_ROW, benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[1].label)
+        self.assertEqual(("Search",), benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[0].expected_terms)
+        self.assertEqual(
+            ("Back to study||Review now",),
+            benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[1].expected_terms,
+        )
         self.assertEqual("Sync", by_capture["provider-dialog-top"].prep_steps[0].label)
         self.assertEqual("settings", by_capture["settings-targets-bottom"].launch_route)
+        self.assertEqual(("Kani route settings",), by_capture["settings-targets-bottom"].expected_terms)
         self.assertEqual(2400 * 2 + benchmark.SETTINGS_BOTTOM_SCROLL_EXTRA, by_capture["settings-targets-bottom"].scroll_y)
 
     def test_cold_start_suite_expands_to_reproducible_all_button_routes(self) -> None:
