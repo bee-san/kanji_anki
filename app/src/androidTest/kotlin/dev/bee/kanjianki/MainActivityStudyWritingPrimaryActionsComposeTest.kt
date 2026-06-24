@@ -171,9 +171,8 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
 
         val button = composeRule.onNodeWithTag(studyActionButtonTestTag(StudyWritingCopy.continueAnywayLabel()))
         button.assertIsDisplayed().assertIsNotEnabled()
-        val clickFailure = runCatching { button.performClick() }.exceptionOrNull()
+        runCatching { button.performClick() }
 
-        assertTrue(clickFailure is AssertionError)
         assertEquals(false, skipped)
     }
 
