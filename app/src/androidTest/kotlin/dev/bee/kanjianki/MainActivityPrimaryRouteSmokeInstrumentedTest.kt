@@ -77,9 +77,9 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisible("裂")
 
             scenario.onActivity { it.renderStats() }
-            assertVisible("Stats overview")
-            assertVisible("Reviews analytics")
-            assertVisible("Weakness insights")
+            assertVisibleInScrollableRoute("Stats overview")
+            assertVisibleInScrollableRoute("Reviews analytics")
+            assertVisibleInScrollableRoute("Weakness insights")
 
             scenario.onActivity { it.renderGames() }
             assertVisible("Games")
@@ -141,11 +141,49 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
         assertNotNull("Missing visible text: $text", object2)
     }
 
-    private fun waitForText(text: String): UiObject2? {
+    private fun assertVisibleInScrollableRoute(text: String) {
+        val object2 = waitForTextInScrollableRoute(text)
+        assertNotNull("Missing visible text after route scroll: $text", object2)
+    }
+
+    private fun waitForTextInScrollableRoute(text: String): UiObject2? {
+        waitForText(text)?.let { return it }
+
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        scrollRouteToTop(device)
+        waitForText(text, 750L)?.let { return it }
+
+        repeat(8) {
+            scrollRouteDown(device)
+            waitForText(text, 750L)?.let { return it }
+        }
+
+        return null
+    }
+
+    private fun scrollRouteToTop(device: UiDevice) {
+        repeat(4) {
+            device.swipe(routeSwipeX(device), routeSwipeTopY(device), routeSwipeX(device), routeSwipeBottomY(device), 18)
+            device.waitForIdle()
+        }
+    }
+
+    private fun scrollRouteDown(device: UiDevice) {
+        device.swipe(routeSwipeX(device), routeSwipeBottomY(device), routeSwipeX(device), routeSwipeTopY(device), 18)
+        device.waitForIdle()
+    }
+
+    private fun routeSwipeX(device: UiDevice): Int = device.displayWidth / 2
+
+    private fun routeSwipeTopY(device: UiDevice): Int = device.displayHeight * 3 / 10
+
+    private fun routeSwipeBottomY(device: UiDevice): Int = device.displayHeight * 7 / 10
+
+    private fun waitForText(text: String, timeoutMs: Long = 3_000L): UiObject2? {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-        val exact = device.wait(Until.findObject(By.pkg(pkg).text(text)), 3_000L)
+        val exact = device.wait(Until.findObject(By.pkg(pkg).text(text)), timeoutMs)
         if (exact != null) return exact
-        return device.wait(Until.findObject(By.pkg(pkg).textContains(text)), 3_000L)
+        return device.wait(Until.findObject(By.pkg(pkg).textContains(text)), timeoutMs)
     }
 }
