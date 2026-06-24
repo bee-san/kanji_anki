@@ -74,7 +74,7 @@ private fun HomePrimaryHomeCta(model: HomeScreenModel) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 94.dp)
+                .heightIn(min = HomeStudyCtaMinHeight)
         ) {
             HomeStudyCta(
                 title = model.studyLabel,
