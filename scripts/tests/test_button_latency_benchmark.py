@@ -68,6 +68,40 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertEqual("Study now", controls[0].label)
         self.assertEqual("home-study-cta", controls[0].id)
 
+    def test_browse_back_prelude_uses_a_dynamic_visible_row_selector(self) -> None:
+        browse_back = benchmark.NORMAL_APP_SCENARIOS["browse-back"]
+
+        self.assertEqual("browse-kanji-row", browse_back.prep_steps[1].label)
+        self.assertEqual(("Back to Browse",), browse_back.prep_steps[1].expected_terms)
+
+    def test_find_prelude_control_selects_visible_dynamic_browse_row(self) -> None:
+        controls = [
+            benchmark.UiControl(
+                route="browse-back",
+                launch_route="home",
+                scroll_position="top",
+                index=0,
+                text="Search",
+                content_desc="",
+                resource_id="",
+                class_name="android.widget.Button",
+                bounds=(10, 20, 210, 120),
+            ),
+            benchmark.UiControl(
+                route="browse-back",
+                launch_route="home",
+                scroll_position="top",
+                index=1,
+                text="",
+                content_desc="Open details for 保, hold, ほ, 1 card",
+                resource_id="",
+                class_name="android.view.View",
+                bounds=(20, 130, 220, 280),
+            ),
+        ]
+
+        self.assertIs(controls[1], benchmark._find_prelude_control(controls, benchmark.ScenarioStep("browse-kanji-row")))
+
     def test_find_prelude_control_uses_text_and_selector_fallbacks(self) -> None:
         controls = [
             benchmark.UiControl(
@@ -333,7 +367,7 @@ class ButtonLatencyBenchmarkTest(unittest.TestCase):
         self.assertEqual(benchmark.BENCHMARK_BROWSE_DETAIL_ROW, benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[1].label)
         self.assertEqual(("Search",), benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[0].expected_terms)
         self.assertEqual(
-            ("Back to study||Review now",),
+            ("Back to Browse",),
             benchmark.NORMAL_APP_SCENARIOS["browse-back"].prep_steps[1].expected_terms,
         )
         self.assertEqual("Sync", by_capture["provider-dialog-top"].prep_steps[0].label)
