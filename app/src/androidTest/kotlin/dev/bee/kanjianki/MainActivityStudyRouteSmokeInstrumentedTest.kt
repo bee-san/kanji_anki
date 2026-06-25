@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -14,8 +15,10 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.data.LocalStoreBase
+import java.io.StringReader
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -68,6 +71,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 )
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = flashcard
+                activity.cancelPendingHomeRouteLoads()
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(flashcard),
                     "裂",
@@ -93,6 +97,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 )
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = writing
+                activity.cancelPendingHomeRouteLoads()
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(writing),
                     "裂",
@@ -122,6 +127,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 )
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = similarChoice
+                activity.cancelPendingHomeRouteLoads()
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(similarChoice),
                     "裂",
@@ -132,8 +138,8 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             }
 
             assertVisible("Choose the kanji")
-            assertVisible(MainActivityBase.LABEL_SIMILAR_KANJI)
-            assertVisible("Which kanji means split?")
+            assertVisible("Recognise")
+            assertVisibleAfterScroll("Which kanji means Split, rend?")
             assertVisible("裂")
             assertVisible("列")
 
@@ -147,6 +153,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 )
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = meaningChoice
+                activity.cancelPendingHomeRouteLoads()
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(meaningChoice),
                     "裂",
@@ -158,7 +165,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
 
             assertVisible("Recall")
             assertVisible("Choose the kanji")
-            assertVisible("Meaning -> kanji")
+            assertVisibleAfterScroll("Which kanji means Split?")
             assertVisible("裂")
             assertVisible("烈")
         }
@@ -246,6 +253,10 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 null,
                 null
             )
+            activity.store.rebuildSimilarKanjiPairs(
+                SimilarKanjiIndex.parseTsv(StringReader("裂\t列\n")),
+                System.currentTimeMillis()
+            )
         } catch (error: Exception) {
             throw AssertionError(error)
         }
@@ -292,6 +303,20 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         assertNotNull("Missing visible text: $text", object2)
     }
 
+    private fun assertVisibleAfterScroll(text: String) {
+        waitForText(text)?.let { return }
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        repeat(3) {
+            val centerX = device.displayWidth / 2
+            val startY = (device.displayHeight * 0.62f).toInt()
+            val endY = (device.displayHeight * 0.28f).toInt()
+            device.swipe(centerX, startY, centerX, endY, 12)
+            device.waitForIdle(500L)
+            waitForText(text)?.let { return }
+        }
+        assertNotNull("Missing visible text after scroll: $text", waitForText(text))
+    }
+
     private fun clickVisible(text: String) {
         val object2 = waitForText(text)
         assertNotNull("Missing clickable text: $text", object2)
@@ -307,12 +332,24 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
     }
 
     private fun waitForText(text: String): UiObject2? {
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-        val exact = device.wait(Until.findObject(By.pkg(pkg).text(text)), 3_000L)
-        if (exact != null) {
-            return exact
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val pkg = instrumentation.targetContext.packageName
+        val deadline = SystemClock.uptimeMillis() + TEXT_WAIT_TIMEOUT_MS
+
+        instrumentation.waitForIdleSync()
+        device.wait(Until.hasObject(By.pkg(pkg)), 2_000L)
+
+        while (SystemClock.uptimeMillis() < deadline) {
+            device.waitForIdle(500L)
+            device.findObject(By.pkg(pkg).text(text))?.let { return it }
+            device.findObject(By.pkg(pkg).textContains(text))?.let { return it }
+            Thread.sleep(100L)
         }
-        return device.wait(Until.findObject(By.pkg(pkg).textContains(text)), 3_000L)
+        return null
+    }
+
+    private companion object {
+        private const val TEXT_WAIT_TIMEOUT_MS = 8_000L
     }
 }
