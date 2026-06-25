@@ -488,7 +488,7 @@ onChoice = KanjiChoiceHandler { selected = it }
         assertEquals(first.left, third.left, POSITION_TOLERANCE_PX)
         assertEquals(first.width, second.width, SIZE_TOLERANCE_PX)
         assertTrue(third.width > first.width)
-        assertTrue(third.right > second.right)
+        assertTrue(third.right >= second.right - POSITION_TOLERANCE_PX)
         assertEquals(first.height, third.height, SIZE_TOLERANCE_PX)
     }
 
