@@ -26,11 +26,13 @@ class MainActivityHomeBrowseDetailComposeTest {
 
     @Test
     fun rendersTimelineCardsAndEmptyState() {
+        val statusText = "Recovered after today's sync"
+
         composeRule.setContent {
             RecoveryTimelinePanels(
                 model = MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel(
                     "Recovery timeline",
-                    "Recovered after today's sync",
+                    statusText,
                     0xFF00AEB5.toInt(),
                     "Needs 2 mature cards to fully support this kanji.",
                     listOf(
@@ -48,7 +50,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         }
 
         composeRule.onAllNodesWithText("Recovery timeline").assertCountEquals(1)
-        composeRule.onAllNodesWithText("Recovered after today’s sync").assertCountEquals(1)
+        composeRule.onAllNodesWithText(statusText).assertCountEquals(1)
         composeRule.onAllNodesWithText("Needs 2 mature cards to fully support this kanji.").assertCountEquals(1)
         composeRule.onAllNodesWithText("Today").assertCountEquals(1)
         composeRule.onAllNodesWithText("Synced from AnkiDroid").assertCountEquals(1)
