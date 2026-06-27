@@ -2,6 +2,15 @@ package dev.bee.kanjianki.theme
 
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.luminance
+import dev.bee.kanjianki.AutumnKaniColors
+import dev.bee.kanjianki.DarkKaniColors
+import dev.bee.kanjianki.ForestMossKaniColors
+import dev.bee.kanjianki.GirlypopKaniColors
+import dev.bee.kanjianki.GrapeSodaKaniColors
+import dev.bee.kanjianki.MatchaMilkKaniColors
+import dev.bee.kanjianki.MidnightArcadeKaniColors
+import dev.bee.kanjianki.NeutralLightKaniColors
+import dev.bee.kanjianki.OceanStudyKaniColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
