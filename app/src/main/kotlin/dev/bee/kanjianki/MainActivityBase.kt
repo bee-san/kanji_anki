@@ -219,12 +219,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return true
     }
 
-    private val permissionHandler = MainActivityPermissionHandler(this)
-    private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
-    private val studyPlanProvider = MainActivityStudyPlanProvider(this)
-    private val shellHost = MainActivityShellHost(this)
-    private val startup = MainActivityStartup(this as MainActivityHome)
-    private val activityLifecycle = MainActivityLifecycle(this)
+    private val permissionHandler by lazy { MainActivityPermissionHandler(this) }
+    private val writingRecognizerProvider by lazy { MainActivityWritingRecognizerProvider(this) }
+    private val studyPlanProvider by lazy { MainActivityStudyPlanProvider(this) }
+    private val shellHost by lazy { MainActivityShellHost(this) }
+    private val startup by lazy { MainActivityStartup(this as MainActivityHome) }
+    private val activityLifecycle by lazy { MainActivityLifecycle(this) }
 
     abstract fun renderHome()
     abstract fun renderUpdate()

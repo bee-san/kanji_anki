@@ -8,7 +8,9 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -67,6 +69,37 @@ class MainActivityStartupTest {
         assertNull(
             "Kani does not use AndroidX Startup initializers; keep the provider out of cold startup.",
             context.packageManager.resolveContentProvider(startupAuthority, PackageManager.GET_META_DATA),
+        )
+    }
+
+    @Test
+    fun coldLaunchHelpersStayLazyUntilRouteNeedsThem() {
+        assertLazyDelegates(
+            MainActivityBase::class.java,
+            "permissionHandler",
+            "writingRecognizerProvider",
+            "studyPlanProvider",
+            "shellHost",
+            "startup",
+            "activityLifecycle",
+        )
+        assertLazyDelegates(MainActivityHome::class.java, "focusQueue", "browseDetail")
+        assertLazyDelegates(MainActivityGames::class.java, "gameEngine", "gameRandom")
+        assertLazyDelegates(
+            MainActivityStudy::class.java,
+            "flashcardUi",
+            "writingUi",
+            "writingFlow",
+            "writingCheck",
+            "writingReview",
+            "doneActions",
+            "choiceSessions",
+            "studyProgress",
+            "moreNewCards",
+            "studyState",
+            "writingSession",
+            "dictionaryLookupProvider",
+            "studyQueueCoordinator",
         )
     }
 
@@ -157,6 +190,20 @@ class MainActivityStartupTest {
         val field = MainActivityBase::class.java.getDeclaredField(propertyName)
         field.isAccessible = true
         field.set(activity, value)
+    }
+
+    private fun assertLazyDelegates(owner: Class<*>, vararg propertyNames: String) {
+        for (propertyName in propertyNames) {
+            val delegateField = owner.declaredFields.firstOrNull { it.name == "$propertyName\$delegate" }
+            assertNotNull(
+                "${owner.simpleName}.$propertyName should stay lazy to keep cold route startup lean.",
+                delegateField,
+            )
+            assertTrue(
+                "${owner.simpleName}.$propertyName should be backed by kotlin.Lazy.",
+                Lazy::class.java.isAssignableFrom(delegateField!!.type),
+            )
+        }
     }
 
     private fun fakeAnkiDroidGateway(): AnkiDroidGateway {

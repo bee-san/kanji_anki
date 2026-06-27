@@ -27,22 +27,21 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         @JvmField val sample: WritingSample,
     )
 
-    private val flashcardUi = MainActivityStudyFlashcard(this)
-    private val writingUi = MainActivityStudyWritingUi(this)
-    private val writingFlow = MainActivityStudyWritingFlow(this)
-    private val writingCheck = MainActivityStudyWritingCheck(this)
-    private val writingReview = MainActivityStudyReviewFlow(this)
+    private val flashcardUi by lazy { MainActivityStudyFlashcard(this) }
+    private val writingUi by lazy { MainActivityStudyWritingUi(this) }
+    private val writingFlow by lazy { MainActivityStudyWritingFlow(this) }
+    private val writingCheck by lazy { MainActivityStudyWritingCheck(this) }
+    private val writingReview by lazy { MainActivityStudyReviewFlow(this) }
 
-    @JvmField
-    val doneActions = MainActivityStudyDoneActions(this)
+    val doneActions by lazy { MainActivityStudyDoneActions(this) }
 
-    private val choiceSessions = MainActivityStudyChoiceSessions(this)
-    private val studyProgress = MainActivityStudyProgress(this)
-    private val moreNewCards = MainActivityStudyMoreNewCards(this)
-    private val studyState = MainActivityStudyState(this)
-    private val writingSession = MainActivityStudyWritingSession(this)
-    private val dictionaryLookupProvider = MainActivityDictionaryLookupProvider(this)
-    private val studyQueueCoordinator = MainActivityStudyQueueCoordinator(this)
+    private val choiceSessions by lazy { MainActivityStudyChoiceSessions(this) }
+    private val studyProgress by lazy { MainActivityStudyProgress(this) }
+    private val moreNewCards by lazy { MainActivityStudyMoreNewCards(this) }
+    private val studyState by lazy { MainActivityStudyState(this) }
+    private val writingSession by lazy { MainActivityStudyWritingSession(this) }
+    private val dictionaryLookupProvider by lazy { MainActivityDictionaryLookupProvider(this) }
+    private val studyQueueCoordinator by lazy { MainActivityStudyQueueCoordinator(this) }
 
     fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
         return learningPanelModel(this, session)

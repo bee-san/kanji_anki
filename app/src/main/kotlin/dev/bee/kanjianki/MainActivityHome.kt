@@ -25,8 +25,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     @JvmField
     var activeBrowseSimilarOnly: Boolean = false
 
-    private val focusQueue = MainActivityHomeFocusQueue(this)
-    private val browseDetail = MainActivityHomeBrowseDetail(this)
+    private val focusQueue by lazy { MainActivityHomeFocusQueue(this) }
+    private val browseDetail by lazy { MainActivityHomeBrowseDetail(this) }
     private val asyncHomeRouteLoader by lazy {
         AsyncHomeRouteLoader(
             background = io,

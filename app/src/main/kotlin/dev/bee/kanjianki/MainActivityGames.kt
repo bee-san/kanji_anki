@@ -9,8 +9,8 @@ import java.security.SecureRandom
 import java.util.Random
 
 internal abstract class MainActivityGames : MainActivityHome() {
-    private val gameEngine = KanjiGameEngine()
-    private val gameRandom: Random = SecureRandom()
+    private val gameEngine by lazy { KanjiGameEngine() }
+    private val gameRandom: Random by lazy { SecureRandom() }
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
     private var cachedGameData: GameData? = null
 
