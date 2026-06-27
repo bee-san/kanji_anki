@@ -341,7 +341,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         selected: String,
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
-        onScrollY: (Int) -> Unit = {},
+        onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         content: @Composable () -> Unit,
     ) {
         shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, onScrollY, content)
@@ -351,7 +351,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         selected: String,
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
-        onScrollY: (Int) -> Unit = {},
+        onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
