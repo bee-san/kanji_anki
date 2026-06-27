@@ -14,6 +14,7 @@ import dev.bee.kanjianki.theme.KaniThemeChoice
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -218,6 +219,12 @@ class ComposeScreenModelsTest {
 
         assertEquals("Kani route ${MainActivityBase.NAV_STUDY} scroll middle", scrolled.routeContentDescription)
         assertEquals(scrolled, scrolled.copy())
+    }
+
+    @Test
+    fun routeShellSkipsScrollTrackingForDefaultNoOpCallback() {
+        assertFalse(shouldTrackRouteScroll(NoOpRouteScrollY))
+        assertTrue(shouldTrackRouteScroll { })
     }
 
     @Test

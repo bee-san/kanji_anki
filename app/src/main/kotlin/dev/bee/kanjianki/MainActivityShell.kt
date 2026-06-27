@@ -20,11 +20,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.theme.KaniThemeChoice
 
+internal val NoOpRouteScrollY: (Int) -> Unit = {}
+
+internal fun shouldTrackRouteScroll(onScrollY: (Int) -> Unit): Boolean = onScrollY !== NoOpRouteScrollY
+
 @Composable
 internal fun MainActivityComposeRoute(
     model: MainActivityShellModel = MainActivityShellModel(),
     initialScrollY: Int = 0,
-    onScrollY: (Int) -> Unit = {},
+    onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
@@ -49,7 +53,7 @@ internal fun MainActivityComposeRoute(
 internal fun MainActivityComposeRouteWithActionBar(
     model: MainActivityShellModel = MainActivityShellModel(),
     initialScrollY: Int = 0,
-    onScrollY: (Int) -> Unit = {},
+    onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
@@ -97,7 +101,7 @@ private fun MainActivityShellFrame(
 internal fun MainActivityRouteContent(
     model: MainActivityShellModel,
     initialScrollY: Int = 0,
-    onScrollY: (Int) -> Unit = {},
+    onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
 ) {
@@ -114,7 +118,7 @@ internal fun MainActivityRouteContent(
 internal fun MainActivityRouteContentWithActionBar(
     model: MainActivityShellModel,
     initialScrollY: Int = 0,
-    onScrollY: (Int) -> Unit = {},
+    onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
@@ -145,8 +149,10 @@ private fun MainActivityScrollableRouteColumn(
     }
     key(model.selectedRoute, initialScrollY) {
         val scrollState = rememberScrollState(initial = initialScrollY)
-        LaunchedEffect(scrollState, onScrollY) {
-            snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+        if (shouldTrackRouteScroll(onScrollY)) {
+            LaunchedEffect(scrollState, onScrollY) {
+                snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+            }
         }
         Column(
             modifier = Modifier

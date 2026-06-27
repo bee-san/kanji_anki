@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.theme.resolveSystemBars
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
-    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, onScrollY: (Int) -> Unit = {}, content: @Composable () -> Unit) {
+    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, onScrollY: (Int) -> Unit = NoOpRouteScrollY, content: @Composable () -> Unit) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
@@ -31,7 +31,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         selected: String,
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
-        onScrollY: (Int) -> Unit = {},
+        onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
