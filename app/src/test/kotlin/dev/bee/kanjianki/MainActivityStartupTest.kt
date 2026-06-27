@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ProviderInfo
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -56,6 +57,17 @@ class MainActivityStartupTest {
 
         assertEquals(1, activity.renderHomeCalls)
         assertNull(shadowOf(activity).lastRequestedPermission)
+    }
+
+    @Test
+    fun androidXStartupProviderIsRemovedFromMergedManifest() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val startupAuthority = context.packageName + ".androidx-startup"
+
+        assertNull(
+            "Kani does not use AndroidX Startup initializers; keep the provider out of cold startup.",
+            context.packageManager.resolveContentProvider(startupAuthority, PackageManager.GET_META_DATA),
+        )
     }
 
     @Test

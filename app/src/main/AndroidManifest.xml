@@ -42,16 +42,16 @@
             android:authorities="${applicationId}.apk"
             android:exported="false"
             android:grantUriPermissions="true" />
+        <!--
+            Kani initializes scheduler/update work explicitly from MainActivityStartup,
+            and does not use AndroidX Startup consumers. Removing the provider keeps
+            transitive EmojiCompat/ProcessLifecycle/ProfileInstaller initializers out
+            of the cold activity-start path.
+        -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
-            android:exported="false"
-            tools:node="merge">
-            <meta-data
-                android:name="androidx.work.WorkManagerInitializer"
-                android:value="androidx.startup"
-                tools:node="remove" />
-        </provider>
+            tools:node="remove" />
         <service
             android:name=".sync.AutoSyncJobService"
             android:exported="true"
