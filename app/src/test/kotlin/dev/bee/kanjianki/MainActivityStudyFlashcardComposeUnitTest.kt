@@ -12,9 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -28,6 +30,12 @@ import org.robolectric.annotation.Config
 class MainActivityStudyFlashcardComposeUnitTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun firstFrameStudySurfacesAvoidShadowElevation() {
+        assertEquals(0.dp, StudyCardShadowElevation)
+        assertEquals(0.dp, StudyTopBarButtonElevation)
+    }
 
     @Test
     fun typingMeaningAnswerSubmitsOnImeAction() {
