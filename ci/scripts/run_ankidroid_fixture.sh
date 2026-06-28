@@ -183,6 +183,16 @@ instrumentation_failure_is_known_fake_provider_classpath_crash() {
     grep -Eqi 'Unable to instantiate provider|NoClassDefFoundError|kotlin/jvm/internal/Intrinsics' "${logcat_path}"
 }
 
+settle_before_instrumentation() {
+  # GitHub-hosted ATD images can keep package, settings, bluetooth, and storage
+  # services busy for several minutes after `sys.boot_completed=1`. Starting
+  # instrumentation while system_server is saturated can make the target app ANR
+  # during process startup. Re-probe install prerequisites and give the device a
+  # bounded quiet window before each instrumentation attempt.
+  retry "Android install services readiness before instrumentation" 6 5 wait_for_package_service
+  sleep "${KANJI_LIVE_INSTRUMENTATION_SETTLE_SECONDS:-20}"
+}
+
 reset_apps_after_transient_instrumentation_failure() {
   adb shell am force-stop dev.bee.kanjianki || true
   adb shell am force-stop com.ichi2.anki || true
@@ -194,10 +204,11 @@ reset_apps_after_transient_instrumentation_failure() {
 }
 
 run_instrumentation_gate() {
-  local attempts="${KANJI_LIVE_INSTRUMENTATION_ATTEMPTS:-2}"
+  local attempts="${KANJI_LIVE_INSTRUMENTATION_ATTEMPTS:-4}"
   local attempt=1
 
   while true; do
+    settle_before_instrumentation
     echo "Running live-provider instrumentation attempt ${attempt}/${attempts}"
     if run_instrumentation_gate_once; then
       return 0

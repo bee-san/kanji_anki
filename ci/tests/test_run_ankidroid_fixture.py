@@ -278,7 +278,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "5")
+        self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "6")
         self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertGreaterEqual(adb_calls.count("shell cmd package list packages"), 3)
@@ -310,7 +310,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "settings-provider-count").read_text().strip(), "5")
+        self.assertEqual((tmp_path / "settings-provider-count").read_text().strip(), "6")
         self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
         self.assertIn("Android package service readiness failed on attempt 1/12", result.stdout)
 
