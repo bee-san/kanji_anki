@@ -47,6 +47,7 @@ private val StudyHeroPinkDark: Color @Composable get() = KaniTheme.colors.primar
 private val StudyHeroTrack: Color @Composable get() = KaniTheme.colors.track
 private val StudyTopBarButtonFill: Color @Composable get() = KaniTheme.colors.pill
 private val StudyTopBarButtonShape = RoundedCornerShape(28.dp)
+internal val StudyTopBarButtonElevation = 0.dp
 object StudyTopBarDescriptions {
     val PROGRESS: String
         get() = StudyTextCopy.studyProgressDescription()
@@ -123,7 +124,7 @@ private fun StudyTopBarIconButton(
             },
         shape = StudyTopBarButtonShape,
         color = StudyTopBarButtonFill,
-        shadowElevation = 3.dp
+        shadowElevation = StudyTopBarButtonElevation
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),

@@ -43,6 +43,7 @@ private val HeroMuted: Color @Composable get() = KaniTheme.colors.muted
 private val HeroPlum: Color @Composable get() = KaniTheme.colors.ink
 private val HeroPink: Color @Composable get() = KaniTheme.colors.primary
 private val HeroPillFill: Color @Composable get() = KaniTheme.colors.pill
+internal val StudyCardShadowElevation = 0.dp
 
 @Composable
 internal fun FlashcardCard(
@@ -66,7 +67,7 @@ internal fun FlashcardCard(
             .then(cardHeightModifier),
         shape = RoundedCornerShape(32.dp),
         color = KaniTheme.colors.surface,
-        shadowElevation = 8.dp
+        shadowElevation = StudyCardShadowElevation
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
