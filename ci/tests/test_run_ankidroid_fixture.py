@@ -350,6 +350,25 @@ OUT
         self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "2")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
+    def test_fixture_writes_deck_path_preference_for_app_private_collection(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ content\\ query*)
+    if grep -Fq 'deckPath' "$RUNNER_TEMP/adb-calls.log"; then
+      echo 'Row: 0 _id=123, name=Kiku'
+    else
+      echo 'No result found.'
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertIn('deckPath', adb_calls)
+        self.assertIn('/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid', adb_calls)
+
     def test_fixture_retries_provider_probe_until_models_are_visible(self):
         fake_adb = base_fake_adb(
             """  shell\\ content\\ query*)
