@@ -228,7 +228,29 @@ OUT
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((tmp_path / "ankidroid-install-count").read_text().strip(), "2")
-        self.assertIn("AnkiDroid APK install failed on attempt 1/3", result.stdout)
+        self.assertIn("AnkiDroid APK install failed on attempt 1/6", result.stdout)
+
+    def test_fixture_retries_ankidroid_install_until_late_system_services_are_ready(self):
+        fake_adb = base_fake_adb(
+            """  install*ankidroid.apk*)
+    count_file="$RUNNER_TEMP/ankidroid-install-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 4 ]; then
+      echo "Exception occurred while executing 'install':" >&2
+      echo "java.lang.IllegalStateException: Cannot access system provider: 'settings' before system providers are installed!" >&2
+      exit 1
+    fi
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "ankidroid-install-count").read_text().strip(), "4")
+        self.assertIn("AnkiDroid APK install failed on attempt 3/6", result.stdout)
 
     def test_fixture_waits_for_package_service_before_installing_apks(self):
         fake_adb = base_fake_adb(
@@ -257,6 +279,38 @@ OUT
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "5")
+        self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
+        adb_calls = (tmp_path / "adb-calls.log").read_text()
+        self.assertGreaterEqual(adb_calls.count("shell cmd package list packages"), 3)
+        self.assertIn("settings get global package_verifier_enable", adb_calls)
+        self.assertIn("Android package service readiness failed on attempt 1/12", result.stdout)
+
+    def test_fixture_waits_for_settings_provider_before_installing_apks(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ cmd\\ package\\ list\\ packages*)
+    echo 'package:android'
+    exit 0 ;;
+  shell\\ settings\\ get\\ global\\ package_verifier_enable*)
+    count_file="$RUNNER_TEMP/settings-provider-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 3 ]; then
+      echo "java.lang.IllegalStateException: Cannot access system provider: 'settings' before system providers are installed!" >&2
+      exit 1
+    fi
+    echo '1'
+    exit 0 ;;
+  install*)
+    echo installed >> "$RUNNER_TEMP/install-count"
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "settings-provider-count").read_text().strip(), "5")
         self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
         self.assertIn("Android package service readiness failed on attempt 1/12", result.stdout)
 
