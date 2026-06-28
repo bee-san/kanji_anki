@@ -18,6 +18,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -225,6 +227,17 @@ class ComposeScreenModelsTest {
     fun routeShellSkipsScrollTrackingForDefaultNoOpCallback() {
         assertFalse(shouldTrackRouteScroll(NoOpRouteScrollY))
         assertTrue(shouldTrackRouteScroll { })
+    }
+
+    @Test
+    fun mainActivityRouteHelpersDefaultToSharedNoOpScrollCallback() {
+        val source = mainActivityBaseSource().toFile().readText()
+        val sharedNoOpDefaults = Regex("onScrollY: \\(Int\\) -> Unit = NoOpRouteScrollY")
+            .findAll(source)
+            .count()
+
+        assertEquals(2, sharedNoOpDefaults)
+        assertFalse(source.contains("onScrollY: (Int) -> Unit = {},"))
     }
 
     @Test
@@ -1798,6 +1811,13 @@ class ComposeScreenModelsTest {
         assertEquals(true, state.containsWindowPoint(12f, 20f))
         assertEquals(false, state.containsWindowPoint(3f, 20f))
         assertEquals(false, state.containsWindowPoint(12f, 39f))
+    }
+
+    private fun mainActivityBaseSource(): Path {
+        return sequenceOf(
+            Path.of("src/main/kotlin/dev/bee/kanjianki/MainActivityBase.kt"),
+            Path.of("app/src/main/kotlin/dev/bee/kanjianki/MainActivityBase.kt"),
+        ).first { Files.exists(it) }
     }
 
     private fun example(expression: String): RecordsImportModels.Example =
