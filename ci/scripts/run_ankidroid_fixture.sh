@@ -41,7 +41,11 @@ wait_for_external_storage() {
 }
 
 wait_for_package_service() {
-  adb shell cmd package list packages >/dev/null
+  # `adb install` can reach Settings.Global and storage allocation after the
+  # package binder starts responding. Probe the settings provider too so we do
+  # not start an install while system providers are still coming online.
+  adb shell cmd package list packages >/dev/null && \
+    adb shell settings get global package_verifier_enable >/dev/null
 }
 
 install_apk_once() {
@@ -63,7 +67,7 @@ install_apk() {
   local apk_path="$2"
   retry \
     "${description}" \
-    "${KANJI_LIVE_APK_INSTALL_ATTEMPTS:-3}" \
+    "${KANJI_LIVE_APK_INSTALL_ATTEMPTS:-6}" \
     "${KANJI_LIVE_APK_INSTALL_RETRY_DELAY_SECONDS:-10}" \
     install_apk_once "${apk_path}"
 }
