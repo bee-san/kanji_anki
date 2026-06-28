@@ -40,9 +40,21 @@ wait_for_external_storage() {
   adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && test -d ${ankidroid_dir} && test -d ${legacy_ankidroid_dir}"
 }
 
+wait_for_package_service() {
+  adb shell cmd package list packages >/dev/null
+}
+
 install_apk_once() {
   local apk_path="$1"
   adb wait-for-device
+  # `sys.boot_completed=1` is not enough on cold GitHub-hosted AVD boots: the
+  # package manager service can still be unavailable for a short window, which
+  # makes `adb install` fail with Broken pipe / Can't find service: package.
+  retry \
+    "Android package service readiness" \
+    "${KANJI_LIVE_PACKAGE_SERVICE_ATTEMPTS:-12}" \
+    "${KANJI_LIVE_PACKAGE_SERVICE_RETRY_DELAY_SECONDS:-5}" \
+    wait_for_package_service
   adb install -r "${apk_path}"
 }
 
