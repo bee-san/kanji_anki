@@ -84,6 +84,15 @@ repair_ankidroid_dir_permissions() {
   adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; chown -R \"\$owner_uid\":ext_data_rw ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
 }
 
+configure_ankidroid_collection_path() {
+  # The release fixture is a fresh AnkiDroid install. Make the collection path
+  # explicit instead of depending on first-launch preferences already existing:
+  # recent API-35 images reject the legacy /storage/emulated/0/AnkiDroid path,
+  # so provider probes never see Kiku unless deckPath points at app-private
+  # external storage.
+  adb shell "prefs_dir=/data/user/0/com.ichi2.anki/shared_prefs; prefs=\${prefs_dir}/com.ichi2.anki_preferences.xml; mkdir -p ${ankidroid_dir}/collection.media \"\${prefs_dir}\"; printf '%s\n' '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>' '<map>' '    <string name=\"deckPath\">${ankidroid_dir}</string>' '</map>' > \"\${prefs}\"; owner_uid=\$(stat -c '%u' /data/user/0/com.ichi2.anki 2>/dev/null || true); owner_gid=\$(stat -c '%g' /data/user/0/com.ichi2.anki 2>/dev/null || true); if [ -n \"\${owner_uid}\" ] && [ -n \"\${owner_gid}\" ]; then chown \"\${owner_uid}\":\"\${owner_gid}\" \"\${prefs}\"; fi; chmod 660 \"\${prefs}\""
+}
+
 remove_collection_sidecars() {
   adb shell "rm -f ${ankidroid_dir}/collection.anki2-wal ${ankidroid_dir}/collection.anki2-shm ${ankidroid_dir}/collection.anki2-journal ${legacy_ankidroid_dir}/collection.anki2-wal ${legacy_ankidroid_dir}/collection.anki2-shm ${legacy_ankidroid_dir}/collection.anki2-journal"
 }
@@ -229,7 +238,7 @@ retry "External storage fixture directory readiness" 12 5 wait_for_external_stor
 seed_collection_fixture
 retry "AnkiDroid fixture directory permissions" 6 2 repair_ankidroid_dir_permissions
 
-adb shell "prefs=/data/user/0/com.ichi2.anki/shared_prefs/com.ichi2.anki_preferences.xml; if [ -f \"\$prefs\" ]; then sed -i 's#/storage/emulated/0/AnkiDroid#${ankidroid_dir}#g' \"\$prefs\"; fi"
+configure_ankidroid_collection_path
 adb shell am force-stop com.ichi2.anki
 launch_ankidroid
 sleep 5
