@@ -230,6 +230,36 @@ OUT
         self.assertEqual((tmp_path / "ankidroid-install-count").read_text().strip(), "2")
         self.assertIn("AnkiDroid APK install failed on attempt 1/3", result.stdout)
 
+    def test_fixture_waits_for_package_service_before_installing_apks(self):
+        fake_adb = base_fake_adb(
+            """  shell\\ cmd\\ package\\ list\\ packages*)
+    count_file="$RUNNER_TEMP/package-service-count"
+    count=$(cat "$count_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$count_file"
+    if [ "$count" -lt 3 ]; then
+      echo "cmd: Can't find service: package" >&2
+      exit 1
+    fi
+    echo 'package:android'
+    exit 0 ;;
+  install*)
+    if [ ! -f "$RUNNER_TEMP/package-service-count" ]; then
+      echo 'install attempted before package service probe' >&2
+      exit 1
+    fi
+    echo installed >> "$RUNNER_TEMP/install-count"
+    exit 0 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "5")
+        self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
+        self.assertIn("Android package service readiness failed on attempt 1/12", result.stdout)
+
     def test_fixture_falls_back_to_explicit_ankidroid_activity_start(self):
         fake_adb = base_fake_adb(
             """  shell\\ monkey*) exit 1 ;;
