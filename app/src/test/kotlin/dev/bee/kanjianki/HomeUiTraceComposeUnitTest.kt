@@ -1,9 +1,12 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -79,6 +82,54 @@ class HomeUiTraceComposeUnitTest {
         composeRule.runOnIdle {
             assertTrue(clicked)
         }
+    }
+
+    @Test
+    fun homeScreenDefersSecondaryPanelsUntilAfterFirstFrame() {
+        composeRule.mainClock.autoAdvance = false
+        val metric = HomeMetricModel(
+            R.drawable.ic_target_24,
+            MainActivityBase.CORAL,
+            "Focus",
+            "2",
+            "Ready",
+            null,
+        )
+
+        composeRule.setContent {
+            HomeScreen(
+                HomeScreenModel(
+                    title = "Kani",
+                    subtitle = "Repair weak kanji",
+                    metrics = listOf(metric),
+                    todayPlan = HomeTodayPlanModel("Today", "2 cards ready", emptyList()),
+                    deckOverviewRows = listOf("Due 2"),
+                    showSyncCta = false,
+                    syncLabel = "Sync",
+                    studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+                    onSync = {},
+                    onStudy = {},
+                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})),
+                    focusTitle = "Focus queue",
+                    focusActionLabel = "View all",
+                    onFocusAction = {},
+                    emptyTitle = "Nothing queued",
+                    emptyBody = "Come back later",
+                    previewCards = emptyList(),
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(homeStudyCtaTestTag(MainActivityBase.LABEL_STUDY_NOW)).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(homeMetricCardTestTag("Focus")).assertCountEquals(0)
+        composeRule.onAllNodesWithText("Focus queue").assertCountEquals(0)
+
+        composeRule.mainClock.advanceTimeByFrame()
+        composeRule.mainClock.advanceTimeByFrame()
+        composeRule.waitForIdle()
+
+        composeRule.onAllNodesWithTag(homeMetricCardTestTag("Focus")).assertCountEquals(1)
+        composeRule.onAllNodesWithText("Focus queue").assertCountEquals(1)
     }
 
     @Test
