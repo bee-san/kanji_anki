@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import java.util.concurrent.atomic.AtomicBoolean
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -36,7 +37,7 @@ class MainActivityStudyChoiceComposeUnitTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun similarChoiceRouteKeepsChoicesVisibleInBottomActionBarOnPhoneViewport() {
+    fun similarChoiceRouteKeepsChoicesInlineInMainCardOnPhoneViewport() {
         var selected = ""
         val model = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
@@ -68,25 +69,25 @@ class MainActivityStudyChoiceComposeUnitTest {
                     .height(640.dp)
                     .testTag(SIMILAR_CHOICE_PHONE_VIEWPORT_TAG)
             ) {
-                MainActivityComposeRouteWithActionBar(
+                MainActivityComposeRoute(
                     model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_STUDY),
+                    navActions = KaniNavActions({}, {}, {}, {}),
                     content = {
-                        Column {
-                            SimilarChoiceSessionCard(
-                                model = model,
-                                showInlineChoices = false,
-                            )
-                            Spacer(modifier = Modifier.height(1000.dp))
-                        }
+                        SimilarChoiceSessionCard(
+                            model = model,
+                            showInlineChoices = true,
+                            detailsExpandedByDefault = false,
+                        )
                     },
-                    actionBar = { SimilarChoiceActionBar(model.gridModel) },
                 )
             }
         }
 
         val choiceTag = similarChoiceTestTag("列")
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
+        composeRule.onNodeWithText("Compare shapes: 裂 vs 列").assertIsDisplayed()
         composeRule.onNodeWithTag(choiceTag).assertIsDisplayed()
+        composeRule.onNodeWithTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG).assertIsDisplayed()
 
         val viewportBounds = composeRule.onNodeWithTag(SIMILAR_CHOICE_PHONE_VIEWPORT_TAG)
             .fetchSemanticsNode()
@@ -132,32 +133,33 @@ class MainActivityStudyChoiceComposeUnitTest {
                     .height(640.dp)
                     .testTag(SIMILAR_CHOICE_PHONE_VIEWPORT_TAG)
             ) {
-                MainActivityComposeRouteWithActionBar(
+                MainActivityComposeRoute(
                     model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_STUDY),
+                    navActions = KaniNavActions({}, {}, {}, {}),
                     content = {
-                        Column {
-                            SimilarChoiceSessionCard(
-                                model = model,
-                                showInlineChoices = false,
-                            )
-                            Spacer(modifier = Modifier.height(1000.dp))
-                        }
+                        SimilarChoiceSessionCard(
+                            model = model,
+                            showInlineChoices = true,
+                            detailsExpandedByDefault = false,
+                        )
                     },
-                    actionBar = { SimilarChoiceActionBar(model.gridModel) },
                 )
             }
         }
 
+        val choiceTag = similarChoiceTestTag("裂")
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
         composeRule.onNodeWithText("Compare shapes: 裂 vs 列").assertIsDisplayed()
+        composeRule.onNodeWithTag(choiceTag).assertIsDisplayed()
+        composeRule.onNodeWithTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG).assertIsDisplayed()
         composeRule.onAllNodesWithText("Seen in").assertCountEquals(0)
         composeRule.onAllNodesWithText("Meaning hint").assertCountEquals(0)
         composeRule.onAllNodesWithText("Reading hint").assertCountEquals(0)
         composeRule.onAllNodesWithText("Shape hint").assertCountEquals(0)
-        composeRule.onNodeWithText(StudyTextCopy.similarKanjiDetailsLabel()).assertIsDisplayed()
 
-        composeRule.onNodeWithText(StudyTextCopy.similarKanjiDetailsLabel()).performClick()
+        composeRule.onNodeWithTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG).performClick()
         composeRule.onNodeWithText(StudyTextCopy.similarKanjiHideDetailsLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText("Seen in: source one • source two").performScrollTo().assertIsDisplayed()
     }
 
     @Test

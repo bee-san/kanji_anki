@@ -57,6 +57,45 @@ object SettingsTextCopy {
     fun settingsReferenceDataBody(): String = SettingsSectionTextCopy.settingsReferenceDataBody()
 
     @JvmStatic
+    fun timingDiagnosticsTitle(): String = SettingsSectionTextCopy.timingDiagnosticsTitle()
+
+    @JvmStatic
+    fun timingDiagnosticsBody(): String = SettingsSectionTextCopy.timingDiagnosticsBody()
+
+    @JvmStatic
+    fun timingDiagnosticsReportTitle(): String = SettingsSectionTextCopy.timingDiagnosticsReportTitle()
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmTitle(): String = SettingsSectionTextCopy.timingDiagnosticsPrewarmTitle()
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmBody(): String = SettingsSectionTextCopy.timingDiagnosticsPrewarmBody()
+
+    @JvmStatic
+    fun timingDiagnosticsResetTitle(): String = SettingsSectionTextCopy.timingDiagnosticsResetTitle()
+
+    @JvmStatic
+    fun timingDiagnosticsResetBody(): String = SettingsSectionTextCopy.timingDiagnosticsResetBody()
+
+    @JvmStatic
+    fun timingDiagnosticsCopyLabel(): String = SettingsSectionTextCopy.timingDiagnosticsCopyLabel()
+
+    @JvmStatic
+    fun timingDiagnosticsResetLabel(): String = SettingsSectionTextCopy.timingDiagnosticsResetLabel()
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmLabel(): String = SettingsSectionTextCopy.timingDiagnosticsPrewarmLabel()
+
+    @JvmStatic
+    fun timingDiagnosticsCopiedToast(): String = SettingsSectionTextCopy.timingDiagnosticsCopiedToast()
+
+    @JvmStatic
+    fun timingDiagnosticsResetToast(): String = SettingsSectionTextCopy.timingDiagnosticsResetToast()
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmToast(): String = SettingsSectionTextCopy.timingDiagnosticsPrewarmToast()
+
+    @JvmStatic
     fun updatePageTitle(): String = SettingsAutomationTextCopy.updatePageTitle()
 
     @JvmStatic

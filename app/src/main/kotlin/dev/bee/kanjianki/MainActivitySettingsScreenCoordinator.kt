@@ -88,6 +88,34 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
         )
     }
 
+    fun settingsTimingDiagnosticsScreenModel(): SettingsSubmenuScreenModel {
+        val snapshot = AppTimingDiagnostics.snapshot()
+        return submenuScreenModel(
+            title = SettingsTextCopy.timingDiagnosticsTitle(),
+            body = if (snapshot.events.isEmpty()) SettingsTextCopy.timingDiagnosticsBody() else snapshot.summaryText(),
+            panels = listOf(
+                SettingsReferenceDataLinkModel(
+                    title = SettingsTextCopy.timingDiagnosticsReportTitle(),
+                    body = snapshot.previewText(),
+                    actionLabel = SettingsTextCopy.timingDiagnosticsCopyLabel(),
+                    onAction = Runnable { activity.copyTimingDiagnosticsReport() },
+                ),
+                SettingsReferenceDataLinkModel(
+                    title = SettingsTextCopy.timingDiagnosticsPrewarmTitle(),
+                    body = SettingsTextCopy.timingDiagnosticsPrewarmBody(),
+                    actionLabel = SettingsTextCopy.timingDiagnosticsPrewarmLabel(),
+                    onAction = Runnable { activity.prewarmTimingDiagnosticsAssets() },
+                ),
+                SettingsReferenceDataLinkModel(
+                    title = SettingsTextCopy.timingDiagnosticsResetTitle(),
+                    body = SettingsTextCopy.timingDiagnosticsResetBody(),
+                    actionLabel = SettingsTextCopy.timingDiagnosticsResetLabel(),
+                    onAction = Runnable { activity.resetTimingDiagnostics() },
+                ),
+            ),
+        )
+    }
+
     private fun settingsHeroModel(current: RecordsSyncModels.Settings): SettingsAutomationHeroModel {
         val reminder = activity.store.reminderSettings()
         val autoSync = activity.store.autoSyncSettings()
@@ -166,6 +194,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     ),
                 ),
             ),
+            onLongPress = Runnable { activity.renderTimingDiagnostics() },
         )
     }
 

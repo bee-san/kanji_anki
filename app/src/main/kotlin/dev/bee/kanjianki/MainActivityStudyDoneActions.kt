@@ -128,6 +128,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         model: StudyDoneScreenModel,
     ) {
         home.activeStudyPlan = plan
+        AppTimingDiagnostics.markStudyFeedbackShown()
         home.renderComposeStudyRoute {
             StudyDoneScreen(
                 model = model.copy(studyMoreDialog = studyMoreDialog),

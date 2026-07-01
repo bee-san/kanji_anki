@@ -46,6 +46,7 @@ internal class MainActivityStudyWritingResult(private val activity: MainActivity
         )
         activity.setStudyStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide), MainActivityBase.MUTED)
         activity.setResultStatus(message, color)
+        AppTimingDiagnostics.markStudyFeedbackShown()
         activity.updateResultActions()
     }
 

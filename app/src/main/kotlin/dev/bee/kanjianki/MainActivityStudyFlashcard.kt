@@ -158,6 +158,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                         position.x + size.width,
                         position.y + size.height,
                     )
+                    AppTimingDiagnostics.markStudyCardUsable()
                 },
             onTypingDone = Runnable { revealFlashcardAnswer() },
             onBrowseAction = browseAction,

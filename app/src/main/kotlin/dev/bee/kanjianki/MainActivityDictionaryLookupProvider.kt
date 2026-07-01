@@ -7,6 +7,7 @@ internal class MainActivityDictionaryLookupProvider(private val activity: MainAc
     fun currentDictionaryLookup(): DictionaryLookup {
         if (activity.dictionaryLookup == null) {
             activity.dictionaryLookup = DictionaryAssets.load(activity)
+            AppTimingDiagnostics.markDictionaryLoaded()
         }
         return activity.dictionaryLookup!!
     }

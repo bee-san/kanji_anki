@@ -16,6 +16,7 @@ data class SettingsAutomationHeroModel(
     val title: String,
     val body: String,
     val rows: List<List<SettingsAutomationHeroPillModel>>,
+    val onLongPress: Runnable? = null,
 )
 
 internal object SettingsAutomationHeroColors {

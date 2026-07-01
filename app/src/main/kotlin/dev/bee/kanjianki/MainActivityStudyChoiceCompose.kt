@@ -22,6 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -36,6 +38,7 @@ internal val StudyChoiceBorder: Color @Composable get() = KaniTheme.colors.borde
 internal val StudyChoiceCorrectFill: Color @Composable get() = KaniTheme.colors.teal
 internal val StudyChoiceIncorrectFill: Color @Composable get() = KaniTheme.colors.coral
 internal val StudyChoiceFeedbackContent = Color.White
+internal const val SIMILAR_KANJI_DETAILS_TOGGLE_TAG = "similar-kanji-details-toggle"
 private val StudyCardFill: Color @Composable get() = KaniTheme.colors.surface
 private val StudyPanelFill: Color @Composable get() = KaniTheme.colors.panel
 private val StudyPillFill: Color @Composable get() = KaniTheme.colors.pill
@@ -71,9 +74,12 @@ fun SimilarChoiceSessionCard(
     model: SimilarChoiceSessionModel,
     modifier: Modifier = Modifier,
     showInlineChoices: Boolean = true,
+    detailsExpandedByDefault: Boolean = showInlineChoices,
     onExploreDifferences: Runnable? = null,
 ) {
-    var detailsExpanded by rememberSaveable(model.question, showInlineChoices) { mutableStateOf(showInlineChoices) }
+    var detailsExpanded by rememberSaveable(model.question, showInlineChoices, detailsExpandedByDefault) {
+        mutableStateOf(detailsExpandedByDefault)
+    }
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
@@ -210,7 +216,9 @@ private fun StudyChoiceSessionSurface(
     content: @Composable () -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { AppTimingDiagnostics.markStudyCardUsable() },
         shape = RoundedCornerShape(26.dp),
         color = StudyCardFill,
         border = BorderStroke(1.dp, StudyChoiceBorder),
@@ -348,6 +356,7 @@ private fun SimilarKanjiDetailsButton(
 ) {
     TextButton(
         onClick = onToggleDetails,
+        modifier = Modifier.testTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
@@ -411,6 +420,7 @@ private fun MeaningChoiceInsetPanel(
                 null
             }
             if (answered) {
+                AppTimingDiagnostics.markStudyAnswerRevealed()
                 StudyAnswerPanel(
                     model = model.answerPanel,
                     modifier = Modifier

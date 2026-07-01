@@ -1,5 +1,8 @@
 package dev.bee.kanjianki
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
@@ -67,8 +70,41 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettingsRoute(MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE, preserveScroll)
     }
 
+    internal fun renderTimingDiagnostics(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_TIMING_DIAGNOSTICS_ROUTE, preserveScroll)
+    }
+
     internal fun renderReferenceDataDetails(preserveScroll: Boolean = false) {
         renderSettingsRoute(MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE, preserveScroll)
+    }
+
+    fun copyTimingDiagnosticsReport() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText(SettingsTextCopy.timingDiagnosticsCopyLabel(), AppTimingDiagnostics.snapshot().reportText()))
+        Toast.makeText(this, SettingsTextCopy.timingDiagnosticsCopiedToast(), Toast.LENGTH_SHORT).show()
+    }
+
+    fun resetTimingDiagnostics() {
+        AppTimingDiagnostics.reset()
+        Toast.makeText(this, SettingsTextCopy.timingDiagnosticsResetToast(), Toast.LENGTH_SHORT).show()
+        if (currentRoute == MainActivityBase.NAV_SETTINGS_TIMING_DIAGNOSTICS_ROUTE) {
+            renderTimingDiagnostics(true)
+        }
+    }
+
+    fun prewarmTimingDiagnosticsAssets() {
+        io.execute {
+            AppTimingDiagnostics.markStudyPrewarmStarted()
+            runCatching { currentDictionaryLookup() }.onSuccess { AppTimingDiagnostics.markStudyPrewarmDictionary() }
+            runCatching { strokeGuide("日") }.onSuccess { AppTimingDiagnostics.markStudyPrewarmStroke() }
+            AppTimingDiagnostics.markStudyPrewarmFinished()
+            main.post {
+                Toast.makeText(this, SettingsTextCopy.timingDiagnosticsPrewarmToast(), Toast.LENGTH_SHORT).show()
+                if (currentRoute == MainActivityBase.NAV_SETTINGS_TIMING_DIAGNOSTICS_ROUTE) {
+                    renderTimingDiagnostics(true)
+                }
+            }
+        }
     }
 
     private fun renderSettingsRoute(route: String, preserveScroll: Boolean = false) {
@@ -126,6 +162,13 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             }
             MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE -> {
                 val model = MainActivitySettingsScreenCoordinator(this).settingsDisplayDataScreenModel()
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    SettingsSubmenuScreen(model)
+                }
+                backAction = Runnable { renderSettings(true) }
+            }
+            MainActivityBase.NAV_SETTINGS_TIMING_DIAGNOSTICS_ROUTE -> {
+                val model = MainActivitySettingsScreenCoordinator(this).settingsTimingDiagnosticsScreenModel()
                 composeSettingsRoute(route, scrollY, onScrollY) {
                     SettingsSubmenuScreen(model)
                 }

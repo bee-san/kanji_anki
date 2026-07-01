@@ -45,6 +45,54 @@ object SettingsSectionTextCopy {
     fun settingsHeroBody(): String = localizedText("Choose a section.", "下のセクションを選ぶ。")
 
     @JvmStatic
+    fun timingDiagnosticsTitle(): String = localizedText("Timing diagnostics", "タイミング診断")
+
+    @JvmStatic
+    fun timingDiagnosticsBody(): String = localizedText(
+        "Capture and export the latest cold Home → Study launch. Long-press the overview hero to reopen this screen.",
+        "最新のコールドなホーム→学習起動を記録して出力します。概要ヒーローを長押しするとこの画面を開き直せます。",
+    )
+
+    @JvmStatic
+    fun timingDiagnosticsReportTitle(): String = localizedText("Report preview", "レポートのプレビュー")
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmTitle(): String = localizedText("Prewarm study assets", "学習アセットを事前読み込み")
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmBody(): String = localizedText(
+        "Warm the dictionary and stroke caches before the next run.",
+        "次の計測の前に辞書とストロークのキャッシュを温めます。",
+    )
+
+    @JvmStatic
+    fun timingDiagnosticsResetTitle(): String = localizedText("Reset capture", "記録をリセット")
+
+    @JvmStatic
+    fun timingDiagnosticsResetBody(): String = localizedText(
+        "Clear the current timeline and start fresh.",
+        "現在のタイムラインを消して新しく始めます。",
+    )
+
+    @JvmStatic
+    fun timingDiagnosticsCopyLabel(): String = localizedText("Copy report", "レポートをコピー")
+
+    @JvmStatic
+    fun timingDiagnosticsResetLabel(): String = localizedText("Reset now", "今すぐリセット")
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmLabel(): String = localizedText("Prewarm now", "今すぐ事前読み込み")
+
+    @JvmStatic
+    fun timingDiagnosticsCopiedToast(): String = localizedText("Timing report copied.", "タイミングレポートをコピーしました。")
+
+    @JvmStatic
+    fun timingDiagnosticsResetToast(): String = localizedText("Timing capture cleared.", "計測を消去しました。")
+
+    @JvmStatic
+    fun timingDiagnosticsPrewarmToast(): String = localizedText("Study assets prewarmed.", "学習アセットを事前読み込みしました。")
+
+    @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
 
     @JvmStatic

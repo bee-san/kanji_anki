@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -168,7 +169,8 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
             model = model,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 10.dp, bottom = 14.dp),
+                .padding(top = 10.dp, bottom = 14.dp)
+                .onGloballyPositioned { AppTimingDiagnostics.markStudyCardUsable() },
             onBrowseAction = browseAction,
         )
     }

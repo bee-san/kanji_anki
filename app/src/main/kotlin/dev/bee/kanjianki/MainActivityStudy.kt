@@ -66,6 +66,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             doneActions.renderEmptyStudyQueue()
             return
         }
+        AppTimingDiagnostics.markStudyLoadingStarted()
         studyQueueCoordinator.renderStudy()
     }
 
@@ -121,6 +122,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             doneActions.renderStudyForKanjiNotAvailable()
             return
         }
+        AppTimingDiagnostics.markStudyLoadingStarted()
         studyQueueCoordinator.renderStudyForKanji(kanji)
     }
 

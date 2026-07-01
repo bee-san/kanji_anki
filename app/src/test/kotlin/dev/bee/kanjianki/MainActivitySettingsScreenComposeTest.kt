@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -98,5 +100,30 @@ class MainActivitySettingsScreenComposeTest {
 
         assertTrue(homeClicked)
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun longPressingSettingsHeroOpensDiagnosticsAction() {
+        var longPressed = false
+
+        composeRule.setContent {
+            SettingsAutomationHero(
+                model = SettingsAutomationHeroModel(
+                    cockpitLabel = "Overview",
+                    title = "Settings",
+                    body = "Configure Kani behavior.",
+                    rows = listOf(
+                        listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
+                    ),
+                    onLongPress = Runnable { longPressed = true },
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(SETTINGS_AUTOMATION_HERO_TAG).performTouchInput {
+            longClick()
+        }
+
+        assertTrue(longPressed)
     }
 }

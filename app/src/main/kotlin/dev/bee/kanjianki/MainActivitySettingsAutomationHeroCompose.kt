@@ -3,6 +3,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,11 +33,17 @@ private val PillFill: ComposeColor @Composable get() = KaniTheme.colors.surface
 private val PillShape = RoundedCornerShape(20.dp)
 private val HeroShape = RoundedCornerShape(30.dp)
 private val BadgeShape = RoundedCornerShape(18.dp)
+internal const val SETTINGS_AUTOMATION_HERO_TAG = "settings-automation-hero"
 
 @Composable
 fun SettingsAutomationHero(model: SettingsAutomationHeroModel) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SETTINGS_AUTOMATION_HERO_TAG)
+            .pointerInput(model.onLongPress) {
+                detectTapGestures(onLongPress = { model.onLongPress?.run() })
+            },
         shape = HeroShape,
         color = HeroPanelFill,
         border = BorderStroke(1.dp, HeroPanelBorder),

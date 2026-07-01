@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -147,6 +148,7 @@ fun HomeStudyCta(
             )
             .border(2.dp, KaniTheme.colors.border, shape)
             .testTag(homeStudyCtaTestTag(title))
+            .onGloballyPositioned { AppTimingDiagnostics.markStudyCtaVisible() }
             .semantics {
                 contentDescription = title
             }
@@ -154,10 +156,11 @@ fun HomeStudyCta(
                 role = Role.Button,
                 onClick = {
                     withUiTrace("kani.button.home-study-cta") {
+                        AppTimingDiagnostics.markStudyTapReceived()
                         onClick()
                     }
                 }
-            )
+            ),
     ) {
         Column(
             modifier = Modifier

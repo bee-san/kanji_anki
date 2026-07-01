@@ -9,11 +9,16 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun HomeScreen(model: HomeScreenModel) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { AppTimingDiagnostics.markHomeFirstFrame() }
+    ) {
         HomeHeader(title = model.title, subtitle = model.subtitle)
         Spacer(modifier = Modifier.height(12.dp))
         HomeMetricRow(metrics = model.metrics)
