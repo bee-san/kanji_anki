@@ -205,97 +205,28 @@ class FakeAnkiDroidProvider : ContentProvider() {
                 throw IllegalArgumentException("card projection exhausted for ${firstProjectionColumn(projection)}")
             }
             rejectFsrsProjectionColumns(projection)
-            val rejected = rejectedSchedulerProjectionCursor(uri, projection)
+            val rejected = rejectedSchedulerProjectionCursor(uri, projection, true)
             if (rejected != null) {
                 return rejected
             }
             perNoteCardsQueries++
-            val noteId = uri.pathSegments[1].toLong()
-            val columns = projection ?: arrayOf("_id", "note_id", "ord", "deck_id", "card_name")
-            val cursor = MatrixCursor(columns)
-            when (noteId) {
-                1L, 101L -> addCardRow(
-                    cursor,
-                    columns,
-                    if (noteId == 101L) 110L else 10L,
-                    noteId,
-                    if (secondTemplateCard && noteId == 1L) 1 else 0,
-                    "Kiku",
-                    "Mining",
-                    2,
-                    2,
-                    12,
-                    42,
-                    80,
-                    3,
-                    12.5,
-                    7.0,
-                    0.42,
-                )
-                2L, 102L -> {
-                    addCardRow(
-                        cursor,
-                        columns,
-                        if (noteId == 102L) 120L else 20L,
-                        noteId,
-                        0,
-                        "Kiku",
-                        "Mining",
-                        -1,
-                        2,
-                        0,
-                        10,
-                        5,
-                        1,
-                        null,
-                        null,
-                        null,
-                    )
-                    if (partiallySuspendedNote) {
-                        addCardRow(
-                            cursor,
-                            columns,
-                            21L,
-                            noteId,
-                            0,
-                            "Kiku",
-                            "Mining",
-                            2,
-                            2,
-                            4,
-                            5,
-                            6,
-                            0,
-                            null,
-                            null,
-                            null,
-                        )
-                    }
-                }
-                3L -> addCardRow(
-                    cursor,
-                    columns,
-                    30L,
-                    noteId,
-                    0,
-                    "Kiku",
-                    "Mining",
-                    2,
-                    2,
-                    4,
-                    5,
-                    6,
-                    0,
-                    null,
-                    null,
-                    null,
-                )
-            }
-            return cursor
+            return cardRowsForNote(uri.pathSegments[1].toLong(), projection)
         }
         if (path == "/cards") {
             topLevelCardsQueries++
-            throw UnsupportedOperationException("uri $uri is not supported; raw card queries expose unsupported scheduler columns")
+            if (nullCardCursor) {
+                return null
+            }
+            if (rejectAllCardProjections) {
+                cardProjectionRejects++
+                throw IllegalArgumentException("card projection exhausted for ${firstProjectionColumn(projection)}")
+            }
+            rejectFsrsProjectionColumns(projection)
+            val rejected = rejectedSchedulerProjectionCursor(uri, projection, false)
+            if (rejected != null) {
+                return rejected
+            }
+            return cardRowsForSelection(projection, selection, selectionArgs)
         }
         return null
     }
@@ -337,7 +268,11 @@ class FakeAnkiDroidProvider : ContentProvider() {
         }
     }
 
-    private fun rejectedSchedulerProjectionCursor(uri: Uri, projection: Array<String>?): Cursor? {
+    private fun rejectedSchedulerProjectionCursor(
+        uri: Uri,
+        projection: Array<String>?,
+        countAsPerNoteQuery: Boolean,
+    ): Cursor? {
         if (!rejectSchedulerProjection || projection == null) {
             return null
         }
@@ -352,7 +287,9 @@ class FakeAnkiDroidProvider : ContentProvider() {
             ) {
                 schedulerProjectionRejects++
                 if (deferSchedulerProjectionFailure) {
-                    perNoteCardsQueries++
+                    if (countAsPerNoteQuery) {
+                        perNoteCardsQueries++
+                    }
                     return ThrowingCursor(projection, "Queue \"$column\" is unknown")
                 }
                 throw IllegalArgumentException("$column is not part of the public card projection for $uri")
@@ -493,6 +430,144 @@ class FakeAnkiDroidProvider : ContentProvider() {
         cursor.addRow(row)
     }
 
+    private fun cardRowsForNote(noteId: Long, projection: Array<String>?): Cursor {
+        val columns = projection ?: arrayOf("_id", "note_id", "ord", "deck_id", "card_name")
+        val cursor = MatrixCursor(columns)
+        appendCardRowsForNote(cursor, columns, noteId)
+        return cursor
+    }
+
+    private fun cardRowsForSelection(projection: Array<String>?, selection: String?, selectionArgs: Array<String>?): Cursor {
+        val columns = projection ?: arrayOf("_id", "note_id", "ord", "deck_id", "card_name")
+        val cursor = MatrixCursor(columns)
+        val noteIds = selectionArgs
+            ?.mapNotNull { it.toLongOrNull() }
+            .orEmpty()
+            .ifEmpty {
+                selection
+                    ?.let { selectedCardNoteIds(it) }
+                    .orEmpty()
+                    .ifEmpty { listOf(1L, 2L, 3L) }
+            }
+        for (noteId in noteIds) {
+            appendCardRowsForNote(cursor, columns, noteId)
+        }
+        return cursor
+    }
+
+    private fun selectedCardNoteIds(selection: String): List<Long> {
+        return NID_SELECTION_PATTERN
+            .findAll(selection)
+            .flatMap { match ->
+                match.groupValues
+                    .getOrNull(1)
+                    ?.split(',')
+                    .orEmpty()
+                    .asSequence()
+            }
+            .mapNotNull { it.trim().toLongOrNull() }
+            .toList()
+    }
+
+    private fun appendCardRowsForNote(cursor: MatrixCursor, columns: Array<String>, noteId: Long) {
+        when (noteId) {
+            1L, 101L -> addCardRow(
+                cursor,
+                columns,
+                if (noteId == 101L) 110L else 10L,
+                noteId,
+                if (secondTemplateCard && noteId == 1L) 1 else 0,
+                "Kiku",
+                "Mining",
+                2,
+                2,
+                12,
+                42,
+                80,
+                3,
+                12.5,
+                7.0,
+                0.42,
+            )
+            2L, 102L -> {
+                addCardRow(
+                    cursor,
+                    columns,
+                    if (noteId == 102L) 120L else 20L,
+                    noteId,
+                    0,
+                    "Kiku",
+                    "Mining",
+                    -1,
+                    2,
+                    0,
+                    10,
+                    5,
+                    1,
+                    null,
+                    null,
+                    null,
+                )
+                if (partiallySuspendedNote) {
+                    addCardRow(
+                        cursor,
+                        columns,
+                        21L,
+                        noteId,
+                        0,
+                        "Kiku",
+                        "Mining",
+                        2,
+                        2,
+                        4,
+                        5,
+                        6,
+                        0,
+                        null,
+                        null,
+                        null,
+                    )
+                }
+            }
+            3L -> addCardRow(
+                cursor,
+                columns,
+                30L,
+                noteId,
+                0,
+                "Kiku",
+                "Mining",
+                2,
+                2,
+                4,
+                5,
+                6,
+                0,
+                null,
+                null,
+                null,
+            )
+            else -> addCardRow(
+                cursor,
+                columns,
+                noteId * 10L,
+                noteId,
+                0,
+                "Kiku",
+                "Mining",
+                2,
+                2,
+                12,
+                42,
+                80,
+                3,
+                12.5,
+                7.0,
+                0.42,
+            )
+        }
+    }
+
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<String>?): Int {
         val path = uri.path ?: ""
         if (!NOTES_ID_PATH.matcher(path).matches()) {
@@ -576,6 +651,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
         private const val FIELD_SEPARATOR = '\u001f'
         private val NOTES_CARDS_PATH: Pattern = Pattern.compile("/notes/\\d+/cards")
         private val NOTES_ID_PATH: Pattern = Pattern.compile("/notes/\\d+")
+        private val NID_SELECTION_PATTERN = Regex("""nid:([0-9,]+)""", RegexOption.IGNORE_CASE)
 
         @JvmField
         var topLevelCardsQueries = 0

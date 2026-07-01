@@ -19,9 +19,14 @@ internal class AnkiDroidCardReader(
         noteIds: Set<Long>,
         progress: SyncProgress.Listener,
     ): List<RecordsSyncModels.Card> {
-        val total = noteIds.size
+        val requestedNoteIds = noteIds.toList()
+        val total = requestedNoteIds.size
         var scanned = 0
         progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total))
+        if (requestedNoteIds.isEmpty()) {
+            return emptyList()
+        }
+
         val suspendedNoteIds = querySuspendedNoteIds(authority, settings)
         val cards = ArrayList<RecordsSyncModels.Card>()
         val projections = arrayOf(
@@ -30,11 +35,11 @@ internal class AnkiDroidCardReader(
             CARD_COLUMNS_MINIMAL,
         )
         var projectionIndex = 0
-        for (noteId in noteIds) {
-            val result = readCardsForNote(authority, noteId, suspendedNoteIds, projections, projectionIndex)
+        for (noteBatch in requestedNoteIds.chunked(CARD_NOTE_BATCH_SIZE)) {
+            val result = readCardsForNotes(authority, noteBatch, suspendedNoteIds, projections, projectionIndex)
             projectionIndex = result.projectionIndex()
             cards.addAll(result.cards())
-            scanned++
+            scanned += noteBatch.size
             reportCardProgressIfNeeded(progress, scanned, total)
         }
         return cards
@@ -48,11 +53,22 @@ internal class AnkiDroidCardReader(
         projections: Array<Array<String>>,
         startProjectionIndex: Int,
     ): ProjectionReadResult {
+        return readCardsForNotes(authority, listOf(noteId), suspendedNoteIds, projections, startProjectionIndex)
+    }
+
+    @Throws(AnkiDroidGateway.SyncFailure::class)
+    fun readCardsForNotes(
+        authority: String,
+        noteIds: List<Long>,
+        suspendedNoteIds: Set<Long>,
+        projections: Array<Array<String>>,
+        startProjectionIndex: Int,
+    ): ProjectionReadResult {
         var projectionIndex = startProjectionIndex
         while (projectionIndex < projections.size) {
             try {
                 return ProjectionReadResult(
-                    queryCardsForNote(authority, noteId, suspendedNoteIds, projections[projectionIndex]),
+                    queryCardsForNotes(authority, noteIds, suspendedNoteIds, projections[projectionIndex]),
                     projectionIndex,
                 )
             } catch (unsupportedColumns: Exception) {
@@ -72,24 +88,41 @@ internal class AnkiDroidCardReader(
     }
 
     @Throws(AnkiDroidGateway.SyncFailure::class)
-    private fun queryCardsForNote(
+    private fun queryCardsForNotes(
         authority: String,
-        noteId: Long,
+        noteIds: List<Long>,
         suspendedNoteIds: Set<Long>,
         columns: Array<String>,
     ): List<RecordsSyncModels.Card> {
-        val cursor = resolver!!.query(uriFor(authority, URI_SEGMENT_NOTES, noteId.toString(), "cards"), columns, null, null, null)
-            ?: throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no per-note card cursor.")
-        val cards = ArrayList<RecordsSyncModels.Card>()
+        val requestedNoteIds = LinkedHashSet(noteIds)
+        if (requestedNoteIds.isEmpty()) {
+            return emptyList()
+        }
+
+        val cursor = resolver!!.query(
+            uriFor(authority, URI_SEGMENT_CARDS),
+            columns,
+            noteIdSelection(requestedNoteIds),
+            null,
+            null,
+        ) ?: throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no bulk card cursor.")
+
+        val cardsByNote = LinkedHashMap<Long, MutableList<RecordsSyncModels.Card>>(requestedNoteIds.size)
+        for (noteId in requestedNoteIds) {
+            cardsByNote[noteId] = ArrayList()
+        }
+
         cursor.use { cardCursor ->
             while (cardCursor.moveToNext()) {
+                val noteId = longValue(cardCursor, COLUMN_NOTE_ID, Long.MIN_VALUE)
+                val noteCards = cardsByNote[noteId] ?: continue
                 val ord = intValue(cardCursor, COLUMN_ORD, 0)
                 val suspendedFromSearch = suspendedNoteIds.contains(noteId)
                 val queue = intValue(cardCursor, COLUMN_QUEUE, if (suspendedFromSearch) -1 else 0)
                 val suspended = suspendedFromSearch || queue < 0
                 val fsrs = fsrsMemoryState(cardCursor)
                 val deckId = value(cardCursor, COLUMN_DECK_ID)
-                cards.add(
+                noteCards.add(
                     RecordsSyncModels.Card(
                         longValue(cardCursor, COLUMN_ID, noteId * 1000L + ord),
                         longValue(cardCursor, COLUMN_NOTE_ID, noteId),
@@ -109,8 +142,13 @@ internal class AnkiDroidCardReader(
                     ),
                 )
             }
-            return cards
         }
+
+        val cards = ArrayList<RecordsSyncModels.Card>()
+        for (noteId in requestedNoteIds) {
+            cards.addAll(cardsByNote[noteId].orEmpty())
+        }
+        return cards
     }
 
     private fun querySuspendedNoteIds(authority: String, settings: RecordsSyncModels.Settings): Set<Long> {
@@ -166,6 +204,8 @@ internal class AnkiDroidCardReader(
         private const val COLUMN_RETRIEVABILITY = "retrievability"
         private const val COLUMN_DATA = "data"
         private const val URI_SEGMENT_NOTES = "notes"
+        private const val URI_SEGMENT_CARDS = "cards"
+        private const val CARD_NOTE_BATCH_SIZE = 512
 
         private val CARD_COLUMNS_WITH_FSRS = arrayOf(
             COLUMN_NOTE_ID,
@@ -217,6 +257,14 @@ internal class AnkiDroidCardReader(
                 builder.appendPath(segment)
             }
             return builder.build()
+        }
+
+        @JvmStatic
+        private fun noteIdSelection(noteIds: Collection<Long>): String {
+            return buildString {
+                append("nid:")
+                append(noteIds.joinToString(","))
+            }
         }
 
         @JvmStatic
