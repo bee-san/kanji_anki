@@ -398,6 +398,13 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         return inventoryData().examplesForKanji(db, kanji)
     }
 
+    fun examplesForKanjiBatch(
+        db: SQLiteDatabase,
+        kanji: Collection<String>,
+    ): Map<String, List<RecordsImportModels.Example>> {
+        return inventoryData().examplesForKanjiBatch(db, kanji)
+    }
+
     fun upsertStudyItem(db: SQLiteDatabase, item: RecordsStudyModels.StudyItem) {
         val values = ContentValues()
         values.put(COLUMN_KANJI, item.kanji)

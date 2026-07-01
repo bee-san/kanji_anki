@@ -13,6 +13,26 @@ internal class ReadingExposureMediaReader(
     private val mediaDirs: List<File> = defaultCollectionMediaDirs(),
 ) {
     fun read(): ReadingExposureModels.ExposureIndex {
+        // read() is called repeatedly on the study-load hot path (multiple adaptivePlan calls
+        // per renderStudy, plus home and queued-entries paths). The backing file is a
+        // multi-megabyte gzip on real collections, so re-reading + gunzipping + JSON-parsing it
+        // every time is pure wasted main-thread work. Memoize by file identity (path + mtime +
+        // size) so we only re-parse when the media file actually changes.
+        val fingerprint = fingerprint(mediaDirs)
+        synchronized(CACHE_LOCK) {
+            if (cachedFingerprint != null && cachedFingerprint == fingerprint) {
+                cachedIndex?.let { return it }
+            }
+        }
+        val index = readUncached()
+        synchronized(CACHE_LOCK) {
+            cachedFingerprint = fingerprint
+            cachedIndex = index
+        }
+        return index
+    }
+
+    private fun readUncached(): ReadingExposureModels.ExposureIndex {
         for (dir in mediaDirs) {
             val index = readFromMediaDir(dir)
             if (index != null) {
@@ -20,6 +40,37 @@ internal class ReadingExposureMediaReader(
             }
         }
         return ReadingExposureModels.ExposureIndex.EMPTY
+    }
+
+    private fun fingerprint(dirs: List<File>): String {
+        val builder = StringBuilder()
+        for (dir in dirs) {
+            for (candidate in MANIFEST_CANDIDATES) {
+                val manifest = File(dir, candidate.manifestFile)
+                if (manifest.isFile) {
+                    builder.append(manifest.path)
+                        .append(':').append(manifest.lastModified())
+                        .append(':').append(manifest.length())
+                    // Fingerprint the actual manifest-declared stats file, not just the default,
+                    // so a custom kanjiFile that changes without the manifest still busts the
+                    // cache (matches readFromMediaDir's resolution).
+                    val kanjiFile = File(dir, resolveKanjiFileName(manifest, candidate))
+                    if (kanjiFile.isFile) {
+                        builder.append('|').append(kanjiFile.name)
+                            .append(':').append(kanjiFile.lastModified())
+                            .append(':').append(kanjiFile.length())
+                    }
+                    builder.append(';')
+                }
+            }
+        }
+        return builder.toString()
+    }
+
+    private fun resolveKanjiFileName(manifest: File, candidate: ManifestCandidate): String {
+        return runCatching {
+            JSONObject(manifest.readText(Charsets.UTF_8)).optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
+        }.getOrDefault(candidate.defaultKanjiFile)
     }
 
     private fun readFromMediaDir(dir: File): ReadingExposureModels.ExposureIndex? {
@@ -58,6 +109,12 @@ internal class ReadingExposureMediaReader(
         const val LEGACY_KANI_KANJI_FILE: String = "_kani_reading_exposure_kanji.json.gz"
         private const val KANJI_FILE_KEY = "kanjiFile"
         private const val TAG = "ReadingExposure"
+
+        private val CACHE_LOCK = Any()
+        @Volatile
+        private var cachedFingerprint: String? = null
+        @Volatile
+        private var cachedIndex: ReadingExposureModels.ExposureIndex? = null
         private val MANIFEST_CANDIDATES = listOf(
             ManifestCandidate(MANIFEST_FILE, DEFAULT_KANJI_FILE),
             ManifestCandidate(LEGACY_KANI_MANIFEST_FILE, LEGACY_KANI_KANJI_FILE),

@@ -4,5 +4,18 @@
             android:name="dev.bee.kanjianki.anki.FakeAnkiDroidProvider"
             android:authorities="dev.bee.kanjianki.test.ankidroid"
             android:exported="false" />
+        <!--
+            Debug-only FileProvider so the "Share debug log" action in Settings can hand the
+            study-load debug log to the Android share sheet. Not present in release builds.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.debuglog"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/debug_log_paths" />
+        </provider>
     </application>
 </manifest>

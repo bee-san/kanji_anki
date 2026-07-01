@@ -17,25 +17,39 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
-    ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        return AdaptiveLoadPlanner().plan(
-            AdaptiveLoadPlanner.PlanRequest.builder(
-                rows,
-                items,
-                activity.store.reviewStatsSince(now - MainActivityBase.DAY_MILLIS * 7),
-                activity.store.studyStreak(now).currentDays,
-                activity.store.studiedKanjiSince(activity.startOfDay(now)),
-                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                    activity.store.adaptiveLoadWorkPercent(),
-                    activity.store.adaptiveLoadMode(),
-                    activity.store.adaptiveLoadMaxItems(),
-                ),
-                now,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan = withStudyLoadProbe("adaptivePlan") {
+        val reviewStats = withStudyLoadProbe("adaptivePlan.reviewStatsSince") {
+            activity.store.reviewStatsSince(now - MainActivityBase.DAY_MILLIS * 7)
+        }
+        val streakDays = withStudyLoadProbe("adaptivePlan.studyStreak") {
+            activity.store.studyStreak(now).currentDays
+        }
+        val studiedKanji = withStudyLoadProbe("adaptivePlan.studiedKanjiSince") {
+            activity.store.studiedKanjiSince(activity.startOfDay(now))
+        }
+        val readingExposure = withStudyLoadProbe("adaptivePlan.readingExposureRead") {
+            ReadingExposureMediaReader().read()
+        }
+        withStudyLoadProbe("adaptivePlan.plannerCompute") {
+            AdaptiveLoadPlanner().plan(
+                AdaptiveLoadPlanner.PlanRequest.builder(
+                    rows,
+                    items,
+                    reviewStats,
+                    streakDays,
+                    studiedKanji,
+                    AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                        activity.store.adaptiveLoadWorkPercent(),
+                        activity.store.adaptiveLoadMode(),
+                        activity.store.adaptiveLoadMaxItems(),
+                    ),
+                    now,
+                )
+                    .settings(activity.settings())
+                    .readingExposure(readingExposure)
+                    .build()
             )
-                .settings(activity.settings())
-                .readingExposure(ReadingExposureMediaReader().read())
-                .build()
-        )
+        }
     }
 
     fun dailyStudyPlan(

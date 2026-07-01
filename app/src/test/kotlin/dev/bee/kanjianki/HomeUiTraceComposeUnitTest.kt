@@ -42,6 +42,29 @@ class HomeUiTraceComposeUnitTest {
     }
 
     @Test
+    fun withRouteTraceRunsActionAndReturns() {
+        var calls = 0
+        withRouteTrace("study") { calls++ }
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun traceTokenNormalizesAndFallsBackToUnknown() {
+        assertEquals("study-route", traceToken("Study Route"))
+        assertEquals("unknown", traceToken("   "))
+        assertEquals("unknown", traceToken("!!!"))
+    }
+
+    @Test
+    fun withUiTraceLogsSlowSectionsAndReturnsValue() {
+        val result = withUiTrace("kani.test.slow-section") {
+            Thread.sleep(20) // exceed the 16ms log threshold to exercise the logging branch
+            "value"
+        }
+        assertEquals("value", result)
+    }
+
+    @Test
     fun homePrimaryCtaInvokesItsCallback() {
         var clicked = false
 

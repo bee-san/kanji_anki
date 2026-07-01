@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Internal filesDir root, where StudyLoadDebugLog writes kani-study-debug.log. -->
+    <files-path
+        name="debug-logs"
+        path="." />
+</paths>
