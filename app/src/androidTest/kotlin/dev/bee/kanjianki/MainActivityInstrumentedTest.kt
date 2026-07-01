@@ -60,8 +60,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
-import org.junit.rules.TestName;
+import org.junit.rules.TestWatcher;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -105,7 +106,13 @@ class MainActivityInstrumentedTest {
     var SIMILAR_KANJI = "Similar kanji"
 
     @get:Rule
-    val testName = TestName()
+    val liveModeGate = object : TestWatcher() {
+        override fun starting(description: Description) {
+            if ("true" == InstrumentationRegistry.getArguments().getString(LIVE_ARG) && description.methodName != LIVE_FOREGROUND_SYNC_TEST) {
+                Assume.assumeTrue("Live AnkiDroid runs only the foreground sync button path from MainActivity.", false)
+            }
+        }
+    }
 
     private lateinit var context: Context
 
@@ -126,16 +133,13 @@ class MainActivityInstrumentedTest {
 }
 
     @Before
-fun setUp() {
-      context = InstrumentationRegistry.getInstrumentation().getTargetContext()
-        if (liveAnkiDroidEnabled() && !LIVE_FOREGROUND_SYNC_TEST.equals(testName.getMethodName())) {
-            Assume.assumeTrue("Live AnkiDroid runs only the foreground sync button path from MainActivity.", false);
-        }
-        context.deleteDatabase("kanji_anki_simple.db");
-        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
-        MainActivityRuntimeOverrides.setCollectionGateway(null);
-        MainActivityRuntimeOverrides.setWritingRecognizer(null);
-        MainActivityRuntimeOverrides.setInstallPermission(null);
+    fun setUp() {
+        context = InstrumentationRegistry.getInstrumentation().getTargetContext()
+        context.deleteDatabase("kanji_anki_simple.db")
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"))
+        MainActivityRuntimeOverrides.setCollectionGateway(null)
+        MainActivityRuntimeOverrides.setWritingRecognizer(null)
+        MainActivityRuntimeOverrides.setInstallPermission(null)
     }
 
     @After
@@ -2165,16 +2169,16 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
-            waitForText(scenario, "Sync complete", 300_000L);
-            val status = requireNotNull(waitForLatestSync())
+            val startedAt = System.currentTimeMillis();
+            val status = waitForLiveSyncImport(startedAt, 9000)
             assertEquals("success", status.status)
-
-
+            assertTrue(status.finishedAt >= startedAt)
             LocalStore(context).use { store ->
                 assertFalse(store.dashboardRows().isEmpty());
                 assertFalse(store.studyItems().isEmpty());
             }
         }
+
     }
 
 fun waitForLatestSync(): LocalStoreBase.SyncStatus? {
@@ -2213,6 +2217,25 @@ private fun waitForLatestSync(attempts: Int): LocalStoreBase.SyncStatus? {
         SystemClock.sleep(100)
     }
     return null
+}
+
+private fun waitForLiveSyncImport(startedAt: Long, attempts: Int): LocalStoreBase.SyncStatus {
+    for (i in 0 until attempts) {
+        try {
+            LocalStore(context).use { store ->
+                val status = store.latestSync()
+                if (status != null && status.status == "success" && status.finishedAt >= startedAt) {
+                    if (store.studyItems().isNotEmpty()) {
+                        return status
+                    }
+                }
+            }
+        } catch (busy: SQLiteDatabaseLockedException) {
+            // The live sync button test polls while the app is committing a large collection import.
+        }
+        SystemClock.sleep(100)
+    }
+    throw AssertionError("Timed out waiting for live sync to populate study items")
 }
 
 fun liveAnkiDroidEnabled(): Boolean {
