@@ -174,17 +174,17 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     private fun renderSimilarChoiceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
-        home.composeRouteWithActionBar(
+        home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
             content = {
                 SimilarChoiceSessionCard(
                     model = model,
                     modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-                    showInlineChoices = false,
+                    showInlineChoices = true,
+                    detailsExpandedByDefault = false,
                     onExploreDifferences = Runnable { renderSimilarDifferenceRoute(model, differenceModel) },
                 )
             },
-            actionBar = { SimilarChoiceActionBar(model.gridModel) },
         )
     }
 
@@ -206,7 +206,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             },
             onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
         )
-        home.composeRouteWithActionBar(
+        home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
             content = {
                 SimilarKanjiDifferenceScreen(
@@ -214,7 +214,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
                 )
             },
-            actionBar = { SimilarChoiceActionBar(model.gridModel) },
         )
     }
 
