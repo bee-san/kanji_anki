@@ -57,7 +57,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun readsKikuCollectionWhenTopLevelCardsUriIsUnsupported() {
+    fun readsKikuCollectionWithBulkCardsQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults())
@@ -72,9 +72,32 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertClose(7.0, snapshot.cards[0].fsrsDifficulty)
         assertClose(0.42, snapshot.cards[0].fsrsRetrievability)
         assertTrue(snapshot.cards[1].suspended)
-        assertEquals(0, providerInt("topLevelCardsQueries"))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
+    }
+
+    @Test
+    fun bulkCardReaderPagesLargeNoteSetsWithoutPerNoteQueries() {
+        val reader = AnkiDroidCardReader(context.contentResolver)
+        val noteIds = linkedSetOf<Long>().apply {
+            for (noteId in 1L..7000L) {
+                add(noteId)
+            }
+        }
+
+        val cards = reader.queryCardsByNote(
+            FakeAnkiDroidProvider.AUTHORITY,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            noteIds,
+            SyncProgress.NONE,
+        )
+
+        assertEquals(7000, cards.size)
+        assertEquals(1L, cards.first().noteId)
+        assertEquals(7000L, cards.last().noteId)
+        assertEquals(0, providerInt("perNoteCardsQueries"))
+        assertTrue(providerInt("topLevelCardsQueries") < 100)
     }
 
     @Test
@@ -249,8 +272,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(1, imports.size)
         assertEquals("箱", imports[0].kanji)
         assertTrue(result.message?.contains("tagged in AnkiDroid") == true)
-        assertEquals(0, providerInt("topLevelCardsQueries"))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }
 
@@ -268,8 +291,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val imports = store.suspendedImports()
         assertEquals(1, imports.size)
         assertEquals("箱", imports[0].kanji)
-        assertEquals(0, providerInt("topLevelCardsQueries"))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }
 
@@ -307,7 +330,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun manualSyncFallsBackWhenPerNoteSchedulerProjectionIsUnsupported() {
+    fun manualSyncFallsBackWhenBulkSchedulerProjectionIsUnsupported() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "rejectSchedulerProjection", null, null)
@@ -317,14 +340,14 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.success)
         assertEquals("success", store.latestSync()?.status)
         assertFalse(store.dashboardRows().isEmpty())
-        assertEquals(0, providerInt("topLevelCardsQueries"))
+        assertEquals(3, providerInt("topLevelCardsQueries"))
         assertEquals(2, providerInt("schedulerProjectionRejects"))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }
 
     @Test
-    fun manualSyncFallsBackWhenPerNoteSchedulerCursorThrowsUnknownQueue() {
+    fun manualSyncFallsBackWhenBulkSchedulerCursorThrowsUnknownQueue() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "deferSchedulerProjectionFailure", null, null)
@@ -334,9 +357,9 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
         assertFalse(store.dashboardRows().isEmpty())
-        assertEquals(0, providerInt("topLevelCardsQueries"))
+        assertEquals(3, providerInt("topLevelCardsQueries"))
         assertEquals(2, providerInt("schedulerProjectionRejects"))
-        assertEquals(4, providerInt("perNoteCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }
 
@@ -353,7 +376,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertFalse(store.dashboardRows().isEmpty())
         assertEquals(1, providerInt("fsrsProjectionRejects"))
         assertEquals(0, providerInt("schedulerProjectionRejects"))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(2, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
     }
 
     @Test
@@ -366,7 +390,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, snapshot.notes.size)
         assertEquals(2, snapshot.cards.size)
         assertEquals("確認", snapshot.notes[0].expression(RecordsSyncModels.Settings.kikuDefaults()))
-        assertEquals(2, providerInt("perNoteCardsQueries"))
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("browserQueryQueries"))
     }
 
@@ -568,7 +593,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
         assertEquals(2, providerInt("browserQueryQueries"))
-        assertEquals(3, providerInt("perNoteCardsQueries"))
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
         assertTrue(store.suspendedImports().isEmpty())
         val row = rowFor(store.dashboardRows(), "認")
         assertEquals(1, row.activeExampleCount)
@@ -656,6 +682,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.message?.contains("AnkiDroid card projection failed") == true)
         assertEquals("retryable_error", store.latestSync()?.status)
         assertEquals(3, providerInt("cardProjectionRejects"))
+        assertEquals(3, providerInt("topLevelCardsQueries"))
     }
 
     @Test
@@ -666,7 +693,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val result = ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
 
         assertFalse(result.success)
-        assertTrue(result.message?.contains("AnkiDroid returned no per-note card cursor") == true)
+        assertTrue(result.message?.contains("AnkiDroid returned no bulk card cursor") == true)
         assertEquals("retryable_error", store.latestSync()?.status)
     }
 

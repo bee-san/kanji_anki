@@ -63,6 +63,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertFalse(result.ran)
         assertEquals("Daily sync is off.", result.message)
+        assertEquals(0, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
         val auto = store.autoSyncSettings()
         assertEquals(0L, auto.lastAttemptAt)
@@ -91,7 +92,8 @@ class AutoSyncRunnerInstrumentedTest {
         assertEquals(now, auto.lastAttemptAt)
         assertEquals(now, auto.lastSuccessAt)
         assertTrue(store.hasSuccessfulSyncSince(localDayStart(now)))
-        assertTrue(providerInt("perNoteCardsQueries") > 0)
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertEquals(0, providerInt("perNoteCardsQueries"))
     }
 
     @Test
@@ -119,6 +121,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertFalse(result.ran)
         assertEquals("AnkiDroid already synced today.", result.message)
+        assertEquals(0, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
         val auto = store.autoSyncSettings()
         assertEquals(0L, auto.lastAttemptAt)
