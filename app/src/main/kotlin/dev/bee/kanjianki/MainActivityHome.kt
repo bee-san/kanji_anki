@@ -438,6 +438,29 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
 
+    /**
+     * Generic async route loader shared by non-home routes (e.g. Settings). Mirrors
+     * [renderAsyncHomeRoute] but lets the caller own the loading + rendered content so it can
+     * compose on its own route (correct test tag, back action, scroll). Keeps the heavy
+     * store/model work off the main thread so the triggering button responds well under the
+     * 1s latency budget instead of blocking the UI thread while the screen model is built.
+     */
+    fun <T> loadRouteAsync(
+        showLoading: () -> Unit,
+        load: () -> T,
+        render: (T) -> Unit,
+        traceName: String = "route",
+        showLoadingAfterMs: Long = 120,
+    ) {
+        asyncHomeRouteLoader.load(
+            showLoading = showLoading,
+            load = load,
+            render = render,
+            traceLabel = traceName,
+            showLoadingAfterMs = showLoadingAfterMs,
+        )
+    }
+
     fun cancelPendingHomeRouteLoads() {
         asyncHomeRouteLoader.cancelPending()
     }

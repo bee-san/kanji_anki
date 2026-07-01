@@ -4,6 +4,7 @@ import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.update.GitHubUpdater
@@ -88,77 +89,149 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         }
         val scrollY = if (preserveScroll) settingsScrollFor(route) else 0
         val onScrollY: (Int) -> Unit = { rememberSettingsScroll(route, it) }
+        val coordinator = MainActivitySettingsScreenCoordinator(this)
         when (route) {
-            MainActivityBase.NAV_SETTINGS_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsScreen(model)
-                }
-                backAction = Runnable { renderHome() }
-            }
-            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsImportSyncScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsSubmenuScreen(model)
-                }
-                backAction = Runnable { renderSettings(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsStudyBehaviorScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsSubmenuScreen(model)
-                }
-                backAction = Runnable { renderSettings(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsAutomationScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsSubmenuScreen(model)
-                }
-                backAction = Runnable { renderSettings(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsAppearanceScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsSubmenuScreen(model)
-                }
-                backAction = Runnable { renderSettings(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE -> {
-                val model = MainActivitySettingsScreenCoordinator(this).settingsDisplayDataScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsSubmenuScreen(model)
-                }
-                backAction = Runnable { renderSettings(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE -> {
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    SettingsUpdatePage(
-                        model = SettingsUpdatePageModel(
-                            title = SettingsTextCopy.updatePageTitle(),
-                            onHome = this@MainActivitySettings::renderHome,
-                            onBack = { renderSettingsAutomation(true) },
-                            onCheckForUpdate = { runUpdate(false) },
-                            panel = settingsUpdatePanelModel(
-                                activity = this@MainActivitySettings,
-                                title = SettingsTextCopy.automaticUpdatesTitle(),
-                            ),
+            MainActivityBase.NAV_SETTINGS_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsTitle(),
+                back = Runnable { renderHome() },
+                load = { coordinator.settingsScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsAnkiSourceTitle(),
+                back = Runnable { renderSettings(true) },
+                load = { coordinator.settingsImportSyncScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsSubmenuScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsStudyBehaviorTitle(),
+                back = Runnable { renderSettings(true) },
+                load = { coordinator.settingsStudyBehaviorScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsSubmenuScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsAutomationTitle(),
+                back = Runnable { renderSettings(true) },
+                load = { coordinator.settingsAutomationScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsSubmenuScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsAppearanceTitle(),
+                back = Runnable { renderSettings(true) },
+                load = { coordinator.settingsAppearanceScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsSubmenuScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.settingsReferenceDataTitle(),
+                back = Runnable { renderSettings(true) },
+                load = { coordinator.settingsDisplayDataScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsSubmenuScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.updatePageTitle(),
+                back = Runnable { renderSettingsAutomation(true) },
+                load = {
+                    SettingsUpdatePageModel(
+                        title = SettingsTextCopy.updatePageTitle(),
+                        onHome = this@MainActivitySettings::renderHome,
+                        onBack = { renderSettingsAutomation(true) },
+                        onCheckForUpdate = { runUpdate(false) },
+                        panel = settingsUpdatePanelModel(
+                            activity = this@MainActivitySettings,
+                            title = SettingsTextCopy.automaticUpdatesTitle(),
                         ),
                     )
-                }
-                backAction = Runnable { renderSettingsAutomation(true) }
-            }
-            MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE -> {
-                val model = MainActivitySettingsReferenceData(this).referenceDataScreenModel()
-                composeSettingsRoute(route, scrollY, onScrollY) {
-                    ReferenceDataScreen(model)
-                }
-                backAction = Runnable { renderSettingsDisplayData(true) }
-            }
+                },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { SettingsUpdatePage(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = SettingsTextCopy.dataLicensesTitle(),
+                back = Runnable { renderSettingsDisplayData(true) },
+                load = { MainActivitySettingsReferenceData(this).referenceDataScreenModel() },
+                render = { model ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { ReferenceDataScreen(model) }
+                },
+            )
             else -> {
                 renderSettings()
             }
         }
+    }
+
+    /**
+     * Renders a settings route without blocking the main thread. The screen model (which reads
+     * many settings from the SQLite-backed store) is built on the background [io] executor and
+     * rendered on the main thread when ready, so tapping the Settings button (or any settings
+     * sub-card) responds well under the 1s latency budget instead of freezing while ~30+ store
+     * reads run on the click path. A lightweight loading screen is shown only if the build runs
+     * past ~120ms, so fast opens render directly with no loading flash. [back] is applied for the
+     * loading state too, so system-back works before the model finishes building.
+     */
+    private fun <T> renderSettingsRouteAsync(
+        route: String,
+        scrollY: Int,
+        onScrollY: (Int) -> Unit,
+        loadingTitle: String,
+        back: Runnable,
+        load: () -> T,
+        render: (T) -> Unit,
+    ) {
+        loadRouteAsync(
+            showLoading = {
+                composeSettingsRoute(route, scrollY, onScrollY) {
+                    HomeRouteLoadingScreen(
+                        title = loadingTitle,
+                        homeLabel = HomeTextCopy.homeLabel(),
+                        onHome = ::renderHome,
+                    )
+                }
+                backAction = back
+            },
+            load = load,
+            render = { model ->
+                render(model)
+                backAction = back
+            },
+            traceName = "settings-route",
+        )
     }
 
     private fun renderScreenshotSettings() {

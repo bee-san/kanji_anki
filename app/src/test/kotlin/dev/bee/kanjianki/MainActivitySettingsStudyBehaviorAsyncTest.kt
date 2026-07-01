@@ -24,6 +24,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
+/**
+ * The settings routes render asynchronously: the screen model (which reads many settings from the
+ * SQLite-backed store) is built on the background [io] executor and composed on the main thread
+ * when ready, so tapping into settings responds well under the 1s latency budget. These tests
+ * inject a controllable [io] executor and route loader so the off-main build, the deferred
+ * new-card-sort preview refresh, and the resume-after-pause re-render can be driven step by step.
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MainActivitySettingsStudyBehaviorAsyncTest {
@@ -48,6 +55,7 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
             replaceBaseField(activity, "io", ioTasks)
+            installRouteLoader(activity, ioTasks)
 
             LocalStore(context).use { store ->
                 store.saveSuccessfulSync(
@@ -65,6 +73,14 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
                 activity.renderSettingsStudyBehavior()
                 shadowOf(Looper.getMainLooper()).idle()
 
+                // The screen model is built off-main, not on the click path.
+                assertEquals(1, ioTasks.pendingCount())
+                assertNull(activity.cachedNewCardSortPreviewRows)
+
+                // Build the model on the background thread; it schedules the preview refresh and
+                // posts the rendered content back to the main thread.
+                ioTasks.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
                 assertEquals(1, ioTasks.pendingCount())
                 assertNull(activity.cachedNewCardSortPreviewRows)
 
@@ -72,11 +88,13 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
                 ioTasks.runNext()
                 shadowOf(Looper.getMainLooper()).idle()
 
+                // Preview computed while paused: cache is populated but the re-render is deferred.
                 assertNotNull(activity.cachedNewCardSortPreviewRows)
+                assertEquals(0, ioTasks.pendingCount())
                 activity.contentScrollY = 123
 
                 controller.resume()
-                shadowOf(Looper.getMainLooper()).idle()
+                drainAsync(ioTasks)
 
                 assertEquals(0, activity.contentScrollY)
             }
@@ -103,6 +121,7 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
             replaceBaseField(activity, "io", ioTasks)
+            installRouteLoader(activity, ioTasks)
 
             LocalStore(context).use { store ->
                 prepareEmptyStore(store)
@@ -112,13 +131,22 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
                 activity.renderSettingsStudyBehavior()
                 shadowOf(Looper.getMainLooper()).idle()
 
+                // Model build is queued off-main.
+                assertEquals(1, ioTasks.pendingCount())
+                assertNull(activity.cachedNewCardSortPreviewRows)
+
+                // Building the model schedules the preview refresh as a separate background task
+                // rather than computing it on the main thread.
+                ioTasks.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
                 assertEquals(1, ioTasks.pendingCount())
                 assertNull(activity.cachedNewCardSortPreviewRows)
 
                 ioTasks.runNext()
                 shadowOf(Looper.getMainLooper()).idle()
-
                 assertNotNull(activity.cachedNewCardSortPreviewRows)
+
+                drainAsync(ioTasks)
                 assertEquals(0, ioTasks.pendingCount())
             }
         } finally {
@@ -143,6 +171,7 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
             replaceBaseField(activity, "io", ioTasks)
+            installRouteLoader(activity, ioTasks)
 
             LocalStore(context).use { store ->
                 prepareEmptyStore(store)
@@ -158,6 +187,12 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
                 activity.renderSettingsStudyBehavior()
                 shadowOf(Looper.getMainLooper()).idle()
 
+                // Only the model build is queued; no preview refresh yet.
+                assertEquals(1, ioTasks.pendingCount())
+
+                // Building the model with a fresh preview cache does not schedule another refresh.
+                ioTasks.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
                 assertEquals(0, ioTasks.pendingCount())
                 assertSame(cached, activity.cachedNewCardSortPreviewRows)
             }
@@ -210,6 +245,35 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
         field.set(activity, value)
     }
 
+    /**
+     * Replaces the lazily-created [AsyncHomeRouteLoader] with one whose background executor is the
+     * controllable [ioTasks] queue and whose main dispatch posts to the real (Robolectric-driven)
+     * main looper, so the whole async settings render serializes on a single inspectable queue.
+     */
+    private fun installRouteLoader(activity: MainActivity, ioTasks: QueueingExecutorService) {
+        val field = MainActivityHome::class.java.getDeclaredField("asyncHomeRouteLoader\$delegate")
+        field.isAccessible = true
+        field.set(
+            activity,
+            lazyOf(
+                AsyncHomeRouteLoader(
+                    background = ioTasks,
+                    postToMain = { runnable -> activity.main.post(runnable) },
+                ),
+            ),
+        )
+    }
+
+    private fun drainAsync(ioTasks: QueueingExecutorService) {
+        var guard = 0
+        while (ioTasks.pendingCount() > 0 && guard < MAX_DRAIN_STEPS) {
+            ioTasks.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+            guard += 1
+        }
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
     private class QueueingExecutorService : AbstractExecutorService() {
         private val tasks = ArrayDeque<Runnable>()
         private var shutdown = false
@@ -251,5 +315,9 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
         fun runNext() {
             tasks.removeFirst().run()
         }
+    }
+
+    private companion object {
+        const val MAX_DRAIN_STEPS = 50
     }
 }
