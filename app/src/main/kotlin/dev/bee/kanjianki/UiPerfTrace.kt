@@ -46,6 +46,44 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
     }
 }
 
+/**
+ * Debug-only timing probe that ALWAYS logs (unlike [withUiTrace], which only logs when a
+ * section runs past [PERF_TRACE_LOG_THRESHOLD_MS]). Used to trace the cold-boot study-load path
+ * where we want to see every stage's duration, including the fast ones, so slow stages stand out.
+ */
+internal fun <T> withStudyLoadProbe(stage: String, action: () -> T): T {
+    if (!BuildConfig.DEBUG) {
+        return action()
+    }
+    val startNanos = runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
+    val onMainThread = runCatching {
+        android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
+    }.getOrDefault(false)
+    try {
+        return action()
+    } finally {
+        val durationMs = (runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime()) - startNanos) / 1_000_000.0
+        val line = String.format(
+            Locale.US,
+            "stage=%s duration_ms=%.2f main_thread=%b",
+            stage,
+            durationMs,
+            onMainThread,
+        )
+        runCatching { Log.d(STUDY_LOAD_LOG_TAG, line) }
+        StudyLoadDebugLog.log(line)
+    }
+}
+
+internal fun studyLoadDebug(message: String) {
+    if (BuildConfig.DEBUG) {
+        runCatching { Log.d(STUDY_LOAD_LOG_TAG, message) }
+        StudyLoadDebugLog.log(message)
+    }
+}
+
+internal const val STUDY_LOAD_LOG_TAG = "KaniStudyLoad"
+
 internal fun buttonTraceSection(label: String): String {
     return "kani.button.${traceToken(label)}"
 }

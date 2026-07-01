@@ -79,12 +79,15 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     }
 
     fun settingsDisplayDataScreenModel(): SettingsSubmenuScreenModel {
+        val referenceData = MainActivitySettingsReferenceData(activity)
+        val panels = buildList {
+            add(referenceData.dataLicenseSettingsPanelModel())
+            referenceData.shareDebugLogPanelModelOrNull()?.let(::add)
+        }
         return submenuScreenModel(
             title = SettingsTextCopy.settingsReferenceDataTitle(),
             body = SettingsTextCopy.settingsReferenceDataBody(),
-            panels = listOf(
-                MainActivitySettingsReferenceData(activity).dataLicenseSettingsPanelModel(),
-            ),
+            panels = panels,
         )
     }
 

@@ -71,10 +71,30 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
-        cachedDashboardRows?.let { return it }
+        cachedDashboardRows?.let {
+            dev.bee.kanjianki.studyLoadDebug("dashboardRows cache hit size=${it.size}")
+            return it
+        }
 
+        val loadStart = android.os.SystemClock.elapsedRealtime()
         val db = readableDatabase
-        val rows = ArrayList<RecordsImportModels.DashboardRow>()
+        // First read the (capped) row headers, then batch-load examples for all of them in a
+        // single query instead of firing one example query per kanji. On cold boot the old N+1
+        // pattern cost ~240ms on the main thread; batching collapses it to two queries.
+        data class RowHeader(
+            val kanji: String,
+            val jitenRank: Int?,
+            val primaryMeaning: String,
+            val reading: String,
+            val browserSearch: String,
+            val weaknessScore: Int,
+            val reasonCode: String,
+            val reasonText: String,
+            val activeExampleCount: Int,
+            val suspendedExampleCount: Int,
+            val matureSupportCount: Int,
+        )
+        val headers = ArrayList<RowHeader>()
         db.query(
             TABLE_DASHBOARD_ROWS,
             null,
@@ -86,10 +106,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             "120",
         ).use { cursor ->
             while (cursor.moveToNext()) {
-                val kanji = string(cursor, COLUMN_KANJI)
-                rows.add(
-                    RecordsImportModels.DashboardRow(
-                        kanji,
+                headers.add(
+                    RowHeader(
+                        string(cursor, COLUMN_KANJI),
                         nullableInt(cursor, COLUMN_JITEN_RANK),
                         string(cursor, COLUMN_PRIMARY_MEANING),
                         string(cursor, COLUMN_READING),
@@ -100,12 +119,35 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                         integer(cursor, COLUMN_ACTIVE_EXAMPLE_COUNT),
                         integer(cursor, COLUMN_SUSPENDED_EXAMPLE_COUNT),
                         integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
-                        examplesForKanji(db, kanji),
                     ),
                 )
             }
         }
+        val examplesByKanji = examplesForKanjiBatch(db, headers.map { it.kanji })
+        val rows = ArrayList<RecordsImportModels.DashboardRow>(headers.size)
+        for (header in headers) {
+            rows.add(
+                RecordsImportModels.DashboardRow(
+                    header.kanji,
+                    header.jitenRank,
+                    header.primaryMeaning,
+                    header.reading,
+                    header.browserSearch,
+                    header.weaknessScore,
+                    header.reasonCode,
+                    header.reasonText,
+                    header.activeExampleCount,
+                    header.suspendedExampleCount,
+                    header.matureSupportCount,
+                    examplesByKanji[header.kanji] ?: emptyList<RecordsImportModels.Example>(),
+                ),
+            )
+        }
         cachedDashboardRows = rows
+        dev.bee.kanjianki.studyLoadDebug(
+            "dashboardRows LOADED size=${rows.size} " +
+                "(batched examples) duration_ms=${android.os.SystemClock.elapsedRealtime() - loadStart}"
+        )
         return rows
     }
 
@@ -362,8 +404,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
 
         val cacheKey = distinctKanji.joinToString("\u0000")
-        cachedStudyItemsByKanji?.get(cacheKey)?.let { return it }
+        cachedStudyItemsByKanji?.get(cacheKey)?.let {
+            dev.bee.kanjianki.studyLoadDebug("studyItemsForKanji cache hit size=${it.size} keys=${distinctKanji.size}")
+            return it
+        }
 
+        val start = android.os.SystemClock.elapsedRealtime()
         val db = readableDatabase
         val placeholders = distinctKanji.joinToString(",") { "?" }
         val items = ArrayList<RecordsStudyModels.StudyItem>()
@@ -380,6 +426,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items.add(readStudyItem(cursor))
             }
         }
+        dev.bee.kanjianki.studyLoadDebug(
+            "studyItemsForKanji LOADED size=${items.size} keys=${distinctKanji.size} " +
+                "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
+        )
         val withSimilar = kanjiWithSimilarNeighbors(db)
         for (i in items.indices) {
             val current = items[i]

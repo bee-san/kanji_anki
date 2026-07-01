@@ -119,6 +119,66 @@ class ReadingExposureMediaReaderTest {
         assertEquals(0.0, index.priorityBoost("読"), 0.0)
     }
 
+    @Test
+    fun readerReparsesWhenBackingFileChangesButServesCacheOtherwise() {
+        val media = temporaryFolder.newFolder("cache.media")
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"${ReadingExposureMediaReader.DEFAULT_KANJI_FILE}"}""",
+            Charsets.UTF_8,
+        )
+        val kanjiFile = File(media, ReadingExposureMediaReader.DEFAULT_KANJI_FILE)
+        gzip(
+            kanjiFile,
+            """{"kanji":[{"kanji":"川","totalCount":3,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":10}]}""",
+        )
+
+        val first = ReadingExposureMediaReader(listOf(media)).read()
+        assertEquals(3, first.statFor("川")?.totalCount)
+
+        // Same file → cached parse; a fresh reader instance still reflects the same content.
+        val cached = ReadingExposureMediaReader(listOf(media)).read()
+        assertEquals(3, cached.statFor("川")?.totalCount)
+
+        // Rewrite with different content and a distinct mtime so the fingerprint changes.
+        kanjiFile.delete()
+        gzip(
+            kanjiFile,
+            """{"kanji":[{"kanji":"川","totalCount":99,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":10}]}""",
+        )
+        kanjiFile.setLastModified(5_000_000_000L)
+
+        val refreshed = ReadingExposureMediaReader(listOf(media)).read()
+        assertEquals(99, refreshed.statFor("川")?.totalCount)
+    }
+
+    @Test
+    fun reparsesWhenCustomManifestKanjiFileChanges() {
+        val media = temporaryFolder.newFolder("custom.media")
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"custom_stats.json.gz"}""",
+            Charsets.UTF_8,
+        )
+        val custom = File(media, "custom_stats.json.gz")
+        gzip(
+            custom,
+            """{"kanji":[{"kanji":"山","totalCount":4,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":1}]}""",
+        )
+
+        val first = ReadingExposureMediaReader(listOf(media)).read()
+        assertEquals(4, first.statFor("山")?.totalCount)
+
+        // Change only the custom stats file (manifest untouched). Cache must still refresh.
+        custom.delete()
+        gzip(
+            custom,
+            """{"kanji":[{"kanji":"山","totalCount":77,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":1}]}""",
+        )
+        custom.setLastModified(6_000_000_000L)
+
+        val refreshed = ReadingExposureMediaReader(listOf(media)).read()
+        assertEquals(77, refreshed.statFor("山")?.totalCount)
+    }
+
     private fun gzip(file: File, text: String) {
         GZIPOutputStream(file.outputStream()).use { output ->
             output.write(text.toByteArray(StandardCharsets.UTF_8))

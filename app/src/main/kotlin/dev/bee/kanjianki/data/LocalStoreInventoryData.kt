@@ -93,27 +93,73 @@ internal class LocalStoreInventoryData(
             "8",
         ).use { cursor ->
             while (cursor.moveToNext()) {
-                examples.add(
-                    RecordsImportModels.Example(
-                        LocalStoreBase.string(cursor, "source_type"),
-                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_CARD_ID),
-                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_NOTE_ID),
-                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EXPRESSION),
-                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_READING),
-                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_MEANING),
-                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_SENTENCE),
-                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MATURE) == 1,
-                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_LAPSES),
-                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_INTERVAL_DAYS),
-                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_REPS),
-                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_STABILITY),
-                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_DIFFICULTY),
-                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_RETRIEVABILITY),
-                    ),
-                )
+                examples.add(readExample(cursor))
             }
         }
         return examples
+    }
+
+    /**
+     * Batched replacement for calling [examplesForKanji] once per dashboard row.
+     *
+     * Loading dashboard rows previously fired one query per kanji (up to 120), which on a cold
+     * boot cost ~240ms on the main thread because each query paid its own cursor + file-cache
+     * cost. This reads every example for the requested kanji in a single query, then groups in
+     * memory while preserving the original per-kanji ordering (source_type DESC, id ASC) and the
+     * 8-example cap.
+     */
+    fun examplesForKanjiBatch(
+        db: SQLiteDatabase,
+        kanji: Collection<String>,
+    ): Map<String, List<RecordsImportModels.Example>> {
+        val distinct = kanji.filter { it.isNotEmpty() }.distinct()
+        if (distinct.isEmpty()) {
+            return emptyMap()
+        }
+        val result = LinkedHashMap<String, ArrayList<RecordsImportModels.Example>>()
+        val placeholders = distinct.joinToString(",") { "?" }
+        db.query(
+            LocalStoreBase.TABLE_KANJI_EXAMPLES,
+            null,
+            "${LocalStoreBase.COLUMN_KANJI} IN ($placeholders)",
+            distinct.toTypedArray(),
+            null,
+            null,
+            "${LocalStoreBase.COLUMN_KANJI} ASC, source_type DESC, id ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val rowKanji = LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI)
+                val bucket = result.getOrPut(rowKanji) { ArrayList() }
+                if (bucket.size >= EXAMPLES_PER_KANJI_CAP) {
+                    continue
+                }
+                bucket.add(readExample(cursor))
+            }
+        }
+        return result
+    }
+
+    private fun readExample(cursor: Cursor): RecordsImportModels.Example {
+        return RecordsImportModels.Example(
+            LocalStoreBase.string(cursor, "source_type"),
+            LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_CARD_ID),
+            LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_NOTE_ID),
+            LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EXPRESSION),
+            LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_READING),
+            LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_MEANING),
+            LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_SENTENCE),
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MATURE) == 1,
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_LAPSES),
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_INTERVAL_DAYS),
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_REPS),
+            LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_STABILITY),
+            LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_DIFFICULTY),
+            LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_RETRIEVABILITY),
+        )
+    }
+
+    private companion object {
+        const val EXAMPLES_PER_KANJI_CAP = 8
     }
 
     fun studyItemForKanji(db: SQLiteDatabase, kanji: String?): RecordsStudyModels.StudyItem? {

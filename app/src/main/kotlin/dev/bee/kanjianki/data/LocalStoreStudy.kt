@@ -32,6 +32,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         occurredAt: Long,
         settings: RecordsSyncModels.Settings?,
     ) {
+        val start = android.os.SystemClock.elapsedRealtime()
         writableDatabase.transaction {
             val previous = if (syncId == null) emptyMap() else studySnapshots(this)
             delete(TABLE_STUDY_ITEMS, null, null)
@@ -44,6 +45,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
             clearStudyItemsCache()
         }
+        dev.bee.kanjianki.studyLoadDebug(
+            "replaceStudyItems WROTE count=${items.size} (delete-all + reinsert) " +
+                "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
+        )
     }
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
         val items = HashMap<String, StudySnapshot>()

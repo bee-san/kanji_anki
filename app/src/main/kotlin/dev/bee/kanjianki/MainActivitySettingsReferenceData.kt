@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import android.content.Intent
+import android.widget.Toast
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
@@ -13,6 +15,35 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
                 activity.renderReferenceDataDetails()
             }
         )
+    }
+
+    /**
+     * Debug-only panel that shares the study-load debug log via the Android share sheet, so the
+     * log can be sent without digging through the Files app. Null in release builds.
+     */
+    fun shareDebugLogPanelModelOrNull(): SettingsReferenceDataLinkModel? {
+        if (!BuildConfig.DEBUG) {
+            return null
+        }
+        return SettingsReferenceDataLinkModel(
+            title = "Study debug log",
+            body = "Share the study-load timing log (kani-study-debug.log) so it can be diagnosed.",
+            actionLabel = "Share debug log",
+            onAction = Runnable { shareDebugLog() },
+        )
+    }
+
+    private fun shareDebugLog() {
+        val intent = StudyLoadDebugLog.buildShareIntent(activity)
+        if (intent == null) {
+            Toast.makeText(
+                activity,
+                "No debug log yet — open Study first, then try again.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        activity.startActivity(Intent.createChooser(intent, "Share debug log"))
     }
 
     fun dataSourcesModel(): SettingsReferenceDataModel {

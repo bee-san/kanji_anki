@@ -8,37 +8,49 @@ import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
     fun renderStudy() {
-        val rows = study.store.activeDashboardRows()
+        withStudyLoadProbe("renderStudy.total") { renderStudyInternal() }
+    }
+
+    private fun renderStudyInternal() {
+        val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
         val now = System.currentTimeMillis()
-        val ladder = study.studyLadderSettings()
-        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
-        val plan = if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+        val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
+        studyLoadDebug("renderStudy rows=${rows.size}")
+        val currentItems = withStudyLoadProbe("studyItemsForKanji") {
+            if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
+        }
+        studyLoadDebug("renderStudy currentItems=${currentItems.size}")
+        val plan = withStudyLoadProbe("studyPlanForMode#1") {
+            if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+        }
         study.activeStudyPlan = plan
-        if (renderPendingRepairOrDone(plan, now, ladder)) {
+        if (withStudyLoadProbe("renderPendingRepairOrDone#1") { renderPendingRepairOrDone(plan, now, ladder) }) {
             return
         }
         if (rows.isEmpty()) {
             study.renderEmptyStudyQueue()
             return
         }
-        val seeded = study.studyQueue(rows, now, true, plan, currentItems)
-        val seededPlan = study.studyPlanForMode(rows, seeded, now)
+        val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
+        val seededPlan = withStudyLoadProbe("studyPlanForMode#2") { study.studyPlanForMode(rows, seeded, now) }
         study.activeStudyPlan = seededPlan
-        if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
+        if (withStudyLoadProbe("renderPendingRepairOrDone#2") { renderPendingRepairOrDone(seededPlan, now, ladder) }) {
             return
         }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
-        study.activeSession = StudySessionActions.plannedStudySession(
-            BridgeScheduler(),
-            study.studySessionTracker,
-            seeded,
-            rows,
-            now,
-            study.studyAheadMillis(),
-            allowedKanji,
-            study.settings(),
-            ladder,
-        )
+        study.activeSession = withStudyLoadProbe("plannedStudySession") {
+            StudySessionActions.plannedStudySession(
+                BridgeScheduler(),
+                study.studySessionTracker,
+                seeded,
+                rows,
+                now,
+                study.studyAheadMillis(),
+                allowedKanji,
+                study.settings(),
+                ladder,
+            )
+        }
         study.activeSimilarWritingRepair = null
         val session = study.activeSession
         if (session == null) {
