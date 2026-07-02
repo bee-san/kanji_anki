@@ -82,6 +82,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     correct,
                     RecordsBase.LadderRung.MEANING_KANJI.wireName(),
                     System.currentTimeMillis(),
+                    session.token,
                 )
                 home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
             },
@@ -169,7 +170,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             SimilarChoiceGridModel(
                 choices,
                 false
-            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
+            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph, session.token) },
             explanationLines,
         )
         lateinit var differenceModel: SimilarKanjiDifferenceModel

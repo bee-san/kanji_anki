@@ -78,14 +78,15 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         ReminderScheduler.schedule(activity)
     }
 
-    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
+    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String, reviewToken: String? = null) {
         val now = System.currentTimeMillis()
         val ladder = activity.studyLadderSettings()
         val result = activity.store.submitSimilarChoice(
             card,
             selectedKanji,
             now,
-            ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
+            ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI),
+            reviewToken,
         )
         submitReview(
             if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,

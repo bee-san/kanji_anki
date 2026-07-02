@@ -73,6 +73,11 @@ class StatsCacheInvalidationTest {
 
         store.saveStudyItem(after)
         store.saveReview(reviewRequest("痛", "token-review"), "good", 2_000L, before, after)
+        store.writableDatabase.execSQL(
+            "INSERT INTO similar_kanji_review_log (target_kanji, choice_signature, selected_kanji, correct, reviewed_at, review_token, rung) " +
+                "VALUES (?, ?, ?, 0, ?, ?, ?)",
+            arrayOf<Any>("痛", "sig", "提", 1_500L, "token-review", "meaning_kanji"),
+        )
         val versionBeforeUndo = sourceVersion()
 
         val undone = store.undoLastAppliedReview(
@@ -92,6 +97,16 @@ class StatsCacheInvalidationTest {
             null,
         ).use { it.count }
         assertEquals(0, reviewRows)
+        val confusionRows = store.readableDatabase.query(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_REVIEW_TOKEN),
+            "${LocalStoreBase.COLUMN_REVIEW_TOKEN} = ?",
+            arrayOf("token-review"),
+            null,
+            null,
+            null,
+        ).use { it.count }
+        assertEquals(0, confusionRows)
         assertTrue(store.timelineForKanji("痛").events.none { it.dedupeKey == "review:token-review" })
     }
 

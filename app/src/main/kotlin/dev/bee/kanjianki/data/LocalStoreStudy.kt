@@ -96,6 +96,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             if (deleted <= 0) {
                 false
             } else {
+                delete(TABLE_SIMILAR_KANJI_REVIEW_LOG, "$COLUMN_REVIEW_TOKEN = ?", arrayOf(snapshot.token))
                 delete(TABLE_KANJI_TIMELINE_EVENTS, "$COLUMN_DEDUPE_KEY = ?", arrayOf("review:${snapshot.token}"))
                 upsertStudyItem(this, snapshot.beforeReview)
                 StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)

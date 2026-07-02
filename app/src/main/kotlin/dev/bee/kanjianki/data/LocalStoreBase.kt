@@ -524,6 +524,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val COLUMN_REPS: String = "reps"
         const val COLUMN_REVIEW_DAY_START: String = "review_day_start"
         const val COLUMN_REVIEWED_AT: String = "reviewed_at"
+        const val COLUMN_REVIEW_TOKEN: String = "review_token"
         const val COLUMN_SENTENCE: String = "sentence"
         const val COLUMN_SOURCE: String = "source"
         const val COLUMN_SOURCE_CARD_IDS: String = "source_card_ids"

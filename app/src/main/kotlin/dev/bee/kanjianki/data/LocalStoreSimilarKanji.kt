@@ -199,8 +199,9 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         submitted: RecordsImportModels.SimilarKanjiChoiceCard?,
         selectedKanji: String?,
         nowMillis: Long,
+        reviewToken: String? = null,
     ): RecordsImportModels.SimilarKanjiChoiceResult {
-        return submitSimilarChoice(submitted, selectedKanji, nowMillis, true)
+        return submitSimilarChoice(submitted, selectedKanji, nowMillis, true, reviewToken)
     }
 
     /**
@@ -216,6 +217,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         correct: Boolean,
         rung: String?,
         nowMillis: Long,
+        reviewToken: String? = null,
     ) {
         val target = normalizeSingleKanji(targetKanji)
         val selected = normalizeSingleKanji(selectedKanji)
@@ -228,6 +230,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         log.put("selected_kanji", selected)
         log.put("correct", if (correct) 1 else 0)
         log.put(COLUMN_REVIEWED_AT, nowMillis)
+        log.put(COLUMN_REVIEW_TOKEN, reviewToken?.trim().takeUnless { it.isNullOrEmpty() } ?: "")
         log.put(COLUMN_RUNG, rung?.trim().takeUnless { it.isNullOrEmpty() } ?: RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
         writableDatabase.insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
     }
@@ -237,6 +240,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         selectedKanji: String?,
         nowMillis: Long,
         enqueueRepairs: Boolean,
+        reviewToken: String? = null,
     ): RecordsImportModels.SimilarKanjiChoiceResult {
         if (submitted == null) {
             return RecordsImportModels.SimilarKanjiChoiceResult(null, selectedKanji, false, emptyList())
@@ -270,6 +274,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
             log.put("selected_kanji", evaluated.selectedKanji)
             log.put("correct", if (evaluated.correct) 1 else 0)
             log.put(COLUMN_REVIEWED_AT, nowMillis)
+            log.put(COLUMN_REVIEW_TOKEN, reviewToken?.trim().takeUnless { it.isNullOrEmpty() } ?: "")
             log.put(COLUMN_RUNG, RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
             insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
 

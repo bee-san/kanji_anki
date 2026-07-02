@@ -311,8 +311,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingCheck.checkWriting()
     }
 
-    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
-        writingReview.submitSimilarKanjiChoice(card, selectedKanji)
+    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String, reviewToken: String? = null) {
+        writingReview.submitSimilarKanjiChoice(card, selectedKanji, reviewToken)
     }
 
     fun showNoInkWhenNeeded(): Boolean {

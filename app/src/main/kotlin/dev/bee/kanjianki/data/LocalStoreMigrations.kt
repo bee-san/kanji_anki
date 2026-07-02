@@ -13,6 +13,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyTwo(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyThree(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyFour(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentyFive(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -158,6 +159,23 @@ internal object LocalStoreMigrations {
                 LocalStoreBase.COLUMN_RUNG,
                 LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_SIMILAR_KANJI_RUNG,
             )
+        }
+    }
+
+    private fun upgradeThroughTwentyFive(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 25)) {
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
+                LocalStoreBase.COLUMN_REVIEW_TOKEN,
+                LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY,
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_review_token ON similar_kanji_review_log(review_token)")
         }
     }
 

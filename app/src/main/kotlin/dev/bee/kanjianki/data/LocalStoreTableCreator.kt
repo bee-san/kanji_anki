@@ -126,9 +126,11 @@ internal object LocalStoreTableCreator {
             "selected_kanji TEXT NOT NULL",
             "correct INTEGER NOT NULL",
             "reviewed_at INTEGER NOT NULL",
+            "review_token TEXT NOT NULL DEFAULT ''",
             "rung ${LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_SIMILAR_KANJI_RUNG}",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_target ON similar_kanji_review_log(target_kanji, reviewed_at)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_review_token ON similar_kanji_review_log(review_token)")
     }
 
     fun createHistoricalSyncTables(db: SQLiteDatabase) {

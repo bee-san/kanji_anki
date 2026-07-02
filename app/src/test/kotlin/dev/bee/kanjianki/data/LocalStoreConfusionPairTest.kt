@@ -3,9 +3,11 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.StudyReviewActions
 import dev.bee.kanjianki.core.ConfusionPairMiner
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import org.junit.After
@@ -41,12 +43,14 @@ class LocalStoreConfusionPairTest {
     fun freshInstallReviewLogHasRungColumnDefaultingToSimilarKanji() {
         val db = store.writableDatabase
         assertTrue(columnExists(db, "similar_kanji_review_log", "rung"))
+        assertTrue(columnExists(db, "similar_kanji_review_log", "review_token"))
 
         db.execSQL(
             "INSERT INTO similar_kanji_review_log (target_kanji, choice_signature, selected_kanji, correct, reviewed_at) " +
                 "VALUES ('拉', 'sig', '提', 0, 1000)",
         )
         assertEquals(listOf("similar_kanji"), rungValues(db))
+        assertEquals(listOf(""), reviewTokenValues(db))
     }
 
     @Test
@@ -77,9 +81,41 @@ class LocalStoreConfusionPairTest {
     }
 
     @Test
+    fun migrationToTwentyFiveAddsReviewTokenAndPreservesRows() {
+        val db = SQLiteDatabase.create(null)
+        db.execSQL(
+            "CREATE TABLE similar_kanji_review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, selected_kanji TEXT NOT NULL, " +
+                "correct INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, " +
+                "rung TEXT NOT NULL DEFAULT 'similar_kanji')",
+        )
+        db.execSQL(
+            "INSERT INTO similar_kanji_review_log (target_kanji, choice_signature, selected_kanji, correct, reviewed_at, rung) " +
+                "VALUES ('拉', 'sig', '提', 0, 1000, 'meaning_kanji')",
+        )
+
+        store.onUpgrade(db, 24, 25)
+
+        assertTrue(columnExists(db, "similar_kanji_review_log", "review_token"))
+        assertEquals(listOf("meaning_kanji"), rungValues(db))
+        assertEquals(listOf(""), reviewTokenValues(db))
+        db.rawQuery(
+            "SELECT target_kanji, selected_kanji, correct, reviewed_at FROM similar_kanji_review_log",
+            null,
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals("拉", it.getString(0))
+            assertEquals("提", it.getString(1))
+            assertEquals(0, it.getInt(2))
+            assertEquals(1000L, it.getLong(3))
+        }
+        db.close()
+    }
+
+    @Test
     fun recordChoiceReviewLogPersistsMeaningRungPicks() {
-        store.recordChoiceReviewLog("拉", "sig", "提", false, RecordsBase.LadderRung.MEANING_KANJI.wireName(), 1_000L)
-        store.recordChoiceReviewLog("拉", "sig", "拉", true, RecordsBase.LadderRung.MEANING_KANJI.wireName(), 2_000L)
+        store.recordChoiceReviewLog("拉", "sig", "提", false, RecordsBase.LadderRung.MEANING_KANJI.wireName(), 1_000L, "meaning-token")
+        store.recordChoiceReviewLog("拉", "sig", "拉", true, RecordsBase.LadderRung.MEANING_KANJI.wireName(), 2_000L, "meaning-token")
         store.recordChoiceReviewLog("", "sig", "提", false, "meaning_kanji", 3_000L)
         store.recordChoiceReviewLog("拉", "sig", "", false, "meaning_kanji", 4_000L)
 
@@ -87,17 +123,19 @@ class LocalStoreConfusionPairTest {
         assertEquals(2, rows.size)
         assertEquals(RowSnapshot("拉", "提", 0, "meaning_kanji"), rows[0])
         assertEquals(RowSnapshot("拉", "拉", 1, "meaning_kanji"), rows[1])
+        assertEquals(listOf("meaning-token", "meaning-token"), reviewTokenValues(store.readableDatabase))
     }
 
     @Test
     fun submitSimilarChoiceStampsSimilarKanjiRung() {
         val card = RecordsImportModels.SimilarKanjiChoiceCard("拉", "pull", listOf("拉", "提"), "拉\t提")
 
-        store.submitSimilarChoice(card, "提", 1_000L, false)
+        store.submitSimilarChoice(card, "提", 1_000L, false, "similar-token")
 
         val rows = reviewLogRows(store.readableDatabase)
         assertEquals(1, rows.size)
         assertEquals(RowSnapshot("拉", "提", 0, "similar_kanji"), rows[0])
+        assertEquals(listOf("similar-token"), reviewTokenValues(store.readableDatabase))
     }
 
     @Test
@@ -142,6 +180,34 @@ class LocalStoreConfusionPairTest {
     }
 
     @Test
+    fun undoLastAppliedReviewRemovesConfusionRowsAndDropsMinedPairs() {
+        val now = 200L * 24L * 60L * 60L * 1000L
+        seedInventory(listOf("拉", "提"), now)
+        val before = studyItem("拉")
+        val after = before.copyBuilder().totalReviews(2).build()
+        store.saveStudyItem(after)
+        store.saveReview(reviewRequest("拉", "undo-token"), "good", now - 5_000L, before, after)
+
+        val db = store.writableDatabase
+        insertConfusionRow(db, "拉", "sig", "提", now - 4_000L, "undo-token", "meaning_kanji")
+        insertConfusionRow(db, "拉", "sig", "提", now - 3_000L, "other-token", "meaning_kanji")
+
+        assertEquals(mapOf("拉" to mapOf("提" to 2)), store.choiceWrongPickCounts(now))
+        store.rebuildSimilarKanjiPairs(SimilarKanjiIndex.empty(), now)
+        assertTrue(store.hasSimilarLocalPair("拉", "提"))
+
+        val undone = store.undoLastAppliedReview(StudyReviewActions.AppliedReviewSnapshot("undo-token", before, after))
+
+        assertTrue(undone)
+        assertEquals(listOf("other-token"), reviewTokenValues(db))
+        assertEquals(mapOf("拉" to mapOf("提" to 1)), store.choiceWrongPickCounts(now))
+
+        store.rebuildSimilarKanjiPairs(SimilarKanjiIndex.empty(), now)
+        assertFalse(store.hasSimilarLocalPair("拉", "提"))
+        assertTrue(store.allLocalSimilarPairs().isEmpty())
+    }
+
+    @Test
     fun choiceWrongPickCountsAggregateRecentWrongPicksByTarget() {
         val now = 200L * 24L * 60L * 60L * 1000L
         store.recordChoiceReviewLog("拉", "sig", "提", false, "meaning_kanji", now - 1_000L)
@@ -168,6 +234,10 @@ class LocalStoreConfusionPairTest {
 
     private fun studyItem(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
+    }
+
+    private fun reviewRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
+        return RecordsSchedulerModels.ReviewRequest(kanji, token, "good", false, true, false, 0)
     }
 
     private data class RowSnapshot(
@@ -198,6 +268,32 @@ class LocalStoreConfusionPairTest {
             }
         }
         return out
+    }
+
+    private fun reviewTokenValues(db: SQLiteDatabase): List<String> {
+        val out = ArrayList<String>()
+        db.rawQuery("SELECT review_token FROM similar_kanji_review_log ORDER BY id ASC", null).use {
+            while (it.moveToNext()) {
+                out.add(it.getString(0))
+            }
+        }
+        return out
+    }
+
+    private fun insertConfusionRow(
+        db: SQLiteDatabase,
+        target: String,
+        signature: String,
+        selected: String,
+        reviewedAtMillis: Long,
+        reviewToken: String,
+        rung: String,
+    ) {
+        db.execSQL(
+            "INSERT INTO similar_kanji_review_log (target_kanji, choice_signature, selected_kanji, correct, reviewed_at, review_token, rung) " +
+                "VALUES (?, ?, ?, 0, ?, ?, ?)",
+            arrayOf<Any>(target, signature, selected, reviewedAtMillis, reviewToken, rung),
+        )
     }
 
     private fun columnExists(db: SQLiteDatabase, tableName: String, columnName: String): Boolean {
