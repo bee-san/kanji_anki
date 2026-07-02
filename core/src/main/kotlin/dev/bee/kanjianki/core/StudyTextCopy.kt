@@ -215,6 +215,9 @@ object StudyTextCopy {
     fun failLabel(): String = localizedText("Fail", "不合格")
 
     @JvmStatic
+    fun answerHiddenHint(): String = localizedText("Answer hidden until reveal", "答えを表示するまで非表示")
+
+    @JvmStatic
     fun cancelLabel(): String = localizedText("Cancel", "キャンセル")
 
     @JvmStatic

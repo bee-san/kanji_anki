@@ -10,6 +10,7 @@ class StudyTextCopyLocaleLabelsTest {
         assertEquals("Meaning", StudyTextCopy.meaningLabel())
         assertEquals("Pass", StudyTextCopy.passLabel())
         assertEquals("Fail", StudyTextCopy.failLabel())
+        assertEquals("Answer hidden until reveal", StudyTextCopy.answerHiddenHint())
         assertEquals("New cards", StudyTextCopy.newCardsLabel())
         assertEquals("Repair skipped.", StudyTextCopy.similarWritingRepairSkippedToast())
         assertEquals("Back home", StudyTextCopy.backHomeLabel())
@@ -29,6 +30,7 @@ class StudyTextCopyLocaleLabelsTest {
             assertEquals("意味", StudyTextCopy.meaningLabel())
             assertEquals("合格", StudyTextCopy.passLabel())
             assertEquals("不合格", StudyTextCopy.failLabel())
+            assertEquals("答えを表示するまで非表示", StudyTextCopy.answerHiddenHint())
             assertEquals("新規カード", StudyTextCopy.newCardsLabel())
             assertEquals("修正をスキップしました。", StudyTextCopy.similarWritingRepairSkippedToast())
             assertEquals("ホームに戻る", StudyTextCopy.backHomeLabel())
@@ -40,22 +42,22 @@ class StudyTextCopyLocaleLabelsTest {
             assertEquals("詳細を隠す", StudyTextCopy.similarKanjiHideDetailsLabel())
             assertEquals("正解", StudyTextCopy.choiceCorrectStateDescription())
             assertEquals("不正解", StudyTextCopy.choiceIncorrectStateDescription())
-            assertEquals("できたを保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
-            assertEquals("もう一度を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
+            assertEquals("合格を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
+            assertEquals("不合格を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
         }
     }
 
     @Test
     fun studyCopyShowsUndoBannerTextInEnglishByDefault() {
-        assertEquals("Good saved", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
-        assertEquals("Again saved", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
+        assertEquals("Pass saved", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))
+        assertEquals("Fail saved", StudyTextCopy.reviewUndoMessage(StudyRatings.AGAIN))
     }
 
     @Test
     fun studyCopyUsesUndoMessagesForOtherRatingsToo() {
         assertEquals("Hard saved", StudyTextCopy.reviewUndoMessage(StudyRatings.HARD))
         assertEquals("Easy saved", StudyTextCopy.reviewUndoMessage(StudyRatings.EASY))
-        assertEquals("Again saved", StudyTextCopy.reviewUndoMessage("mystery"))
+        assertEquals("Fail saved", StudyTextCopy.reviewUndoMessage("mystery"))
     }
 
     @Test

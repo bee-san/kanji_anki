@@ -119,11 +119,9 @@ private fun initialCountText(): String {
 }
 
 private fun initialProgressDescription(): String {
-    return if (isJapaneseLocale()) {
-        SyncProgressCopy.progressDescription(SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
-    } else {
-        "Sync progress"
-    }
+    // Both locales derive the initial description from the first sync stage
+    // so the copy stays in sync with SyncProgressCopy.
+    return SyncProgressCopy.progressDescription(SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
 }
 
 private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE

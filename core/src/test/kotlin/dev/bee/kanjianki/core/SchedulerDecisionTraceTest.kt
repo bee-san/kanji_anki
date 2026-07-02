@@ -107,16 +107,35 @@ class SchedulerDecisionTraceTest {
     @Test
     fun traceApplyReviewCapturesSimilarKanjiSkipWhenUnavailable() {
         val scheduler = schedulerWithReviewIntervalDays(22)
-        val item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
+        // Promotion from write_kanji crosses the similar_kanji rung, which has
+        // no content for this card, so the trace must record the skip.
+        val item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
             .withHasSimilarKanji(false)
             .withToken("similar-skip")
         val traced = scheduler.debugTraceApplyReview(
             BridgeScheduler.ReviewApplication.builder(item, passRequest("裂", "similar-skip"), HashSet(), 1_000L).build()
         )
 
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
+        assertEquals(RecordsBase.LadderRung.TYPE_MEANING, traced.result.item.rung)
         assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
         assertTrue(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+    }
+
+    @Test
+    fun traceApplyReviewOmitsSimilarKanjiSkipWhenPromotionDoesNotCrossIt() {
+        val scheduler = schedulerWithReviewIntervalDays(22)
+        // type_meaning -> meaning_kanji never crosses similar_kanji, so no
+        // skip reason may be reported even though the card lacks similar data.
+        val item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
+            .withHasSimilarKanji(false)
+            .withToken("similar-not-crossed")
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(item, passRequest("裂", "similar-not-crossed"), HashSet(), 1_000L).build()
+        )
+
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
+        assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
+        assertFalse(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
     }
 
     @Test

@@ -2839,7 +2839,9 @@ fun assertNavigationSettingsPersisted() {
             ));
             assertEquals(30, store.getIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 0));
-            assertEquals(2, store.getIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 0));
+            // writing_trigger_miss_days is a days value and must not be
+            // overwritten by the ladder threshold save.
+            assertEquals(0, store.getIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 0));
             assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
             assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));

@@ -30,11 +30,13 @@ class SettingsWriteActionsTest {
             { key: String, value: Int -> settings[key] = value }
         )
 
-        assertEquals(4, settings.size)
+        assertEquals(3, settings.size)
         assertEquals(21, settings[SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY])
         assertEquals(3, settings[SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY])
-        assertEquals(3, settings[SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY])
         assertEquals(3, settings[SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY])
+        // writing_trigger_miss_days is a days value, not a fail-streak count,
+        // and must never be overwritten by the ladder threshold save.
+        assertFalse(settings.containsKey(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY))
     }
 
     @Test

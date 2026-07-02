@@ -196,6 +196,28 @@ class FsrsEngineReferenceTest {
     }
 
     @Test
+    fun sameDayAgainReviewUsesShortTermStabilityLikeUpstream() {
+        val engine = FsrsEngine.latestDefault()
+        val previous = FsrsMemoryState(5.0, 6.0)
+
+        val next = engine.nextState(previous, FsrsRating.AGAIN, 0)
+
+        // py-fsrs v6.3.1 routes every same-day review, including Again,
+        // through the short-term stability update instead of forget stability.
+        assertEquals(engine.shortTermStability(5.0, FsrsRating.AGAIN), next.stability, TOLERANCE)
+        assertEquals(engine.nextDifficulty(6.0, FsrsRating.AGAIN), next.difficulty, TOLERANCE)
+    }
+
+    @Test
+    fun nextIntervalDaysClampsExtremeStabilityToMaximumInterval() {
+        val engine = FsrsEngine.latestDefault()
+
+        // A pathological stability must clamp to the maximum interval instead
+        // of wrapping the Int narrowing and collapsing to the one-day minimum.
+        assertEquals(36500, engine.nextIntervalDays(3.0e9, 0.9, 36500))
+    }
+
+    @Test
     fun engineRejectsInvalidRuntimeInputs() {
         val engine = FsrsEngine.create(FsrsParameters.latestDefault())
         val state = FsrsMemoryState(5.0, 6.0)

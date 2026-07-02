@@ -372,7 +372,10 @@ class AnkiDroidGateway private constructor(
             resolver.query(uriFor(target.authority, URI_SEGMENT_NOTES), null, search, null, null)
         } catch (error: Exception) {
             throw browserQueryFailure(error)
-        } ?: throw browserQueryFailure(null)
+        }
+            // Real AnkiDroid returns a null cursor when a valid browser query
+            // matches zero notes; treat that as an empty result, not an error.
+            ?: return ids
         cursor.use { queryCursor ->
             while (queryCursor.moveToNext()) {
                 val modelId = longValue(queryCursor, COLUMN_MODEL_ID, mapping.modelId)

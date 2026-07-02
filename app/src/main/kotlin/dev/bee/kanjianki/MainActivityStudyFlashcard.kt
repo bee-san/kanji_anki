@@ -77,7 +77,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 StudyTaskCopy.studyModeLabel(session),
                 StudyTaskCopy.flashcardTitle(session),
                 StudyTextCopy.heroQuestion(session),
-                "Answer hidden until reveal",
+                StudyTextCopy.answerHiddenHint(),
                 activity.studyReasonLine(session)
             ),
             heroPanel,

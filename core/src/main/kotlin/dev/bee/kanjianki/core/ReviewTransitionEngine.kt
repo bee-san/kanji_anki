@@ -106,7 +106,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val afterRank = ladder.rankForRung(result.item.rung)
         if (afterRank > beforeRank) {
             reasons.add("fsrs_interval_promotes")
-            if (!application.item.hasSimilarKanji && ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI)) {
+            if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
                 reasons.add("similar_kanji_unavailable")
             }
         } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
@@ -216,15 +216,11 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     private fun applyEmptyLearningStepsTransition(context: ReviewContext, state: ReviewState, isNewLearning: Boolean) {
-        if (isNewLearning || StudyRatings.AGAIN != context.rating) {
-            graduateToReview(context, state, isNewLearning)
-            return
-        }
-        state.stepIndex = 0
-        state.phase = RecordsBase.SchedulerPhase.REVIEW
-        state.due = context.nowMillis + StudyLadderRules.DAY
-        state.schedulerState = StudyLadderRules.STATE_REVIEW
-        state.scheduledIntervalDays = 1
+        // With no steps configured, every rating leaves the learning phase and
+        // reschedules from the FSRS memory state. For a relearning card this
+        // is the post-lapse memory state, matching Anki's FSRS behavior; the
+        // scheduler must never fall back to a fixed one-day interval.
+        graduateToReview(context, state, isNewLearning)
     }
 
     private fun applyLearningHard(
@@ -234,6 +230,14 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         isNewLearning: Boolean
     ) {
         val idx = max(0, state.stepIndex)
+        if (idx >= steps.size) {
+            // The configured steps shrank while this card sat mid-learning.
+            // Anki graduates a card whose step index is past the last step;
+            // repeating a clamped step would trap it in learning until a
+            // Good/Easy answer.
+            graduateToReview(context, state, isNewLearning)
+            return
+        }
         if (idx == 0 && steps.size >= 2) {
             val avg = (StudyLadderRules.stepDelayMillis(steps[0]) + StudyLadderRules.stepDelayMillis(steps[1])) / 2L
             state.due = context.nowMillis + max(StudyLadderRules.stepDelayMillis(steps[0]), avg)
@@ -242,8 +246,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             // step delay so it sits strictly between Again and Good.
             state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[0]) * 3L / 2L
         } else {
-            val safeIdx = min(idx, steps.size - 1)
-            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[safeIdx])
+            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[idx])
         }
         state.stepIndex = idx
         state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING

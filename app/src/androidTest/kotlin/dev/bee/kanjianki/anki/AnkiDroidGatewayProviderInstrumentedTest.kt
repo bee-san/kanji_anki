@@ -357,9 +357,25 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
         assertFalse(store.dashboardRows().isEmpty())
-        assertEquals(3, providerInt("topLevelCardsQueries"))
-        assertEquals(2, providerInt("schedulerProjectionRejects"))
+        assertEquals(4, providerInt("topLevelCardsQueries"))
+        assertEquals(3, providerInt("schedulerProjectionRejects"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
+        assertEquals(0, providerInt("explicitIdProjectionQueries"))
+    }
+
+    @Test
+    fun manualSyncFallsBackToPerNoteCardsWhenBulkCardsUriIsUnsupported() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "legacyTopLevelCardsUnsupported", null, null)
+
+        val result = ManualSyncEngine(context, store, gateway, settings).run()
+
+        assertTrue(result.message, result.success)
+        assertEquals("success", store.latestSync()?.status)
+        assertFalse(store.dashboardRows().isEmpty())
+        assertEquals(1, providerInt("topLevelCardsQueries"))
+        assertTrue(providerInt("perNoteCardsQueries") > 0)
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }
 
@@ -374,9 +390,9 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
         assertFalse(store.dashboardRows().isEmpty())
-        assertEquals(1, providerInt("fsrsProjectionRejects"))
+        assertEquals(2, providerInt("fsrsProjectionRejects"))
         assertEquals(0, providerInt("schedulerProjectionRejects"))
-        assertEquals(2, providerInt("topLevelCardsQueries"))
+        assertEquals(3, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
     }
 
@@ -555,20 +571,15 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun nullBrowserQueryCursorIsPermanentConfigFailure() {
+    fun nullBrowserQueryCursorIsTreatedAsZeroMatches() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "nullBrowserQueryCursor", null, null)
 
-        try {
-            gateway.readCollection(browserQueryOnlySettings())
-            assertTrue("Expected browser query cursor failure", false)
-        } catch (error: AnkiDroidGateway.SyncFailure) {
-            assertTrue(error.permanentFailure)
-            assertEquals(
-                "AnkiDroid could not run the browser query. Check the query in Import filters.",
-                error.message,
-            )
-        }
+        // Real AnkiDroid returns a null notes cursor when a valid browser
+        // query matches zero notes. That must not fail the whole sync.
+        val snapshot = gateway.readCollection(browserQueryOnlySettings())
+
+        assertFalse(snapshot.cards.any { it.browserQueryMatched })
     }
 
     @Test
@@ -681,8 +692,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertFalse(result.success)
         assertTrue(result.message?.contains("AnkiDroid card projection failed") == true)
         assertEquals("retryable_error", store.latestSync()?.status)
-        assertEquals(3, providerInt("cardProjectionRejects"))
-        assertEquals(3, providerInt("topLevelCardsQueries"))
+        assertEquals(4, providerInt("cardProjectionRejects"))
+        assertEquals(4, providerInt("topLevelCardsQueries"))
     }
 
     @Test

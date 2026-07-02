@@ -42,13 +42,34 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     override fun addNullableColumn(db: SQLiteDatabase, table: String, column: String, type: String) {
+        if (columnExists(db, table, column)) {
+            return
+        }
         try {
             db.execSQL("ALTER TABLE $table ADD COLUMN $column $type")
         } catch (error: RuntimeException) {
+            // Kept as a belt-and-braces guard for providers whose PRAGMA
+            // output diverges; migration idempotence must not depend on
+            // parsing the SQLite error message alone.
             if (error.message == null || !error.message!!.contains("duplicate column")) {
                 throw error
             }
         }
+    }
+
+    private fun columnExists(db: SQLiteDatabase, table: String, column: String): Boolean {
+        db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+            val nameIndex = cursor.getColumnIndex("name")
+            if (nameIndex < 0) {
+                return false
+            }
+            while (cursor.moveToNext()) {
+                if (column.equals(cursor.getString(nameIndex), ignoreCase = true)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     override fun backfillTimelineEvents(db: SQLiteDatabase) {

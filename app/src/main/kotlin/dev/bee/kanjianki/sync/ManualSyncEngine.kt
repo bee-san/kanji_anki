@@ -115,8 +115,6 @@ internal class ManualSyncEngine {
                 similarKanjiIndex,
                 selectedImports,
             )
-            val removal = gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress)
-            store.updateSyncRemovalMessage(syncId, removal.message)
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler()
@@ -136,6 +134,22 @@ internal class ManualSyncEngine {
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
             store.replaceStudyItems(seeded, syncId, finished, settings)
+
+            // Provider tagging runs after all local persistence so a tagging
+            // failure cannot strand a committed sync mirror alongside stale
+            // study items. Tagging is re-attempted on the next sync, so a
+            // failure here degrades to a warning instead of a failed sync.
+            val removal = try {
+                gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress)
+            } catch (error: Exception) {
+                AnkiDroidGateway.RemovalSummary(
+                    0,
+                    0,
+                    0,
+                    "Archive tagging failed and will be retried on the next sync: ${error.message}",
+                )
+            }
+            store.updateSyncRemovalMessage(syncId, removal.message)
             val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, seeded, finished)
             val readyCount = if (activeRows.isEmpty()) {
                 0
