@@ -376,7 +376,7 @@ class SettingsTextCopyTest {
         assertEquals("Steps saved.", SettingsTextCopy.learningStepsSavedToast())
         assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle())
         assertEquals(
-                "Review early; learning waits stay fixed.",
+                "Review early; learning waits stay fixed. Early answers never move the ladder.",
                 SettingsTextCopy.studyAheadBody()
         )
         assertEquals("Save minutes", SettingsTextCopy.saveStudyAheadLabel())

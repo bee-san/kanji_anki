@@ -152,7 +152,7 @@ class MainActivityHomeRouteBenchmarkTest {
         val legacyNanos = measureNanoTime {
             repeat(iterations) {
                 val overview = legacyHomeDeckOverview(studyItems, rows, nowMillis, suspendedKanji)
-                legacyChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount + overview.buriedCount
+                legacyChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount
             }
         }
 
@@ -160,7 +160,7 @@ class MainActivityHomeRouteBenchmarkTest {
         val optimizedNanos = measureNanoTime {
             repeat(iterations) {
                 val overview = HomeDeckOverviewPolicy.from(studyItems, rows, nowMillis, suspendedKanji)
-                optimizedChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount + overview.buriedCount
+                optimizedChecksum += overview.dueCount + overview.newCount + overview.learningCount + overview.relearningCount + overview.suspendedCount
             }
         }
 
@@ -431,14 +431,9 @@ class MainActivityHomeRouteBenchmarkTest {
         var newCount = 0
         var learningCount = 0
         var relearningCount = 0
-        var buriedCount = 0
 
         for (item in studyItems) {
             if (!legacyIsActiveStudyItem(item, activeFamilyKeys, activeRows)) {
-                continue
-            }
-            if (item.suppressedByTaskType.isNotEmpty()) {
-                buriedCount++
                 continue
             }
             when {
@@ -457,7 +452,6 @@ class MainActivityHomeRouteBenchmarkTest {
             learningCount = learningCount,
             relearningCount = relearningCount,
             suspendedCount = suspendedCount,
-            buriedCount = buriedCount,
         )
     }
 

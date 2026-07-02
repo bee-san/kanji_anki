@@ -48,13 +48,13 @@ class SchedulerParitySnapshotTest {
             appendLine("parity matrix:")
             appendLine("| area | current Kani behavior | Anki parity note |")
             appendLine("| learning/relearning steps | Again resets/repeats, Good advances, Hard delays/repeats, Easy graduates | intentionally Anki-like where implemented |")
-            appendLine("| bury/sibling order | same-family relearning wins over review sibling; persistent mature suppression remains separate | session/queue suppression only, not manual unbury |")
+            appendLine("| bury/sibling order | same-family relearning wins over review sibling; legacy mature-sibling suppression removed | session/queue suppression only, not manual unbury |")
             appendLine("| FSRS | local Kani FSRS memory/interval scheduling only | not Anki deck-preset or optimizer parity |")
             appendLine("| lapses/leeches | Kani tracks lapses and demotion streaks; no leech tag/suspend policy | leech-informed only for now |")
             appendLine()
             appendLine("boundary:")
             appendLine("- FSRS memory/interval only; Kani queue/ladder/suppression/steps/UI policy")
-            appendLine("- Same-session same-family hiding stays separate from persistent mature-sibling suppression")
+            appendLine("- Same-session same-family hiding is the only sibling suppression layer")
         }.trimEnd()
     }
 

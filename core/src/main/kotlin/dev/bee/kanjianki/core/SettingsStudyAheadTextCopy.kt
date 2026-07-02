@@ -9,7 +9,7 @@ object SettingsStudyAheadTextCopy {
     fun studyAheadTitle(): String = localizedText("Study ahead", "先取り学習")
 
     @JvmStatic
-    fun studyAheadBody(): String = localizedText("Review early; learning waits stay fixed.", "早めに復習し、学習待ちはそのまま。")
+    fun studyAheadBody(): String = localizedText("Review early; learning waits stay fixed. Early answers never move the ladder.", "早めに復習し、学習待ちはそのまま。早めの回答でラダーは動きません。")
 
     @JvmStatic
     fun saveStudyAheadLabel(): String = localizedText("Save minutes", "先取りを保存")

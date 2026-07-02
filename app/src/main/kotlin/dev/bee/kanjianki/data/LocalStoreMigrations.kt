@@ -13,6 +13,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyTwo(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyThree(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyFour(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentyFive(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -158,6 +159,17 @@ internal object LocalStoreMigrations {
                 LocalStoreBase.COLUMN_RUNG,
                 LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_SIMILAR_KANJI_RUNG,
             )
+        }
+    }
+
+    private fun upgradeThroughTwentyFive(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 25)) {
+            hooks.clearStaleSuppressionFlags(db)
         }
     }
 

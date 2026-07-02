@@ -252,9 +252,6 @@ object HomeTextCopy {
     fun activePracticeEmptyBody(): String = localizedText("Study now adds the next kanji.", "今すぐ学習すると次の漢字が追加されます。")
 
     @JvmStatic
-    fun deckOverviewBuriedLabel(): String = localizedText("Buried", "埋もれ")
-
-    @JvmStatic
     fun browseActionLabel(): String = localizedText("Browse Kanji", "漢字を閲覧")
 
     @JvmStatic

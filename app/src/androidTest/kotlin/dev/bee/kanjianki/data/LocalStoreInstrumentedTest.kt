@@ -1622,15 +1622,10 @@ class LocalStoreInstrumentedTest {
 
         val tuned = RecordsSchedulerModels.SchedulerParameters.defaults()
                 .withTargetRetention(0.92)
-                .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30)
                 .withFrequencyRetention(true, "1-500=95%")
         store.saveSchedulerParameters(tuned);
         val loaded = store.schedulerParameters()
         assertClose(0.92, loaded.targetRetention);
-        assertClose(0.40, loaded.againMultiplier);
-        assertClose(1.80, loaded.goodMultiplier);
-        assertEquals(5000L, loaded.lastAdjustedAtMillis);
-        assertEquals(30, loaded.lastAdjustmentReviewCount);
         assertTrue(loaded.frequencyRetentionEnabled);
         assertEquals("1-500=95%", loaded.frequencyRetentionRanges);
     }

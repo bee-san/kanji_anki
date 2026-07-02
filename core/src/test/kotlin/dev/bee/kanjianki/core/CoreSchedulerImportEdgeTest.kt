@@ -38,7 +38,7 @@ class CoreSchedulerImportEdgeTest {
     }
 
     @Test
-    fun activeQueueFiltersRetiredSuppressedAndDisallowedItems() {
+    fun activeQueueFiltersRetiredAndDisallowedItemsButKeepsStaleSuppressionFlags() {
         val scheduler = BridgeScheduler()
         val rows = listOf(
             row("裂", 0),
@@ -54,51 +54,11 @@ class CoreSchedulerImportEdgeTest {
         )
 
         val unrestricted = scheduler.activeQueueItems(items, rows, 2000L, null)
-        assertEquals(listOf("外", "裂"), sortedKanji(unrestricted))
+        // Legacy suppression flags are inert: the flagged item stays visible.
+        assertEquals(listOf("外", "裂", "語"), sortedKanji(unrestricted))
 
         val restricted = scheduler.activeQueueItems(items, rows, 2000L, setOf("裂"))
         assertEquals(listOf("裂"), sortedKanji(restricted))
-    }
-
-    @Test
-    fun suppressionRequiresDominatingMatureReviewedSibling() {
-        val scheduler = BridgeScheduler()
-        val lower = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING)
-
-        assertFalse(suppressedAfter(scheduler, lower, reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING)
-            .copyBuilder()
-            .matureIntervalDays(20)
-            .totalReviews(12)
-            .phase(RecordsBase.SchedulerPhase.REVIEW)
-            .build()))
-        assertFalse(suppressedAfter(scheduler, lower, reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING)
-            .copyBuilder()
-            .matureIntervalDays(21)
-            .totalReviews(0)
-            .phase(RecordsBase.SchedulerPhase.REVIEW)
-            .build()))
-        assertFalse(suppressedAfter(scheduler, lower, reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING)
-            .copyBuilder()
-            .matureIntervalDays(21)
-            .totalReviews(12)
-            .phase(RecordsBase.SchedulerPhase.RELEARNING)
-            .build()))
-        assertTrue(suppressedAfter(scheduler, lower, matureReview("裂", RecordsBase.LadderRung.FONT_MEANING)))
-    }
-
-    @Test
-    fun wordReadingDominatesRecognitionRungsButNotTypeMeaning() {
-        val scheduler = BridgeScheduler()
-        val word = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-        val font = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING)
-        val kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING)
-        val typed = reviewItem("裂", RecordsBase.LadderRung.TYPE_MEANING)
-
-        val result = scheduler.applySuppression(listOf(word, font, kanji, typed))
-
-        assertEquals(BridgeScheduler.TASK_WORD_READING, itemAtRung(result, RecordsBase.LadderRung.FONT_MEANING).suppressedByTaskType)
-        assertEquals(BridgeScheduler.TASK_WORD_READING, itemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType)
-        assertEquals("", itemAtRung(result, RecordsBase.LadderRung.TYPE_MEANING).suppressedByTaskType)
     }
 
     @Test
@@ -117,16 +77,6 @@ class CoreSchedulerImportEdgeTest {
             listOf(card(20L, 2L, false).withBrowserQueryMatched(false))
         )
         assertTrue(selector.importFrom(unmatchedBrowserSource, settings(false, false, false, true, "tag:kani")).isEmpty())
-    }
-
-    private fun suppressedAfter(
-        scheduler: BridgeScheduler,
-        lower: RecordsStudyModels.StudyItem,
-        higher: RecordsStudyModels.StudyItem
-    ): Boolean {
-        return !studyItem(scheduler.applySuppression(listOf(lower, higher)), lower.kanji, lower.rung)
-            .suppressedByTaskType
-            .isEmpty()
     }
 
     private fun studyItem(items: List<RecordsStudyModels.StudyItem>, kanji: String): RecordsStudyModels.StudyItem {
@@ -151,15 +101,6 @@ class CoreSchedulerImportEdgeTest {
         throw AssertionError("Missing study item for $kanji / $rung")
     }
 
-    private fun itemAtRung(items: List<RecordsStudyModels.StudyItem>, rung: RecordsBase.LadderRung): RecordsStudyModels.StudyItem {
-        for (item in items) {
-            if (item.rung == rung) {
-                return item
-            }
-        }
-        throw AssertionError("Missing rung $rung")
-    }
-
     private fun sortedKanji(items: List<RecordsStudyModels.StudyItem>): List<String> {
         return items.map { it.kanji }.sorted()
     }
@@ -181,15 +122,6 @@ class CoreSchedulerImportEdgeTest {
             .difficulty(5.0)
             .totalReviews(1)
             .rung(rung)
-            .phase(RecordsBase.SchedulerPhase.REVIEW)
-            .build()
-    }
-
-    private fun matureReview(kanji: String, rung: RecordsBase.LadderRung): RecordsStudyModels.StudyItem {
-        return reviewItem(kanji, rung)
-            .copyBuilder()
-            .matureIntervalDays(21)
-            .totalReviews(12)
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .build()
     }

@@ -57,6 +57,21 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreTableCreator.createStudyTaskLogTable(db)
     }
 
+    /**
+     * Clears legacy mature-sibling suppression flags. The suppression layer
+     * was removed because a study-item family can never contain more than one
+     * item (the family key equals the table primary key), so a dominating
+     * sibling could never exist; stale flags from older builds must not keep
+     * hiding items now that no code path clears them.
+     */
+    fun clearStaleSuppressionFlags(db: SQLiteDatabase) {
+        db.execSQL(
+            "UPDATE " + TABLE_STUDY_ITEMS +
+                " SET " + COLUMN_SUPPRESSED_BY_TASK_TYPE + " = '', " + COLUMN_SUPPRESSED_AT + " = 0" +
+                " WHERE " + COLUMN_SUPPRESSED_BY_TASK_TYPE + " <> ''"
+        )
+    }
+
     fun createStatsIndexes(db: SQLiteDatabase) {
         LocalStoreTableCreator.createStatsIndexes(db)
     }

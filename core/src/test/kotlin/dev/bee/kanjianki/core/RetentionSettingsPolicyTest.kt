@@ -9,7 +9,7 @@ import org.junit.Test
 
 class RetentionSettingsPolicyTest {
     @Test
-    fun saveRequestPreservesLatestMultipliersAndStoresRetentionPercent() {
+    fun saveRequestStoresRetentionPercent() {
         val latest = parameters()
 
         val result = RetentionSettingsPolicy.saveRequest(95, false, " 1-500=95% ", latest)
@@ -17,12 +17,6 @@ class RetentionSettingsPolicyTest {
 
         assertTrue(result.valid)
         assertEquals(0.95, parameters.targetRetention, 0.001)
-        assertEquals(latest.againMultiplier, parameters.againMultiplier, 0.001)
-        assertEquals(latest.hardMultiplier, parameters.hardMultiplier, 0.001)
-        assertEquals(latest.goodMultiplier, parameters.goodMultiplier, 0.001)
-        assertEquals(latest.easyMultiplier, parameters.easyMultiplier, 0.001)
-        assertEquals(latest.lastAdjustedAtMillis, parameters.lastAdjustedAtMillis)
-        assertEquals(latest.lastAdjustmentReviewCount, parameters.lastAdjustmentReviewCount)
         assertFalse(parameters.frequencyRetentionEnabled)
         assertEquals("1-500=95%", parameters.frequencyRetentionRanges)
         assertEquals("Review retention saved.", result.message)
@@ -77,7 +71,7 @@ class RetentionSettingsPolicyTest {
     }
 
     private fun parameters(): RecordsSchedulerModels.SchedulerParameters {
-        return RecordsSchedulerModels.SchedulerParameters(0.88, 0.4, 1.1, 2.2, 3.3, 123L, 45)
+        return RecordsSchedulerModels.SchedulerParameters(0.88)
     }
 
     private fun withDefaultLocale(locale: Locale, block: () -> Unit) {

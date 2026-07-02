@@ -116,7 +116,9 @@ Default ladder order from lowest to highest rung:
 6. `font_meaning`
 7. `word_reading`
 
-`meaning_kanji` is present in the editable default order, but is off by default.
+`meaning_kanji` is present in the editable default order and, like every other
+rung, is enabled by default (stored configurations that predate the rung also
+get it auto-enabled on load).
 Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
 rung, preferring the lower/easier rung when the distance ties. The
@@ -132,8 +134,9 @@ Anki semantics:
 
 - `Again` returns to the first step.
 - `Good` advances one step; graduates past the last step.
-- `Hard` on the first step uses a delay between Again and Good; on later
-  steps it repeats the current step.
+- `Hard` on the first step uses a delay between Again and Good (the
+  first-two-step midpoint, or 1.5x the step when only one step exists); on
+  later steps it repeats the current step.
 - `Easy` graduates the card immediately.
 
 Learning and relearning repeats are practice-only. They do not advance
@@ -154,8 +157,12 @@ further passes keep the card on that rung.
 
 On a due review `Again`, the card enters `relearning` at step 0 if
 relearning steps exist. If relearning steps are empty, the card skips
-relearning and gets the default post-lapse interval (1 day) per the Anki
-manual.
+relearning and is rescheduled straight from the FSRS post-lapse memory
+state, matching Anki's FSRS behavior.
+
+When a promotion fires, the newly promoted rung's first review is capped at
+one third of `ladder_promotion_interval_days` (7 days at the default 21) so
+the new skill is validated sooner than a full promotion-sized interval.
 
 The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;

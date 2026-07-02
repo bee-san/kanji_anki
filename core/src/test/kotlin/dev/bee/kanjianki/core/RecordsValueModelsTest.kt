@@ -195,22 +195,15 @@ class RecordsValueModelsTest {
 
     @Test
     fun schedulerParametersResolveFrequencyRetentionByRank() {
-        val parameters = RecordsSchedulerModels.SchedulerParameters(
-            0.90,
-            0.45,
-            1.20,
-            2.00,
-            3.10,
-            0L,
-            0
-        ).withFrequencyRetention(true, "1-500=95%\n501-2000=85%")
+        val parameters = RecordsSchedulerModels.SchedulerParameters(0.90)
+            .withFrequencyRetention(true, "1-500=95%\n501-2000=85%")
 
         assertEquals(0.95, parameters.targetRetentionForRank(200), 0.001)
         assertEquals(0.85, parameters.targetRetentionForRank(1000), 0.001)
         assertEquals(0.90, parameters.targetRetentionForRank(3000), 0.001)
         assertEquals(0.90, parameters.targetRetentionForRank(null), 0.001)
         assertEquals(0.88, parameters.withTargetRetention(0.88).targetRetention, 0.001)
-        assertEquals(parameters.frequencyRetentionRanges, parameters.withAdjustment(0.5, 1.3, 2.3, 3.5, 10L, 40).frequencyRetentionRanges)
+        assertEquals(parameters.frequencyRetentionRanges, parameters.withTargetRetention(0.88).frequencyRetentionRanges)
     }
 
     @Test

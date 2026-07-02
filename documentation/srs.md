@@ -1,5 +1,12 @@
 # FSRS Ladder With Mature-Sibling Suppression
 
+> **Historical design sketch — superseded.** This document describes an early
+> 3-rung ladder plus a persistent mature-sibling suppression layer. The
+> shipped scheduler uses a 7-rung single-item-per-family ladder, and the
+> suppression layer was removed because a family can never contain a second
+> item. See `documentation/ladder-and-srs-system.md` for the current,
+> code-verified reference.
+
 ## Summary
 
 Use FSRS to decide when a higher-context sibling is mature, then suppress easier siblings for that kanji family. This replaces the prior low-frequency maintenance idea: once the learner can recall the word-level prompt maturely, Kani should stop showing the single-kanji prompts unless the higher sibling lapses or its anchor changes.

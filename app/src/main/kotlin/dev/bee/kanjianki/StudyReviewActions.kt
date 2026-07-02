@@ -23,20 +23,6 @@ internal object StudyReviewActions {
     }
 
     @JvmStatic
-    fun saveTunedSchedulerIfChanged(
-        original: RecordsSchedulerModels.SchedulerParameters,
-        tuned: RecordsSchedulerModels.SchedulerParameters,
-        writer: SchedulerParametersWriter,
-    ) {
-        if (
-            tuned.lastAdjustedAtMillis != original.lastAdjustedAtMillis ||
-            tuned.lastAdjustmentReviewCount != original.lastAdjustmentReviewCount
-        ) {
-            writer.saveSchedulerParameters(tuned)
-        }
-    }
-
-    @JvmStatic
     fun undoLastAppliedReview(
         snapshot: AppliedReviewSnapshot?,
         currentItem: RecordsStudyModels.StudyItem?,
@@ -115,10 +101,6 @@ internal object StudyReviewActions {
 
     fun interface StudyRunMarker {
         fun markStudyRunPassed(kanji: String)
-    }
-
-    fun interface SchedulerParametersWriter {
-        fun saveSchedulerParameters(parameters: RecordsSchedulerModels.SchedulerParameters)
     }
 
     interface UndoWriter {

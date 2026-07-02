@@ -123,7 +123,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         if (!result.duplicate) {
             saveAppliedReview(request, result, now)
             streak = activity.store.studyStreak(now)
-            activity.tuneSchedulerIfNeeded(parameters, now)
             ReminderScheduler.schedule(activity)
         }
         val currentStreakDays = streak?.currentDays ?: 0

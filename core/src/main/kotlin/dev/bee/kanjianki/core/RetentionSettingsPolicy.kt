@@ -23,15 +23,9 @@ object RetentionSettingsPolicy {
             }
         }
         val safeLatest = latest ?: RecordsSchedulerModels.SchedulerParameters.defaults()
-        val parameters = RecordsSchedulerModels.SchedulerParameters(
-            SettingsInputRules.retentionPercent(retentionPercent / 100.0) / 100.0,
-            safeLatest.againMultiplier,
-            safeLatest.hardMultiplier,
-            safeLatest.goodMultiplier,
-            safeLatest.easyMultiplier,
-            safeLatest.lastAdjustedAtMillis,
-            safeLatest.lastAdjustmentReviewCount,
-        ).withFrequencyRetention(frequencyRetentionEnabled, ranges)
+        val parameters = safeLatest
+            .withTargetRetention(SettingsInputRules.retentionPercent(retentionPercent / 100.0) / 100.0)
+            .withFrequencyRetention(frequencyRetentionEnabled, ranges)
         return SaveResult.valid(parameters)
     }
 
