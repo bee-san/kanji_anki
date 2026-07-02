@@ -63,6 +63,17 @@ data class ProgressReviewsAnalyticsState(
     val currentStreak: ProgressStreakMetricState,
     val tip: String,
     val accessibilitySummary: String,
+    val rangeData: Map<AnalyticsRange, ProgressReviewsRangeData> = emptyMap(),
+)
+
+data class ProgressReviewsRangeData(
+    val reviewsPerDay: ProgressBarChartState,
+    val totalReviews: ProgressCountMetricState,
+    val averagePerDay: ProgressCountMetricState,
+    val correct: ProgressCountMetricState,
+    val incorrect: ProgressCountMetricState,
+    val bestDayLabel: String,
+    val accessibilitySummary: String,
 )
 
 data class ProgressAccuracyRetentionState(
@@ -73,6 +84,7 @@ data class ProgressAccuracyRetentionState(
     val retentionByCardType: List<ProgressRetentionRowState>,
     val retentionSummary: String,
     val categoryStatuses: List<ProgressCategoryStatusState>,
+    val rangeData: Map<AnalyticsRange, ProgressLineChartState> = emptyMap(),
 )
 
 data class ProgressRetentionRowState(

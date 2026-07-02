@@ -18,4 +18,5 @@ data class HomeScreenModel(
     val emptyTitle: String?,
     val emptyBody: String?,
     val previewCards: List<HomeFocusQueueCardModel>,
+    val dueCount: Int = 0,
 )

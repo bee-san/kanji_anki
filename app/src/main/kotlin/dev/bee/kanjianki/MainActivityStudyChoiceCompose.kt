@@ -417,6 +417,16 @@ private fun MeaningChoiceInsetPanel(
             } else {
                 null
             }
+            // The choice grid stays directly under the question so it does not jump
+            // when the answer panel appears; the answer and the Next action render
+            // below it, keeping Next as a stable bottom action bar.
+            KanjiChoiceGrid(
+                choices = model.choices,
+                balanceLastRow = false,
+                enabled = !answered,
+                onChoice = onAnswered,
+                feedbackForChoice = { glyph -> feedbackForMeaningChoice(glyph, selectedChoice, result) },
+            )
             if (answered) {
                 StudyAnswerPanel(
                     model = model.answerPanel,
@@ -434,13 +444,6 @@ private fun MeaningChoiceInsetPanel(
                     )
                 }
             }
-            KanjiChoiceGrid(
-                choices = model.choices,
-                balanceLastRow = false,
-                enabled = !answered,
-                onChoice = onAnswered,
-                feedbackForChoice = { glyph -> feedbackForMeaningChoice(glyph, selectedChoice, result) },
-            )
         }
     }
 }

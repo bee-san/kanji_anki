@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -202,11 +204,11 @@ internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                     }
                 }
             }
-            Text(
-                text = ">",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = accentColor
+            Icon(
+                painter = painterResource(id = R.drawable.ic_arrow_forward_24),
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(24.dp)
             )
         }
     }

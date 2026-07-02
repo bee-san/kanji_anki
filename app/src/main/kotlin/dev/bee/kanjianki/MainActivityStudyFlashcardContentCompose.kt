@@ -24,9 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -51,20 +52,14 @@ internal fun FlashcardCard(
     modifier: Modifier = Modifier,
     onTypingDone: Runnable? = null,
     onBrowseAction: Runnable? = null,
+    swipeFeedback: StudySwipeFeedbackState? = null,
 ) {
-    val cardHeightModifier = if (model.revealState.isRevealed) {
-        val windowHeight = with(LocalDensity.current) {
-            LocalWindowInfo.current.containerSize.height.toDp()
-        }
-        Modifier.height(maxOf(360.dp, windowHeight * 0.8f))
-    } else {
-        Modifier.heightIn(min = 360.dp)
-    }
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .studySwipeFeedback(swipeFeedback)
             .animateContentSize()
-            .then(cardHeightModifier),
+            .heightIn(min = 360.dp),
         shape = RoundedCornerShape(32.dp),
         color = KaniTheme.colors.surface,
         shadowElevation = StudyCardShadowElevation
@@ -93,12 +88,45 @@ internal fun FlashcardCard(
                     model.answerPanel,
                     Modifier
                         .padding(top = 12.dp, bottom = 10.dp)
-                        .weight(1f),
+                        .fillMaxWidth(),
                     onBrowseAction = onBrowseAction,
                 )
             }
         }
     }
+}
+
+/**
+ * Translates the card with the active Fail/Pass swipe and tints it coral (fail) or
+ * teal (pass). The tint steps up once the drag crosses the swipe threshold so the
+ * commit point is visible while dragging.
+ */
+@Composable
+private fun Modifier.studySwipeFeedback(swipeFeedback: StudySwipeFeedbackState?): Modifier {
+    if (swipeFeedback == null) {
+        return this
+    }
+    val passTint = KaniTheme.colors.teal
+    val failTint = KaniTheme.colors.coral
+    val cornerRadiusDp = 32.dp
+    return this
+        .graphicsLayer {
+            translationX = swipeFeedback.dragOffsetX * 0.5f
+            rotationZ = swipeFeedback.progress * 1.5f
+        }
+        .drawWithContent {
+            drawContent()
+            val progress = swipeFeedback.progress
+            if (progress != 0f) {
+                val strength = kotlin.math.abs(progress)
+                val alpha = if (strength >= 1f) 0.30f else 0.16f * strength
+                drawRoundRect(
+                    color = if (progress > 0f) passTint else failTint,
+                    alpha = alpha,
+                    cornerRadius = CornerRadius(cornerRadiusDp.toPx()),
+                )
+            }
+        }
 }
 
 @Composable

@@ -1,5 +1,9 @@
 package dev.bee.kanjianki
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -30,8 +34,14 @@ fun HomeScreen(model: HomeScreenModel) {
         HomeHeader(title = model.title, subtitle = model.subtitle)
         Spacer(modifier = Modifier.height(14.dp))
         HomePrimaryHomeCta(model)
-        if (showSecondaryPanels) {
-            HomeSecondaryPanels(model)
+        AnimatedVisibility(
+            visible = showSecondaryPanels,
+            enter = fadeIn(animationSpec = tween(durationMillis = 200)) +
+                expandVertically(animationSpec = tween(durationMillis = 220)),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                HomeSecondaryPanels(model)
+            }
         }
     }
 }
@@ -76,29 +86,24 @@ private fun HomeSecondaryPanels(model: HomeScreenModel) {
 
 @Composable
 private fun HomePrimaryHomeCta(model: HomeScreenModel) {
-    if (model.showSyncCta) {
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 62.dp)
-        ) {
+    // Sync and study CTAs share the same footprint so the primary action does not
+    // jump between shapes when the sync state flips.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = HomeStudyCtaMinHeight)
+    ) {
+        if (model.showSyncCta) {
             HomePrimaryCta(
                 label = model.syncLabel,
                 color = MainActivityUiSupport.CORAL,
                 onClick = model.onSync
             )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = HomeStudyCtaMinHeight)
-        ) {
+        } else {
             HomeStudyCta(
                 title = model.studyLabel,
-                onClick = model.onStudy
+                onClick = model.onStudy,
+                dueCount = model.dueCount,
             )
         }
     }
