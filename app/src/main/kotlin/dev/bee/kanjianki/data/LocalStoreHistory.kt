@@ -233,6 +233,9 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
 
     fun similarPairFirstSeen(db: SQLiteDatabase): Map<String, Long> = similarKanjiData().similarPairFirstSeen(db)
 
+    fun choiceWrongPickCounts(db: SQLiteDatabase, sinceMillis: Long): Map<String, Map<String, Int>> =
+        similarKanjiData().choiceWrongPickCounts(db, sinceMillis)
+
     fun localInventoryKanji(db: SQLiteDatabase): Set<String> = similarKanjiData().localInventoryKanji(db)
 
     fun readSimilarPair(cursor: Cursor): RecordsImportModels.SimilarKanjiPair = similarKanjiData().readSimilarPair(cursor)

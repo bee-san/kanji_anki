@@ -80,6 +80,27 @@ internal class LocalStoreSimilarKanjiData(
         return out
     }
 
+    fun choiceWrongPickCounts(db: SQLiteDatabase, sinceMillis: Long): Map<String, Map<String, Int>> {
+        val out = HashMap<String, MutableMap<String, Int>>()
+        db.rawQuery(
+            "SELECT target_kanji, selected_kanji, COUNT(*) " +
+                "FROM ${LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG} " +
+                "WHERE correct=0 AND reviewed_at>=? AND selected_kanji<>'' AND selected_kanji<>target_kanji " +
+                "GROUP BY target_kanji, selected_kanji",
+            arrayOf(sinceMillis.toString()),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val target = cursor.getString(0)
+                val selected = cursor.getString(1)
+                if (target.isNullOrEmpty() || selected.isNullOrEmpty()) {
+                    continue
+                }
+                out.getOrPut(target) { HashMap() }[selected] = cursor.getInt(2)
+            }
+        }
+        return out
+    }
+
     fun readSimilarPair(cursor: Cursor): RecordsImportModels.SimilarKanjiPair {
         return RecordsImportModels.SimilarKanjiPair(
             LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI_A),

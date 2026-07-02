@@ -168,6 +168,70 @@ class SimilarKanjiChoicePlannerTest {
         ).isEmpty())
     }
 
+    @Test
+    fun emptyWrongPickMapKeepsBuildCandidatesByteIdentical() {
+        val planner = SimilarKanjiChoicePlanner()
+        val inventory = listOf(
+            item("拉", "pull"),
+            item("提", "carry"),
+            item("謎", "riddle"),
+        )
+        val pairs = listOf(pair("拉", "提"), pair("拉", "謎"))
+
+        val baseline = planner.buildCandidates(inventory, pairs)
+        val withEmptyMap = planner.buildCandidates(inventory, pairs, emptyMap())
+        val withNullMap = planner.buildCandidates(inventory, pairs, null)
+
+        assertEquals(baseline.map { it.targetKanji to it.choices }, withEmptyMap.map { it.targetKanji to it.choices })
+        assertEquals(baseline.map { it.choiceSignature }, withEmptyMap.map { it.choiceSignature })
+        assertEquals(baseline.map { it.targetKanji to it.choices }, withNullMap.map { it.targetKanji to it.choices })
+    }
+
+    @Test
+    fun wrongPickCountsOrderConfusedNeighborsFirstAndTruncateToChoiceLimit() {
+        val planner = SimilarKanjiChoicePlanner()
+        val inventory = listOf(
+            item("拉", "pull"),
+            item("提", "carry"),
+            item("謎", "riddle"),
+            item("腕", "arm"),
+            item("裂", "split"),
+            item("烈", "ardent"),
+        )
+        val pairs = listOf(
+            pair("拉", "提"),
+            pair("拉", "謎"),
+            pair("拉", "腕"),
+            pair("拉", "裂"),
+            pair("拉", "烈"),
+        )
+        val wrongPicks = mapOf("拉" to mapOf("裂" to 3, "腕" to 1))
+
+        val card = find(planner.buildCandidates(inventory, pairs, wrongPicks), "拉")
+
+        assertEquals(4, card.choices.size)
+        assertEquals("拉", card.choices[0])
+        assertEquals("裂", card.choices[1])
+        assertEquals("腕", card.choices[2])
+        assertEquals(SimilarKanjiChoicePlanner.choiceSignature(card.choices), card.choiceSignature)
+    }
+
+    @Test
+    fun wrongPickCountsForOtherTargetsLeaveCardUnchanged() {
+        val planner = SimilarKanjiChoicePlanner()
+        val inventory = listOf(item("拉", "pull"), item("提", "carry"), item("謎", "riddle"))
+        val pairs = listOf(pair("拉", "提"), pair("拉", "謎"))
+
+        val baseline = find(planner.buildCandidates(inventory, pairs), "拉")
+        val weighted = find(
+            planner.buildCandidates(inventory, pairs, mapOf("謎" to mapOf("拉" to 5))),
+            "拉",
+        )
+
+        assertEquals(baseline.choices, weighted.choices)
+        assertEquals(baseline.choiceSignature, weighted.choiceSignature)
+    }
+
     private fun item(kanji: String, meaning: String): RecordsImportModels.KanjiInventoryItem =
         RecordsImportModels.KanjiInventoryItem(kanji, meaning, "", "", 1, 1, false, 0L)
 
