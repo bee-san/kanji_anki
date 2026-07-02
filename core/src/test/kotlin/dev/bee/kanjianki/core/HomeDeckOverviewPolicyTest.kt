@@ -58,14 +58,15 @@ class HomeDeckOverviewPolicyTest {
             locallySuspendedKanji = setOf("裂", "語", "外"),
         )
 
-        assertEquals(1, overview.dueCount)
+        // Legacy suppression flags no longer hide items: the flagged due
+        // review item counts as due like any other.
+        assertEquals(2, overview.dueCount)
         assertEquals(1, overview.newCount)
         assertEquals(1, overview.learningCount)
         assertEquals(1, overview.relearningCount)
         assertEquals(2, overview.suspendedCount)
-        assertEquals(1, overview.buriedCount)
         assertEquals(
-            listOf("Due 1", "New 1", "Learning 1", "Relearning 1", "Suspended 2", "Buried 1"),
+            listOf("Due 2", "New 1", "Learning 1", "Relearning 1", "Suspended 2"),
             overview.rows(),
         )
     }

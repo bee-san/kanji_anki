@@ -1313,30 +1313,6 @@ fun writingRecognitionUnavailableAndInvalidCaptureBranchesShowActionableState() 
     }
 
     @Test
-fun schedulerTuningPersistsWhenRecentReviewsJustifyAnAdjustment() {
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                var now = System.currentTimeMillis()
-                for (i in 0 until 22) {
-                    activity.store.saveReview(
-                            RecordsSchedulerModels.ReviewRequest("調" + i, "tune-token-" + i, MainActivityBase.RATING_GOOD, false, false, false, 0),
-                            MainActivityBase.RATING_GOOD,
-                            now - (i * 1000L)
-                    );
-                }
-                var before = RecordsSchedulerModels.SchedulerParameters.defaults()
-
-                activity.tuneSchedulerIfNeeded(before, now);
-
-                var tuned = activity.store.schedulerParameters()
-                assertEquals(now, tuned.lastAdjustedAtMillis);
-                assertEquals(22, tuned.lastAdjustmentReviewCount);
-                assertTrue(tuned.goodMultiplier > before.goodMultiplier);
-            }
-        }
-    }
-
-    @Test
 fun flashcardAndWritingUiStateHelpersCoverInteractiveBranches() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->

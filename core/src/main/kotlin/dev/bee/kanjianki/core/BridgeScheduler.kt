@@ -16,7 +16,6 @@ class BridgeScheduler {
     private val sessionSelector: StudySessionSelector
     private val targetedSessionPolicy: TargetedStudySessionPolicy
     private val transitionEngine: ReviewTransitionEngine
-    private val suppressionPolicy: SiblingSuppressionPolicy
 
     constructor() : this(LatestFsrsAdapter())
 
@@ -25,7 +24,6 @@ class BridgeScheduler {
         sessionSelector = StudySessionSelector()
         targetedSessionPolicy = TargetedStudySessionPolicy()
         transitionEngine = ReviewTransitionEngine(fsrsAdapter)
-        suppressionPolicy = SiblingSuppressionPolicy()
     }
 
     fun seedQueue(
@@ -47,18 +45,14 @@ class BridgeScheduler {
         ladder: RecordsBase.StudyLadderSettings?,
         evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null
     ): List<RecordsStudyModels.StudyItem> {
-        val resolvedSettings = safeSettings(settings)
-        return suppressionPolicy.apply(
-            queueSeeder.seedQueue(
-                safeRows(rows),
-                safeItems(existing),
-                resolvedSettings,
-                nowMillis,
-                startOfDayMillis,
-                ladder,
-                evidenceStatusByKanji,
-            ),
-            resolvedSettings.matureDays,
+        return queueSeeder.seedQueue(
+            safeRows(rows),
+            safeItems(existing),
+            safeSettings(settings),
+            nowMillis,
+            startOfDayMillis,
+            ladder,
+            evidenceStatusByKanji,
         )
     }
 
@@ -83,19 +77,15 @@ class BridgeScheduler {
         ladder: RecordsBase.StudyLadderSettings?,
         evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null
     ): List<RecordsStudyModels.StudyItem> {
-        val resolvedSettings = safeSettings(settings)
-        return suppressionPolicy.apply(
-            queueSeeder.seedQueue(
-                safeRows(rows),
-                safeItems(existing),
-                resolvedSettings,
-                nowMillis,
-                startOfDayMillis,
-                plan,
-                ladder,
-                evidenceStatusByKanji,
-            ),
-            resolvedSettings.matureDays,
+        return queueSeeder.seedQueue(
+            safeRows(rows),
+            safeItems(existing),
+            safeSettings(settings),
+            nowMillis,
+            startOfDayMillis,
+            plan,
+            ladder,
+            evidenceStatusByKanji,
         )
     }
 
@@ -119,9 +109,7 @@ class BridgeScheduler {
         requestedCount: Int,
         ladder: RecordsBase.StudyLadderSettings?
     ): ExtraNewCardsResult {
-        val resolvedSettings = safeSettings(settings)
-        val result = queueSeeder.seedExtraNewCards(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, requestedCount, ladder)
-        return ExtraNewCardsResult(suppressionPolicy.apply(result.items, resolvedSettings.matureDays), result.admittedKanji, result.availableCount)
+        return queueSeeder.seedExtraNewCards(safeRows(rows), safeItems(existing), safeSettings(settings), nowMillis, startOfDayMillis, requestedCount, ladder)
     }
 
     fun countExtraNewCardsAvailable(
@@ -345,14 +333,6 @@ class BridgeScheduler {
         return transitionEngine.debugTraceApplyReview(application)
     }
 
-    fun dueCount(items: List<RecordsStudyModels.StudyItem>?, nowMillis: Long): Int {
-        return dueCount(items, nowMillis, 0L)
-    }
-
-    fun dueCount(items: List<RecordsStudyModels.StudyItem>?, nowMillis: Long, studyAheadMillis: Long): Int {
-        return sessionSelector.dueCount(safeItems(items), nowMillis, studyAheadMillis)
-    }
-
     fun dueCount(
         items: List<RecordsStudyModels.StudyItem>?,
         rows: List<RecordsImportModels.DashboardRow>?,
@@ -470,10 +450,6 @@ class BridgeScheduler {
      * externally if the set will be shared across threads.
      */
     fun tokenSet(tokens: List<String>): MutableSet<String> = HashSet(tokens)
-
-    fun applySuppression(items: List<RecordsStudyModels.StudyItem>?): List<RecordsStudyModels.StudyItem> {
-        return suppressionPolicy.apply(safeItems(items))
-    }
 
     class ExtraNewCardsResult internal constructor(
         items: List<RecordsStudyModels.StudyItem>,

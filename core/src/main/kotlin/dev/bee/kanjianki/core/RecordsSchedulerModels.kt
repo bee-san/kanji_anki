@@ -230,43 +230,16 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
 
     class SchedulerParameters {
         @JvmField val targetRetention: Double
-        @JvmField val againMultiplier: Double
-        @JvmField val hardMultiplier: Double
-        @JvmField val goodMultiplier: Double
-        @JvmField val easyMultiplier: Double
-        @JvmField val lastAdjustedAtMillis: Long
-        @JvmField val lastAdjustmentReviewCount: Int
         @JvmField val frequencyRetentionEnabled: Boolean
         @JvmField val frequencyRetentionRanges: String
 
-        constructor(
-            targetRetention: Double,
-            againMultiplier: Double,
-            hardMultiplier: Double,
-            goodMultiplier: Double,
-            easyMultiplier: Double,
-            lastAdjustedAtMillis: Long,
-            lastAdjustmentReviewCount: Int,
-        ) : this(
-            targetRetention,
-            IntervalMultipliers(againMultiplier, hardMultiplier, goodMultiplier, easyMultiplier),
-            AdjustmentSnapshot(lastAdjustedAtMillis, lastAdjustmentReviewCount),
-            FrequencyRetention.defaults(),
-        )
+        constructor(targetRetention: Double) : this(targetRetention, FrequencyRetention.defaults())
 
         private constructor(
             targetRetention: Double,
-            multipliers: IntervalMultipliers,
-            adjustment: AdjustmentSnapshot,
             retention: FrequencyRetention,
         ) {
             this.targetRetention = targetRetention
-            this.againMultiplier = multipliers.again
-            this.hardMultiplier = multipliers.hard
-            this.goodMultiplier = multipliers.good
-            this.easyMultiplier = multipliers.easy
-            this.lastAdjustedAtMillis = adjustment.adjustedAtMillis
-            this.lastAdjustmentReviewCount = adjustment.reviewCount
             this.frequencyRetentionEnabled = retention.enabled
             this.frequencyRetentionRanges = nullToEmpty(retention.ranges).trim()
         }
@@ -283,44 +256,14 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         }
 
         fun withTargetRetention(retention: Double): SchedulerParameters {
-            return SchedulerParameters(retention, multipliers(), adjustment(), frequencyRetention())
-        }
-
-        fun withAdjustment(again: Double, hard: Double, good: Double, easy: Double, adjustedAtMillis: Long, reviewCount: Int): SchedulerParameters {
-            return SchedulerParameters(
-                targetRetention,
-                IntervalMultipliers(
-                    clamp(again, 0.25, 0.75),
-                    clamp(hard, 1.05, 1.80),
-                    clamp(good, 1.35, 3.20),
-                    clamp(easy, 2.00, 4.80),
-                ),
-                AdjustmentSnapshot(adjustedAtMillis, reviewCount),
-                frequencyRetention(),
-            )
+            return SchedulerParameters(retention, frequencyRetention())
         }
 
         fun withFrequencyRetention(enabled: Boolean, ranges: String?): SchedulerParameters {
-            return SchedulerParameters(targetRetention, multipliers(), adjustment(), FrequencyRetention(enabled, ranges))
+            return SchedulerParameters(targetRetention, FrequencyRetention(enabled, ranges))
         }
 
-        private fun multipliers(): IntervalMultipliers = IntervalMultipliers(againMultiplier, hardMultiplier, goodMultiplier, easyMultiplier)
-
-        private fun adjustment(): AdjustmentSnapshot = AdjustmentSnapshot(lastAdjustedAtMillis, lastAdjustmentReviewCount)
-
         private fun frequencyRetention(): FrequencyRetention = FrequencyRetention(frequencyRetentionEnabled, frequencyRetentionRanges)
-
-        private class IntervalMultipliers(
-            val again: Double,
-            val hard: Double,
-            val good: Double,
-            val easy: Double,
-        )
-
-        private class AdjustmentSnapshot(
-            val adjustedAtMillis: Long,
-            val reviewCount: Int,
-        )
 
         private class FrequencyRetention(
             val enabled: Boolean,
@@ -336,12 +279,7 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         companion object {
             @JvmStatic
             fun defaults(): SchedulerParameters {
-                return SchedulerParameters(0.90, 0.45, 1.20, 2.00, 3.10, 0L, 0)
-            }
-
-            @JvmStatic
-            protected fun clamp(value: Double, min: Double, max: Double): Double {
-                return kotlin.math.max(min, kotlin.math.min(max, value))
+                return SchedulerParameters(0.90)
             }
         }
     }

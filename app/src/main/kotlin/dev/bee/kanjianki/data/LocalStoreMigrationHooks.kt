@@ -38,6 +38,10 @@ internal class LocalStoreMigrationHooks(
         store.rebuildStudyItemsForLadderScheduler(db)
     }
 
+    fun clearStaleSuppressionFlags(db: SQLiteDatabase) {
+        store.clearStaleSuppressionFlags(db)
+    }
+
     fun createStudyTaskLogTable(db: SQLiteDatabase) {
         store.createStudyTaskLogTable(db)
     }

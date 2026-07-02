@@ -181,21 +181,6 @@ class StudySessionSelector {
 
     fun dueCount(
         items: List<RecordsStudyModels.StudyItem>,
-        nowMillis: Long,
-        studyAheadMillis: Long,
-    ): Int {
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
-        var count = 0
-        for (item in items) {
-            if (isDueCountCandidate(item, horizon)) {
-                count++
-            }
-        }
-        return count
-    }
-
-    fun dueCount(
-        items: List<RecordsStudyModels.StudyItem>,
         rows: List<RecordsImportModels.DashboardRow>,
         nowMillis: Long,
         studyAheadMillis: Long,
@@ -286,12 +271,8 @@ class StudySessionSelector {
             hasCurrentQueueRow(item, currentRows, currentFamilies)
     }
 
-    private fun isDueCountCandidate(item: RecordsStudyModels.StudyItem, horizon: Long): Boolean {
-        return isQueueVisible(item) && item.dueAtMillis <= horizon
-    }
-
     private fun isQueueVisible(item: RecordsStudyModels.StudyItem): Boolean {
-        return StudyLadderRules.STATE_RETIRED != item.state && item.suppressedByTaskType.isEmpty()
+        return StudyLadderRules.STATE_RETIRED != item.state
     }
 
     private fun hasCurrentQueueRow(

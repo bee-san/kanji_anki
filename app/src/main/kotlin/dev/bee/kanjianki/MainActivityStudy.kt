@@ -354,10 +354,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyState.completeActiveRepairStudyTask(key, outcome, answeredAt)
     }
 
-    fun tuneSchedulerIfNeeded(parameters: RecordsSchedulerModels.SchedulerParameters, now: Long) {
-        studyState.tuneSchedulerIfNeeded(parameters, now)
-    }
-
     fun initialHintState(session: RecordsSchedulerModels.StudySession): HintState {
         return studyState.initialHintState(session)
     }

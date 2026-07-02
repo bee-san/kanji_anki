@@ -6,7 +6,6 @@ data class HomeDeckOverview(
     val learningCount: Int,
     val relearningCount: Int,
     val suspendedCount: Int,
-    val buriedCount: Int,
 ) {
     fun rows(): List<String> {
         return HomeDeckOverviewPolicy.summaryRows(this)
@@ -32,14 +31,9 @@ object HomeDeckOverviewPolicy {
         var newCount = 0
         var learningCount = 0
         var relearningCount = 0
-        var buriedCount = 0
 
         for (item in studyItems) {
             if (!isActiveStudyItem(item, activeFamilyKeys, activeRows)) {
-                continue
-            }
-            if (item.suppressedByTaskType.isNotEmpty()) {
-                buriedCount++
                 continue
             }
             when {
@@ -58,19 +52,17 @@ object HomeDeckOverviewPolicy {
             learningCount = learningCount,
             relearningCount = relearningCount,
             suspendedCount = suspendedCount,
-            buriedCount = buriedCount,
         )
     }
 
     @JvmStatic
     fun summaryRows(overview: HomeDeckOverview): List<String> {
-        val rows = ArrayList<String>(6)
+        val rows = ArrayList<String>(5)
         appendCount(rows, HomeTextCopy.deckOverviewDueLabel(), overview.dueCount)
         appendCount(rows, HomeTextCopy.deckOverviewNewLabel(), overview.newCount)
         appendCount(rows, HomeTextCopy.deckOverviewLearningLabel(), overview.learningCount)
         appendCount(rows, HomeTextCopy.deckOverviewRelearningLabel(), overview.relearningCount)
         appendCount(rows, HomeTextCopy.deckOverviewSuspendedLabel(), overview.suspendedCount)
-        appendCount(rows, HomeTextCopy.deckOverviewBuriedLabel(), overview.buriedCount)
         return rows
     }
 

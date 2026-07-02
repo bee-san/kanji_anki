@@ -237,6 +237,10 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (idx == 0 && steps.size >= 2) {
             val avg = (StudyLadderRules.stepDelayMillis(steps[0]) + StudyLadderRules.stepDelayMillis(steps[1])) / 2L
             state.due = context.nowMillis + max(StudyLadderRules.stepDelayMillis(steps[0]), avg)
+        } else if (idx == 0) {
+            // Anki semantics: with a single learning step, Hard waits 1.5x the
+            // step delay so it sits strictly between Again and Good.
+            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[0]) * 3L / 2L
         } else {
             val safeIdx = min(idx, steps.size - 1)
             state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[safeIdx])
@@ -306,10 +310,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val relearning = context.learningSettings.reviewStepsMinutes
         state.stepIndex = 0
         if (relearning.isEmpty()) {
+            // No relearning steps: skip practice and reschedule straight from
+            // the FSRS post-lapse memory state, matching Anki's FSRS behavior.
             state.phase = RecordsBase.SchedulerPhase.REVIEW
-            state.due = context.nowMillis + StudyLadderRules.DAY
+            state.due = context.nowMillis + result.intervalMillis
             state.schedulerState = StudyLadderRules.STATE_REVIEW
-            state.scheduledIntervalDays = 1
+            state.scheduledIntervalDays = result.intervalDays()
         } else {
             state.phase = RecordsBase.SchedulerPhase.RELEARNING
             state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(relearning[0])
@@ -350,10 +356,29 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realPassStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays)) {
-                state.rung = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                val promoted = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                if (promoted != state.rung) {
+                    capPromotedRungFirstReview(context, state)
+                }
+                state.rung = promoted
                 state.realPassStreak = 0
                 state.realAgainStreak = 0
             }
+        }
+    }
+
+    /**
+     * A promotion unlocks a different study skill, so its first test should
+     * not wait out the full promotion-sized FSRS interval. Cap the first
+     * review of the newly promoted rung at one third of the promotion
+     * threshold (7 days at the 21-day default) while keeping the cloned FSRS
+     * memory state intact.
+     */
+    private fun capPromotedRungFirstReview(context: ReviewContext, state: ReviewState) {
+        val capDays = max(1, context.settings.ladderPromotionIntervalDays / PROMOTED_RUNG_FIRST_REVIEW_DIVISOR)
+        if (state.scheduledIntervalDays > capDays) {
+            state.scheduledIntervalDays = capDays
+            state.due = context.nowMillis + capDays * StudyLadderRules.DAY
         }
     }
 
@@ -566,6 +591,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     companion object {
+        /**
+         * Divisor applied to `ladder_promotion_interval_days` to derive the
+         * first-review cap for a freshly promoted rung.
+         */
+        private const val PROMOTED_RUNG_FIRST_REVIEW_DIVISOR = 3
+
         private fun roundScore(value: Double): Double = round(value * 100.0) / 100.0
     }
 }

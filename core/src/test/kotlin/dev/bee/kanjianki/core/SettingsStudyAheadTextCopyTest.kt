@@ -8,7 +8,7 @@ class SettingsStudyAheadTextCopyTest {
     @Test
     fun studyAheadStringsStayStable() {
         assertEquals("Study ahead", SettingsStudyAheadTextCopy.studyAheadTitle())
-        assertEquals("Review early; learning waits stay fixed.", SettingsStudyAheadTextCopy.studyAheadBody())
+        assertEquals("Review early; learning waits stay fixed. Early answers never move the ladder.", SettingsStudyAheadTextCopy.studyAheadBody())
         assertEquals("Save minutes", SettingsStudyAheadTextCopy.saveStudyAheadLabel())
         assertEquals("Look-ahead saved.", SettingsStudyAheadTextCopy.studyAheadSavedToast())
         assertEquals("Minutes (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel())
@@ -28,7 +28,7 @@ class SettingsStudyAheadTextCopyTest {
             Locale.setDefault(Locale.JAPANESE)
 
             assertEquals("先取り学習", SettingsStudyAheadTextCopy.studyAheadTitle())
-            assertEquals("早めに復習し、学習待ちはそのまま。", SettingsStudyAheadTextCopy.studyAheadBody())
+            assertEquals("早めに復習し、学習待ちはそのまま。早めの回答でラダーは動きません。", SettingsStudyAheadTextCopy.studyAheadBody())
             assertEquals("先取りを保存", SettingsStudyAheadTextCopy.saveStudyAheadLabel())
             assertEquals("先取り学習を保存しました。", SettingsStudyAheadTextCopy.studyAheadSavedToast())
             assertEquals("分 (0-1440)", SettingsStudyAheadTextCopy.studyAheadMinutesLabel())

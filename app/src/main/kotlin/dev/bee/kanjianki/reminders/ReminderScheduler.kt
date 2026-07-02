@@ -436,6 +436,6 @@ object ReminderScheduler {
     }
 
     private fun isActiveReminderItem(item: RecordsStudyModels.StudyItem): Boolean {
-        return StudyLadderRules.STATE_RETIRED != item.state && item.suppressedByTaskType.isEmpty()
+        return StudyLadderRules.STATE_RETIRED != item.state
     }
 }

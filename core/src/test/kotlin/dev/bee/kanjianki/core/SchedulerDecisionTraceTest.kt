@@ -73,7 +73,8 @@ class SchedulerDecisionTraceTest {
         assertEquals(1, traced.trace.fsrsCalls.size)
         assertEquals("review", traced.trace.fsrsCalls[0].callType)
         assertEquals("good", traced.trace.fsrsCalls[0].rating)
-        assertEquals(22, traced.trace.fsrsCalls[0].outputIntervalDays)
+        // The promoted rung's first review is capped at promotionDays / 3.
+        assertEquals(7, traced.trace.fsrsCalls[0].outputIntervalDays)
     }
 
     @Test

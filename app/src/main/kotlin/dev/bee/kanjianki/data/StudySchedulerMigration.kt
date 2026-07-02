@@ -105,6 +105,10 @@ internal object StudySchedulerMigration {
         "WHEN recognition_stage >= 2 THEN 'word_reading' " +
         "ELSE 'kanji_meaning' END"
 
+    // One-shot v16 mapping. This is intentionally simpler than the in-memory
+    // RecordsStudyModels.derivedPhase (which can also infer 'relearning'):
+    // the migration deliberately restarted every non-review card at
+    // new_learning. Do not "align" one to the other.
     private fun legacyPhaseSql(): String = "CASE " +
         "WHEN state = 'review' THEN 'review' " +
         "ELSE 'new_learning' END"

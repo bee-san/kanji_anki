@@ -787,161 +787,6 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun matureHigherRungSuppressesLowerRecognitionSiblings() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var word: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-        var font: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(kanji, word, font))
-        var updatedKanji: RecordsStudyModels.StudyItem = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING)
-        var updatedFont: RecordsStudyModels.StudyItem = findItemAtRung(result, RecordsBase.LadderRung.FONT_MEANING)
-        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), updatedKanji.suppressedByTaskType)
-        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), updatedFont.suppressedByTaskType)
-        assertTrue(updatedKanji.suppressedAtMillis > 0L)
-        assertTrue(updatedFont.suppressedAtMillis > 0L)
-        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.WORD_READING).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
-    public fun fontMeaningOnlySuppressesKanjiMeaningSibling() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var font: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING)
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var typeMeaning: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(font, kanji, typeMeaning))
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType)
-        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.TYPE_MEANING).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
-    public fun writingRemediationSuppressesLowerRungsButNotWritingSiblings() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var writing: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder()
-                .writingRemediationPending(true)
-                .build()
-        var typeMeaning: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
-        var otherWriting: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder()
-                .activeToken("other-writing")
-                .build()
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(typeMeaning, writing, otherWriting))
-        assertEquals(RecordsBase.LadderRung.WRITE_KANJI.wireName(), findItemAtRung(result, RecordsBase.LadderRung.TYPE_MEANING).suppressedByTaskType)
-        assertTrue(result.get(2).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
-    public fun matureSiblingMemoryWithPassingRatingSuppressesLowerSibling() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var passingWordMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory("review", 0L, 5.0, 5.0, 12, 1, 0, "good", 21, 0, 0L)
-        var word: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
-                .copyBuilder()
-                .wordReadingMemory(passingWordMemory)
-                .matureIntervalDays(0)
-                .totalReviews(0)
-                .build()
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(word, kanji))
-        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType)
-    }
-
-    @Test
-    public fun suppressionClearsWhenDominatingSiblingIsNoLongerMature() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var staleSuppressed: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .copyBuilder()
-                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
-                .suppressedAtMillis(123L)
-                .build()
-        var youngFont: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
-                .copyBuilder()
-                .matureIntervalDays(20)
-                .totalReviews(10)
-                .build()
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(staleSuppressed, youngFont))
-        var updated: RecordsStudyModels.StudyItem = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING)
-        assertTrue(updated.suppressedByTaskType.isEmpty())
-        assertEquals(0L, updated.suppressedAtMillis)
-    }
-
-    @Test
-    public fun suppressionIgnoresRetiredAndLearningSiblingsAndKeepsCurrentSuppressionWhenStillValid() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var retired: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-                .copyBuilder()
-                .state("retired")
-                .build()
-        var learning: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING)
-                .copyBuilder()
-                .state("new")
-                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
-                .build()
-        var suppressed: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .copyBuilder()
-                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
-                .suppressedAtMillis(456L)
-                .build()
-        var matureFont: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(retired, learning, suppressed, matureFont))
-        assertSame(retired, findItemAtRung(result, RecordsBase.LadderRung.WORD_READING))
-        var updated: RecordsStudyModels.StudyItem = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING)
-        assertSame(suppressed, updated)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), updated.suppressedByTaskType)
-        assertEquals(456L, updated.suppressedAtMillis)
-    }
-
-
-    @Test
-    public fun matureSiblingSuppressionUsesAnswerSignatureNotOnlyKanji() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var word: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-                .withAnswerSignature("裂|裂ける|さける|split")
-        var differentMeaning: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .withAnswerSignature("裂|破裂|はれつ|burst")
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(word, differentMeaning))
-        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
-    public fun matureSiblingSuppressionRequiresLastRatingNotAgain() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var lapsedWordMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory("review", 0L, 5.0, 5.0, 12, 1, 0, "again", 21, 0, 0L)
-        var lapsedWord: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-                .copyBuilder()
-                .wordReadingMemory(lapsedWordMemory)
-                .build()
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(lapsedWord, kanji))
-        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
-    public fun seededSiblingSuppressionRespectsSettingsMatureDays() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var wordBelowCustomMaturity: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-                .copyBuilder()
-                .matureIntervalDays(21)
-                .build()
-                .withAnswerSignature("裂|裂ける|さける|split")
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .withAnswerSignature("裂|裂ける|さける|split")
-        var rows: List<RecordsImportModels.DashboardRow> = listOf(rowWithExamples(
-                "裂",
-                30,
-                RecordsImportModels.Example("active", 1L, 1L, "裂ける", "さける", "split", "", false, 0)
-        ))
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.seedQueue(
-                rows,
-                listOf(wordBelowCustomMaturity, kanji),
-                settingsWithMatureDays(30),
-                1000L,
-                0L,
-                ladder = null
-        )
-        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty())
-    }
-
-    @Test
     public fun coreSessionSelectionHidesSameFamilyWithoutPermanentSuppression() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var word: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
@@ -964,17 +809,6 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun dueCountersDoNotCountSuppressedSiblingsWithoutRows() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var word: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
-                .withAnswerSignature("裂|裂ける|さける|split")
-        var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .withAnswerSignature("裂|裂ける|さける|split")
-        var suppressed: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(kanji, word))
-        assertEquals(1, scheduler.dueCount(suppressed, 1000L))
-    }
-
-    @Test
     public fun immaturePromotedSiblingHidesLowerFamilyWithoutPermanentSuppression() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var immatureWord: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
@@ -991,10 +825,9 @@ public class BridgeSchedulerTest {
                 RecordsImportModels.Example("active", 1L, 1L, "裂ける", "さける", "split", "", false, 0)
         ))
         var active: List<RecordsStudyModels.StudyItem> = scheduler.activeQueueItems(listOf(kanji, immatureWord), rows, 1000L, null)
-        var suppressed: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(listOf(kanji, immatureWord))
         assertEquals(1, active.size)
         assertEquals(RecordsBase.LadderRung.WORD_READING, active.get(0).rung)
-        assertTrue(findItemAtRung(suppressed, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType.isEmpty())
+        assertTrue(active.get(0).suppressedByTaskType.isEmpty())
     }
 
     @Test
@@ -1390,38 +1223,9 @@ public class BridgeSchedulerTest {
         assertEquals(21, exactBoundary.item.matureIntervalDays)
         assertEquals(dueAt + 21L * BridgeScheduler.DAY, exactBoundary.item.dueAtMillis)
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, beyondBoundary.item.rung)
-        assertEquals(22, beyondBoundary.item.matureIntervalDays)
-        assertEquals(dueAt + 22L * BridgeScheduler.DAY, beyondBoundary.item.dueAtMillis)
-    }
-
-    @Test
-    public fun matureSiblingSuppressionBoundaryStartsAtTwentyOneDays() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
-        var staleSuppressed: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-                .copyBuilder()
-                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
-                .suppressedAtMillis(123L)
-                .build()
-        var youngFont: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
-                .copyBuilder()
-                .matureIntervalDays(20)
-                .totalReviews(12)
-                .build()
-        var boundaryFont: RecordsStudyModels.StudyItem = reviewItem("語", RecordsBase.LadderRung.FONT_MEANING, 0L)
-                .copyBuilder()
-                .matureIntervalDays(21)
-                .totalReviews(12)
-                .build()
-        var boundaryKanji: RecordsStudyModels.StudyItem = reviewItem("語", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var result: List<RecordsStudyModels.StudyItem> = scheduler.applySuppression(
-                listOf(staleSuppressed, youngFont, boundaryKanji, boundaryFont)
-        )
-        var unsuppressedYoungSibling: RecordsStudyModels.StudyItem = findItem(result, "裂")
-        var suppressedBoundarySibling: RecordsStudyModels.StudyItem = findItem(result, "語")
-        assertTrue(unsuppressedYoungSibling.suppressedByTaskType.isEmpty())
-        assertEquals(0L, unsuppressedYoungSibling.suppressedAtMillis)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), suppressedBoundarySibling.suppressedByTaskType)
-        assertTrue(suppressedBoundarySibling.suppressedAtMillis > 0L)
+        // The promoted rung's first review is capped at promotionDays / 3 (7 days).
+        assertEquals(7, beyondBoundary.item.matureIntervalDays)
+        assertEquals(dueAt + 7L * BridgeScheduler.DAY, beyondBoundary.item.dueAtMillis)
     }
 
     @Test
@@ -1438,8 +1242,8 @@ public class BridgeSchedulerTest {
                 .build()
                 .withToken("token-1")
         var request: RecordsSchedulerModels.ReviewRequest = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", false, false, false, 0)
-        var highRetention: RecordsSchedulerModels.SchedulerParameters = RecordsSchedulerModels.SchedulerParameters(0.95, 0.45, 1.2, 1.4, 2.2, 0, 0)
-        var lowRetention: RecordsSchedulerModels.SchedulerParameters = RecordsSchedulerModels.SchedulerParameters(0.80, 0.45, 1.2, 2.8, 4.2, 0, 0)
+        var highRetention: RecordsSchedulerModels.SchedulerParameters = RecordsSchedulerModels.SchedulerParameters(0.95)
+        var lowRetention: RecordsSchedulerModels.SchedulerParameters = RecordsSchedulerModels.SchedulerParameters(0.80)
         var highResult: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(item, request, HashSet(), 1000L, highRetention)
         var lowResult: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(item, request, HashSet(), 1000L, lowRetention)
         assertTrue(lowResult.item.dueAtMillis > highResult.item.dueAtMillis)
@@ -1796,7 +1600,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun learningHardOnSingleStepUsesAgainDelay() {
+    public fun learningHardOnSingleStepWaitsOneAndAHalfSteps() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var learning: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("learning")
@@ -1817,7 +1621,8 @@ public class BridgeSchedulerTest {
                 steps
         )
         assertEquals(0, result.item.learningStep)
-        assertEquals(1000L + 5 * 60_000L, result.item.dueAtMillis)
+        // Anki semantics: Hard on a single learning step waits 1.5x the step.
+        assertEquals(1000L + 5L * 60_000L * 3L / 2L, result.item.dueAtMillis)
     }
 
     @Test
@@ -2266,14 +2071,6 @@ public class BridgeSchedulerTest {
                         reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
                         reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 2000L)
                 ),
-                1000L
-        ))
-        assertEquals(1, scheduler.dueCount(
-                listOf(
-                        reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L),
-                        reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
-                        reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 2000L)
-                ),
                 listOf(row("裂", 30), row("提", 20), row("謎", 10)),
                 1000L
         ))
@@ -2424,15 +2221,6 @@ public class BridgeSchedulerTest {
                 .build()
     }
 
-    private fun findItemAtRung(items: List<RecordsStudyModels.StudyItem>, rung: RecordsBase.LadderRung): RecordsStudyModels.StudyItem {
-        for (item in items) {
-            if (item.rung == rung) {
-                return item
-            }
-        }
-        throw AssertionError("Missing study item at rung " + rung)
-    }
-
     private fun findItem(items: List<RecordsStudyModels.StudyItem>, kanji: String): RecordsStudyModels.StudyItem {
         for (item in items) {
             if (item.kanji.equals(kanji)) {
@@ -2544,29 +2332,6 @@ public class BridgeSchedulerTest {
                 defaults.suspendedRankMax,
                 activeQueueCap,
                 newPerDay,
-                defaults.writingTriggerMissDays,
-                defaults.recognitionPromotionPasses,
-                defaults.realDueReviewsToMove
-        )
-    }
-
-    private fun settingsWithMatureDays(matureDays: Int): RecordsSyncModels.Settings {
-        var defaults: RecordsSyncModels.Settings = RecordsSyncModels.Settings.kikuDefaults()
-        return RecordsSyncModels.Settings(
-                defaults.modelName,
-                defaults.templateName,
-                defaults.expressionField,
-                defaults.readingField,
-                defaults.meaningField,
-                defaults.sentenceField,
-                defaults.frequencyField,
-                defaults.frequencySortField,
-                matureDays,
-                defaults.matureSupportThreshold,
-                defaults.suspendedRankMin,
-                defaults.suspendedRankMax,
-                defaults.activeQueueCap,
-                defaults.newPerDay,
                 defaults.writingTriggerMissDays,
                 defaults.recognitionPromotionPasses,
                 defaults.realDueReviewsToMove

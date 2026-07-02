@@ -76,20 +76,6 @@ class StudyReviewActionsTest {
     }
 
     @Test
-    fun saveTunedSchedulerWritesOnlyChangedAdjustmentState() {
-        val original = RecordsSchedulerModels.SchedulerParameters(0.90, 0.45, 1.2, 2.0, 3.1, 100L, 10)
-        val same = RecordsSchedulerModels.SchedulerParameters(0.95, 0.45, 1.2, 2.0, 3.1, 100L, 10)
-        val changed = RecordsSchedulerModels.SchedulerParameters(0.95, 0.45, 1.2, 2.0, 3.1, 200L, 11)
-        val saved = AtomicReference<RecordsSchedulerModels.SchedulerParameters?>()
-
-        StudyReviewActions.saveTunedSchedulerIfChanged(original, same, saved::set)
-        assertNull(saved.get())
-
-        StudyReviewActions.saveTunedSchedulerIfChanged(original, changed, saved::set)
-        assertSame(changed, saved.get())
-    }
-
-    @Test
     fun undoLastAppliedReviewRestoresBeforeSnapshotAndDeletesConsumedToken() {
         val before = item("語", 4)
         val after = item("語", 5)

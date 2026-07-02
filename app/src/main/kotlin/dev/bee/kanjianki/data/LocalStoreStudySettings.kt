@@ -278,13 +278,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun schedulerParameters(): RecordsSchedulerModels.SchedulerParameters {
         val defaults = RecordsSchedulerModels.SchedulerParameters.defaults()
         return RecordsSchedulerModels.SchedulerParameters(
-            getDoubleSetting("scheduler_target_retention", defaults.targetRetention),
-            getDoubleSetting("scheduler_again_multiplier", defaults.againMultiplier),
-            getDoubleSetting("scheduler_hard_multiplier", defaults.hardMultiplier),
-            getDoubleSetting("scheduler_good_multiplier", defaults.goodMultiplier),
-            getDoubleSetting("scheduler_easy_multiplier", defaults.easyMultiplier),
-            getLongSetting("scheduler_last_adjusted_at", defaults.lastAdjustedAtMillis),
-            getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount)
+            getDoubleSetting("scheduler_target_retention", defaults.targetRetention)
         ).withFrequencyRetention(
             getIntSetting(
                 "scheduler_frequency_retention_enabled",
@@ -297,12 +291,6 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun saveSchedulerParameters(parameters: RecordsSchedulerModels.SchedulerParameters) {
         inTransaction {
             putDoubleSetting("scheduler_target_retention", parameters.targetRetention)
-            putDoubleSetting("scheduler_again_multiplier", parameters.againMultiplier)
-            putDoubleSetting("scheduler_hard_multiplier", parameters.hardMultiplier)
-            putDoubleSetting("scheduler_good_multiplier", parameters.goodMultiplier)
-            putDoubleSetting("scheduler_easy_multiplier", parameters.easyMultiplier)
-            putLongSetting("scheduler_last_adjusted_at", parameters.lastAdjustedAtMillis)
-            putIntSetting("scheduler_last_adjustment_review_count", parameters.lastAdjustmentReviewCount)
             putIntSetting(
                 "scheduler_frequency_retention_enabled",
                 if (parameters.frequencyRetentionEnabled) 1 else 0
