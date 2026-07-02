@@ -392,6 +392,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         return StudyStatsStore(this as LocalStore).kanjiRepairEvidence()
     }
 
+    fun retiredRepairsLast30Days(nowMillis: Long): Int {
+        return StudyStatsStore(this as LocalStore).retiredRepairsLast30Days(nowMillis)
+    }
+
     fun studiedKanjiSince(sinceMillis: Long): Set<String> {
         return StudyStatsStore(this as LocalStore).studiedKanjiSince(sinceMillis)
     }

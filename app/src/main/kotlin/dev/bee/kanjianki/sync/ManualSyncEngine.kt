@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -122,6 +123,7 @@ internal class ManualSyncEngine {
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
             val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
             val plan = adaptivePlan(activeRows, currentItems, finished)
+            val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows)
             var seeded = scheduler.seedQueue(
                 activeRows,
                 currentItems,
@@ -130,6 +132,7 @@ internal class ManualSyncEngine {
                 startOfDay(finished),
                 plan,
                 store.studyLadderSettings(),
+                evidenceStatusByKanji,
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
             store.replaceStudyItems(seeded, syncId, finished, settings)
@@ -171,6 +174,22 @@ internal class ManualSyncEngine {
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.message)
             return SyncResult.create(false, false, 0, 0, error.message, "")
         }
+    }
+
+    internal fun repairEvidenceStatusByKanji(
+        rows: List<RecordsImportModels.DashboardRow>,
+    ): Map<String, KanjiRepairEvidencePolicy.Status> {
+        if (rows.isEmpty()) {
+            return emptyMap()
+        }
+        val activeKanji = rows.mapTo(HashSet()) { it.kanji }
+        val statusByKanji = HashMap<String, KanjiRepairEvidencePolicy.Status>()
+        for (evidence in store.kanjiRepairEvidence()) {
+            if (evidence.kanji in activeKanji) {
+                statusByKanji[evidence.kanji] = evidence.status
+            }
+        }
+        return statusByKanji
     }
 
     private fun adaptivePlan(
