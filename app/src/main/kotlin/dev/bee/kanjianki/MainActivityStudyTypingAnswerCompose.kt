@@ -19,8 +19,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,8 +58,14 @@ internal fun TypingMeaningAnswer(
     val submitAnswer = {
         onDone?.run()
     }
+    val focusRequester = remember { FocusRequester() }
     DisposableEffect(state) {
         onDispose { state.clearBounds() }
+    }
+    LaunchedEffect(state) {
+        // Every typing rung requires an answer, so focus the field (and show the
+        // keyboard) as soon as the card appears instead of requiring a tap.
+        focusRequester.requestFocus()
     }
     Column(
         modifier = Modifier
@@ -85,7 +96,9 @@ internal fun TypingMeaningAnswer(
             ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Done,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
             ),
             keyboardActions = KeyboardActions(
                 onDone = { submitAnswer() },
@@ -93,6 +106,7 @@ internal fun TypingMeaningAnswer(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 58.dp)
+                .focusRequester(focusRequester)
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
                     if (isTypingMeaningSubmitKey(native.action, native.keyCode)) {

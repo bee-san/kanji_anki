@@ -96,6 +96,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
         val provider = gateway.status()
         val matureSupportThreshold = settings().matureSupportThreshold
+        studyDueBadgeCount = entries.size
 
         return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
@@ -124,7 +125,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
                 homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
-            }
+            },
+            dueCount = entries.size,
         )
     }
 

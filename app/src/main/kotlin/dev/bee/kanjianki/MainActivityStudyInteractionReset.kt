@@ -9,6 +9,7 @@ internal object MainActivityStudyInteractionReset {
         activity.writingAnswerPanelState = null
         activity.flashcardRevealState = null
         activity.flashcardActionBarState = null
+        activity.flashcardSwipeFeedback = null
         activity.flashcardAnswerRevealed = false
         activity.flashcardTouchTracking = false
     }

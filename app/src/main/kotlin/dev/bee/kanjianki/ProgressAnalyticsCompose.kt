@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,7 +32,11 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +49,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,6 +76,7 @@ import dev.bee.kanjianki.progress.ProgressMissedKanjiState
 import dev.bee.kanjianki.progress.ProgressOverviewState
 import dev.bee.kanjianki.progress.ProgressRetentionRowState
 import dev.bee.kanjianki.progress.ProgressReviewsAnalyticsState
+import dev.bee.kanjianki.progress.ProgressReviewsRangeData
 import dev.bee.kanjianki.progress.ProgressScoreMetricState
 import dev.bee.kanjianki.progress.ProgressSeriesState
 import dev.bee.kanjianki.progress.ProgressSeriesStyle
@@ -426,20 +435,33 @@ private fun ProgressReviewsAnalyticsSection(
     state: ProgressReviewsAnalyticsState,
     compactLayout: Boolean,
 ) {
+    var selectedRange by rememberSaveable(state.selectedRange) { mutableStateOf(state.selectedRange) }
+    val rangeData = state.rangeData[selectedRange] ?: ProgressReviewsRangeData(
+        reviewsPerDay = state.reviewsPerDay,
+        totalReviews = state.totalReviews,
+        averagePerDay = state.averagePerDay,
+        correct = state.correct,
+        incorrect = state.incorrect,
+        bestDayLabel = state.bestDayLabel,
+        accessibilitySummary = state.accessibilitySummary,
+    )
     ProgressSectionCard(
         title = state.title,
         compactLayout = compactLayout,
         trailing = {
             ProgressRangeChipRow(
                 ranges = state.availableRanges,
-                selectedRange = state.selectedRange,
+                selectedRange = selectedRange,
+                onSelectRange = { range -> selectedRange = range },
             )
         },
     ) {
-        ProgressBarChartCard(
-            chart = state.reviewsPerDay,
-            accentColor = KaniUiTokens.Coral,
-        )
+        Crossfade(targetState = rangeData, label = "reviews-range") { data ->
+            ProgressBarChartCard(
+                chart = data.reviewsPerDay,
+                accentColor = KaniUiTokens.Coral,
+            )
+        }
 
         ProgressMetricGrid(
             columns = 2,
@@ -447,25 +469,25 @@ private fun ProgressReviewsAnalyticsSection(
             specs = listOf(
                 ProgressMetricSpec(
                     label = ProgressAnalyticsCopy.totalReviewsLabel(),
-                    value = state.totalReviews.valueLabel,
+                    value = rangeData.totalReviews.valueLabel,
                     iconRes = R.drawable.ic_stats_24,
                     accent = KaniUiTokens.Coral,
                 ),
                 ProgressMetricSpec(
                     label = ProgressAnalyticsCopy.averagePerDayLabel(),
-                    value = state.averagePerDay.valueLabel,
+                    value = rangeData.averagePerDay.valueLabel,
                     iconRes = R.drawable.ic_trending_24,
                     accent = KaniUiTokens.Teal,
                 ),
                 ProgressMetricSpec(
                     label = ProgressAnalyticsCopy.correctLabel(),
-                    value = state.correct.valueLabel,
+                    value = rangeData.correct.valueLabel,
                     iconRes = R.drawable.ic_target_24,
                     accent = KaniUiTokens.Blue,
                 ),
                 ProgressMetricSpec(
                     label = ProgressAnalyticsCopy.incorrectLabel(),
-                    value = state.incorrect.valueLabel,
+                    value = rangeData.incorrect.valueLabel,
                     iconRes = R.drawable.ic_book_24,
                     accent = KaniUiTokens.Gold,
                 ),
@@ -478,7 +500,7 @@ private fun ProgressReviewsAnalyticsSection(
         ) {
             ProgressMiniSummaryCard(
                 title = ProgressAnalyticsCopy.bestDayCardTitle(),
-                value = state.bestDayLabel,
+                value = rangeData.bestDayLabel,
                 detail = state.currentStreak.valueLabel,
                 accent = KaniUiTokens.Coral,
                 compactLayout = compactLayout,
@@ -503,22 +525,27 @@ private fun ProgressAccuracyRetentionSection(
     state: ProgressAccuracyRetentionState,
     compactLayout: Boolean,
 ) {
+    var selectedRange by rememberSaveable(state.selectedRange) { mutableStateOf(state.selectedRange) }
+    val accuracyTrend = state.rangeData[selectedRange] ?: state.accuracyTrend
     ProgressSectionCard(
         title = state.title,
         compactLayout = compactLayout,
         trailing = {
             ProgressRangeChipRow(
                 ranges = state.availableRanges,
-                selectedRange = state.selectedRange,
+                selectedRange = selectedRange,
+                onSelectRange = { range -> selectedRange = range },
             )
         },
     ) {
-        ProgressLineChartCard(
-            chart = state.accuracyTrend,
-            selectedRange = state.selectedRange,
-            accentColor = KaniUiTokens.Coral,
-            secondaryColor = KaniUiTokens.Teal,
-        )
+        Crossfade(targetState = accuracyTrend, label = "accuracy-range") { chart ->
+            ProgressLineChartCard(
+                chart = chart,
+                selectedRange = chart.selectedRange ?: selectedRange,
+                accentColor = KaniUiTokens.Coral,
+                secondaryColor = KaniUiTokens.Teal,
+            )
+        }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.retentionByCardType.forEach { row ->
@@ -1399,10 +1426,13 @@ private fun ProgressLegendRow(
     }
 }
 
+internal fun progressRangeChipTestTag(range: AnalyticsRange): String = "progress-range-chip-${range.days}d"
+
 @Composable
 private fun ProgressRangeChipRow(
     ranges: List<AnalyticsRange>,
     selectedRange: AnalyticsRange,
+    onSelectRange: ((AnalyticsRange) -> Unit)? = null,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ranges.forEach { range ->
@@ -1410,6 +1440,8 @@ private fun ProgressRangeChipRow(
                 text = ProgressAnalyticsCopy.rangeLabel(range),
                 accent = KaniUiTokens.Coral,
                 selected = range == selectedRange,
+                onClick = onSelectRange?.let { select -> { select(range) } },
+                modifier = Modifier.testTag(progressRangeChipTestTag(range)),
             )
         }
     }
@@ -1421,13 +1453,12 @@ private fun ProgressChip(
     accent: Color,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) accent else KaniUiTokens.White,
-        border = BorderStroke(1.dp, if (selected) accent else KaniUiTokens.SubtleButtonBorder),
-    ) {
+    val shape = RoundedCornerShape(999.dp)
+    val color = if (selected) accent else KaniUiTokens.White
+    val border = BorderStroke(1.dp, if (selected) accent else KaniUiTokens.SubtleButtonBorder)
+    val label: @Composable () -> Unit = {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1436,6 +1467,29 @@ private fun ProgressChip(
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
+    }
+    if (onClick != null) {
+        Surface(
+            onClick = onClick,
+            modifier = modifier.semantics {
+                role = Role.Tab
+                this.selected = selected
+            },
+            shape = shape,
+            color = color,
+            border = border,
+        ) {
+            label()
+        }
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = shape,
+            color = color,
+            border = border,
+        ) {
+            label()
+        }
     }
 }
 

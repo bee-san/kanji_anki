@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 data class MainActivityShellModel(
     val selectedRoute: String = "home",
     val scrollPositionLabel: String? = null,
+    val studyBadgeCount: Int? = null,
 ) {
     val routeTestTag: String
         get() = "main-route-$selectedRoute"

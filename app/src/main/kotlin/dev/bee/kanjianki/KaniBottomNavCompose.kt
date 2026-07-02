@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -40,21 +41,25 @@ internal class KaniNavActions(
 
 internal fun kaniNavItemTestTag(route: String): String = "kani-nav-$route"
 
+internal fun kaniNavBadgeLabel(count: Int): String = if (count > 99) "99+" else count.toString()
+
 private class KaniNavItem(
     val route: String,
     val label: String,
     val iconRes: Int,
     val onClick: () -> Unit,
+    val badgeCount: Int? = null,
 )
 
 @Composable
 internal fun KaniBottomNavBar(
     selectedRoute: String,
     actions: KaniNavActions,
+    studyBadgeCount: Int? = null,
 ) {
     val items = listOf(
         KaniNavItem(MainActivityBase.NAV_HOME_ROUTE, NavigationCopy.homeLabel(), R.drawable.ic_home_24, actions.onHome),
-        KaniNavItem(MainActivityBase.NAV_STUDY, NavigationCopy.studyLabel(), R.drawable.ic_study_24, actions.onStudy),
+        KaniNavItem(MainActivityBase.NAV_STUDY, NavigationCopy.studyLabel(), R.drawable.ic_study_24, actions.onStudy, badgeCount = studyBadgeCount),
         KaniNavItem(MainActivityBase.NAV_STATS_ROUTE, NavigationCopy.statsLabel(), R.drawable.ic_stats_24, actions.onStats),
         KaniNavItem(MainActivityBase.NAV_SETTINGS_ROUTE, NavigationCopy.settingsLabel(), R.drawable.ic_settings_24, actions.onSettings),
     )
@@ -121,11 +126,22 @@ private fun KaniBottomNavItem(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(vertical = 6.dp),
             ) {
-                Icon(
-                    painter = painterResource(id = item.iconRes),
-                    contentDescription = null,
-                    tint = contentColor,
-                )
+                Box {
+                    Icon(
+                        painter = painterResource(id = item.iconRes),
+                        contentDescription = null,
+                        tint = contentColor,
+                    )
+                    val badgeCount = item.badgeCount
+                    if (badgeCount != null && badgeCount > 0) {
+                        KaniNavBadge(
+                            label = kaniNavBadgeLabel(badgeCount),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 10.dp, y = (-4).dp),
+                        )
+                    }
+                }
                 Text(
                     text = item.label,
                     color = contentColor,
@@ -137,5 +153,24 @@ private fun KaniBottomNavItem(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun KaniNavBadge(label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.testTag("kani-nav-badge"),
+        shape = RoundedCornerShape(999.dp),
+        color = KaniTheme.colors.coral,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+            color = KaniTheme.colors.onCoral,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+        )
     }
 }

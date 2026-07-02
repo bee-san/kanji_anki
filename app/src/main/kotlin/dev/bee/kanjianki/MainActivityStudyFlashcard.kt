@@ -59,6 +59,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
+        val swipeFeedback = StudySwipeFeedbackState()
+        activity.flashcardSwipeFeedback = swipeFeedback
         val heroPanel = FlashcardHeroPanelModel(
             if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item?.kanji ?: "",
             if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
@@ -90,7 +92,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
         )
         activity.flashcardActionBarState = actionBarState
-        return ComposeFlashcardRouteModel(cardModel, actionBarState)
+        return ComposeFlashcardRouteModel(cardModel, actionBarState, swipeFeedback)
     }
 
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
@@ -144,24 +146,27 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
             Runnable { activity.renderDetail(glyph, false, null, Runnable { renderComposeFlashcardRoute { route } }) }
         }
-        FlashcardCard(
-            model = route.cardModel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 8.dp)
-                .onGloballyPositioned { coordinates ->
-                    val position = coordinates.positionInWindow()
-                    val size = coordinates.size
-                    activity.setFlashcardGestureBounds(
-                        position.x,
-                        position.y,
-                        position.x + size.width,
-                        position.y + size.height,
-                    )
-                },
-            onTypingDone = Runnable { revealFlashcardAnswer() },
-            onBrowseAction = browseAction,
-        )
+        StudyCardEnterTransition {
+            FlashcardCard(
+                model = route.cardModel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 8.dp)
+                    .onGloballyPositioned { coordinates ->
+                        val position = coordinates.positionInWindow()
+                        val size = coordinates.size
+                        activity.setFlashcardGestureBounds(
+                            position.x,
+                            position.y,
+                            position.x + size.width,
+                            position.y + size.height,
+                        )
+                    },
+                onTypingDone = Runnable { revealFlashcardAnswer() },
+                onBrowseAction = browseAction,
+                swipeFeedback = route.swipeFeedback,
+            )
+        }
     }
 
     @Composable
@@ -174,11 +179,13 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             onPass = { route.actionBarState.onPass.run() },
             undoMessage = undoMessage,
             onUndo = { activity.undoLastRating() },
+            swipeFeedback = route.swipeFeedback,
         )
     }
 
     private data class ComposeFlashcardRouteModel(
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
+        val swipeFeedback: StudySwipeFeedbackState,
     )
 }

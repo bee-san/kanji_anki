@@ -128,7 +128,7 @@ fun HomeSectionHeader(
                     .padding(start = 12.dp)
                     .width(104.dp)
                     .testTag(homeSectionActionButtonTestTag(actionLabel)),
-                minHeightDp = 42,
+                minHeightDp = 48,
                 textSizeSp = 14,
                 onClick = {
                     withUiTrace(actionTraceSection) {

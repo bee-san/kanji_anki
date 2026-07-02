@@ -86,16 +86,25 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                 false
             }
 
+            MotionEvent.ACTION_MOVE -> {
+                if (activity.flashcardTouchTracking && activity.flashcardAnswerRevealed) {
+                    activity.flashcardSwipeFeedback?.update(event.rawX - activity.flashcardTouchStartX)
+                }
+                false
+            }
+
             MotionEvent.ACTION_UP -> {
                 if (!activity.flashcardTouchTracking) {
                     return false
                 }
                 activity.flashcardTouchTracking = false
+                activity.flashcardSwipeFeedback?.reset()
                 handleFlashcardRelease(event)
             }
 
             MotionEvent.ACTION_CANCEL -> {
                 activity.flashcardTouchTracking = false
+                activity.flashcardSwipeFeedback?.reset()
                 false
             }
 

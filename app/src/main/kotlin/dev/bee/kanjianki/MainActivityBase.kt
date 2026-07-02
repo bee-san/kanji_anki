@@ -111,6 +111,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardActionBarState: FlashcardActionBarState? = null
 
     @JvmField
+    var flashcardSwipeFeedback: StudySwipeFeedbackState? = null
+
+    /**
+     * Latest known count of study-ready items, used for the Study badge in the bottom
+     * nav. Negative means unknown (not yet computed for this process).
+     */
+    @JvmField
+    var studyDueBadgeCount: Int = -1
+
+    @JvmField
     val studyUndoState = StudyUndoState()
 
     @JvmField

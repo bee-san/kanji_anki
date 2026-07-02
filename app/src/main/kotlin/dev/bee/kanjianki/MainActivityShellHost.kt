@@ -14,7 +14,11 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRoute(
-                    model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
+                    model = MainActivityShellModel(
+                        selectedRoute = selected,
+                        scrollPositionLabel = scrollPositionLabel,
+                        studyBadgeCount = studyBadgeCount(),
+                    ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
                     navActions = navActions(),
@@ -45,7 +49,11 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
                 MainActivityComposeRouteWithActionBar(
-                    model = MainActivityShellModel(selectedRoute = selected, scrollPositionLabel = scrollPositionLabel),
+                    model = MainActivityShellModel(
+                        selectedRoute = selected,
+                        scrollPositionLabel = scrollPositionLabel,
+                        studyBadgeCount = studyBadgeCount(),
+                    ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
                     navActions = navActions(),
@@ -57,6 +65,10 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             }
             activity.styleSystemBars(systemBars)
         }
+    }
+
+    private fun studyBadgeCount(): Int? {
+        return activity.studyDueBadgeCount.takeIf { it > 0 }
     }
 
     private fun navActions(): KaniNavActions {

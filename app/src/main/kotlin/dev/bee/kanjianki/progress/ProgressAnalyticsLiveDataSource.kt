@@ -67,21 +67,28 @@ internal fun progressAnalyticsSnapshot(
     if (currentFormatLatestSnapshot != null || (freshSnapshot != null && snapshot.reviewDaySummaries.isEmpty())) {
         scheduleRefresh?.invoke()
     }
-    val reviewDays30 = if (snapshot.reviewDaySummaries.isNotEmpty()) {
-        snapshot.reviewDaySummaries.map { it.toReviewDaySummary() }.takeLast(30)
+    val reviewDaysAll = if (snapshot.reviewDaySummaries.isNotEmpty()) {
+        snapshot.reviewDaySummaries.map { it.toReviewDaySummary() }.takeLast(90)
     } else {
-        source.reviewDaySummaries(nowMillis, 30)
+        source.reviewDaySummaries(nowMillis, 90)
     }
+    val reviewDays30 = reviewDaysAll.takeLast(30)
     val reviewDays14 = reviewDays30.takeLast(14)
     val reviewDays7 = reviewDays14.takeLast(7)
     val reviewDays7Prev = reviewDays14.take(7)
     val reviewBuckets30 = bucketSummaries(reviewDays30, 6)
-    val reviewBuckets30Accuracy = reviewBuckets30.map { bucket ->
-        val total = bucket.total.coerceAtLeast(0)
-        val correct = (bucket.total - bucket.again).coerceAtLeast(0)
-        val percent = if (total == 0) 0 else ((correct * 100.0) / total.toDouble()).roundToInt()
-        bucket.copy(total = percent, again = 0, hard = 0, good = 0, easy = 0, writingRequired = 0, writingFailed = 0)
-    }
+
+    val reviewsRangeData = mapOf(
+        AnalyticsRange.SEVEN_DAYS to reviewsRangeData(AnalyticsRange.SEVEN_DAYS, reviewDays7),
+        AnalyticsRange.THIRTY_DAYS to reviewsRangeData(AnalyticsRange.THIRTY_DAYS, reviewDays30),
+        AnalyticsRange.NINETY_DAYS to reviewsRangeData(AnalyticsRange.NINETY_DAYS, reviewDaysAll),
+    )
+    val reviewsRange7 = reviewsRangeData.getValue(AnalyticsRange.SEVEN_DAYS)
+    val accuracyRangeData = mapOf(
+        AnalyticsRange.SEVEN_DAYS to accuracyTrendChart(AnalyticsRange.SEVEN_DAYS, reviewDays7, nowMillis),
+        AnalyticsRange.THIRTY_DAYS to accuracyTrendChart(AnalyticsRange.THIRTY_DAYS, reviewDays30, nowMillis),
+        AnalyticsRange.NINETY_DAYS to accuracyTrendChart(AnalyticsRange.NINETY_DAYS, reviewDaysAll, nowMillis),
+    )
 
     val studyImpact = snapshot.studyImpactStats
     val streak = snapshot.studyStreak
@@ -91,10 +98,6 @@ internal fun progressAnalyticsSnapshot(
 
     val totalReviews7 = reviewDays7.sumOf { it.total }
     val totalReviews7Prev = reviewDays7Prev.sumOf { it.total }
-    val again7 = reviewDays7.sumOf { it.again }
-    val correct7 = max(0, totalReviews7 - again7)
-    val average7 = if (reviewDays7.isEmpty()) 0 else (totalReviews7 / reviewDays7.size.toDouble()).roundToInt()
-    val bestDay7 = reviewDays7.maxByOrNull { it.total }
 
     val totalReviews30 = reviewDays30.sumOf { it.total }
     val again30 = reviewDays30.sumOf { it.again }
@@ -181,30 +184,12 @@ internal fun progressAnalyticsSnapshot(
             title = "Reviews analytics",
             selectedRange = AnalyticsRange.SEVEN_DAYS,
             availableRanges = listOf(AnalyticsRange.SEVEN_DAYS, AnalyticsRange.THIRTY_DAYS, AnalyticsRange.NINETY_DAYS),
-            reviewsPerDay = ProgressBarChartState(
-                title = "Reviews per day",
-                labels = reviewDays7.map { dayLabel(it.dayStart, "EEEE") },
-                values = reviewDays7.map { it.total },
-                accessibilitySummary = "Reviews per day, 7-day range. ${formatInt(totalReviews7)} total reviews, average ${formatInt(average7)} per day. Correct ${formatInt(correct7)}, incorrect ${formatInt(again7)}. Best day ${bestDay7?.let { dayLabel(it.dayStart, "EEEE") } ?: "n/a"}.",
-                selectedRange = AnalyticsRange.SEVEN_DAYS,
-            ),
-            totalReviews = ProgressCountMetricState(
-                value = totalReviews7,
-                valueLabel = formatInt(totalReviews7),
-            ),
-            averagePerDay = ProgressCountMetricState(
-                value = average7,
-                valueLabel = formatInt(average7),
-            ),
-            correct = ProgressCountMetricState(
-                value = correct7,
-                valueLabel = formatInt(correct7),
-            ),
-            incorrect = ProgressCountMetricState(
-                value = again7,
-                valueLabel = formatInt(again7),
-            ),
-            bestDayLabel = bestDay7?.let { dayLabel(it.dayStart, "EEEE") } ?: "No data",
+            reviewsPerDay = reviewsRange7.reviewsPerDay,
+            totalReviews = reviewsRange7.totalReviews,
+            averagePerDay = reviewsRange7.averagePerDay,
+            correct = reviewsRange7.correct,
+            incorrect = reviewsRange7.incorrect,
+            bestDayLabel = reviewsRange7.bestDayLabel,
             currentStreak = ProgressStreakMetricState(
                 currentDays = streak.currentDays,
                 bestDays = streak.bestDays,
@@ -216,31 +201,14 @@ internal fun progressAnalyticsSnapshot(
             } else {
                 "Start a short review session today to build momentum."
             },
-            accessibilitySummary = "Reviews per day, 7-day range. ${formatInt(totalReviews7)} total reviews, average ${formatInt(average7)} per day. Correct ${formatInt(correct7)}, incorrect ${formatInt(again7)}. Best day ${bestDay7?.let { dayLabel(it.dayStart, "EEEE") } ?: "n/a"}.",
+            accessibilitySummary = reviewsRange7.accessibilitySummary,
+            rangeData = reviewsRangeData,
         ),
         accuracyRetention = ProgressAccuracyRetentionState(
             title = "Accuracy & retention",
             selectedRange = AnalyticsRange.THIRTY_DAYS,
             availableRanges = listOf(AnalyticsRange.SEVEN_DAYS, AnalyticsRange.THIRTY_DAYS, AnalyticsRange.NINETY_DAYS),
-            accuracyTrend = ProgressLineChartState(
-                title = "Accuracy over time",
-                xAxisLabels = reviewBuckets30Accuracy.map { dayLabel(it.dayStart, "MMM d") },
-                yAxisLabels = listOf("70", "75", "80", "85", "90", "95"),
-                series = listOf(
-                    ProgressSeriesState(
-                        label = "Accuracy %",
-                        values = reviewBuckets30Accuracy.map { it.total },
-                    ),
-                    ProgressSeriesState(
-                        label = "7-day avg",
-                        values = rollingAverage(reviewBuckets30Accuracy.map { it.total }),
-                        style = ProgressSeriesStyle.DASHED,
-                    ),
-                ),
-                accessibilitySummary = "Accuracy over time, 30-day range. Current accuracy is ${accuracy30} percent on ${dayLabel(reviewDays30.lastOrNull()?.dayStart ?: nowMillis, "MMM d")}. Accuracy has generally changed across the selected range.",
-                selectedRange = AnalyticsRange.THIRTY_DAYS,
-                tooltipLabel = reviewBuckets30Accuracy.lastOrNull()?.let { "${dayLabel(it.dayStart, "MMM d")}, ${it.total}%" },
-            ),
+            accuracyTrend = accuracyRangeData.getValue(AnalyticsRange.THIRTY_DAYS),
             retentionByCardType = listOf(
                 ProgressRetentionRowState(label = "Meaning", percent = clampPercent(accuracy30 + 1), valueLabel = "${clampPercent(accuracy30 + 1)}%"),
                 ProgressRetentionRowState(label = "Reading", percent = clampPercent(accuracy30 - 2), valueLabel = "${clampPercent(accuracy30 - 2)}%"),
@@ -254,6 +222,7 @@ internal fun progressAnalyticsSnapshot(
                 ProgressCategoryStatusState(label = "Writing", status = statusFor(clampPercent(100 - studyImpact.writingFailed.coerceAtMost(studyImpact.writingRequired)))),
                 ProgressCategoryStatusState(label = SIMILAR_KANJI_LABEL, status = statusFor(accuracy30 - 12)),
             ),
+            rangeData = accuracyRangeData,
         ),
         progressByLevel = ProgressByLevelState(
             title = "Progress by level",
@@ -355,6 +324,69 @@ private fun LocalStore.reviewDaySummaries(nowMillis: Long, days: Int): List<Revi
     return (0 until days).map { index ->
         val dayStart = LocalDayPolicy.moveLocalDays(startDay, index)
         aggregated[dayStart] ?: ReviewDaySummary(dayStart, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
+private fun reviewsRangeData(range: AnalyticsRange, days: List<ReviewDaySummary>): ProgressReviewsRangeData {
+    val total = days.sumOf { it.total }
+    val again = days.sumOf { it.again }
+    val correct = max(0, total - again)
+    val average = if (days.isEmpty()) 0 else (total / days.size.toDouble()).roundToInt()
+    val labelPattern = if (range == AnalyticsRange.SEVEN_DAYS) "EEEE" else "MMM d"
+    val chartDays = if (range == AnalyticsRange.SEVEN_DAYS) days else bucketSummaries(days, 10)
+    val bestDay = days.maxByOrNull { it.total }
+    val summary = "Reviews per day, ${range.days}-day range. ${formatInt(total)} total reviews, average ${formatInt(average)} per day. " +
+        "Correct ${formatInt(correct)}, incorrect ${formatInt(again)}. Best day ${bestDay?.let { dayLabel(it.dayStart, labelPattern) } ?: "n/a"}."
+    return ProgressReviewsRangeData(
+        reviewsPerDay = ProgressBarChartState(
+            title = "Reviews per day",
+            labels = chartDays.map { dayLabel(it.dayStart, labelPattern) },
+            values = chartDays.map { it.total },
+            accessibilitySummary = summary,
+            selectedRange = range,
+        ),
+        totalReviews = ProgressCountMetricState(value = total, valueLabel = formatInt(total)),
+        averagePerDay = ProgressCountMetricState(value = average, valueLabel = formatInt(average)),
+        correct = ProgressCountMetricState(value = correct, valueLabel = formatInt(correct)),
+        incorrect = ProgressCountMetricState(value = again, valueLabel = formatInt(again)),
+        bestDayLabel = bestDay?.let { dayLabel(it.dayStart, labelPattern) } ?: "No data",
+        accessibilitySummary = summary,
+    )
+}
+
+private fun accuracyTrendChart(range: AnalyticsRange, days: List<ReviewDaySummary>, nowMillis: Long): ProgressLineChartState {
+    val total = days.sumOf { it.total }
+    val again = days.sumOf { it.again }
+    val accuracy = percent(max(0, total - again), total)
+    val buckets = accuracyBuckets(days, if (range == AnalyticsRange.SEVEN_DAYS) 7 else 6)
+    return ProgressLineChartState(
+        title = "Accuracy over time",
+        xAxisLabels = buckets.map { dayLabel(it.dayStart, "MMM d") },
+        yAxisLabels = listOf("70", "75", "80", "85", "90", "95"),
+        series = listOf(
+            ProgressSeriesState(
+                label = "Accuracy %",
+                values = buckets.map { it.total },
+            ),
+            ProgressSeriesState(
+                label = "7-day avg",
+                values = rollingAverage(buckets.map { it.total }),
+                style = ProgressSeriesStyle.DASHED,
+            ),
+        ),
+        accessibilitySummary = "Accuracy over time, ${range.days}-day range. Current accuracy is $accuracy percent on " +
+            "${dayLabel(days.lastOrNull()?.dayStart ?: nowMillis, "MMM d")}. Accuracy has generally changed across the selected range.",
+        selectedRange = range,
+        tooltipLabel = buckets.lastOrNull()?.let { "${dayLabel(it.dayStart, "MMM d")}, ${it.total}%" },
+    )
+}
+
+private fun accuracyBuckets(days: List<ReviewDaySummary>, bucketCount: Int): List<ReviewDaySummary> {
+    return bucketSummaries(days, bucketCount).map { bucket ->
+        val total = bucket.total.coerceAtLeast(0)
+        val correct = (bucket.total - bucket.again).coerceAtLeast(0)
+        val percent = if (total == 0) 0 else ((correct * 100.0) / total.toDouble()).roundToInt()
+        bucket.copy(total = percent, again = 0, hard = 0, good = 0, easy = 0, writingRequired = 0, writingFailed = 0)
     }
 }
 

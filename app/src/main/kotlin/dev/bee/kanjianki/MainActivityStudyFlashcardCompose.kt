@@ -2,6 +2,11 @@
 
 package dev.bee.kanjianki
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +19,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +53,45 @@ internal class FlashcardActionBarState(
     var revealed by mutableStateOf(revealed)
 }
 
+/**
+ * Shared drag-feedback state for the revealed Fail/Pass swipe gesture. The gesture
+ * (on the action bar or on the card itself) reports horizontal drag distance here and
+ * the flashcard renders a translation plus a pass/fail tint from it.
+ */
+class StudySwipeFeedbackState {
+    var thresholdPx by mutableFloatStateOf(0f)
+    var dragOffsetX by mutableFloatStateOf(0f)
+        private set
+
+    /** -1..1 fraction of the swipe threshold; positive means pass, negative means fail. */
+    val progress: Float
+        get() = if (thresholdPx <= 0f) 0f else (dragOffsetX / thresholdPx).coerceIn(-1f, 1f)
+
+    fun update(offsetX: Float) {
+        dragOffsetX = offsetX
+    }
+
+    fun reset() {
+        dragOffsetX = 0f
+    }
+}
+
+/**
+ * One-shot enter transition used for each new study card. Every card render is a fresh
+ * composition, so a self-starting transition gives a directional slide+fade between cards.
+ */
+@Composable
+internal fun StudyCardEnterTransition(content: @Composable () -> Unit) {
+    val enterState = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = enterState,
+        enter = fadeIn(animationSpec = tween(durationMillis = 180)) +
+            slideInHorizontally(animationSpec = tween(durationMillis = 240)) { fullWidth -> fullWidth / 3 },
+    ) {
+        content()
+    }
+}
+
 @Composable
 fun StudyFlashcardActionBar(
     revealed: Boolean,
@@ -54,6 +100,7 @@ fun StudyFlashcardActionBar(
     onPass: () -> Unit,
     undoMessage: String? = null,
     onUndo: (() -> Unit)? = null,
+    swipeFeedback: StudySwipeFeedbackState? = null,
 ) {
     Column(
         modifier = Modifier
@@ -78,7 +125,7 @@ fun StudyFlashcardActionBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass),
+                    .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass, swipeFeedback = swipeFeedback),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 StudyAgainButton(
@@ -95,10 +142,15 @@ fun StudyFlashcardActionBar(
 }
 
 @Composable
-private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () -> Unit): Modifier {
+private fun Modifier.revealedReviewSwipeGestures(
+    onFail: () -> Unit,
+    onPass: () -> Unit,
+    swipeFeedback: StudySwipeFeedbackState? = null,
+): Modifier {
     val touchSlop = LocalViewConfiguration.current.touchSlop.roundToInt()
     val minimumSwipeDistance = with(LocalDensity.current) { 72.dp.toPx().roundToInt() }
-    return pointerInput(onFail, onPass, touchSlop, minimumSwipeDistance) {
+    swipeFeedback?.thresholdPx = minimumSwipeDistance.toFloat()
+    return pointerInput(onFail, onPass, touchSlop, minimumSwipeDistance, swipeFeedback) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             var endPosition = down.position
@@ -114,9 +166,11 @@ private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () 
                     }
                     if (consumingReviewSwipe) {
                         change.consume()
+                        swipeFeedback?.update(dx)
                     }
                 }
             } while (event.changes.any { it.pressed })
+            swipeFeedback?.reset()
 
             when (
                 FlashcardGesturePolicy.release(
@@ -138,9 +192,13 @@ private fun Modifier.revealedReviewSwipeGestures(onFail: () -> Unit, onPass: () 
 
 @Composable
 private fun StudyRevealButton(onReveal: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
     StudyPrimaryActionButton(
         label = StudyReviewButtonCopy.revealLabel(),
-        onClick = onReveal,
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+            onReveal()
+        },
         modifier = Modifier
             .fillMaxWidth()
     ) {

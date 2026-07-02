@@ -163,24 +163,43 @@ object ProgressAnalyticsCopy {
                 "今日短く復習して勢いを作りましょう。"
             },
             accessibilitySummary = "7日間の復習数です。合計${state.totalReviews.valueLabel}件、正解${state.correct.valueLabel}件、不正解${state.incorrect.valueLabel}件です。",
+            rangeData = state.rangeData.mapValues { (range, data) -> localizeReviewsRangeData(range, data) },
+        )
+    }
+
+    private fun localizeReviewsRangeData(range: AnalyticsRange, data: ProgressReviewsRangeData): ProgressReviewsRangeData {
+        val summary = "${range.days}日間の復習数です。合計${data.totalReviews.valueLabel}件、正解${data.correct.valueLabel}件、不正解${data.incorrect.valueLabel}件です。"
+        return data.copy(
+            reviewsPerDay = data.reviewsPerDay.copy(
+                title = "1日ごとの復習",
+                labels = data.reviewsPerDay.labels.map { localizeDateText(localizedLabel(it)) },
+                accessibilitySummary = "${range.days}日間の復習数です。合計${data.totalReviews.valueLabel}件、1日平均${data.averagePerDay.valueLabel}件です。",
+            ),
+            bestDayLabel = localizeDateText(localizedLabel(data.bestDayLabel)),
+            accessibilitySummary = summary,
         )
     }
 
     private fun localizeAccuracy(state: ProgressAccuracyRetentionState): ProgressAccuracyRetentionState {
         return state.copy(
             title = "正答率と定着",
-            accuracyTrend = state.accuracyTrend.copy(
-                title = "正答率の推移",
-                xAxisLabels = state.accuracyTrend.xAxisLabels.map(::localizeDateText),
-                series = state.accuracyTrend.series.map { it.copy(label = localizedLabel(it.label)) },
-                accessibilitySummary = "30日間の正答率推移です。現在の正答率は${state.accuracyTrend.series.firstOrNull()?.values?.lastOrNull() ?: 0}%です。",
-                tooltipLabel = state.accuracyTrend.tooltipLabel?.let(::localizeDateText),
-            ),
+            accuracyTrend = localizeAccuracyTrend(state.accuracyTrend, AnalyticsRange.THIRTY_DAYS),
             retentionByCardType = state.retentionByCardType.map { it.copy(label = localizedLabel(it.label)) },
             retentionSummary = "カード種類ごとの定着率です。",
             categoryStatuses = state.categoryStatuses.map {
                 it.copy(label = localizedLabel(it.label), status = localizedLabel(it.status))
             },
+            rangeData = state.rangeData.mapValues { (range, chart) -> localizeAccuracyTrend(chart, range) },
+        )
+    }
+
+    private fun localizeAccuracyTrend(chart: ProgressLineChartState, range: AnalyticsRange): ProgressLineChartState {
+        return chart.copy(
+            title = "正答率の推移",
+            xAxisLabels = chart.xAxisLabels.map(::localizeDateText),
+            series = chart.series.map { it.copy(label = localizedLabel(it.label)) },
+            accessibilitySummary = "${range.days}日間の正答率推移です。現在の正答率は${chart.series.firstOrNull()?.values?.lastOrNull() ?: 0}%です。",
+            tooltipLabel = chart.tooltipLabel?.let(::localizeDateText),
         )
     }
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.HomeTextCopy
 
 private val HomeInk: Color @Composable get() = KaniTheme.colors.ink
 private val HomeMuted: Color @Composable get() = KaniTheme.colors.muted
@@ -108,7 +109,7 @@ fun HomePrimaryCta(
     color: Int,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(HomeStudyCtaCornerRadius)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -142,10 +143,12 @@ fun HomePrimaryCta(
 @Composable
 fun HomeStudyCta(
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    dueCount: Int = 0,
 ) {
     val shape = RoundedCornerShape(HomeStudyCtaCornerRadius)
     val noFontPadding = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+    val dueLabel = if (dueCount > 0) "$dueCount ${HomeTextCopy.deckOverviewDueLabel()}" else null
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -162,7 +165,7 @@ fun HomeStudyCta(
             .border(2.dp, KaniTheme.colors.border, shape)
             .testTag(homeStudyCtaTestTag(title))
             .semantics {
-                contentDescription = title
+                contentDescription = if (dueLabel != null) "$title, $dueLabel" else title
             }
             .clickable(
                 role = Role.Button,
@@ -193,6 +196,24 @@ fun HomeStudyCta(
                 overflow = TextOverflow.Ellipsis,
                 style = noFontPadding
             )
+            if (dueLabel != null) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.White.copy(alpha = 0.24f))
+                ) {
+                    Text(
+                        text = dueLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        color = KaniTheme.colors.onPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        style = noFontPadding
+                    )
+                }
+            }
         }
 
         Box(
