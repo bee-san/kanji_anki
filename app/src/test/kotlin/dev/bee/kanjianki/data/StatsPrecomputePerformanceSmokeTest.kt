@@ -31,7 +31,10 @@ class StatsPrecomputePerformanceSmokeTest {
         val repairSections = model.sections.filter { it.title.startsWith("Repair evidence") }
         assertEquals(listOf("Repair evidence cohort", "Repair evidence"), repairSections.map { it.title })
         assertEquals("1 repair evidence item", repairSections[0].summary)
-        assertEquals("弱 · Improving · high confidence", repairSections[0].lines.single().text)
+        assertEquals(
+            listOf("0 repairs retired in the last 30 days", "弱 · Improving · high confidence"),
+            repairSections[0].lines.map { it.text },
+        )
         assertEquals("弱 · Improving · 70 → 40", repairSections[1].lines.single().text)
     }
 
@@ -85,6 +88,12 @@ class StatsPrecomputePerformanceSmokeTest {
         override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
             repairEvidenceReads += 1
             return emptyList()
+        }
+
+        override fun retiredRepairsLast30Days(nowMillis: Long): Int {
+            // The retired-repairs count is an intentionally cheap live COUNT query,
+            // allowed even on the cached stats route.
+            return 0
         }
     }
 

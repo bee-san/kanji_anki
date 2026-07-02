@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
@@ -74,6 +75,14 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             answerPanel,
             KanjiChoiceHandler { glyph ->
                 val correct = choiceCard.isCorrect(glyph)
+                home.store.recordChoiceReviewLog(
+                    choiceCard.targetKanji,
+                    SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                    glyph,
+                    correct,
+                    RecordsBase.LadderRung.MEANING_KANJI.wireName(),
+                    System.currentTimeMillis(),
+                )
                 home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
             },
             MeaningChoiceResultResolver { glyph ->
@@ -120,7 +129,8 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             session.row,
             home.store.activeDashboardRows(),
             home.store.searchKanjiInventory(""),
-            meaningChoiceRandom
+            meaningChoiceRandom,
+            home.store.choiceWrongPickCounts(System.currentTimeMillis()),
         )
     }
 

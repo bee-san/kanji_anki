@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.ConfusionPairMiner
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiChoiceReviewPolicy
@@ -73,6 +75,15 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         ).use {
             return it.moveToFirst()
         }
+    }
+
+    /**
+     * Aggregated wrong-pick counts (target -> selected -> count) from the
+     * choice review log, limited to the confusion-mining window. Used to
+     * weight multiple-choice distractors toward historically confused kanji.
+     */
+    fun choiceWrongPickCounts(nowMillis: Long): Map<String, Map<String, Int>> {
+        return choiceWrongPickCounts(readableDatabase, ConfusionPairMiner.windowStartMillis(nowMillis))
     }
 
     fun allSimilarChoiceCards(): List<RecordsImportModels.SimilarKanjiChoiceCard> {
@@ -192,6 +203,35 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         return submitSimilarChoice(submitted, selectedKanji, nowMillis, true)
     }
 
+    /**
+     * Records a multiple-choice pick for confusion-pair mining. Used by rungs
+     * that render a choice grid outside the similar-kanji practice tables
+     * (currently meaning_kanji); the similar_kanji path logs inline during
+     * submitSimilarChoice.
+     */
+    fun recordChoiceReviewLog(
+        targetKanji: String?,
+        choiceSignature: String?,
+        selectedKanji: String?,
+        correct: Boolean,
+        rung: String?,
+        nowMillis: Long,
+    ) {
+        val target = normalizeSingleKanji(targetKanji)
+        val selected = normalizeSingleKanji(selectedKanji)
+        if (target.isEmpty() || selected.isEmpty()) {
+            return
+        }
+        val log = ContentValues()
+        log.put(COLUMN_TARGET_KANJI, target)
+        log.put(COLUMN_CHOICE_SIGNATURE, choiceSignature ?: "")
+        log.put("selected_kanji", selected)
+        log.put("correct", if (correct) 1 else 0)
+        log.put(COLUMN_REVIEWED_AT, nowMillis)
+        log.put(COLUMN_RUNG, rung?.trim().takeUnless { it.isNullOrEmpty() } ?: RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
+        writableDatabase.insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
+    }
+
     fun submitSimilarChoice(
         submitted: RecordsImportModels.SimilarKanjiChoiceCard?,
         selectedKanji: String?,
@@ -230,6 +270,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
             log.put("selected_kanji", evaluated.selectedKanji)
             log.put("correct", if (evaluated.correct) 1 else 0)
             log.put(COLUMN_REVIEWED_AT, nowMillis)
+            log.put(COLUMN_RUNG, RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
             insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
 
             if (!evaluated.correct && enqueueRepairs) {

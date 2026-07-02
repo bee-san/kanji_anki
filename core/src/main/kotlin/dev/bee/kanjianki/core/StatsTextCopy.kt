@@ -101,6 +101,13 @@ object StatsTextCopy {
     }
 
     @JvmStatic
+    fun repairEvidenceRetiredLast30DaysText(count: Int): String =
+        localizedText(
+            StudyTextCopy.countText(count, "repair retired in the last 30 days", "repairs retired in the last 30 days"),
+            "直近30日で修了した修復${count}件",
+        )
+
+    @JvmStatic
     fun repairEvidenceConfidenceBandLabel(confidence: Double): String = when {
         confidence >= 0.75 -> localizedText("high confidence", "高信頼")
         confidence < 0.50 -> localizedText("low confidence", "低信頼")

@@ -11,6 +11,16 @@ class MeaningKanjiChoicePlanner {
         inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
         random: Random?,
     ): RecordsImportModels.MeaningKanjiChoiceCard? {
+        return buildChoiceCard(target, rows, inventory, random, emptyMap())
+    }
+
+    fun buildChoiceCard(
+        target: RecordsImportModels.DashboardRow?,
+        rows: List<RecordsImportModels.DashboardRow?>?,
+        inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
+        random: Random?,
+        wrongPickCounts: Map<String, Map<String, Int>>?,
+    ): RecordsImportModels.MeaningKanjiChoiceCard? {
         if (target?.kanji == null || target.kanji.javaTrim().isEmpty()) {
             return null
         }
@@ -33,15 +43,30 @@ class MeaningKanjiChoicePlanner {
             eligible.getOrDefault(decoy, "").isNotEmpty() &&
                 eligible.getOrDefault(decoy, "") == normalizedTargetMeaning
         }
+        // Seed the decoy list with the target's confused kanji (wrong-pick
+        // count desc) before the random fill; with no confusion history this
+        // is a no-op and behavior matches the unweighted path exactly.
+        val confusedCounts = wrongPickCounts?.get(targetKanji).orEmpty()
+        val confusedSeeds = decoys
+            .filter { (confusedCounts[it] ?: 0) > 0 }
+            .sortedWith(compareByDescending<String> { confusedCounts[it] ?: 0 }.thenBy { it })
         decoys.shuffle(rng)
 
         val choices = ArrayList<String>()
         choices.add(targetKanji)
+        for (seed in confusedSeeds) {
+            if (choices.size >= CHOICE_COUNT) {
+                break
+            }
+            choices.add(seed)
+        }
         for (decoy in decoys) {
             if (choices.size >= CHOICE_COUNT) {
                 break
             }
-            choices.add(decoy)
+            if (!choices.contains(decoy)) {
+                choices.add(decoy)
+            }
         }
         if (choices.size < CHOICE_COUNT) {
             return null

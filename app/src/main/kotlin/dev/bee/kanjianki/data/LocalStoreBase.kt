@@ -447,6 +447,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val SQL_CREATE_TABLE: String = "CREATE TABLE "
         const val SQL_CREATE_TABLE_IF_NEEDED: String = "CREATE TABLE IF NOT EXISTS "
         const val SQL_TEXT_NOT_NULL_DEFAULT_EMPTY: String = "TEXT NOT NULL DEFAULT ''"
+        const val SQL_TEXT_NOT_NULL_DEFAULT_SIMILAR_KANJI_RUNG: String = "TEXT NOT NULL DEFAULT 'similar_kanji'"
         const val SQL_INTEGER_NOT_NULL_DEFAULT_ZERO: String = "INTEGER NOT NULL DEFAULT 0"
         const val SQL_INTEGER_NOT_NULL_DEFAULT_ONE: String = "INTEGER NOT NULL DEFAULT 1"
         const val WHERE_KANJI: String = "kanji=?"

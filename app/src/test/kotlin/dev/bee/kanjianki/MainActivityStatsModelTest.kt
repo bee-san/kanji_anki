@@ -192,8 +192,9 @@ class MainActivityStatsModelTest {
             "1 improving · 0 stable · 0 regressing · 0 waiting for evidence. Confidence: 1 high · 0 medium · 0 low.",
             cohortCard.body,
         )
-        assertEquals(1, cohortCard.lines.size)
-        assertEquals("弱 · Improving · high confidence", cohortCard.lines.first().text)
+        assertEquals(2, cohortCard.lines.size)
+        assertEquals("0 repairs retired in the last 30 days", cohortCard.lines[0].text)
+        assertEquals("弱 · Improving · high confidence", cohortCard.lines[1].text)
         val repairCard = model.sections.first { it.title == "Repair evidence" }
         assertEquals("1 repair evidence item", repairCard.summary)
         assertEquals("Latest entries first.", repairCard.body)
@@ -213,6 +214,7 @@ class MainActivityStatsModelTest {
             StudyStatsStore.RecentMistake("疲", "hard", 4_140_000L),
         ),
         private val repairEvidenceRows: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
+        private val retiredLast30Days: Int = 0,
     ) : StatsScreenStatsSource {
         var freshReads = 0
         var latestReads = 0
@@ -223,6 +225,7 @@ class MainActivityStatsModelTest {
         val recentMistakeLimits = mutableListOf<Int>()
         val recomputeTimes = mutableListOf<Long>()
         val studyTimeReads = mutableListOf<Long>()
+        val retiredLast30DaysReads = mutableListOf<Long>()
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
             freshReads += 1
@@ -263,6 +266,11 @@ class MainActivityStatsModelTest {
         override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
             repairEvidenceReads += 1
             return repairEvidenceRows
+        }
+
+        override fun retiredRepairsLast30Days(nowMillis: Long): Int {
+            retiredLast30DaysReads += nowMillis
+            return retiredLast30Days
         }
     }
 

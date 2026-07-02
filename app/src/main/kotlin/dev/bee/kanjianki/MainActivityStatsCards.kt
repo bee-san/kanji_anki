@@ -17,6 +17,7 @@ internal interface StatsScreenStatsSource {
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats
     fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence>
+    fun retiredRepairsLast30Days(nowMillis: Long): Int
 }
 
 internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
@@ -53,6 +54,10 @@ internal fun MainActivityStats.buildStatsScreenModel(): StatsScreenModel {
             override fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
                 return store.kanjiRepairEvidence()
             }
+
+            override fun retiredRepairsLast30Days(nowMillis: Long): Int {
+                return store.retiredRepairsLast30Days(nowMillis)
+            }
         }
     )
 }
@@ -70,7 +75,10 @@ internal fun buildStatsScreenModel(
     val studyTaskTimeStats = if (needsLiveFallback) source.studyTaskTimeStats(nowMillis) else snapshot.studyTaskTimeStats
     val recentMistakes = if (needsLiveFallback) source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT) else snapshot.recentMistakes
     val repairEvidence = if (needsLiveFallback) source.kanjiRepairEvidence() else snapshot.kanjiRepairEvidence
-    val repairEvidenceCohort = StudyStatsStore.repairEvidenceCohortStats(repairEvidence)
+    val repairEvidenceCohort = StudyStatsStore.repairEvidenceCohortStats(
+        repairEvidence,
+        source.retiredRepairsLast30Days(nowMillis),
+    )
     return statsScreenModel(
         snapshot.outcomeStats,
         snapshot.impactReport,
@@ -359,13 +367,25 @@ private fun repairEvidenceCohortCard(cohort: StudyStatsStore.RepairEvidenceCohor
             cohort.mediumConfidenceCount,
             cohort.lowConfidenceCount,
         ),
-        lines = rows.map { row ->
-            StatsLineModel(
-                text = StatsTextCopy.repairEvidenceCohortExampleText(row.kanji, row.status, row.confidence),
-                color = STATS_INK_COLOR,
-                bold = true,
-                sizeSp = 16
+        lines = buildList {
+            add(
+                StatsLineModel(
+                    text = StatsTextCopy.repairEvidenceRetiredLast30DaysText(cohort.retiredLast30Days),
+                    color = STATS_MUTED_COLOR,
+                    bold = false,
+                    sizeSp = 15
+                )
             )
+            rows.forEach { row ->
+                add(
+                    StatsLineModel(
+                        text = StatsTextCopy.repairEvidenceCohortExampleText(row.kanji, row.status, row.confidence),
+                        color = STATS_INK_COLOR,
+                        bold = true,
+                        sizeSp = 16
+                    )
+                )
+            }
         },
         strokeColor = STATS_CORAL_COLOR
     )

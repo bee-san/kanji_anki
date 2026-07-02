@@ -12,6 +12,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyOne(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyTwo(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyThree(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentyFour(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -141,6 +142,22 @@ internal object LocalStoreMigrations {
     ) {
         if (shouldRun(oldVersion, targetVersion, 23)) {
             hooks.addNullableColumn(db, LocalStoreBase.TABLE_STATS_SCREEN_CACHE, "cache_format_version", LocalStoreBase.SQL_INTEGER_NOT_NULL_DEFAULT_ONE)
+        }
+    }
+
+    private fun upgradeThroughTwentyFour(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 24)) {
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
+                LocalStoreBase.COLUMN_RUNG,
+                LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_SIMILAR_KANJI_RUNG,
+            )
         }
     }
 

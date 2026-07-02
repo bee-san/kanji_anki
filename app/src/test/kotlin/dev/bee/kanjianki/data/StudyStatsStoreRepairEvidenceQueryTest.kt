@@ -106,6 +106,38 @@ class StudyStatsStoreRepairEvidenceQueryTest {
         assertEquals(0.10, item.confidence, 0.0001)
     }
 
+    @Test
+    fun retiredRepairsLast30DaysCountsOnlyRecentRetiredTimelineEvents() {
+        val now = 100L * 24L * 60L * 60L * 1000L
+        val day = 24L * 60L * 60L * 1000L
+        insertTimelineEvent("弱", now - day, "retired", "recent-retire")
+        insertTimelineEvent("未", now - 29 * day, "retired", "edge-retire")
+        insertTimelineEvent("古", now - 31 * day, "retired", "old-retire")
+        insertTimelineEvent("止", now - day, "reopened", "recent-reopen")
+
+        assertEquals(2, statsStore.retiredRepairsLast30Days(now))
+    }
+
+    @Test
+    fun retiredRepairsLast30DaysReturnsZeroWhenNoTimelineEvents() {
+        assertEquals(0, statsStore.retiredRepairsLast30Days(1_000_000L))
+    }
+
+    private fun insertTimelineEvent(
+        kanji: String,
+        occurredAt: Long,
+        eventType: String,
+        dedupeKey: String,
+    ) {
+        db.execSQL(
+            "INSERT INTO kanji_timeline_events " +
+                "(kanji, occurred_at, event_type, title, detail, source_expression, source_reading, rating, " +
+                "writing_required, writing_passed, manual_override, weakness_score, mature_support_count, sync_id, dedupe_key) " +
+                "VALUES (?, ?, ?, 'title', 'detail', '', '', '', 0, 0, 0, NULL, NULL, NULL, ?)",
+            arrayOf<Any>(kanji, occurredAt, eventType, dedupeKey),
+        )
+    }
+
     private fun insertSnapshot(
         syncId: Long,
         finishedAt: Long,

@@ -44,11 +44,20 @@ class BridgeScheduler {
         settings: RecordsSyncModels.Settings?,
         nowMillis: Long,
         startOfDayMillis: Long,
-        ladder: RecordsBase.StudyLadderSettings?
+        ladder: RecordsBase.StudyLadderSettings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null
     ): List<RecordsStudyModels.StudyItem> {
         val resolvedSettings = safeSettings(settings)
         return suppressionPolicy.apply(
-            queueSeeder.seedQueue(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, ladder),
+            queueSeeder.seedQueue(
+                safeRows(rows),
+                safeItems(existing),
+                resolvedSettings,
+                nowMillis,
+                startOfDayMillis,
+                ladder,
+                evidenceStatusByKanji,
+            ),
             resolvedSettings.matureDays,
         )
     }
@@ -71,11 +80,21 @@ class BridgeScheduler {
         nowMillis: Long,
         startOfDayMillis: Long,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
-        ladder: RecordsBase.StudyLadderSettings?
+        ladder: RecordsBase.StudyLadderSettings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null
     ): List<RecordsStudyModels.StudyItem> {
         val resolvedSettings = safeSettings(settings)
         return suppressionPolicy.apply(
-            queueSeeder.seedQueue(safeRows(rows), safeItems(existing), resolvedSettings, nowMillis, startOfDayMillis, plan, ladder),
+            queueSeeder.seedQueue(
+                safeRows(rows),
+                safeItems(existing),
+                resolvedSettings,
+                nowMillis,
+                startOfDayMillis,
+                plan,
+                ladder,
+                evidenceStatusByKanji,
+            ),
             resolvedSettings.matureDays,
         )
     }

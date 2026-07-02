@@ -12,10 +12,11 @@ class StudyQueueSeeder {
         nowMillis: Long,
         startOfDayMillis: Long,
         ladder: RecordsBase.StudyLadderSettings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null,
     ): List<RecordsStudyModels.StudyItem> {
         return seedQueueInternal(
             SeedQueueRequest(
-                SeedQueueSource(rows, rows, existing, settings),
+                SeedQueueSource(rows, rows, existing, settings, evidenceStatusByKanji),
                 SeedQueueTiming(nowMillis, startOfDayMillis),
                 SeedQueueLimits(settings.newPerDay, false),
                 StudyLadderRules.safeLadder(ladder),
@@ -31,9 +32,10 @@ class StudyQueueSeeder {
         startOfDayMillis: Long,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         ladder: RecordsBase.StudyLadderSettings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null,
     ): List<RecordsStudyModels.StudyItem> {
         if (plan == null) {
-            return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, ladder)
+            return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, ladder, evidenceStatusByKanji)
         }
         val admissionRows = if (plan.allKanjiMode) rows else rowsForFocus(rows, plan.focusKanji)
         val cappedAdmission = if (plan.allKanjiMode) {
@@ -43,7 +45,7 @@ class StudyQueueSeeder {
         }
         return seedQueueInternal(
             SeedQueueRequest(
-                SeedQueueSource(rows, admissionRows, existing, settings),
+                SeedQueueSource(rows, admissionRows, existing, settings, evidenceStatusByKanji),
                 SeedQueueTiming(nowMillis, startOfDayMillis),
                 SeedQueueLimits(cappedAdmission, plan.allKanjiMode),
                 StudyLadderRules.safeLadder(ladder),
@@ -60,7 +62,7 @@ class StudyQueueSeeder {
         ladder: RecordsBase.StudyLadderSettings?,
     ): Int {
         val request = SeedQueueRequest(
-            SeedQueueSource(rows, rows, existing, settings),
+            SeedQueueSource(rows, rows, existing, settings, null),
             SeedQueueTiming(nowMillis, startOfDayMillis),
             SeedQueueLimits(Int.MAX_VALUE, true),
             StudyLadderRules.safeLadder(ladder),
@@ -90,7 +92,7 @@ class StudyQueueSeeder {
     ): BridgeScheduler.ExtraNewCardsResult {
         val requested = max(0, requestedCount)
         val request = SeedQueueRequest(
-            SeedQueueSource(rows, rows, existing, settings),
+            SeedQueueSource(rows, rows, existing, settings, null),
             SeedQueueTiming(nowMillis, startOfDayMillis),
             SeedQueueLimits(Int.MAX_VALUE, true),
             StudyLadderRules.safeLadder(ladder),
@@ -213,7 +215,7 @@ class StudyQueueSeeder {
         } else {
             alignAnswerSignature(item, row, request.nowMillis, request.ladder)
         }
-        if (shouldRetireSeedItem(request.settings, row, item, current)) {
+        if (shouldRetireSeedItem(request, row, item, current)) {
             return retiredCopy(current)
         }
         return current
@@ -232,13 +234,20 @@ class StudyQueueSeeder {
     }
 
     private fun shouldRetireSeedItem(
-        settings: RecordsSyncModels.Settings,
+        request: SeedQueueRequest,
         row: RecordsImportModels.DashboardRow?,
         original: RecordsStudyModels.StudyItem,
         current: RecordsStudyModels.StudyItem,
     ): Boolean {
-        return StudyLadderRules.STATE_RETIRED != original.state &&
-            (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0))
+        if (StudyLadderRules.STATE_RETIRED == original.state) {
+            return false
+        }
+        if (row == null) {
+            return true
+        }
+        return row.matureSupportCount >= request.settings.matureSupportThreshold &&
+            current.totalReviews > 0 &&
+            !hasRegressingEvidence(request, row.kanji)
     }
 
     private fun admitSeedRow(request: SeedQueueRequest, state: SeedQueueState, row: RecordsImportModels.DashboardRow) {
@@ -274,8 +283,15 @@ class StudyQueueSeeder {
         current: RecordsStudyModels.StudyItem,
     ): Boolean {
         return StudyLadderRules.STATE_RETIRED == current.state &&
-            row.matureSupportCount < request.settings.matureSupportThreshold &&
+            (
+                row.matureSupportCount < request.settings.matureSupportThreshold ||
+                    hasRegressingEvidence(request, row.kanji)
+                ) &&
             state.hasAdmissionRoom(request)
+    }
+
+    private fun hasRegressingEvidence(request: SeedQueueRequest, kanji: String): Boolean {
+        return request.evidenceStatusByKanji?.get(kanji) == KanjiRepairEvidencePolicy.Status.REGRESSING
     }
 
     private fun reopenSeedItem(
@@ -406,6 +422,7 @@ class StudyQueueSeeder {
         val admissionRows: List<RecordsImportModels.DashboardRow>,
         val existing: List<RecordsStudyModels.StudyItem>,
         val settings: RecordsSyncModels.Settings,
+        val evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>?,
     )
 
     private class SeedQueueTiming(
@@ -423,6 +440,7 @@ class StudyQueueSeeder {
         val admissionRows: List<RecordsImportModels.DashboardRow> = sortedAdmissionRows(source.admissionRows, source.settings)
         val existing: List<RecordsStudyModels.StudyItem> = source.existing
         val settings: RecordsSyncModels.Settings = source.settings
+        val evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = source.evidenceStatusByKanji
         val nowMillis: Long = timing.nowMillis
         val startOfDayMillis: Long = timing.startOfDayMillis
         val ladder: RecordsBase.StudyLadderSettings = StudyLadderRules.safeLadder(ladder)

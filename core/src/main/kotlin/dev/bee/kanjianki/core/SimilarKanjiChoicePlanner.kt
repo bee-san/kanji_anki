@@ -8,6 +8,14 @@ class SimilarKanjiChoicePlanner {
         inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
         pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
     ): List<RecordsImportModels.SimilarKanjiChoiceCard> {
+        return buildCandidates(inventory, pairs, emptyMap())
+    }
+
+    fun buildCandidates(
+        inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
+        pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
+        wrongPickCounts: Map<String, Map<String, Int>>?,
+    ): List<RecordsImportModels.SimilarKanjiChoiceCard> {
         val inventoryByKanji = inventoryByKanji(inventory)
         if (inventoryByKanji.size < 2) {
             return emptyList()
@@ -16,7 +24,7 @@ class SimilarKanjiChoicePlanner {
         val directNeighbors = directNeighbors(pairs, inventoryByKanji)
         val out = ArrayList<RecordsImportModels.SimilarKanjiChoiceCard>()
         for (target in inventoryByKanji.values) {
-            val card = choiceCard(target, directNeighbors)
+            val card = choiceCard(target, directNeighbors, wrongPickCounts?.get(target.kanji).orEmpty())
             if (card != null) {
                 out.add(card)
             }
@@ -92,22 +100,52 @@ class SimilarKanjiChoicePlanner {
         private fun choiceCard(
             target: RecordsImportModels.KanjiInventoryItem,
             directNeighbors: Map<String, Set<String>>,
+            targetWrongPicks: Map<String, Int>,
         ): RecordsImportModels.SimilarKanjiChoiceCard? {
             val meaning = target.primaryMeaning.trim()
             val neighbors = directNeighbors[target.kanji]
             if (meaning.isEmpty() || neighbors == null) {
                 return null
             }
-            val choices = TreeSet<String>()
-            choices.add(target.kanji)
-            choices.addAll(neighbors)
-            val choiceList = ArrayList(choices)
+            val choiceList = if (targetWrongPicks.isEmpty()) {
+                val choices = TreeSet<String>()
+                choices.add(target.kanji)
+                choices.addAll(neighbors)
+                ArrayList(choices)
+            } else {
+                confusionOrderedChoices(target.kanji, neighbors, targetWrongPicks)
+            }
             return RecordsImportModels.SimilarKanjiChoiceCard(
                 target.kanji,
                 meaning,
                 choiceList,
                 choiceSignature(choiceList),
             )
+        }
+
+        /**
+         * Orders the neighbor distractors by how often the learner actually
+         * confused them with the target (wrong-pick count desc, then the
+         * existing deterministic lexicographic order) so the most-confused
+         * neighbors survive the choice-limit truncation.
+         */
+        private fun confusionOrderedChoices(
+            targetKanji: String,
+            neighbors: Set<String>,
+            targetWrongPicks: Map<String, Int>,
+        ): ArrayList<String> {
+            val orderedNeighbors = neighbors
+                .filter { it != targetKanji }
+                .sortedWith(compareByDescending<String> { targetWrongPicks[it] ?: 0 }.thenBy { it })
+            val choiceList = ArrayList<String>()
+            choiceList.add(targetKanji)
+            for (neighbor in orderedNeighbors) {
+                if (choiceList.size >= FALLBACK_CHOICE_LIMIT) {
+                    break
+                }
+                choiceList.add(neighbor)
+            }
+            return choiceList
         }
 
         @JvmStatic

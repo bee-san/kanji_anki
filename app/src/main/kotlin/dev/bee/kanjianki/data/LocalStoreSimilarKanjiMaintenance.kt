@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
+import dev.bee.kanjianki.core.ConfusionPairMiner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiIndex
@@ -16,28 +17,80 @@ internal class LocalStoreSimilarKanjiMaintenance(
         nowMillis: Long,
     ) {
         val firstSeenByPair = activity.similarPairFirstSeen(db)
-        val localPairs = similarIndex.pairsWithin(activity.localInventoryKanji(db))
+        val inventoryKanji = activity.localInventoryKanji(db)
+        val localPairs = similarIndex.pairsWithin(inventoryKanji)
         db.delete(LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS, null, null)
         for (pair in localPairs) {
-            val values = ContentValues()
-            values.put(LocalStoreBase.COLUMN_KANJI_A, pair.kanjiA)
-            values.put(LocalStoreBase.COLUMN_KANJI_B, pair.kanjiB)
-            values.put(LocalStoreBase.COLUMN_SOURCE, pair.source)
-            values.put(
-                LocalStoreBase.COLUMN_FIRST_SEEN_AT,
-                firstSeenByPair.getOrDefault(
-                    LocalStoreHistory.similarKey(pair.kanjiA, pair.kanjiB, pair.source),
-                    nowMillis,
-                ),
-            )
-            values.put(LocalStoreBase.COLUMN_LAST_SEEN_AT, nowMillis)
-            db.insertWithOnConflict(
-                LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS,
-                null,
-                values,
-                SQLiteDatabase.CONFLICT_REPLACE,
-            )
+            insertSimilarPair(db, pair.kanjiA, pair.kanjiB, pair.source, firstSeenByPair, nowMillis)
         }
+        for (pair in minedConfusionPairs(db, inventoryKanji, nowMillis)) {
+            insertSimilarPair(db, pair.kanjiA, pair.kanjiB, pair.source, firstSeenByPair, nowMillis)
+        }
+    }
+
+    private fun insertSimilarPair(
+        db: SQLiteDatabase,
+        kanjiA: String,
+        kanjiB: String,
+        source: String,
+        firstSeenByPair: Map<String, Long>,
+        nowMillis: Long,
+    ) {
+        val values = ContentValues()
+        values.put(LocalStoreBase.COLUMN_KANJI_A, kanjiA)
+        values.put(LocalStoreBase.COLUMN_KANJI_B, kanjiB)
+        values.put(LocalStoreBase.COLUMN_SOURCE, source)
+        values.put(
+            LocalStoreBase.COLUMN_FIRST_SEEN_AT,
+            firstSeenByPair.getOrDefault(
+                LocalStoreHistory.similarKey(kanjiA, kanjiB, source),
+                nowMillis,
+            ),
+        )
+        values.put(LocalStoreBase.COLUMN_LAST_SEEN_AT, nowMillis)
+        db.insertWithOnConflict(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS,
+            null,
+            values,
+            SQLiteDatabase.CONFLICT_REPLACE,
+        )
+    }
+
+    /**
+     * The review log is the durable source: pairs regenerate from it on
+     * every sync, so no preservation logic is needed across the
+     * delete-and-reinsert rebuild above.
+     */
+    private fun minedConfusionPairs(
+        db: SQLiteDatabase,
+        inventoryKanji: Collection<String>,
+        nowMillis: Long,
+    ): List<RecordsImportModels.SimilarKanjiPair> {
+        activity.createSimilarKanjiPracticeTables(db)
+        val rows = ArrayList<ConfusionPairMiner.WrongPickRow>()
+        db.query(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_TARGET_KANJI, "selected_kanji", "correct", "reviewed_at"),
+            "correct=0",
+            null,
+            null,
+            null,
+            null,
+        ).use {
+            while (it.moveToNext()) {
+                rows.add(
+                    ConfusionPairMiner.WrongPickRow(
+                        it.getString(0),
+                        it.getString(1),
+                        it.getInt(2) != 0,
+                        it.getLong(3),
+                    ),
+                )
+            }
+        }
+        val local = HashSet(inventoryKanji)
+        return ConfusionPairMiner().minePairs(rows, nowMillis)
+            .filter { it.kanjiA in local && it.kanjiB in local }
     }
 
     fun rebuildSimilarKanjiChoiceStates(db: SQLiteDatabase, nowMillis: Long) {
@@ -47,6 +100,7 @@ internal class LocalStoreSimilarKanjiMaintenance(
         val candidates = planner.buildCandidates(
             activity.allInventoryItems(db),
             activity.allSimilarPairs(db),
+            activity.choiceWrongPickCounts(db, ConfusionPairMiner.windowStartMillis(nowMillis)),
         )
         val currentKeys = HashSet<String>()
         for (card in candidates) {

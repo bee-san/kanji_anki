@@ -45,6 +45,10 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         return repairEvidenceCohortStats(kanjiRepairEvidence())
     }
 
+    fun retiredRepairsLast30Days(nowMillis: Long): Int {
+        return queries.retiredKanjiCountSince(nowMillis - RETIRED_STAT_WINDOW_MILLIS)
+    }
+
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         return queries.reviewStatsSince(sinceMillis)
     }
@@ -362,6 +366,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         @JvmField val mediumConfidenceCount: Int,
         @JvmField val lowConfidenceCount: Int,
         @JvmField val examples: List<KanjiRepairEvidence>,
+        @JvmField val retiredLast30Days: Int = 0,
     ) {
         companion object {
             private const val HIGH_CONFIDENCE_THRESHOLD = 0.75
@@ -373,7 +378,9 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             }
 
             @JvmStatic
-            fun from(evidence: List<KanjiRepairEvidence?>?): RepairEvidenceCohortStats {
+            @JvmOverloads
+            fun from(evidence: List<KanjiRepairEvidence?>?, retiredLast30Days: Int = 0): RepairEvidenceCohortStats {
+                val safeRetiredLast30Days = retiredLast30Days.coerceAtLeast(0)
                 val safeEvidence: MutableList<KanjiRepairEvidence> = ArrayList()
                 for (item in evidence.orEmpty()) {
                     if (item != null) {
@@ -381,7 +388,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                     }
                 }
                 if (safeEvidence.isEmpty()) {
-                    return empty()
+                    return RepairEvidenceCohortStats(0, 0, 0, 0, 0, 0, 0, 0, emptyList(), safeRetiredLast30Days)
                 }
 
                 val sortedExamples = safeEvidence.sortedWith(
@@ -424,6 +431,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                     mediumConfidenceCount,
                     lowConfidenceCount,
                     sortedExamples,
+                    safeRetiredLast30Days,
                 )
             }
 
@@ -484,6 +492,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
     }
 
     companion object {
+        private const val RETIRED_STAT_WINDOW_MILLIS: Long = 30L * 24L * 60L * 60L * 1000L
+
         @JvmStatic
         fun calculateKaniOutcomeStats(
             outcomeEvidence: List<OutcomeEvidence?>?,
@@ -515,8 +525,12 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         }
 
         @JvmStatic
-        fun repairEvidenceCohortStats(evidence: List<KanjiRepairEvidence?>?): RepairEvidenceCohortStats {
-            return RepairEvidenceCohortStats.from(evidence)
+        @JvmOverloads
+        fun repairEvidenceCohortStats(
+            evidence: List<KanjiRepairEvidence?>?,
+            retiredLast30Days: Int = 0,
+        ): RepairEvidenceCohortStats {
+            return RepairEvidenceCohortStats.from(evidence, retiredLast30Days)
         }
 
         private fun calculateKaniOutcomeStats(

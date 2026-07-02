@@ -178,6 +178,17 @@ internal class StudyStatsQueries(
         return out
     }
 
+    fun retiredKanjiCountSince(sinceMillis: Long): Int {
+        val cursor = db().rawQuery(
+            "SELECT COUNT(*) FROM $TABLE_KANJI_TIMELINE_EVENTS WHERE event_type=? AND occurred_at>=?",
+            arrayOf(STATE_RETIRED, sinceMillis.toString())
+        )
+        cursor.use {
+            it.moveToFirst()
+            return it.getInt(0)
+        }
+    }
+
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         val cursor = db().rawQuery(
             "SELECT " +
@@ -527,6 +538,7 @@ internal class StudyStatsQueries(
         const val TABLE_REVIEW_LOG = "review_log"
         const val TABLE_SYNC_KANJI_SNAPSHOTS = "sync_kanji_snapshots"
         const val TABLE_STUDY_ITEMS = "study_items"
+        const val TABLE_KANJI_TIMELINE_EVENTS = "kanji_timeline_events"
         const val COLUMN_KANJI = "kanji"
         const val COLUMN_RATING = "rating"
         const val COLUMN_REVIEWED_AT = "reviewed_at"
