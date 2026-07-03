@@ -7,6 +7,7 @@ import android.content.pm.PackageInstaller
 import android.util.Log
 import androidx.core.content.IntentCompat
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import java.io.File
 
@@ -23,14 +24,18 @@ class PackageInstallStatusReceiver : BroadcastReceiver() {
         val mapped = PackageInstallStatusPolicy.mapInstallStatus(status, statusMessage)
         val now = System.currentTimeMillis()
 
-        LocalStore(context).use { store ->
-            if (mapped.pendingUserAction()) {
-                val message = mapped.message()
-                store.recordAutoUpdateResult(now, message, version, apkName, message)
-                handlePendingUserAction(context, intent, source, version, message)
-            } else {
-                deleteCachedApk(context, apkName)
-                store.recordAutoUpdateResult(now, mapped.message(), version, "", "")
+        // Does a LocalStore write plus a cache-file deletion; move off the main thread
+        // and keep the broadcast alive until it finishes.
+        ReceiverAsyncWork.run(this) {
+            LocalStore(context).use { store ->
+                if (mapped.pendingUserAction()) {
+                    val message = mapped.message()
+                    store.recordAutoUpdateResult(now, message, version, apkName, message)
+                    handlePendingUserAction(context, intent, source, version, message)
+                } else {
+                    deleteCachedApk(context, apkName)
+                    store.recordAutoUpdateResult(now, mapped.message(), version, "", "")
+                }
             }
         }
     }
