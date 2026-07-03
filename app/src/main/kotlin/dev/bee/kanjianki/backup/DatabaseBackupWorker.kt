@@ -1,15 +1,13 @@
 package dev.bee.kanjianki.backup
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
+import dev.bee.kanjianki.data.LocalStore
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.IOException
 
 class DatabaseBackupWorker(
@@ -20,19 +18,23 @@ class DatabaseBackupWorker(
         return doWork(AndroidBackupEnvironment(applicationContext), System.currentTimeMillis())
     }
 
-    fun interface Checkpointer {
-        fun checkpoint(dbFile: File)
-    }
-
-    fun interface FileCopier {
+    /**
+     * Produces a WAL-safe backup at [dest] from [dbFile]. Implementations copy committed
+     * WAL content (e.g. `VACUUM INTO`) rather than doing a plain file copy that would
+     * ignore the `-wal`/`-shm` sidecars and tear or stale the backup.
+     */
+    fun interface Snapshotter {
         @Throws(IOException::class)
-        fun copy(src: File, dst: File)
+        fun snapshot(dbFile: File, dest: File)
     }
 
     interface BackupEnvironment {
         fun databasePath(name: String): File
 
         fun filesDir(): File
+
+        @Throws(IOException::class)
+        fun snapshot(dbFile: File, dest: File)
     }
 
     private class AndroidBackupEnvironment(
@@ -45,30 +47,11 @@ class DatabaseBackupWorker(
         override fun filesDir(): File {
             return context.filesDir
         }
-    }
 
-    fun interface CheckpointDatabaseOpener {
-        @Throws(IOException::class)
-        fun open(dbFile: File): CheckpointDatabase
-    }
-
-    interface CheckpointDatabase {
-        @Throws(IOException::class)
-        fun checkpoint()
-
-        @Throws(IOException::class)
-        fun close()
-    }
-
-    private class SQLiteCheckpointDatabase(
-        private val db: SQLiteDatabase,
-    ) : CheckpointDatabase {
-        override fun checkpoint() {
-            db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).close()
-        }
-
-        override fun close() {
-            db.close()
+        override fun snapshot(dbFile: File, dest: File) {
+            LocalStore(context).use { store ->
+                store.snapshotInto(dbFile, dest)
+            }
         }
     }
 
@@ -81,8 +64,7 @@ class DatabaseBackupWorker(
                 environment.databasePath(DatabaseBackupPolicy.DB_NAME),
                 environment.filesDir(),
                 nowMillis,
-                ::checkpoint,
-                ::copyFile,
+                environment::snapshot,
             )
         }
 
@@ -91,8 +73,7 @@ class DatabaseBackupWorker(
             dbFile: File,
             filesDir: File,
             nowMillis: Long,
-            checkpointer: Checkpointer,
-            copier: FileCopier,
+            snapshotter: Snapshotter,
         ): Result {
             if (!dbFile.exists()) {
                 return Result.failure()
@@ -103,23 +84,16 @@ class DatabaseBackupWorker(
                 return Result.failure()
             }
 
-            try {
-                checkpointer.checkpoint(dbFile)
-            } catch (error: RuntimeException) {
-                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
-                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
-                    error,
-                ))
-            }
-
             val dest = DatabaseBackupPolicy.backupFile(filesDir, nowMillis)
 
             try {
-                copier.copy(dbFile, dest)
+                snapshotter.snapshot(dbFile, dest)
             } catch (error: IOException) {
-                if (!dest.delete()) {
-                    warn("Failed to delete incomplete backup: ${dest.name}")
-                }
+                deleteIncomplete(dest)
+                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
+                return Result.failure()
+            } catch (error: RuntimeException) {
+                deleteIncomplete(dest)
                 warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
                 return Result.failure()
             }
@@ -133,76 +107,9 @@ class DatabaseBackupWorker(
             return AndroidBackupEnvironment(context)
         }
 
-        @JvmStatic
-        fun checkpoint(dbFile: File) {
-            checkpoint(dbFile, ::openCheckpointDatabase)
-        }
-
-        @JvmStatic
-        fun checkpoint(dbFile: File, opener: CheckpointDatabaseOpener) {
-            var db: CheckpointDatabase? = null
-            try {
-                db = opener.open(dbFile)
-                db.checkpoint()
-            } catch (error: IOException) {
-                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
-                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
-                    error,
-                ))
-            } catch (error: RuntimeException) {
-                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
-                    "Backup checkpoint failed; copying database without a fresh WAL checkpoint.",
-                    error,
-                ))
-            } finally {
-                closeCheckpointDatabase(db)
-            }
-        }
-
-        private fun openCheckpointDatabase(dbFile: File): CheckpointDatabase {
-            val db = SQLiteDatabase.openDatabase(
-                dbFile.absolutePath,
-                null,
-                SQLiteDatabase.OPEN_READWRITE,
-            )
-            return SQLiteCheckpointDatabase(db)
-        }
-
-        private fun closeCheckpointDatabase(db: CheckpointDatabase?) {
-            if (db == null) {
-                return
-            }
-            try {
-                db.close()
-            } catch (error: IOException) {
-                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
-                    "Failed to close database after backup checkpoint.",
-                    error,
-                ))
-            } catch (error: RuntimeException) {
-                warn(DatabaseBackupPolicy.sanitizedDiagnosticLine(
-                    "Failed to close database after backup checkpoint.",
-                    error,
-                ))
-            }
-        }
-
-        @JvmStatic
-        @Throws(IOException::class)
-        fun copyFile(src: File, dst: File) {
-            FileInputStream(src).use { inStream ->
-                FileOutputStream(dst).use { outStream ->
-                    inStream.channel.use { inChannel ->
-                        outStream.channel.use { outChannel ->
-                            val size = inChannel.size()
-                            var transferred = 0L
-                            while (transferred < size) {
-                                transferred += inChannel.transferTo(transferred, size - transferred, outChannel)
-                            }
-                            outChannel.force(true)
-                        }
-                    }
-                }
+        private fun deleteIncomplete(dest: File) {
+            if (dest.exists() && !dest.delete()) {
+                warn("Failed to delete incomplete backup: ${dest.name}")
             }
         }
 

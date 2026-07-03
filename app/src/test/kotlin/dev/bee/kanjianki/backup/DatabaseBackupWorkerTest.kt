@@ -2,7 +2,6 @@ package dev.bee.kanjianki.backup
 
 import androidx.work.ListenableWorker
 import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,7 +21,7 @@ class DatabaseBackupWorkerTest {
     val temp = TemporaryFolder()
 
     @Test
-    fun backupDatabaseCopiesTimestampedBackupAndPrunesOldFiles() {
+    fun backupDatabaseSnapshotsTimestampedBackupAndPrunesOldFiles() {
         val db = temp.newFile("kanji_anki_simple.db")
         val content = "durable progress".toByteArray(StandardCharsets.UTF_8)
         FileOutputStream(db).use { output -> output.write(content) }
@@ -33,49 +32,23 @@ class DatabaseBackupWorkerTest {
             write(File(backupDir, String.format("kanji_anki_simple_20200101_%06d.db", i)), "old-$i")
         }
         val now = 1_778_832_000_000L
-        val checkpointed = booleanArrayOf(false)
+        val snapshotted = booleanArrayOf(false)
 
         val result = DatabaseBackupWorker.backupDatabase(
             db,
             filesDir,
             now,
-            { checkpointed[0] = true },
-            DatabaseBackupWorker::copyFile,
-        )
+        ) { src, dest ->
+            snapshotted[0] = true
+            copyFile(src, dest)
+        }
 
         assertSuccess(result)
-        assertTrue(checkpointed[0])
+        assertTrue(snapshotted[0])
         val backup = File(backupDir, "kanji_anki_simple_${timestamp(now)}.db")
         assertArrayEquals(content, read(backup))
         assertFalse(File(backupDir, "kanji_anki_simple_20200101_000001.db").exists())
         assertTrue(File(backupDir, "kanji_anki_simple_20200101_000002.db").exists())
-    }
-
-    @Test
-    fun doWorkUsesRealBackupFlowAndCheckpointFallback() {
-        val db = temp.newFile("kanji_anki_simple.db")
-        val content = "not a sqlite database but still backup-worthy".toByteArray(StandardCharsets.UTF_8)
-        FileOutputStream(db).use { output -> output.write(content) }
-        val filesDir = temp.newFolder("files")
-        val now = 1_778_832_000_000L
-
-        val result = DatabaseBackupWorker.doWork(
-            object : DatabaseBackupWorker.BackupEnvironment {
-                override fun databasePath(name: String): File {
-                    assertEquals("kanji_anki_simple.db", name)
-                    return db
-                }
-
-                override fun filesDir(): File {
-                    return filesDir
-                }
-            },
-            now,
-        )
-
-        assertSuccess(result)
-        val backup = File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db")
-        assertArrayEquals(content, read(backup))
     }
 
     @Test
@@ -86,9 +59,7 @@ class DatabaseBackupWorkerTest {
             File(temp.root, "missing.db"),
             filesDir,
             1_778_832_000_000L,
-            { throw AssertionError("missing databases must not be checkpointed") },
-            { _, _ -> throw AssertionError("missing databases must not be copied") },
-        )
+        ) { _, _ -> throw AssertionError("missing databases must not be snapshotted") }
 
         assertFailure(result)
         assertFalse(File(filesDir, "backups").exists())
@@ -104,15 +75,13 @@ class DatabaseBackupWorkerTest {
             db,
             filesDir,
             1_778_832_000_000L,
-            { throw AssertionError("unwritable backup directories must not checkpoint") },
-            { _, _ -> throw AssertionError("unwritable backup directories must not copy") },
-        )
+        ) { _, _ -> throw AssertionError("unwritable backup directories must not snapshot") }
 
         assertFailure(result)
     }
 
     @Test
-    fun backupDatabaseDeletesIncompleteBackupWhenCopyFails() {
+    fun backupDatabaseDeletesIncompleteBackupWhenSnapshotFails() {
         val db = temp.newFile("kanji_anki_simple.db")
         write(db, "db")
         val filesDir = temp.newFolder("files")
@@ -122,19 +91,17 @@ class DatabaseBackupWorkerTest {
             db,
             filesDir,
             now,
-            { },
-            { _, dst ->
-                FileOutputStream(dst).use { output -> output.write("partial".toByteArray(StandardCharsets.UTF_8)) }
-                throw IOException("disk full")
-            },
-        )
+        ) { _, dst ->
+            FileOutputStream(dst).use { output -> output.write("partial".toByteArray(StandardCharsets.UTF_8)) }
+            throw IOException("disk full")
+        }
 
         assertFailure(result)
         assertFalse(File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db").exists())
     }
 
     @Test
-    fun backupDatabaseLeavesIncompleteBackupWhenFailedCopyCannotBeDeleted() {
+    fun backupDatabaseFailsWhenSnapshotThrowsRuntimeException() {
         val db = temp.newFile("kanji_anki_simple.db")
         write(db, "db")
         val filesDir = temp.newFolder("files")
@@ -144,73 +111,35 @@ class DatabaseBackupWorkerTest {
             db,
             filesDir,
             now,
-            { },
-            { _, dst ->
-                assertTrue(dst.mkdirs())
-                FileOutputStream(File(dst, "partial")).use { output ->
-                    output.write("partial".toByteArray(StandardCharsets.UTF_8))
-                }
-                throw IOException("copy died after creating a non-empty destination")
-            },
-        )
+        ) { _, _ -> throw IllegalStateException("VACUUM failed") }
+
+        assertFailure(result)
+        assertFalse(File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db").exists())
+    }
+
+    @Test
+    fun backupDatabaseLeavesIncompleteBackupWhenFailedSnapshotCannotBeDeleted() {
+        val db = temp.newFile("kanji_anki_simple.db")
+        write(db, "db")
+        val filesDir = temp.newFolder("files")
+        val now = 1_778_832_000_000L
+
+        val result = DatabaseBackupWorker.backupDatabase(
+            db,
+            filesDir,
+            now,
+        ) { _, dst ->
+            assertTrue(dst.mkdirs())
+            FileOutputStream(File(dst, "partial")).use { output ->
+                output.write("partial".toByteArray(StandardCharsets.UTF_8))
+            }
+            throw IOException("snapshot died after creating a non-empty destination")
+        }
 
         assertFailure(result)
         val incomplete = File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db")
         assertTrue(incomplete.isDirectory)
         assertTrue(File(incomplete, "partial").isFile)
-    }
-
-    @Test
-    fun backupDatabaseContinuesWhenCheckpointFails() {
-        val db = temp.newFile("kanji_anki_simple.db")
-        write(db, "db")
-        val filesDir = temp.newFolder("files")
-
-        val result = DatabaseBackupWorker.backupDatabase(
-            db,
-            filesDir,
-            1_778_832_000_000L,
-            { throw IllegalStateException("locked") },
-            DatabaseBackupWorker::copyFile,
-        )
-
-        assertSuccess(result)
-        assertTrue(File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(1_778_832_000_000L)}.db").isFile)
-    }
-
-    @Test
-    fun checkpointSkipsCloseWhenDatabaseCannotBeOpened() {
-        val opened = booleanArrayOf(false)
-
-        DatabaseBackupWorker.checkpoint(temp.root) { dbFile ->
-            opened[0] = true
-            throw IOException("cannot open")
-        }
-
-        assertTrue(opened[0])
-    }
-
-    @Test
-    fun checkpointClosesDatabaseAndToleratesCloseFailure() {
-        val database = FakeCheckpointDatabase(true)
-
-        DatabaseBackupWorker.checkpoint(temp.root) { database }
-
-        assertEquals(1, database.checkpointCount)
-        assertEquals(1, database.closeCount)
-    }
-
-    @Test
-    fun copyFileWritesCompleteBytesAndFlushesDestination() {
-        val src = temp.newFile("source.db")
-        val dst = File(temp.root, "copy.db")
-        val content = ByteArray(96_000) { index -> (index * 17 + 3).toByte() }
-        FileOutputStream(src).use { output -> output.write(content) }
-
-        DatabaseBackupWorker.copyFile(src, dst)
-
-        assertTrue(dst.isFile)
-        assertArrayEquals(content, read(dst))
     }
 
     @Test
@@ -268,6 +197,14 @@ class DatabaseBackupWorkerTest {
         assertTrue(File(small, "kanji_anki_simple_20260515_000001.db").exists())
     }
 
+    private fun copyFile(src: File, dst: File) {
+        FileInputStream(src).use { input ->
+            FileOutputStream(dst).use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
     private fun write(file: File, text: String) {
         FileOutputStream(file).use { output -> output.write(text.toByteArray(StandardCharsets.UTF_8)) }
     }
@@ -297,21 +234,5 @@ class DatabaseBackupWorkerTest {
             }
         }
         return out
-    }
-
-    private class FakeCheckpointDatabase(private val failClose: Boolean) : DatabaseBackupWorker.CheckpointDatabase {
-        var checkpointCount = 0
-        var closeCount = 0
-
-        override fun checkpoint() {
-            checkpointCount++
-        }
-
-        override fun close() {
-            closeCount++
-            if (failClose) {
-                throw IOException("close failed")
-            }
-        }
     }
 }
