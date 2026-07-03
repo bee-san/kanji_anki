@@ -409,6 +409,10 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         historicalSyncStore.backfillLatestHistoricalSync(db)
     }
 
+    fun pruneSupersededSnapshots(db: SQLiteDatabase) {
+        historicalSyncStore.pruneSupersededSnapshots(db)
+    }
+
     fun insertHistoricalKanjiAggregates(
         db: SQLiteDatabase,
         syncId: Long,
