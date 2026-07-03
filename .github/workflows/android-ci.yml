@@ -26,7 +26,6 @@ on:
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
       - 'renovate.json'
-      - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
   pull_request:
     types: [opened, synchronize, reopened]
@@ -51,9 +50,7 @@ on:
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
       - 'renovate.json'
-      - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
-      - 'README.md'
 
 concurrency:
   group: android-ci-${{ github.ref }}
