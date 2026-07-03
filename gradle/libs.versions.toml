@@ -24,6 +24,9 @@ workRuntime = "2.11.2"
 mlkitDigitalInk = "19.0.0"
 
 [libraries]
+# Used by build-logic convention plugins to apply the Kotlin JVM plugin.
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
