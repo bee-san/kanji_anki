@@ -100,6 +100,20 @@ class LocalDayPolicyTest {
     }
 
     @Test
+    fun localDaysBetweenDefaultZoneOverloadUsesSystemZone() {
+        withUtcZone {
+            // Default-zone overload (no TimeZone arg) resolves to the system zone (UTC).
+            assertEquals(
+                2,
+                LocalDayPolicy.localDaysBetween(
+                    utc(2026, Calendar.MAY, 15, 12, 0),
+                    utc(2026, Calendar.MAY, 17, 12, 0),
+                ),
+            )
+        }
+    }
+
+    @Test
     fun localDaysBetweenCountsCalendarDaysNotTwentyFourHourBlocks() {
         val utcZone = TimeZone.getTimeZone("UTC")
         // 23h59m apart but crossing local midnight => one calendar day elapsed.

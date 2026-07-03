@@ -80,6 +80,30 @@ class DatabaseBackupPolicyTest {
     }
 
     @Test
+    fun oldBackupsToPruneIgnoresNonBackupAndUnparseableNames() {
+        val dir = temp.newFolder("mixed")
+        // 8 valid daily backups so pruning engages (> KEEP_DAILY).
+        for (day in 1..8) {
+            assertTrue(File(dir, String.format("kanji_anki_simple_202603%02d_120000.db.gz", day)).createNewFile())
+        }
+        // A matching prefix/suffix but an unparseable timestamp (parse returns null).
+        assertTrue(File(dir, "kanji_anki_simple_not-a-timestamp.db.gz").createNewFile())
+        // A file that does not start with the backup prefix (filtered out).
+        assertTrue(File(dir, "unrelated_20260301_120000.db.gz").createNewFile())
+        // Prefixed but neither .db nor .db.gz suffix: matched by neither branch, so
+        // parseTimestampMillis returns null via the else path (and matchingBackups
+        // filters it out of candidates anyway).
+        assertTrue(File(dir, "kanji_anki_simple_20260301_120000.tmp").createNewFile())
+
+        val pruned = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
+
+        // The unparseable-timestamp backup sorts oldest and is pruned first.
+        assertTrue(pruned.contains("kanji_anki_simple_not-a-timestamp.db.gz"))
+        // The non-prefixed file is never a backup candidate.
+        assertFalse(pruned.contains("unrelated_20260301_120000.db.gz"))
+    }
+
+    @Test
     fun oldBackupsToPruneHandlesMissingDirectoryAndShortLists() {
         assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(File(temp.root, "missing")).isEmpty())
 

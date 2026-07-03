@@ -2,12 +2,21 @@ package dev.bee.kanjianki.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteException
+import android.util.Log
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 
 internal class LocalStore(context: Context?) : LocalStoreSync(context) {
+    private fun warn(message: String) {
+        try {
+            Log.w("LocalStore", message)
+        } catch (_: RuntimeException) {
+            // Android Log is unavailable in local JVM tests.
+        }
+    }
+
     /**
      * Produce a WAL-safe, transactionally consistent snapshot of the database at
      * [dest] using this helper connection.
@@ -37,8 +46,8 @@ internal class LocalStore(context: Context?) : LocalStoreSync(context) {
             true
         } catch (_: SQLiteException) {
             // Older SQLite without VACUUM INTO, or a transient failure: fall back.
-            if (dest.exists()) {
-                dest.delete()
+            if (dest.exists() && !dest.delete()) {
+                warn("Could not delete partial VACUUM output before fallback: ${dest.name}")
             }
             false
         }

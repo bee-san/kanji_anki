@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageInstaller
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.BuildConfig
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator
@@ -526,6 +527,115 @@ class GitHubUpdaterTest {
             override fun showPendingUpdate(version: String, message: String): Boolean =
                 error("showPendingUpdate should not be called")
         }
+    }
+
+    @Test
+    fun cachedInstallBlocksAndClearsPendingWhenSigningCertMismatches() {
+        val cached = writeCachedApk("cached-hostile.apk", "hostile")
+        LocalStore(context).use { store ->
+            store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
+        }
+        val client = ConfigurableClient(
+            metadata = GitHubUpdater.ApkMetadata(context.packageName, "99.99.99", 34, listOf(byteArrayOf(9, 9, 9, 9))),
+            installedCerts = listOf(byteArrayOf(1, 2, 3, 4)),
+        )
+
+        val result = GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+
+        assertFalse(result.success)
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message)
+        assertFalse(cached.exists())
+        assertEquals(0, client.installs)
+        LocalStore(context).use { store ->
+            assertFalse(store.autoUpdateStatus().hasPendingUpdate())
+        }
+    }
+
+    @Test
+    fun cachedInstallProceedsWhenSigningCertMatches() {
+        val cached = writeCachedApk("cached-good.apk", "trusted")
+        LocalStore(context).use { store ->
+            store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
+        }
+        val certs = listOf(byteArrayOf(1, 2, 3, 4))
+        val client = ConfigurableClient(
+            metadata = GitHubUpdater.ApkMetadata(context.packageName, "99.99.99", 34, certs),
+            installedCerts = certs,
+            canInstall = true,
+        )
+
+        val result = GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+
+        assertTrue(result.success)
+        assertEquals(1, client.installs)
+    }
+
+    @Test
+    fun signingCertificatesReturnsEmptyForNullInfoAndEmptySigningInfo() {
+        assertTrue(GitHubUpdater.signingCertificates(null).isEmpty())
+        // A PackageInfo with no signingInfo/signatures yields no certs.
+        assertTrue(GitHubUpdater.signingCertificates(android.content.pm.PackageInfo()).isEmpty())
+    }
+
+    @Test
+    fun installedSigningCertificatesReturnsEmptyForUnknownPackage() {
+        assertTrue(
+            GitHubUpdater.installedSigningCertificates(context.packageManager, "com.does.not.exist").isEmpty(),
+        )
+    }
+
+    @Test
+    fun metadataFromPackageInfoCarriesPackageVersionAndCerts() {
+        val info = android.content.pm.PackageInfo()
+        info.packageName = "dev.bee.kanjianki"
+        info.versionName = "9.9.9"
+        val metadata = GitHubUpdater.metadataFromPackageInfo(info)
+        assertEquals("dev.bee.kanjianki", metadata.packageName)
+        assertEquals("9.9.9", metadata.versionName)
+        assertTrue(metadata.signingCertificates.isEmpty())
+    }
+
+    @Test
+    fun packageArchiveInfoReturnsNullForMissingApk() {
+        val missing = File(context.cacheDir, "does-not-exist.apk")
+        assertNull(GitHubUpdater.packageArchiveInfo(context.packageManager, missing.absolutePath))
+    }
+
+    private fun writeCachedApk(name: String, content: String): File {
+        val dir = File(context.cacheDir, "updates")
+        assertTrue(dir.isDirectory || dir.mkdirs())
+        val file = File(dir, name)
+        file.writeText(content)
+        return file
+    }
+
+    private inner class ConfigurableClient(
+        private val metadata: GitHubUpdater.ApkMetadata,
+        private val installedCerts: List<ByteArray>,
+        private val canInstall: Boolean = false,
+    ) : GitHubUpdater.UpdateClient {
+        var installs = 0
+
+        override fun getText(url: String): String = error("getText should not be called")
+
+        override fun download(url: String, file: File) = error("download should not be called")
+
+        override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata = metadata
+
+        override fun installedSigningCertificates(packageName: String): List<ByteArray> = installedCerts
+
+        override fun canRequestPackageInstalls(): Boolean = canInstall
+
+        override fun startPackageInstaller(
+            apkFile: File,
+            version: String,
+            source: GitHubUpdater.UpdateSource,
+            targetSdkVersion: Int,
+        ) {
+            installs++
+        }
+
+        override fun showPendingUpdate(version: String, message: String): Boolean = true
     }
 
     private fun assertThrowsIOException(connection: HttpURLConnection): IOException {

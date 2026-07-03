@@ -564,6 +564,12 @@ class GitHubUpdater @JvmOverloads constructor(
             return true
         }
 
+        private fun deleteQuietly(file: File) {
+            if (file.exists() && !file.delete()) {
+                Log.w(TAG, "Could not delete incomplete download: ${file.name}")
+            }
+        }
+
         @JvmStatic
         fun cleanupStaleCachedApks(updatesDir: File, pendingApkName: String?, nowMillis: Long): Int {
             return cleanupStaleCachedApks(updatesDir, pendingApkName, nowMillis, CacheFileDeletion { file -> file.delete() })
@@ -626,7 +632,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 // Reject before streaming when the server declares an oversized body.
                 val declared = connection.contentLengthLong
                 if (declared > maxBytes) {
-                    file.delete()
+                    deleteQuietly(file)
                     throw IOException("Update download is too large ($declared bytes > $maxBytes).")
                 }
                 try {
@@ -637,7 +643,7 @@ class GitHubUpdater @JvmOverloads constructor(
                     }
                 } catch (error: IOException) {
                     // Do not leave an oversized/partial file filling the cache partition.
-                    file.delete()
+                    deleteQuietly(file)
                     throw error
                 }
             } finally {

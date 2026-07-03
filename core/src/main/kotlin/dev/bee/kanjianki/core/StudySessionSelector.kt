@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.core
 
+import java.security.SecureRandom
 import java.util.Collections
-import java.util.Random
 
 class StudySessionSelector {
     fun nextSession(
@@ -451,12 +451,12 @@ class StudySessionSelector {
             return 1
         }
 
-        @Suppress("java:S2245")
         fun shuffleDuePriorityBuckets(items: MutableList<RecordsStudyModels.StudyItem>, randomSeed: Long?) {
             val seed = randomSeed
-            // Cosmetic queue ordering only; a plain Random avoids SecureRandom's entropy
-            // blocking risk. Deterministic (seeded) ordering still uses the seeded sort.
-            val random = if (seed == null) Random() else null
+            // Cosmetic queue ordering only. Deterministic (seeded) ordering uses the
+            // seeded sort below; the null-seed path uses SecureRandom, which the Sonar
+            // gate accepts for this non-security shuffle.
+            val secureRandom = if (seed == null) SecureRandom() else null
             var start = 0
             while (start < items.size) {
                 val priority = duePriority(items[start])
@@ -467,7 +467,7 @@ class StudySessionSelector {
                 if (end - start > 1) {
                     val bucket = items.subList(start, end)
                     if (seed == null) {
-                        Collections.shuffle(bucket, random ?: Random())
+                        Collections.shuffle(bucket, secureRandom ?: SecureRandom())
                     } else {
                         bucket.sortWith(
                             compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(seed, it) }
