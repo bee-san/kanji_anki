@@ -14,7 +14,6 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (duplicate != null) {
             return duplicate
         }
-        application.consumedTokens.add(application.request.token)
         val context = ReviewContext.from(
             application.item,
             application.request,
@@ -27,7 +26,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val state = ReviewState.from(context)
         applyLadderTransition(context, state)
         updateWritingLevel(context, state)
-        return RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
+        val result = RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
+        // Consume the idempotency token only after the review has fully applied, so a
+        // failure mid-apply leaves the token unconsumed and the retry is not rejected as
+        // a duplicate while the item was never updated.
+        application.consumedTokens.add(application.request.token)
+        return result
     }
 
     fun debugTraceApplyReview(application: BridgeScheduler.ReviewApplication): SchedulerTracedReviewResult {
