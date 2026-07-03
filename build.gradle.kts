@@ -1,10 +1,10 @@
 import org.gradle.api.tasks.Exec
 
 plugins {
-    id("com.android.application") version "9.1.0" apply false
-    id("org.jetbrains.kotlin.jvm") version "2.0.21" apply false
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
-    id("org.sonarqube") version "7.3.0.8198"
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.sonarqube)
 }
 
 fun rootPath(path: String): String = layout.projectDirectory.dir(path).asFile.absolutePath
@@ -13,7 +13,7 @@ val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
     .orElse(providers.gradleProperty("KANJI_ANKI_VERSION_NAME"))
     .orElse(providers.environmentVariable("KANI_VERSION_NAME"))
     .orElse(providers.environmentVariable("KANJI_ANKI_VERSION_NAME"))
-    .orElse("0.4.33")
+    .orElse(libs.versions.appVersionName.get())
 
 val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String::toBoolean).getOrElse(false)
 val maybeSonarMainBinaries = listOf(

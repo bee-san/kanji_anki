@@ -14,7 +14,7 @@ tasks.withType<Test>().configureEach {
 }
 
 jacoco {
-    toolVersion = "0.8.14"
+    toolVersion = libs.versions.jacoco.get()
 }
 
 tasks.jacocoTestReport {
@@ -43,5 +43,5 @@ tasks.check {
 }
 
 dependencies {
-    testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
+    testImplementation(libs.junit)
 }
