@@ -26,7 +26,6 @@ on:
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
       - 'renovate.json'
-      - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
   pull_request:
     types: [opened, synchronize, reopened]
@@ -51,9 +50,7 @@ on:
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
       - 'renovate.json'
-      - '.github/dependabot.yml'
       - 'docs/dependency-updates.md'
-      - 'README.md'
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -162,6 +159,11 @@ jobs:
 
       - name: Run Ralph loop script tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+
+      - name: Run CI script tests
+        # Mirrors local ciFast's testCiScripts task so CI's Fast confidence gate
+        # covers the same surface (ci/tests/test_run_ankidroid_fixture.py etc.).
+        run: python3 -m unittest discover -s ci/tests -p 'test_*.py'
 
   dependency-safety:
     name: Dependency safety

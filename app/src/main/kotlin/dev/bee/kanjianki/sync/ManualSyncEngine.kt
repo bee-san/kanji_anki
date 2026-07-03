@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import android.content.Context
+import android.util.Log
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -105,6 +106,11 @@ internal class ManualSyncEngine {
             val similarKanjiIndex = loadSimilarKanjiIndex()
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
+            // Record the sync run as pending in transaction #1. It is flipped to
+            // success only after study items commit in replaceStudyItems below, so a
+            // crash between the two transactions leaves a pending row that
+            // hasSuccessfulSyncSince ignores (auto-sync retries) instead of a committed
+            // success sitting on stale study items.
             val syncId = store.saveSuccessfulSync(
                 snapshot,
                 currentSuspendedImports,
@@ -114,6 +120,7 @@ internal class ManualSyncEngine {
                 null,
                 similarKanjiIndex,
                 selectedImports,
+                LocalStoreBase.STATUS_PENDING,
             )
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
@@ -133,7 +140,12 @@ internal class ManualSyncEngine {
                 evidenceStatusByKanji,
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
-            store.replaceStudyItems(seeded, syncId, finished, settings)
+            // Pass the pre-seed baseline so replaceStudyItems can preserve any review
+            // the user saved between the studyItemsForKanji read above and this write
+            // (auto-sync can run while the app is foregrounded and studyable).
+            store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
+            // Study items are committed; promote the pending sync run to success.
+            store.markSyncSucceeded(syncId)
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale
@@ -174,19 +186,44 @@ internal class ManualSyncEngine {
                 AdaptiveFocusCopy.adaptiveFocusText(postSyncPlan),
             )
         } catch (error: AnkiDroidGateway.SyncFailure) {
+            Log.e(TAG, "Sync failed (${if (error.permanentFailure) "permanent" else "retryable"}).", error)
             val finished = clock.nowMillis()
-            store.saveFailedSync(
+            persistFailedSync(
                 started,
                 finished,
                 if (error.permanentFailure) "config_error" else "retryable_error",
                 if (error.permanentFailure) "permanent" else "retryable",
-                error.message,
+                error,
             )
             return SyncResult.create(false, false, 0, 0, error.message, "")
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
+            // Only Exceptions are treated as recoverable sync failures. Errors
+            // (OutOfMemoryError, StackOverflowError, ...) propagate instead of being
+            // mislabeled as a retryable_error sync row.
+            Log.e(TAG, "Unexpected sync failure.", error)
             val finished = clock.nowMillis()
-            store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.message)
+            persistFailedSync(started, finished, "retryable_error", "unexpected", error)
             return SyncResult.create(false, false, 0, 0, error.message, "")
+        }
+    }
+
+    /**
+     * Persist a failed-sync row, guarding the write itself: if saveFailedSync throws
+     * (e.g. disk full) the persistence failure is logged with the original error
+     * attached as suppressed so the root cause is not masked.
+     */
+    private fun persistFailedSync(
+        started: Long,
+        finished: Long,
+        status: String,
+        errorCode: String,
+        error: Throwable,
+    ) {
+        try {
+            store.saveFailedSync(started, finished, status, errorCode, error.message)
+        } catch (persistError: Exception) {
+            persistError.addSuppressed(error)
+            Log.e(TAG, "Failed to persist sync failure row.", persistError)
         }
     }
 
@@ -303,6 +340,7 @@ internal class ManualSyncEngine {
     }
 
     companion object {
+        private const val TAG = "ManualSyncEngine"
         private val RUNNING = AtomicBoolean(false)
     }
 }

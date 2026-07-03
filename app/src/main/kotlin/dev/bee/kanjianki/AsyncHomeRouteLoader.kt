@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 internal fun interface LoadingTaskHandle {
     fun cancel()
@@ -19,10 +20,12 @@ internal class AsyncHomeRouteLoader(
     private val postToMain: ((Runnable) -> Unit),
     private val loadingTaskScheduler: LoadingTaskScheduler = RealLoadingTaskScheduler,
 ) {
-    private var generation = 0
+    // Mutated on the main thread (cancelPending / load) and read on background and
+    // loading-guard threads, so it must be atomically published.
+    private val generation = AtomicInteger(0)
 
     fun cancelPending() {
-        generation++
+        generation.incrementAndGet()
     }
 
     fun <T> load(
@@ -33,7 +36,7 @@ internal class AsyncHomeRouteLoader(
         traceLabel: String = "home-route",
         showLoadingAfterMs: Long = 0,
     ) {
-        val token = ++generation
+        val token = generation.incrementAndGet()
         val finished = AtomicBoolean(false)
 
         if (showLoadingAfterMs <= 0) {
@@ -50,12 +53,12 @@ internal class AsyncHomeRouteLoader(
                     loadingTaskScheduler.schedule(
                         showLoadingAfterMs,
                         Runnable {
-                            if (token != generation || finished.get()) {
+                            if (token != generation.get() || finished.get()) {
                                 return@Runnable
                             }
                             postToMain(
                                 Runnable {
-                                    if (token != generation || finished.get()) {
+                                    if (token != generation.get() || finished.get()) {
                                         return@Runnable
                                     }
                                     withAsyncLoadTrace(traceLabel, "show-loading") {
@@ -76,7 +79,7 @@ internal class AsyncHomeRouteLoader(
 
             postToMain(
                 Runnable {
-                    if (token != generation) {
+                    if (token != generation.get()) {
                         return@Runnable
                     }
                     withAsyncLoadTrace(traceLabel, "render") {

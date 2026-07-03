@@ -133,4 +133,40 @@ class UpdateArtifactValidatorTest {
         assertFalse(result.ok())
         assertEquals("APK metadata could not be read. Install blocked.", result.message())
     }
+
+    @Test
+    fun signingCertificateValidationAcceptsIdenticalCerts() {
+        val current = listOf(byteArrayOf(1, 2, 3), byteArrayOf(9, 8, 7))
+        // Same certs in a different order still match (order-insensitive set compare).
+        val archive = listOf(byteArrayOf(9, 8, 7), byteArrayOf(1, 2, 3))
+
+        val result = UpdateArtifactValidator.validateSigningCertificates(current, archive)
+
+        assertTrue(result.ok())
+    }
+
+    @Test
+    fun signingCertificateValidationRejectsMismatch() {
+        val result = UpdateArtifactValidator.validateSigningCertificates(
+            listOf(byteArrayOf(1, 2, 3)),
+            listOf(byteArrayOf(4, 5, 6)),
+        )
+
+        assertFalse(result.ok())
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message())
+    }
+
+    @Test
+    fun signingCertificateValidationRejectsMissingCerts() {
+        val missingCurrent = UpdateArtifactValidator.validateSigningCertificates(emptyList(), listOf(byteArrayOf(1)))
+        assertFalse(missingCurrent.ok())
+        assertEquals("Could not read the running app's signing certificate. Install blocked.", missingCurrent.message())
+
+        val missingArchive = UpdateArtifactValidator.validateSigningCertificates(listOf(byteArrayOf(1)), emptyList())
+        assertFalse(missingArchive.ok())
+        assertEquals("Could not read the update's signing certificate. Install blocked.", missingArchive.message())
+
+        val bothNull = UpdateArtifactValidator.validateSigningCertificates(null, null)
+        assertFalse(bothNull.ok())
+    }
 }

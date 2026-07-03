@@ -101,6 +101,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         val session = activity.activeSession!!
         val item = session.item ?: return
         val scheduler = BridgeScheduler()
+        // Idempotency is anchored in persistence: consumedTokens() reads the review_log,
+        // and a token only lands there after a review is successfully saved (see
+        // ReviewTransitionEngine, which now consumes the in-memory token only on
+        // success). Rebuilding a fresh set per submit is therefore safe - a review that
+        // failed mid-apply left no review_log row, so its token is retryable.
         val consumed = HashSet(activity.store.consumedTokens())
         val now = System.currentTimeMillis()
         val parameters = activity.store.schedulerParameters()

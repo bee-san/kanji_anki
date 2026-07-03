@@ -825,6 +825,149 @@ class LadderSchedulerTest {
         assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
     }
 
+    // ---- Goal 17 defect fixes / test gaps ----
+
+    @Test
+    fun chronicFloorFailuresKeepAccumulatingTheFailStreak() {
+        // At the WRITE_KANJI floor demoteRung cannot move the rung, so the fail streak
+        // must keep counting rather than resetting to zero every failStreak fails.
+        val scheduler = BridgeScheduler()
+        val consumed = HashSet<String>()
+        val settings = settingsWithLadderThresholds(21, 3)
+        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+            .copyBuilder().writingRemediationPending(true).build()
+
+        var now = 1000L
+        // Six real due-review failures at the floor.
+        for (i in 0 until 6) {
+            val r = scheduler.applyReview(
+                item.withToken("f$i"),
+                RecordsSchedulerModels.ReviewRequest("裂", "f$i", "again", false, false, false, 0),
+                consumed,
+                now,
+                null,
+                settings,
+            )
+            item = r.item
+            now = Math.max(item.dueAtMillis, now + 86_400_000L)
+            item = item.copyBuilder()
+                .dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
+                .state("review")
+                .build()
+        }
+
+        assertEquals("Stays pinned at the floor", RecordsBase.LadderRung.WRITE_KANJI, item.rung)
+        assertTrue(
+            "Fail streak keeps accumulating at the floor instead of resetting",
+            item.realAgainStreak >= 3,
+        )
+    }
+
+    @Test
+    fun hardOnFirstStepWithDescendingStepsUsesMidpointNotAgainDelay() {
+        val scheduler = BridgeScheduler()
+        // Descending learning steps [10, 5]: Again returns to step 0 (10 min); Good
+        // advances to step 1 (5 min); Hard must sit at the 7.5-min midpoint, strictly
+        // between them, not collapse onto the 10-min Again delay.
+        val descending = RecordsSchedulerModels.LearningStepSettings(listOf(10, 5), listOf(10))
+        val item = newCard("裂")
+        val now = 1000L
+
+        val hard = scheduler.applyReview(
+            item.withToken("h1"),
+            RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+            HashSet<String>(),
+            now,
+            null,
+            null,
+            descending,
+        )
+
+        val expectedMidpointMillis = (10L + 5L) * 60_000L / 2L
+        assertEquals(now + expectedMidpointMillis, hard.item.dueAtMillis)
+        assertEquals(0, hard.item.learningStep)
+    }
+
+    @Test
+    fun hardOnSingleLearningStepUsesOneAndAHalfTimesStep() {
+        val scheduler = BridgeScheduler()
+        val singleStep = RecordsSchedulerModels.LearningStepSettings(listOf(10), listOf(10))
+        val item = newCard("裂")
+        val now = 1000L
+
+        val hard = scheduler.applyReview(
+            item.withToken("h1"),
+            RecordsSchedulerModels.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+            HashSet<String>(),
+            now,
+            null,
+            null,
+            singleStep,
+        )
+
+        assertEquals(now + 10L * 60_000L * 3L / 2L, hard.item.dueAtMillis)
+        assertEquals(0, hard.item.learningStep)
+    }
+
+    @Test
+    fun itemRestingOnSimilarKanjiDemotesPastItWhenAvailabilityFlipsFalse() {
+        // A card sitting on SIMILAR_KANJI whose hasSimilarKanji becomes false must move
+        // across that rung (down to WRITE_KANJI on a demotion) rather than stall on a
+        // rung it can no longer render.
+        val scheduler = BridgeScheduler()
+        val consumed = HashSet<String>()
+        val settings = settingsWithLadderThresholds(21, 3)
+        var item = reviewCard("裂", RecordsBase.LadderRung.SIMILAR_KANJI, 0L)
+            .copyBuilder().hasSimilarKanji(false).build()
+
+        var now = 1000L
+        for (i in 0 until 3) {
+            val r = scheduler.applyReview(
+                item.withToken("f$i"),
+                RecordsSchedulerModels.ReviewRequest("裂", "f$i", "again", false, false, false, 0),
+                consumed,
+                now,
+                null,
+                settings,
+            )
+            item = r.item
+            now = Math.max(item.dueAtMillis, now + 86_400_000L)
+            item = item.copyBuilder()
+                .dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
+                .state("review")
+                .hasSimilarKanji(false)
+                .build()
+        }
+
+        assertEquals(
+            "Demotion crosses the unavailable SIMILAR_KANJI rung to WRITE_KANJI",
+            RecordsBase.LadderRung.WRITE_KANJI,
+            item.rung,
+        )
+    }
+
+    @Test
+    fun reviewWithClockMovedBackwardsClampsElapsedToZeroInsteadOfNegative() {
+        // If the device clock moved backwards, nowMillis can precede the reconstructed
+        // last-review time; elapsed days must clamp to >= 0 and still apply cleanly.
+        val scheduler = BridgeScheduler()
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 10_000_000_000L)
+            .copyBuilder().matureIntervalDays(30).build()
+
+        val result = scheduler.applyReview(
+            item.withToken("back"),
+            passRequest("裂", "back"),
+            HashSet<String>(),
+            5_000_000_000L,
+        )
+
+        assertEquals("good", result.appliedRating)
+        assertTrue("stability stays finite", result.item.stability.isFinite())
+        assertTrue("difficulty stays finite", result.item.difficulty.isFinite())
+    }
+
     // ---- Helpers ----
 
     private fun newCard(kanji: String): RecordsStudyModels.StudyItem {

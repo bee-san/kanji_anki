@@ -29,7 +29,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.lang.reflect.Method
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -98,6 +97,11 @@ class GitHubUpdater @JvmOverloads constructor(
                 deleteCachedApk(apkFile)
                 return recordResult(checkedAt, UpdateResult.failed(archive.message()), latest.tagName(), "", "")
             }
+            val certCheck = verifySigningCertificate(metadata)
+            if (!certCheck.ok()) {
+                deleteCachedApk(apkFile)
+                return recordResult(checkedAt, UpdateResult.failed(certCheck.message()), latest.tagName(), "", "")
+            }
 
             installVerifiedApk(checkedAt, latest.tagName(), apkFile, source, metadata.targetSdkVersion)
         } catch (error: IOException) {
@@ -154,6 +158,11 @@ class GitHubUpdater @JvmOverloads constructor(
                 deleteCachedApk(apkFile)
                 return recordResult(checkedAt, UpdateResult.failed(archive.message()), status.lastVersion, "", "")
             }
+            val certCheck = verifySigningCertificate(metadata)
+            if (!certCheck.ok()) {
+                deleteCachedApk(apkFile)
+                return recordResult(checkedAt, UpdateResult.failed(certCheck.message()), status.lastVersion, "", "")
+            }
             installVerifiedApk(checkedAt, status.lastVersion, apkFile, source, metadata.targetSdkVersion)
         } catch (error: IOException) {
             recordResult(
@@ -172,6 +181,22 @@ class GitHubUpdater @JvmOverloads constructor(
                 status.pendingMessage,
             )
         }
+    }
+
+    /**
+     * Verify the downloaded APK is signed by the same certificate(s) as the running
+     * app before committing the install. If the release account/pipeline is
+     * compromised, both the APK and its .sha256 are attacker-controlled; Android would
+     * reject a mismatched signature at commit time, but failing fast here lets callers
+     * clear the pending state so a hostile/broken APK is not retried on every onResume.
+     */
+    private fun verifySigningCertificate(
+        metadata: ApkMetadata,
+    ): UpdateArtifactValidator.ValidationResult {
+        return UpdateArtifactValidator.validateSigningCertificates(
+            client.installedSigningCertificates(context.packageName),
+            metadata.signingCertificates,
+        )
     }
 
     @Throws(IOException::class)
@@ -256,6 +281,8 @@ class GitHubUpdater @JvmOverloads constructor(
 
         fun inspectApk(apkFile: File): ApkMetadata
 
+        fun installedSigningCertificates(packageName: String): List<ByteArray>
+
         fun canRequestPackageInstalls(): Boolean
 
         @Throws(IOException::class)
@@ -284,11 +311,6 @@ class GitHubUpdater @JvmOverloads constructor(
 
     fun interface InstallerBackendFactory {
         fun create(context: Context): InstallerBackend
-    }
-
-    fun interface ArchiveInfoMethodFinder {
-        @Throws(ReflectiveOperationException::class)
-        fun find(): Method
     }
 
     fun interface TextFetcher {
@@ -374,6 +396,10 @@ class GitHubUpdater @JvmOverloads constructor(
             return metadataFromPackageInfo(info)
         }
 
+        override fun installedSigningCertificates(packageName: String): List<ByteArray> {
+            return GitHubUpdater.installedSigningCertificates(context.packageManager, packageName)
+        }
+
         override fun canRequestPackageInstalls(): Boolean {
             return context.packageManager.canRequestPackageInstalls()
         }
@@ -444,6 +470,7 @@ class GitHubUpdater @JvmOverloads constructor(
         @JvmField val packageName: String,
         @JvmField val versionName: String,
         @JvmField val targetSdkVersion: Int = 0,
+        @JvmField val signingCertificates: List<ByteArray> = emptyList(),
     )
 
     private class AndroidPackageInstallerAccess(
@@ -494,6 +521,13 @@ class GitHubUpdater @JvmOverloads constructor(
         private const val TAG = "KaniUpdate"
         private const val BUFFER_SIZE = 32_768
 
+        /**
+         * Hard ceiling on a downloaded update APK. The real APK is a few MB; this
+         * generous 200 MB cap only exists to stop a malformed/hostile release asset
+         * from filling the cache partition.
+         */
+        private const val MAX_APK_BYTES = 200L * 1024L * 1024L
+
         @JvmStatic
         fun readableMessage(error: Throwable): String {
             return UpdateTextPolicy.readableMessage(error)
@@ -528,6 +562,12 @@ class GitHubUpdater @JvmOverloads constructor(
                 return false
             }
             return true
+        }
+
+        private fun deleteQuietly(file: File) {
+            if (file.exists() && !file.delete()) {
+                Log.w(TAG, "Could not delete incomplete download: ${file.name}")
+            }
         }
 
         @JvmStatic
@@ -581,17 +621,30 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         @Throws(IOException::class)
-        fun download(url: String, file: File) {
+        @JvmOverloads
+        fun download(url: String, file: File, maxBytes: Long = MAX_APK_BYTES) {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.setRequestProperty("User-Agent", "Kani/${BuildConfig.VERSION_NAME}")
             connection.connectTimeout = 12_000
             connection.readTimeout = 60_000
             try {
                 requireSuccess(connection, "download $url")
-                BufferedInputStream(connection.inputStream).use { input ->
-                    FileOutputStream(file).use { output ->
-                        copy(input, output)
+                // Reject before streaming when the server declares an oversized body.
+                val declared = connection.contentLengthLong
+                if (declared > maxBytes) {
+                    deleteQuietly(file)
+                    throw IOException("Update download is too large ($declared bytes > $maxBytes).")
+                }
+                try {
+                    BufferedInputStream(connection.inputStream).use { input ->
+                        FileOutputStream(file).use { output ->
+                            copy(input, output, maxBytes)
+                        }
                     }
+                } catch (error: IOException) {
+                    // Do not leave an oversized/partial file filling the cache partition.
+                    deleteQuietly(file)
+                    throw error
                 }
             } finally {
                 connection.disconnect()
@@ -691,6 +744,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 info.packageName,
                 info.versionName ?: "",
                 info.applicationInfo?.targetSdkVersion ?: 0,
+                signingCertificates(info),
             )
         }
 
@@ -752,25 +806,55 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         fun packageArchiveInfo(packageManager: PackageManager?, apkPath: String): PackageInfo? {
-            return packageArchiveInfo(
-                packageManager,
-                apkPath,
-                ArchiveInfoMethodFinder {
-                    PackageManager::class.java.getMethod("getPackageArchiveInfo", String::class.java, Int::class.javaPrimitiveType)
-                },
-            )
+            if (packageManager == null) {
+                return null
+            }
+            // Direct API call (was reflection). Request signing certificates so the
+            // installer can compare them against the running app before committing.
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                PackageManager.GET_SIGNING_CERTIFICATES
+            } else {
+                @Suppress("DEPRECATION")
+                PackageManager.GET_SIGNATURES
+            }
+            return packageManager.getPackageArchiveInfo(apkPath, flags)
         }
 
+        /** Signing certificate bytes for a PackageInfo, across API levels. */
         @JvmStatic
-        fun packageArchiveInfo(
-            packageManager: PackageManager?,
-            apkPath: String,
-            methodFinder: ArchiveInfoMethodFinder,
-        ): PackageInfo? {
+        fun signingCertificates(info: PackageInfo?): List<ByteArray> {
+            if (info == null) {
+                return emptyList()
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val signingInfo = info.signingInfo ?: return emptyList()
+                val signers = if (signingInfo.hasMultipleSigners()) {
+                    signingInfo.apkContentsSigners
+                } else {
+                    signingInfo.signingCertificateHistory
+                }
+                return signers?.map { it.toByteArray() } ?: emptyList()
+            }
+            @Suppress("DEPRECATION")
+            return info.signatures?.map { it.toByteArray() } ?: emptyList()
+        }
+
+        /** Signing certificate bytes for the currently installed running package. */
+        @JvmStatic
+        fun installedSigningCertificates(packageManager: PackageManager?, packageName: String): List<ByteArray> {
+            if (packageManager == null) {
+                return emptyList()
+            }
             return try {
-                methodFinder.find().invoke(packageManager, apkPath, 0) as PackageInfo?
-            } catch (error: ReflectiveOperationException) {
-                throw IllegalStateException("Could not inspect APK metadata.", error)
+                val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    PackageManager.GET_SIGNING_CERTIFICATES
+                } else {
+                    @Suppress("DEPRECATION")
+                    PackageManager.GET_SIGNATURES
+                }
+                signingCertificates(packageManager.getPackageInfo(packageName, flags))
+            } catch (_: PackageManager.NameNotFoundException) {
+                emptyList()
             }
         }
 
@@ -806,6 +890,25 @@ class GitHubUpdater @JvmOverloads constructor(
                 val read = input.read(buffer)
                 if (read < 0) {
                     break
+                }
+                output.write(buffer, 0, read)
+            }
+        }
+
+        @Throws(IOException::class)
+        private fun copy(input: InputStream, output: OutputStream, maxBytes: Long) {
+            val buffer = ByteArray(BUFFER_SIZE)
+            var total = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) {
+                    break
+                }
+                total += read
+                if (total > maxBytes) {
+                    // A chunked/undeclared response that overruns the cap (or a server
+                    // that lied about Content-Length) is aborted mid-stream.
+                    throw IOException("Update download exceeded the maximum size of $maxBytes bytes.")
                 }
                 output.write(buffer, 0, read)
             }

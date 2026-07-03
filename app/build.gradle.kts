@@ -1,6 +1,6 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
     jacoco
 }
 
@@ -27,8 +27,10 @@ fun configValue(name: String): String? =
 fun renamedConfigValue(name: String, legacyName: String): String? =
     configValue(name) ?: configValue(legacyName)
 
-val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME") ?: "0.4.33"
-val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull() ?: 4033
+val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME")
+    ?: libs.versions.appVersionName.get()
+val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull()
+    ?: libs.versions.appVersionCode.get().toInt()
 val releaseOwner = renamedConfigValue("KANI_RELEASE_OWNER", "KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
 val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
 
@@ -74,7 +76,7 @@ android {
     }
 
     testCoverage {
-        jacocoVersion = "0.8.14"
+        jacocoVersion = libs.versions.jacoco.get()
     }
 
     testOptions {
@@ -114,7 +116,7 @@ android {
 }
 
 jacoco {
-    toolVersion = "0.8.14"
+    toolVersion = libs.versions.jacoco.get()
 }
 
 tasks.withType<Test>().configureEach {
@@ -172,31 +174,31 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
+    val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
     implementation(project(":core"))
     implementation(project(":dictionary-core"))
-    implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.ui:ui")
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
     implementation(project(":update-core"))
     implementation(project(":writing-core"))
-    implementation("androidx.work:work-runtime:2.11.2")
-    implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.mlkit.digital.ink)
     testImplementation(composeBom)
-    testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
-    testImplementation("androidx.test:core:1.6.1")
-    testImplementation("androidx.test.ext:junit:1.2.1")
-    testImplementation("androidx.test:runner:1.6.2")
-    testImplementation("org.robolectric:robolectric:4.15.1")
-    testImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test:core:1.6.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.test.runner)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

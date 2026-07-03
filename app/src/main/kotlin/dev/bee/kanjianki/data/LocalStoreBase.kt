@@ -20,6 +20,13 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
     null,
     DB_VERSION,
 ) {
+    init {
+        // Write-Ahead Logging lets readers proceed concurrently with the large sync
+        // write transaction instead of being blocked for its whole duration (jank/ANR
+        // risk during background sync). Backups are made WAL-safe via VACUUM INTO.
+        setWriteAheadLoggingEnabled(true)
+    }
+
     private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this))
 
     internal fun settingsRepository(): SettingsRepository = settingsRepository

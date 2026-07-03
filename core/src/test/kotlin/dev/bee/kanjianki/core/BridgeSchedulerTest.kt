@@ -1010,8 +1010,10 @@ public class BridgeSchedulerTest {
         )
         assertEquals(18, result.item.matureIntervalDays)
         assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis)
-        assertEquals(18.01, result.item.stability, 0.0)
-        assertEquals(5.99, result.item.difficulty, 0.0)
+        // Persistence now keeps full FSRS precision (was rounded to 2 dp). Assert with a
+        // tolerance instead of the previously-rounded 18.01 / 5.99 literals.
+        assertEquals(18.005, result.item.stability, 0.01)
+        assertEquals(5.99, result.item.difficulty, 0.01)
     }
 
     @Test

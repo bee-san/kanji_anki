@@ -6,11 +6,16 @@ import android.content.Intent
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action ?: ""
-        handle(action, AndroidReceiverActions(context))
+        // Reads the full dashboard + all study items + streaks; do it off the main
+        // thread and keep the broadcast alive until it completes.
+        ReceiverAsyncWork.run(this) {
+            handle(action, AndroidReceiverActions(context))
+        }
     }
 
     interface ReceiverActions {

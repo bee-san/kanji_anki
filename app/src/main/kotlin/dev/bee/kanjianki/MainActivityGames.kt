@@ -5,12 +5,14 @@ import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.KanjiGameRoundState
 import dev.bee.kanjianki.core.RecordsImportModels
-import java.security.SecureRandom
 import java.util.Random
 
 internal abstract class MainActivityGames : MainActivityHome() {
     private val gameEngine by lazy { KanjiGameEngine() }
-    private val gameRandom: Random by lazy { SecureRandom() }
+
+    // Cosmetic game shuffling; a plain Random avoids SecureRandom's entropy blocking.
+    @Suppress("java:S2245")
+    private val gameRandom: Random by lazy { Random() }
     private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
     private var cachedGameData: GameData? = null
 

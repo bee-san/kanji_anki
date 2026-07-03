@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SyncSnapshotRetentionPolicy
 import dev.bee.kanjianki.core.TextUtil
 import java.util.LinkedHashSet
 
@@ -99,6 +100,43 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
 
         overlayDashboardRows(aggregates, rows)
         insertHistoricalKanjiAggregates(db, syncId, timing.finishedAt, aggregates)
+        pruneSupersededSnapshots(db)
+    }
+
+    /**
+     * Bound the growth of the heavy per-note/per-card snapshot tables by pruning
+     * card/note snapshots for superseded sync_ids, keeping only the retention window
+     * defined by [SyncSnapshotRetentionPolicy]. The small per-kanji aggregate table
+     * (`sync_kanji_snapshots`) is intentionally retained long-term and untouched here.
+     */
+    fun pruneSupersededSnapshots(db: SQLiteDatabase) {
+        val existing = snapshotCardSyncIds(db)
+        val toPrune = SyncSnapshotRetentionPolicy.snapshotSyncIdsToPrune(existing)
+        for (syncId in toPrune) {
+            val args = arrayOf(syncId.toString())
+            db.delete(LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS, "${LocalStoreBase.COLUMN_SYNC_ID}=?", args)
+            db.delete(LocalStoreBase.TABLE_SYNC_NOTE_SNAPSHOTS, "${LocalStoreBase.COLUMN_SYNC_ID}=?", args)
+        }
+    }
+
+    private fun snapshotCardSyncIds(db: SQLiteDatabase): List<Long> {
+        val syncIds = ArrayList<Long>()
+        db.query(
+            true,
+            LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS,
+            arrayOf(LocalStoreBase.COLUMN_SYNC_ID),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        ).use {
+            while (it.moveToNext()) {
+                syncIds.add(LocalStoreBase.longValue(it, LocalStoreBase.COLUMN_SYNC_ID))
+            }
+        }
+        return syncIds
     }
 
     fun backfillLatestHistoricalSync(db: SQLiteDatabase) {

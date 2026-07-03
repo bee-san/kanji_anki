@@ -65,32 +65,14 @@ class DatabaseBackupWorkerInstrumentedTest {
     }
 
     @Test
-    fun checkpointRunsWalCheckpointAndClosesValidDatabase() {
+    fun workerProducesIntegralBackupThatIncludesCommittedWalContent() {
+        // Write rows without an explicit checkpoint so the newest data lives in the WAL.
         val db = context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null)
+        db.execSQL("PRAGMA journal_mode=WAL")
         db.execSQL("CREATE TABLE IF NOT EXISTS probe(id INTEGER PRIMARY KEY)")
-        db.close()
-        val dbFile = context.getDatabasePath(DATABASE_NAME)
-
-        DatabaseBackupWorker.checkpoint(dbFile)
-
-        val reopened = SQLiteDatabase.openDatabase(
-            dbFile.absolutePath,
-            null,
-            SQLiteDatabase.OPEN_READWRITE,
-        )
-        try {
-            reopened.execSQL("INSERT INTO probe(id) VALUES(1)")
-            assertTrue(dbFile.isFile)
-        } finally {
-            reopened.close()
+        for (id in 1..25) {
+            db.execSQL("INSERT INTO probe(id) VALUES(?)", arrayOf<Any>(id))
         }
-    }
-
-    @Test
-    fun workerConstructorAndDoWorkUseAndroidEnvironment() {
-        val db = context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null)
-        db.execSQL("CREATE TABLE IF NOT EXISTS probe(id INTEGER PRIMARY KEY)")
-        db.execSQL("INSERT INTO probe(id) VALUES(1)")
         db.close()
 
         val worker = DatabaseBackupWorker(context, workerParameters())
@@ -102,11 +84,26 @@ class DatabaseBackupWorkerInstrumentedTest {
             name.startsWith("kanji_anki_simple_") && name.endsWith(".db")
         }
         assertTrue(backups != null && backups.size == 1)
-        assertTrue(backups!![0].isFile)
+        val backup = backups!![0]
+        assertTrue(backup.isFile)
+
+        val restored = SQLiteDatabase.openDatabase(backup.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+        try {
+            restored.rawQuery("PRAGMA integrity_check", null).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("ok", cursor.getString(0))
+            }
+            restored.rawQuery("SELECT COUNT(*) FROM probe", null).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(25, cursor.getInt(0))
+            }
+        } finally {
+            restored.close()
+        }
     }
 
     @Test
-    fun backupDatabaseLogsAndroidWarningsWhenFailedCopyCannotBeDeleted() {
+    fun backupDatabaseLogsAndroidWarningsWhenFailedSnapshotCannotBeDeleted() {
         val source = context.getDatabasePath(DATABASE_NAME)
         FileOutputStream(source).use { output ->
             output.write(byteArrayOf(1, 2, 3))
@@ -118,15 +115,13 @@ class DatabaseBackupWorkerInstrumentedTest {
             source,
             filesDir,
             1_778_832_000_000L,
-            { dbFile -> DatabaseBackupWorker.checkpoint(dbFile) },
-            { _, dst ->
-                assertTrue(dst.mkdirs())
-                FileOutputStream(File(dst, "partial")).use { output ->
-                    output.write(byteArrayOf(4, 5, 6))
-                }
-                throw IOException("copy failed")
-            },
-        )
+        ) { _, dst ->
+            assertTrue(dst.mkdirs())
+            FileOutputStream(File(dst, "partial")).use { output ->
+                output.write(byteArrayOf(4, 5, 6))
+            }
+            throw IOException("snapshot failed")
+        }
 
         assertTrue(result is ListenableWorker.Result.Failure)
         val incomplete = File(filesDir, "backups").listFiles { _, name ->

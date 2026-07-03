@@ -49,10 +49,6 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
     }
 
     private fun storeOrNull(): LocalStore? {
-        return try {
-            activity.store
-        } catch (_: NullPointerException) {
-            null
-        }
+        return if (activity.isStoreInitialized()) activity.store else null
     }
 }

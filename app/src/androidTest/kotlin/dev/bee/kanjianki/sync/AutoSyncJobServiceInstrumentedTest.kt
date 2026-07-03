@@ -72,13 +72,33 @@ class AutoSyncJobServiceInstrumentedTest {
             AutoSyncJobService.runAutoSync(
                 context,
                 null,
-                false,
+                SyncCancellation.NONE,
             ) { _, needsReschedule -> stoppedValue.set(needsReschedule) }
         } finally {
             context.deleteDatabase(DATABASE_NAME)
         }
 
         assertTrue(stoppedValue.get() == false)
+    }
+
+    @Test
+    fun runAutoSyncReschedulesWhenStoppedMidRun() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase(DATABASE_NAME)
+        val stoppedValue = AtomicReference<Boolean?>(null)
+        try {
+            // Cancellation that is already stopped at completion time; the reschedule
+            // flag must reflect the stopped state rather than a captured pre-run value.
+            AutoSyncJobService.runAutoSync(
+                context,
+                null,
+                SyncCancellation { true },
+            ) { _, needsReschedule -> stoppedValue.set(needsReschedule) }
+        } finally {
+            context.deleteDatabase(DATABASE_NAME)
+        }
+
+        assertTrue(stoppedValue.get() == true)
     }
 
     @Test
@@ -94,7 +114,7 @@ class AutoSyncJobServiceInstrumentedTest {
             AutoSyncJobService.runAutoSync(
                 context,
                 null,
-                false,
+                SyncCancellation.NONE,
             ) { _, needsReschedule -> stoppedValue.set(needsReschedule) }
 
             LocalStore(context).use { store ->

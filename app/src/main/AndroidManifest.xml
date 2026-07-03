@@ -38,11 +38,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <provider
-            android:name=".update.ApkContentProvider"
-            android:authorities="${applicationId}.apk"
-            android:exported="false"
-            android:grantUriPermissions="true" />
         <!--
             Kani initializes scheduler/update work explicitly from MainActivityStartup,
             and does not use AndroidX Startup consumers. Removing the provider keeps

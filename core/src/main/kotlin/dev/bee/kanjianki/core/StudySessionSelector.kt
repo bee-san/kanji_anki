@@ -31,11 +31,13 @@ class StudySessionSelector {
         if (best == null) {
             return null
         }
-        val row = rowByKanji[best.kanji]
+        // Skip the item rather than crash when it has no dashboard row (e.g. its kanji
+        // was removed from the collection after the study queue was built).
+        val row = rowByKanji[best.kanji] ?: return null
         val token = StudyTokenPolicy.studyItem(best.kanji, best.activeToken)
         val taskType = StudyTaskTypes.forRung(best.rung)
         val writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI
-        val prompt = row!!.reasonText
+        val prompt = row.reasonText
         return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
     }
 
@@ -451,6 +453,9 @@ class StudySessionSelector {
 
         fun shuffleDuePriorityBuckets(items: MutableList<RecordsStudyModels.StudyItem>, randomSeed: Long?) {
             val seed = randomSeed
+            // Cosmetic queue ordering only. Deterministic (seeded) ordering uses the
+            // seeded sort below; the null-seed path uses SecureRandom, which the Sonar
+            // gate accepts for this non-security shuffle.
             val secureRandom = if (seed == null) SecureRandom() else null
             var start = 0
             while (start < items.size) {

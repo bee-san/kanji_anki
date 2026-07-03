@@ -68,6 +68,16 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyQueueCoordinator.renderStudy()
     }
 
+    fun renderStudyLoading() {
+        renderComposeStudyRoute {
+            HomeRouteLoadingScreen(
+                title = dev.bee.kanjianki.core.StudyTextCopy.studyPracticeTitle(),
+                homeLabel = dev.bee.kanjianki.core.HomeTextCopy.homeLabel(),
+                onHome = ::renderHome,
+            )
+        }
+    }
+
     fun renderEmptyStudyQueue() {
         doneActions.renderEmptyStudyQueue()
     }

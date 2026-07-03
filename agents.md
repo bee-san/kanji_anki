@@ -89,6 +89,24 @@ Do not simplify that to a normal compile. Gradle can mark the compile tasks
 up-to-date from cache, and then CodeQL fails with "this run didn't build any of
 it" because it saw no compiler activity to extract.
 
+## Kotlin compiler version coupling
+
+The version catalog (`gradle/libs.versions.toml`) pins a single `kotlin`
+version used for BOTH the Kotlin JVM plugin (library modules) and the Compose
+compiler plugin (`kotlin-jvm` and `kotlin-compose` share `version.ref =
+"kotlin"`). The `:app` module does not apply the Kotlin JVM plugin; it compiles
+with AGP's built-in kotlinc (see the `built_in_kotlinc` intermediates paths in
+the root `build.gradle.kts` Sonar config), so the app's compiler is coupled to
+the AGP version (`agp` in the catalog), not to the catalog `kotlin` version.
+
+Keep this pairing deliberate: when bumping `agp`, verify AGP's embedded Kotlin
+is compatible with the catalog `kotlin` (Compose compiler) version, and bump
+`kotlin` in lockstep if needed. Renovate updates both `kotlin-jvm` and
+`kotlin-compose` together because they share the version ref. A future cleanup
+(deep-review Goal 24) may apply KGP to `:app` explicitly to unify all modules
+on one compiler; until then, treat an `agp` bump as requiring a Kotlin-compat
+check.
+
 For SonarCloud test assertions, avoid direct `assertFalse(value.equals(...))`
 because `java:S5785` asks for `assertNotEquals`. Also avoid `assertNotEquals`
 between intentionally different types because `java:S5845` reports it as a bug.
@@ -163,6 +181,22 @@ state, matching Anki's FSRS behavior.
 When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
 the new skill is validated sooner than a full promotion-sized interval.
+
+Graduation from learning/relearning derives the initial FSRS memory state
+from the graduating rating alone (`engine.initialState(graduationRating)`),
+independent of any intermediate `Again`/`Hard` answers taken during the
+learning steps. This is intentional Anki-parity behavior: learning-step
+answers are practice-only and do not feed short-term stability, so the card
+graduates as if answered fresh at the graduating rating. Do not route
+learning answers through short-term stability without a deliberate parity
+decision and golden-timeline regeneration.
+
+`hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
+A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.
+The demotion fail-streak resets only when a demotion actually moves the rung;
+at the `write_kanji` floor (where demotion cannot move) the streak keeps
+accumulating so chronically-failing floor cards keep reporting to
+`LadderHealthPolicy`.
 
 The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;

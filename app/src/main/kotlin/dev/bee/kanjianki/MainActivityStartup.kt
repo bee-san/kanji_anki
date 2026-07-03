@@ -23,6 +23,10 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 AutoSyncScheduler.schedule(activity)
                 AutoUpdateScheduler.schedule(activity)
                 DatabaseBackupScheduler.schedule(activity)
+                // Warm heavy assets off the main thread so the first writing card and
+                // first flashcard reveal do not parse them synchronously on tap. First
+                // use blocks on the same thread-safe init if warmup has not finished.
+                warmHeavyAssets()
             }
         }
         handleLaunchIntent(launchIntent)
@@ -57,6 +61,11 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
 
     internal fun shouldRunBackgroundStartupTasks(intent: Intent?): Boolean {
         return backgroundStartupTasksAllowed(intent)
+    }
+
+    private fun warmHeavyAssets() {
+        runCatching { activity.warmStrokeGuides() }
+        runCatching { activity.warmDictionaryLookup() }
     }
 
     private fun renderRoute(route: String) {

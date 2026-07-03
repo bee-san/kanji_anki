@@ -12,3 +12,4 @@ __pycache__/
 *.py[cod]
 .ralph-loop/
 .tmp/ralph-android-designer-loop/
+.sisyphus/

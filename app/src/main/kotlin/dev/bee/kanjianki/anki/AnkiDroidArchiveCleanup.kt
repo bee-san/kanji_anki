@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
+import android.util.Log
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy
@@ -30,7 +31,15 @@ internal class AnkiDroidArchiveCleanup(
         var tagged = 0
         var failed = cleanup.alreadyFailedCards
         for (noteId in cleanup.notesToTag) {
-            if (tagNoteArchived(authority, noteId)) {
+            // Isolate per-note provider failures so one bad note does not abort tagging
+            // the rest; the note is counted as failed and archiving continues.
+            val ok = try {
+                tagNoteArchived(authority, noteId)
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Failed to tag note $noteId as archived.", error)
+                false
+            }
+            if (ok) {
                 tagged++
             } else {
                 failed++
@@ -108,6 +117,7 @@ internal class AnkiDroidArchiveCleanup(
     }
 
     companion object {
+        private const val TAG = "AnkiArchiveCleanup"
         private const val CONTENT_SCHEME = "content"
         private const val COLUMN_TAGS = "tags"
         private const val URI_SEGMENT_NOTES = "notes"

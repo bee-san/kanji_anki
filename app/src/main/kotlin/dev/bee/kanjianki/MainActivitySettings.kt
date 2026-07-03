@@ -335,7 +335,9 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun parseThresholdInput(input: EditText): Int {
-        return input.text.toString().trim().toInt()
+        // Empty or non-numeric input must not throw NumberFormatException; fall back to
+        // 0 so the caller's own coercion (coerceAtLeast) picks the minimum.
+        return input.text.toString().trim().toIntOrNull() ?: 0
     }
 
     fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
@@ -372,9 +374,9 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             } else {
                 updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
             }
-            main.post {
+            postToMainIfActive {
                 if (activeUpdateUiRunToken != updateUiRun) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 result.intent?.let(::startActivity)

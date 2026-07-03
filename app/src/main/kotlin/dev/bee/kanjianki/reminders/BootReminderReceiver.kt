@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
+import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 
@@ -18,7 +19,11 @@ class BootReminderReceiver internal constructor(
         if (!shouldReschedule(action)) {
             return
         }
-        handle(context, action, actions)
+        // Reschedules four subsystems, each opening its own LocalStore; run off the
+        // main thread and keep the broadcast alive until it completes.
+        ReceiverAsyncWork.run(this) {
+            handle(context, action, actions)
+        }
     }
 
     fun interface ActionReader<T> {

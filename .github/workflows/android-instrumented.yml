@@ -8,6 +8,10 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        description: 'Gradle configuration-cache encryption key.'
+        required: false
   workflow_dispatch:
   schedule:
     - cron: '17 5 * * *'
@@ -111,6 +115,9 @@ jobs:
 
       - name: Run live-provider fixture instrumentation
         uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        env:
+          ANKIDROID_APK_PATH: ${{ steps.ankidroid.outputs.apk_path }}
+          FIXTURE_COLLECTION_PATH: ${{ steps.fixture.outputs.collection_path }}
         with:
           api-level: 35
           target: aosp_atd
@@ -119,7 +126,9 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: bash ci/scripts/run_ankidroid_fixture.sh '${{ steps.ankidroid.outputs.apk_path }}' '${{ steps.fixture.outputs.collection_path }}'
+          # Pass step outputs via env (not inline expression) for shell-injection
+          # hygiene, matching the screenshot workflows.
+          script: bash ci/scripts/run_ankidroid_fixture.sh "$ANKIDROID_APK_PATH" "$FIXTURE_COLLECTION_PATH"
 
       - name: Upload instrumentation diagnostics
         if: failure()

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.data.DictionaryAssets
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -41,6 +42,20 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     val main = Handler(Looper.getMainLooper())
 
+    /**
+     * Post [action] to the main thread, but drop it if the activity is already
+     * destroyed by the time it runs. Guards background-completion callbacks that touch
+     * `setContent`/`startActivity`/toasts against a torn-down activity.
+     */
+    fun postToMainIfActive(action: () -> Unit) {
+        main.post {
+            if (isDestroyed || isFinishing) {
+                return@post
+            }
+            action()
+        }
+    }
+
     @JvmField
     val io: ExecutorService = Executors.newSingleThreadExecutor()
 
@@ -50,11 +65,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     val studySessionTracker = StudySessionTracker()
 
-    @JvmField
-    var store: LocalStore = uninitialized()
+    lateinit var store: LocalStore
 
-    @JvmField
-    var gateway: AnkiDroidGateway = uninitialized()
+    lateinit var gateway: AnkiDroidGateway
+
+    /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
+    fun isStoreInitialized(): Boolean = ::store.isInitialized
 
     @JvmField
     var contentScrollY = 0
@@ -115,9 +131,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     /**
      * Latest known count of study-ready items, used for the Study badge in the bottom
-     * nav. Negative means unknown (not yet computed for this process).
+     * nav. Negative means unknown (not yet computed for this process). Written from
+     * background route loads and read on the main thread, so it is volatile.
      */
     @JvmField
+    @Volatile
     var studyDueBadgeCount: Int = -1
 
     @JvmField
@@ -169,13 +187,17 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var currentHintState: HintState = HintState.initial()
 
     @JvmField
+    @Volatile
     var strokeGuides: Map<String, StrokeGuide>? = null
 
     @JvmField
     var writingRecognizer: WritingRecognizer? = null
 
     @JvmField
+    @Volatile
     var dictionaryLookup: DictionaryLookup? = null
+
+    private val assetWarmupLock = Any()
 
     @JvmField
     var pendingReminderSettings: LocalStoreBase.ReminderSettings? = null
@@ -399,10 +421,37 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun strokeGuide(kanji: String): StrokeGuide? {
-        if (strokeGuides == null) {
-            strokeGuides = StrokeGuideAssets.load(this)
+        return warmStrokeGuides().get(kanji)
+    }
+
+    /**
+     * Parse and cache the stroke-guide asset, safe to call from any thread. Startup
+     * warms this on the io executor; first use blocks on the same single init if warmup
+     * has not finished yet. Double-checked locking on [assetWarmupLock].
+     */
+    fun warmStrokeGuides(): Map<String, StrokeGuide> {
+        strokeGuides?.let { return it }
+        synchronized(assetWarmupLock) {
+            strokeGuides?.let { return it }
+            val loaded = StrokeGuideAssets.load(this)
+            strokeGuides = loaded
+            return loaded
         }
-        return strokeGuides?.get(kanji)
+    }
+
+    /**
+     * Open and cache the dictionary lookup (copies + hashes the bundled asset DB on
+     * first run), safe to call from any thread. Warmed on the io executor at startup;
+     * first use blocks on the same single init otherwise.
+     */
+    fun warmDictionaryLookup(): DictionaryLookup {
+        dictionaryLookup?.let { return it }
+        synchronized(assetWarmupLock) {
+            dictionaryLookup?.let { return it }
+            val loaded = DictionaryAssets.load(this)
+            dictionaryLookup = loaded
+            return loaded
+        }
     }
 
     fun settings(): RecordsSyncModels.Settings {
@@ -469,9 +518,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     ) : FocusQueuePolicy.QueueEntry(row, item)
 
     companion object {
-        @Suppress("UNCHECKED_CAST")
-        private fun <T> uninitialized(): T = null as T
-
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"

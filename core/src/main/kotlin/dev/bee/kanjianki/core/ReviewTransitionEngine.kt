@@ -2,7 +2,6 @@ package dev.bee.kanjianki.core
 
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.round
 
 internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) {
     fun applyReview(application: BridgeScheduler.ReviewApplication): RecordsSchedulerModels.ReviewResult {
@@ -14,7 +13,6 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (duplicate != null) {
             return duplicate
         }
-        application.consumedTokens.add(application.request.token)
         val context = ReviewContext.from(
             application.item,
             application.request,
@@ -27,7 +25,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val state = ReviewState.from(context)
         applyLadderTransition(context, state)
         updateWritingLevel(context, state)
-        return RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
+        val result = RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
+        // Consume the idempotency token only after the review has fully applied, so a
+        // failure mid-apply leaves the token unconsumed and the retry is not rejected as
+        // a duplicate while the item was never updated.
+        application.consumedTokens.add(application.request.token)
+        return result
     }
 
     fun debugTraceApplyReview(application: BridgeScheduler.ReviewApplication): SchedulerTracedReviewResult {
@@ -239,8 +242,13 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             return
         }
         if (idx == 0 && steps.size >= 2) {
+            // Anki semantics: Hard on the first step waits the midpoint of the first two
+            // steps, sitting strictly between Again (returns to step 0) and Good
+            // (advances to step 1). Using the plain midpoint keeps that true even for
+            // descending steps like [10, 5], where max(step0, midpoint) would collapse
+            // Hard onto the Again delay.
             val avg = (StudyLadderRules.stepDelayMillis(steps[0]) + StudyLadderRules.stepDelayMillis(steps[1])) / 2L
-            state.due = context.nowMillis + max(StudyLadderRules.stepDelayMillis(steps[0]), avg)
+            state.due = context.nowMillis + avg
         } else if (idx == 0) {
             // Anki semantics: with a single learning step, Hard waits 1.5x the
             // step delay so it sits strictly between Again and Good.
@@ -331,9 +339,16 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realAgainStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             if (state.realAgainStreak >= context.settings.ladderDemotionFailStreak) {
-                state.rung = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
-                state.realAgainStreak = 0
-                state.realPassStreak = 0
+                val demoted = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                // Only reset the fail streak when a demotion actually moved the rung. At
+                // the WRITE_KANJI floor demoteRung returns the same rung, so keeping the
+                // streak lets chronically-failing floor cards keep reporting in
+                // LadderHealthPolicy instead of silently resetting to zero.
+                if (demoted != state.rung) {
+                    state.rung = demoted
+                    state.realAgainStreak = 0
+                    state.realPassStreak = 0
+                }
             }
         }
     }
@@ -412,8 +427,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val updatedMemory = RecordsStudyModels.TaskMemory(
             state.schedulerState,
             state.due,
-            roundScore(state.stability),
-            roundScore(state.difficulty),
+            state.stability,
+            state.difficulty,
             state.taskTotal,
             state.taskLapses,
             state.stepIndex,
@@ -425,8 +440,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val base = context.item.copyBuilder()
             .state(state.schedulerState)
             .dueAtMillis(state.due)
-            .stability(roundScore(state.stability))
-            .difficulty(roundScore(state.difficulty))
+            .stability(state.stability)
+            .difficulty(state.difficulty)
             .totalReviews(state.total)
             .lapses(state.lapses)
             .learningStep(state.stepIndex)
@@ -599,7 +614,5 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
          * first-review cap for a freshly promoted rung.
          */
         private const val PROMOTED_RUNG_FIRST_REVIEW_DIVISOR = 3
-
-        private fun roundScore(value: Double): Double = round(value * 100.0) / 100.0
     }
 }

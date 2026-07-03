@@ -22,6 +22,17 @@ internal class SqliteSyncRunStorage(
         )
     }
 
+    override fun updateStatus(syncId: Long, status: String) {
+        val values = ContentValues()
+        values.put(LocalStoreBase.COLUMN_STATUS, status)
+        writableDatabase().update(
+            LocalStoreBase.TABLE_SYNC_RUNS,
+            values,
+            "id=?",
+            arrayOf(syncId.toString()),
+        )
+    }
+
     private fun writableDatabase(): SQLiteDatabase = transactionDb ?: store.writableDatabase
 
     private fun values(record: SyncRunRecord): ContentValues {

@@ -66,6 +66,38 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
         similarIndex: SimilarKanjiIndex?,
         auditImports: List<RecordsImportModels.SuspendedImport>?,
     ): Long {
+        return saveSuccessfulSync(
+            snapshot,
+            imports,
+            rows,
+            settings,
+            timing,
+            removalMessage,
+            similarIndex,
+            auditImports,
+            STATUS_SUCCESS,
+        )
+    }
+
+    /**
+     * Persist a sync's mirror + sync_run row in one transaction. [initialStatus]
+     * controls the sync_run status: callers that will commit study items in a
+     * separate transaction should pass [STATUS_PENDING] and call [markSyncSucceeded]
+     * only after that second commit, so a crash between the two commits leaves a
+     * `pending` row that `hasSuccessfulSyncSince` ignores (auto-sync retries) instead
+     * of a committed `success` sitting on stale study items.
+     */
+    fun saveSuccessfulSync(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        imports: List<RecordsImportModels.SuspendedImport>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        settings: RecordsSyncModels.Settings,
+        timing: LocalStoreBase.SyncTiming,
+        removalMessage: String?,
+        similarIndex: SimilarKanjiIndex?,
+        auditImports: List<RecordsImportModels.SuspendedImport>?,
+        initialStatus: String,
+    ): Long {
         val db = writableDatabase
         return db.transaction {
             val decisionImports = auditImports ?: imports
@@ -88,7 +120,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
                 LocalStoreBase.SyncRunInsert(
                     timing.startedAt,
                     timing.finishedAt,
-                    STATUS_SUCCESS,
+                    initialStatus,
                     activeIndex,
                     selectedSuspendedCardIds.size,
                     imports.size,
@@ -154,6 +186,10 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
 
     fun updateSyncRemovalMessage(syncId: Long, message: String?) {
         syncRunRepository().updateSyncRemovalMessage(syncId, message)
+    }
+
+    fun markSyncSucceeded(syncId: Long) {
+        syncRunRepository().markSyncSucceeded(syncId)
     }
 
     private fun countDeletedExisting(db: SQLiteDatabase, table: String, idColumn: String, currentIds: Set<Long>): Int {

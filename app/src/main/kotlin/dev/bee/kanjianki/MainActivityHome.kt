@@ -19,7 +19,10 @@ import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 
 internal abstract class MainActivityHome : MainActivityBase() {
+    // Written on the main thread and read from a background route-load lambda, so it is
+    // volatile to publish the latest query across threads.
     @JvmField
+    @Volatile
     var activeBrowseQuery: String = ""
 
     @JvmField
@@ -272,7 +275,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val syncGateway = MainActivityRuntimeOverrides.collectionGateway ?: gateway
         val coordinator = ManualSyncCoordinator(
             io,
-            main::post,
+            { task -> postToMainIfActive { task.run() } },
             { progress ->
                 ManualSyncEngine(
                     this,

@@ -736,6 +736,53 @@ class UpdateFlowInstrumentedTest {
     }
 
     @Test
+    fun cachedInstallWithMismatchedSigningCertBlocksInstallAndClearsPending() {
+        val cached = cachedApk("cached-hostile.apk")
+        write(cached, "hostile cached apk")
+        LocalStore(context).use { store ->
+            store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
+        }
+        val client = FakeUpdateClient()
+            .metadata(context.packageName, "99.99.99", 34)
+            .mismatchedSigningCert()
+            .canInstall(true)
+
+        val result = GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+
+        assertFalse(result.success)
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message)
+        assertEquals(0, client.installs)
+        // Cached APK is deleted and pending state cleared so it is not retried.
+        assertFalse(cached.exists())
+        LocalStore(context).use { store ->
+            val status = store.autoUpdateStatus()
+            assertEquals("", status.pendingApkName)
+            assertFalse(status.hasPendingUpdate())
+        }
+    }
+
+    @Test
+    fun downloadInstallWithMismatchedSigningCertBlocksInstallAndClearsPending() {
+        val apk = "hostile download apk".toByteArray(Charsets.UTF_8)
+        val client = FakeUpdateClient()
+            .latest(releaseJson("v99.99.99", apkAsset(), checksumAsset()))
+            .checksum(sha256(apk))
+            .downloadBytes(apk)
+            .metadata(context.packageName, "99.99.99")
+            .mismatchedSigningCert()
+            .canInstall(true)
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertFalse(result.success)
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message)
+        assertEquals(0, client.installs)
+        LocalStore(context).use { store ->
+            assertFalse(store.autoUpdateStatus().hasPendingUpdate())
+        }
+    }
+
+    @Test
     fun cachedInstallRecordsFakeClientExceptionAndKeepsPendingApk() {
         val cached = cachedApk("cached-throws.apk")
         write(cached, "cached apk")
@@ -1368,7 +1415,9 @@ class UpdateFlowInstrumentedTest {
         private var latestJson = releaseJson("v99.99.99", apkAsset(), checksumAsset())
         private var checksumText = ""
         private var downloadBytes = ByteArray(0)
-        private var metadata = GitHubUpdater.ApkMetadata("", "")
+        private var signingCert = byteArrayOf(1, 2, 3, 4)
+        private var metadata = GitHubUpdater.ApkMetadata("", "", 0, listOf(byteArrayOf(1, 2, 3, 4)))
+        private var installedCerts: List<ByteArray> = listOf(byteArrayOf(1, 2, 3, 4))
         private var downloadFailure: IOException? = null
         private var inspectFailure: RuntimeException? = null
         private var canInstall = false
@@ -1395,12 +1444,23 @@ class UpdateFlowInstrumentedTest {
         }
 
         fun metadata(packageName: String, versionName: String): FakeUpdateClient {
-            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName)
+            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, 0, listOf(signingCert))
             return this
         }
 
         fun metadata(packageName: String, versionName: String, targetSdkVersion: Int): FakeUpdateClient {
-            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, targetSdkVersion)
+            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, targetSdkVersion, listOf(signingCert))
+            return this
+        }
+
+        /** Make the downloaded APK's signing cert differ from the installed app's. */
+        fun mismatchedSigningCert(): FakeUpdateClient {
+            this.metadata = GitHubUpdater.ApkMetadata(
+                metadata.packageName,
+                metadata.versionName,
+                metadata.targetSdkVersion,
+                listOf(byteArrayOf(9, 9, 9, 9)),
+            )
             return this
         }
 
@@ -1438,6 +1498,10 @@ class UpdateFlowInstrumentedTest {
                 throw failure
             }
             return metadata
+        }
+
+        override fun installedSigningCertificates(packageName: String): List<ByteArray> {
+            return installedCerts
         }
 
         override fun canRequestPackageInstalls(): Boolean {
