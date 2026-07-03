@@ -48,6 +48,15 @@ class FastCiTaskWiringTest(unittest.TestCase):
         self.assertIn('"testDictionaryAssets"', fast_tasks)
         self.assertIn('"testCiScripts"', fast_tasks)
 
+    def test_android_ci_asset_job_matches_local_python_test_surface(self) -> None:
+        # CI's Fast confidence gate must run the same Python suites as local ciFast:
+        # tools/, scripts/tests/, AND ci/tests/. The last one was missing, letting the
+        # CI gate silently diverge from local ciFast (which runs it via testCiScripts).
+        ci = (ROOT / ".github/workflows/android-ci.yml").read_text(encoding="utf-8")
+        for directory in ("tools", "scripts/tests", "ci/tests"):
+            with self.subTest(directory=directory):
+                self.assertIn(f"-s {directory} -p 'test_*.py'", ci)
+
 
 class MainBugfixReleaseWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:

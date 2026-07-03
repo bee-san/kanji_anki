@@ -643,6 +643,15 @@ accurate, CI green.
 
 ## Batch 7: CI & test hygiene
 
+> PARTIAL (deep-review pass 2026-07-03): Added the missing `ci/tests` unittest
+> step to android-ci.yml's asset-tests job so CI's Fast confidence gate covers
+> the same Python surface as local ciFast (which ran it via testCiScripts), and
+> added a meta-test asserting all three suites (tools/, scripts/tests/,
+> ci/tests/) run in CI. DEFERRED: collapsing the module/task inventory
+> duplicated across ≥5 places into aggregate Gradle tasks (ciFastJvm/
+> ciFastAppUnit) that all workflows call — that refactor's payoff is validated by
+> watching a live Actions run, and touches multiple workflows at once.
+
 ### Goal 27: Run ci/tests Python suite in CI and single-source the CI task inventory
 
 **Problem:** `android-ci.yml:149-164` runs `tools/` and `scripts/tests/` but never

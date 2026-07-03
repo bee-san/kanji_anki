@@ -160,6 +160,11 @@ jobs:
       - name: Run Ralph loop script tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
+      - name: Run CI script tests
+        # Mirrors local ciFast's testCiScripts task so CI's Fast confidence gate
+        # covers the same surface (ci/tests/test_run_ankidroid_fixture.py etc.).
+        run: python3 -m unittest discover -s ci/tests -p 'test_*.py'
+
   dependency-safety:
     name: Dependency safety
     runs-on: ubuntu-latest
