@@ -167,6 +167,13 @@ reschedule flag reflects reality; `ciFast` green.
 
 ## Batch 3: UX / main-thread correctness
 
+> DEFERRED (deep-review pass 2026-07-03): Goal 8 is the most architecturally
+> invasive item in the plan (activity lifecycle, executor ownership, retained
+> session state) and its acceptance is gated on an `activity.recreate()`
+> instrumented test that requires a live emulator. Defer until it can be
+> validated on-device rather than land it blind. All other Batch-3 goals
+> (9-12) are complete.
+
 ### Goal 8: Survive configuration changes (rotation, dark mode, locale)
 
 **Problem:** No `onSaveInstanceState`, no ViewModel, no retained state. Every rotation
