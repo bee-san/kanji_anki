@@ -9,18 +9,33 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
+    // These caches are populated/read from the UI thread and cleared/repopulated from
+    // sync/background threads. Each reference is @Volatile so a reader sees either the
+    // fully-built snapshot or null (never a partially-published one); the map-valued
+    // caches use ConcurrentHashMap so concurrent puts are safe.
+    @Volatile
     private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    @Volatile
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    @Volatile
     private var cachedActiveDashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow>? = null
+    @Volatile
     private var cachedLocallySuspendedKanji: Set<String>? = null
+    @Volatile
     private var cachedStudyItems: List<RecordsStudyModels.StudyItem>? = null
+    @Volatile
     private var cachedStudyItemsByKanji: MutableMap<String, List<RecordsStudyModels.StudyItem>>? = null
+    @Volatile
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    @Volatile
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
+    @Volatile
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
+    @Volatile
     private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
 
@@ -245,7 +260,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         if (!onlySimilarKanji && terms.isEmpty()) {
             cachedKanjiInventoryAll = out
         } else if (!onlySimilarKanji) {
-            val searches = cachedKanjiInventorySearches ?: LinkedHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
+            val searches = cachedKanjiInventorySearches ?: ConcurrentHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
                 cachedKanjiInventorySearches = it
             }
             searches[cacheKey!!] = out
@@ -367,7 +382,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         Collections.reverse(events)
         val timeline = RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events)
         if (kanji.isNotBlank()) {
-            val caches = cachedTimelinesByKanji ?: LinkedHashMap<String, RecordsStudyModels.KanjiRecoveryTimeline>().also {
+            val caches = cachedTimelinesByKanji ?: ConcurrentHashMap<String, RecordsStudyModels.KanjiRecoveryTimeline>().also {
                 cachedTimelinesByKanji = it
             }
             caches[kanji] = timeline
@@ -438,7 +453,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items[i] = current.withHasSimilarKanji(hasSimilar)
             }
         }
-        val caches = cachedStudyItemsByKanji ?: LinkedHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
+        val caches = cachedStudyItemsByKanji ?: ConcurrentHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
             cachedStudyItemsByKanji = it
         }
         caches[cacheKey] = items

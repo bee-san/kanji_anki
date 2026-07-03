@@ -41,6 +41,20 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     val main = Handler(Looper.getMainLooper())
 
+    /**
+     * Post [action] to the main thread, but drop it if the activity is already
+     * destroyed by the time it runs. Guards background-completion callbacks that touch
+     * `setContent`/`startActivity`/toasts against a torn-down activity.
+     */
+    fun postToMainIfActive(action: () -> Unit) {
+        main.post {
+            if (isDestroyed || isFinishing) {
+                return@post
+            }
+            action()
+        }
+    }
+
     @JvmField
     val io: ExecutorService = Executors.newSingleThreadExecutor()
 
@@ -115,9 +129,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     /**
      * Latest known count of study-ready items, used for the Study badge in the bottom
-     * nav. Negative means unknown (not yet computed for this process).
+     * nav. Negative means unknown (not yet computed for this process). Written from
+     * background route loads and read on the main thread, so it is volatile.
      */
     @JvmField
+    @Volatile
     var studyDueBadgeCount: Int = -1
 
     @JvmField

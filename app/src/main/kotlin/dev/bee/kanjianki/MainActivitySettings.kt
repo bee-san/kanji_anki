@@ -372,9 +372,9 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             } else {
                 updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
             }
-            main.post {
+            postToMainIfActive {
                 if (activeUpdateUiRunToken != updateUiRun) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
                 result.intent?.let(::startActivity)
