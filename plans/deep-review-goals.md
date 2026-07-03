@@ -1,5 +1,14 @@
 # Deep Review Goals
 
+> PROGRESS SUMMARY (deep-review implementation pass, 2026-07-03):
+> Fully landed with tests + `ciFast` green: Goals 1, 2, 3, 4, 5, 6, 7, 9, 10, 11,
+> 12, 15, 16, 18, 19, 22, 23, 34, plus partials on 14 (foundation), 17, 20, 24
+> (documented), 26, 27, 37. Deferred with in-file notes (need on-device/live-CI
+> validation or are large golden-sensitive refactors): 8, 13, 14-core, 21, 25,
+> 28-33, 35, 36, 38. Each goal's own note below records exactly what shipped and
+> why anything was deferred. Every landed change kept `ciFast` green; provider/
+> sync changes are flagged for the live AnkiDroid gate before a release cut.
+
 Source: full-codebase deep review (architecture, scheduler/FSRS, UI, sync/data, CI/testing).
 Each goal below is self-contained: it has context, the files involved, and acceptance
 criteria. Work them one at a time with `/goal`. Ordering within each section is by
@@ -754,6 +763,19 @@ dispatch, docs updated, `ciFast` green.
 ---
 
 ## Batch 8: Compose & misc polish
+
+> STATUS (deep-review pass 2026-07-03): Goal 34 (lateinit) and Goal 37 (defect
+> sweep) are DONE. Goals 32/33/35 (gesture consolidation, dialog recomposition,
+> TalkBack + edge-to-edge migration) are Compose-behavior changes whose
+> acceptance ("UI tests green", no double-handled swipe, TalkBack no longer
+> announces containers) is best validated with instrumented/on-device UI runs;
+> DEFERRED to an on-device pass. Goal 36 (migrate straggler English-only strings
+> into the *TextCopy layer with Japanese translations) is a localization content
+> task — safe but wants a Japanese-translation review, deferred. Goal 38 (replace
+> the vararg positional constructors in core — the plan calls it "the biggest
+> latent-bug generator") is a large, golden-test-sensitive core refactor across
+> StudyItem/ReviewRequest/TaskMemory/Settings and all call sites; DEFERRED as its
+> own focused effort with deliberate golden regeneration.
 
 ### Goal 32: Consolidate the flashcard swipe into one gesture system
 
