@@ -99,6 +99,30 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         unconditional_uploads = re.findall(r"gh release upload [^\n]*--clobber", self.workflow)
         self.assertEqual([], unconditional_uploads)
 
+    def test_required_check_names_match_source_workflow_job_names(self) -> None:
+        # The release gate waits on named check-runs (REQUIRED_CHECKS). If a source
+        # workflow renames a job the gate would silently treat that check as
+        # absent-and-skipped and let a release publish ungated. Assert every required
+        # name still exists as a `name:` job value in some workflow.
+        match = re.search(r"REQUIRED_CHECKS:\s*(.+)", self.workflow)
+        self.assertIsNotNone(match, "REQUIRED_CHECKS not found in release workflow")
+        required_names = [name.strip() for name in match.group(1).split("|") if name.strip()]
+        self.assertGreater(len(required_names), 0)
+
+        workflow_dir = ANDROID_RELEASE_WORKFLOW.parent
+        declared_names: set[str] = set()
+        for workflow_file in workflow_dir.glob("*.yml"):
+            for job_name in re.findall(r"^\s*name:\s*(.+?)\s*$", workflow_file.read_text(encoding="utf-8"), re.MULTILINE):
+                declared_names.add(job_name.strip().strip('"').strip("'"))
+
+        for name in required_names:
+            with self.subTest(required_check=name):
+                self.assertIn(
+                    name,
+                    declared_names,
+                    f"Required check '{name}' has no matching job name: value in .github/workflows/*.yml",
+                )
+
     def test_publish_release_waits_for_fixture_success_or_skip(self) -> None:
         publish_job = self.workflow.split("  publish-release:", maxsplit=1)[1]
         self.assertIn("needs.ankidroid-fixture.result == 'success'", publish_job)

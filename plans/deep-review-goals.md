@@ -458,6 +458,20 @@ exists/exports).
 
 **Done when:** oversized downloads abort cleanly, provider removed, `ciFast` green.
 
+> PARTIAL (deep-review pass 2026-07-03): Landed the locally-verifiable parts:
+> (1) a meta-test in tools/test_release_workflows.py asserting every
+> REQUIRED_CHECKS name is a real job `name:` in .github/workflows/*.yml (catches
+> the rename-drift the goal warns about); (2) shell-injection hygiene — the
+> android-instrumented fixture step now passes step outputs via `env:` instead
+> of an inline expression; (3) scoped the release fixture call down from
+> `secrets: inherit` to just GRADLE_ENCRYPTION_KEY (declared on the reusable
+> workflow's workflow_call). STILL OPEN and requiring a live Actions run to
+> validate (per AGENTS.md, workflow behavior changes must be watched to
+> completion): making quality-status treat a *missing* required check as a
+> failure unless the diff provably misses that workflow's path filters (+ grace
+> period), and running gradle/actions/wrapper-validation on push. Deferred — not
+> safe to land blind here.
+
 ### Goal 20: Make the release quality gate fail closed and validate the wrapper on push
 
 **Problem (workflow security/reliability):**
@@ -486,6 +500,14 @@ Push and watch the first Actions run to completion per AGENTS.md.
 
 **Done when:** fail-closed gate + wrapper validation on push are live and a real
 Actions run passes; meta-tests updated; `ciFast` green.
+
+> DEFERRED (deep-review pass 2026-07-03): Both changes require validation this
+> environment cannot provide — enforcing signing inside the release variant and
+> enabling R8 must be verified with the full release gate (`ciRelease` + a temp
+> keystore), apksigner verify, and an emulator smoke test (ML Kit digital ink +
+> Compose keep-rule audit). Landing R8 without that smoke test risks shipping a
+> broken minified APK to every user via the self-updater. Defer to an on-device
+> pass.
 
 ### Goal 21: Close the unsigned-release escape hatch and enable R8
 

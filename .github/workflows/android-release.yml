@@ -383,7 +383,10 @@ jobs:
     needs: metadata
     if: needs.metadata.outputs.ankidroid_fixture_required == 'true'
     uses: ./.github/workflows/android-instrumented.yml
-    secrets: inherit
+    # Scope down from `secrets: inherit`: the fixture job only needs the Gradle
+    # cache-encryption key, not the release signing secrets.
+    secrets:
+      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
     with:
       ref: ${{ needs.metadata.outputs.build_sha }}
 
