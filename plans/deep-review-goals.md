@@ -293,6 +293,18 @@ loader generation race; `ciFast` green.
 
 ## Batch 4: Scheduler correctness (core / fsrs)
 
+> STATUS (deep-review pass 2026-07-03): Goal 15 (stop rounding) and Goal 16
+> (token-on-success) are DONE. Goal 17 is PARTIAL (see its note). Goal 14 has
+> its additive foundation landed — `LocalDayPolicy` now takes an injectable
+> `TimeZone` and exposes `localDaysBetween` with DST spring-forward/fall-back +
+> timezone tests. The remaining output-changing cores of Goals 13 and 14
+> (persisting `lastReviewedAtMillis` + a DB column/migration; routing FSRS
+> elapsed days through `localDaysBetween` in `ReviewTransitionEngine` and
+> plumbing an injectable clock) are DEFERRED and should land together as one
+> reviewed change: both alter FSRS stability/retrievability outputs and require
+> deliberate golden-timeline regeneration plus the live AnkiDroid gate. They are
+> not safe to land blind in this environment.
+
 ### Goal 13: Persist lastReviewedAtMillis instead of reconstructing elapsed time
 
 **Problem:** `ReviewTransitionEngine`
