@@ -37,7 +37,11 @@ class MainActivityStartupTest {
 
             controller.create().start().resume()
 
-            assertEquals(1, ioTasks.pendingCount())
+            // Two background tasks are queued off the main thread: (1) the startup
+            // scheduler/asset-warmup block, and (2) the resume-time update-install
+            // gating, which now reads auto-update status on the io executor instead of
+            // blocking the UI thread (ANR fix). Neither runs inline on main.
+            assertEquals(2, ioTasks.pendingCount())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

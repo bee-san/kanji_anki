@@ -2571,6 +2571,12 @@ private fun clickText(scenario: ActivityScenario<MainActivity>, text: String) {
         return
     }
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    // A system "isn't responding" (ANR) dialog can transiently cover the app under CI
+    // emulator load. Dismiss it ("Wait") and re-scan before failing, then retry the
+    // in-activity lookup once the dialog is gone.
+    if (dismissAnrDialogIfPresent(device) && clickTextInActivityIfPresent(scenario, text)) {
+        return
+    }
     var object2 = findDeviceText(device, text)
     if (object2 == null && text != "Allow") {
         var allow = device.wait(Until.findObject(By.res("com.android.permissioncontroller:id/permission_allow_button")), 1000L)
@@ -2586,6 +2592,24 @@ private fun clickText(scenario: ActivityScenario<MainActivity>, text: String) {
     val found = requireNotNull(object2) { "Missing text: $text\nDevice text: ${deviceVisibleText(device)}" }
     found.click()
     device.waitForIdle(2000L)
+}
+
+/** Dismisses a system ANR ("isn't responding") dialog if shown; returns true if it was. */
+private fun dismissAnrDialogIfPresent(device: UiDevice): Boolean {
+    val notResponding = device.wait(Until.findObject(By.textContains("isn't responding")), 1500L)
+        ?: device.findObject(By.textContains("not responding"))
+        ?: return false
+    // Prefer "Wait" so the app keeps running; fall back to "Close app" then a back press.
+    val wait = device.findObject(By.text("Wait"))
+        ?: device.findObject(By.textContains("Wait"))
+    if (wait != null) {
+        wait.click()
+    } else {
+        device.pressBack()
+    }
+    device.waitForIdle(3000L)
+    // Keep `notResponding` referenced so the lookup is not optimized to a bare wait.
+    return notResponding != null
 }
 
 fun clickTextIfPresent(text: String) {

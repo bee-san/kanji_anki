@@ -340,8 +340,13 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.success)
         assertEquals("success", store.latestSync()?.status)
         assertFalse(store.dashboardRows().isEmpty())
-        assertEquals(3, providerInt("topLevelCardsQueries"))
-        assertEquals(2, providerInt("schedulerProjectionRejects"))
+        // Four card projections are tried in order: [FSRS, PROVIDER_FSRS, SCHEDULER,
+        // MINIMAL]. rejectSchedulerProjection rejects every projection carrying
+        // scheduler columns (queue/type/due/...), so the first three top-level queries
+        // are rejected and MINIMAL (query #4) succeeds. (The PROVIDER_FSRS projection
+        // was added later; the old expected 3/2 predated it.)
+        assertEquals(4, providerInt("topLevelCardsQueries"))
+        assertEquals(3, providerInt("schedulerProjectionRejects"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
     }

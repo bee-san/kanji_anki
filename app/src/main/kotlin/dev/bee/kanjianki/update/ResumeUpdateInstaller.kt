@@ -19,20 +19,26 @@ class ResumeUpdateInstaller(
     private var installAttemptInFlight = false
 
     fun onResume() {
-        val status = statusReader.autoUpdateStatus()
-        if (!ResumeInstallPolicy.shouldInstall(
-                status.enabled,
-                installPermissionCheck.canRequestPackageInstalls(),
-                status.hasPendingUpdate(),
-                installAttemptInFlight,
-            )
-        ) {
+        // Cheap in-flight guard on the caller (main) thread; everything that touches
+        // the database (status read) or the package manager runs on the background
+        // executor so onResume never does blocking I/O on the UI thread (an ANR risk,
+        // especially on a freshly launched process whose DB is still warming up).
+        if (installAttemptInFlight) {
             return
         }
         installAttemptInFlight = true
         background.execute {
             try {
-                pendingUpdateInstall.installCachedPendingUpdate()
+                val status = statusReader.autoUpdateStatus()
+                if (ResumeInstallPolicy.shouldInstall(
+                        status.enabled,
+                        installPermissionCheck.canRequestPackageInstalls(),
+                        status.hasPendingUpdate(),
+                        false,
+                    )
+                ) {
+                    pendingUpdateInstall.installCachedPendingUpdate()
+                }
             } finally {
                 installAttemptInFlight = false
             }
