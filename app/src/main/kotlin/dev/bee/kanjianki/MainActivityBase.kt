@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.data.DictionaryAssets
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -185,13 +186,17 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var currentHintState: HintState = HintState.initial()
 
     @JvmField
+    @Volatile
     var strokeGuides: Map<String, StrokeGuide>? = null
 
     @JvmField
     var writingRecognizer: WritingRecognizer? = null
 
     @JvmField
+    @Volatile
     var dictionaryLookup: DictionaryLookup? = null
+
+    private val assetWarmupLock = Any()
 
     @JvmField
     var pendingReminderSettings: LocalStoreBase.ReminderSettings? = null
@@ -415,10 +420,37 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun strokeGuide(kanji: String): StrokeGuide? {
-        if (strokeGuides == null) {
-            strokeGuides = StrokeGuideAssets.load(this)
+        return warmStrokeGuides().get(kanji)
+    }
+
+    /**
+     * Parse and cache the stroke-guide asset, safe to call from any thread. Startup
+     * warms this on the io executor; first use blocks on the same single init if warmup
+     * has not finished yet. Double-checked locking on [assetWarmupLock].
+     */
+    fun warmStrokeGuides(): Map<String, StrokeGuide> {
+        strokeGuides?.let { return it }
+        synchronized(assetWarmupLock) {
+            strokeGuides?.let { return it }
+            val loaded = StrokeGuideAssets.load(this)
+            strokeGuides = loaded
+            return loaded
         }
-        return strokeGuides?.get(kanji)
+    }
+
+    /**
+     * Open and cache the dictionary lookup (copies + hashes the bundled asset DB on
+     * first run), safe to call from any thread. Warmed on the io executor at startup;
+     * first use blocks on the same single init otherwise.
+     */
+    fun warmDictionaryLookup(): DictionaryLookup {
+        dictionaryLookup?.let { return it }
+        synchronized(assetWarmupLock) {
+            dictionaryLookup?.let { return it }
+            val loaded = DictionaryAssets.load(this)
+            dictionaryLookup = loaded
+            return loaded
+        }
     }
 
     fun settings(): RecordsSyncModels.Settings {
