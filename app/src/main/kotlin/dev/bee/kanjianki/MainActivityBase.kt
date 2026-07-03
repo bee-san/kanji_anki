@@ -65,11 +65,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     val studySessionTracker = StudySessionTracker()
 
-    @JvmField
-    var store: LocalStore = uninitialized()
+    lateinit var store: LocalStore
 
-    @JvmField
-    var gateway: AnkiDroidGateway = uninitialized()
+    lateinit var gateway: AnkiDroidGateway
+
+    /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
+    fun isStoreInitialized(): Boolean = ::store.isInitialized
 
     @JvmField
     var contentScrollY = 0
@@ -517,9 +518,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     ) : FocusQueuePolicy.QueueEntry(row, item)
 
     companion object {
-        @Suppress("UNCHECKED_CAST")
-        private fun <T> uninitialized(): T = null as T
-
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
