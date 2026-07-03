@@ -112,6 +112,48 @@ class UpdateTextPolicyTest {
         }
     }
 
+    @Test
+    fun installPermissionDialogCopyMentionsPendingVersionWhenKnown() {
+        assertEquals("Keep Kani up to date", UpdateTextPolicy.installPermissionDialogTitle())
+        assertEquals("Allow", UpdateTextPolicy.installPermissionDialogAllowLabel())
+        assertEquals("Not now", UpdateTextPolicy.installPermissionDialogNotNowLabel())
+        assertEquals(
+            "Kani 0.5.0 is verified and ready to install. " +
+                "Allow Kani to install updates on the next Android settings screen " +
+                "and it will update itself automatically.",
+            UpdateTextPolicy.installPermissionDialogMessage("v0.5.0"),
+        )
+        assertEquals(
+            "Kani can download and install verified updates by itself. " +
+                "Allow Kani to install updates on the next Android settings screen.",
+            UpdateTextPolicy.installPermissionDialogMessage(null),
+        )
+        assertEquals(
+            "Kani can download and install verified updates by itself. " +
+                "Allow Kani to install updates on the next Android settings screen.",
+            UpdateTextPolicy.installPermissionDialogMessage("  "),
+        )
+    }
+
+    @Test
+    fun installPermissionDialogCopyTranslatesToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals("Kaniを最新の状態に保つ", UpdateTextPolicy.installPermissionDialogTitle())
+            assertEquals("許可する", UpdateTextPolicy.installPermissionDialogAllowLabel())
+            assertEquals("今はしない", UpdateTextPolicy.installPermissionDialogNotNowLabel())
+            assertEquals(
+                "Kani 0.5.0 の確認が完了し、インストールの準備ができました。" +
+                    "次のAndroid設定画面でKaniによる更新のインストールを許可すると、自動的に更新されます。",
+                UpdateTextPolicy.installPermissionDialogMessage("v0.5.0"),
+            )
+            assertEquals(
+                "Kaniは確認済みの更新を自動でダウンロードしてインストールできます。" +
+                    "次のAndroid設定画面でKaniによる更新のインストールを許可してください。",
+                UpdateTextPolicy.installPermissionDialogMessage(""),
+            )
+        }
+    }
+
     private fun withLocale(locale: Locale, block: () -> Unit) {
         val previous = Locale.getDefault()
         Locale.setDefault(locale)

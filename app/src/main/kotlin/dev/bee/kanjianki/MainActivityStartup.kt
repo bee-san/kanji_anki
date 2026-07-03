@@ -56,8 +56,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     }
 
     internal fun shouldRunBackgroundStartupTasks(intent: Intent?): Boolean {
-        return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
-            intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
+        return backgroundStartupTasksAllowed(intent)
     }
 
     private fun renderRoute(route: String) {
@@ -93,5 +92,12 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
 
     private fun applyScreenshotLocale(localeTag: String) {
         Locale.setDefault(Locale.forLanguageTag(localeTag.replace('_', '-')))
+    }
+
+    companion object {
+        internal fun backgroundStartupTasksAllowed(intent: Intent?): Boolean {
+            return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
+                intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
+        }
     }
 }

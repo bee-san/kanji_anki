@@ -63,6 +63,39 @@ object UpdateTextPolicy {
     )
 
     @JvmStatic
+    fun installPermissionDialogTitle(): String = localizedText(
+        "Keep Kani up to date",
+        "Kaniを最新の状態に保つ",
+    )
+
+    @JvmStatic
+    fun installPermissionDialogMessage(pendingVersion: String?): String {
+        val cleanVersion = InstallPermissionPromptPolicy.normalizedVersion(pendingVersion)
+            .replaceFirst("^v".toRegex(), "")
+        if (cleanVersion.isNotEmpty()) {
+            return localizedText(
+                "Kani $cleanVersion is verified and ready to install. " +
+                    "Allow Kani to install updates on the next Android settings screen " +
+                    "and it will update itself automatically.",
+                "Kani $cleanVersion の確認が完了し、インストールの準備ができました。" +
+                    "次のAndroid設定画面でKaniによる更新のインストールを許可すると、自動的に更新されます。",
+            )
+        }
+        return localizedText(
+            "Kani can download and install verified updates by itself. " +
+                "Allow Kani to install updates on the next Android settings screen.",
+            "Kaniは確認済みの更新を自動でダウンロードしてインストールできます。" +
+                "次のAndroid設定画面でKaniによる更新のインストールを許可してください。",
+        )
+    }
+
+    @JvmStatic
+    fun installPermissionDialogAllowLabel(): String = localizedText("Allow", "許可する")
+
+    @JvmStatic
+    fun installPermissionDialogNotNowLabel(): String = localizedText("Not now", "今はしない")
+
+    @JvmStatic
     fun notificationTitle(): String = localizedText(
         "Kani update ready to install",
         "Kaniの更新をインストールできます",

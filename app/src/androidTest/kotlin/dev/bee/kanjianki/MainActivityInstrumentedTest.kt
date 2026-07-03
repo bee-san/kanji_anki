@@ -792,6 +792,9 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
             output.write(byteArrayOf(1, 2, 3))
         }
         LocalStore(context).use { store ->
+            // Keep automatic updates off so the resume auto-installer does not
+            // consume the seeded pending update before the manual UI flow runs.
+            store.saveAutoUpdateEnabled(false)
             store.recordAutoUpdateResult(
                     System.currentTimeMillis(),
                     "Android needs permission to finish installing.",

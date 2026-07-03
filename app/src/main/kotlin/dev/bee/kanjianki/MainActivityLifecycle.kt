@@ -1,8 +1,20 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.update.GitHubUpdater
+import dev.bee.kanjianki.update.ResumeUpdateInstaller
 
 internal class MainActivityLifecycle(private val activity: MainActivityBase) {
+    private val resumeUpdateInstaller by lazy {
+        ResumeUpdateInstaller(
+            { canRequestPackageInstalls(activity) },
+            { activity.store.autoUpdateStatus() },
+            activity.io,
+        ) {
+            GitHubUpdater(activity).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+        }
+    }
+
     fun onPause() {
         activity.pauseActiveStudyTask()
         activity.activityPaused = true
@@ -12,6 +24,17 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
         activity.activityPaused = false
         activity.resumeActiveStudyTask()
         activity.renderDeferredStudyBehaviorPreviewIfNeeded()
+        installPendingUpdateIfReady()
+    }
+
+    internal fun installPendingUpdateIfReady() {
+        if (storeOrNull() == null) {
+            return
+        }
+        if (!MainActivityStartup.backgroundStartupTasksAllowed(activity.intent)) {
+            return
+        }
+        resumeUpdateInstaller.onResume()
     }
 
     fun onDestroy() {

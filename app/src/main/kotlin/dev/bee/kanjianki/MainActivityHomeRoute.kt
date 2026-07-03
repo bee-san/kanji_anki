@@ -20,6 +20,7 @@ internal fun MainActivityHome.renderHomeRoute(
     composeRoute(MainActivityBase.NAV_HOME_ROUTE, initialScrollY, scrollPositionLabel) {
         content()
         HomeSyncConfirmDialog(pendingHomeSyncDialog)
+        HomeUpdatePermissionDialog(pendingUpdatePermissionDialog)
     }
     this.backAction = backAction
 }

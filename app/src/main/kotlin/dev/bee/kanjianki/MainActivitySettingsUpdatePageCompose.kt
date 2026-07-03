@@ -85,8 +85,7 @@ fun SettingsUpdatePage(model: SettingsUpdatePageModel) {
 }
 
 private fun canInstallUpdates(activity: MainActivitySettings): Boolean {
-    MainActivityRuntimeOverrides.installPermission?.let { return it }
-    return activity.packageManager.canRequestPackageInstalls()
+    return canRequestPackageInstalls(activity)
 }
 
 private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Boolean) {
