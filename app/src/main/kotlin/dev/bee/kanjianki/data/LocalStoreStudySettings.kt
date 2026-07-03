@@ -267,6 +267,24 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    fun installPermissionPromptShown(): Boolean {
+        return getIntSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_SHOWN, 0) == 1
+    }
+
+    fun installPermissionPromptLastVersion(): String {
+        return getStringSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION, "")
+    }
+
+    fun recordInstallPermissionPrompted(version: String?) {
+        inTransaction {
+            putIntSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_SHOWN, 1)
+            putStringSetting(
+                LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION,
+                AutoUpdateStatusPolicy.text(version)
+            )
+        }
+    }
+
     fun clearPendingAutoUpdate(result: String?) {
         inTransaction {
             putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result))

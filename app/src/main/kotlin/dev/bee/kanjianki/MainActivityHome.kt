@@ -43,6 +43,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     private var latestHomeRouteBackAction: Runnable? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
+    internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
     private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
 
     abstract fun renderGames()
@@ -66,6 +67,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                     scrollPositionLabel = screenshotScrollPositionLabel(),
                 )
                 scheduleStatsPrecomputeIfStaleAsync()
+                maybeShowUpdatePermissionPrompt()
             },
         )
     }
@@ -251,7 +253,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         latestHomeRouteBackAction = backAction
     }
 
-    private fun rerenderLatestHomeRoute() {
+    internal fun rerenderLatestHomeRoute() {
         latestHomeRouteContent?.let { content ->
             renderHomeRoute(latestHomeRouteBackAction) {
                 content()

@@ -1779,6 +1779,23 @@ class LocalStoreInstrumentedTest {
     }
 
     @Test
+    fun testInstallPermissionPromptStatePersistsAndNormalizesNulls() {
+        assertFalse(store.installPermissionPromptShown());
+        assertEquals("", store.installPermissionPromptLastVersion());
+
+        store.recordInstallPermissionPrompted("v9.9.9");
+        store.close();
+        store = LocalStore(context);
+
+        assertTrue(store.installPermissionPromptShown());
+        assertEquals("v9.9.9", store.installPermissionPromptLastVersion());
+
+        store.recordInstallPermissionPrompted(null);
+        assertTrue(store.installPermissionPromptShown());
+        assertEquals("", store.installPermissionPromptLastVersion());
+    }
+
+    @Test
     fun testGuardInputsDoNotMutateDurableState() {
         assertEquals(0, count("similar_kanji_pairs"));
         store.rebuildSimilarKanjiPairs(null, 1000L);

@@ -305,6 +305,14 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         studySettings().clearPendingAutoUpdate(result)
     }
 
+    fun installPermissionPromptShown(): Boolean = studySettings().installPermissionPromptShown()
+
+    fun installPermissionPromptLastVersion(): String = studySettings().installPermissionPromptLastVersion()
+
+    fun recordInstallPermissionPrompted(version: String?) {
+        studySettings().recordInstallPermissionPrompted(version)
+    }
+
     fun schedulerParameters(): RecordsSchedulerModels.SchedulerParameters = studySettings().schedulerParameters()
 
     fun saveSchedulerParameters(parameters: RecordsSchedulerModels.SchedulerParameters) {
