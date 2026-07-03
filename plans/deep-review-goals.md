@@ -670,6 +670,16 @@ assert the workflows call the aggregates. Watch the first Actions run.
 **Done when:** CI surface == local `ciFast` surface, one source of truth for the task
 inventory, meta-test enforces it, Actions green.
 
+> DEFERRED (deep-review pass 2026-07-03): Goals 28-31 all gate on validation this
+> environment cannot provide — each requires watching a live GitHub Actions run
+> (and Goals 28/31 an emulator connected/fixture run) to confirm green, per
+> AGENTS.md's rule that workflow changes must be watched to completion. Goal 30's
+> SHA-pinning also needs authoritative tag→commit resolution for every action.
+> Goal 31's method move out of the 3,489-line instrumented monolith is only
+> "done" when the fixture workflow passes on dispatch. These are best done in an
+> on-CI pass; the locally-verifiable Goal 27 core (ci/tests parity + meta-test)
+> landed above.
+
 ### Goal 28: Give the instrumentation suite a scheduled run
 
 **Problem:** ~575 instrumentation tests are compile-only on every normal path; the
