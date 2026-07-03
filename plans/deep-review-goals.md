@@ -828,6 +828,17 @@ the existing pattern (e.g., `HomeTextCopy`). Update tests that assert the litera
 **Done when:** no user-visible English-only literals in the app layer for these
 surfaces; `ciFast` green.
 
+> STATUS (deep-review pass 2026-07-03): Done — parseThresholdInput uses
+> toIntOrNull, searchKanjiInventory escapes LIKE wildcards (ESCAPE '\'),
+> StudyFontVariants/MainActivityGames use java.util.Random, the
+> queryCardsForNotes cursor map is built inside use{}, tagNoteArchived catches
+> per-note failures, and the synthetic cardId + RemovalSummary.deletedNotes=0
+> are documented. NOT actionable: dropping the manifest
+> fullBackupContent/dataExtractionRules attributes — Android lint MANDATES both
+> at minSdk 26 (dataExtractionRules for API 31+, fullBackupContent for pre-31),
+> so removing either fails lint. Left as-is (allowBackup=false already disables
+> backup; the rule files exclude everything).
+
 ### Goal 37: Small defect sweep (crash guards, escaping, randomness, cursor leak)
 
 **Problem (batch of small fixes):**

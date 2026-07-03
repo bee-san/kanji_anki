@@ -174,11 +174,12 @@ internal class AnkiDroidCardReader(
         ) ?: throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no bulk card cursor.")
 
         val cardsByNote = LinkedHashMap<Long, MutableList<RecordsSyncModels.Card>>(requestedNoteIds.size)
-        for (noteId in requestedNoteIds) {
-            cardsByNote[noteId] = ArrayList()
-        }
-
+        // Build the per-note map inside use{} so any failure here still closes the
+        // cursor rather than leaking it.
         cursor.use { cardCursor ->
+            for (noteId in requestedNoteIds) {
+                cardsByNote[noteId] = ArrayList()
+            }
             while (cardCursor.moveToNext()) {
                 val noteId = longValue(cardCursor, COLUMN_NOTE_ID, Long.MIN_VALUE)
                 val noteCards = cardsByNote[noteId] ?: continue
@@ -228,6 +229,10 @@ internal class AnkiDroidCardReader(
         val fsrs = fsrsMemoryState(cardCursor)
         val deckId = value(cardCursor, COLUMN_DECK_ID)
         return RecordsSyncModels.Card(
+            // Synthetic fallback card id when the provider omits a real _id: derived
+            // from (noteId, ord) so it stays stable and unique per card without
+            // querying the AnkiDroid `_id` column, which some provider projections
+            // reject as unknown (see AGENTS.md "_id is unknown" fix).
             longValue(cardCursor, COLUMN_ID, noteId * 1000L + ord),
             longValue(cardCursor, COLUMN_NOTE_ID, noteId),
             ord,

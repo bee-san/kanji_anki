@@ -466,6 +466,10 @@ class AnkiDroidGateway private constructor(
 
     class RemovalSummary(
         @JvmField val sourceCards: Int,
+        // Always 0: Kani archives suspended cards by tagging their notes (see
+        // taggedNotes), never by deleting notes from the AnkiDroid collection. The
+        // field is retained for wire/format stability; if note deletion is ever added,
+        // populate it in AnkiDroidArchiveCleanup instead of hardcoding 0.
         @JvmField val deletedNotes: Int,
         @JvmField val taggedNotes: Int,
         message: String?,

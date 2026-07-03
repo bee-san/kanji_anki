@@ -212,6 +212,14 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return searchKanjiInventory(query, false)
     }
 
+    /** Escape `\`, `%`, and `_` so a LIKE term matches those characters literally. */
+    private fun escapeLikeTerm(term: String): String {
+        return term
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+    }
+
     fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
@@ -230,8 +238,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val argsList = ArrayList<String>()
         if (terms.isNotEmpty()) {
             for (term in terms) {
-                clauses.add("search_text LIKE ?")
-                argsList.add("%$term%")
+                // Escape LIKE wildcards so a user typing % or _ searches literally
+                // rather than matching everything.
+                clauses.add("search_text LIKE ? ESCAPE '\\'")
+                argsList.add("%${escapeLikeTerm(term)}%")
             }
         }
         if (onlySimilarKanji) {

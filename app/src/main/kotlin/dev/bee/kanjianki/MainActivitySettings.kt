@@ -335,7 +335,9 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun parseThresholdInput(input: EditText): Int {
-        return input.text.toString().trim().toInt()
+        // Empty or non-numeric input must not throw NumberFormatException; fall back to
+        // 0 so the caller's own coercion (coerceAtLeast) picks the minimum.
+        return input.text.toString().trim().toIntOrNull() ?: 0
     }
 
     fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
