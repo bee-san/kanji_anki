@@ -8,7 +8,10 @@ import androidx.work.WorkerParameters
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.data.LocalStore
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
+import java.util.zip.GZIPOutputStream
 
 class DatabaseBackupWorker(
     context: Context,
@@ -85,9 +88,14 @@ class DatabaseBackupWorker(
             }
 
             val dest = DatabaseBackupPolicy.backupFile(filesDir, nowMillis)
+            // Snapshot to a raw uncompressed temp copy, then gzip it into place. SQLite
+            // databases compress ~4-10x, so 31 daily copies of a growing DB become a
+            // small tiered set of compressed archives.
+            val temp = File(backupDir, dest.name + ".tmp")
 
             try {
-                snapshotter.snapshot(dbFile, dest)
+                snapshotter.snapshot(dbFile, temp)
+                gzipFile(temp, dest)
             } catch (error: IOException) {
                 deleteIncomplete(dest)
                 warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
@@ -96,10 +104,27 @@ class DatabaseBackupWorker(
                 deleteIncomplete(dest)
                 warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
                 return Result.failure()
+            } finally {
+                deleteIncomplete(temp)
             }
 
             pruneOldBackups(backupDir)
             return Result.success()
+        }
+
+        @JvmStatic
+        @Throws(IOException::class)
+        fun gzipFile(src: File, dest: File) {
+            FileInputStream(src).use { input ->
+                val fileOut = FileOutputStream(dest)
+                GZIPOutputStream(fileOut).use { gzip ->
+                    input.copyTo(gzip)
+                    gzip.finish()
+                    // Flush compressed bytes to disk before GZIPOutputStream.close()
+                    // closes the underlying stream.
+                    fileOut.fd.sync()
+                }
+            }
         }
 
         @JvmStatic

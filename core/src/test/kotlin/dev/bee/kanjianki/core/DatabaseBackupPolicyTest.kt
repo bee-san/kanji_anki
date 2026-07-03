@@ -1,13 +1,13 @@
 package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.IOException
-import java.util.HashSet
 import java.util.TimeZone
 
 class DatabaseBackupPolicyTest {
@@ -15,7 +15,7 @@ class DatabaseBackupPolicyTest {
     val temp = TemporaryFolder()
 
     @Test
-    fun backupFileUsesStableDirectoryPrefixAndTimestamp() {
+    fun backupFileUsesStableDirectoryPrefixCompressedSuffixAndTimestamp() {
         val original = TimeZone.getDefault()
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
@@ -25,7 +25,7 @@ class DatabaseBackupPolicyTest {
             assertEquals(File(filesDir, "backups"), DatabaseBackupPolicy.backupDir(filesDir))
             assertEquals("20260515_080000", DatabaseBackupPolicy.timestamp(now))
             assertEquals(
-                File(File(filesDir, "backups"), "kanji_anki_simple_20260515_080000.db"),
+                File(File(filesDir, "backups"), "kanji_anki_simple_20260515_080000.db.gz"),
                 DatabaseBackupPolicy.backupFile(filesDir, now),
             )
         } finally {
@@ -34,22 +34,49 @@ class DatabaseBackupPolicyTest {
     }
 
     @Test
-    fun oldBackupsToPruneKeepsNewestThirtyOneMatchingDatabaseFiles() {
+    fun oldBackupsToPruneKeepsSevenDailyPlusFourWeeklyCompressedBackups() {
         val dir = temp.newFolder("backups")
-        for (i in 1..35) {
-            assertTrue(File(dir, String.format("kanji_anki_simple_20260515_%06d.db", i)).createNewFile())
+        // 40 daily backups across March-April 2026.
+        val stamps = ArrayList<String>()
+        for (day in 1..31) {
+            stamps.add(String.format("202603%02d_120000", day))
+        }
+        for (day in 1..9) {
+            stamps.add(String.format("202604%02d_120000", day))
+        }
+        for (stamp in stamps) {
+            assertTrue(File(dir, "kanji_anki_simple_$stamp.db.gz").createNewFile())
         }
         assertTrue(File(dir, "notes.txt").createNewFile())
-        assertTrue(File(dir, "kanji_anki_simple_20260515_999999.tmp").createNewFile())
 
-        val names = HashSet<String>()
-        for (file in DatabaseBackupPolicy.oldBackupsToPrune(dir)) {
-            names.add(file.name)
+        val prunedNames = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
+        val keptNames = stamps
+            .map { "kanji_anki_simple_$it.db.gz" }
+            .filter { !prunedNames.contains(it) }
+
+        // 7 daily + up to 4 weekly.
+        assertTrue("kept ${keptNames.size}", keptNames.size in 8..11)
+        // Newest 7 are always kept.
+        assertTrue(keptNames.contains("kanji_anki_simple_20260409_120000.db.gz"))
+        assertTrue(keptNames.contains("kanji_anki_simple_20260403_120000.db.gz"))
+        // Oldest is pruned.
+        assertTrue(prunedNames.contains("kanji_anki_simple_20260301_120000.db.gz"))
+        // Non-backup files are never pruned.
+        assertFalse(prunedNames.contains("notes.txt"))
+    }
+
+    @Test
+    fun oldBackupsToPrunePrunesLegacyUncompressedBackupsFirst() {
+        val dir = temp.newFolder("backups")
+        for (day in 1..10) {
+            assertTrue(File(dir, String.format("kanji_anki_simple_202603%02d_120000.db", day)).createNewFile())
         }
 
-        assertEquals(4, names.size)
-        assertTrue(names.contains("kanji_anki_simple_20260515_000001.db"))
-        assertTrue(names.contains("kanji_anki_simple_20260515_000004.db"))
+        val pruned = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
+        // Legacy .db files are matched and subject to tiered pruning.
+        assertTrue(pruned.isNotEmpty())
+        assertTrue(pruned.contains("kanji_anki_simple_20260301_120000.db"))
+        assertFalse(pruned.contains("kanji_anki_simple_20260310_120000.db"))
     }
 
     @Test
@@ -57,7 +84,9 @@ class DatabaseBackupPolicyTest {
         assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(File(temp.root, "missing")).isEmpty())
 
         val dir = temp.newFolder("short")
-        assertTrue(File(dir, "kanji_anki_simple_20260515_000001.db").createNewFile())
+        for (day in 1..7) {
+            assertTrue(File(dir, String.format("kanji_anki_simple_202603%02d_120000.db.gz", day)).createNewFile())
+        }
         assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(dir).isEmpty())
     }
 
