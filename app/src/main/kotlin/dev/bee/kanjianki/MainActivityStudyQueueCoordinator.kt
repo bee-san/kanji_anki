@@ -8,10 +8,23 @@ import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
     fun renderStudy() {
-        withStudyLoadProbe("renderStudy.total") { renderStudyInternal() }
+        // Load the Study route through the same async pattern as Home/Settings: all the
+        // LocalStore reads/writes and scheduler work run on the background executor, and
+        // only the returned render thunk runs on the main thread.
+        study.loadRouteAsync(
+            showLoading = { study.renderStudyLoading() },
+            load = { withStudyLoadProbe("renderStudy.total") { computeStudyRender() } },
+            render = { it() },
+            traceName = "study-route",
+        )
     }
 
-    private fun renderStudyInternal() {
+    /**
+     * Runs on the background executor: performs every LocalStore read/write and the
+     * scheduler computation, mutates the study session state, and returns a thunk that
+     * renders the resulting screen when invoked on the main thread.
+     */
+    private fun computeStudyRender(): () -> Unit {
         val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
         val now = System.currentTimeMillis()
         val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
@@ -24,19 +37,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
         }
         study.activeStudyPlan = plan
-        if (withStudyLoadProbe("renderPendingRepairOrDone#1") { renderPendingRepairOrDone(plan, now, ladder) }) {
-            return
-        }
+        pendingRepairOrDoneRender(plan, now, ladder)?.let { return it }
         if (rows.isEmpty()) {
-            study.renderEmptyStudyQueue()
-            return
+            return { study.renderEmptyStudyQueue() }
         }
         val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
         val seededPlan = withStudyLoadProbe("studyPlanForMode#2") { study.studyPlanForMode(rows, seeded, now) }
         study.activeStudyPlan = seededPlan
-        if (withStudyLoadProbe("renderPendingRepairOrDone#2") { renderPendingRepairOrDone(seededPlan, now, ladder) }) {
-            return
-        }
+        pendingRepairOrDoneRender(seededPlan, now, ladder)?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         study.activeSession = withStudyLoadProbe("plannedStudySession") {
             StudySessionActions.plannedStudySession(
@@ -54,13 +62,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         val session = study.activeSession
         if (session == null) {
-            study.renderNoStudySession(seededPlan)
-            return
+            return { study.renderNoStudySession(seededPlan) }
         }
         if (session.item == null) {
             study.activeSession = null
-            study.renderNoStudySession(seededPlan)
-            return
+            return { study.renderNoStudySession(seededPlan) }
         }
         StudySessionActions.activateStudySession(
             session,
@@ -69,7 +75,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study::registerStudyTaskShown,
             study::startActiveStudyTask
         )
-        study.renderSession(session)
+        return { study.renderSession(session) }
     }
 
     fun renderStudyForKanji(kanji: String?) {
@@ -109,11 +115,16 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.renderSession(session)
     }
 
-    private fun renderPendingRepairOrDone(
+    /**
+     * Background-thread compute for the pending-repair / done branches. Performs the
+     * repair writes and session-state mutation, returning a render thunk when an early
+     * screen should be shown, or null to continue building the main study session.
+     */
+    private fun pendingRepairOrDoneRender(
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         now: Long,
         ladder: RecordsBase.StudyLadderSettings,
-    ): Boolean {
+    ): (() -> Unit)? {
         study.initializeSessionProgressTarget(plan)
         if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
             for (repair in study.store.dueSimilarWritingRepairs(now)) {
@@ -146,14 +157,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                     MainActivityBase.TASK_REPAIR_WRITING,
                     now,
                 )
-                study.renderComposeWritingSession(session)
-                return true
+                return { study.renderComposeWritingSession(session) }
             }
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
-            study.doneActions.renderStudyRunDone(plan)
-            return true
+            return { study.doneActions.renderStudyRunDone(plan) }
         }
-        return false
+        return null
     }
 }
