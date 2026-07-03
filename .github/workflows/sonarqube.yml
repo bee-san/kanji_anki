@@ -14,7 +14,7 @@ on:
       - 'dictionary-core/**'
       - 'update-core/**'
       - 'tools/**'
-      - '.github/workflows/sonarqube.yml'
+      - '.github/workflows/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -42,7 +42,7 @@ on:
       - 'dictionary-core/**'
       - 'update-core/**'
       - 'tools/**'
-      - '.github/workflows/sonarqube.yml'
+      - '.github/workflows/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -124,7 +124,7 @@ jobs:
                 domain/*|sync-domain/*|writing-core/*|dictionary-core/*|update-core/*)
                   PURE_MODULES_CHANGED=true
                   ;;
-                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/sonarqube.yml)
+                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/*)
                   GRADLE_CHANGED=true
                   ;;
               esac
