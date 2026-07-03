@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -32,15 +33,37 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         occurredAt: Long,
         settings: RecordsSyncModels.Settings?,
     ) {
+        replaceStudyItems(items, syncId, occurredAt, settings, null)
+    }
+
+    /**
+     * Replace all study items. When [baseline] (the study items the caller read before
+     * computing [items]) is provided, re-read the currently persisted items inside the
+     * write transaction and keep any item whose review evidence advanced since the
+     * baseline read, so a review saved between the read and this write is not lost.
+     */
+    fun replaceStudyItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        syncId: Long?,
+        occurredAt: Long,
+        settings: RecordsSyncModels.Settings?,
+        baseline: List<RecordsStudyModels.StudyItem>?,
+    ) {
         val start = android.os.SystemClock.elapsedRealtime()
         writableDatabase.transaction {
             val previous = if (syncId == null) emptyMap() else studySnapshots(this)
+            val toWrite = if (baseline == null) {
+                items
+            } else {
+                val persisted = readAllStudyItems(this)
+                MidSyncReviewMergePolicy.merge(items, baseline, persisted)
+            }
             delete(TABLE_STUDY_ITEMS, null, null)
-            for (item in items) {
+            for (item in toWrite) {
                 upsertStudyItem(this, item)
             }
             if (syncId != null) {
-                appendStudyStateTimelineEvents(this, previous, items, syncId, occurredAt, settings)
+                appendStudyStateTimelineEvents(this, previous, toWrite, syncId, occurredAt, settings)
             }
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
             clearStudyItemsCache()
@@ -49,6 +72,16 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             "replaceStudyItems WROTE count=${items.size} (delete-all + reinsert) " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
+    }
+
+    private fun readAllStudyItems(db: SQLiteDatabase): List<RecordsStudyModels.StudyItem> {
+        val items = ArrayList<RecordsStudyModels.StudyItem>()
+        db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                items.add(readStudyItem(cursor))
+            }
+        }
+        return items
     }
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
         val items = HashMap<String, StudySnapshot>()

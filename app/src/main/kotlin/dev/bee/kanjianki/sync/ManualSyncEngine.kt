@@ -133,7 +133,10 @@ internal class ManualSyncEngine {
                 evidenceStatusByKanji,
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
-            store.replaceStudyItems(seeded, syncId, finished, settings)
+            // Pass the pre-seed baseline so replaceStudyItems can preserve any review
+            // the user saved between the studyItemsForKanji read above and this write
+            // (auto-sync can run while the app is foregrounded and studyable).
+            store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale
