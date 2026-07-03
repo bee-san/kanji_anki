@@ -89,6 +89,24 @@ Do not simplify that to a normal compile. Gradle can mark the compile tasks
 up-to-date from cache, and then CodeQL fails with "this run didn't build any of
 it" because it saw no compiler activity to extract.
 
+## Kotlin compiler version coupling
+
+The version catalog (`gradle/libs.versions.toml`) pins a single `kotlin`
+version used for BOTH the Kotlin JVM plugin (library modules) and the Compose
+compiler plugin (`kotlin-jvm` and `kotlin-compose` share `version.ref =
+"kotlin"`). The `:app` module does not apply the Kotlin JVM plugin; it compiles
+with AGP's built-in kotlinc (see the `built_in_kotlinc` intermediates paths in
+the root `build.gradle.kts` Sonar config), so the app's compiler is coupled to
+the AGP version (`agp` in the catalog), not to the catalog `kotlin` version.
+
+Keep this pairing deliberate: when bumping `agp`, verify AGP's embedded Kotlin
+is compatible with the catalog `kotlin` (Compose compiler) version, and bump
+`kotlin` in lockstep if needed. Renovate updates both `kotlin-jvm` and
+`kotlin-compose` together because they share the version ref. A future cleanup
+(deep-review Goal 24) may apply KGP to `:app` explicitly to unify all modules
+on one compiler; until then, treat an `agp` bump as requiring a Kotlin-compat
+check.
+
 For SonarCloud test assertions, avoid direct `assertFalse(value.equals(...))`
 because `java:S5785` asks for `assertNotEquals`. Also avoid `assertNotEquals`
 between intentionally different types because `java:S5845` reports it as a bug.

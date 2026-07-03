@@ -569,6 +569,14 @@ done first or done together.
 **Done when:** module build files shrink to plugin application + module-specific deps;
 `ciFast` green.
 
+> STATUS (deep-review pass 2026-07-03): Documented the compiler-version coupling
+> in AGENTS.md ("Kotlin compiler version coupling") per the goal's "or an
+> explicit documented pairing" option — the catalog shares one `kotlin` ref for
+> kotlin-jvm + kotlin-compose, and :app tracks AGP's embedded kotlinc. Applying
+> KGP to :app to fully unify compilers, and verifying Renovate/AGP-embedded
+> behavior on a live run, is DEFERRED (needs an actual AGP bump + CI run to
+> validate rather than a blind change).
+
 ### Goal 24: Align Kotlin compiler versions between library modules and :app
 
 **Problem:** Root `build.gradle.kts:5-6` pins `org.jetbrains.kotlin.jvm` and
@@ -584,6 +592,15 @@ coupling. Verify Renovate will keep them moving together.
 
 **Done when:** one Kotlin compiler version across modules (or an explicit documented
 pairing), full build + `ciQuality` green.
+
+> DEFERRED (deep-review pass 2026-07-03): This renames `fsrs-java`→`fsrs`, folds
+> `domain`, demotes core's `api` deps, and re-points CodeQL to compileKotlin
+> targets. Module-path renames ripple through .github workflows, Sonar
+> java.binaries/coverage paths, and CodeQL's compile target list, and the goal's
+> "Done when" explicitly requires watching the first CodeQL Actions run green
+> after the change. That live validation isn't available in this environment;
+> landing a module rename blind risks silently breaking CodeQL/Sonar extraction.
+> Defer to an on-CI pass.
 
 ### Goal 25: Clean up module boundaries and split packages
 
