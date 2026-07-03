@@ -342,6 +342,25 @@ class AnkiDroidGatewayTest {
     }
 
     @Test
+    fun queryCardsByNoteAbortsWithRetryableFailureWhenCancelledBeforeReading() {
+        val reader = AnkiDroidCardReader(null) { true }
+
+        val failure = try {
+            reader.queryCardsByNote(
+                "authority",
+                RecordsSyncModels.Settings.kikuDefaults(),
+                setOf(1L, 2L, 3L),
+                SyncProgress.NONE,
+            )
+            throw AssertionError("expected cancellation to abort the read")
+        } catch (error: AnkiDroidGateway.SyncFailure) {
+            error
+        }
+
+        assertFalse(failure.permanentFailure)
+    }
+
+    @Test
     fun readCardsForNoteReturnsEmptyResultWhenStartProjectionIsExhausted() {
         val reader = AnkiDroidCardReader(null)
 

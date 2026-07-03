@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SyncValidator
+import dev.bee.kanjianki.sync.SyncCancellation
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 import java.util.Collections
@@ -21,6 +22,7 @@ import java.util.regex.Pattern
 class AnkiDroidGateway private constructor(
     context: Context,
     private val providerTargets: List<ProviderTarget>,
+    cancellation: SyncCancellation,
 ) : CollectionGateway {
     private val packageManager: PackageManager
     private val resolver: ContentResolver
@@ -28,13 +30,21 @@ class AnkiDroidGateway private constructor(
     private val archiveCleanup: AnkiDroidArchiveCleanup
     private val permissionChecker: PermissionChecker
 
-    constructor(context: Context) : this(context, ProviderTarget.TARGETS)
+    constructor(context: Context) : this(context, ProviderTarget.TARGETS, SyncCancellation.NONE)
+
+    constructor(context: Context, cancellation: SyncCancellation) :
+        this(context, ProviderTarget.TARGETS, cancellation)
+
+    // Retained (Context, List) signature so existing reflective test constructions keep
+    // working; defaults cancellation to none.
+    private constructor(context: Context, providerTargets: List<ProviderTarget>) :
+        this(context, providerTargets, SyncCancellation.NONE)
 
     init {
         val appContext = context.applicationContext
         packageManager = appContext.packageManager
         resolver = appContext.contentResolver
-        cardReader = AnkiDroidCardReader(resolver)
+        cardReader = AnkiDroidCardReader(resolver, cancellation)
         archiveCleanup = AnkiDroidArchiveCleanup(resolver)
         permissionChecker = PermissionChecker { permission -> appContext.checkSelfPermission(permission) }
     }

@@ -5,12 +5,14 @@ import android.database.Cursor
 import android.net.Uri
 import android.util.Log
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.sync.SyncCancellation
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncdomain.ProviderCardPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 
 internal class AnkiDroidCardReader(
     private val resolver: ContentResolver?,
+    private val cancellation: SyncCancellation = SyncCancellation.NONE,
 ) {
     @Throws(AnkiDroidGateway.SyncFailure::class)
     fun queryCardsByNote(
@@ -26,6 +28,10 @@ internal class AnkiDroidCardReader(
         if (requestedNoteIds.isEmpty()) {
             return emptyList()
         }
+        // Abort early if the job was already stopped before any provider work started.
+        if (cancellation.isStopped()) {
+            throw AnkiDroidGateway.SyncFailure.retryable("Sync cancelled before reading cards.")
+        }
 
         val suspendedNoteIds = querySuspendedNoteIds(authority, settings)
         val cards = ArrayList<RecordsSyncModels.Card>()
@@ -33,6 +39,12 @@ internal class AnkiDroidCardReader(
         var projectionIndex = 0
         var batchCardsUriUnsupported = false
         for (noteBatch in requestedNoteIds.chunked(CARD_NOTE_BATCH_SIZE)) {
+            // Cooperative cancellation: the provider/SQLite calls below ignore thread
+            // interruption, so abort between batches with a retryable failure when the
+            // job has been stopped.
+            if (cancellation.isStopped()) {
+                throw AnkiDroidGateway.SyncFailure.retryable("Sync cancelled before all cards were read.")
+            }
             val result = if (batchCardsUriUnsupported) {
                 readCardsPerNote(authority, noteBatch, suspendedNoteIds, projections, projectionIndex)
             } else {

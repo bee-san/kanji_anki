@@ -42,6 +42,9 @@ class AutoSyncJobService : JobService {
     }
 
     override fun onStopJob(params: JobParameters?): Boolean {
+        // Signal cooperative cancellation; the in-flight run observes `stopped`, aborts
+        // at the next safe point, and calls jobFinished(needsReschedule=stopped) itself.
+        // Returning true asks the system to reschedule the stopped job.
         stopped = true
         return stopJob()
     }
@@ -52,7 +55,9 @@ class AutoSyncJobService : JobService {
     }
 
     private fun runAutoSync(params: JobParameters?) {
-        runAutoSync(this, params, stopped, jobFinisherFactory.create(this))
+        // Pass a live supplier (not the captured value) so the sync sees a mid-run stop
+        // and the reschedule flag is evaluated against the stopped state at completion.
+        runAutoSync(this, params, SyncCancellation { stopped }, jobFinisherFactory.create(this))
     }
 
     fun interface SettingsReader {
@@ -101,17 +106,19 @@ class AutoSyncJobService : JobService {
         fun runAutoSync(
             context: Context,
             params: JobParameters?,
-            stopped: Boolean,
+            cancellation: SyncCancellation,
             finisher: JobFinisher,
         ) {
             val store = LocalStore(context)
             try {
-                AutoSyncRunner(context, store, AnkiDroidGateway(context)).run()
+                AutoSyncRunner(context, store, AnkiDroidGateway(context, cancellation)).run()
             } finally {
+                // Evaluate stopped at completion time so a job stopped mid-sync requests
+                // a reschedule with the fresh state, not the pre-sync value.
                 finishJob(
                     context,
                     params,
-                    stopped,
+                    cancellation.isStopped(),
                     SettingsReader { store.autoSyncSettings() },
                     StoreCloser { store.close() },
                     Scheduler { appContext, settings ->
