@@ -360,6 +360,20 @@ document or tighten as part of this goal.
 **Done when:** failed reviews are retryable with the same token; test proves it;
 `ciFast` green.
 
+> PARTIAL (deep-review pass 2026-07-03): Fixed the demotion-floor streak reset,
+> the Hard-on-first-step descending-steps midpoint, the StudySessionSelector
+> `row!!` crash, and swapped cosmetic `SecureRandom` shuffling for `Random`;
+> added tests for those plus the single-step 1.5x Hard branch, similar_kanji
+> availability-flip demotion, and the clock-moved-backwards clamp; documented
+> the intentional learning-step-history-invisible-at-graduation behavior in
+> AGENTS.md. STILL OPEN, both needing more than a test addition: (1) the
+> `countsAsRealDue` due-slot aliasing fix wants a persisted monotonic review
+> sequence number (schema + migration + golden-timeline work, on par with Goal
+> 13); (2) "rung disabled mid-relearning keeps step/memory continuity" — a
+> practice Good on a card whose current rung was just disabled currently
+> graduates to review (effectiveRung remaps the disabled rung), which is a real
+> behavioral decision to make deliberately, not a drive-by test.
+
 ### Goal 17: Fix minor scheduler defects and close test gaps
 
 **Problem (each small, batch them):**

@@ -164,6 +164,22 @@ When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
 the new skill is validated sooner than a full promotion-sized interval.
 
+Graduation from learning/relearning derives the initial FSRS memory state
+from the graduating rating alone (`engine.initialState(graduationRating)`),
+independent of any intermediate `Again`/`Hard` answers taken during the
+learning steps. This is intentional Anki-parity behavior: learning-step
+answers are practice-only and do not feed short-term stability, so the card
+graduates as if answered fresh at the graduating rating. Do not route
+learning answers through short-term stability without a deliberate parity
+decision and golden-timeline regeneration.
+
+`hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
+A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.
+The demotion fail-streak resets only when a demotion actually moves the rung;
+at the `write_kanji` floor (where demotion cannot move) the streak keeps
+accumulating so chronically-failing floor cards keep reporting to
+`LadderHealthPolicy`.
+
 The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;
 only `again` counts as a fail.

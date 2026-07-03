@@ -243,8 +243,13 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             return
         }
         if (idx == 0 && steps.size >= 2) {
+            // Anki semantics: Hard on the first step waits the midpoint of the first two
+            // steps, sitting strictly between Again (returns to step 0) and Good
+            // (advances to step 1). Using the plain midpoint keeps that true even for
+            // descending steps like [10, 5], where max(step0, midpoint) would collapse
+            // Hard onto the Again delay.
             val avg = (StudyLadderRules.stepDelayMillis(steps[0]) + StudyLadderRules.stepDelayMillis(steps[1])) / 2L
-            state.due = context.nowMillis + max(StudyLadderRules.stepDelayMillis(steps[0]), avg)
+            state.due = context.nowMillis + avg
         } else if (idx == 0) {
             // Anki semantics: with a single learning step, Hard waits 1.5x the
             // step delay so it sits strictly between Again and Good.
@@ -335,9 +340,16 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realAgainStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             if (state.realAgainStreak >= context.settings.ladderDemotionFailStreak) {
-                state.rung = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
-                state.realAgainStreak = 0
-                state.realPassStreak = 0
+                val demoted = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                // Only reset the fail streak when a demotion actually moved the rung. At
+                // the WRITE_KANJI floor demoteRung returns the same rung, so keeping the
+                // streak lets chronically-failing floor cards keep reporting in
+                // LadderHealthPolicy instead of silently resetting to zero.
+                if (demoted != state.rung) {
+                    state.rung = demoted
+                    state.realAgainStreak = 0
+                    state.realPassStreak = 0
+                }
             }
         }
     }

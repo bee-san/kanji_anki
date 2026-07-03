@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.core
 
-import java.security.SecureRandom
 import java.util.Collections
+import java.util.Random
 
 class StudySessionSelector {
     fun nextSession(
@@ -31,11 +31,13 @@ class StudySessionSelector {
         if (best == null) {
             return null
         }
-        val row = rowByKanji[best.kanji]
+        // Skip the item rather than crash when it has no dashboard row (e.g. its kanji
+        // was removed from the collection after the study queue was built).
+        val row = rowByKanji[best.kanji] ?: return null
         val token = StudyTokenPolicy.studyItem(best.kanji, best.activeToken)
         val taskType = StudyTaskTypes.forRung(best.rung)
         val writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI
-        val prompt = row!!.reasonText
+        val prompt = row.reasonText
         return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
     }
 
@@ -449,9 +451,12 @@ class StudySessionSelector {
             return 1
         }
 
+        @Suppress("java:S2245")
         fun shuffleDuePriorityBuckets(items: MutableList<RecordsStudyModels.StudyItem>, randomSeed: Long?) {
             val seed = randomSeed
-            val secureRandom = if (seed == null) SecureRandom() else null
+            // Cosmetic queue ordering only; a plain Random avoids SecureRandom's entropy
+            // blocking risk. Deterministic (seeded) ordering still uses the seeded sort.
+            val random = if (seed == null) Random() else null
             var start = 0
             while (start < items.size) {
                 val priority = duePriority(items[start])
@@ -462,7 +467,7 @@ class StudySessionSelector {
                 if (end - start > 1) {
                     val bucket = items.subList(start, end)
                     if (seed == null) {
-                        Collections.shuffle(bucket, secureRandom ?: SecureRandom())
+                        Collections.shuffle(bucket, random ?: Random())
                     } else {
                         bucket.sortWith(
                             compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(seed, it) }
