@@ -288,9 +288,23 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         return studySettings().saveNewCardSortMode(mode)
     }
 
-    fun appThemeChoice(): KaniThemeChoice = studySettings().appThemeChoice()
+    // The theme choice is read from SQLite on every route composition (main thread).
+    // Cache it in memory to avoid a per-navigation DB hit; invalidate on save.
+    @Volatile
+    private var cachedThemeChoice: KaniThemeChoice? = null
 
-    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = studySettings().saveAppThemeChoice(choice)
+    fun appThemeChoice(): KaniThemeChoice {
+        cachedThemeChoice?.let { return it }
+        val choice = studySettings().appThemeChoice()
+        cachedThemeChoice = choice
+        return choice
+    }
+
+    fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice {
+        val saved = studySettings().saveAppThemeChoice(choice)
+        cachedThemeChoice = saved
+        return saved
+    }
 
     fun reminderSettings(): ReminderSettings = studySettings().reminderSettings()
 

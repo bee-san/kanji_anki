@@ -37,7 +37,10 @@ class ResumeUpdateInstallerTest {
             status = status(enabled = true, pendingApkName = "kani-update.apk"),
         )
 
+        // Gating now runs on the background executor (off the UI thread), so a task is
+        // enqueued but installs nothing once it evaluates the guard.
         installer.onResume()
+        executor.runNext()
 
         assertEquals(0, installs.get())
         assertTrue(executor.isEmpty())
@@ -55,6 +58,7 @@ class ResumeUpdateInstallerTest {
         )
 
         installer.onResume()
+        executor.runNext()
 
         assertEquals(0, installs.get())
         assertTrue(executor.isEmpty())
@@ -72,6 +76,7 @@ class ResumeUpdateInstallerTest {
         )
 
         installer.onResume()
+        executor.runNext()
 
         assertEquals(0, installs.get())
         assertTrue(executor.isEmpty())
