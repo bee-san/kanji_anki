@@ -267,6 +267,24 @@ class GitHubUpdaterTest {
     }
 
     @Test
+    fun downloadAbortsAndDeletesFileWhenBodyExceedsMaxSize() {
+        val body = ByteArray(80_000)
+        val target = File.createTempFile("kani-oversized-", ".apk")
+        target.deleteOnExit()
+        OneShotHttpServer.start(body).use { server ->
+            val error = try {
+                GitHubUpdater.download(server.url("/kani.apk"), target, 1_000L)
+                throw AssertionError("Expected IOException for oversized download")
+            } catch (caught: IOException) {
+                caught
+            }
+            assertTrue(error.message!!.contains("too large") || error.message!!.contains("exceeded"))
+            // The partial/oversized file must not be left filling the cache.
+            assertFalse(target.exists())
+        }
+    }
+
+    @Test
     fun downloadPropagatesHttpErrorBeforeCreatingTargetFile() {
         val target = File.createTempFile("kani-failed-download-", ".apk")
         assertTrue(target.delete())

@@ -521,6 +521,13 @@ class GitHubUpdater @JvmOverloads constructor(
         private const val TAG = "KaniUpdate"
         private const val BUFFER_SIZE = 32_768
 
+        /**
+         * Hard ceiling on a downloaded update APK. The real APK is a few MB; this
+         * generous 200 MB cap only exists to stop a malformed/hostile release asset
+         * from filling the cache partition.
+         */
+        private const val MAX_APK_BYTES = 200L * 1024L * 1024L
+
         @JvmStatic
         fun readableMessage(error: Throwable): String {
             return UpdateTextPolicy.readableMessage(error)
@@ -608,17 +615,30 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         @Throws(IOException::class)
-        fun download(url: String, file: File) {
+        @JvmOverloads
+        fun download(url: String, file: File, maxBytes: Long = MAX_APK_BYTES) {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.setRequestProperty("User-Agent", "Kani/${BuildConfig.VERSION_NAME}")
             connection.connectTimeout = 12_000
             connection.readTimeout = 60_000
             try {
                 requireSuccess(connection, "download $url")
-                BufferedInputStream(connection.inputStream).use { input ->
-                    FileOutputStream(file).use { output ->
-                        copy(input, output)
+                // Reject before streaming when the server declares an oversized body.
+                val declared = connection.contentLengthLong
+                if (declared > maxBytes) {
+                    file.delete()
+                    throw IOException("Update download is too large ($declared bytes > $maxBytes).")
+                }
+                try {
+                    BufferedInputStream(connection.inputStream).use { input ->
+                        FileOutputStream(file).use { output ->
+                            copy(input, output, maxBytes)
+                        }
                     }
+                } catch (error: IOException) {
+                    // Do not leave an oversized/partial file filling the cache partition.
+                    file.delete()
+                    throw error
                 }
             } finally {
                 connection.disconnect()
@@ -864,6 +884,25 @@ class GitHubUpdater @JvmOverloads constructor(
                 val read = input.read(buffer)
                 if (read < 0) {
                     break
+                }
+                output.write(buffer, 0, read)
+            }
+        }
+
+        @Throws(IOException::class)
+        private fun copy(input: InputStream, output: OutputStream, maxBytes: Long) {
+            val buffer = ByteArray(BUFFER_SIZE)
+            var total = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) {
+                    break
+                }
+                total += read
+                if (total > maxBytes) {
+                    // A chunked/undeclared response that overruns the cap (or a server
+                    // that lied about Content-Length) is aborted mid-stream.
+                    throw IOException("Update download exceeded the maximum size of $maxBytes bytes.")
                 }
                 output.write(buffer, 0, read)
             }
