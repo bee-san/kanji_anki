@@ -46,6 +46,42 @@ object UpdateArtifactValidator {
         return ValidationResult.success("APK metadata verified.")
     }
 
+    /**
+     * Verify that the downloaded APK is signed by the same certificate(s) as the
+     * running app. Certs are passed as their raw signature bytes; order does not
+     * matter. A mismatch means the release pipeline (or its signing key) is not the
+     * one that produced the installed app, so the install must be blocked even though
+     * Android would also reject it at commit time — failing fast avoids keeping a
+     * hostile APK cached.
+     */
+    @JvmStatic
+    fun validateSigningCertificates(
+        currentCerts: List<ByteArray>?,
+        archiveCerts: List<ByteArray>?,
+    ): ValidationResult {
+        if (currentCerts.isNullOrEmpty()) {
+            return ValidationResult.failure("Could not read the running app's signing certificate. Install blocked.")
+        }
+        if (archiveCerts.isNullOrEmpty()) {
+            return ValidationResult.failure("Could not read the update's signing certificate. Install blocked.")
+        }
+        val currentSet = currentCerts.mapTo(HashSet()) { it.toHex() }
+        val archiveSet = archiveCerts.mapTo(HashSet()) { it.toHex() }
+        if (currentSet != archiveSet) {
+            return ValidationResult.failure("APK signing certificate does not match the installed app. Install blocked.")
+        }
+        return ValidationResult.success("APK signing certificate verified.")
+    }
+
+    private fun ByteArray.toHex(): String {
+        val builder = StringBuilder(size * 2)
+        for (b in this) {
+            builder.append(Character.forDigit((b.toInt() shr 4) and 0xF, 16))
+            builder.append(Character.forDigit(b.toInt() and 0xF, 16))
+        }
+        return builder.toString()
+    }
+
     private fun normalizeVersion(version: String?): String {
         return version?.trim()?.removePrefix("v").orEmpty()
     }

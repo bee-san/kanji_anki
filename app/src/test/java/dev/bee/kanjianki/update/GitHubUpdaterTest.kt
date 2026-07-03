@@ -33,6 +33,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -343,18 +344,12 @@ class GitHubUpdaterTest {
     }
 
     @Test
-    fun archiveMetadataReflectionFailureReportsDiagnosticError() {
-        val error = try {
-            GitHubUpdater.packageArchiveInfo(null, "missing.apk") {
-                throw NoSuchMethodException("getPackageArchiveInfo")
-            }
-            throw AssertionError("Expected IllegalStateException")
-        } catch (caught: IllegalStateException) {
-            caught
-        }
-
-        assertEquals("Could not inspect APK metadata.", error.message)
-        assertTrue(error.cause is NoSuchMethodException)
+    fun archiveMetadataWithNullPackageManagerReturnsNull() {
+        // The reflection-based archive lookup was replaced with a direct API call; a
+        // null PackageManager now yields null metadata rather than a reflective error.
+        assertNull(GitHubUpdater.packageArchiveInfo(null, "missing.apk"))
+        assertTrue(GitHubUpdater.signingCertificates(null).isEmpty())
+        assertTrue(GitHubUpdater.installedSigningCertificates(null, "dev.bee.kanjianki").isEmpty())
     }
 
     @Test
@@ -465,6 +460,9 @@ class GitHubUpdaterTest {
                 error("inspectApk should not be called")
             }
 
+            override fun installedSigningCertificates(packageName: String): List<ByteArray> =
+                error("installedSigningCertificates should not be called")
+
             override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
 
             override fun startPackageInstaller(
@@ -492,6 +490,9 @@ class GitHubUpdaterTest {
             override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata {
                 error("inspectApk should not be called")
             }
+
+            override fun installedSigningCertificates(packageName: String): List<ByteArray> =
+                error("installedSigningCertificates should not be called")
 
             override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
 
