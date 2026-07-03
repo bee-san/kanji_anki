@@ -2,7 +2,6 @@ package dev.bee.kanjianki.core
 
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.round
 
 internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) {
     fun applyReview(application: BridgeScheduler.ReviewApplication): RecordsSchedulerModels.ReviewResult {
@@ -428,8 +427,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val updatedMemory = RecordsStudyModels.TaskMemory(
             state.schedulerState,
             state.due,
-            roundScore(state.stability),
-            roundScore(state.difficulty),
+            state.stability,
+            state.difficulty,
             state.taskTotal,
             state.taskLapses,
             state.stepIndex,
@@ -441,8 +440,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val base = context.item.copyBuilder()
             .state(state.schedulerState)
             .dueAtMillis(state.due)
-            .stability(roundScore(state.stability))
-            .difficulty(roundScore(state.difficulty))
+            .stability(state.stability)
+            .difficulty(state.difficulty)
             .totalReviews(state.total)
             .lapses(state.lapses)
             .learningStep(state.stepIndex)
@@ -615,7 +614,5 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
          * first-review cap for a freshly promoted rung.
          */
         private const val PROMOTED_RUNG_FIRST_REVIEW_DIVISOR = 3
-
-        private fun roundScore(value: Double): Double = round(value * 100.0) / 100.0
     }
 }
