@@ -91,6 +91,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
                 rejectAllCardProjections = true
                 result.putBoolean("ok", true)
             }
+            "legacyTopLevelCardsUnsupported" -> {
+                legacyTopLevelCardsUnsupported = true
+                result.putBoolean("ok", true)
+            }
             "nullCardCursor" -> {
                 nullCardCursor = true
                 result.putBoolean("ok", true)
@@ -214,6 +218,11 @@ class FakeAnkiDroidProvider : ContentProvider() {
         }
         if (path == "/cards") {
             topLevelCardsQueries++
+            if (legacyTopLevelCardsUnsupported) {
+                // Mirrors AnkiDroid releases before 2.24.0, whose UriMatcher
+                // has no top-level cards path and throws at query time.
+                throw IllegalArgumentException("uri $uri is not supported")
+            }
             if (nullCardCursor) {
                 return null
             }
@@ -699,6 +708,9 @@ class FakeAnkiDroidProvider : ContentProvider() {
         var deferSchedulerProjectionFailure = false
 
         @JvmField
+        var legacyTopLevelCardsUnsupported = false
+
+        @JvmField
         var browserQueryMatchesActive = false
 
         @JvmField
@@ -781,6 +793,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
             unparseableFsrsData = false
             rejectSchedulerProjection = false
             deferSchedulerProjectionFailure = false
+            legacyTopLevelCardsUnsupported = false
             browserQueryMatchesActive = false
             browserQueryMatchesSuspended = false
             failBrowserQuery = false

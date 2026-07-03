@@ -181,7 +181,12 @@ Study UI renders one current rung at a time. Rung rendering:
 The study UI exposes `Pass` and `Fail` labels. In the core scheduler the
 wire format stays `good`/`again`/`hard`/`easy`; the UI translates
 `Pass` → `good` and `Fail` → `again` at the boundary. The `write_kanji` rung
-offers only `Pass` and `Fail`; `Hard` and `Easy` are not shown for that rung.
+offers only `Pass` and `Fail`; `Hard` and `Easy` are never offered as
+user-selectable ratings for that rung. One documented exception: when the
+writing evaluation judges an ink attempt as `CLOSE` (passed, but not clean),
+the single primary action is labeled `Save hard` and submits `hard`, which
+still counts as a pass for ladder-streak purposes. The user never chooses
+between multiple ratings on `write_kanji`.
 
 The study subsystem must never keep a parallel "main study item plus side
 task queue" model. `learning_repeats`, `similar_kanji_choice_state`, and

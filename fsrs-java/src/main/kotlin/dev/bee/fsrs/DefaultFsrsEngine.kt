@@ -30,13 +30,16 @@ internal class DefaultFsrsEngine(
         val retrievability = retrievability(resolvedState, elapsedDays)
         val nextDifficulty = nextDifficulty(resolvedState.difficulty, resolvedRating)
         val nextStability = when {
+            // py-fsrs v6.3.1 routes every same-day review, including Again,
+            // through the short-term stability update; forget stability is
+            // only used for reviews at least one day out.
+            elapsedDays == 0 -> shortTermStability(resolvedState.stability, resolvedRating)
             resolvedRating == FsrsRating.AGAIN -> nextForgetStability(
                 nextDifficulty,
                 resolvedState.stability,
                 retrievability,
             )
 
-            elapsedDays == 0 -> shortTermStability(resolvedState.stability, resolvedRating)
             else -> nextRecallStability(nextDifficulty, resolvedState.stability, retrievability, resolvedRating)
         }
         return FsrsMemoryState(nextStability, nextDifficulty)
@@ -71,8 +74,9 @@ internal class DefaultFsrsEngine(
         Fsrs.validateMaximumInterval(maximumInterval)
         val interval = (stability / parameters.factor()) *
             (Math.pow(desiredRetention, 1.0 / parameters.decay()) - 1.0)
-        val rounded = Math.round(interval).toInt()
-        return rounded.coerceAtLeast(1).coerceAtMost(maximumInterval)
+        // Clamp in Long before narrowing so extreme stabilities cannot wrap
+        // Int and collapse to the one-day minimum.
+        return Math.round(interval).coerceIn(1L, maximumInterval.toLong()).toInt()
     }
 
     override fun review(input: FsrsReviewInput?): FsrsReviewOutput {

@@ -19,7 +19,9 @@ internal object SettingsWriteActions {
         }
         writer.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, request.promotionDays)
         writer.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, request.failStreak)
-        writer.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, request.failStreak)
+        // real_due_reviews_to_move stays as the legacy read fallback for the
+        // demotion fail streak. writing_trigger_miss_days is a *days* value
+        // and must not be overwritten with a fail-streak count.
         writer.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak)
     }
 

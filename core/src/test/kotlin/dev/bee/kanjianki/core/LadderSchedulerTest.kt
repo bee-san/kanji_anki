@@ -462,18 +462,29 @@ class LadderSchedulerTest {
 
     @Test
     fun similarRungSkippedWhenUnavailable() {
-        // hasSimilarKanji=false, so movement skips SIMILAR_KANJI but still lands on MEANING_KANJI.
+        // hasSimilarKanji=false: movements that cross SIMILAR_KANJI must skip
+        // over it in both directions without pausing.
         val demoted = BridgeScheduler.demoteRung(
-                RecordsBase.LadderRung.KANJI_MEANING,
-                false
-        );
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, demoted);
-
-        val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.TYPE_MEANING,
                 false
         );
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, promoted);
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, demoted);
+
+        val promoted = BridgeScheduler.promoteRung(
+                RecordsBase.LadderRung.WRITE_KANJI,
+                false
+        );
+        assertEquals(RecordsBase.LadderRung.TYPE_MEANING, promoted);
+
+        // Adjacent moves that never touch SIMILAR_KANJI are unaffected.
+        assertEquals(
+                RecordsBase.LadderRung.MEANING_KANJI,
+                BridgeScheduler.demoteRung(RecordsBase.LadderRung.KANJI_MEANING, false)
+        );
+        assertEquals(
+                RecordsBase.LadderRung.MEANING_KANJI,
+                BridgeScheduler.promoteRung(RecordsBase.LadderRung.TYPE_MEANING, false)
+        );
     }
 
     @Test
@@ -757,9 +768,11 @@ class LadderSchedulerTest {
     @Test
     fun hardInRelearningRepeatsCurrentStep() {
         val scheduler = BridgeScheduler();
-        // Create a card in relearning phase
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
-                .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
+        // Create a card in relearning phase at its first relearning step
+        // (learningStep positional argument = 0).
+        var item = RecordsStudyModels.StudyItem(
+                "裂", "review", 500L, 1.2, 5.0, 1, 0, 0, 1, 0, 0, 0L, false, null, 0L
+        ).withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
         val consumed = HashSet<String>();
 
         val result = scheduler.applyReview(
@@ -770,6 +783,27 @@ class LadderSchedulerTest {
         );
         // Hard in relearning stays in relearning
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, result.item.phase);
+    }
+
+    @Test
+    fun hardWithStaleStepIndexPastConfiguredStepsGraduates() {
+        val scheduler = BridgeScheduler();
+        // The relearning steps shrank while this card sat mid-relearning, so
+        // its step index (5) points past the last configured step. Anki
+        // graduates such a card on Hard instead of trapping it in learning.
+        var item = RecordsStudyModels.StudyItem(
+                "裂", "review", 500L, 1.2, 5.0, 1, 0, 5, 1, 0, 0, 0L, false, null, 0L
+        ).withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
+        val consumed = HashSet<String>();
+
+        val result = scheduler.applyReview(
+                item.withToken("rh-stale"),
+                RecordsSchedulerModels.ReviewRequest("裂", "rh-stale", "hard", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
+        assertTrue("graduation should schedule a future due", result.item.dueAtMillis > 1000L);
     }
 
     @Test
@@ -944,15 +978,40 @@ class LadderSchedulerTest {
     fun promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
         val scheduler = schedulerWithReviewIntervalDays(22);
         val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).build()
+        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
                 .withHasSimilarKanji(false);
 
         val result = scheduler.applyReview(
                 item.withToken("ns"), passRequest("裂", "ns"), consumed, 1000L);
 
-        assertEquals("Promoted to MEANING_KANJI, skipping SIMILAR_KANJI",
-                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung);
+        assertEquals("Promoted to TYPE_MEANING, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung);
+    }
+
+    @Test
+    fun demotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).realAgainStreak(2).build()
+                .withHasSimilarKanji(false);
+
+        val result = scheduler.applyReview(
+                item.withToken("nd"), failRequest("裂", "nd"), consumed, 1000L);
+
+        assertEquals("Demoted to WRITE_KANJI, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.WRITE_KANJI, result.item.rung);
+    }
+
+    @Test
+    fun promotionSkipsChainedDisabledAndUnavailableRungs() {
+        // similar_kanji has no content and type_meaning is disabled: promotion
+        // from write_kanji must chain across both to meaning_kanji.
+        var ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.TYPE_MEANING, false);
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.WRITE_KANJI, false);
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, promoted);
     }
 
     // ---- Custom ladder thresholds ----
