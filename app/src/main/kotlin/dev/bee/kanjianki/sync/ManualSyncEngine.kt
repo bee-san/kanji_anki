@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import android.content.Context
+import android.util.Log
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -185,19 +186,44 @@ internal class ManualSyncEngine {
                 AdaptiveFocusCopy.adaptiveFocusText(postSyncPlan),
             )
         } catch (error: AnkiDroidGateway.SyncFailure) {
+            Log.e(TAG, "Sync failed (${if (error.permanentFailure) "permanent" else "retryable"}).", error)
             val finished = clock.nowMillis()
-            store.saveFailedSync(
+            persistFailedSync(
                 started,
                 finished,
                 if (error.permanentFailure) "config_error" else "retryable_error",
                 if (error.permanentFailure) "permanent" else "retryable",
-                error.message,
+                error,
             )
             return SyncResult.create(false, false, 0, 0, error.message, "")
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
+            // Only Exceptions are treated as recoverable sync failures. Errors
+            // (OutOfMemoryError, StackOverflowError, ...) propagate instead of being
+            // mislabeled as a retryable_error sync row.
+            Log.e(TAG, "Unexpected sync failure.", error)
             val finished = clock.nowMillis()
-            store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.message)
+            persistFailedSync(started, finished, "retryable_error", "unexpected", error)
             return SyncResult.create(false, false, 0, 0, error.message, "")
+        }
+    }
+
+    /**
+     * Persist a failed-sync row, guarding the write itself: if saveFailedSync throws
+     * (e.g. disk full) the persistence failure is logged with the original error
+     * attached as suppressed so the root cause is not masked.
+     */
+    private fun persistFailedSync(
+        started: Long,
+        finished: Long,
+        status: String,
+        errorCode: String,
+        error: Throwable,
+    ) {
+        try {
+            store.saveFailedSync(started, finished, status, errorCode, error.message)
+        } catch (persistError: Exception) {
+            persistError.addSuppressed(error)
+            Log.e(TAG, "Failed to persist sync failure row.", persistError)
         }
     }
 
@@ -314,6 +340,7 @@ internal class ManualSyncEngine {
     }
 
     companion object {
+        private const val TAG = "ManualSyncEngine"
         private val RUNNING = AtomicBoolean(false)
     }
 }
