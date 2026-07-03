@@ -84,9 +84,20 @@ class SyncRunRepositoryTest {
         assertEquals(Pair(42L, ""), storage.updatedRemovalMessages.single())
     }
 
+    @Test
+    fun markSyncSucceededFlipsStatusToSuccess() {
+        val storage = FakeSyncRunStorage()
+        val repository = SyncRunRepository(storage)
+
+        repository.markSyncSucceeded(7L)
+
+        assertEquals(Pair(7L, LocalStoreBase.STATUS_SUCCESS), storage.updatedStatuses.single())
+    }
+
     private class FakeSyncRunStorage : SyncRunStorage {
         val inserted = mutableListOf<SyncRunRecord>()
         val updatedRemovalMessages = mutableListOf<Pair<Long, String>>()
+        val updatedStatuses = mutableListOf<Pair<Long, String>>()
 
         override fun insert(record: SyncRunRecord): Long {
             inserted += record
@@ -95,6 +106,10 @@ class SyncRunRepositoryTest {
 
         override fun updateRemovalMessage(syncId: Long, message: String) {
             updatedRemovalMessages += syncId to message
+        }
+
+        override fun updateStatus(syncId: Long, status: String) {
+            updatedStatuses += syncId to status
         }
     }
 }

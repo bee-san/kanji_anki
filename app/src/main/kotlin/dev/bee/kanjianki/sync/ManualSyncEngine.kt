@@ -105,6 +105,11 @@ internal class ManualSyncEngine {
             val similarKanjiIndex = loadSimilarKanjiIndex()
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
+            // Record the sync run as pending in transaction #1. It is flipped to
+            // success only after study items commit in replaceStudyItems below, so a
+            // crash between the two transactions leaves a pending row that
+            // hasSuccessfulSyncSince ignores (auto-sync retries) instead of a committed
+            // success sitting on stale study items.
             val syncId = store.saveSuccessfulSync(
                 snapshot,
                 currentSuspendedImports,
@@ -114,6 +119,7 @@ internal class ManualSyncEngine {
                 null,
                 similarKanjiIndex,
                 selectedImports,
+                LocalStoreBase.STATUS_PENDING,
             )
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
@@ -137,6 +143,8 @@ internal class ManualSyncEngine {
             // the user saved between the studyItemsForKanji read above and this write
             // (auto-sync can run while the app is foregrounded and studyable).
             store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
+            // Study items are committed; promote the pending sync run to success.
+            store.markSyncSucceeded(syncId)
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale

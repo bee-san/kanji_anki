@@ -50,4 +50,8 @@ internal class SyncRunRepository(
     fun updateSyncRemovalMessage(syncId: Long, message: String?) {
         storage.updateRemovalMessage(syncId, message ?: "")
     }
+
+    fun markSyncSucceeded(syncId: Long) {
+        storage.updateStatus(syncId, LocalStoreBase.STATUS_SUCCESS)
+    }
 }
