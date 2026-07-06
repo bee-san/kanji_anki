@@ -9,7 +9,12 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
-            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
+            // Non-blocking theme read: route composition happens on the main thread and
+            // must never wait behind a cold-boot DB open/migration. Background route
+            // loads warm the cache before their render thunk runs (see
+            // MainActivityHome.warmThemeThen), so this only falls back to the default
+            // theme for the brief deferred-loading frame on a truly cold process.
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoiceNonBlocking()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {
@@ -44,7 +49,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
             beforeContent()
-            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoice()
+            val themeChoice = activity.screenshotThemeChoiceOverride ?: activity.store.appThemeChoiceNonBlocking()
             val isSystemDarkTheme = MainActivityUiSupport.isNightMode(activity.resources.configuration)
             val systemBars = themeChoice.resolveSystemBars(isSystemDarkTheme)
             activity.setContent {

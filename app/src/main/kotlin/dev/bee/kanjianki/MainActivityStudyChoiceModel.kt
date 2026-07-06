@@ -44,10 +44,40 @@ internal fun feedbackForMeaningChoice(
     }
 }
 
+/**
+ * Feedback colors for the similar-kanji grid after a wrong pick: the pressed
+ * choice turns red and the correct choice turns green. No feedback before an
+ * answer or when the grid has no known correct choice (legacy immediate mode).
+ */
+internal fun feedbackForSimilarChoice(
+    glyph: String,
+    selectedChoice: String?,
+    correctChoice: String?,
+): KanjiChoiceFeedback? {
+    if (selectedChoice == null || correctChoice == null) {
+        return null
+    }
+    if (glyph == correctChoice) {
+        return KanjiChoiceFeedback.CORRECT
+    }
+    return if (glyph == selectedChoice) {
+        KanjiChoiceFeedback.INCORRECT
+    } else {
+        null
+    }
+}
+
 data class SimilarChoiceGridModel(
     val choices: List<String>,
     val balanceLastRow: Boolean,
     val onChoice: KanjiChoiceHandler,
+    /**
+     * When set, a wrong pick shows red/green feedback and waits for an explicit
+     * continue tap before [onChoice] fires; a correct pick still advances
+     * immediately. When null (legacy callers/tests), every tap fires [onChoice]
+     * immediately with no feedback pause.
+     */
+    val correctChoice: String? = null,
 )
 
 data class SimilarKanjiExplanationLineModel(

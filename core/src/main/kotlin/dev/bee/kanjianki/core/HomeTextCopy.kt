@@ -270,6 +270,18 @@ object HomeTextCopy {
     fun loadingLabel(): String = localizedText("Loading…", "読み込み中…")
 
     @JvmStatic
+    fun routeLoadErrorTitle(): String = localizedText("Something went wrong", "問題が発生しました")
+
+    @JvmStatic
+    fun routeLoadErrorBody(): String = localizedText(
+        "Kani hit an unexpected error while loading this screen. Your data is safe.",
+        "この画面の読み込み中に予期しないエラーが発生しました。データは安全です。",
+    )
+
+    @JvmStatic
+    fun retryLabel(): String = localizedText("Try again", "再試行")
+
+    @JvmStatic
     fun noRecentMistakesTitle(): String = localizedText("No mistakes yet", "まだミスはありません")
 
     @JvmStatic

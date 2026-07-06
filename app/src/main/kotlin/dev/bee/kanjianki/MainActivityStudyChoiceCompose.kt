@@ -58,6 +58,34 @@ class MeaningChoiceSessionState(selectedChoice: String? = null) {
     }
 }
 
+/**
+ * Selection state for the similar-kanji grid. Only a wrong pick is recorded
+ * here: it freezes the grid with red/green feedback until the user taps
+ * Continue. Correct picks submit immediately and never set state.
+ */
+class SimilarChoiceSessionState(selectedChoice: String? = null) {
+    var selectedChoice by mutableStateOf(selectedChoice)
+        private set
+
+    val answered: Boolean
+        get() = selectedChoice != null
+
+    fun select(glyph: String) {
+        if (!answered) {
+            selectedChoice = glyph
+        }
+    }
+}
+
+@Composable
+internal fun rememberSimilarChoiceSessionState(model: SimilarChoiceSessionModel): SimilarChoiceSessionState {
+    return remember(
+        model.question,
+        model.gridModel.choices,
+        model.gridModel.correctChoice,
+    ) { SimilarChoiceSessionState() }
+}
+
 @Composable
 internal fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel): MeaningChoiceSessionState {
     return remember(
@@ -75,6 +103,7 @@ fun SimilarChoiceSessionCard(
     showInlineChoices: Boolean = true,
     detailsExpandedByDefault: Boolean = showInlineChoices,
     onExploreDifferences: Runnable? = null,
+    state: SimilarChoiceSessionState = rememberSimilarChoiceSessionState(model),
 ) {
     var detailsExpanded by rememberSaveable(model.question, showInlineChoices, detailsExpandedByDefault) {
         mutableStateOf(detailsExpandedByDefault)
@@ -89,6 +118,7 @@ fun SimilarChoiceSessionCard(
     ) {
         SimilarChoiceInsetPanel(
             model = model,
+            state = state,
             showChoices = showInlineChoices,
             detailsExpanded = detailsExpanded,
             onToggleDetails = { detailsExpanded = !detailsExpanded },
@@ -256,6 +286,7 @@ private fun SimilarChoiceModePill(label: String) {
 @Composable
 private fun SimilarChoiceInsetPanel(
     model: SimilarChoiceSessionModel,
+    state: SimilarChoiceSessionState,
     showChoices: Boolean,
     detailsExpanded: Boolean,
     onToggleDetails: () -> Unit,
@@ -293,9 +324,32 @@ private fun SimilarChoiceInsetPanel(
                 )
             }
             if (showChoices) {
-                SimilarChoiceGrid(model.gridModel)
+                SimilarChoiceGrid(model.gridModel, state)
+                SimilarChoiceWrongAnswerBar(model, state)
             }
         }
+    }
+}
+
+/**
+ * After a wrong pick the grid freezes with red/green feedback and this bar
+ * appears: it names the correct kanji and waits for an explicit Continue tap
+ * before submitting the (failing) answer, instead of instantly advancing.
+ */
+@Composable
+private fun SimilarChoiceWrongAnswerBar(
+    model: SimilarChoiceSessionModel,
+    state: SimilarChoiceSessionState,
+) {
+    val selectedChoice = state.selectedChoice ?: return
+    val correctChoice = model.gridModel.correctChoice ?: return
+    Column(modifier = Modifier.padding(top = 12.dp)) {
+        MeaningChoiceResultActionBar(
+            status = StudyTextCopy.similarKanjiWrongChoiceResult(correctChoice),
+            statusColor = MainActivityBase.CORAL,
+            actionLabel = StudyTextCopy.continueLabel(),
+            onNext = { model.gridModel.onChoice.onChoice(selectedChoice) },
+        )
     }
 }
 

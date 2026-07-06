@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import java.util.concurrent.atomic.AtomicBoolean
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -195,6 +197,101 @@ class MainActivityStudyChoiceComposeUnitTest {
 
         assertTrue(explored)
         assertEquals("", selected)
+    }
+
+    @Test
+    fun wrongSimilarChoicePausesWithFeedbackAndSubmitsOnContinue() {
+        var selected = ""
+        val model = similarChoiceModelWithCorrectChoice(correctChoice = "裂") { selected = it }
+
+        composeRule.setContent {
+            // Tall viewport so the post-answer Continue bar is within tappable bounds.
+            Box(
+                modifier = Modifier
+                    .width(360.dp)
+                    .height(1600.dp)
+            ) {
+                SimilarChoiceSessionCard(
+                    model = model,
+                    showInlineChoices = true,
+                    detailsExpandedByDefault = false,
+                )
+            }
+        }
+
+        // Tap a wrong choice: nothing is submitted yet, the pressed choice shows the
+        // incorrect (red) mark, the correct choice shows the correct (green) mark,
+        // and a Continue action appears.
+        composeRule.onNodeWithTag(similarChoiceTestTag("列")).performClick()
+        assertEquals("", selected)
+        composeRule.onNodeWithText(choiceButtonText("列", KanjiChoiceFeedback.INCORRECT)).assertExists()
+        composeRule.onNodeWithText(choiceButtonText("裂", KanjiChoiceFeedback.CORRECT)).assertExists()
+        composeRule.onNodeWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂")).assertExists()
+
+        // A second tap on another choice is ignored while the feedback is showing.
+        composeRule.onNodeWithTag(similarChoiceTestTag("烈")).performClick()
+        assertEquals("", selected)
+
+        // Continue submits the originally selected (wrong) glyph. The bar renders
+        // below the small Robolectric window, so invoke the click action directly
+        // instead of injecting a touch that would land outside the window.
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel())
+            .performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals("列", selected)
+    }
+
+    @Test
+    fun correctSimilarChoiceSubmitsImmediatelyWithoutContinueStep() {
+        var selected = ""
+        val model = similarChoiceModelWithCorrectChoice(correctChoice = "裂") { selected = it }
+
+        composeRule.setContent {
+            SimilarChoiceSessionCard(
+                model = model,
+                showInlineChoices = true,
+                detailsExpandedByDefault = false,
+            )
+        }
+
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂")).performClick()
+
+        assertEquals("裂", selected)
+        composeRule.onAllNodesWithText(StudyTextCopy.continueLabel()).assertCountEquals(0)
+    }
+
+    @Test
+    fun feedbackForSimilarChoiceMarksSelectionAndCorrectAnswerOnly() {
+        // No selection or no known correct answer: no feedback.
+        assertEquals(null, feedbackForSimilarChoice("列", null, "裂"))
+        assertEquals(null, feedbackForSimilarChoice("列", "列", null))
+
+        // Wrong selection: the pressed glyph is red, the correct one green, others none.
+        assertEquals(KanjiChoiceFeedback.INCORRECT, feedbackForSimilarChoice("列", "列", "裂"))
+        assertEquals(KanjiChoiceFeedback.CORRECT, feedbackForSimilarChoice("裂", "列", "裂"))
+        assertEquals(null, feedbackForSimilarChoice("烈", "列", "裂"))
+    }
+
+    private fun similarChoiceModelWithCorrectChoice(
+        correctChoice: String,
+        onChoice: (String) -> Unit,
+    ): SimilarChoiceSessionModel {
+        return SimilarChoiceSessionModel(
+            modeLabel = "Recognise",
+            title = "Choose the kanji",
+            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
+            body = "Pick the matching kanji.",
+            reasonLine = "Weak Anki evidence",
+            question = "Which kanji means split?",
+            gridModel = SimilarChoiceGridModel(
+                choices = listOf("裂", "列", "烈"),
+                balanceLastRow = false,
+                onChoice = KanjiChoiceHandler { onChoice(it) },
+                correctChoice = correctChoice,
+            ),
+            explanationLines = listOf(
+                SimilarKanjiExplanationLineModel("Shape hint", "Look at the lower component.", true),
+            ),
+        )
     }
 
     @Test

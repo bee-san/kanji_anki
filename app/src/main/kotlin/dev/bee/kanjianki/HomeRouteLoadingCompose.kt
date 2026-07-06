@@ -56,3 +56,52 @@ internal fun HomeRouteLoadingScreen(
         }
     }
 }
+
+/**
+ * Fallback screen for a failed background route load. Cold-boot route loads used
+ * to rethrow their exception on the main thread and crash the whole app; this
+ * keeps the shell alive and gives the user a retry path instead.
+ */
+@Composable
+internal fun HomeRouteErrorScreen(
+    title: String,
+    retryLabel: String,
+    onRetry: () -> Unit,
+    homeLabel: String,
+    onHome: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = KaniTheme.colors.ink,
+        )
+        Card(
+            colors = CardDefaults.cardColors(containerColor = KaniTheme.colors.surface),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = HomeTextCopy.routeLoadErrorBody(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = KaniTheme.colors.muted,
+                )
+            }
+        }
+        Button(onClick = { withButtonTrace(retryLabel) { onRetry() } }) {
+            Text(retryLabel)
+        }
+        Button(onClick = { withButtonTrace(homeLabel) { onHome() } }) {
+            Text("$homeLabel >")
+        }
+    }
+}
