@@ -14,6 +14,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.StudyReviewActions
+import dev.bee.kanjianki.StudyItemComparators
 import dev.bee.kanjianki.theme.KaniThemeChoice
 
 internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
@@ -50,6 +51,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         baseline: List<RecordsStudyModels.StudyItem>?,
     ) {
         val start = android.os.SystemClock.elapsedRealtime()
+        var writes = 0
         writableDatabase.transaction {
             val previous = if (syncId == null) emptyMap() else studySnapshots(this)
             val toWrite = if (baseline == null) {
@@ -58,9 +60,17 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
                 val persisted = readAllStudyItems(this)
                 MidSyncReviewMergePolicy.merge(items, baseline, persisted)
             }
-            delete(TABLE_STUDY_ITEMS, null, null)
-            for (item in toWrite) {
-                upsertStudyItem(this, item)
+            writes = if (syncId == null && baseline == null) {
+                // Per-review queue refresh: after every answered card the seeder
+                // usually changes exactly one row, so write only the diff instead of
+                // deleting and reinserting the whole table.
+                applyStudyItemsDiff(this, toWrite)
+            } else {
+                delete(TABLE_STUDY_ITEMS, null, null)
+                for (item in toWrite) {
+                    upsertStudyItem(this, item)
+                }
+                toWrite.size
             }
             if (syncId != null) {
                 appendStudyStateTimelineEvents(this, previous, toWrite, syncId, occurredAt, settings)
@@ -69,9 +79,45 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             clearStudyItemsCache()
         }
         dev.bee.kanjianki.studyLoadDebug(
-            "replaceStudyItems WROTE count=${items.size} (delete-all + reinsert) " +
+            "replaceStudyItems WROTE count=${items.size} writes=$writes " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
+    }
+
+    /**
+     * Makes the study_items table equal [toWrite] by upserting only rows that changed
+     * and deleting rows no longer present, instead of delete-all + reinsert. Returns
+     * the number of row writes/deletes performed.
+     */
+    private fun applyStudyItemsDiff(
+        db: SQLiteDatabase,
+        toWrite: List<RecordsStudyModels.StudyItem>,
+    ): Int {
+        val persistedByKey = HashMap<String, RecordsStudyModels.StudyItem>()
+        for (item in readAllStudyItems(db)) {
+            persistedByKey[studyFamilyKey(item.kanji, item.answerSignature)] = item
+        }
+        val keep = HashSet<String>()
+        var writes = 0
+        for (item in toWrite) {
+            keep.add(studyFamilyKey(item.kanji, item.answerSignature))
+            val existing = persistedByKey[studyFamilyKey(item.kanji, item.answerSignature)]
+            if (existing == null || !StudyItemComparators.sameStudyItem(existing, item)) {
+                upsertStudyItem(db, item)
+                writes++
+            }
+        }
+        for (item in persistedByKey.values) {
+            if (!keep.contains(studyFamilyKey(item.kanji, item.answerSignature))) {
+                db.delete(
+                    TABLE_STUDY_ITEMS,
+                    "$COLUMN_KANJI=? AND $COLUMN_ANSWER_SIGNATURE=?",
+                    arrayOf(item.kanji, item.answerSignature),
+                )
+                writes++
+            }
+        }
+        return writes
     }
 
     private fun readAllStudyItems(db: SQLiteDatabase): List<RecordsStudyModels.StudyItem> {
@@ -217,6 +263,8 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     fun consumedTokens(): List<String> = studyStatus().consumedTokens()
+
+    fun hasConsumedToken(token: String): Boolean = studyStatus().hasConsumedToken(token)
 
     fun latestSync(): SyncStatus? = studyStatus().latestSync()
 

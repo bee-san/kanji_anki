@@ -623,18 +623,22 @@ Two layers (`duplicateReviewResult`, `:53-65`):
   duplicate ("does not match the active session").
 
 The durable consumed-token set is exactly `review_log.token`
-(UNIQUE, `CONFLICT_IGNORE` on insert; read back via `consumedTokens()`,
-`LocalStoreStudyStatus.kt:6-22`). Tokens are minted per session by
+(UNIQUE, `CONFLICT_IGNORE` on insert; the submit path checks the single
+request token via the indexed `hasConsumedToken()`,
+`LocalStoreStudyStatus.kt`). Tokens are minted per session by
 `StudyTokenPolicy` (`"$kanji-" + UUID`), persisted onto the item when a
 session is activated, and cleared by the engine on application.
 
 ### 9.4 Persistence and undo
 
-On a non-duplicate result (`MainActivityStudyReviewFlow.kt:121-131`,
+On a non-duplicate result (`MainActivityStudyReviewFlow.kt`,
 `StudyReviewActions.kt:8-23`): save the item, insert the `review_log` row
 (request fields + before/after memory + before/after scheduler JSON),
 record the task timing row (`study_task_log`), capture an undo snapshot,
-maybe tune scheduler parameters, reschedule reminders, re-render. Undo
+maybe tune scheduler parameters, reschedule reminders, re-render. The whole
+submit pipeline runs on the background io executor (the Pass/Fail click
+handler only captures tap-time state and queues the write); the toast posts
+back to main. Undo
 deletes the log row by token, deletes the timeline event, and restores the
 before-item (`LocalStoreStudy.undoLastAppliedReview`, `:93-106`).
 

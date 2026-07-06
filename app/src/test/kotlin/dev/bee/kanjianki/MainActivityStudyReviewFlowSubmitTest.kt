@@ -1,96 +1,88 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
-import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 
+/**
+ * Verifies that answering a card performs its store writes on the background io
+ * executor instead of the main-thread click handler, while keeping the persisted
+ * review-token idempotency (double submits of the same session stay duplicates).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class MainActivityStudyReviewFlowUndoTest {
+class MainActivityStudyReviewFlowSubmitTest {
     @Test
-    fun undoLastRatingSchedulesStatsPrecomputeAsyncInsteadOfRecomputingInline() {
+    fun submitReviewQueuesStoreWritesOnBackgroundExecutorAndStaysIdempotent() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val startupIo = QueueingExecutorService()
-        val undoIo = QueueingExecutorService()
-        var refreshCalls = 0
+        val reviewIo = QueueingExecutorService()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val intent = Intent(context, TestMainActivity::class.java)
             val controller = Robolectric.buildActivity(TestMainActivity::class.java, intent)
             val activity = controller.get()
             replaceField(activity, "io", startupIo)
-            replaceLazyDelegate(
-                activity,
-                "statsPrecomputeScheduler",
-                StatsPrecomputeScheduler(
-                    background = Executor { command -> command.run() },
-                    isFresh = { false },
-                    refresh = { nowMillis ->
-                        refreshCalls += 1
-                        activity.store.recomputeStatsSnapshotSynchronously(nowMillis)
-                    },
-                ),
-            )
 
             LocalStore(context).use { store ->
-                clearStatsCache(store)
-                val afterReview = studyItem("裂")
-                val request = reviewRequest("裂", "undo-token")
-                store.saveStudyItem(afterReview)
-                store.saveReview(request, "good", 2_000L, afterReview, afterReview)
                 activity.store = store
-                activity.studyUndoState.capture(
-                    StudyReviewActions.AppliedReviewSnapshot("undo-token", afterReview, afterReview),
-                    "good",
-                    2_000L,
-                )
-
                 controller.create().start().resume()
                 activity.cancelPendingHomeRouteLoads()
                 startupIo.shutdownNow()
-                replaceField(activity, "io", undoIo)
-                activity.clearRenderedKanji()
-                clearStatsCache(store)
+                replaceField(activity, "io", reviewIo)
 
-                assertNull(activity.store.cachedStatsSnapshotOrNull())
+                val item = studyItem("裂")
+                store.saveStudyItem(item)
+                val session = RecordsSchedulerModels.StudySession(
+                    item,
+                    null,
+                    item.activeToken,
+                    BridgeScheduler.TASK_KANJI_MEANING,
+                    false,
+                    "split",
+                )
+                activity.activeSession = session
+                activity.clearRenderedStudy()
 
-                activity.undoLastRating()
+                activity.submitReview(MainActivityBase.RATING_GOOD, false)
 
-                // The undo store work itself now runs on the background executor: the
-                // tap only queues the write, nothing renders synchronously.
-                assertNull(activity.renderedKanji())
-                assertEquals(1, undoIo.pendingCount())
+                // The click handler only queued the write: nothing persisted yet and
+                // no re-render happened synchronously.
+                assertFalse(store.hasConsumedToken(session.token))
+                assertEquals(1, reviewIo.pendingCount())
+                assertFalse(activity.renderedStudy())
 
-                undoIo.runNext()
+                reviewIo.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
 
-                // The undo write ran, rendered the restored kanji, and queued only the
-                // stats precompute (async) instead of recomputing inline.
-                assertEquals("裂", activity.renderedKanji())
-                assertEquals(1, undoIo.pendingCount())
-                assertNull(activity.store.cachedStatsSnapshotOrNull())
+                assertTrue(store.hasConsumedToken(session.token))
+                assertTrue(activity.renderedStudy())
+                assertEquals(1, store.consumedTokens().size)
 
-                undoIo.runNext()
+                // A queued double-tap of the same session stays a no-op duplicate.
+                activity.submitReview(MainActivityBase.RATING_GOOD, false)
+                reviewIo.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
 
-                assertEquals(1, refreshCalls)
-                assertNotNull(activity.store.cachedStatsSnapshotOrNull())
+                assertEquals(1, store.consumedTokens().size)
             }
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
@@ -109,16 +101,6 @@ class MainActivityStudyReviewFlowUndoTest {
         ) as AnkiDroidGateway
     }
 
-    private fun clearStatsCache(store: LocalStore) {
-        val db = store.writableDatabase
-        db.delete(LocalStoreBase.TABLE_STATS_SCREEN_CACHE, null, null)
-        db.delete(LocalStoreBase.TABLE_STATS_CACHE_STATE, null, null)
-    }
-
-    private fun reviewRequest(kanji: String, token: String): RecordsSchedulerModels.ReviewRequest {
-        return RecordsSchedulerModels.ReviewRequest(kanji, token, "good", false, true, false, 0)
-    }
-
     private fun studyItem(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "review", 1_000L, 1.0, 2.0, 1, 0, 0, 0, "", 1_000L)
             .copyBuilder()
@@ -126,12 +108,6 @@ class MainActivityStudyReviewFlowUndoTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken("token-$kanji")
             .build()
-    }
-
-    private fun replaceLazyDelegate(activity: MainActivity, propertyName: String, value: Any) {
-        val field = MainActivityHome::class.java.getDeclaredField("$propertyName\$delegate")
-        field.isAccessible = true
-        field.set(activity, lazyOf(value))
     }
 
     private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {
@@ -184,18 +160,18 @@ class MainActivityStudyReviewFlowUndoTest {
     }
 
     private class TestMainActivity : MainActivity() {
-        private var lastRenderedKanji: String? = null
+        private var studyRendered = false
 
-        override fun renderStudyForKanji(kanji: String?) {
-            lastRenderedKanji = kanji
+        override fun renderStudy() {
+            studyRendered = true
         }
 
-        fun clearRenderedKanji() {
-            lastRenderedKanji = null
+        fun clearRenderedStudy() {
+            studyRendered = false
         }
 
-        fun renderedKanji(): String? {
-            return lastRenderedKanji
+        fun renderedStudy(): Boolean {
+            return studyRendered
         }
     }
 }

@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.JitenKanjiRanks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,6 +90,27 @@ class DictionaryStoreTest {
         for (input in missingKanjiInputs) {
             assertNull(store.lookupKanji(input))
         }
+    }
+
+    @Test
+    fun repeatedLookupServesCachedEntryInstance() {
+        val store = openStore()
+
+        val first = store.lookupKanji("日")
+        val second = store.lookupKanji("日")
+
+        assertNotNull(first)
+        // The per-store entry cache returns the identical instance, proving the
+        // second lookup never re-queried (or re-opened) the SQLite database.
+        assertSame(first, second)
+    }
+
+    @Test
+    fun repeatedMissLookupIsCachedAsNull() {
+        val store = openStore()
+
+        assertNull(store.lookupKanji("not-kanji"))
+        assertNull(store.lookupKanji("not-kanji"))
     }
 
     private fun openStore(): DictionaryStore {

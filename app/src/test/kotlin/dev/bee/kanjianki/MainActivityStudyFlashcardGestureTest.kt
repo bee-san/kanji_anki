@@ -18,6 +18,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.ArrayDeque
+import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -43,6 +46,8 @@ class MainActivityStudyFlashcardGestureTest {
     ) {
         val token = "flashcard-token-$tokenSuffix"
         val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
         activity.activeSession = RecordsSchedulerModels.StudySession(
             item = studyItem("弱", token),
             row = null,
@@ -93,6 +98,10 @@ class MainActivityStudyFlashcardGestureTest {
                 )
             )
         )
+        // The swipe queues the review write on the background executor; the click/
+        // gesture handler itself never touches the database.
+        assertEquals(beforeReviewCount, reviewLogCount(activity))
+        reviewIo.runNext()
         assertEquals(beforeReviewCount + 1, reviewLogCount(activity))
         assertEquals(expectedRating, reviewRating(activity, token))
     }
@@ -149,5 +158,50 @@ class MainActivityStudyFlashcardGestureTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken(token)
             .build()
+    }
+
+    private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {
+        val field = MainActivityBase::class.java.getDeclaredField(propertyName)
+        field.isAccessible = true
+        field.set(activity, value)
+    }
+
+    private class QueueingExecutorService : AbstractExecutorService() {
+        private val tasks = ArrayDeque<Runnable>()
+        private var shutdown = false
+
+        override fun shutdown() {
+            shutdown = true
+        }
+
+        override fun shutdownNow(): MutableList<Runnable> {
+            shutdown = true
+            val remaining = tasks.toMutableList()
+            tasks.clear()
+            return remaining
+        }
+
+        override fun isShutdown(): Boolean {
+            return shutdown
+        }
+
+        override fun isTerminated(): Boolean {
+            return shutdown && tasks.isEmpty()
+        }
+
+        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+            return isTerminated()
+        }
+
+        override fun execute(command: Runnable) {
+            if (shutdown) {
+                throw IllegalStateException("executor is shut down")
+            }
+            tasks.addLast(command)
+        }
+
+        fun runNext() {
+            tasks.removeFirst().run()
+        }
     }
 }

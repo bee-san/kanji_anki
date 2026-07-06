@@ -153,18 +153,30 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return when (StudySessionRoute.destination(session)) {
             StudySessionRoute.Destination.WRITING -> {
                 warmStrokeGuides()
-                warmDictionaryLookup()
+                warmSessionDictionaryEntry(session)
                 val render: () -> Unit = { writingSession.renderComposeWritingSession(session) }
                 render
             }
             StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session)
             StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session)
             StudySessionRoute.Destination.FLASHCARD -> {
-                warmDictionaryLookup()
+                warmSessionDictionaryEntry(session)
                 val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session) }
                 render
             }
         }
+    }
+
+    /**
+     * Pre-fetches the dictionary entry for [session]'s kanji on the calling
+     * (background) thread. The main-thread render thunks build answer panels that
+     * look the kanji up again; with the entry warmed here those lookups hit the
+     * dictionary's in-memory cache instead of querying SQLite on the UI thread.
+     */
+    fun warmSessionDictionaryEntry(session: RecordsSchedulerModels.StudySession) {
+        val lookup = warmDictionaryLookup()
+        val kanji = session.item?.kanji?.takeIf { it.isNotBlank() } ?: return
+        lookup.lookupKanji(kanji)
     }
 
     fun meaningKanjiChoiceCardForSession(
