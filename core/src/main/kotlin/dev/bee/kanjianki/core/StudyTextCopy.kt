@@ -121,6 +121,17 @@ object StudyTextCopy {
     fun similarKanjiHideDetailsLabel(): String = localizedText("Hide details", "詳細を隠す")
 
     @JvmStatic
+    fun similarKanjiWrongChoiceResult(correctKanji: String): String {
+        if (isJapaneseLocale()) {
+            return "不正解。正解は $correctKanji です。"
+        }
+        return "Not quite — the correct kanji is $correctKanji."
+    }
+
+    @JvmStatic
+    fun continueLabel(): String = localizedText("Continue", "次へ")
+
+    @JvmStatic
     fun studyChoiceQuestion(meaning: String): String {
         return if (isJapaneseLocale()) {
             "「$meaning」はどの漢字ですか？"

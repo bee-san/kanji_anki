@@ -37,11 +37,14 @@ class MainActivityStartupTest {
 
             controller.create().start().resume()
 
-            // Two background tasks are queued off the main thread: (1) the startup
-            // scheduler/asset-warmup block, and (2) the resume-time update-install
-            // gating, which now reads auto-update status on the io executor instead of
-            // blocking the UI thread (ANR fix). Neither runs inline on main.
-            assertEquals(2, ioTasks.pendingCount())
+            // Three background tasks are queued off the main thread: (1) the theme
+            // cache warm (route composition reads the theme non-blocking on main),
+            // (2) the maintenance-scheduler block (reminders/auto-sync/auto-update/
+            // backup), and (3) the resume-time update-install gating, which reads
+            // auto-update status on the io executor instead of blocking the UI
+            // thread (ANR fix). Heavy asset warmup runs on its own dedicated thread
+            // so it cannot delay the first route load. Nothing runs inline on main.
+            assertEquals(3, ioTasks.pendingCount())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

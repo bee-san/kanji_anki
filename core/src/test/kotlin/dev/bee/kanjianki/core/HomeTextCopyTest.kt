@@ -114,6 +114,13 @@ class HomeTextCopyTest {
         assertEquals("Study now adds the next kanji.", HomeTextCopy.activePracticeEmptyBody())
         assertEquals("No mistakes yet", HomeTextCopy.noRecentMistakesTitle())
         assertEquals("Missed or hard reviews.", HomeTextCopy.noRecentMistakesBody())
+        assertEquals("Loading…", HomeTextCopy.loadingLabel())
+        assertEquals("Something went wrong", HomeTextCopy.routeLoadErrorTitle())
+        assertEquals(
+            "Kani hit an unexpected error while loading this screen. Your data is safe.",
+            HomeTextCopy.routeLoadErrorBody()
+        )
+        assertEquals("Try again", HomeTextCopy.retryLabel())
     }
 
     @Test

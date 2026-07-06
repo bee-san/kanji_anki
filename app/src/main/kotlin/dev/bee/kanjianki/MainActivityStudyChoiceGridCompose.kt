@@ -39,12 +39,24 @@ internal val SimilarChoiceCellTopPadding = 8.dp
 internal val SimilarChoiceButtonHeight = 82.dp
 
 @Composable
-fun SimilarChoiceGrid(model: SimilarChoiceGridModel) {
+fun SimilarChoiceGrid(model: SimilarChoiceGridModel, state: SimilarChoiceSessionState? = null) {
+    val correctChoice = model.correctChoice
+    val selectedChoice = state?.selectedChoice
+    val answered = correctChoice != null && selectedChoice != null
     KanjiChoiceGrid(
         choices = model.choices,
         balanceLastRow = model.balanceLastRow,
-        enabled = true,
-        onChoice = { glyph -> model.onChoice.onChoice(glyph) }
+        enabled = !answered,
+        onChoice = { glyph ->
+            when {
+                correctChoice == null || state == null -> model.onChoice.onChoice(glyph)
+                // A correct pick advances immediately; a wrong pick pauses with
+                // red/green feedback until the user taps Continue.
+                glyph == correctChoice -> model.onChoice.onChoice(glyph)
+                else -> state.select(glyph)
+            }
+        },
+        feedbackForChoice = { glyph -> feedbackForSimilarChoice(glyph, selectedChoice, correctChoice) },
     )
 }
 

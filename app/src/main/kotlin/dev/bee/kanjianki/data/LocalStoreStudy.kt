@@ -300,6 +300,18 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         return choice
     }
 
+    /**
+     * Non-blocking theme read for main-thread route composition. Never touches the
+     * database: returns the cached choice when a background read or save has already
+     * populated it, and the default theme otherwise. This keeps the very first frame
+     * (and any frame racing a cold-boot migration) from blocking on SQLite - the
+     * synchronous fallback used to ANR cold boots whenever the schema upgrade was
+     * still running on the background executor.
+     */
+    fun appThemeChoiceNonBlocking(): KaniThemeChoice {
+        return cachedThemeChoice ?: KaniThemeChoice.fromStorageKey(null)
+    }
+
     fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice {
         val saved = studySettings().saveAppThemeChoice(choice)
         cachedThemeChoice = saved

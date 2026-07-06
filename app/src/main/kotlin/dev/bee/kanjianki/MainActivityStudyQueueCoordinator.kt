@@ -75,10 +75,28 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study::registerStudyTaskShown,
             study::startActiveStudyTask
         )
-        return { study.renderSession(session) }
+        // Prepare the session render (choice cards, dictionary, stroke guides) here on
+        // the background executor; only the returned render thunk touches the UI.
+        return study.prepareSessionRender(session)
     }
 
     fun renderStudyForKanji(kanji: String?) {
+        // Same async pattern as renderStudy: the targeted-session compute does full
+        // dashboard/study-item reads and queue persistence, which used to run on the
+        // main thread for undo and browse-detail entry points.
+        study.loadRouteAsync(
+            showLoading = { study.renderStudyLoading() },
+            load = { computeStudyForKanjiRender(kanji) },
+            render = { it() },
+            traceName = "study-kanji-route",
+        )
+    }
+
+    /**
+     * Background-thread compute for the targeted-kanji study entry points (undo,
+     * browse detail). Returns a thunk that renders the resulting screen on main.
+     */
+    private fun computeStudyForKanjiRender(kanji: String?): () -> Unit {
         study.clearStudyModeOverrides()
         study.resetStudyRunProgress()
         study.activeSimilarWritingRepair = null
@@ -89,8 +107,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
-            study.renderStudyForKanjiNotAvailable()
-            return
+            return { study.renderStudyForKanjiNotAvailable() }
         }
         val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
         study.activeStudyPlan = study.adaptivePlan(rows, seeded, now)
@@ -101,8 +118,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             ladder
         )
         if (session == null) {
-            study.renderStudyForKanjiNotAvailable()
-            return
+            return { study.renderStudyForKanjiNotAvailable() }
         }
         study.activeSession = session
         StudySessionActions.activateStudySession(
@@ -112,7 +128,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study::registerStudyTaskShown,
             study::startActiveStudyTask
         )
-        study.renderSession(session)
+        return study.prepareSessionRender(session)
     }
 
     /**
@@ -157,6 +173,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                     MainActivityBase.TASK_REPAIR_WRITING,
                     now,
                 )
+                // Warm the stroke-guide asset on this background thread so the writing
+                // pad render never parses it on main.
+                study.warmStrokeGuides()
+                study.warmDictionaryLookup()
                 return { study.renderComposeWritingSession(session) }
             }
         }

@@ -232,12 +232,17 @@ four-way switch is `MainActivityStudy.renderSession`
   `similar_kanji_review_log`;
   `LocalStoreSimilarKanjiMaintenance.kt:14-94`). When false, promotion and
   demotion skip this rung without pausing.
-- **UI**: `MainActivityStudyChoiceSessions.renderSimilarKanjiSession`
-  (`:137-184`) — a 2-column glyph grid of visually similar kanji built by
-  `SimilarKanjiChoicePlanner`, with an "Explore the differences"
-  explanation screen. If fewer than 2 choices can be produced at render
-  time, it falls back to the flashcard renderer (`:142-145`) while keeping
-  the `similar_kanji` task type.
+- **UI**: `MainActivityStudyChoiceSessions.prepareSimilarKanjiRender`
+  (invoked from `renderSimilarKanjiSession`) — a 2-column glyph grid of
+  visually similar kanji built by `SimilarKanjiChoicePlanner`, with an
+  "Explore the differences" explanation screen. Store/dictionary reads run
+  on the background executor; only the returned render thunk touches the
+  UI. If fewer than 2 choices can be produced, it falls back to the
+  flashcard renderer while keeping the `similar_kanji` task type. A correct
+  tap submits immediately; a wrong tap freezes the grid with red (pressed)
+  / green (correct) feedback and waits for an explicit Continue tap before
+  submitting (`SimilarChoiceSessionState`,
+  `MainActivityStudyChoiceCompose.kt`).
 - **Rating surface**: choice correctness → `good`/`again`
   (`MainActivityStudyReviewFlow.submitSimilarKanjiChoice`, `:81-95`). Wrong
   picks are logged to `similar_kanji_review_log` and can enqueue a writing

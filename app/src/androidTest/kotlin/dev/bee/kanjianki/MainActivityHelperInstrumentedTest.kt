@@ -882,12 +882,19 @@ fun gamesHostPathsRenderComposeResultAndUnavailableStates() {
     @Test
 fun studyRenderAndProgressHelpersCoverTerminalStudyStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                var dueLater = RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 2, listOf("裂", "語"), 0, false, "Two left")
-                var complete = RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 0, listOf("裂", "語"), 0, false, "Done")
-                var now = System.currentTimeMillis()
+            val dueLater = RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 2, listOf("裂", "語"), 0, false, "Two left")
+            val complete = RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 0, listOf("裂", "語"), 0, false, "Done")
+            val now = System.currentTimeMillis()
 
+            scenario.onActivity { activity ->
                 verifyTerminalStudyScreens(activity, dueLater, complete);
+            }
+            // renderStudyForKanji renders asynchronously: trigger on main, then poll
+            // from the instrumentation thread for the loaded content.
+            scenario.onActivity { activity -> activity.renderStudyForKanji("謎") }
+            waitForText(scenario, "Kanji not available")
+            scenario.onActivity { activity ->
+                assertHasText(activity, "This kanji changed after sync.");
                 verifyStudyMoreNewCardRequests(activity, now);
                 var session = verifyStudyRunProgressTracking(activity, dueLater)
                 verifyActiveStudyTaskTracking(activity);
@@ -913,9 +920,6 @@ private fun verifyTerminalStudyScreens(activity: MainActivity, dueLater: Records
         activity.markStudyTaskCompleted("done:two");
         activity.renderStudyRunDone(dueLater);
         assertHasText(activity, "Study now: 2 / 3");
-        activity.renderStudyForKanji("謎");
-        assertHasText(activity, "Kanji not available");
-        assertHasText(activity, "This kanji changed after sync.");
     }
 
 private fun verifyStudyMoreNewCardRequests(activity: MainActivity, now: Long) {
@@ -1622,9 +1626,16 @@ fun flashcardButtonsAndGesturesPersistPassFailOnlyAfterReveal() {
     @Test
 fun homeBrowseDetailStatsAndSyncControlsCoverNonEmptyBranches() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val activeRow = row("裂", "split", "レツ", listOf(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)))
             scenario.onActivity { activity ->
-                var activeRow = row("裂", "split", "レツ", listOf(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)))
                 verifyHomeBrowseRowsAndDetail(activity, activeRow);
+            }
+            // renderStudyForKanji renders asynchronously: trigger on main, then poll
+            // from the instrumentation thread for the loaded content.
+            scenario.onActivity { activity -> activity.renderStudyForKanji("裂") }
+            waitForText(scenario, "Name this kanji")
+            scenario.onActivity { activity ->
+                verifyBrowseSuspensionControls(activity);
                 verifyRecentMistakesAndEmptyTimeline(activity);
                 verifyStatsVerdictBranches(activity, activeRow);
                 verifySyncResultStudyNow(activity);
@@ -1665,8 +1676,9 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         )
         assertTrue(learningRow.tags.any { it.label == "learning" })
         seedRows(activity, listOf(activeRow));
-        activity.renderStudyForKanji("裂");
-        assertHasText(activity, "Name this kanji");
+    }
+
+private fun verifyBrowseSuspensionControls(activity: MainActivity) {
         activity.store.setKanjiLocallySuspended("裂", true, 1000L);
 
         activity.renderBrowseKanji("裂");
@@ -2079,11 +2091,13 @@ fun writingRecognizerStatusCallbacksUpdateTheVisibleState() {
     @Test
 fun studyEntryPointsAndWritingGuardsCoverEmptyAndUnavailableStates() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            // Study routes render asynchronously: trigger on main, then poll from the
+            // instrumentation thread for the loaded content.
+            scenario.onActivity { activity -> activity.renderStudy() }
+            waitForText(scenario, "Nothing to study yet")
+            scenario.onActivity { activity -> activity.renderStudyForKanji("missing") }
+            waitForText(scenario, "Kanji not available")
             scenario.onActivity { activity ->
-                activity.renderStudy();
-                assertHasText(activity, "Nothing to study yet");
-                activity.renderStudyForKanji("missing");
-                assertHasText(activity, "Kanji not available");
                 assertFalse(activity.startStudyMoreNewCards(3));
 
                 activity.checkWriting();
@@ -2413,6 +2427,28 @@ private fun waitForText(activity: MainActivity, text: String, timeoutMillis: Lon
             Thread.sleep(100L)
         }
         assertHasText(activity, text)
+    }
+
+/**
+ * Waits for [text] by polling from the instrumentation thread between short
+ * onActivity hops. Required for asynchronously rendered routes (study/browse/
+ * home): polling inside a single onActivity block would hold the main thread
+ * and the posted render could never run.
+ */
+private fun waitForText(scenario: ActivityScenario<MainActivity>, text: String, timeoutMillis: Long = 5000L) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            var found = false
+            scenario.onActivity { activity ->
+                val root = activity.findViewById<ViewGroup>(android.R.id.content)
+                found = containsText(root, text) || findDeviceTextNow(text) != null
+            }
+            if (found) {
+                return
+            }
+            Thread.sleep(100L)
+        }
+        scenario.onActivity { activity -> assertHasText(activity, text) }
     }
 
 private fun assertContainsText(root: View, text: String) {

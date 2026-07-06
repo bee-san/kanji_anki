@@ -438,8 +438,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
                     )
                 }
             },
-            load = load,
+            load = warmThemeThen(load),
             render = render,
+            renderError = { error ->
+                renderRouteLoadError(error) { renderAsyncHomeRoute(loadingTitle, load, render, traceName) }
+            },
             traceLabel = traceName,
             showLoadingAfterMs = 120,
         )
@@ -461,11 +464,47 @@ internal abstract class MainActivityHome : MainActivityBase() {
     ) {
         asyncHomeRouteLoader.load(
             showLoading = showLoading,
-            load = load,
+            load = warmThemeThen(load),
             render = render,
+            renderError = { error ->
+                renderRouteLoadError(error) { loadRouteAsync(showLoading, load, render, traceName, showLoadingAfterMs) }
+            },
             traceLabel = traceName,
             showLoadingAfterMs = showLoadingAfterMs,
         )
+    }
+
+    /**
+     * Route composition reads the theme choice on the main thread through an in-memory
+     * cache. Populate that cache here on the background executor so the main thread
+     * never has to fall back to a synchronous SQLite read that could block behind a
+     * cold-boot database open or migration (historical cold-boot ANR source).
+     */
+    private fun <T> warmThemeThen(load: () -> T): () -> T {
+        return {
+            if (isStoreInitialized()) {
+                runCatching { store.appThemeChoice() }
+            }
+            load()
+        }
+    }
+
+    /**
+     * Renders a recoverable error screen for a failed background route load. Route
+     * loads used to rethrow on the main thread, which crashed the app during cold
+     * boot whenever the model build failed; keep the shell alive instead.
+     */
+    private fun renderRouteLoadError(error: Throwable, retry: () -> Unit) {
+        android.util.Log.e("Kani", "Background route load failed", error)
+        composeRoute(selected = currentRoute) {
+            HomeRouteErrorScreen(
+                title = HomeTextCopy.routeLoadErrorTitle(),
+                retryLabel = HomeTextCopy.retryLabel(),
+                onRetry = retry,
+                homeLabel = HomeTextCopy.homeLabel(),
+                onHome = this::renderHome,
+            )
+        }
     }
 
     fun cancelPendingHomeRouteLoads() {

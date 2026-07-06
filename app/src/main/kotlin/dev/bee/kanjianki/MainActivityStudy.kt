@@ -138,11 +138,32 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
-        when (StudySessionRoute.destination(session)) {
-            StudySessionRoute.Destination.WRITING -> writingSession.renderComposeWritingSession(session)
-            StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.renderSimilarKanjiSession(session)
-            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.renderMeaningKanjiSession(session)
-            StudySessionRoute.Destination.FLASHCARD -> flashcardUi.renderComposeFlashcardSession(session)
+        prepareSessionRender(session).invoke()
+    }
+
+    /**
+     * Prepares everything expensive for rendering [session] (store reads, dictionary
+     * lookups, choice-card planning, heavy asset warmup) and returns a thunk that
+     * performs the actual main-thread render. Safe to call on the background io
+     * executor: the study route coordinator uses this so the cold-boot path
+     * home -> study never scans the kanji inventory or parses the 9.5 MB stroke
+     * asset on the UI thread.
+     */
+    fun prepareSessionRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+        return when (StudySessionRoute.destination(session)) {
+            StudySessionRoute.Destination.WRITING -> {
+                warmStrokeGuides()
+                warmDictionaryLookup()
+                val render: () -> Unit = { writingSession.renderComposeWritingSession(session) }
+                render
+            }
+            StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session)
+            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session)
+            StudySessionRoute.Destination.FLASHCARD -> {
+                warmDictionaryLookup()
+                val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session) }
+                render
+            }
         }
     }
 

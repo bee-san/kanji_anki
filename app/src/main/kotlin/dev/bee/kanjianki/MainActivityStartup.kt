@@ -17,19 +17,31 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.store = LocalStore(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
-        if (shouldRunBackgroundStartupTasks(launchIntent)) {
+        val runBackgroundTasks = shouldRunBackgroundStartupTasks(launchIntent)
+        if (runBackgroundTasks) {
+            // Warm the in-memory theme cache first on the io executor. Route
+            // composition reads the theme non-blocking on the main thread, so this
+            // (or the per-route warm in MainActivityHome) must run before the first
+            // real route render for the user's theme to apply. Queuing it first also
+            // means any pending DB migration runs here, off the main thread, before
+            // the home model load that is queued next.
+            activity.io.execute { runCatching { activity.store.appThemeChoice() } }
+            // Heavy asset parsing (9.5 MB stroke TSV + dictionary install/hash) gets
+            // its own thread: it used to share the single-threaded io executor and
+            // serialized the first home load behind seconds of asset warmup.
+            warmHeavyAssetsOnOwnThread()
+        }
+        // Queue the launch route load before the maintenance schedulers so the first
+        // screen the user sees is not waiting behind WorkManager/AlarmManager setup.
+        handleLaunchIntent(launchIntent)
+        if (runBackgroundTasks) {
             activity.io.execute {
                 ReminderScheduler.schedule(activity)
                 AutoSyncScheduler.schedule(activity)
                 AutoUpdateScheduler.schedule(activity)
                 DatabaseBackupScheduler.schedule(activity)
-                // Warm heavy assets off the main thread so the first writing card and
-                // first flashcard reveal do not parse them synchronously on tap. First
-                // use blocks on the same thread-safe init if warmup has not finished.
-                warmHeavyAssets()
             }
         }
-        handleLaunchIntent(launchIntent)
     }
 
     fun handleLaunchIntent(intent: Intent?) {
@@ -63,9 +75,20 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         return backgroundStartupTasksAllowed(intent)
     }
 
-    private fun warmHeavyAssets() {
-        runCatching { activity.warmStrokeGuides() }
-        runCatching { activity.warmDictionaryLookup() }
+    /**
+     * Warm heavy assets on a dedicated daemon thread so the first writing card and
+     * first flashcard reveal do not parse them synchronously on tap, and so the
+     * single-threaded io executor stays free for the first route load. First use
+     * blocks on the same thread-safe init if warmup has not finished.
+     */
+    private fun warmHeavyAssetsOnOwnThread() {
+        Thread({
+            runCatching { activity.warmStrokeGuides() }
+            runCatching { activity.warmDictionaryLookup() }
+        }, "kani-asset-warmup").apply {
+            isDaemon = true
+            start()
+        }
     }
 
     private fun renderRoute(route: String) {

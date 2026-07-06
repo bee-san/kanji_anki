@@ -55,50 +55,68 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     private val meaningChoiceRandom: Random = SecureRandom()
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSession(true)
+        prepareMeaningKanjiRender(session).invoke()
+    }
 
+    /**
+     * Background-safe preparation for the meaning-kanji rung: performs every store
+     * read and dictionary lookup here (safe on the io executor), and returns a thunk
+     * that only builds compose models and renders when invoked on the main thread.
+     * This keeps the cold-boot study path from scanning the full kanji inventory and
+     * blocking on the dictionary install on the UI thread.
+     */
+    fun prepareMeaningKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
-            home.renderComposeFlashcardSession(session)
-            return
+            home.warmDictionaryLookup()
+            return {
+                resetChoiceSession(true)
+                home.renderComposeFlashcardSession(session)
+            }
         }
 
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
-        val model = MeaningChoiceSessionModel(
-            StudyTaskCopy.studyModeLabel(session),
-            StudyTextCopy.studyChoiceTitle(),
-            StudyTaskCopy.labelForTask(session.taskType),
-            StudyTextCopy.studyChoiceBody(),
-            "",
-            StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt),
-            choiceCard.choices,
-            answerPanel,
-            KanjiChoiceHandler { glyph ->
-                val correct = choiceCard.isCorrect(glyph)
-                home.store.recordChoiceReviewLog(
-                    choiceCard.targetKanji,
-                    SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
-                    glyph,
-                    correct,
-                    RecordsBase.LadderRung.MEANING_KANJI.wireName(),
-                    System.currentTimeMillis(),
-                )
-                home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
-            },
-            MeaningChoiceResultResolver { glyph ->
-                val correct = choiceCard.isCorrect(glyph)
-                val prompt = home.activeSession?.prompt ?: ""
-                MeaningChoiceResultModel(
-                    StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
-                    if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                    if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
-                    correctChoice = choiceCard.targetKanji,
-                    selectedChoiceCorrect = correct,
-                )
-            },
-        )
-        val state = MeaningChoiceSessionState()
-        renderMeaningChoiceRoute(model, state)
+        val question = StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt)
+        val modeLabel = StudyTaskCopy.studyModeLabel(session)
+        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
+
+        return {
+            resetChoiceSession(true)
+            val model = MeaningChoiceSessionModel(
+                modeLabel,
+                StudyTextCopy.studyChoiceTitle(),
+                taskLabel,
+                StudyTextCopy.studyChoiceBody(),
+                "",
+                question,
+                choiceCard.choices,
+                answerPanel,
+                KanjiChoiceHandler { glyph ->
+                    val correct = choiceCard.isCorrect(glyph)
+                    home.store.recordChoiceReviewLog(
+                        choiceCard.targetKanji,
+                        SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                        glyph,
+                        correct,
+                        RecordsBase.LadderRung.MEANING_KANJI.wireName(),
+                        System.currentTimeMillis(),
+                    )
+                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                },
+                MeaningChoiceResultResolver { glyph ->
+                    val correct = choiceCard.isCorrect(glyph)
+                    val prompt = home.activeSession?.prompt ?: ""
+                    MeaningChoiceResultModel(
+                        StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
+                        if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        correctChoice = choiceCard.targetKanji,
+                        selectedChoiceCorrect = correct,
+                    )
+                },
+            )
+            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+        }
     }
 
     private fun renderMeaningChoiceRoute(model: MeaningChoiceSessionModel, state: MeaningChoiceSessionState) {
@@ -135,13 +153,23 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderSimilarKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSession(false)
+        prepareSimilarKanjiRender(session).invoke()
+    }
 
+    /**
+     * Background-safe preparation for the similar-kanji rung. Store reads (choice
+     * state, similar pairs, kanji inventory scan) and dictionary lookups run here;
+     * the returned thunk only assembles compose models and renders on main.
+     */
+    fun prepareSimilarKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
         if (choices.size < 2) {
-            home.renderComposeFlashcardSession(session)
-            return
+            home.warmDictionaryLookup()
+            return {
+                resetChoiceSession(false)
+                home.renderComposeFlashcardSession(session)
+            }
         }
         choices.shuffle()
 
@@ -159,28 +187,36 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             similarKanjiExplanationSourceWords(session),
         )
         val explanationLines = similarKanjiExplanationLines(explanation)
-        val model = SimilarChoiceSessionModel(
-            StudyTaskCopy.studyModeLabel(session),
-            StudyTextCopy.studyChoiceTitle(),
-            StudyTaskCopy.labelForTask(session.taskType),
-            StudyTextCopy.studyChoiceBody(),
-            reason,
-            StudyTextCopy.studyChoiceQuestion(meaning),
-            SimilarChoiceGridModel(
+        val modeLabel = StudyTaskCopy.studyModeLabel(session)
+        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
+
+        return {
+            resetChoiceSession(false)
+            val model = SimilarChoiceSessionModel(
+                modeLabel,
+                StudyTextCopy.studyChoiceTitle(),
+                taskLabel,
+                StudyTextCopy.studyChoiceBody(),
+                reason,
+                StudyTextCopy.studyChoiceQuestion(meaning),
+                SimilarChoiceGridModel(
+                    choices,
+                    false,
+                    KanjiChoiceHandler { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
+                    correctChoice = choiceCard.targetKanji,
+                ),
+                explanationLines,
+            )
+            lateinit var differenceModel: SimilarKanjiDifferenceModel
+            differenceModel = similarKanjiDifferenceModel(
+                choiceCard.targetKanji,
                 choices,
-                false
-            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
-            explanationLines,
-        )
-        lateinit var differenceModel: SimilarKanjiDifferenceModel
-        differenceModel = similarKanjiDifferenceModel(
-            choiceCard.targetKanji,
-            choices,
-            model.modeLabel,
-            explanationLines,
-            onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
-        )
-        renderSimilarChoiceRoute(model, differenceModel)
+                model.modeLabel,
+                explanationLines,
+                onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
+            )
+            renderSimilarChoiceRoute(model, differenceModel)
+        }
     }
 
     private fun renderSimilarChoiceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {

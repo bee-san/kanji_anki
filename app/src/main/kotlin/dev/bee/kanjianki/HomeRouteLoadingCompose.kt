@@ -12,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -22,6 +21,50 @@ internal fun HomeRouteLoadingScreen(
     title: String,
     homeLabel: String,
     onHome: () -> Unit,
+) {
+    HomeRouteStatusScreen(
+        title = title,
+        body = HomeTextCopy.loadingLabel(),
+        showProgress = true,
+        homeLabel = homeLabel,
+        onHome = onHome,
+    )
+}
+
+/**
+ * Fallback screen for a failed background route load. Cold-boot route loads used
+ * to rethrow their exception on the main thread and crash the whole app; this
+ * keeps the shell alive and gives the user a retry path instead.
+ */
+@Composable
+internal fun HomeRouteErrorScreen(
+    title: String,
+    retryLabel: String,
+    onRetry: () -> Unit,
+    homeLabel: String,
+    onHome: () -> Unit,
+) {
+    HomeRouteStatusScreen(
+        title = title,
+        body = HomeTextCopy.routeLoadErrorBody(),
+        showProgress = false,
+        homeLabel = homeLabel,
+        onHome = onHome,
+        primaryActionLabel = retryLabel,
+        onPrimaryAction = onRetry,
+    )
+}
+
+/** Shared scaffold for the loading and error route states. */
+@Composable
+private fun HomeRouteStatusScreen(
+    title: String,
+    body: String,
+    showProgress: Boolean,
+    homeLabel: String,
+    onHome: () -> Unit,
+    primaryActionLabel: String? = null,
+    onPrimaryAction: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -44,11 +87,18 @@ internal fun HomeRouteLoadingScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = HomeTextCopy.loadingLabel(),
+                    text = body,
                     style = MaterialTheme.typography.bodyLarge,
                     color = KaniTheme.colors.muted,
                 )
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                if (showProgress) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+        if (primaryActionLabel != null) {
+            Button(onClick = { withButtonTrace(primaryActionLabel) { onPrimaryAction() } }) {
+                Text(primaryActionLabel)
             }
         }
         Button(onClick = { withButtonTrace(homeLabel) { onHome() } }) {
