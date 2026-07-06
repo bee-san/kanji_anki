@@ -68,7 +68,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     fun prepareMeaningKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
-            home.warmDictionaryLookup()
+            home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(true)
                 home.renderComposeFlashcardSession(session)
@@ -79,6 +79,12 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val question = StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
         val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
+        // Precompute both result texts here on the background executor: the result
+        // resolver runs in the answer click handler on the main thread, and the copy
+        // only depends on whether the pick was correct, not on which glyph was picked.
+        // This keeps the dictionary lookup out of the main-thread answer path.
+        val resultCorrectText = StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, session.prompt, true)
+        val resultWrongText = StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, session.prompt, false)
 
         return {
             resetChoiceSession(true)
@@ -93,21 +99,25 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 answerPanel,
                 KanjiChoiceHandler { glyph ->
                     val correct = choiceCard.isCorrect(glyph)
-                    home.store.recordChoiceReviewLog(
-                        choiceCard.targetKanji,
-                        SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
-                        glyph,
-                        correct,
-                        RecordsBase.LadderRung.MEANING_KANJI.wireName(),
-                        System.currentTimeMillis(),
-                    )
+                    // The choice log write and the review submit both run on the
+                    // single-threaded io executor, in order; the click handler stays
+                    // off the database entirely.
+                    home.io.execute {
+                        home.store.recordChoiceReviewLog(
+                            choiceCard.targetKanji,
+                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                            glyph,
+                            correct,
+                            RecordsBase.LadderRung.MEANING_KANJI.wireName(),
+                            System.currentTimeMillis(),
+                        )
+                    }
                     home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
                 },
                 MeaningChoiceResultResolver { glyph ->
                     val correct = choiceCard.isCorrect(glyph)
-                    val prompt = home.activeSession?.prompt ?: ""
                     MeaningChoiceResultModel(
-                        StudyTextCopy.meaningKanjiChoiceResult(home.currentDictionaryLookup(), choiceCard, prompt, correct),
+                        if (correct) resultCorrectText else resultWrongText,
                         if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
                         if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
                         correctChoice = choiceCard.targetKanji,
@@ -165,7 +175,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
         if (choices.size < 2) {
-            home.warmDictionaryLookup()
+            home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(false)
                 home.renderComposeFlashcardSession(session)

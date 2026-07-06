@@ -30,6 +30,22 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
     private val manifestFile = File(databaseFile.parentFile, PRIVATE_MANIFEST)
     private val checksumFile = File(databaseFile.parentFile, PRIVATE_CHECKSUM)
 
+    // The dictionary is queried from the main-thread study render path (answer
+    // panels, choice questions). Opening a fresh SQLiteDatabase per lookup was the
+    // dominant cost of those queries, so keep one shared read-only connection open
+    // for the lifetime of this store and cache recent per-kanji entries in memory.
+    // SQLiteDatabase is internally synchronized, so concurrent reads are safe.
+    private val connectionLock = Any()
+
+    @Volatile
+    private var readDatabase: SQLiteDatabase? = null
+
+    private val entryCache = object : LinkedHashMap<String, KanjiEntry?>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, KanjiEntry?>): Boolean {
+            return size > ENTRY_CACHE_MAX
+        }
+    }
+
     fun installVerifiedDictionary(database: File, manifest: File, checksum: File): InstallResult {
         val temp = File(databaseFile.parentFile, PRIVATE_DB + INSTALLING_SUFFIX)
         val tempManifest = File(databaseFile.parentFile, PRIVATE_MANIFEST + INSTALLING_SUFFIX)
@@ -49,6 +65,7 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
             atomicReplace(temp, databaseFile)
             atomicReplace(tempManifest, manifestFile)
             atomicReplace(tempChecksum, checksumFile)
+            invalidateCaches()
             InstallResult.installed("Dictionary installed.")
         } catch (error: IOException) {
             deleteQuietly(temp)
@@ -63,52 +80,65 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         if (normalized.isEmpty()) {
             return null
         }
-        return try {
-            openReadOnly().use { db ->
-                db.query(
-                    "kanji",
-                    null,
-                    "literal=?",
-                    arrayOf(normalized),
-                    null,
-                    null,
-                    null,
-                    "1"
-                ).use { cursor ->
-                    if (!cursor.moveToFirst()) {
-                        null
-                    } else {
-                        KanjiEntry(
-                            KanjiEntryFields(
-                                string(cursor, COLUMN_LITERAL),
-                                splitList(string(cursor, "meanings")),
-                                splitList(string(cursor, "on_readings")),
-                                splitList(string(cursor, "kun_readings")),
-                                splitList(string(cursor, "nanori_readings")),
-                                integer(cursor, "stroke_count"),
-                                integer(cursor, "grade"),
-                                integer(cursor, "radical"),
-                                integer(cursor, "kanjidic_frequency"),
-                                nullableInteger(cursor, "jiten_rank")
-                            )
-                        )
-                    }
-                }
+        synchronized(entryCache) {
+            if (entryCache.containsKey(normalized)) {
+                return entryCache[normalized]
             }
+        }
+        return try {
+            val entry = queryKanji(normalized)
+            synchronized(entryCache) {
+                entryCache[normalized] = entry
+            }
+            entry
         } catch (_: SQLiteException) {
+            // The connection may be stale (e.g. the database file was replaced by an
+            // install); drop it so the next lookup reopens, and do not cache the miss.
+            invalidateConnection()
             null
+        }
+    }
+
+    private fun queryKanji(normalized: String): KanjiEntry? {
+        return readableDatabase().query(
+            "kanji",
+            null,
+            "literal=?",
+            arrayOf(normalized),
+            null,
+            null,
+            null,
+            "1"
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                null
+            } else {
+                KanjiEntry(
+                    KanjiEntryFields(
+                        string(cursor, COLUMN_LITERAL),
+                        splitList(string(cursor, "meanings")),
+                        splitList(string(cursor, "on_readings")),
+                        splitList(string(cursor, "kun_readings")),
+                        splitList(string(cursor, "nanori_readings")),
+                        integer(cursor, "stroke_count"),
+                        integer(cursor, "grade"),
+                        integer(cursor, "radical"),
+                        integer(cursor, "kanjidic_frequency"),
+                        nullableInteger(cursor, "jiten_rank")
+                    )
+                )
+            }
         }
     }
 
     override fun kanjiCount(): Int {
         return try {
-            openReadOnly().use { db ->
-                db.rawQuery("SELECT COUNT(*) FROM kanji", null).use { cursor ->
-                    cursor.moveToFirst()
-                    cursor.getInt(0)
-                }
+            readableDatabase().rawQuery("SELECT COUNT(*) FROM kanji", null).use { cursor ->
+                cursor.moveToFirst()
+                cursor.getInt(0)
             }
         } catch (_: SQLiteException) {
+            invalidateConnection()
             0
         }
     }
@@ -116,21 +146,40 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
     override fun jitenRanks(): JitenKanjiRanks {
         val ranks = LinkedHashMap<String, Int>()
         return try {
-            openReadOnly().use { db ->
-                db.rawQuery("SELECT literal, rank FROM jiten_ranks ORDER BY rank ASC, literal ASC", null).use { cursor ->
-                    while (cursor.moveToNext()) {
-                        ranks[cursor.getString(0)] = cursor.getInt(1)
-                    }
+            readableDatabase().rawQuery("SELECT literal, rank FROM jiten_ranks ORDER BY rank ASC, literal ASC", null).use { cursor ->
+                while (cursor.moveToNext()) {
+                    ranks[cursor.getString(0)] = cursor.getInt(1)
                 }
             }
             JitenKanjiRanks(ranks)
         } catch (_: SQLiteException) {
+            invalidateConnection()
             JitenKanjiRanks.empty()
         }
     }
 
-    private fun openReadOnly(): SQLiteDatabase {
-        return SQLiteDatabase.openDatabase(databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+    private fun readableDatabase(): SQLiteDatabase {
+        readDatabase?.let { if (it.isOpen) return it }
+        synchronized(connectionLock) {
+            readDatabase?.let { if (it.isOpen) return it }
+            val db = SQLiteDatabase.openDatabase(databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+            readDatabase = db
+            return db
+        }
+    }
+
+    private fun invalidateConnection() {
+        synchronized(connectionLock) {
+            readDatabase?.let { db -> runCatching { db.close() } }
+            readDatabase = null
+        }
+    }
+
+    private fun invalidateCaches() {
+        invalidateConnection()
+        synchronized(entryCache) {
+            entryCache.clear()
+        }
     }
 
     fun interface AssetOpener {
@@ -178,6 +227,7 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
     }
 
     companion object {
+        private const val ENTRY_CACHE_MAX = 512
         private val SHA256_HEX_PATTERN: Pattern = Pattern.compile("[0-9a-fA-F]{64}")
         private val CHECKSUM_PART_SEPARATOR: Pattern = Pattern.compile("\\s+")
         private const val COLUMN_LITERAL = "literal"

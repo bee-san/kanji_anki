@@ -3,6 +3,27 @@ package dev.bee.kanjianki.data
 internal class LocalStoreStudyStatus(
     private val store: LocalStore,
 ) {
+    /**
+     * Indexed single-token idempotency check. The review submit path used to load the
+     * entire (unbounded, ever-growing) review_log token column on every Pass/Fail tap
+     * just to test membership of one token; the token column is UNIQUE, so a targeted
+     * lookup answers the same question in O(log n).
+     */
+    fun hasConsumedToken(token: String): Boolean {
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_TOKEN),
+            "${LocalStoreBase.COLUMN_TOKEN}=?",
+            arrayOf(token),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
     fun consumedTokens(): List<String> {
         val tokens = mutableListOf<String>()
         store.readableDatabase.query(

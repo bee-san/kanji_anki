@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
-import dev.bee.kanjianki.data.DictionaryAssets
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -196,8 +195,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     @Volatile
     var dictionaryLookup: DictionaryLookup? = null
-
-    private val assetWarmupLock = Any()
 
     @JvmField
     var pendingReminderSettings: LocalStoreBase.ReminderSettings? = null
@@ -426,32 +423,28 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     /**
      * Parse and cache the stroke-guide asset, safe to call from any thread. Startup
-     * warms this on the io executor; first use blocks on the same single init if warmup
-     * has not finished yet. Double-checked locking on [assetWarmupLock].
+     * warms this on a dedicated thread; the cache is process-wide (see
+     * [AssetWarmupCache]), so activity recreation reuses the already-parsed map and
+     * only the very first call in the process pays the 9.5 MB parse.
      */
     fun warmStrokeGuides(): Map<String, StrokeGuide> {
         strokeGuides?.let { return it }
-        synchronized(assetWarmupLock) {
-            strokeGuides?.let { return it }
-            val loaded = StrokeGuideAssets.load(this)
-            strokeGuides = loaded
-            return loaded
-        }
+        val loaded = AssetWarmupCache.strokeGuides(this)
+        strokeGuides = loaded
+        return loaded
     }
 
     /**
      * Open and cache the dictionary lookup (copies + hashes the bundled asset DB on
-     * first run), safe to call from any thread. Warmed on the io executor at startup;
-     * first use blocks on the same single init otherwise.
+     * first run), safe to call from any thread. Cached process-wide (see
+     * [AssetWarmupCache]) so activity recreation reuses the installed lookup and its
+     * open read connection.
      */
     fun warmDictionaryLookup(): DictionaryLookup {
         dictionaryLookup?.let { return it }
-        synchronized(assetWarmupLock) {
-            dictionaryLookup?.let { return it }
-            val loaded = DictionaryAssets.load(this)
-            dictionaryLookup = loaded
-            return loaded
-        }
+        val loaded = AssetWarmupCache.dictionaryLookup(this)
+        dictionaryLookup = loaded
+        return loaded
     }
 
     fun settings(): RecordsSyncModels.Settings {

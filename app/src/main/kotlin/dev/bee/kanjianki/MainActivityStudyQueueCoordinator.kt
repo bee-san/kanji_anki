@@ -42,7 +42,16 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return { study.renderEmptyStudyQueue() }
         }
         val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
-        val seededPlan = withStudyLoadProbe("studyPlanForMode#2") { study.studyPlanForMode(rows, seeded, now) }
+        val seededPlan = withStudyLoadProbe("studyPlanForMode#2") {
+            // The plan is a pure function of (rows, items, now) plus mode state that
+            // cannot change mid-compute, so when seeding left the queue unchanged the
+            // first plan is still exact and the second computation is skipped.
+            if (plan != null && StudyItemComparators.sameStudyQueue(currentItems, seeded)) {
+                plan
+            } else {
+                study.studyPlanForMode(rows, seeded, now)
+            }
+        }
         study.activeStudyPlan = seededPlan
         pendingRepairOrDoneRender(seededPlan, now, ladder)?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
@@ -62,10 +71,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         val session = study.activeSession
         if (session == null) {
+            warmStudyDoneAvailability()
             return { study.renderNoStudySession(seededPlan) }
         }
         if (session.item == null) {
             study.activeSession = null
+            warmStudyDoneAvailability()
             return { study.renderNoStudySession(seededPlan) }
         }
         StudySessionActions.activateStudySession(
@@ -110,7 +121,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return { study.renderStudyForKanjiNotAvailable() }
         }
         val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
-        study.activeStudyPlan = study.adaptivePlan(rows, seeded, now)
+        val preSeedPlan = study.activeStudyPlan
+        study.activeStudyPlan = if (preSeedPlan != null && StudyItemComparators.sameStudyQueue(currentItems, seeded)) {
+            preSeedPlan
+        } else {
+            study.adaptivePlan(rows, seeded, now)
+        }
         val session = BridgeScheduler().targetedSession(
             seeded,
             row,
@@ -173,16 +189,30 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                     MainActivityBase.TASK_REPAIR_WRITING,
                     now,
                 )
-                // Warm the stroke-guide asset on this background thread so the writing
-                // pad render never parses it on main.
+                // Warm the stroke-guide asset and the repair kanji's dictionary entry
+                // on this background thread so the writing pad render never parses or
+                // queries them on main.
                 study.warmStrokeGuides()
-                study.warmDictionaryLookup()
+                study.warmSessionDictionaryEntry(session)
                 return { study.renderComposeWritingSession(session) }
             }
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
+            warmStudyDoneAvailability()
             return { study.doneActions.renderStudyRunDone(plan) }
         }
         return null
+    }
+
+    /**
+     * Pre-computes the "study more new cards" availability on the background thread.
+     * The study-done screens read it while rendering on main; with the caches warmed
+     * here that read is a cache hit instead of dashboard/study-item queries plus a
+     * scheduler count on the UI thread.
+     */
+    private fun warmStudyDoneAvailability() {
+        withStudyLoadProbe("studyDoneAvailability") {
+            study.availableStudyMoreNewCards()
+        }
     }
 }
