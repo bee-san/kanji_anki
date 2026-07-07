@@ -163,7 +163,10 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          # SonarCloud dropped Java 17 support for the scanner runtime; it now requires
+          # Java 21+. The Gradle build still targets Java 17 bytecode (source/target
+          # compatibility) but runs fine on a JDK 21 toolchain.
+          java-version: "21"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
