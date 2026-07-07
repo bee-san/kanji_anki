@@ -866,9 +866,20 @@ class ComposeScreenModelsTest {
             onOpenUpdater = {},
         )
         val theme = SettingsThemePanelModels.themeSettingsPanelModel(KaniThemeChoice.GIRLYPOP) { }
+        val debugLog = SettingsDebugLogPanelModel(
+            title = "Debug log",
+            status = "Off",
+            statusColor = 0xFF6C5674.toInt(),
+            detail = "Records timestamped app activity.",
+            toggleLabel = "Turn on debug log",
+            togglePrimary = true,
+            onToggle = noop,
+            shareLabel = "Share debug log",
+            onShare = noop,
+        )
 
         val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
-        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update)
+        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update, debugLog)
         val appearance = settingsAppearanceCategoryModel(false, noop, theme)
         val referenceData = settingsReferenceDataCategoryModel(
             false,
@@ -892,7 +903,7 @@ class ComposeScreenModelsTest {
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
         assertEquals("Manage reminders, sync, and updates.", advanced.summary)
-        assertEquals("2 cards", advanced.panelCount)
+        assertEquals("3 cards", advanced.panelCount)
         assertEquals("Appearance", appearance.title)
         assertEquals("Choose your app theme.", appearance.summary)
         assertEquals("1 card", appearance.panelCount)
@@ -904,7 +915,7 @@ class ComposeScreenModelsTest {
         assertEquals("8 cards", collapsedBehavior.panelCount)
         assertTrue(collapsedBehavior.panels.isEmpty())
 
-        assertEquals(listOf(reminder, update), advanced.panels)
+        assertEquals(listOf(reminder, update, debugLog), advanced.panels)
         assertEquals(listOf(theme), appearance.panels)
     }
 

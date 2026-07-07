@@ -496,6 +496,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
      */
     private fun renderRouteLoadError(error: Throwable, retry: () -> Unit) {
         android.util.Log.e("Kani", "Background route load failed", error)
+        AppDebugLog.logError("route load failed route=$currentRoute", error)
         composeRoute(selected = currentRoute) {
             HomeRouteErrorScreen(
                 title = HomeTextCopy.routeLoadErrorTitle(),

@@ -112,12 +112,13 @@ internal fun settingsAutomationCategoryModel(
     onToggle: Runnable,
     reminder: SettingsReminderPanelModel,
     update: SettingsUpdateOverviewPanelModel,
+    debugLog: SettingsDebugLogPanelModel,
 ): SettingsCategorySectionModel {
     return settingsAutomationCategoryModel(
         expanded = expanded,
         onToggle = onToggle,
-        panelCount = 2,
-        panels = listOf(reminder, update),
+        panelCount = 3,
+        panels = listOf(reminder, update, debugLog),
     )
 }
 

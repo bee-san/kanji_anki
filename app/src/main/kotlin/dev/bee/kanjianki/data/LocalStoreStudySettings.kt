@@ -248,6 +248,14 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         putIntSetting(LocalStoreBase.KEY_AUTO_UPDATE_ENABLED, if (enabled) 1 else 0)
     }
 
+    fun debugLogEnabled(): Boolean {
+        return getIntSetting(LocalStoreBase.KEY_DEBUG_LOG_ENABLED, 0) == 1
+    }
+
+    fun saveDebugLogEnabled(enabled: Boolean) {
+        putIntSetting(LocalStoreBase.KEY_DEBUG_LOG_ENABLED, if (enabled) 1 else 0)
+    }
+
     fun recordAutoUpdateResult(
         checkedAt: Long,
         result: String?,

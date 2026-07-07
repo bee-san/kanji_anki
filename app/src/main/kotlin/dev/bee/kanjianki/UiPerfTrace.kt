@@ -30,6 +30,17 @@ internal fun <T> withUiTrace(section: String, action: () -> T): T {
             }
         }
 
+        // Mirror every completed trace section (button taps, route renders, settings writes,
+        // async loads) into the user-toggleable debug log. The isCapturing() gate keeps the
+        // string formatting off this path entirely while the debug log is off.
+        if (AppDebugLog.isCapturing()) {
+            runCatching {
+                AppDebugLog.log(
+                    String.format(Locale.US, "perf section=%s duration_ms=%.2f", section, durationMs),
+                )
+            }
+        }
+
         if (BuildConfig.DEBUG && durationMs >= PERF_TRACE_LOG_THRESHOLD_MS) {
             runCatching {
                 Log.d(

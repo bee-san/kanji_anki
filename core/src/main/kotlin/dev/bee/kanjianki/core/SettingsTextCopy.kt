@@ -464,6 +464,27 @@ object SettingsTextCopy {
     fun openUpdaterLabel(): String = SettingsAutomationTextCopy.openUpdaterLabel()
 
     @JvmStatic
+    fun debugLogTitle(): String = DebugLogTextCopy.debugLogTitle()
+
+    @JvmStatic
+    fun debugLogStatus(enabled: Boolean): String = DebugLogTextCopy.debugLogStatus(enabled)
+
+    @JvmStatic
+    fun debugLogDetail(enabled: Boolean): String = DebugLogTextCopy.debugLogDetail(enabled)
+
+    @JvmStatic
+    fun debugLogToggleLabel(enabled: Boolean): String = DebugLogTextCopy.debugLogToggleLabel(enabled)
+
+    @JvmStatic
+    fun shareDebugLogLabel(): String = DebugLogTextCopy.shareDebugLogLabel()
+
+    @JvmStatic
+    fun debugLogEmptyToast(): String = DebugLogTextCopy.debugLogEmptyToast()
+
+    @JvmStatic
+    fun shareDebugLogChooserTitle(): String = DebugLogTextCopy.shareDebugLogChooserTitle()
+
+    @JvmStatic
     fun autoSyncStatus(configured: Boolean, enabled: Boolean, displayTime: String?): String = SettingsAutomationTextCopy.autoSyncStatus(configured, enabled, displayTime)
 
     @JvmStatic

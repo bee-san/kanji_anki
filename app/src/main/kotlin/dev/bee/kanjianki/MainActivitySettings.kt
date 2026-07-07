@@ -348,6 +348,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel()
     }
 
+    fun debugLogSettingsPanelModel(): SettingsDebugLogPanelModel {
+        return MainActivitySettingsAutomationDebugLog(this).debugLogSettingsPanelModel()
+    }
+
     fun runUpdate(cachedPending: Boolean) {
         val copy = UpdateRunScreenCopy.forRun(cachedPending)
         composeSettingsRoute(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE, settingsScrollFor(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE), { rememberSettingsScroll(MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE, it) }) {

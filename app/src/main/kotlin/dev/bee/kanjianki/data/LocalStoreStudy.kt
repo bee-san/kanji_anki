@@ -398,6 +398,12 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         studySettings().saveAutoUpdateEnabled(enabled)
     }
 
+    fun debugLogEnabled(): Boolean = studySettings().debugLogEnabled()
+
+    fun saveDebugLogEnabled(enabled: Boolean) {
+        studySettings().saveDebugLogEnabled(enabled)
+    }
+
     fun recordAutoUpdateResult(
         checkedAt: Long,
         result: String?,

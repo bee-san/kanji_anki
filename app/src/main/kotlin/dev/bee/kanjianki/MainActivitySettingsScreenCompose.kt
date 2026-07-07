@@ -153,6 +153,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsReminderPanelModel -> SettingsReminderPanel(panel)
         is SettingsAutoSyncPanelModel -> SettingsAutoSyncPanel(panel)
         is SettingsUpdateOverviewPanelModel -> SettingsUpdateOverviewPanel(panel)
+        is SettingsDebugLogPanelModel -> SettingsDebugLogPanel(panel)
         is SettingsThemePanelModel -> SettingsThemePanel(panel)
         is SettingsReferenceDataLinkModel -> ReferenceDataLinkPanel(panel)
     }
@@ -201,6 +202,7 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
         is SettingsReminderPanelModel -> "settings-panel-reminder"
         is SettingsAutoSyncPanelModel -> "settings-panel-auto-sync"
         is SettingsUpdateOverviewPanelModel -> "settings-panel-app-updates"
+        is SettingsDebugLogPanelModel -> "settings-panel-debug-log"
         is SettingsThemePanelModel -> "settings-panel-theme"
         is SettingsReferenceDataLinkModel -> "settings-panel-reference-data"
     }

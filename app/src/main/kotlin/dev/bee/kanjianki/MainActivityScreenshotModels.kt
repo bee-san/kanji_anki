@@ -156,7 +156,7 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 title = SettingsTextCopy.settingsAutomationTitle(),
                 summary = SettingsTextCopy.settingsAutomationBody(),
                 iconRes = R.drawable.ic_sync_24,
-                panelCount = SettingsTextCopy.settingsCategoryPanelCount(2),
+                panelCount = SettingsTextCopy.settingsCategoryPanelCount(3),
                 contentDescription = SettingsTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAutomationTitle()),
                 onOpen = Runnable {},
             ),

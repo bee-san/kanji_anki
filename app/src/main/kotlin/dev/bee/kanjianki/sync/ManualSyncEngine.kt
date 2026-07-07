@@ -2,6 +2,7 @@ package dev.bee.kanjianki.sync
 
 import android.content.Context
 import android.util.Log
+import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -82,6 +83,7 @@ internal class ManualSyncEngine {
 
     private fun runLocked(): SyncResult {
         val started = clock.nowMillis()
+        AppDebugLog.log("sync start model=${settings.modelName}")
         try {
             val snapshot = gateway.readCollection(settings, progress)
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS))
@@ -175,6 +177,10 @@ internal class ManualSyncEngine {
                     store.studyLadderSettings(),
                 ).size
             }
+            AppDebugLog.log(
+                "sync success duration_ms=${clock.nowMillis() - started} rows=${rows.size} " +
+                    "suspended_imports=${currentSuspendedImports.size} ready=$readyCount",
+            )
             return SyncResult.create(
                 true,
                 false,
@@ -187,6 +193,10 @@ internal class ManualSyncEngine {
             )
         } catch (error: AnkiDroidGateway.SyncFailure) {
             Log.e(TAG, "Sync failed (${if (error.permanentFailure) "permanent" else "retryable"}).", error)
+            AppDebugLog.logError(
+                "sync failed (${if (error.permanentFailure) "permanent" else "retryable"})",
+                error,
+            )
             val finished = clock.nowMillis()
             persistFailedSync(
                 started,
@@ -201,6 +211,7 @@ internal class ManualSyncEngine {
             // (OutOfMemoryError, StackOverflowError, ...) propagate instead of being
             // mislabeled as a retryable_error sync row.
             Log.e(TAG, "Unexpected sync failure.", error)
+            AppDebugLog.logError("sync failed (unexpected)", error)
             val finished = clock.nowMillis()
             persistFailedSync(started, finished, "retryable_error", "unexpected", error)
             return SyncResult.create(false, false, 0, 0, error.message, "")
