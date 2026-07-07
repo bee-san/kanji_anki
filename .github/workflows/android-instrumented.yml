@@ -1,23 +1,17 @@
 name: Android Instrumented
 
+# Live AnkiDroid provider coverage runs nightly and on demand. It is
+# deliberately NOT part of the release path: the emulator + provider readiness
+# dance is inherently flaky and was the top cause of blocked releases. The
+# stricter local real-collection gate (AGENTS.md) covers provider/sync
+# release-risk changes.
 on:
-  workflow_call:
-    inputs:
-      ref:
-        description: 'Commit SHA or ref to check out. Defaults to the caller event SHA.'
-        required: false
-        type: string
-        default: ''
-    secrets:
-      GRADLE_ENCRYPTION_KEY:
-        description: 'Gradle configuration-cache encryption key.'
-        required: false
   workflow_dispatch:
   schedule:
     - cron: '17 5 * * *'
 
 concurrency:
-  group: android-instrumented-${{ github.ref }}-${{ inputs.ref }}
+  group: android-instrumented-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,8 +25,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref }}
 
       - name: Set up Java
         uses: actions/setup-java@v5

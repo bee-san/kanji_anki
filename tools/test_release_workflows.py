@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fnmatch
 import re
 import unittest
 import xml.etree.ElementTree as ET
@@ -11,7 +10,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_BUILD_GRADLE = ROOT / "build.gradle.kts"
-MAIN_RELEASE_WORKFLOW = ROOT / ".github/workflows/main-bugfix-release.yml"
 ANDROID_RELEASE_WORKFLOW = ROOT / ".github/workflows/android-release.yml"
 ANDROID_INSTRUMENTED_WORKFLOW = ROOT / ".github/workflows/android-instrumented.yml"
 DEBUG_MANIFEST = ROOT / "app/src/debug/AndroidManifest.xml"
@@ -21,19 +19,6 @@ FAKE_PROVIDER_DEBUG_SOURCE = (
 FAKE_PROVIDER_ANDROID_TEST_SOURCE = (
     ROOT / "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/FakeAnkiDroidProvider.kt"
 )
-
-
-def android_fixture_gate_patterns(workflow: str) -> tuple[str, ...]:
-    body = workflow.split('case "${changed_file}" in', maxsplit=1)[1]
-    body = body.split("ankidroid_fixture_required=true", maxsplit=1)[0]
-    patterns: list[str] = []
-    for raw_line in body.splitlines():
-        line = raw_line.strip()
-        if line.endswith("|\\"):
-            patterns.append(line[:-2])
-        elif line.endswith(")"):
-            patterns.append(line[:-1])
-    return tuple(patterns)
 
 
 class FastCiTaskWiringTest(unittest.TestCase):
@@ -58,42 +43,6 @@ class FastCiTaskWiringTest(unittest.TestCase):
                 self.assertIn(f"-s {directory} -p 'test_*.py'", ci)
 
 
-class MainBugfixReleaseWorkflowTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.workflow = MAIN_RELEASE_WORKFLOW.read_text(encoding="utf-8")
-
-    def test_is_manual_only_not_main_push_triggered(self) -> None:
-        self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertNotRegex(self.workflow, r"(?m)^\s+push:\s*$")
-        self.assertNotRegex(self.workflow, r"(?m)^\s+-\s+main\s*$")
-
-    def test_does_not_create_tags_or_publish_releases(self) -> None:
-        forbidden_commands = (
-            "git tag",
-            "git push origin",
-            "gh release create",
-            "gh release upload",
-        )
-        for command in forbidden_commands:
-            with self.subTest(command=command):
-                self.assertNotIn(command, self.workflow)
-
-    def test_downstream_release_dispatch_requires_boolean_and_confirmation(self) -> None:
-        self.assertIn("dispatch_android_release:", self.workflow)
-        self.assertIn("default: false", self.workflow)
-        self.assertIn("dispatch_confirmation:", self.workflow)
-        self.assertIn("dispatch android-release.yml", self.workflow)
-        self.assertIn("if: needs.plan.outputs.should_dispatch == 'true'", self.workflow)
-        self.assertIn("environment: android-release-approval", self.workflow)
-        self.assertIn("gh workflow run android-release.yml", self.workflow)
-
-    def test_rejects_existing_tags_and_non_semver_tags_before_dispatch(self) -> None:
-        self.assertRegex(self.workflow, r"\^v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$")
-        self.assertIn("git fetch --tags", self.workflow)
-        self.assertIn("refs/tags/${RELEASE_TAG}", self.workflow)
-        self.assertIn("Tag ${RELEASE_TAG} already exists", self.workflow)
-
-
 class AndroidReleaseWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.workflow = ANDROID_RELEASE_WORKFLOW.read_text(encoding="utf-8")
@@ -108,72 +57,99 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         unconditional_uploads = re.findall(r"gh release upload [^\n]*--clobber", self.workflow)
         self.assertEqual([], unconditional_uploads)
 
-    def test_required_check_names_match_source_workflow_job_names(self) -> None:
-        # The release gate waits on named check-runs (REQUIRED_CHECKS). If a source
-        # workflow renames a job the gate would silently treat that check as
-        # absent-and-skipped and let a release publish ungated. Assert every required
-        # name still exists as a `name:` job value in some workflow.
-        match = re.search(r"REQUIRED_CHECKS:\s*(.+)", self.workflow)
-        self.assertIsNotNone(match, "REQUIRED_CHECKS not found in release workflow")
-        required_names = [name.strip() for name in match.group(1).split("|") if name.strip()]
-        self.assertGreater(len(required_names), 0)
-
-        workflow_dir = ANDROID_RELEASE_WORKFLOW.parent
-        declared_names: set[str] = set()
-        for workflow_file in workflow_dir.glob("*.yml"):
-            for job_name in re.findall(r"^\s*name:\s*(.+?)\s*$", workflow_file.read_text(encoding="utf-8"), re.MULTILINE):
-                declared_names.add(job_name.strip().strip('"').strip("'"))
-
-        for name in required_names:
-            with self.subTest(required_check=name):
-                self.assertIn(
-                    name,
-                    declared_names,
-                    f"Required check '{name}' has no matching job name: value in .github/workflows/*.yml",
-                )
-
-    def test_publish_release_waits_for_fixture_success_or_skip(self) -> None:
-        publish_job = self.workflow.split("  publish-release:", maxsplit=1)[1]
-        self.assertIn("needs.ankidroid-fixture.result == 'success'", publish_job)
-        self.assertIn("needs.ankidroid-fixture.result == 'skipped'", publish_job)
-        self.assertIn("needs.validate.result == 'success'", publish_job)
-        self.assertIn("needs.quality-status.result == 'success'", publish_job)
-
-    def test_ankidroid_fixture_gate_matches_release_sensitive_paths(self) -> None:
-        patterns = android_fixture_gate_patterns(self.workflow)
-        required_paths = (
-            "app/src/main/kotlin/dev/bee/kanjianki/NoteTypeFieldMappings.kt",
-            "app/src/main/kotlin/dev/bee/kanjianki/anki/AnkiDroidGateway.kt",
-            "app/src/main/kotlin/dev/bee/kanjianki/sync/ManualSyncEngine.kt",
-            "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStoreSync.kt",
-            "app/src/debug/AndroidManifest.xml",
-            "app/src/debug/kotlin/dev/bee/kanjianki/anki/FakeAnkiDroidProvider.kt",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityInstrumentedTest.kt",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
-            "build.gradle.kts",
-            "app/build.gradle.kts",
-            "ci/scripts/run_ankidroid_fixture.sh",
-            ".github/workflows/android-instrumented.yml",
+    def test_auto_release_only_fires_on_successful_android_ci_main_push(self) -> None:
+        # The workflow_run trigger is the release's test gate: it must only
+        # proceed when Android CI succeeded for a push (not PR) event.
+        self.assertIn('workflows: ["Android CI"]', self.workflow)
+        self.assertIn("branches: [main]", self.workflow)
+        self.assertIn(
+            "github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'",
+            self.workflow,
         )
-        for path in required_paths:
-            with self.subTest(path=path):
-                self.assertTrue(
-                    any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns),
-                    f"{path} did not match any fixture gate pattern: {patterns}",
-                )
+
+    def test_release_path_has_no_emulator_or_cross_workflow_check_polling(self) -> None:
+        # The release path must stay fast and self-contained. The AnkiDroid
+        # emulator fixture (nightly/dispatch only) and cross-workflow
+        # check-run polling (SonarQube/CodeQL names) were the top causes of
+        # blocked and multi-hour releases. Keep them out of this workflow.
+        # Comments are stripped so prose explaining the removal doesn't trip
+        # the guard; only operational YAML content is checked.
+        operational = "\n".join(
+            line for line in self.workflow.splitlines() if not line.lstrip().startswith("#")
+        )
+        for forbidden in (
+            "REQUIRED_CHECKS",
+            "check-runs",
+            "android-instrumented.yml",
+            "ankidroid-fixture",
+            "android-emulator-runner",
+            "quality-status",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, operational)
+
+    def test_manual_releases_run_deterministic_tests_before_assembling(self) -> None:
+        # Tag pushes and workflow_dispatch can target commits no Android CI
+        # run has vouched for, so the validate job must run the unit-test
+        # surface inline for those events (and only those events).
+        self.assertIn("if: github.event_name != 'workflow_run'", self.workflow)
+        tests_step = self.workflow.split("Run deterministic tests (manual releases only)", maxsplit=1)[1]
+        tests_step = tests_step.split("Build signed release APK", maxsplit=1)[0]
+        for task in (
+            ":fsrs-java:test",
+            ":core:test",
+            ":domain:test",
+            ":sync-domain:test",
+            ":writing-core:test",
+            ":dictionary-core:test",
+            ":update-core:test",
+            ":app:testDebugUnitTest",
+        ):
+            with self.subTest(task=task):
+                self.assertIn(task, tests_step)
+
+    def test_publish_requires_metadata_and_validate_jobs(self) -> None:
+        publish_job = self.workflow.split("  publish-release:", maxsplit=1)[1]
+        needs = publish_job.split("needs:", maxsplit=1)[1].split("steps:", maxsplit=1)[0]
+        self.assertIn("- metadata", needs)
+        self.assertIn("- validate", needs)
+
+    def test_release_verifies_apk_signature_and_identity(self) -> None:
+        self.assertIn("apksigner\" verify --verbose", self.workflow)
+        self.assertIn("package: name='dev.bee.kanjianki'", self.workflow)
+        self.assertIn("versionCode='${{ needs.metadata.outputs.version_code }}'", self.workflow)
+        self.assertIn("versionName='${{ needs.metadata.outputs.version_name }}'", self.workflow)
+
+    def test_release_validates_gradle_wrapper_before_running_gradle(self) -> None:
+        # The validate job runs ./gradlew with signing secrets in env; the
+        # wrapper jar must be validated on this push-triggered path (PR-only
+        # validation in android-ci.yml does not cover pushes to main).
+        self.assertIn("gradle/actions/wrapper-validation@", self.workflow)
+        validate_job = self.workflow.split("  validate:", maxsplit=1)[1].split("  publish-release:", maxsplit=1)[0]
+        operational = "\n".join(
+            line for line in validate_job.splitlines() if not line.lstrip().startswith("#")
+        )
+        wrapper_index = operational.index("gradle/actions/wrapper-validation@")
+        first_gradlew_index = operational.index("./gradlew")
+        self.assertLess(
+            wrapper_index,
+            first_gradlew_index,
+            "Wrapper validation must run before any ./gradlew invocation in the validate job",
+        )
 
 
 class AndroidInstrumentedWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.workflow = ANDROID_INSTRUMENTED_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_live_fixture_runs_on_manual_call_and_nightly_schedule(self) -> None:
-        self.assertIn("workflow_call:", self.workflow)
+    def test_live_fixture_runs_nightly_and_on_dispatch_only(self) -> None:
         self.assertIn("workflow_dispatch:", self.workflow)
         self.assertIn("schedule:", self.workflow)
         self.assertIn("17 5 * * *", self.workflow)
         self.assertIn("concurrency:", self.workflow)
         self.assertIn("cancel-in-progress: true", self.workflow)
+        # The fixture must never rejoin the release path as a callable gate.
+        self.assertNotIn("workflow_call:", self.workflow)
 
     def test_pinned_ankidroid_download_prefers_x86_64_apk_then_falls_back(self) -> None:
         self.assertIn("gh release download v2.24.0 --repo ankidroid/Anki-Android --pattern '*x86_64*.apk'", self.workflow)

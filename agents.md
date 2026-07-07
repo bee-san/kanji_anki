@@ -20,8 +20,8 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 ## CI And Static Analysis Notes
 
-For the full operator triage checklist, gate map, and release check-name
-maintenance notes, see `docs/ci-sonar-reliability-runbook.md`.
+For the full operator triage checklist, gate map, and release path
+invariants, see `docs/ci-sonar-reliability-runbook.md`.
 
 The normal local confidence gate is `./gradlew ciFast`. It runs deterministic
 JVM tests, coverage reports/checks, app unit tests, Android instrumentation
@@ -33,18 +33,25 @@ substitute for the normal Android CI workflow.
 `./gradlew ciQuality` produces the deterministic bytecode and coverage inputs
 used by SonarQube. `./gradlew ciRelease` runs the release confidence gate and
 assembles the signed release APK when signing environment variables are set.
-In CI, the Android Release workflow's validate job runs `:app:assembleRelease`
-only; the deterministic test surface for the same commit is enforced by the
-`Require green commit checks` job (Fast confidence gate, SonarQube, CodeQL),
-so `ciRelease` is the local gate, not the CI release build command.
+In CI, the deterministic test surface is enforced by `Android CI` itself: the
+auto-release only triggers off a successful `Android CI` run, so the release
+workflow's validate job just assembles and verifies the signed APK. Manual tag
+pushes and `workflow_dispatch` releases (which can target commits no CI run
+has vouched for) run the deterministic unit-test surface inline before
+assembling. `ciRelease` is the local gate, not the CI release build command.
 
 Releases are cut automatically: every successful `Android CI` run on a `main`
 push triggers `android-release.yml` through a `workflow_run` trigger, which
 computes the next `vMAJOR.MINOR.PATCH` patch tag, builds and verifies the
-signed APK at that CI run's commit, waits for the remaining commit checks, and
-publishes the GitHub release (creating the tag at publish time). Manual tag
-pushes and `workflow_dispatch` with an explicit `release_tag` still work for
-deliberate versions.
+signed APK at that CI run's commit, and publishes the GitHub release (creating
+the tag at publish time). The release path is deliberately self-contained: it
+does not poll SonarQube/CodeQL check runs and it never runs emulator jobs.
+Those were the top causes of blocked, flaky, and multi-hour releases; SonarQube
+and CodeQL are advisory scans on `main`, and live AnkiDroid provider coverage
+lives in the nightly/dispatch `android-instrumented.yml` workflow plus the
+stricter local gate below. `tools/test_release_workflows.py` locks these
+invariants in. Manual tag pushes and `workflow_dispatch` with an explicit
+`release_tag` still work for deliberate versions.
 
 SonarCloud and CodeQL run on pushes to `main`, and can also be run manually.
 CodeQL also has a scheduled weekly run. If you change either workflow, push it
@@ -59,10 +66,9 @@ coverage; prefer the fast deterministic coverage path by default and reserve
 full connected coverage for manual investigation or release-risk checks.
 
 The deterministic AnkiDroid fixture workflow runs nightly and through
-workflow-dispatch. The release workflow runs it only when the release diff
-touches provider, sync, local-store, live instrumentation, or fixture paths. It
-generates a small sanitized Kiku collection in CI, installs pinned AnkiDroid in
-an emulator, grants the real provider permission, and runs the live-provider
+workflow-dispatch only; it is not part of the release path. It generates a
+small sanitized Kiku collection in CI, installs pinned AnkiDroid in an
+emulator, grants the real provider permission, and runs the live-provider
 sync subset with `kanjiLiveAnkiDroid=true` and a small
 `kanjiLiveMinimumNotes` value.
 
@@ -428,7 +434,8 @@ secrets.
 
 The default path is automatic: push (or merge) to `main`, and a successful
 `Android CI` run on that push triggers `android-release.yml`, which bumps the
-patch version, builds, gates, and publishes the release. Watch it with:
+patch version, builds and verifies the signed APK, and publishes the release
+with no further gating. Watch it with:
 
 ```sh
 gh run list --repo bee-san/kanji_anki --workflow android-release.yml --limit 5
