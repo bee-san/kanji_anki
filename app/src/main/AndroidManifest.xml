@@ -48,6 +48,20 @@
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             tools:node="remove" />
+        <!--
+            FileProvider so the Settings "Share debug log" actions can hand log files from the
+            internal files dir to the Android share sheet: AppDebugLog's kani-debug.log in all
+            builds, plus StudyLoadDebugLog's kani-study-debug.log in debug builds.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.debuglog"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/debug_log_paths" />
+        </provider>
         <service
             android:name=".sync.AutoSyncJobService"
             android:exported="true"

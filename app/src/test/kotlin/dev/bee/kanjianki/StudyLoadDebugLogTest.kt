@@ -26,6 +26,7 @@ class StudyLoadDebugLogTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        clearFileProviderPathStrategyCache()
         // StudyLoadDebugLog keeps static state and writes on a shared background thread, so a
         // trailing write from a previous test can recreate the file. Delete until it stays gone.
         val file = logFile()

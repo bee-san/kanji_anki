@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
  *
  * The [studyLoadDebug]/[withStudyLoadProbe] helpers already write to logcat, but capturing logcat
  * off a physical device is fiddly. This mirrors the same lines into a plain-text file in the app's
- * internal (app-private) files dir, which is handed to the share sheet through the debug-only
+ * internal (app-private) files dir, which is handed to the share sheet through the `.debuglog`
  * FileProvider by the Settings "Share debug log" action. Internal storage is used deliberately so
  * the log is not world-readable via external storage.
  *

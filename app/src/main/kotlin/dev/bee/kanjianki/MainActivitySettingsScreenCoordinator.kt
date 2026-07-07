@@ -64,6 +64,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 ) {
                     activity.renderUpdate()
                 },
+                activity.debugLogSettingsPanelModel(),
             ),
         )
     }
@@ -197,7 +198,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 title = SettingsTextCopy.settingsAutomationTitle(),
                 summary = SettingsTextCopy.settingsAutomationBody(),
                 iconRes = R.drawable.ic_sync_24,
-                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(2),
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(3),
                 contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAutomationTitle()),
                 onOpen = Runnable { activity.renderSettingsAutomation() },
             ),

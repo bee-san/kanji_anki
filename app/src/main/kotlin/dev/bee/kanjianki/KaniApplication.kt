@@ -14,5 +14,9 @@ class KaniApplication : Application(), Configuration.Provider {
         // Debug-only: mirror study-load timing probes to a shareable file under
         // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
         StudyLoadDebugLog.init(this)
+        // User-toggleable diagnostic log (Settings > Automation > Debug log). Resolves the
+        // persisted switch on its own background thread, so this never blocks process start,
+        // and writes an app-start line when the switch is on.
+        AppDebugLog.init(this)
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!--
+        Internal filesDir root, where AppDebugLog writes kani-debug.log (all builds) and
+        StudyLoadDebugLog writes kani-study-debug.log (debug builds only).
+    -->
+    <files-path
+        name="debug-logs"
+        path="." />
+</paths>

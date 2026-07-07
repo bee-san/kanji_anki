@@ -611,6 +611,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val KEY_AUTO_UPDATE_PENDING_MESSAGE: String = "auto_update_pending_message"
         const val KEY_UPDATE_PERMISSION_PROMPT_SHOWN: String = "update_permission_prompt_shown"
         const val KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION: String = "update_permission_prompt_last_version"
+        const val KEY_DEBUG_LOG_ENABLED: String = "debug_log_enabled"
 
         @JvmStatic
         fun studyFamilyKey(kanji: String, answerSignature: String?): String {
