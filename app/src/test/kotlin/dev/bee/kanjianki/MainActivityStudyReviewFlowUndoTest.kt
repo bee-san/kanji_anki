@@ -29,7 +29,9 @@ class MainActivityStudyReviewFlowUndoTest {
     fun undoLastRatingSchedulesStatsPrecomputeAsyncInsteadOfRecomputingInline() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val startupIo = QueueingExecutorService()
+        val startupMaintenance = QueueingExecutorService()
         val undoIo = QueueingExecutorService()
+        val maintenanceIo = QueueingExecutorService()
         var refreshCalls = 0
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
@@ -37,6 +39,7 @@ class MainActivityStudyReviewFlowUndoTest {
             val controller = Robolectric.buildActivity(TestMainActivity::class.java, intent)
             val activity = controller.get()
             replaceField(activity, "io", startupIo)
+            replaceField(activity, "maintenance", startupMaintenance)
             replaceLazyDelegate(
                 activity,
                 "statsPrecomputeScheduler",
@@ -66,7 +69,9 @@ class MainActivityStudyReviewFlowUndoTest {
                 controller.create().start().resume()
                 activity.cancelPendingHomeRouteLoads()
                 startupIo.shutdownNow()
+                startupMaintenance.shutdownNow()
                 replaceField(activity, "io", undoIo)
+                replaceField(activity, "maintenance", maintenanceIo)
                 activity.clearRenderedKanji()
                 clearStatsCache(store)
 
@@ -74,20 +79,23 @@ class MainActivityStudyReviewFlowUndoTest {
 
                 activity.undoLastRating()
 
-                // The undo store work itself now runs on the background executor: the
+                // The undo store work itself now runs on the background io executor: the
                 // tap only queues the write, nothing renders synchronously.
                 assertNull(activity.renderedKanji())
                 assertEquals(1, undoIo.pendingCount())
 
                 undoIo.runNext()
 
-                // The undo write ran, rendered the restored kanji, and queued only the
-                // stats precompute (async) instead of recomputing inline.
+                // The undo write ran and rendered the restored kanji. The stats precompute is now
+                // queued on the maintenance executor (not io), so io is drained and maintenance
+                // holds exactly the precompute work -- keeping the heavy recompute off the
+                // route-load path.
                 assertEquals("裂", activity.renderedKanji())
-                assertEquals(1, undoIo.pendingCount())
+                assertEquals(0, undoIo.pendingCount())
+                assertEquals(1, maintenanceIo.pendingCount())
                 assertNull(activity.store.cachedStatsSnapshotOrNull())
 
-                undoIo.runNext()
+                maintenanceIo.runNext()
 
                 assertEquals(1, refreshCalls)
                 assertNotNull(activity.store.cachedStatsSnapshotOrNull())

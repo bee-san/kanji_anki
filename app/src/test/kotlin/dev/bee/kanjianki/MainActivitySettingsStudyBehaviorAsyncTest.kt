@@ -42,6 +42,7 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
         val ioTasks = QueueingExecutorService()
+        val maintenanceTasks = QueueingExecutorService()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val intent = Intent(context, MainActivity::class.java).apply {
@@ -55,6 +56,11 @@ class MainActivitySettingsStudyBehaviorAsyncTest {
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
             replaceBaseField(activity, "io", ioTasks)
+            // The resume below (after the screenshot extra is cleared) queues the resume-time
+            // update-install check on the maintenance executor. Stub it so that background work
+            // is captured deterministically instead of running on a real thread against the
+            // test's open LocalStore; the test only drains io.
+            replaceBaseField(activity, "maintenance", maintenanceTasks)
             installRouteLoader(activity, ioTasks)
 
             LocalStore(context).use { store ->

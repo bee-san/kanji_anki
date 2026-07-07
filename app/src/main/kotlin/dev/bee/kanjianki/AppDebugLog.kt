@@ -203,7 +203,15 @@ internal object AppDebugLog {
     private fun appStartLine(): String {
         val sdk = runCatching { Build.VERSION.SDK_INT }.getOrDefault(0)
         val model = runCatching { "${Build.MANUFACTURER} ${Build.MODEL}" }.getOrDefault("unknown")
-        return "app version=${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) sdk=$sdk device=$model"
+        // How long the OS process has been alive when this boot line is written. A small value
+        // means a genuine cold process start (this line is logged right after spawn); a large one
+        // means the process was already warm and only the Activity was recreated. Pairs with the
+        // kani.queue-wait.* lines to tell cold-boot stalls apart from warm relaunches.
+        val processUptimeMs = runCatching {
+            SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime()
+        }.getOrDefault(-1L)
+        return "app version=${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) " +
+            "sdk=$sdk device=$model process_uptime_ms=$processUptimeMs"
     }
 
     private fun resolveLogFile(context: Context): File {

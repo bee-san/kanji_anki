@@ -10,13 +10,16 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -62,6 +65,36 @@ class HomeUiTraceComposeUnitTest {
             "value"
         }
         assertEquals("value", result)
+    }
+
+    @Test
+    fun logAsyncLoadQueueWaitMirrorsWaitIntoDebugLogWhenCapturing() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val logFile = File(context.filesDir, "kani-debug.log")
+        try {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+
+            // Debug log OFF + sub-threshold wait: no crash and nothing is captured. This also
+            // exercises the non-capturing / below-logcat-threshold branches.
+            logAsyncLoadQueueWait("stats-route", 1_000_000L) // 1ms
+            assertFalse("nothing should be written while the debug log is off", logFile.exists())
+
+            // Debug log ON + multi-second wait: the head-of-line queue wait is mirrored into the
+            // shareable debug log using the queue-wait trace section and millisecond duration.
+            AppDebugLog.setEnabled(context, true)
+            logAsyncLoadQueueWait("home-route", 5_000_000_000L) // 5s
+            AppDebugLog.resetForTests() // drains the writer thread so the file is complete
+
+            val contents = if (logFile.exists()) logFile.readText() else ""
+            assertTrue(
+                "queue wait should be mirrored into the debug log, got: $contents",
+                contents.contains("perf section=kani.queue-wait.home-route duration_ms=5000.00"),
+            )
+        } finally {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+        }
     }
 
     @Test
