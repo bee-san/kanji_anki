@@ -36,6 +36,36 @@ dump_logcat() {
   adb logcat -d > "${logcat_path}" 2>/dev/null || true
 }
 
+reconnect_adb() {
+  # `adb root` restarts adbd, and GitHub-hosted emulators can drop the client
+  # connection mid-command with "Software caused connection abort" or "device
+  # offline" for a short window afterwards. Re-establish a live device
+  # connection before retrying the affected command so a single transient abort
+  # does not fail the whole release.
+  adb reconnect >/dev/null 2>&1 || true
+  adb wait-for-device
+  # Bounded wait for the device to leave the "offline"/"unauthorized" transport
+  # state that follows an adbd restart.
+  local attempt=1
+  while [ "${attempt}" -le 10 ]; do
+    if [ "$(adb get-state 2>/dev/null)" = "device" ]; then
+      return 0
+    fi
+    sleep 2
+    attempt=$((attempt + 1))
+  done
+  return 0
+}
+
+adb_push_with_reconnect() {
+  local src="$1"
+  local dest="$2"
+  # Ensure the transport is live before pushing; adbd may still be restarting
+  # from a preceding `adb root`.
+  reconnect_adb
+  adb push "${src}" "${dest}"
+}
+
 wait_for_external_storage() {
   adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && test -d ${ankidroid_dir} && test -d ${legacy_ankidroid_dir}"
 }
@@ -108,11 +138,20 @@ seed_collection_fixture() {
   # database. Force-stop AnkiDroid and delete sidecars before and after pushing.
   adb shell am force-stop com.ichi2.anki || true
   remove_collection_sidecars
-  adb push "${collection_path}" "${ankidroid_dir}/collection.anki2"
+  # `adb push` can fail with a transient "Software caused connection abort" when
+  # adbd is still settling after `adb root`. Retry with a reconnect between
+  # attempts so a single dropped transport does not fail the whole release.
+  retry "Kiku fixture push (app-private)" \
+    "${KANJI_LIVE_PUSH_ATTEMPTS:-5}" \
+    "${KANJI_LIVE_PUSH_RETRY_DELAY_SECONDS:-5}" \
+    adb_push_with_reconnect "${collection_path}" "${ankidroid_dir}/collection.anki2"
   # Some AnkiDroid APK variants can still default to the legacy public folder
   # when all-files/legacy storage is available. Seed both plausible locations so
   # the provider reads Kiku regardless of the first-run deckPath decision.
-  adb push "${collection_path}" "${legacy_ankidroid_dir}/collection.anki2"
+  retry "Kiku fixture push (legacy)" \
+    "${KANJI_LIVE_PUSH_ATTEMPTS:-5}" \
+    "${KANJI_LIVE_PUSH_RETRY_DELAY_SECONDS:-5}" \
+    adb_push_with_reconnect "${collection_path}" "${legacy_ankidroid_dir}/collection.anki2"
   remove_collection_sidecars
 }
 
@@ -133,6 +172,45 @@ launch_ankidroid() {
   # AnkiDroid explicitly so first-run preferences and provider state are
   # initialized before probing the flashcards provider.
   adb shell am start -W -n com.ichi2.anki/.IntentHandler
+}
+
+wait_for_ankidroid_provider() {
+  # Poll the flashcards provider until it serves the Kiku model. A plain
+  # permission-only retry (probe_ankidroid_provider) cannot recover when the
+  # first seed/launch did not take - AnkiDroid may have rewritten deckPath,
+  # replayed a stale default collection, or not finished first-run provider
+  # startup. Escalate every few attempts by re-seeding the fixture and
+  # relaunching AnkiDroid so readiness retries can actually fix the state.
+  local attempts="${KANJI_LIVE_PROVIDER_READY_ATTEMPTS:-12}"
+  local delay_seconds="${KANJI_LIVE_PROVIDER_READY_RETRY_DELAY_SECONDS:-5}"
+  local reseed_every="${KANJI_LIVE_PROVIDER_READY_RESEED_EVERY:-4}"
+  local attempt=1
+  while true; do
+    if probe_ankidroid_provider; then
+      return 0
+    fi
+
+    if [ "${attempt}" -ge "${attempts}" ]; then
+      echo "AnkiDroid provider model readiness failed after ${attempts} attempts" >&2
+      return 1
+    fi
+
+    # Every reseed_every attempts, do a heavier recovery: re-seed the fixture
+    # collection, re-point deckPath, and relaunch AnkiDroid before probing again.
+    if [ $((attempt % reseed_every)) -eq 0 ]; then
+      echo "AnkiDroid provider still not ready after ${attempt} attempts; re-seeding fixture and relaunching" >&2
+      seed_collection_fixture || true
+      repair_ankidroid_dir_permissions || true
+      configure_ankidroid_collection_path || true
+      adb shell am force-stop com.ichi2.anki || true
+      launch_ankidroid || true
+      adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
+    fi
+
+    echo "AnkiDroid provider model readiness failed on attempt ${attempt}/${attempts}; retrying in ${delay_seconds}s" >&2
+    sleep "${delay_seconds}"
+    attempt=$((attempt + 1))
+  done
 }
 
 run_instrumentation_gate_once() {
@@ -261,7 +339,7 @@ sleep 5
 install_apk "Debug app APK install" "${app_apk}"
 install_apk "Debug androidTest APK install" "${test_apk}"
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
-retry "AnkiDroid provider model readiness" 12 5 probe_ankidroid_provider
+wait_for_ankidroid_provider
 adb shell am force-stop com.ichi2.anki || true
 
 adb logcat -c
