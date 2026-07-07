@@ -91,4 +91,79 @@ class AsyncHomeRouteLoaderTest {
             pool.shutdownNow()
         }
     }
+
+    @Test
+    fun reportsQueueWaitFromEnqueueUntilBackgroundStart() {
+        val background = ManualExecutor()
+        val mainQueue = ArrayDeque<Runnable>()
+        var clockNanos = 0L
+        val waits = mutableListOf<Pair<String, Long>>()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { mainQueue.add(it) },
+            onQueueWait = { route, waitNanos -> waits.add(route to waitNanos) },
+            nanoClock = { clockNanos },
+        )
+
+        loader.load(
+            showLoading = { },
+            load = { "x" },
+            render = { },
+            traceLabel = "stats-route",
+        )
+
+        // The load sits in the single-threaded queue for 5s behind other work before it starts.
+        clockNanos = 5_000_000_000L
+        background.runNext()
+
+        // Queue wait is surfaced (this is the head-of-line blocking that the on-thread load
+        // duration alone hides), attributed to the correct route.
+        assertEquals(1, waits.size)
+        assertEquals("stats-route", waits[0].first)
+        assertEquals(5_000_000_000L, waits[0].second)
+    }
+
+    @Test
+    fun deferredLoadingGuardIsScheduledAtEnqueueTimeSoQueuedLoadsStillShowLoading() {
+        val background = ManualExecutor()
+        val mainQueue = ArrayDeque<Runnable>()
+        val scheduler = RecordingLoadingScheduler()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { mainQueue.add(it) },
+            loadingTaskScheduler = scheduler,
+        )
+        var loadingShown = false
+
+        loader.load(
+            showLoading = { loadingShown = true },
+            load = { "x" },
+            render = { },
+            showLoadingAfterMs = 120,
+        )
+
+        // The guard is registered immediately on enqueue, before the background load runs. If it
+        // were scheduled inside the background task, a load stuck in the queue would show no
+        // loading UI and the app would look frozen.
+        assertEquals(1, scheduler.scheduled.size)
+        assertEquals(120L, scheduler.scheduled[0].first)
+
+        // Fire the guard while the background load is still queued (never started).
+        scheduler.scheduled[0].second.run()
+        while (mainQueue.isNotEmpty()) {
+            mainQueue.poll()?.run()
+        }
+
+        assertTrue("a queued-but-unstarted load must still show the loading screen", loadingShown)
+    }
+
+    /** Records scheduled loading-guard tasks so the test can fire them deterministically. */
+    private class RecordingLoadingScheduler : LoadingTaskScheduler {
+        val scheduled = mutableListOf<Pair<Long, Runnable>>()
+
+        override fun schedule(delayMs: Long, task: Runnable): LoadingTaskHandle {
+            scheduled.add(delayMs to task)
+            return LoadingTaskHandle { }
+        }
+    }
 }

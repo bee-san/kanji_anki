@@ -87,6 +87,7 @@ class MainActivityHomeAsyncRenderTest {
         val scheduledOrder = mutableListOf<String>()
         val mainTasks = ArrayDeque<Runnable>()
         val ioTasks = QueueingExecutorService()
+        val maintenanceTasks = QueueingExecutorService()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
@@ -102,6 +103,7 @@ class MainActivityHomeAsyncRenderTest {
             activity.cancelPendingHomeRouteLoads()
             activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
             replaceField(activity, "io", ioTasks)
+            replaceField(activity, "maintenance", maintenanceTasks)
             replaceLazyDelegate(
                 activity,
                 "statsPrecomputeScheduler",
@@ -131,17 +133,22 @@ class MainActivityHomeAsyncRenderTest {
             assertTrue(precomputeTasks.isEmpty())
             assertTrue(mainTasks.isEmpty())
             assertEquals(0, ioTasks.pendingCount())
+            assertEquals(0, maintenanceTasks.pendingCount())
 
             backgroundTasks.removeFirst().run()
             assertEquals(1, mainTasks.size)
             assertTrue(precomputeTasks.isEmpty())
             assertEquals(0, ioTasks.pendingCount())
+            assertEquals(0, maintenanceTasks.pendingCount())
 
             mainTasks.removeFirst().run()
-            assertEquals(1, ioTasks.pendingCount())
+            // The stats precompute trigger is queued on the maintenance executor, not io, so it
+            // cannot delay any subsequent route load the user triggers on io.
+            assertEquals(0, ioTasks.pendingCount())
+            assertEquals(1, maintenanceTasks.pendingCount())
             assertTrue(precomputeTasks.isEmpty())
 
-            ioTasks.runNext()
+            maintenanceTasks.runNext()
 
             val contentRoot = activity.findViewById<ViewGroup>(android.R.id.content)
             assertTrue(contentRoot.childCount > 0)

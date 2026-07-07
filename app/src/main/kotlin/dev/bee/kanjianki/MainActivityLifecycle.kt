@@ -9,7 +9,7 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
         ResumeUpdateInstaller(
             { canRequestPackageInstalls(activity) },
             { activity.store.autoUpdateStatus() },
-            activity.io,
+            activity.maintenance,
         ) {
             GitHubUpdater(activity).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
         }
@@ -39,6 +39,7 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
 
     fun onDestroy() {
         activity.io.shutdownNow()
+        activity.maintenance.shutdownNow()
         val recognizer = activity.writingRecognizer
         if (recognizer != null && recognizer !== MainActivityRuntimeOverrides.writingRecognizer) {
             recognizer.close()

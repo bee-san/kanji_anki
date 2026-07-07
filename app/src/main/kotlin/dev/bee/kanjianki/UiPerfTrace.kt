@@ -111,6 +111,28 @@ internal fun asyncLoadTraceSection(route: String, phase: String): String {
     return "kani.${traceToken(phase)}.${traceToken(route)}"
 }
 
+/**
+ * Records how long an async route load waited in its executor queue before it started running.
+ * Unlike [withUiTrace], which measures on-thread execution time, this exposes head-of-line
+ * blocking on the shared single-threaded io executor -- the gap that makes the app feel frozen on
+ * cold boot even when each load's own duration is tiny. Emitted as its own trace section so it
+ * lands in the user-toggleable debug log next to the matching kani.load.<route> line.
+ */
+internal fun logAsyncLoadQueueWait(route: String, waitNanos: Long) {
+    val waitMs = waitNanos / 1_000_000.0
+    val section = asyncLoadTraceSection(route, "queue-wait")
+    if (AppDebugLog.isCapturing()) {
+        runCatching {
+            AppDebugLog.log(String.format(Locale.US, "perf section=%s duration_ms=%.2f", section, waitMs))
+        }
+    }
+    if (BuildConfig.DEBUG && waitMs >= PERF_TRACE_LOG_THRESHOLD_MS) {
+        runCatching {
+            Log.d(PERF_TRACE_LOG_TAG, String.format(Locale.US, "perf section=%s duration_ms=%.2f", section, waitMs))
+        }
+    }
+}
+
 internal fun <T> withAsyncLoadTrace(route: String, phase: String, action: () -> T): T {
     return withUiTrace(asyncLoadTraceSection(route, phase), action)
 }

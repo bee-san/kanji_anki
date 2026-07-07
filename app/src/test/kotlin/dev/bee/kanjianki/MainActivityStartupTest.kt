@@ -33,18 +33,22 @@ class MainActivityStartupTest {
             val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, Intent(context, NoopStartupActivity::class.java))
             val activity = controller.get()
             val ioTasks = QueueingExecutorService()
+            val maintenanceTasks = QueueingExecutorService()
             replaceField(activity, "io", ioTasks)
+            replaceField(activity, "maintenance", maintenanceTasks)
 
             controller.create().start().resume()
 
-            // Three background tasks are queued off the main thread: (1) the theme
-            // cache warm (route composition reads the theme non-blocking on main),
-            // (2) the maintenance-scheduler block (reminders/auto-sync/auto-update/
-            // backup), and (3) the resume-time update-install gating, which reads
-            // auto-update status on the io executor instead of blocking the UI
-            // thread (ANR fix). Heavy asset warmup runs on its own dedicated thread
-            // so it cannot delay the first route load. Nothing runs inline on main.
-            assertEquals(3, ioTasks.pendingCount())
+            // io stays reserved for user-facing route loads. Only the theme-cache warm (which
+            // also front-loads any pending DB migration) is queued there at startup; the home
+            // route load is not, because NoopStartupActivity overrides renderHome to a no-op.
+            assertEquals(1, ioTasks.pendingCount())
+            // Background maintenance runs on the separate maintenance executor so it cannot block
+            // route loads on cold boot: (1) the scheduler block (reminders/auto-sync/auto-update/
+            // backup, incl. first-time WorkManager init) and (2) the resume-time update-install
+            // gating, which reads auto-update status off the UI thread (ANR fix). Heavy asset
+            // warmup runs on its own dedicated thread. Nothing runs inline on main.
+            assertEquals(2, maintenanceTasks.pendingCount())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

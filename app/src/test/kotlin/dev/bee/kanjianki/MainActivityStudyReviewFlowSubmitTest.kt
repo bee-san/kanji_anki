@@ -34,6 +34,7 @@ class MainActivityStudyReviewFlowSubmitTest {
     fun submitReviewQueuesStoreWritesOnBackgroundExecutorAndStaysIdempotent() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val startupIo = QueueingExecutorService()
+        val startupMaintenance = QueueingExecutorService()
         val reviewIo = QueueingExecutorService()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
@@ -41,12 +42,14 @@ class MainActivityStudyReviewFlowSubmitTest {
             val controller = Robolectric.buildActivity(TestMainActivity::class.java, intent)
             val activity = controller.get()
             replaceField(activity, "io", startupIo)
+            replaceField(activity, "maintenance", startupMaintenance)
 
             LocalStore(context).use { store ->
                 activity.store = store
                 controller.create().start().resume()
                 activity.cancelPendingHomeRouteLoads()
                 startupIo.shutdownNow()
+                startupMaintenance.shutdownNow()
                 replaceField(activity, "io", reviewIo)
 
                 val item = studyItem("裂")

@@ -38,7 +38,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
-            background = io,
+            background = maintenance,
             isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
             refresh = { generatedAt -> StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt) },
         )
@@ -517,7 +517,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun scheduleStatsPrecomputeIfStaleAsync() {
-        io.execute {
+        maintenance.execute {
             scheduleStatsPrecomputeIfStale()
         }
     }
