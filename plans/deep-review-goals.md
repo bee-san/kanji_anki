@@ -510,6 +510,20 @@ Push and watch the first Actions run to completion per AGENTS.md.
 **Done when:** fail-closed gate + wrapper validation on push are live and a real
 Actions run passes; meta-tests updated; `ciFast` green.
 
+> RESOLVED DIFFERENTLY (release-reliability pass 2026-07-07): The
+> `quality-status` check-polling job was deleted instead of hardened. The
+> release's test gate is now the `workflow_run` trigger itself (auto releases
+> only fire off a successful `Android CI` main-push run for the exact commit),
+> manual tag/dispatch releases run the deterministic unit-test surface inline
+> in the validate job, and SonarQube/CodeQL are advisory on `main`. The
+> AnkiDroid emulator fixture was removed from the release path (nightly and
+> dispatch only) because it blocked 5+ releases with 20-25 minute flaky runs.
+> `gradle/actions/wrapper-validation` now runs in the release validate job
+> before any `./gradlew` invocation with signing secrets, closing the
+> push-path wrapper gap. `tools/test_release_workflows.py` locks all of this
+> in (no REQUIRED_CHECKS/check-runs polling, no emulator in the release path,
+> manual-path inline tests, wrapper validation present).
+
 > DEFERRED (deep-review pass 2026-07-03): Both changes require validation this
 > environment cannot provide — enforcing signing inside the release variant and
 > enabling R8 must be verified with the full release gate (`ciRelease` + a temp

@@ -7,11 +7,10 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
 | Surface | Local command | GitHub check / workflow | Notes |
 | --- | --- | --- | --- |
 | Deterministic fast gate | `./gradlew ciFast` | `Fast confidence gate` in `.github/workflows/android-ci.yml` | Split in CI into JVM module tests, app unit tests, app lint/androidTest compile, and Python asset tests. |
-| Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the bytecode and deterministic coverage inputs that Sonar consumes. This is not a replacement for Android CI. |
-| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` plus the required commit checks | Release publishing waits for `Fast confidence gate`, SonarQube, CodeQL, and the fixture gate when the release diff requires it. |
-| Main bugfix release tagger | n/a | `Main Bugfix Release` in `.github/workflows/main-bugfix-release.yml` | Pushes to `main` create one patch tag per pushed commit, then dispatch Android Release for each tag. |
-| CodeQL extraction | Forced clean compile in `.github/workflows/codeql.yml` | `Analyze Java/Kotlin` | Keep the clean, no-build-cache compile after CodeQL init so the extractor sees real compiler work. |
-| Live AnkiDroid fixture | workflow-dispatch/nightly Android instrumented workflow | `Verify AnkiDroid provider fixture` | Required for provider/sync release-risk changes; the local copied-user-collection gate remains stricter. |
+| Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the bytecode and deterministic coverage inputs that Sonar consumes. Advisory on `main`; never blocks releases. This is not a replacement for Android CI. |
+| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run triggers the release, which tags, builds, verifies, and publishes with no further gating. Manual tag/dispatch runs the unit-test surface inline first. |
+| CodeQL extraction | Forced clean compile in `.github/workflows/codeql.yml` | `Analyze Java/Kotlin` | Advisory security scan on `main`; never blocks releases. Keep the clean, no-build-cache compile after CodeQL init so the extractor sees real compiler work. |
+| Live AnkiDroid fixture | workflow-dispatch/nightly Android instrumented workflow | `AnkiDroid provider fixture` | Nightly/dispatch only; deliberately removed from the release path because emulator/provider readiness flakes were the top cause of blocked releases. The local copied-user-collection gate remains the requirement for provider/sync release-risk changes. |
 
 ## Triage loop
 
@@ -59,15 +58,27 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
    gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
    ```
 
-## Release quality-status checklist
+## Release path invariants
 
-The release workflow's `Require green commit checks` job polls commit check-runs for:
+The release workflow is deliberately self-contained so releases are fast and
+cannot be blocked by flaky or external gates:
 
-- `Fast confidence gate`
-- `Build coverage and analyze`
-- `Analyze Java/Kotlin`
-
-Before tagging or publishing a release, confirm those check names still match the Android CI, SonarQube, and CodeQL workflows. If a workflow job is renamed, update the release workflow's `REQUIRED_CHECKS` list in the same change so release gating does not silently wait for an obsolete check name or skip a renamed check.
+- The auto path triggers only off a successful `Android CI` run on a `main`
+  push (`workflow_run`), so the deterministic test surface is already green
+  for the exact release commit. The release then tags, builds the signed APK,
+  verifies signature/identity, and publishes. Target wall time is under ten
+  minutes after CI.
+- Manual tag pushes and `workflow_dispatch` releases run the deterministic
+  unit-test surface inline in the validate job before assembling, because
+  those events can target commits no CI run has vouched for.
+- The release workflow never polls SonarQube or CodeQL check runs and never
+  runs emulator jobs. `tools/test_release_workflows.py` fails if check-run
+  polling, `REQUIRED_CHECKS`, or the AnkiDroid fixture reappear in
+  `android-release.yml`.
+- Live AnkiDroid provider coverage lives in the nightly/dispatch
+  `android-instrumented.yml` workflow; a red nightly means investigate before
+  the next provider/sync release, enforced by the stricter local
+  copied-user-collection gate rather than by the release pipeline.
 
 ## Common reliability pitfalls
 

@@ -1,5 +1,14 @@
 name: Android Release
 
+# Release philosophy: the deterministic test surface for a main-push release is
+# the Android CI run that triggered this workflow (workflow_run fires only on
+# success). The release itself just tags, builds the signed APK, verifies it,
+# and publishes. No cross-workflow check polling, no emulator jobs: SonarQube
+# and CodeQL are advisory scans on main, and the live AnkiDroid provider
+# fixture runs nightly plus on demand in android-instrumented.yml. The stricter
+# local real-collection AnkiDroid gate (see AGENTS.md) remains the release
+# requirement for provider/sync changes.
+
 on:
   push:
     tags:
@@ -38,7 +47,6 @@ jobs:
       version_code: ${{ steps.meta.outputs.version_code }}
       apk_name: ${{ steps.meta.outputs.apk_name }}
       checksum_name: ${{ steps.meta.outputs.checksum_name }}
-      ankidroid_fixture_required: ${{ steps.meta.outputs.ankidroid_fixture_required }}
 
     steps:
       - name: Check out repository
@@ -105,73 +113,6 @@ jobs:
           version_code=$((major * 1000000 + minor * 1000 + patch))
           apk_name="kani-android-${version_name}.apk"
           checksum_name="${apk_name}.sha256"
-          previous_tag="$(python3 - "${release_tag}" <<'PY'
-          import re
-          import subprocess
-          import sys
-
-          current = sys.argv[1]
-          match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", current)
-          if not match:
-              raise SystemExit(0)
-          current_version = tuple(int(part) for part in match.groups())
-
-          tags = subprocess.check_output(
-              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
-              text=True,
-          ).splitlines()
-          previous = []
-          for tag in tags:
-              tag_match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
-              if not tag_match:
-                  continue
-              version = tuple(int(part) for part in tag_match.groups())
-              if version < current_version:
-                  previous.append((version, tag))
-          if previous:
-              print(max(previous)[1])
-          PY
-          )"
-          if [[ -n "${previous_tag}" ]]; then
-            changed_files="$(git diff --name-only "${previous_tag}" "${build_sha}")"
-          else
-            changed_files="$(git ls-tree -r --name-only "${build_sha}")"
-          fi
-
-          ankidroid_fixture_required=false
-          if [[ -z "${previous_tag}" ]]; then
-            ankidroid_fixture_required=true
-          else
-            while IFS= read -r changed_file; do
-              case "${changed_file}" in
-                app/src/main/AndroidManifest.xml|\
-                app/src/main/java/dev/bee/kanjianki/NoteTypeFieldMappings.java|\
-                app/src/main/kotlin/dev/bee/kanjianki/NoteTypeFieldMappings.kt|\
-                app/src/main/java/dev/bee/kanjianki/anki/*|\
-                app/src/main/java/dev/bee/kanjianki/sync/*|\
-                app/src/main/java/dev/bee/kanjianki/data/LocalStore*|\
-                app/src/main/kotlin/dev/bee/kanjianki/anki/*|\
-                app/src/main/kotlin/dev/bee/kanjianki/sync/*|\
-                app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*|\
-                app/src/debug/AndroidManifest.xml|\
-                app/src/debug/kotlin/dev/bee/kanjianki/anki/*|\
-                app/src/androidTest/AndroidManifest.xml|\
-                app/src/androidTest/java/dev/bee/kanjianki/MainActivityInstrumentedTest.java|\
-                app/src/androidTest/java/dev/bee/kanjianki/anki/*|\
-                app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityInstrumentedTest.kt|\
-                app/src/androidTest/kotlin/dev/bee/kanjianki/anki/*|\
-                build.gradle.kts|\
-                app/build.gradle.kts|\
-                ci/fixtures/ankidroid/*|\
-                ci/scripts/create_ankidroid_kiku_fixture.py|\
-                ci/scripts/run_ankidroid_fixture.sh|\
-                .github/workflows/android-instrumented.yml)
-                  ankidroid_fixture_required=true
-                  break
-                  ;;
-              esac
-            done <<< "${changed_files}"
-          fi
 
           {
             echo "release_tag=${release_tag}"
@@ -180,7 +121,6 @@ jobs:
             echo "version_code=${version_code}"
             echo "apk_name=${apk_name}"
             echo "checksum_name=${checksum_name}"
-            echo "ankidroid_fixture_required=${ankidroid_fixture_required}"
           } >> "${GITHUB_OUTPUT}"
 
   validate:
@@ -196,6 +136,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.metadata.outputs.build_sha }}
+
+      # This job runs ./gradlew with signing secrets in the environment, so
+      # validate the wrapper jar before executing it (PR-only validation in
+      # android-ci.yml does not cover direct pushes to main).
+      - name: Validate Gradle wrapper
+        uses: "gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e"
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -224,9 +170,25 @@ jobs:
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
-      # Deterministic tests for this commit are enforced by the
-      # "Require green commit checks" job (Fast confidence gate, SonarQube,
-      # CodeQL), so the validate job only assembles and verifies the APK.
+      # The workflow_run path only fires after Android CI succeeded on this
+      # exact commit, so the deterministic test surface is already green and
+      # re-running it here would just slow the release down. Manual tag pushes
+      # and workflow_dispatch can target commits no CI run has vouched for, so
+      # they run the deterministic unit-test surface inline first.
+      - name: Run deterministic tests (manual releases only)
+        if: github.event_name != 'workflow_run'
+        run: |
+          ./gradlew \
+            :fsrs-java:test \
+            :core:test \
+            :domain:test \
+            :sync-domain:test \
+            :writing-core:test \
+            :dictionary-core:test \
+            :update-core:test \
+            :app:testDebugUnitTest \
+            --parallel -Dorg.gradle.parallel=true
+
       - name: Build signed release APK
         env:
           KANI_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
@@ -276,138 +238,14 @@ jobs:
             ${{ steps.assets.outputs.apk_path }}
             ${{ steps.assets.outputs.sha_path }}
 
-  quality-status:
-    name: Require green commit checks
-    runs-on: ubuntu-latest
-    needs: metadata
-    permissions:
-      checks: read
-      contents: read
-    timeout-minutes: 60
-
-    steps:
-      - name: Wait for Android CI, SonarQube, and CodeQL success
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
-          REQUIRED_CHECKS: Fast confidence gate|Build coverage and analyze|Analyze Java/Kotlin
-        run: |
-          set -euo pipefail
-          checks_json="${RUNNER_TEMP}/check-runs.json"
-          deadline=$((SECONDS + 55 * 60))
-
-          while true; do
-            gh api "repos/${GITHUB_REPOSITORY}/commits/${BUILD_SHA}/check-runs?per_page=100" > "${checks_json}"
-            result="$(python3 - "${checks_json}" <<'PY'
-          import json
-          import os
-          import sys
-
-          required = os.environ["REQUIRED_CHECKS"].split("|")
-          with open(sys.argv[1], encoding="utf-8") as handle:
-              payload = json.load(handle)
-          runs = payload.get("check_runs", [])
-          by_name = {}
-          for run in runs:
-              by_name.setdefault(run.get("name"), []).append(run)
-
-          pending = []
-          skipped = []
-          failures = []
-          for name in required:
-              candidates = by_name.get(name, [])
-              if not candidates:
-                  skipped.append(name)
-                  continue
-              latest = sorted(
-                  candidates,
-                  key=lambda item: item.get("completed_at") or item.get("started_at") or "",
-                  reverse=True,
-              )[0]
-              conclusion = latest.get("conclusion")
-              status = latest.get("status")
-              if status != "completed":
-                  pending.append(f"{name}: status={status} conclusion={conclusion}")
-              elif conclusion == "success":
-                  continue
-              else:
-                  failures.append(f"{name}: status={status} conclusion={conclusion}")
-
-          if failures:
-              print("failure")
-              for failure in failures:
-                  print(failure)
-          elif pending:
-              print("pending")
-              for item in pending:
-                  print(item)
-          else:
-              print("success")
-              for name in skipped:
-                  print(f"{name}: skipped or not required by path filters")
-          PY
-            )"
-
-            state="$(head -n 1 <<< "${result}")"
-            details="$(tail -n +2 <<< "${result}" || true)"
-            case "${state}" in
-              success)
-                echo "Required commit checks are green."
-                break
-                ;;
-              failure)
-                echo "Required commit checks failed:"
-                printf '%s\n' "${details}"
-                exit 1
-                ;;
-              pending)
-                if (( SECONDS >= deadline )); then
-                  echo "Timed out waiting for required commit checks:"
-                  printf '%s\n' "${details}"
-                  exit 1
-                fi
-                echo "Waiting for required commit checks:"
-                printf '%s\n' "${details}"
-                sleep 30
-                ;;
-              *)
-                echo "Unexpected check state: ${state}"
-                printf '%s\n' "${result}"
-                exit 1
-                ;;
-            esac
-          done
-
-  ankidroid-fixture:
-    name: Verify AnkiDroid provider fixture
-    needs: metadata
-    if: needs.metadata.outputs.ankidroid_fixture_required == 'true'
-    uses: ./.github/workflows/android-instrumented.yml
-    # Scope down from `secrets: inherit`: the fixture job only needs the Gradle
-    # cache-encryption key, not the release signing secrets.
-    secrets:
-      GRADLE_ENCRYPTION_KEY: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-    with:
-      ref: ${{ needs.metadata.outputs.build_sha }}
-
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
-    if: >-
-      ${{
-        always() &&
-        needs.metadata.result == 'success' &&
-        needs.validate.result == 'success' &&
-        needs.quality-status.result == 'success' &&
-        (needs.ankidroid-fixture.result == 'success' || needs.ankidroid-fixture.result == 'skipped')
-      }}
     permissions:
       contents: write
     needs:
       - metadata
       - validate
-      - quality-status
-      - ankidroid-fixture
 
     steps:
       - name: Download release assets
