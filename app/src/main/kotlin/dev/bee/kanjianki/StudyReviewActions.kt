@@ -14,8 +14,10 @@ internal object StudyReviewActions {
         recorder: ReviewOutcomeRecorder,
         marker: StudyRunMarker,
     ) {
-        writer.saveStudyItem(result.item)
-        writer.saveReview(request, result.appliedRating, reviewedAt, beforeReview, result.item)
+        // One transaction for the item + review-log row: process death between
+        // them would advance scheduling with no review_log row (lost review;
+        // token wrongly retryable while the item already advanced).
+        writer.saveReviewOutcome(item = result.item, request = request, appliedRating = result.appliedRating, reviewedAt = reviewedAt, beforeReview = beforeReview)
         recorder.recordReviewOutcome(request.kanji, result.appliedRating, beforeReview, result.item)
         if (MainActivityBase.RATING_AGAIN != result.appliedRating) {
             marker.markStudyRunPassed(request.kanji)
@@ -78,15 +80,18 @@ internal object StudyReviewActions {
         @JvmField val afterReview: RecordsStudyModels.StudyItem,
     )
 
-    interface ReviewWriter {
-        fun saveStudyItem(item: RecordsStudyModels.StudyItem)
-
-        fun saveReview(
+    fun interface ReviewWriter {
+        /**
+         * Persists the advanced item and the review-log row atomically. Both
+         * writes must land in one transaction so a crash cannot advance the
+         * item without recording the review.
+         */
+        fun saveReviewOutcome(
+            item: RecordsStudyModels.StudyItem,
             request: RecordsSchedulerModels.ReviewRequest,
             appliedRating: String?,
             reviewedAt: Long,
             beforeReview: RecordsStudyModels.StudyItem,
-            afterReview: RecordsStudyModels.StudyItem,
         )
     }
 
