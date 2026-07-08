@@ -14,6 +14,7 @@ on:
       - 'writing-core/**'
       - 'dictionary-core/**'
       - 'update-core/**'
+      - 'build-logic/**'
       - '.github/workflows/codeql.yml'
       - 'build.gradle*'
       - 'settings.gradle*'
