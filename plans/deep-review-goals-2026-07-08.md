@@ -39,6 +39,20 @@ Suggested batch order:
 5. Batch E: Planner & scheduler polish (Goals 58-61)
 6. Batch F: Hygiene sweep + carry-over index (Goal 62 + table)
 
+> IMPLEMENTATION PASS (2026-07-08, locally-verifiable subset):
+> Landed with tests + `ciFast` green: Goals 41 (NUL byte + hygiene suite),
+> 45 (atomic saveReviewOutcome), 46 (thread-safe session trackers), 48 (CI
+> path-filter blind spots + meta-test), 51 (lazy convention coverageExcludes),
+> 58 (capped all-kanji backlog honesty), 59 (Lorenz-head edge cases + honest
+> scoring docs), 60 (relearning-graduation rule documented + pinned, option b),
+> 61 (scheduler small-defect sweep), 62 (docs consolidation + AGENTS.md
+> casing), plus a partial on 47 (the duplicate reminder-schedule). The rest
+> (39, 40, 42, 43, 44, 49-50, 52-57 and carry-overs) remain gated on live
+> AnkiDroid emulator runs, live GitHub Actions runs, on-device UI/TalkBack
+> validation, R8 emulator smoke tests, or large golden-regenerating refactors
+> — not safe to land blind in this environment. Each goal's own criteria note
+> what still needs live validation.
+
 ---
 
 ## Verified sound in this pass (do not re-litigate without new evidence)
