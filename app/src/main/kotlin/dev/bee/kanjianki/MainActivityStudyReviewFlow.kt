@@ -157,9 +157,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         // Idempotency is anchored in persistence: hasConsumedToken() checks the
         // review_log, and a token only lands there after a review is successfully
         // saved (see ReviewTransitionEngine, which consumes the in-memory token only
-        // on success). Seeding the set with just this request's token is safe - a
-        // review that failed mid-apply left no review_log row, so its token is
-        // retryable, and the engine only ever tests membership of request.token.
+        // on success). The item advance and the review_log row are written in one
+        // transaction (LocalStore.saveReviewOutcome), so a token is present in the
+        // log if and only if the item was actually advanced: a review that failed
+        // mid-apply rolled both back, so its token is retryable, and the engine only
+        // ever tests membership of request.token.
         val consumed = HashSet<String>()
         if (activity.store.hasConsumedToken(request.token)) {
             consumed.add(request.token)
@@ -183,9 +185,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)
         var streak: StudyStatsStore.StudyStreak? = null
         if (!result.duplicate) {
+            // saveAppliedReview already schedules reminders once; do not schedule
+            // again here (each schedule opens a throwaway LocalStore and reads the
+            // full dashboard).
             saveAppliedReview(session, request, result, now)
             streak = activity.store.studyStreak(now)
-            ReminderScheduler.schedule(activity)
         }
         val currentStreakDays = streak?.currentDays ?: 0
         showToast(HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays))
@@ -229,20 +233,8 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             result,
             item,
             now,
-            object : StudyReviewActions.ReviewWriter {
-                override fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
-                    activity.store.saveStudyItem(item)
-                }
-
-                override fun saveReview(
-                    request: RecordsSchedulerModels.ReviewRequest,
-                    appliedRating: String?,
-                    reviewedAt: Long,
-                    beforeReview: RecordsStudyModels.StudyItem,
-                    afterReview: RecordsStudyModels.StudyItem,
-                ) {
-                    activity.store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview)
-                }
+            StudyReviewActions.ReviewWriter { savedItem, savedRequest, appliedRating, reviewedAt, before ->
+                activity.store.saveReviewOutcome(savedItem, savedRequest, appliedRating, reviewedAt, before)
             },
             activity.studySessionTracker::recordReviewOutcome,
             activity::markStudyRunPassed

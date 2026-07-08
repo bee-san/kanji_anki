@@ -1,5 +1,13 @@
 # Deep Review Goals
 
+> CONTINUED BY: `plans/deep-review-goals-2026-07-08.md` (fresh full-codebase
+> pass at commit 438a3ccf). That document verifies the current status of every
+> goal below that was deferred, continues the numbering at Goal 39, and
+> supersedes Goals 8, 21, 26 (docs part), 29, and 30 (most items) with
+> re-scoped versions. Work new items from the new document; this one remains
+> the context of record for carry-over Goals 13, 14, 17, 25, 28, 31, 32, 33,
+> 35, 36, and 38.
+
 > PROGRESS SUMMARY (deep-review implementation pass, 2026-07-03):
 > Fully landed with tests + `ciFast` green: Goals 1, 2, 3, 4, 5, 6, 7, 9, 10, 11,
 > 12, 15, 16, 18, 19, 22, 23, 34, plus partials on 14 (foundation), 17, 20, 24

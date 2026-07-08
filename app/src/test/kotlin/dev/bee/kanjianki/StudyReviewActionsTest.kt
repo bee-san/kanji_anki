@@ -34,13 +34,12 @@ class StudyReviewActionsTest {
             passedKanji.set(kanji)
         }
 
-        assertEquals(listOf("saveItem", "saveReview", "recordOutcome", "markPassed"), events)
+        assertEquals(listOf("saveOutcome", "recordOutcome", "markPassed"), events)
         assertSame(after, writer.savedItem)
         assertSame(request, writer.savedRequest)
         assertEquals(MainActivityBase.RATING_GOOD, writer.savedRating)
         assertEquals(123L, writer.reviewedAt)
         assertSame(before, writer.beforeReview)
-        assertSame(after, writer.afterReview)
         assertEquals("語", recorder.kanji)
         assertEquals(MainActivityBase.RATING_GOOD, recorder.appliedRating)
         assertSame(before, recorder.beforeReview)
@@ -71,7 +70,7 @@ class StudyReviewActionsTest {
             passedKanji.set(kanji)
         }
 
-        assertEquals(listOf("saveItem", "saveReview", "recordOutcome"), events)
+        assertEquals(listOf("saveOutcome", "recordOutcome"), events)
         assertNull(passedKanji.get())
     }
 
@@ -136,26 +135,20 @@ class StudyReviewActionsTest {
         var savedRating: String? = null
         var reviewedAt: Long = 0L
         var beforeReview: RecordsStudyModels.StudyItem? = null
-        var afterReview: RecordsStudyModels.StudyItem? = null
 
-        override fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
-            events.add("saveItem")
-            savedItem = item
-        }
-
-        override fun saveReview(
+        override fun saveReviewOutcome(
+            item: RecordsStudyModels.StudyItem,
             request: RecordsSchedulerModels.ReviewRequest,
             appliedRating: String?,
             reviewedAt: Long,
             beforeReview: RecordsStudyModels.StudyItem,
-            afterReview: RecordsStudyModels.StudyItem,
         ) {
-            events.add("saveReview")
+            events.add("saveOutcome")
+            savedItem = item
             savedRequest = request
             savedRating = appliedRating
             this.reviewedAt = reviewedAt
             this.beforeReview = beforeReview
-            this.afterReview = afterReview
         }
     }
 

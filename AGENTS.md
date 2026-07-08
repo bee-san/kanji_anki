@@ -188,14 +188,28 @@ When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
 the new skill is validated sooner than a full promotion-sized interval.
 
-Graduation from learning/relearning derives the initial FSRS memory state
-from the graduating rating alone (`engine.initialState(graduationRating)`),
-independent of any intermediate `Again`/`Hard` answers taken during the
-learning steps. This is intentional Anki-parity behavior: learning-step
-answers are practice-only and do not feed short-term stability, so the card
-graduates as if answered fresh at the graduating rating. Do not route
-learning answers through short-term stability without a deliberate parity
-decision and golden-timeline regeneration.
+Graduation derives the initial FSRS memory state differently for new-learning
+vs relearning, and both paths are intentional:
+
+- **New-learning graduation** uses `engine.initialState(graduationRating)`
+  alone (`LatestFsrsAdapter.initialReview` with `isNewLearning = true`),
+  independent of any intermediate `Again`/`Hard` answers taken during the
+  learning steps. Learning-step answers are practice-only and do not feed
+  short-term stability, so the card graduates as if answered fresh at the
+  graduating rating.
+- **Relearning graduation** (`isNewLearning = false`) keeps the post-lapse
+  stability produced by the lapse's `review(AGAIN, …)` and applies
+  `engine.nextDifficulty(graduationRating)` once more on top of it. This means
+  a lapse followed by relearning graduation moves difficulty by the lapse's
+  update *and* the graduating rating's update. This is a deliberate deviation
+  from strict "no memory change on relearning-step answers" parity: the extra
+  difficulty step reflects that the card was just relapsed. `ReviewTransitionEngine`
+  intentionally graduates relearning cards this way; `RelearningGraduationDifficultyTest`
+  pins the double-update value.
+
+Do not change either path (e.g. route learning answers through short-term
+stability, or drop the relearning second `nextDifficulty`) without a deliberate
+parity decision and golden-timeline regeneration.
 
 `hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
 A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.

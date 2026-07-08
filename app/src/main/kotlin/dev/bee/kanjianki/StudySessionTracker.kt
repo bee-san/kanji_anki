@@ -9,7 +9,17 @@ import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import dev.bee.kanjianki.data.LocalStore
 
+/**
+ * Session-scoped study progress and the active-task timer. Mutated on the io
+ * thread (task completion / review outcomes) and read + mutated on the main
+ * thread (pause/resume on lifecycle, the badge, the done-screen breakdown).
+ * All state access holds [lock] so concurrent pause vs completeActiveTask can
+ * not corrupt the active-task timer and reads never see torn state. The
+ * delegated [progressTracker] is independently synchronized; the extra lock
+ * here guards this class's own fields (activeTask, planned-key sets).
+ */
 internal class StudySessionTracker {
+    private val lock = Any()
     private var activeTask: ActiveStudyTask? = null
     private val progressTracker = StudySessionProgressTracker()
     private val plannedSessionTaskKeys = ArrayList<String>()
@@ -26,15 +36,15 @@ internal class StudySessionTracker {
 
     fun missedCount(): Int = progressTracker.missedCount()
 
-    fun resetProgress() {
+    fun resetProgress() = synchronized(lock) {
         progressTracker.resetProgress()
         plannedSessionTaskKeys.clear()
         completedPlannedSessionTaskKeys.clear()
     }
 
-    fun initializeSessionPlan(taskKeys: List<String>?) {
-        if (taskKeys.isNullOrEmpty() || hasPendingPlannedSessionTask()) {
-            return
+    fun initializeSessionPlan(taskKeys: List<String>?) = synchronized(lock) {
+        if (taskKeys.isNullOrEmpty() || hasPendingPlannedSessionTaskLocked()) {
+            return@synchronized
         }
         plannedSessionTaskKeys.clear()
         completedPlannedSessionTaskKeys.clear()
@@ -45,7 +55,11 @@ internal class StudySessionTracker {
         }
     }
 
-    fun nextPlannedSessionTaskKey(): String {
+    fun nextPlannedSessionTaskKey(): String = synchronized(lock) {
+        nextPlannedSessionTaskKeyLocked()
+    }
+
+    private fun nextPlannedSessionTaskKeyLocked(): String {
         for (key in plannedSessionTaskKeys) {
             if (!completedPlannedSessionTaskKeys.contains(key)) {
                 return key
@@ -54,22 +68,22 @@ internal class StudySessionTracker {
         return ""
     }
 
-    fun pendingPlannedSessionTaskKeys(): List<String> {
+    fun pendingPlannedSessionTaskKeys(): List<String> = synchronized(lock) {
         val out = ArrayList<String>()
         for (key in plannedSessionTaskKeys) {
             if (!completedPlannedSessionTaskKeys.contains(key)) {
                 out.add(key)
             }
         }
-        return out
+        out
     }
 
     fun dueCompletedLearningRepeatTaskKeys(
         items: List<RecordsStudyModels.StudyItem>?,
         nowMillis: Long,
-    ): List<String> {
+    ): List<String> = synchronized(lock) {
         if (items.isNullOrEmpty() || completedPlannedSessionTaskKeys.isEmpty()) {
-            return emptyList()
+            return@synchronized emptyList()
         }
         val out = ArrayList<String>()
         for (item in items) {
@@ -81,18 +95,18 @@ internal class StudySessionTracker {
                 out.add(key)
             }
         }
-        return out
+        out
     }
 
-    fun markPlannedSessionTaskCompleted(taskType: String?, kanji: String?) {
+    fun markPlannedSessionTaskCompleted(taskType: String?, kanji: String?) = synchronized(lock) {
         val key = plannedSessionTaskKey(taskType, kanji)
         if (key.isNotEmpty()) {
             completedPlannedSessionTaskKeys.add(key)
         }
     }
 
-    private fun hasPendingPlannedSessionTask(): Boolean {
-        return nextPlannedSessionTaskKey().isNotEmpty()
+    private fun hasPendingPlannedSessionTaskLocked(): Boolean {
+        return nextPlannedSessionTaskKeyLocked().isNotEmpty()
     }
 
     private fun isLearningRepeatPhase(phase: RecordsBase.SchedulerPhase): Boolean {
@@ -147,7 +161,7 @@ internal class StudySessionTracker {
         progressTracker.markTaskCompleted(key)
     }
 
-    fun hasActiveTask(): Boolean = activeTask != null
+    fun hasActiveTask(): Boolean = synchronized(lock) { activeTask != null }
 
     fun startActiveTask(
         key: String?,
@@ -155,12 +169,12 @@ internal class StudySessionTracker {
         taskType: String?,
         startedAt: Long,
         resumeImmediately: Boolean,
-    ) {
+    ) = synchronized(lock) {
         if (key.isNullOrEmpty()) {
-            return
+            return@synchronized
         }
         if (activeTask?.taskKey == key) {
-            return
+            return@synchronized
         }
         activeTask = ActiveStudyTask(key, kanji, taskType, startedAt)
         if (resumeImmediately) {
@@ -174,10 +188,10 @@ internal class StudySessionTracker {
         outcome: String?,
         answeredAt: Long,
         countProgress: Boolean,
-    ) {
+    ) = synchronized(lock) {
         val task = activeTask
         if (task == null || key == null || key != task.taskKey) {
-            return
+            return@synchronized
         }
         task.pause(SystemClock.elapsedRealtime())
         store.recordStudyTaskAnswered(
@@ -209,15 +223,17 @@ internal class StudySessionTracker {
         progressTracker.recordRepairOutcome(kanji, passed)
     }
 
-    fun pauseActiveTask() {
+    fun pauseActiveTask() = synchronized(lock) {
         activeTask?.pause(SystemClock.elapsedRealtime())
+        Unit
     }
 
-    fun resumeActiveTask() {
+    fun resumeActiveTask() = synchronized(lock) {
         activeTask?.resume(SystemClock.elapsedRealtime())
+        Unit
     }
 
-    fun abandonActiveTask() {
+    fun abandonActiveTask() = synchronized(lock) {
         activeTask = null
     }
 

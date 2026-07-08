@@ -149,6 +149,31 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         }
     }
 
+    /**
+     * Persists the advanced study item and its review-log row in a single
+     * transaction so process death can never leave scheduling advanced with no
+     * `review_log` row (which would lose the review from streaks/stats/undo and
+     * make the token wrongly appear retryable while the item already advanced).
+     * Both-or-nothing: if either write fails the whole outcome rolls back.
+     */
+    fun saveReviewOutcome(
+        item: RecordsStudyModels.StudyItem,
+        request: RecordsSchedulerModels.ReviewRequest,
+        appliedRating: String?,
+        reviewedAt: Long,
+        beforeReview: RecordsStudyModels.StudyItem,
+    ) {
+        writableDatabase.transaction {
+            upsertStudyItem(this, item)
+            val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, item)
+            if (inserted != -1L) {
+                appendReviewTimelineEvent(this, request, appliedRating, reviewedAt, "review:" + request.token)
+            }
+            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            clearStudyItemsCache()
+        }
+    }
+
     fun saveReview(request: RecordsSchedulerModels.ReviewRequest, appliedRating: String?, reviewedAt: Long) {
         saveReview(request, appliedRating, reviewedAt, null, null)
     }

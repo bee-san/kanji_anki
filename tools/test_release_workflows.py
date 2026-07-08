@@ -213,5 +213,73 @@ class FakeAnkiDroidProviderPackagingTest(unittest.TestCase):
         self.assertEqual("false", provider.attrib.get(f"{namespace}exported"))
 
 
+class CiPathFilterCoverageTest(unittest.TestCase):
+    """Goal 48: source roots must not silently drop out of CI.
+
+    The push and PR path filters in android-ci.yml must be identical sets, and
+    every top-level directory that holds build-affecting source (Gradle/Kotlin
+    or CI-consumed Python) must be covered by at least one filter entry.
+    """
+
+    ANDROID_CI = ROOT / ".github/workflows/android-ci.yml"
+
+    # Directories that must be covered by an android-ci path filter.
+    REQUIRED_COVERED_DIRS = (
+        "app",
+        "core",
+        "fsrs-java",
+        "domain",
+        "sync-domain",
+        "writing-core",
+        "dictionary-core",
+        "update-core",
+        "build-logic",
+        "ci",
+        "scripts",
+        "tools",
+        ".github",
+    )
+
+    def _load(self) -> dict:
+        import yaml
+
+        return yaml.safe_load(self.ANDROID_CI.read_text(encoding="utf-8"))
+
+    def _paths(self, trigger: dict) -> set:
+        return set(trigger.get("paths", []))
+
+    def test_push_and_pull_request_path_lists_are_identical(self) -> None:
+        # PyYAML parses the bare `on:` key as the boolean True.
+        on = self._load()[True]
+        push_paths = self._paths(on["push"])
+        pr_paths = self._paths(on["pull_request"])
+        self.assertEqual(
+            push_paths,
+            pr_paths,
+            "android-ci push and pull_request path filters must match exactly",
+        )
+
+    def test_every_source_root_is_covered_by_a_filter(self) -> None:
+        on = self._load()[True]
+        push_paths = self._paths(on["push"])
+        for directory in self.REQUIRED_COVERED_DIRS:
+            covered = any(
+                entry == f"{directory}/**"
+                or entry.startswith(f"{directory}/")
+                or entry == f"{directory}/**/*"
+                for entry in push_paths
+            )
+            self.assertTrue(
+                covered,
+                f"source root '{directory}/' is not covered by any android-ci path filter",
+            )
+
+    def test_build_logic_ci_tests_and_github_scripts_are_covered(self) -> None:
+        on = self._load()[True]
+        push_paths = self._paths(on["push"])
+        for entry in ("build-logic/**", "ci/tests/**", ".github/scripts/**"):
+            self.assertIn(entry, push_paths)
+
+
 if __name__ == "__main__":
     unittest.main()

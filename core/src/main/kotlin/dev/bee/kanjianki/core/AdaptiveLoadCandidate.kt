@@ -7,25 +7,30 @@ import kotlin.math.min
 /**
  * Scores dashboard rows as focus candidates for the adaptive load plan.
  *
- * Term dominance in [priorityScore] is deliberate, strongest first:
+ * [priorityScore] is an additive sum of the terms below. The listed ranges are
+ * the *typical* magnitudes each term contributes — not a strict dominance
+ * hierarchy: because the terms are simply added, a large value on a
+ * nominally-lower term (e.g. an analyzer `weaknessScore` inflated by many
+ * suspended examples) can outweigh a small `fsrsRisk`. The ordering is by
+ * design a blend, and the comparators below break ties with discrete evidence.
  *
- * 1. `fsrsRisk` (0..~135): retention risk from FSRS evidence on the kanji's
- *    Anki example cards. A card drifting below the 90% retrievability target,
- *    or stuck at high difficulty / low stability, is at risk of being
- *    forgotten, which makes it the most valuable thing to study today.
- * 2. `exposureBoost` (0..80): the kanji keeps appearing in the user's real
- *    reading (external exposure tracker). Real-world encounters are direct
- *    evidence of value.
- * 3. `weaknessScore` (analyzer, typically 0..60): source evidence built by
- *    [KanjiAnalyzer] — suspended examples, missing mature support, and capped
- *    lapse/interval/FSRS pressure. It is counted exactly once here; this class
- *    must NOT re-add suspended-example or support-deficit terms on top of it
- *    (they are inside `weaknessScore` already).
- * 4. `frequencyValue` (0..24): how common the kanji is by Jiten frequency
- *    rank. This is the "value" axis of the Pareto claim — between two equally
- *    weak kanji, the one the user will meet more often is worth more.
- * 5. `kaniLapseScore * 2`: Kani-side lapse and writing evidence from the
- *    local study item, which the analyzer cannot see.
+ * - `fsrsRisk` (typically 0..~135): retention risk from FSRS evidence on the
+ *   kanji's Anki example cards. A card drifting below the 90% retrievability
+ *   target, or stuck at high difficulty / low stability, is at risk of being
+ *   forgotten, which makes it valuable to study today.
+ * - `exposureBoost` (typically 0..80): the kanji keeps appearing in the user's
+ *   real reading (external exposure tracker). Real-world encounters are direct
+ *   evidence of value.
+ * - `weaknessScore` (analyzer, typically 0..60 but uncapped): source evidence
+ *   built by [KanjiAnalyzer] — suspended examples, missing mature support, and
+ *   capped lapse/interval/FSRS pressure. It is counted exactly once here; this
+ *   class must NOT re-add suspended-example or support-deficit terms on top of
+ *   it (they are inside `weaknessScore` already).
+ * - `frequencyValue` (0..24): how common the kanji is by Jiten frequency rank.
+ *   This is the "value" axis of the Pareto claim — between two equally weak
+ *   kanji, the one the user will meet more often is worth more.
+ * - `kaniLapseScore * 2`: Kani-side lapse and writing evidence from the local
+ *   study item, which the analyzer cannot see.
  *
  * Ordering additionally puts due-recovery candidates in a strictly earlier
  * tier and, within that tier, services the most overdue card first

@@ -67,12 +67,21 @@ internal class LocalStoreSimilarKanjiMaintenance(
         nowMillis: Long,
     ): List<RecordsImportModels.SimilarKanjiPair> {
         activity.createSimilarKanjiPracticeTables(db)
+        val windowStartMillis = ConfusionPairMiner.windowStartMillis(nowMillis)
+        // Drop wrong-pick rows older than the mining window so the append-only log
+        // stops growing without bound; the miner discards them anyway, so this only
+        // removes rows that can never contribute a pair again.
+        db.delete(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
+            "reviewed_at<?",
+            arrayOf(windowStartMillis.toString()),
+        )
         val rows = ArrayList<ConfusionPairMiner.WrongPickRow>()
         db.query(
             LocalStoreBase.TABLE_SIMILAR_KANJI_REVIEW_LOG,
             arrayOf(LocalStoreBase.COLUMN_TARGET_KANJI, "selected_kanji", "correct", "reviewed_at"),
-            "correct=0",
-            null,
+            "correct=0 AND reviewed_at>=?",
+            arrayOf(windowStartMillis.toString()),
             null,
             null,
             null,

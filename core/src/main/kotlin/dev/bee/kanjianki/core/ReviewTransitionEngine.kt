@@ -338,6 +338,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realPassStreak = 0
             state.realAgainStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
+            state.lastFailedRealReviewDueAtMillis = context.item.dueAtMillis
             if (state.realAgainStreak >= context.settings.ladderDemotionFailStreak) {
                 val demoted = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
                 // Only reset the fail streak when a demotion actually moved the rung. At
@@ -449,7 +450,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             .recognitionStage(StudyLadderRules.rungToLegacyStage(state.rung))
             .writingRemediationPending(state.rung == RecordsBase.LadderRung.WRITE_KANJI)
             .consecutiveFailedRecognitionDays(state.realAgainStreak)
-            .lastFailedRecognitionDayMillis(state.lastRealReviewDueAtMillis)
+            .lastFailedRecognitionDayMillis(state.lastFailedRealReviewDueAtMillis)
             .matureIntervalDays(state.scheduledIntervalDays)
             .rung(state.rung)
             .phase(state.phase)
@@ -579,6 +580,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         var realPassStreak: Int = 0
         var realAgainStreak: Int = 0
         var lastRealReviewDueAtMillis: Long = 0L
+        var lastFailedRealReviewDueAtMillis: Long = 0L
         var due: Long = 0L
         lateinit var rung: RecordsBase.LadderRung
         lateinit var phase: RecordsBase.SchedulerPhase
@@ -600,6 +602,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                 state.realPassStreak = context.item.realPassStreak
                 state.realAgainStreak = context.item.realAgainStreak
                 state.lastRealReviewDueAtMillis = context.item.lastRealReviewDueAtMillis
+                state.lastFailedRealReviewDueAtMillis = context.item.lastFailedRecognitionDayMillis
                 state.stability = context.previousTaskMemory.stability
                 state.difficulty = context.previousTaskMemory.difficulty
                 state.schedulerState = context.item.state
