@@ -39,6 +39,33 @@ def _tracked_files(globs: tuple[str, ...]) -> list[Path]:
     return [ROOT / name.decode("utf-8") for name in names if name]
 
 
+class ConventionPluginLazyExcludesTest(unittest.TestCase):
+    """Goal 51: the convention plugin must resolve coverageExcludes lazily.
+
+    Reading `coverageExcludes.orNull` eagerly inside the `fileTree { }` action at
+    plugin-apply time captured an empty list (module scripts add excludes only
+    after the plugin applies), making every exclude a silent no-op. Guard that
+    the excludes are wired through a `provider { }` and not read eagerly with
+    `.orNull` inside a fileTree configuration action.
+    """
+
+    PLUGIN = ROOT / "build-logic/src/main/kotlin/kani.kotlin-library-conventions.gradle.kts"
+
+    def test_excludes_resolved_through_a_provider(self) -> None:
+        text = self.PLUGIN.read_text(encoding="utf-8")
+        self.assertIn("coverageClassDirectories", text)
+        self.assertIn("provider {", text)
+        self.assertNotIn(
+            "coverageExcludes.orNull?.forEach",
+            text,
+            "eager coverageExcludes read regressed — excludes will be a silent no-op",
+        )
+
+    def test_effective_excludes_probe_task_exists(self) -> None:
+        text = self.PLUGIN.read_text(encoding="utf-8")
+        self.assertIn('tasks.register("printCoverageExcludes")', text)
+
+
 class SourceControlByteHygieneTest(unittest.TestCase):
     def test_no_control_bytes_in_tracked_text_sources(self) -> None:
         offenders: list[str] = []

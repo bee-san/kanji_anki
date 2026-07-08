@@ -34,14 +34,37 @@ jacoco {
     toolVersion = libs.versions.jacoco.get()
 }
 
+// Resolve the excludes lazily: the extension's coverageExcludes list is populated
+// by the module build script, which runs AFTER this convention plugin is applied.
+// Reading `.orNull` eagerly inside the fileTree action (as before) captured an
+// empty list, so any `kaniLibrary { coverageExcludes.add(...) }` was a silent
+// no-op. The provider defers the read until the class directories are queried at
+// task-graph time, by which point the module script has run.
 val coverageClassDirectories = files(
-    fileTree(layout.buildDirectory.dir("classes/java/main").get().asFile) {
-        conventionExtension.coverageExcludes.orNull?.forEach { exclude(it) }
-    },
-    fileTree(layout.buildDirectory.dir("classes/kotlin/main").get().asFile) {
-        conventionExtension.coverageExcludes.orNull?.forEach { exclude(it) }
+    provider {
+        val excludes = conventionExtension.coverageExcludes.getOrElse(emptyList())
+        listOf(
+            fileTree(layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                excludes.forEach { exclude(it) }
+            },
+            fileTree(layout.buildDirectory.dir("classes/kotlin/main").get().asFile) {
+                excludes.forEach { exclude(it) }
+            },
+        )
     },
 )
+
+// Debug aid: prints the effective coverage-exclude globs after the module
+// script has configured them (used by CoverageExcludesFunctionalTest). The
+// provider is resolved into a config-cache-friendly value at execution time,
+// without capturing the extension (a script object) in the task action.
+val effectiveCoverageExcludes = provider { conventionExtension.coverageExcludes.getOrElse(emptyList()) }
+tasks.register("printCoverageExcludes") {
+    val excludes = effectiveCoverageExcludes
+    doLast {
+        excludes.get().forEach { println(it) }
+    }
+}
 
 tasks.named<JacocoReport>("jacocoTestReport") {
     dependsOn(tasks.named("test"))
