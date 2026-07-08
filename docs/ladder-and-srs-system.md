@@ -3,7 +3,7 @@
 Status: reference document generated from a deep code review of `main`
 (July 2026, DB version 25). Every statement below was verified against the
 source files cited. This document supersedes the older design sketch in
-`documentation/srs.md`, which describes a 3-rung ladder plus a
+`docs/srs.md`, which describes a 3-rung ladder plus a
 sibling-suppression design that was never implemented in that form.
 
 Section 14 lists the gaps found during the review, the fixes applied in
@@ -787,7 +787,7 @@ were resolved by the follow-up change set on this branch; items marked
   becomes a product goal, reintroduce it wired to the study/kanji detail
   UI (tracked in `docs/anki-parity-gap-map.md`).
 - **G14 (Doc) — Stale and fragmented documentation.** *Fix:*
-  `documentation/srs.md` now carries a superseded banner pointing here;
+  `docs/srs.md` now carries a superseded banner pointing here;
   AGENTS.md scheduler notes were corrected (G2, G7, G8, promotion cap);
   `StudySchedulerMigration.kt` documents why the one-shot v16 SQL phase
   mapping deliberately differs from the in-memory `derivedPhase`.
