@@ -185,9 +185,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)
         var streak: StudyStatsStore.StudyStreak? = null
         if (!result.duplicate) {
+            // saveAppliedReview already schedules reminders once; do not schedule
+            // again here (each schedule opens a throwaway LocalStore and reads the
+            // full dashboard).
             saveAppliedReview(session, request, result, now)
             streak = activity.store.studyStreak(now)
-            ReminderScheduler.schedule(activity)
         }
         val currentStreakDays = streak?.currentDays ?: 0
         showToast(HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays))
