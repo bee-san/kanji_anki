@@ -119,7 +119,7 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
             if (model.presets.isNotEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     model.presets.forEach { preset ->
                         KaniOutlinedButton(

@@ -67,7 +67,7 @@ fun ReferenceDataScreen(model: SettingsReferenceDataScreenModel) {
 fun DataSourcesIntro(model: SettingsReferenceDataIntroModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SettingsSecondaryButton(
             label = model.backLabel,
@@ -110,7 +110,7 @@ private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
     ) {
         Column(
             modifier = Modifier.padding(start = 18.dp, top = 17.dp, end = 18.dp, bottom = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             content = content
         )
     }
@@ -136,7 +136,7 @@ private fun DataSourcePanel(title: String, body: String, borderColor: ComposeCol
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = title,
