@@ -307,7 +307,7 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
-    fun autoWorkloadUsesFirstMajorParetoDropOff() {
+    fun autoWorkloadUsesPriorityMassConcentration() {
         val plan = plan(
                 listOf(
                         row("強", 42, null, null, null, 3, 1),
@@ -328,16 +328,17 @@ class AdaptiveLoadPlannerTest {
         assertTrue(plan.autoMode);
         assertEquals(2, plan.target);
         assertEquals(listOf("強", "重"), plan.focusKanji);
-        assertTrue(plan.status.contains("drop-off"));
+        assertTrue(plan.status.contains("concentrated"));
     }
 
     @Test
-    fun autoWorkloadReportsDropOffWhileWaitingForHistory() {
+    fun autoWorkloadReportsConcentrationWhileWaitingForHistory() {
         val plan = plan(
                 listOf(
                         row("強", 42, null, null, null, 3, 1),
                         row("重", 38, null, null, null, 3, 1),
-                        row("軽", 10, null, null, null, 3, 1)
+                        row("軽", 10, null, null, null, 3, 1),
+                        row("薄", 8, null, null, null, 3, 1)
                 ),
                 emptyList(),
                 RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
@@ -349,12 +350,12 @@ class AdaptiveLoadPlannerTest {
                 RecordsSyncModels.Settings.kikuDefaults()
         );
 
-        assertTrue(plan.status.contains("drop-off"));
+        assertTrue(plan.status.contains("concentrated"));
         assertTrue(plan.status.contains("starts small"));
     }
 
     @Test
-    fun autoWorkloadOrdersDropOffByCompositePriorityScore() {
+    fun autoWorkloadOrdersConcentratedFocusByCompositePriorityScore() {
         val plan = plan(
                 listOf(
                         row("査", 1, 0.75, null, null, 3, 1),
@@ -451,7 +452,7 @@ class AdaptiveLoadPlannerTest {
 
         assertTrue(plan.focusKanji.contains("復"));
         assertTrue(plan.focusKanji.contains("習"));
-        assertEquals(2, plan.newAdmissionLimit);
+        assertEquals(3, plan.newAdmissionLimit);
     }
 
     @Test
@@ -587,6 +588,14 @@ class AdaptiveLoadPlannerTest {
                 row("重", 38, null, null, null, 3, 1),
                 row("軽", 10, null, null, null, 3, 1)
         );
+        val spreadSix = listOf(
+                row("字0", 40, null, null, null, 3, 1),
+                row("字1", 38, null, null, null, 3, 1),
+                row("字2", 36, null, null, null, 3, 1),
+                row("字3", 34, null, null, null, 3, 1),
+                row("字4", 32, null, null, null, 3, 1),
+                row("字5", 30, null, null, null, 3, 1)
+        );
         val recoveryOnly = plan(
                 steep,
                 listOf(reviewed("強", 0L), reviewed("重", 0L), reviewed("軽", 0L)),
@@ -599,7 +608,7 @@ class AdaptiveLoadPlannerTest {
                 RecordsSyncModels.Settings.kikuDefaults()
         );
         val steady = plan(
-                steep,
+                spreadSix,
                 emptyList(),
                 RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
                 5,
@@ -870,7 +879,7 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
-    fun autoParetoRequiresAbsoluteDropAsWellAsRelativeDrop() {
+    fun autoParetoTreatsGentleDecayAsSpreadPriority() {
         val plan = plan(
                 listOf(
                         row("十", 10, null, null, null, 3, 1),
@@ -887,7 +896,8 @@ class AdaptiveLoadPlannerTest {
                 settingsWithMatureSupport(0)
         );
 
-        assertTrue(plan.target >= 2);
+        assertEquals(3, plan.target);
+        assertTrue(plan.status.contains("small Pareto focus"));
     }
 
     @Test
@@ -910,7 +920,7 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
-    fun autoParetoScanContinuesAcrossZeroPriorityTail() {
+    fun autoParetoConcentratesOnDominantHeadAboveWeakTail() {
         val plan = plan(
                 listOf(
                         row("十", 10, null, null, null, 3, 1),
@@ -927,7 +937,8 @@ class AdaptiveLoadPlannerTest {
                 settingsWithMatureSupport(0)
         );
 
-        assertTrue(plan.target >= 1);
+        assertEquals(1, plan.target);
+        assertEquals(listOf("十"), plan.focusKanji);
     }
 
     @Test
@@ -1006,6 +1017,212 @@ class AdaptiveLoadPlannerTest {
         );
 
         assertEquals("復", plan.focusKanji.get(0));
+    }
+
+    @Test
+    fun frequencyValuePrefersCommonKanjiOnOtherwiseEqualEvidence() {
+        val common = rowWithRank("常", 50, 10, 0);
+        val rare = rowWithRank("稀", 2800, 10, 0);
+
+        val plan = plan(
+                listOf(rare, common),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("常", plan.focusKanji.get(0));
+    }
+
+    @Test
+    fun concentratedFocusShrinksUnderRecentReviewStrain() {
+        val plan = plan(
+                listOf(
+                        row("強", 42, null, null, null, 3, 1),
+                        row("重", 38, null, null, null, 3, 1),
+                        row("軽", 10, null, null, null, 3, 1),
+                        row("薄", 8, null, null, null, 3, 1)
+                ),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(8, 4, 2, 2, 0, 6, 3),
+                1,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.AUTO,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertEquals(1, plan.target);
+        assertTrue(plan.status.contains("concentrated"));
+        assertTrue(plan.status.contains("review strain"));
+    }
+
+    @Test
+    fun concentratedFocusGrowsOnSteadyStreak() {
+        val plan = plan(
+                listOf(
+                        row("強", 42, null, null, null, 3, 1),
+                        row("重", 38, null, null, null, 3, 1),
+                        row("軽", 10, null, null, null, 3, 1),
+                        row("薄", 8, null, null, null, 3, 1)
+                ),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                5,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.AUTO,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertEquals(3, plan.target);
+        assertTrue(plan.status.contains("concentrated"));
+        assertTrue(plan.status.contains("steady streak"));
+    }
+
+    @Test
+    fun unknownRankEarnsNoFrequencyValue() {
+        val ranked = rowWithRank("有", 900, 10, 0);
+        val unranked = rowWithRank("無", null, 10, 0);
+        val zeroRanked = rowWithRank("零", 0, 10, 0);
+
+        val plan = plan(
+                listOf(unranked, zeroRanked, ranked),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("有", plan.focusKanji.get(0));
+    }
+
+    @Test
+    fun mostOverdueDueKanjiWinsFocusSlotOverFresherHigherRiskDue() {
+        val dayMillis = 86_400_000L;
+        val now = 30L * dayMillis;
+        val longOverdueLowRisk = reviewed("古", now - 10L * dayMillis);
+        val freshHighRisk = reviewed("新", now - 3_600_000L);
+
+        val plan = plan(
+                listOf(
+                        rowWithRank("古", 900, 5, 0),
+                        row("新", 5, 0.10, 8.0, 1.0, 3, 10)
+                ),
+                listOf(longOverdueLowRisk, freshHighRisk),
+                RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.MANUAL,
+                1,
+                now,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertEquals(listOf("古"), plan.focusKanji);
+    }
+
+    @Test
+    fun dueBacklogOverflowIsSurfacedInStatus() {
+        val due = listOf(
+                reviewed("字0", 0L),
+                reviewed("字1", 0L),
+                reviewed("字2", 0L),
+                reviewed("字3", 0L),
+                reviewed("字4", 0L),
+                reviewed("字5", 0L)
+        );
+
+        val plan = plan(
+                rows(8),
+                due,
+                RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.AUTO,
+                5,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.status.contains("1 due kanji waits beyond today's cap"));
+        assertTrue(plan.status.contains("Continue all kanji"));
+    }
+
+    @Test
+    fun dueBacklogOverflowUsesPluralCopy() {
+        val due = listOf(
+                reviewed("字0", 0L),
+                reviewed("字1", 0L),
+                reviewed("字2", 0L)
+        );
+
+        val plan = plan(
+                rows(4),
+                due,
+                RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.MANUAL,
+                1,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.status.contains("2 due kanji wait beyond today's cap"));
+    }
+
+    @Test
+    fun suspendedEvidenceIsCountedOnceThroughWeaknessScore() {
+        // The analyzer already prices suspended examples into weaknessScore.
+        // The planner must not add a second suspended-count bonus on top, so
+        // a slightly weaker row with extra suspended examples cannot outrank
+        // a clearly weaker row.
+        val strongerWeakness = rowWithRank("重", 900, 24, 0);
+        val extraSuspended = rowWithRank("軽", 900, 20, 2);
+
+        val plan = plan(
+                listOf(extraSuspended, strongerWeakness),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("重", plan.focusKanji.get(0));
+    }
+
+    @Test
+    fun allZeroPriorityWithUnknownRanksFallsBackToSmallFocus() {
+        val plan = plan(
+                listOf(
+                        rowWithRank("穏", null, 0, 0),
+                        rowWithRank("静", null, 0, 0)
+                ),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.AUTO,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertEquals(2, plan.target);
+        assertTrue(plan.status.contains("small Pareto focus"));
     }
 
     private fun planner(): AdaptiveLoadPlanner {
@@ -1177,6 +1394,49 @@ class AdaptiveLoadPlannerTest {
                 1,
                 0,
                 if (intervalDays >= RecordsSyncModels.Settings.kikuDefaults().matureDays) 1 else 0,
+                listOf(example)
+        );
+    }
+
+    private fun rowWithRank(
+
+            kanji: String,
+
+            rank: Int?,
+
+            weakness: Int,
+
+            suspendedCount: Int
+
+    ): RecordsImportModels.DashboardRow {
+        val example = RecordsImportModels.Example(
+                "active",
+                kanji[0].code.toLong(),
+                kanji[0].code.toLong(),
+                kanji + "語",
+                "よみ",
+                "meaning",
+                kanji + "を見た。",
+                true,
+                0,
+                45,
+                12,
+                null,
+                null,
+                null
+        );
+        return RecordsImportModels.DashboardRow(
+                kanji,
+                rank,
+                "meaning",
+                "reading",
+                "search",
+                weakness,
+                "weak_support",
+                "reason",
+                1,
+                suspendedCount,
+                1,
                 listOf(example)
         );
     }
