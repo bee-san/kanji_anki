@@ -66,12 +66,18 @@ private fun HomeSecondaryPanels(model: HomeScreenModel) {
         onAction = model.onFocusAction
     )
     if (model.previewCards.isEmpty()) {
-        Box(modifier = Modifier.padding(vertical = 8.dp)) {
-            HomeEmptyState(
-                title = requireNotNull(model.emptyTitle),
-                body = requireNotNull(model.emptyBody),
-                style = HomeEmptyStateStyle.Panel
-            )
+        // Empty-state copy travels with an empty queue in every production model;
+        // render nothing (instead of crashing) if a caller ever omits it.
+        val emptyTitle = model.emptyTitle
+        val emptyBody = model.emptyBody
+        if (emptyTitle != null && emptyBody != null) {
+            Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                HomeEmptyState(
+                    title = emptyTitle,
+                    body = emptyBody,
+                    style = HomeEmptyStateStyle.Panel
+                )
+            }
         }
     } else {
         Column {
@@ -103,7 +109,7 @@ private fun HomePrimaryHomeCta(model: HomeScreenModel) {
             HomeStudyCta(
                 title = model.studyLabel,
                 onClick = model.onStudy,
-                dueCount = model.dueCount,
+                remainingCount = model.studyRemainingCount,
             )
         }
     }

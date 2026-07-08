@@ -199,6 +199,18 @@ object HomeTextCopy {
     @JvmStatic
     fun studyNowLabel(): String = localizedText("Study now", "今すぐ学習")
 
+    /**
+     * Count pill on the home Study-now card: cards remaining in the current/next
+     * focus session (not a raw due count — the session is sized by the adaptive
+     * plan, so this matches what tapping Study actually serves).
+     */
+    @JvmStatic
+    fun studyRemainingCountLabel(count: Int): String =
+        localizedText(
+            StudyTextCopy.countText(count, "to study", "to study"),
+            "残り${count}件",
+        )
+
     @JvmStatic
     fun todayPlanTitle(): String = localizedText("Today", "今日")
 

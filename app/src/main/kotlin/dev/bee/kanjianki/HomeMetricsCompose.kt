@@ -36,20 +36,39 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.SyncStatus
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
+
+/**
+ * Whether the home sync tile may claim "Up to date". A last sync that succeeded but
+ * is stale enough that the daily plan asks for a fresh one ("sync needed before Kani
+ * can judge progress") must not read as up to date, or the tile contradicts the
+ * Today card sitting right below it.
+ */
+internal fun syncTileUpToDate(
+    canSync: Boolean,
+    lastSyncSucceeded: Boolean,
+    dailyPlan: DailyStudyPlan?,
+): Boolean {
+    return canSync &&
+        lastSyncSucceeded &&
+        dailyPlan?.syncStatus != SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS
+}
 
 internal fun homeMetricModels(
     home: MainActivityHome,
     sync: LocalStoreBase.SyncStatus?,
     provider: AnkiDroidGateway.ProviderStatus,
     streak: StudyStatsStore.StudyStreak?,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
+    plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+    dailyPlan: DailyStudyPlan? = null
 ): List<HomeMetricModel> {
     return listOf(
         HomeMetricModel(
@@ -57,7 +76,13 @@ internal fun homeMetricModels(
             MainActivityUiSupport.TEAL,
             HomeTextCopy.syncMetricLabel(),
             HomeTextCopy.homeSyncValue(sync?.finishedAt),
-            HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && sync.status == "success"),
+            HomeTextCopy.syncMetricStatus(
+                syncTileUpToDate(
+                    canSync = provider.canSync,
+                    lastSyncSucceeded = sync != null && sync.status == "success",
+                    dailyPlan = dailyPlan,
+                )
+            ),
             home::confirmSync
         ),
         HomeMetricModel(

@@ -18,5 +18,6 @@ data class HomeScreenModel(
     val emptyTitle: String?,
     val emptyBody: String?,
     val previewCards: List<HomeFocusQueueCardModel>,
-    val dueCount: Int = 0,
+    /** Cards remaining in the current/next focus study session. */
+    val studyRemainingCount: Int = 0,
 )

@@ -104,6 +104,7 @@ internal fun MainActivityRouteContent(
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
+    imeVisible: Boolean = kaniImeVisible(),
     content: @Composable () -> Unit,
 ) {
     MainActivityScrollableRouteColumn(
@@ -111,6 +112,7 @@ internal fun MainActivityRouteContent(
         initialScrollY = initialScrollY,
         onScrollY = onScrollY,
         navActions = navActions,
+        imeVisible = imeVisible,
         content = content,
     )
 }
@@ -121,6 +123,7 @@ internal fun MainActivityRouteContentWithActionBar(
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
+    imeVisible: Boolean = kaniImeVisible(),
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -129,6 +132,7 @@ internal fun MainActivityRouteContentWithActionBar(
         initialScrollY = initialScrollY,
         onScrollY = onScrollY,
         navActions = navActions,
+        imeVisible = imeVisible,
         content = content,
         footerContent = actionBar,
     )
@@ -140,6 +144,7 @@ private fun MainActivityScrollableRouteColumn(
     initialScrollY: Int,
     onScrollY: (Int) -> Unit,
     navActions: KaniNavActions?,
+    imeVisible: Boolean = kaniImeVisible(),
     content: @Composable () -> Unit,
     footerContent: @Composable () -> Unit = {},
 ) {
@@ -176,7 +181,11 @@ private fun MainActivityScrollableRouteColumn(
                 content()
             }
             footerContent()
-            if (navActions != null) {
+            // The bottom nav is unusable while typing and would sit on top of the
+            // keyboard, stealing ~90dp from the already-shrunken content viewport
+            // (the kanji prompt was getting pushed off-screen). Hide it until the
+            // IME closes.
+            if (navActions != null && !imeVisible) {
                 KaniBottomNavBar(
                     selectedRoute = model.selectedRoute,
                     actions = navActions,

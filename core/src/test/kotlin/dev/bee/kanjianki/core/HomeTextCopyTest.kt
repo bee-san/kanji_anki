@@ -41,6 +41,19 @@ class HomeTextCopyTest {
     }
 
     @Test
+    fun studyRemainingCountLabelDescribesSessionRemainingCards() {
+        assertEquals("1 to study", HomeTextCopy.studyRemainingCountLabel(1))
+        assertEquals("5 to study", HomeTextCopy.studyRemainingCountLabel(5))
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            assertEquals("残り5件", HomeTextCopy.studyRemainingCountLabel(5))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
     fun streakCopyPreservesHomeMetricCopy() {
         assertEquals("No streak yet", HomeTextCopy.streakHeadline(0))
         assertEquals("No streak yet", HomeTextCopy.streakHeadline(-1))

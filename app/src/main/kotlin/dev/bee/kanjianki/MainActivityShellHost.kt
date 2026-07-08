@@ -4,6 +4,24 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.theme.resolveSystemBars
 
+/**
+ * Cards remaining in the user's focus study session, shown on the Study nav badge.
+ * While a run is in flight (a target exists and is not yet met) the live session
+ * tracker is the source of truth, so the badge decreases with every answered card.
+ * Otherwise the latest adaptive-plan `remaining` cached by the background route
+ * loads is used. Non-positive results mean "hide the badge".
+ */
+internal fun studySessionBadgeCount(
+    trackerTargetCount: Int,
+    trackerCompletedCount: Int,
+    cachedPlanRemaining: Int,
+): Int {
+    if (trackerTargetCount > 0 && trackerCompletedCount < trackerTargetCount) {
+        return trackerTargetCount - trackerCompletedCount
+    }
+    return cachedPlanRemaining
+}
+
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, onScrollY: (Int) -> Unit = NoOpRouteScrollY, content: @Composable () -> Unit) {
         withRouteTrace(selected) {
@@ -73,7 +91,12 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     }
 
     private fun studyBadgeCount(): Int? {
-        return activity.studyDueBadgeCount.takeIf { it > 0 }
+        val tracker = activity.studySessionTracker
+        return studySessionBadgeCount(
+            trackerTargetCount = tracker.targetCount(),
+            trackerCompletedCount = tracker.completedCount(),
+            cachedPlanRemaining = activity.studySessionBadgeCount,
+        ).takeIf { it > 0 }
     }
 
     private fun navActions(): KaniNavActions {

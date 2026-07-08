@@ -1,5 +1,10 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -14,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -23,37 +29,50 @@ class HomeScreenComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    // The production shell hosts every route inside a vertical scroll container
+    // (MainActivityScrollableRouteColumn); mirror that here so below-the-fold home
+    // sections can be scrolled to on small test devices.
+    private fun setHomeContent(model: HomeScreenModel) {
+        composeRule.setContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                HomeScreen(model)
+            }
+        }
+    }
+
     @Test
     fun rendersEmptyHomeWithSyncCta() {
         var syncClicked = false
 
-        composeRule.setContent {
-            HomeScreen(
-                model = baseModel(
-                    showSyncCta = true,
-                    onSync = { syncClicked = true },
-                    syncMetricBody = "AnkiDroid",
-                    emptyTitle = "No kanji queued",
-                    emptyBody = HomeTextCopy.homeNoKanjiQueuedBody()
-                )
+        setHomeContent(
+            baseModel(
+                showSyncCta = true,
+                onSync = { syncClicked = true },
+                syncMetricBody = "AnkiDroid",
+                emptyTitle = "No kanji queued",
+                emptyBody = HomeTextCopy.homeNoKanjiQueuedBody()
             )
-        }
+        )
 
         composeRule.onNodeWithText("Kani").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
-        composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
+        composeRule.onNodeWithText("Focus queue").performScrollTo().assertIsDisplayed()
         composeRule.onAllNodesWithText("View all").assertCountEquals(0)
-        composeRule.onNodeWithText("No kanji queued").assertIsDisplayed()
-        composeRule.onNodeWithText(HomeTextCopy.homeNoKanjiQueuedBody()).assertIsDisplayed()
-        composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync with AnkiDroid"))
+        composeRule.onNodeWithText("No kanji queued").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.homeNoKanjiQueuedBody()).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(homePrimaryCtaTestTag("Sync AnkiDroid"))
+            .performScrollTo()
             .assertIsDisplayed()
             .assertHasClickAction()
-        composeRule.onNodeWithContentDescription("Sync with AnkiDroid")
+        composeRule.onNodeWithContentDescription("Sync AnkiDroid")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
-        composeRule.onNodeWithText("Sync").assertHasClickAction().performClick()
-        composeRule.onNodeWithText("AnkiDroid").assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Sync").performScrollTo().assertHasClickAction().performClick()
+        composeRule.onNodeWithText("AnkiDroid").performScrollTo().assertHasClickAction().performClick()
         assertTrue(syncClicked)
     }
 
@@ -61,29 +80,46 @@ class HomeScreenComposeTest {
     fun rendersTodayPlanCardAndTriggersAction() {
         var clicked = false
 
-        composeRule.setContent {
-            HomeScreen(
-                model = baseModel(
-                    showSyncCta = false,
-                    deckOverviewRows = listOf("Due 2"),
-                    todayPlan = HomeTodayPlanModel(
-                        title = HomeTextCopy.todayPlanTitle(),
-                        summary = "4 due now · about 2 min",
-                        details = listOf("Needs one calm review", "Keeps the streak safe"),
-                        actionLabel = HomeTextCopy.studyNowLabel(),
-                        onClick = { clicked = true },
-                    ),
-                )
+        setHomeContent(
+            baseModel(
+                showSyncCta = false,
+                deckOverviewRows = listOf("Due 2"),
+                todayPlan = HomeTodayPlanModel(
+                    title = HomeTextCopy.todayPlanTitle(),
+                    summary = "4 due now · about 2 min",
+                    details = listOf("Needs one calm review", "Keeps the streak safe"),
+                    actionLabel = HomeTextCopy.studyNowLabel(),
+                    onClick = { clicked = true },
+                ),
             )
-        }
+        )
 
         composeRule.onNodeWithTag(homeTodayPlanTestTag())
+            .performScrollTo()
             .assertIsDisplayed()
             .assertHasClickAction()
             .performClick()
-        composeRule.onNodeWithText("4 due now · about 2 min").assertIsDisplayed()
-        composeRule.onNodeWithText("Needs one calm review").assertIsDisplayed()
+        composeRule.onNodeWithText("4 due now · about 2 min").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Needs one calm review").performScrollTo().assertIsDisplayed()
         assertTrue(clicked)
+    }
+
+    @Test
+    fun studyCtaShowsSessionRemainingCount() {
+        setHomeContent(
+            baseModel(
+                showSyncCta = false,
+                studyRemainingCount = 5,
+            )
+        )
+
+        // The Study-now pill shows the focus-session remaining count, not the raw
+        // active-card count (the "19 Due while I study 5" bug).
+        composeRule.onNodeWithText(HomeTextCopy.studyRemainingCountLabel(5))
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Study now, ${HomeTextCopy.studyRemainingCountLabel(5)}")
+            .assertHasClickAction()
     }
 
     @Test
@@ -94,51 +130,50 @@ class HomeScreenComposeTest {
         var actionClicked = false
         var metricSyncClicked = false
 
-        composeRule.setContent {
-            HomeScreen(
-                model = baseModel(
-                    showSyncCta = false,
-                    onStudy = { studyClicked = true },
-                    onSync = { metricSyncClicked = true },
-                    deckOverviewRows = listOf("Due 2", "New 1"),
-                    focusActionLabel = "View all >",
-                    onFocusAction = { focusClicked = true },
-                    actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = { actionClicked = true })),
-                    previewCards = listOf(
-                        HomeFocusQueueCardModel(
-                            kanji = "裂",
-                            meaning = "split",
-                            sourceEvidence = "From 裂語",
-                            reasonLine = "due now",
-                            body = "Needs kanji practice.",
-                            tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", MainActivityUiSupport.BLUE)),
-                            accentColor = MainActivityUiSupport.CORAL,
-                            onClick = { cardClicked = true }
-                        )
+        setHomeContent(
+            baseModel(
+                showSyncCta = false,
+                onStudy = { studyClicked = true },
+                onSync = { metricSyncClicked = true },
+                deckOverviewRows = listOf("Due 2", "New 1"),
+                focusActionLabel = "View all >",
+                onFocusAction = { focusClicked = true },
+                actions = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = { actionClicked = true })),
+                previewCards = listOf(
+                    HomeFocusQueueCardModel(
+                        kanji = "裂",
+                        meaning = "split",
+                        sourceEvidence = "From 裂語",
+                        reasonLine = "due now",
+                        body = "Needs kanji practice.",
+                        tags = listOf(HomeFocusQueueTagModel("kanji -> meaning", MainActivityUiSupport.BLUE)),
+                        accentColor = MainActivityUiSupport.CORAL,
+                        onClick = { cardClicked = true }
                     )
                 )
             )
-        }
+        )
 
         composeRule.onNodeWithContentDescription("Study now")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
         composeRule.onNodeWithTag(homeStudyCtaTestTag("Study now"))
+            .performScrollTo()
             .assertIsDisplayed()
             .assertHasClickAction()
         composeRule.onNodeWithTag(homeActionButtonTestTag("Stats"))
+            .performScrollTo()
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
-        composeRule.onNodeWithText("Focus queue").assertIsDisplayed().assertHasClickAction().performClick()
-        composeRule.onNodeWithText("View all >").assertHasClickAction().performClick()
-        composeRule.onNodeWithText("Sync").assertHasClickAction().performClick()
-        composeRule.onNodeWithContentDescription("Study").performClick()
-        composeRule.onNodeWithText("Deck overview").assertIsDisplayed()
+        composeRule.onNodeWithText("Focus queue").performScrollTo().assertIsDisplayed().assertHasClickAction().performClick()
+        composeRule.onNodeWithText("View all >").performScrollTo().assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Sync").performScrollTo().assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Deck overview").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Due 2").assertIsDisplayed()
         composeRule.onNodeWithText("New 1").assertIsDisplayed()
-        composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performClick()
+        composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performScrollTo().performClick()
         assertTrue(studyClicked)
         assertTrue(actionClicked)
         assertTrue(focusClicked)
@@ -158,6 +193,7 @@ class HomeScreenComposeTest {
         actions: List<HomeActionModel> = listOf(HomeActionModel("Stats", R.drawable.ic_stats_24, onClick = {})),
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
         syncMetricBody: String = "Ready",
+        studyRemainingCount: Int = 0,
         todayPlan: HomeTodayPlanModel = HomeTodayPlanModel(
             title = HomeTextCopy.todayPlanTitle(),
             summary = "Nothing useful now",
@@ -185,7 +221,8 @@ class HomeScreenComposeTest {
             onFocusAction = onFocusAction,
             emptyTitle = emptyTitle,
             emptyBody = emptyBody,
-            previewCards = previewCards
+            previewCards = previewCards,
+            studyRemainingCount = studyRemainingCount,
         )
     }
 }
