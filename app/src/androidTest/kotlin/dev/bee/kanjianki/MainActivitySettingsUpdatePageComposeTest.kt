@@ -46,7 +46,10 @@ class MainActivitySettingsUpdatePageComposeTest {
                         onInstallVerifiedUpdate = { installClicked = true },
                         onOpenInstallSettings = {},
                         onToggleAutomaticUpdates = { toggleClicked = true },
-                        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(true)
+                        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(true),
+                        showAutoUpdateInBackground = false,
+                        autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
+                        onAutoUpdateInBackground = {}
                     )
                 )
             )
@@ -65,6 +68,7 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).assertDoesNotExist()
 
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performClick()
@@ -84,6 +88,7 @@ class MainActivitySettingsUpdatePageComposeTest {
     @Test
     fun rendersUpdateOverviewPanelAndWiresOpenUpdater() {
         var openClicked = false
+        var backgroundClicked = false
         composeRule.setContent {
             SettingsUpdateOverviewPanel(
                 model = SettingsUpdateOverviewPanelModel(
@@ -102,7 +107,10 @@ class MainActivitySettingsUpdatePageComposeTest {
                         onInstallVerifiedUpdate = {},
                         onOpenInstallSettings = {},
                         onToggleAutomaticUpdates = {},
-                        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(false)
+                        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(false),
+                        showAutoUpdateInBackground = true,
+                        autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
+                        onAutoUpdateInBackground = { backgroundClicked = true }
                     ),
                     openUpdaterLabel = SettingsTextCopy.openUpdaterLabel(),
                     onOpenUpdater = { openClicked = true }
@@ -112,11 +120,14 @@ class MainActivitySettingsUpdatePageComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.appUpdatesTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.setupAppInstallsLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.openUpdaterLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.openUpdaterLabel()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(openClicked)
+            assertTrue(backgroundClicked)
         }
     }
 

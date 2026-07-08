@@ -111,6 +111,10 @@ object SettingsAutomationTextCopy {
     fun setupAppInstallsLabel(): String = localizedText("Allow app installs", "アプリのインストールを許可")
 
     @JvmStatic
+    fun autoUpdateInBackgroundLabel(): String =
+        localizedText("Automatically update in the background", "バックグラウンドで自動更新")
+
+    @JvmStatic
     fun automaticUpdatesToggleLabel(enabled: Boolean): String {
         return if (enabled) localizedText("Turn off updates", "更新をオフにする") else localizedText("Turn on updates", "更新をオンにする")
     }

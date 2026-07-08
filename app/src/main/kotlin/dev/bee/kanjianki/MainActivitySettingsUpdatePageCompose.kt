@@ -17,6 +17,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
+import dev.bee.kanjianki.updatecore.BackgroundAutoUpdateOptionPolicy
 
 internal fun settingsUpdatePanelModel(
     activity: MainActivitySettings,
@@ -54,6 +55,9 @@ internal fun settingsUpdatePanelModel(
         onOpenInstallSettings = { activity.startActivity(GitHubUpdater.installPermissionIntent(activity)) },
         onToggleAutomaticUpdates = { toggleAutomaticUpdates(activity, status.enabled) },
         automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled),
+        showAutoUpdateInBackground = BackgroundAutoUpdateOptionPolicy.optionVisible(status.enabled, canInstallUpdates),
+        autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
+        onAutoUpdateInBackground = { autoUpdateInBackground(activity, status.enabled) },
     )
 }
 
@@ -103,5 +107,33 @@ private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Bool
         }
         Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
         activity.renderUpdate(true)
+    }
+}
+
+/**
+ * One-tap setup for background updates: turns automatic checks on when they
+ * are off, then opens the Android settings page that grants the install
+ * permission background updates need. When the permission is already granted,
+ * the panel simply re-renders with the refreshed state.
+ */
+private fun autoUpdateInBackground(activity: MainActivitySettings, enabled: Boolean) {
+    if (!BackgroundAutoUpdateOptionPolicy.shouldEnableAutoUpdates(enabled)) {
+        activity.startActivity(GitHubUpdater.installPermissionIntent(activity))
+        return
+    }
+    val result = AutoUpdateSettingsTogglePolicy.toggle(false)
+    activity.runSettingsWrite(
+        traceSection = "kani.settings.auto-update.background",
+        write = {
+            activity.store.saveAutoUpdateEnabled(result.enabled())
+        },
+    ) {
+        AutoUpdateScheduler.schedule(activity)
+        Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
+        if (BackgroundAutoUpdateOptionPolicy.shouldOpenInstallSettings(canInstallUpdates(activity))) {
+            activity.startActivity(GitHubUpdater.installPermissionIntent(activity))
+        } else {
+            activity.renderUpdate(true)
+        }
     }
 }

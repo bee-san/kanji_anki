@@ -205,6 +205,9 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
             onOpenInstallSettings = {},
             onToggleAutomaticUpdates = {},
             automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(false),
+            showAutoUpdateInBackground = false,
+            autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
+            onAutoUpdateInBackground = {},
         ),
     )
 }

@@ -96,6 +96,9 @@ object SettingsTextCopy {
     fun setupAppInstallsLabel(): String = SettingsAutomationTextCopy.setupAppInstallsLabel()
 
     @JvmStatic
+    fun autoUpdateInBackgroundLabel(): String = SettingsAutomationTextCopy.autoUpdateInBackgroundLabel()
+
+    @JvmStatic
     fun automaticUpdatesToggleLabel(enabled: Boolean): String = SettingsAutomationTextCopy.automaticUpdatesToggleLabel(enabled)
 
     @JvmStatic
