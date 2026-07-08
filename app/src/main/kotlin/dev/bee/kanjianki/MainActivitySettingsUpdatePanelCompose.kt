@@ -21,7 +21,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 fun SettingsUpdateOverviewPanel(model: SettingsUpdateOverviewPanelModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SettingsUpdatePanel(model = model.panel)
         SettingsUpdateFilledButton(
@@ -46,7 +46,7 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = model.title,

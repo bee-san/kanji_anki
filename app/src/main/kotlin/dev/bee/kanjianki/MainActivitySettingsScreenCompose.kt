@@ -7,6 +7,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,11 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 internal const val SETTINGS_SCREEN_BOTTOM_SPACER_TAG = "settings-screen-bottom-spacer"
 private val SettingsScreenBottomSpacerHeight = 96.dp
 
+// Vertical gap between the bordered panel/card surfaces. Without an explicit gap
+// each panel Surface (border + shadow) butts directly against the next, which
+// reads as cramped; this gives every card room to breathe.
+private val SettingsPanelSpacing = 14.dp
+
 @Composable
 fun SettingsScreen(model: SettingsScreenModel) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -36,11 +42,12 @@ fun SettingsScreen(model: SettingsScreenModel) {
             )
         }
         SettingsAutomationHero(model.hero)
-        Spacer(modifier = Modifier.height(10.dp))
-        model.cards.forEach { card ->
-            Box(
-                modifier = Modifier.padding(top = 7.dp, bottom = 9.dp)
-            ) {
+        Spacer(modifier = Modifier.height(18.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SettingsPanelSpacing)
+        ) {
+            model.cards.forEach { card ->
                 SettingsHubCard(card = card)
             }
         }
@@ -84,10 +91,15 @@ fun SettingsSubmenuScreen(model: SettingsSubmenuScreenModel) {
                     .padding(top = 6.dp),
             )
         }
-        Spacer(modifier = Modifier.height(14.dp))
-        model.panels.forEach { panel ->
-            Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
-                SettingsPanel(panel)
+        Spacer(modifier = Modifier.height(20.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SettingsPanelSpacing)
+        ) {
+            model.panels.forEach { panel ->
+                Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
+                    SettingsPanel(panel)
+                }
             }
         }
         Spacer(
@@ -125,7 +137,12 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = SettingsPanelSpacing),
+                verticalArrangement = Arrangement.spacedBy(SettingsPanelSpacing)
+            ) {
                 model.panels.forEach { panel ->
                     Box(modifier = Modifier.testTag(settingsPanelTestTag(panel))) {
                         SettingsPanel(panel)

@@ -35,7 +35,7 @@ fun SettingsDeckLimitsPanel(model: SettingsDeckLimitsPanelModel) {
         border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
         shadowElevation = 2.dp,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Text(
                 text = model.title,
                 color = KaniUiTokens.Ink,
