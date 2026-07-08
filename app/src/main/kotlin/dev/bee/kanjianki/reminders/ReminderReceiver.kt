@@ -11,10 +11,11 @@ import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action ?: ""
+        val family = intent?.getStringExtra(ReminderScheduler.EXTRA_REMINDER_FAMILY) ?: ""
         // Reads the full dashboard + all study items + streaks; do it off the main
         // thread and keep the broadcast alive until it completes.
         ReceiverAsyncWork.run(this) {
-            handle(action, AndroidReceiverActions(context))
+            handle(action, family, AndroidReceiverActions(context))
         }
     }
 
@@ -22,6 +23,8 @@ class ReminderReceiver : BroadcastReceiver() {
         fun scheduleFromStoredSettings()
 
         fun handleDailyReminder()
+
+        fun handleReminderDismissed(family: String)
     }
 
     interface DailyReminderActions {
@@ -45,18 +48,44 @@ class ReminderReceiver : BroadcastReceiver() {
                 )
             }
         }
+
+        override fun handleReminderDismissed(family: String) {
+            val safeContext = context ?: return
+            LocalStore(safeContext).use { store ->
+                // Swipe-dismiss is the user's strongest anti-spam signal: suppress
+                // this family for the rest of the local day, then re-arm from fresh
+                // state so the next eligible time reflects the dismissal.
+                store.recordReminderDismissed(dev.bee.kanjianki.time.AppClock.systemClock().nowMillis(), family)
+            }
+            ReminderScheduler.schedule(safeContext)
+        }
     }
 
     companion object {
         @JvmStatic
         fun handle(action: String?, actions: ReceiverActions) {
-            when (ReminderReceiverPolicy.commandFor(action, ReminderScheduler.ACTION_DAILY_REMINDER)) {
+            handle(action, "", actions)
+        }
+
+        @JvmStatic
+        fun handle(action: String?, family: String, actions: ReceiverActions) {
+            when (
+                ReminderReceiverPolicy.commandFor(
+                    action,
+                    ReminderScheduler.ACTION_DAILY_REMINDER,
+                    ReminderScheduler.ACTION_REMINDER_DISMISSED,
+                )
+            ) {
                 ReminderReceiverPolicy.ReceiverCommand.SCHEDULE_FROM_STORED_SETTINGS -> {
                     actions.scheduleFromStoredSettings()
                 }
 
                 ReminderReceiverPolicy.ReceiverCommand.HANDLE_DAILY_REMINDER -> {
                     actions.handleDailyReminder()
+                }
+
+                ReminderReceiverPolicy.ReceiverCommand.HANDLE_REMINDER_DISMISSED -> {
+                    actions.handleReminderDismissed(family)
                 }
 
                 ReminderReceiverPolicy.ReceiverCommand.NONE -> Unit

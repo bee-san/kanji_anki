@@ -41,8 +41,58 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
             } else {
                 null
             },
-            onOpenNotificationSettings = notificationSettings?.action
+            onOpenNotificationSettings = notificationSettings?.action,
+            antiSpam = if (reminder.enabled) antiSpamModel() else null,
         )
+    }
+
+    private fun antiSpamModel(): SettingsReminderAntiSpamModel {
+        val settings = activity.store.reminderAntiSpamSettings()
+        return SettingsReminderAntiSpamModel(
+            quietHoursLabel = SettingsTextCopy.reminderQuietHoursLabel(
+                settings.quietStartMinuteOfDay,
+                settings.quietEndMinuteOfDay,
+            ),
+            quietHoursBody = SettingsTextCopy.reminderQuietHoursBody(),
+            quietStartLabel = SettingsTextCopy.reminderQuietStartButtonLabel(settings.quietStartMinuteOfDay),
+            quietEndLabel = SettingsTextCopy.reminderQuietEndButtonLabel(settings.quietEndMinuteOfDay),
+            maxPerDayLabel = SettingsTextCopy.reminderMaxPerDayLabel(settings.maxRemindersPerDay),
+            onPickQuietStart = SettingsReminderAction {
+                pickQuietHour(settings.quietStartMinuteOfDay) { minuteOfDay ->
+                    saveAntiSpam(settings.copy(quietStartMinuteOfDay = minuteOfDay))
+                }
+            },
+            onPickQuietEnd = SettingsReminderAction {
+                pickQuietHour(settings.quietEndMinuteOfDay) { minuteOfDay ->
+                    saveAntiSpam(settings.copy(quietEndMinuteOfDay = minuteOfDay))
+                }
+            },
+            onDecreaseMaxPerDay = SettingsReminderAction {
+                saveAntiSpam(settings.copy(maxRemindersPerDay = settings.maxRemindersPerDay - 1))
+            },
+            onIncreaseMaxPerDay = SettingsReminderAction {
+                saveAntiSpam(settings.copy(maxRemindersPerDay = settings.maxRemindersPerDay + 1))
+            },
+        )
+    }
+
+    private fun pickQuietHour(currentMinuteOfDay: Int, onSelected: (Int) -> Unit) {
+        showReminderTimePicker(currentMinuteOfDay / 60, currentMinuteOfDay % 60) { hour, minute ->
+            onSelected(hour * 60 + minute)
+        }
+    }
+
+    private fun saveAntiSpam(settings: LocalStoreBase.ReminderAntiSpamSettings) {
+        activity.runSettingsWrite(
+            traceSection = "kani.settings.reminder.anti-spam.save",
+            write = {
+                activity.store.saveReminderAntiSpamSettings(settings)
+            },
+        ) {
+            // Re-arm so quiet hours / max-per-day take effect immediately.
+            ReminderScheduler.schedule(activity)
+            activity.renderSettingsAutomation(true)
+        }
     }
 
     fun saveReminderFromSelection(hour: Int, minute: Int, enabled: Boolean) {

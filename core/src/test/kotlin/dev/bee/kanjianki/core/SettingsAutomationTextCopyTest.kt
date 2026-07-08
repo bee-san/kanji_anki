@@ -77,6 +77,14 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Reminder time: 21:05", SettingsAutomationTextCopy.reminderTimeButtonLabel(21, 5))
         assertEquals("Night 21:05", SettingsAutomationTextCopy.reminderPresetButtonLabel("Night", 21, 5))
         assertEquals("21:05", SettingsAutomationTextCopy.reminderPresetButtonLabel("  ", 21, 5))
+        assertEquals("Max reminders per day: 2", SettingsAutomationTextCopy.reminderMaxPerDayLabel(2))
+        assertEquals("Quiet hours: 22:00–08:00", SettingsAutomationTextCopy.reminderQuietHoursLabel(22 * 60, 8 * 60))
+        assertEquals(
+            "No reminders during quiet hours; late clusters are pulled earlier.",
+            SettingsAutomationTextCopy.reminderQuietHoursBody(),
+        )
+        assertEquals("Quiet start: 22:00", SettingsAutomationTextCopy.reminderQuietStartButtonLabel(22 * 60))
+        assertEquals("Quiet end: 08:00", SettingsAutomationTextCopy.reminderQuietEndButtonLabel(8 * 60))
     }
 
     @Test
@@ -157,6 +165,14 @@ class SettingsAutomationTextCopyTest {
                 "夜 21:05",
                 SettingsAutomationTextCopy.reminderPresetButtonLabel(SettingsAutomationTextCopy.nightReminderPresetLabel(), 21, 5),
             )
+            assertEquals("1日の最大リマインダー数: 2", SettingsAutomationTextCopy.reminderMaxPerDayLabel(2))
+            assertEquals("サイレント時間: 22:00〜08:00", SettingsAutomationTextCopy.reminderQuietHoursLabel(22 * 60, 8 * 60))
+            assertEquals(
+                "サイレント時間中はリマインダーを送りません。遅い時間の分は早めにまとめます。",
+                SettingsAutomationTextCopy.reminderQuietHoursBody(),
+            )
+            assertEquals("開始: 22:00", SettingsAutomationTextCopy.reminderQuietStartButtonLabel(22 * 60))
+            assertEquals("終了: 08:00", SettingsAutomationTextCopy.reminderQuietEndButtonLabel(8 * 60))
         } finally {
             Locale.setDefault(originalLocale)
         }

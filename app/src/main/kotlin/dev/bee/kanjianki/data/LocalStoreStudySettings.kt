@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.sync.SyncSettings
@@ -135,6 +136,23 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    fun reminderAntiSpamSettings(): LocalStoreBase.ReminderAntiSpamSettings {
+        return LocalStoreBase.ReminderAntiSpamSettings(
+            getIntSetting(KEY_REMINDER_QUIET_START_MINUTE, ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE),
+            getIntSetting(KEY_REMINDER_QUIET_END_MINUTE, ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE),
+            getIntSetting(KEY_REMINDER_MAX_PER_DAY, ReminderAntiSpamPolicy.DEFAULT_MAX_PER_DAY),
+        ).normalized()
+    }
+
+    fun saveReminderAntiSpamSettings(settings: LocalStoreBase.ReminderAntiSpamSettings) {
+        val normalized = settings.normalized()
+        inTransaction {
+            putIntSetting(KEY_REMINDER_QUIET_START_MINUTE, normalized.quietStartMinuteOfDay)
+            putIntSetting(KEY_REMINDER_QUIET_END_MINUTE, normalized.quietEndMinuteOfDay)
+            putIntSetting(KEY_REMINDER_MAX_PER_DAY, normalized.maxRemindersPerDay)
+        }
+    }
+
     fun reviewReminderNotificationsToday(nowMillis: Long): Int {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
         val storedDayStart = getLongSetting(KEY_REVIEW_REMINDER_DAY_START, 0L)
@@ -159,6 +177,84 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
             putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
             putIntSetting(KEY_REVIEW_REMINDER_COUNT, 0)
         }
+    }
+
+    /**
+     * Anti-spam throttle + decision state, read as one snapshot. Per-day counters
+     * and dismissed families reset implicitly at local-day rollover (same pattern
+     * as the review-reminder counter): a stored day-start that no longer matches
+     * today reads as a fresh day.
+     */
+    fun reminderThrottleState(nowMillis: Long): LocalStoreBase.ReminderThrottleState {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        val storedDayStart = getLongSetting(KEY_REMINDER_STATE_DAY_START, 0L)
+        val sameDay = storedDayStart == todayStart
+        return LocalStoreBase.ReminderThrottleState(
+            getLongSetting(KEY_REMINDER_LAST_POSTED_AT, 0L),
+            getStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, ""),
+            if (sameDay) getIntSetting(KEY_REMINDER_DUE_SHOWN, 0).coerceAtLeast(0) else 0,
+            if (sameDay) getIntSetting(KEY_REMINDER_STREAK_SHOWN, 0).coerceAtLeast(0) else 0,
+            if (sameDay) getIntSetting(KEY_REMINDER_SYNC_SHOWN, 0).coerceAtLeast(0) else 0,
+            if (sameDay) getStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "") else "",
+            if (sameDay) getIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 0) == 1 else false,
+        )
+    }
+
+    /**
+     * Record that a reminder of [family] was posted at [nowMillis] with the given
+     * due-set [signature], incrementing that family's per-day counter. [family] is
+     * the wire name from [dev.bee.kanjianki.core.ReminderFamily] ("DUE"/"STREAK"/
+     * "SYNC"), or empty/null for a review-batch post (counted as DUE).
+     */
+    fun recordReminderPosted(nowMillis: Long, family: String?, signature: String?, dailyTimeOverride: Boolean) {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        inTransaction {
+            resetReminderStateIfNewDay(todayStart)
+            putLongSetting(KEY_REMINDER_LAST_POSTED_AT, nowMillis)
+            putStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, signature ?: "")
+            incrementFamilyCounter(family)
+            if (dailyTimeOverride) {
+                putIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 1)
+            }
+        }
+    }
+
+    /** Records a swipe-dismissal of [family] for the rest of the local day. */
+    fun recordReminderDismissed(nowMillis: Long, family: String?) {
+        val normalized = family?.trim().orEmpty()
+        if (normalized.isEmpty()) {
+            return
+        }
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        inTransaction {
+            resetReminderStateIfNewDay(todayStart)
+            val current = getStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "")
+            val families = current.split(',').filter { it.isNotBlank() }.toMutableSet()
+            if (families.add(normalized)) {
+                putStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, families.joinToString(","))
+            }
+        }
+    }
+
+    private fun resetReminderStateIfNewDay(todayStart: Long) {
+        if (getLongSetting(KEY_REMINDER_STATE_DAY_START, 0L) == todayStart) {
+            return
+        }
+        putLongSetting(KEY_REMINDER_STATE_DAY_START, todayStart)
+        putIntSetting(KEY_REMINDER_DUE_SHOWN, 0)
+        putIntSetting(KEY_REMINDER_STREAK_SHOWN, 0)
+        putIntSetting(KEY_REMINDER_SYNC_SHOWN, 0)
+        putStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "")
+        putIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 0)
+    }
+
+    private fun incrementFamilyCounter(family: String?) {
+        val key = when (family?.trim()?.uppercase()) {
+            "STREAK" -> KEY_REMINDER_STREAK_SHOWN
+            "SYNC" -> KEY_REMINDER_SYNC_SHOWN
+            else -> KEY_REMINDER_DUE_SHOWN
+        }
+        putIntSetting(key, getIntSetting(key, 0).coerceAtLeast(0) + 1)
     }
 
     fun autoSyncSettings(): LocalStoreBase.AutoSyncSettings {
@@ -368,6 +464,17 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
         const val KEY_REVIEW_REMINDER_DAY_START = "review_reminder_day_start"
         const val KEY_REVIEW_REMINDER_COUNT = "review_reminder_count"
+        const val KEY_REMINDER_LAST_POSTED_AT = "reminder_last_posted_at"
+        const val KEY_REMINDER_LAST_POSTED_SIGNATURE = "reminder_last_posted_signature"
+        const val KEY_REMINDER_STATE_DAY_START = "reminder_state_day_start"
+        const val KEY_REMINDER_DUE_SHOWN = "reminder_due_shown_today"
+        const val KEY_REMINDER_STREAK_SHOWN = "reminder_streak_shown_today"
+        const val KEY_REMINDER_SYNC_SHOWN = "reminder_sync_shown_today"
+        const val KEY_REMINDER_DISMISSED_FAMILIES = "reminder_dismissed_families_today"
+        const val KEY_REMINDER_DAILY_OVERRIDE_USED = "reminder_daily_override_used_today"
+        const val KEY_REMINDER_QUIET_START_MINUTE = "reminder_quiet_start_minute"
+        const val KEY_REMINDER_QUIET_END_MINUTE = "reminder_quiet_end_minute"
+        const val KEY_REMINDER_MAX_PER_DAY = "reminder_max_per_day"
         val STATS_SETTING_KEYS = setOf(
             SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
             SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,

@@ -13,21 +13,21 @@ import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.R
-import dev.bee.kanjianki.ReadingExposureMediaReader
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanRequest
-import dev.bee.kanjianki.core.LocalDayPolicy
-import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
 import dev.bee.kanjianki.core.ReminderCopyPolicy
+import dev.bee.kanjianki.core.ReminderEligibilityPolicy
+import dev.bee.kanjianki.core.ReminderFamily
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
 import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
-import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.ReminderThrottlePolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -38,9 +38,11 @@ object ReminderScheduler {
     private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
     const val REMINDER_CHANNEL_ID = "kani_study_reminders"
     private const val CHANNEL_ID = REMINDER_CHANNEL_ID
+    const val ACTION_REMINDER_DISMISSED: String = "dev.bee.kanjianki.action.REMINDER_DISMISSED"
+    const val EXTRA_REMINDER_FAMILY: String = "dev.bee.kanjianki.extra.REMINDER_FAMILY"
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
-    private const val WEEK_MILLIS = 7 * 86_400_000L
+    private const val DISMISS_REQUEST_CODE = 2703
 
     @JvmStatic
     fun schedule(context: Context?) {
@@ -105,22 +107,76 @@ object ReminderScheduler {
             services.cancelAlarm()
             return
         }
+        services.scheduleAlarm(nextAlarmMillis(settings, store, nowMillis))
+    }
+
+    /**
+     * Compute when the reminder alarm should next fire from fresh state. A
+     * suppressed post (min gap / activity grace) re-arms for its next eligible
+     * time rather than `now`, which structurally removes the D1 immediate-fire
+     * loop instead of relying on the daily cap as a fuse.
+     */
+    private fun nextAlarmMillis(
+        settings: LocalStoreBase.ReminderSettings,
+        store: LocalStore,
+        nowMillis: Long,
+    ): Long {
         val streak = store.studyStreak(nowMillis)
-        if (streak.studiedToday) {
-            val reviewBatch = reviewReminderBatch(store, nowMillis)
-            if (reviewBatch != null) {
-                services.scheduleAlarm(reviewBatch.triggerAtMillis)
-                return
-            }
-            services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis, false))
-            return
+        if (!streak.studiedToday) {
+            // Not studied today: the daily nudge fires at the configured time, but a
+            // useful earlier reminder (due-later cluster end / streak) pulls the
+            // alarm forward when the decision policy asks for it (D3). Quiet-hour
+            // pull-forward is already baked into the decision's triggerAtMillis.
+            val dailyTime = ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis)
+            val plan = evaluate(store, nowMillis)
+            val planTrigger = plan?.triggerAtMillis?.takeIf { it > nowMillis } ?: return dailyTime
+            return minOf(dailyTime, planTrigger)
         }
-        services.scheduleAlarm(ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis))
+
+        val plan = evaluate(store, nowMillis)
+        val dailyFallback = ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis, false)
+        if (plan == null) {
+            // Nothing useful to post today; wait for tomorrow's daily time.
+            return dailyFallback
+        }
+        val trigger = maxOf(nowMillis, plan.triggerAtMillis)
+        if (trigger > nowMillis) {
+            // Work is in the future (cluster end / decision time): arm for then and
+            // let the fire-time throttle re-check decide whether to post. The
+            // throttle is a post-time gate; evaluating it now against a distant
+            // trigger would wrongly apply the current gap/grace window.
+            return trigger
+        }
+        // Fire-now (overdue): if the throttle denies at this instant, arm for the
+        // next eligible time instead of now — this structurally removes the D1
+        // immediate-fire loop rather than relying on the daily cap as a fuse.
+        val throttle = plan.throttleDecision
+        if (throttle.allow) {
+            return nowMillis
+        }
+        val nextEligible = throttle.nextEligibleAtMillis
+        if (nextEligible > nowMillis) {
+            return minOf(nextEligible, dailyFallback).coerceAtLeast(nowMillis)
+        }
+        // No time-based re-arm (unchanged signature): wait for the daily time or a
+        // signature change surfaced by a later re-arm.
+        return dailyFallback
     }
 
     @JvmStatic
     fun cancel(context: Context) {
         androidReminderServices(context).cancelAlarm()
+    }
+
+    /**
+     * Cancels any posted reminder (slot 2702). Called when the app is opened —
+     * the user got the message, so the visible notification is cleared. Alarm
+     * re-arming is a separate step so the caller controls its cadence.
+     */
+    @JvmStatic
+    fun cancelPostedNotification(context: Context?) {
+        val manager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        manager.cancel(NOTIFICATION_ID)
     }
 
     @JvmStatic
@@ -184,11 +240,11 @@ object ReminderScheduler {
         }
         LocalStore(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
-            val reviewBatch = reviewReminderBatch(store, now)
-            val copy = if (reviewBatch != null) {
-                ReminderCopyPolicy.reviewCopy(reviewBatch.dueCount)
-            } else {
-                dailyReminderCopy(store, now) ?: return@use
+            val plan = evaluate(store, now) ?: return@use
+            // Anti-spam gate: only post when the throttle allows it right now.
+            // A blocked post leaves the alarm to re-arm for the next eligible time.
+            if (!plan.throttleDecision.allow) {
+                return@use
             }
             services.ensureNotificationChannel()
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@use
@@ -202,18 +258,38 @@ object ReminderScheduler {
             )
             val notification = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(copy.title)
-                .setContentText(copy.message)
-                .setStyle(Notification.BigTextStyle().bigText(copy.message))
+                .setContentTitle(plan.copy.title)
+                .setContentText(plan.copy.message)
+                .setStyle(Notification.BigTextStyle().bigText(plan.copy.message))
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true)
+                // Replacing the single notification slot (ID 2702) in place must not
+                // re-buzz: without this, an immediate re-post (D1) or a fresh-state
+                // recompute alerts the user twice for one visible card.
+                .setOnlyAlertOnce(true)
+                .setDeleteIntent(dismissIntent(context, plan.family))
                 .setColor(Color.rgb(255, 76, 118))
                 .build()
             manager.notify(NOTIFICATION_ID, notification)
-            if (reviewBatch != null) {
+            store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
+            if (plan.reviewBatch) {
+                // Keep the legacy per-day review counter in sync so the hard 2/day
+                // cap continues to engage alongside the new throttle.
                 store.recordReviewReminderNotificationShown(now)
             }
         }
+    }
+
+    private fun dismissIntent(context: Context, family: String?): PendingIntent {
+        val intent = Intent(context, ReminderReceiver::class.java)
+            .setAction(ACTION_REMINDER_DISMISSED)
+            .putExtra(EXTRA_REMINDER_FAMILY, family ?: "")
+        return PendingIntent.getBroadcast(
+            context,
+            DISMISS_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     @JvmStatic
@@ -338,62 +414,152 @@ object ReminderScheduler {
         )
     }
 
-    private fun reminderCopy(context: Context, clock: AppClock?): ReminderCopyPolicy.ReminderCopy {
-        LocalStore(context).use { store ->
-            val now = AppClock.orSystem(clock).nowMillis()
-            return reminderCopy(store, now)
-        }
-    }
+    /**
+     * Fresh-state reminder plan: what to post, its copy/family/signature, when the
+     * alarm should ideally trigger, and the throttle verdict. Returns null when
+     * there is nothing worth posting today. Both the arm path ([nextAlarmMillis])
+     * and the post path ([showReminderNotification]) share this so the two never
+     * disagree.
+     */
+    private data class PlannedReminder(
+        val copy: ReminderCopyPolicy.ReminderCopy,
+        val family: String,
+        val signature: String,
+        val triggerAtMillis: Long,
+        val reviewBatch: Boolean,
+        val dailyTimeOverride: Boolean,
+        val throttleDecision: dev.bee.kanjianki.core.ReminderThrottlePolicy.Decision,
+    )
 
-    private fun reminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy {
+    private fun evaluate(store: LocalStore, nowMillis: Long): PlannedReminder? {
         val rows = store.activeDashboardRows()
-        val items = store.studyItems()
-        return ReminderCopyPolicy.forPlan(
-            AdaptiveLoadPlanner.PlanRequest.builder(
-                rows,
-                items,
-                store.reviewStatsSince(nowMillis - WEEK_MILLIS),
-                store.studyStreak(nowMillis).currentDays,
-                store.studiedKanjiSince(startOfLocalDay(nowMillis)),
-                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                    store.adaptiveLoadWorkPercent(),
-                    store.adaptiveLoadMode(),
-                    store.adaptiveLoadMaxItems()
-                ),
-                nowMillis
-            )
-                .settings(RecordsSyncModels.Settings.kikuDefaults())
-                .readingExposure(ReadingExposureMediaReader().read())
-                .build()
-        )
-    }
+        val eligibleItems = eligibleReminderItems(store, rows)
+        val streak = store.studyStreak(nowMillis)
+        val antiSpam = store.reminderAntiSpamSettings()
+        val throttleState = store.reminderThrottleState(nowMillis)
+        val settings = store.reminderSettings()
+        val dailyTimeOverride = isDailyReminderTime(settings, nowMillis) && !throttleState.dailyOverrideUsedToday
 
-    private fun dailyReminderCopy(store: LocalStore, nowMillis: Long): ReminderCopyPolicy.ReminderCopy? {
-        val decision = dailyReminderDecision(store, nowMillis)
+        if (streak.studiedToday) {
+            // Studied today: only a genuine review batch may fire. A daily-time
+            // override lowers the minimum batch to 1 so the once-a-day nudge still
+            // works even for a small tail.
+            val minBatch = if (dailyTimeOverride) 1 else ReminderReviewBatchPolicy.DEFAULT_MIN_BATCH_SIZE
+            val batch = ReminderReviewBatchPolicy.nextBatch(
+                nowMillis,
+                eligibleItems,
+                reviewNotificationsToday(store, antiSpam, nowMillis),
+                minBatch,
+            ) ?: return null
+            val signature = ReminderThrottlePolicy.signatureFor(batch.dueCount, batch.latestDueAtMillis)
+            val throttle = throttleDecision(throttleState, streak, signature, antiSpam, nowMillis, dailyTimeOverride)
+            return PlannedReminder(
+                copy = ReminderCopyPolicy.reviewCopy(batch.dueCount),
+                family = ReminderFamily.DUE.name,
+                signature = signature,
+                triggerAtMillis = batch.triggerAtMillis,
+                reviewBatch = true,
+                dailyTimeOverride = dailyTimeOverride,
+                throttleDecision = throttle,
+            )
+        }
+
+        // Not studied today: the decision policy drives the daily reminder,
+        // wired with quiet hours, per-family caps, and dismissed families (D3).
+        val decision = dailyReminderDecision(store, rows, eligibleItems, streak, antiSpam, throttleState, nowMillis)
         if (!decision.shouldSchedule) {
             return null
         }
-        return ReminderCopyPolicy.ReminderCopy(decision.title, decision.body)
+        val signature = ReminderThrottlePolicy.signatureFor(1, decision.triggerAtMillis)
+        val throttle = throttleDecision(throttleState, streak, signature, antiSpam, nowMillis, dailyTimeOverride)
+        return PlannedReminder(
+            copy = ReminderCopyPolicy.ReminderCopy(decision.title, decision.body),
+            family = (decision.family ?: ReminderFamily.DUE).name,
+            signature = signature,
+            triggerAtMillis = decision.triggerAtMillis,
+            reviewBatch = false,
+            dailyTimeOverride = dailyTimeOverride,
+            throttleDecision = throttle,
+        )
     }
 
-    private fun dailyReminderDecision(store: LocalStore, nowMillis: Long): dev.bee.kanjianki.core.DailyReminderDecision {
-        val plan = dailyStudyPlan(store, nowMillis)
-        return DailyReminderDecisionPolicy.decide(
-            DailyReminderDecisionRequest(
-                plan = plan,
+    private fun throttleDecision(
+        throttleState: LocalStoreBase.ReminderThrottleState,
+        streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
+        signature: String,
+        antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
+        nowMillis: Long,
+        dailyTimeOverride: Boolean,
+    ): ReminderThrottlePolicy.Decision {
+        return ReminderThrottlePolicy.decide(
+            ReminderThrottlePolicy.Request(
                 nowMillis = nowMillis,
+                lastPostedAtMillis = throttleState.lastPostedAtMillis,
+                lastPostedSignature = throttleState.lastPostedSignature,
+                currentSignature = signature,
+                lastReviewAtMillis = streak.lastStudyAtMillis,
+                dailyTimeOverride = dailyTimeOverride,
             ),
         )
     }
 
-    private fun dailyStudyPlan(store: LocalStore, nowMillis: Long): DailyStudyPlan {
-        val rows = store.activeDashboardRows()
-        val items = store.studyItems()
-        val streak = store.studyStreak(nowMillis)
+    private fun reviewNotificationsToday(
+        store: LocalStore,
+        antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
+        nowMillis: Long,
+    ): Int {
+        // Feed the batch policy an effective "already shown" count that also
+        // enforces the user's max-per-day setting when it is below the hard cap.
+        val shown = store.reviewReminderNotificationsToday(nowMillis)
+        val allowed = antiSpam.maxRemindersPerDay
+        // If the user allows fewer than the batch policy's own 2/day fuse, bump the
+        // reported count so the batch stops sooner.
+        return if (shown >= allowed) maxOf(shown, ReminderReviewBatchPolicy.MAX_NOTIFICATIONS_PER_DAY) else shown
+    }
+
+    private fun dailyReminderDecision(
+        store: LocalStore,
+        rows: List<RecordsImportModels.DashboardRow>,
+        eligibleItems: List<RecordsStudyModels.StudyItem>,
+        streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
+        antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
+        throttleState: LocalStoreBase.ReminderThrottleState,
+        nowMillis: Long,
+    ): dev.bee.kanjianki.core.DailyReminderDecision {
+        val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSync()?.finishedAt, nowMillis)
+        val nowMinuteOfDay = minuteOfDay(nowMillis)
+        val quietLead = ReminderAntiSpamPolicy.quietLeadMinutesUntilStart(
+            nowMinuteOfDay,
+            antiSpam.quietStartMinuteOfDay,
+            antiSpam.quietEndMinuteOfDay,
+        )
+        val dismissed = parseDismissedFamilies(throttleState.dismissedFamilies)
+        return DailyReminderDecisionPolicy.decide(
+            DailyReminderDecisionRequest(
+                plan = plan,
+                nowMillis = nowMillis,
+                quietHoursStartMinuteOfDay = if (quietLead != null) antiSpam.quietStartMinuteOfDay else null,
+                quietHoursLeadMinutes = quietLead ?: 60,
+                dismissedFamiliesToday = dismissed,
+                dueRemindersShownToday = throttleState.dueShownToday,
+                streakRemindersShownToday = throttleState.streakShownToday,
+                syncRemindersShownToday = throttleState.syncShownToday,
+                dueReminderCapPerDay = antiSpam.maxRemindersPerDay,
+            ),
+        )
+    }
+
+    private fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        eligibleItems: List<RecordsStudyModels.StudyItem>,
+        streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
+        lastSuccessfulSyncAtMillis: Long?,
+        nowMillis: Long,
+    ): DailyStudyPlan {
         return DailyStudyPlanPolicy.plan(
             DailyStudyPlanRequest(
                 nowMillis = nowMillis,
-                dueAtMillis = items.map { it.dueAtMillis },
+                dueAtMillis = eligibleItems.map { it.dueAtMillis },
                 studiedToday = streak.studiedToday,
                 streak = StudyStreakPolicy.Streak(
                     currentDays = streak.currentDays,
@@ -402,40 +568,46 @@ object ReminderScheduler {
                     reviewsToday = streak.reviewsToday,
                     lastStudyAtMillis = streak.lastStudyAtMillis,
                 ),
-                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else items.count { it.totalReviews == 0 },
-                lastSuccessfulSyncAtMillis = store.latestSync()?.finishedAt,
+                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else eligibleItems.count { it.totalReviews == 0 },
+                lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
             ),
         )
     }
 
-    private fun reviewReminderBatch(
-        store: LocalStore,
-        nowMillis: Long,
-    ): ReminderReviewBatchPolicy.ReviewBatch? {
-        val streak = store.studyStreak(nowMillis)
-        if (!streak.studiedToday) {
-            return null
+    private fun parseDismissedFamilies(raw: String): Set<ReminderFamily> {
+        if (raw.isBlank()) {
+            return emptySet()
         }
-        return ReminderReviewBatchPolicy.nextBatch(
-            nowMillis,
-            store.studyItems(),
-            store.reviewReminderNotificationsToday(nowMillis)
-        )
-    }
-
-    private fun startOfLocalDay(nowMillis: Long): Long = LocalDayPolicy.localDayStart(nowMillis)
-
-    private fun activeReminderDueAtMillis(items: List<RecordsStudyModels.StudyItem>): List<Long> {
-        val dueAtMillis = ArrayList<Long>()
-        for (item in items) {
-            if (isActiveReminderItem(item)) {
-                dueAtMillis.add(item.dueAtMillis)
+        val out = HashSet<ReminderFamily>()
+        for (token in raw.split(',')) {
+            val name = token.trim()
+            if (name.isEmpty()) {
+                continue
             }
+            runCatching { ReminderFamily.valueOf(name) }.getOrNull()?.let { out.add(it) }
         }
-        return dueAtMillis
+        return out
     }
 
-    private fun isActiveReminderItem(item: RecordsStudyModels.StudyItem): Boolean {
-        return StudyLadderRules.STATE_RETIRED != item.state
+    private fun isDailyReminderTime(settings: LocalStoreBase.ReminderSettings, nowMillis: Long): Boolean {
+        val nowMinute = minuteOfDay(nowMillis)
+        return nowMinute >= settings.hour * 60 + settings.minute
+    }
+
+    private fun minuteOfDay(nowMillis: Long): Int {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = nowMillis
+        return calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+    }
+
+    private fun eligibleReminderItems(
+        store: LocalStore,
+        rows: List<RecordsImportModels.DashboardRow>,
+    ): List<RecordsStudyModels.StudyItem> {
+        return ReminderEligibilityPolicy.eligibleReminderItems(
+            store.studyItems(),
+            rows,
+            store.studyLadderSettings(),
+        )
     }
 }
