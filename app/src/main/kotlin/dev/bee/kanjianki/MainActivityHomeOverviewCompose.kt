@@ -144,11 +144,11 @@ fun HomePrimaryCta(
 fun HomeStudyCta(
     title: String,
     onClick: () -> Unit,
-    dueCount: Int = 0,
+    remainingCount: Int = 0,
 ) {
     val shape = RoundedCornerShape(HomeStudyCtaCornerRadius)
     val noFontPadding = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-    val dueLabel = if (dueCount > 0) "$dueCount ${HomeTextCopy.deckOverviewDueLabel()}" else null
+    val dueLabel = if (remainingCount > 0) HomeTextCopy.studyRemainingCountLabel(remainingCount) else null
     Box(
         modifier = Modifier
             .fillMaxWidth()

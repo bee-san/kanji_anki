@@ -230,6 +230,99 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
+    fun typingCardCompactsWhileKeyboardIsOpenSoTheKanjiStaysVisible() {
+        val revealState = FlashcardRevealState(false)
+        val typingAnswer = TypingAnswerState()
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = typingCardModel(revealState, typingAnswer),
+                imeVisible = true,
+            )
+        }
+
+        // Secondary chrome is dropped so the prompt, kanji, and answer field all fit
+        // above the keyboard.
+        composeRule.onAllNodesWithText("Type").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Prompt").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
+        // The essentials stay: question, kanji hero, and the typing field.
+        composeRule.onNodeWithText("What does it mean?").assertIsDisplayed()
+        composeRule.onNodeWithText("獄").assertIsDisplayed()
+        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+    }
+
+    @Test
+    fun typingCardKeepsFullLayoutWhileKeyboardIsClosed() {
+        val revealState = FlashcardRevealState(false)
+        val typingAnswer = TypingAnswerState()
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = typingCardModel(revealState, typingAnswer),
+                imeVisible = false,
+            )
+        }
+
+        composeRule.onNodeWithText("Type").assertIsDisplayed()
+        composeRule.onNodeWithText("Prompt").assertIsDisplayed()
+        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        composeRule.onNodeWithText("獄").assertIsDisplayed()
+    }
+
+    @Test
+    fun nonTypingCardIgnoresKeyboardVisibility() {
+        val revealState = FlashcardRevealState(false)
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = typingCardModel(revealState, typingAnswer = null),
+                imeVisible = true,
+            )
+        }
+
+        composeRule.onNodeWithText("Type").assertIsDisplayed()
+        composeRule.onNodeWithText("Prompt").assertIsDisplayed()
+        composeRule.onNodeWithText("獄").assertIsDisplayed()
+    }
+
+    private fun typingCardModel(
+        revealState: FlashcardRevealState,
+        typingAnswer: TypingAnswerState?,
+    ): FlashcardCardModel {
+        return FlashcardCardModel(
+            promptHeader = FlashcardPromptHeaderModel(
+                modeLabel = "Type",
+                title = "Prompt",
+                question = "What does it mean?",
+                hiddenHint = "Answer hidden until reveal",
+                reasonLine = "From 宮",
+            ),
+            heroPanel = FlashcardHeroPanelModel(
+                glyph = "獄",
+                glyphSizeSp = 116,
+                typeface = null,
+            ),
+            typingAnswer = typingAnswer,
+            answerPanel = StudyAnswerPanelModel(
+                title = "Answer",
+                glyph = "獄",
+                glyphSizeSp = 76,
+                lines = listOf(
+                    StudyAnswerLineModel(
+                        text = "split",
+                        color = 0xFF2E1035.toInt(),
+                        sizeSp = 17,
+                        bold = true,
+                    )
+                ),
+                helperText = null,
+            ),
+            revealState = revealState,
+        )
+    }
+
+    @Test
     fun rendersUndoBannerAndInvokesAction() {
         var undoTriggered = false
         val undoMessage = StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD)

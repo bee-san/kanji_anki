@@ -37,6 +37,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
         }
         study.activeStudyPlan = plan
+        refreshSessionBadgeCount(plan)
         pendingRepairOrDoneRender(plan, now, ladder)?.let { return it }
         if (rows.isEmpty()) {
             return { study.renderEmptyStudyQueue() }
@@ -53,6 +54,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             }
         }
         study.activeStudyPlan = seededPlan
+        refreshSessionBadgeCount(seededPlan)
         pendingRepairOrDoneRender(seededPlan, now, ladder)?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         study.activeSession = withStudyLoadProbe("plannedStudySession") {
@@ -127,6 +129,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         } else {
             study.adaptivePlan(rows, seeded, now)
         }
+        refreshSessionBadgeCount(study.activeStudyPlan)
         val session = BridgeScheduler().targetedSession(
             seeded,
             row,
@@ -202,6 +205,16 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return { study.doneActions.renderStudyRunDone(plan) }
         }
         return null
+    }
+
+    /**
+     * Keeps the shell's cached Study-badge count in sync with the freshest adaptive
+     * plan whenever the study route recomputes. The shell prefers the live session
+     * tracker while a run is in flight; this cached value covers idle states (home,
+     * stats, study-done screens).
+     */
+    private fun refreshSessionBadgeCount(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
+        study.studySessionBadgeCount = plan?.remaining?.coerceAtLeast(0) ?: 0
     }
 
     /**

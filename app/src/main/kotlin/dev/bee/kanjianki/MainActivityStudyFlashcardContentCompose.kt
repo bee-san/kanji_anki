@@ -53,28 +53,43 @@ internal fun FlashcardCard(
     onTypingDone: Runnable? = null,
     onBrowseAction: Runnable? = null,
     swipeFeedback: StudySwipeFeedbackState? = null,
+    imeVisible: Boolean = kaniImeVisible(),
 ) {
+    // While the keyboard is open on a typing card, compact the layout so the kanji
+    // prompt and the answer field both fit in the reduced viewport. Without this the
+    // focused field's bring-into-view scrolls the 210dp+ hero (and the kanji) off
+    // the top of the screen.
+    val compact = studyCardImeCompact(
+        imeVisible = imeVisible,
+        hasTypingAnswer = model.typingAnswer != null,
+        revealed = model.revealState.isRevealed,
+    )
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .studySwipeFeedback(swipeFeedback)
             .animateContentSize()
-            .heightIn(min = 360.dp),
+            .heightIn(min = if (compact) 0.dp else 360.dp),
         shape = RoundedCornerShape(32.dp),
         color = KaniTheme.colors.surface,
         shadowElevation = StudyCardShadowElevation
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(if (compact) 12.dp else 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
             FlashcardPromptHeader(
                 model = model.promptHeader,
                 showHiddenHint = !model.revealState.isRevealed,
+                compact = compact,
             )
             if (!model.revealState.isRevealed) {
-                FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
+                FlashcardHeroPanel(
+                    model.heroPanel,
+                    Modifier.padding(top = if (compact) 10.dp else 16.dp),
+                    compact = compact,
+                )
                 model.typingAnswer?.let { typingAnswerState ->
                     TypingMeaningAnswer(
                         label = StudyTextCopy.meaningLabel(),
@@ -130,30 +145,39 @@ private fun Modifier.studySwipeFeedback(swipeFeedback: StudySwipeFeedbackState?)
 }
 
 @Composable
-fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel, showHiddenHint: Boolean = true) {
+fun FlashcardPromptHeader(
+    model: FlashcardPromptHeaderModel,
+    showHiddenHint: Boolean = true,
+    compact: Boolean = false,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        RecognitionPill(model.modeLabel)
-        Spacer(modifier = Modifier.height(14.dp))
-        FlashcardHeaderText(
-            text = model.title,
-            sizeSp = 21,
-            color = HeroPlum,
-            bold = true,
-            includeFontPadding = false
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        // Compact (keyboard open) keeps only the question line: the pill, title, and
+        // hidden-answer hint are secondary chrome that would push the kanji hero and
+        // the answer field below the fold.
+        if (!compact) {
+            RecognitionPill(model.modeLabel)
+            Spacer(modifier = Modifier.height(14.dp))
+            FlashcardHeaderText(
+                text = model.title,
+                sizeSp = 21,
+                color = HeroPlum,
+                bold = true,
+                includeFontPadding = false
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         FlashcardHeaderText(
             text = model.question,
-            sizeSp = 27,
+            sizeSp = if (compact) 21 else 27,
             color = HeroPlum,
             bold = true,
             includeFontPadding = false
         )
-        if (showHiddenHint) {
+        if (showHiddenHint && !compact) {
             Spacer(modifier = Modifier.height(6.dp))
             FlashcardHeaderText(
                 text = model.hiddenHint,
@@ -217,13 +241,24 @@ private fun FlashcardHeaderText(
     )
 }
 
+/** Hero panel minimum height while the keyboard is open on a typing card. */
+internal val StudyHeroCompactMinHeight = 120.dp
+
+/** Hero glyph size (sp) while the keyboard is open on a typing card. */
+internal const val StudyHeroCompactGlyphSizeSp = 64
+
 @Composable
-fun FlashcardHeroPanel(model: FlashcardHeroPanelModel, modifier: Modifier = Modifier) {
+fun FlashcardHeroPanel(
+    model: FlashcardHeroPanelModel,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
     val fontFamily = model.typeface?.let { FontFamily(Typeface.create(it, Typeface.BOLD)) }
+    val glyphSizeSp = if (compact) minOf(model.glyphSizeSp, StudyHeroCompactGlyphSizeSp) else model.glyphSizeSp
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 210.dp),
+            .heightIn(min = if (compact) StudyHeroCompactMinHeight else 210.dp),
         shape = RoundedCornerShape(28.dp),
         color = HeroPanelFill,
         border = BorderStroke(1.dp, HeroPanelBorder)
@@ -237,9 +272,9 @@ fun FlashcardHeroPanel(model: FlashcardHeroPanelModel, modifier: Modifier = Modi
             Text(
                 text = model.glyph,
                 color = HeroPlum,
-                fontSize = model.glyphSizeSp.sp,
+                fontSize = glyphSizeSp.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = (model.glyphSizeSp * 1.05f).sp,
+                lineHeight = (glyphSizeSp * 1.05f).sp,
                 textAlign = TextAlign.Center,
                 fontFamily = fontFamily,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))

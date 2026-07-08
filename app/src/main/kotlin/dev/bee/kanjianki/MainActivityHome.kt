@@ -101,12 +101,13 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
         val provider = gateway.status()
         val matureSupportThreshold = settings().matureSupportThreshold
-        studyDueBadgeCount = entries.size
+        val studyRemaining = homePlan?.remaining?.coerceAtLeast(0) ?: 0
+        studySessionBadgeCount = studyRemaining
 
         return HomeScreenModel(
             title = HomeTextCopy.appTitle(),
             subtitle = HomeTextCopy.appSubtitle(),
-            metrics = homeMetricModels(this, sync, provider, streak, homePlan),
+            metrics = homeMetricModels(this, sync, provider, streak, homePlan, dailyPlan),
             todayPlan = homeTodayPlanModel(dailyPlan, this::startFocusedStudy, this::confirmSync),
             deckOverviewRows = deckOverviewRows,
             showSyncCta = rows.isEmpty(),
@@ -131,7 +132,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
                 homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
             },
-            dueCount = entries.size,
+            studyRemainingCount = studyRemaining,
         )
     }
 

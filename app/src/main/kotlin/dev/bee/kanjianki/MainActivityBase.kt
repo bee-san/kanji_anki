@@ -142,13 +142,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardSwipeFeedback: StudySwipeFeedbackState? = null
 
     /**
-     * Latest known count of study-ready items, used for the Study badge in the bottom
-     * nav. Negative means unknown (not yet computed for this process). Written from
-     * background route loads and read on the main thread, so it is volatile.
+     * Cards remaining in the user's current/next focus session (the adaptive plan's
+     * `remaining`), used for the Study badge in the bottom nav and the count on the
+     * home Study-now card. While a study run is in flight the shell prefers the live
+     * session tracker instead of this cached value. Negative means unknown (not yet
+     * computed for this process). Written from background route loads and read on
+     * the main thread, so it is volatile.
      */
     @JvmField
     @Volatile
-    var studyDueBadgeCount: Int = -1
+    var studySessionBadgeCount: Int = -1
 
     @JvmField
     val studyUndoState = StudyUndoState()
