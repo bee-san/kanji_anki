@@ -509,6 +509,81 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    fun cappedAllKanjiModeReportsDueOverflow() {
+        // All-kanji (manual 100%) capped to 2 items with 4 due kanji: the two due
+        // kanji beyond the cap must surface the backlog-honesty overflow message,
+        // not the generic "capped to today's maximum" line.
+        val due = listOf(
+                reviewed("字0", 0L),
+                reviewed("字1", 0L),
+                reviewed("字2", 0L),
+                reviewed("字3", 0L)
+        );
+        val plan = plan(
+                rows(4),
+                due,
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                100,
+                AdaptiveLoadPlanner.WorkloadMode.MANUAL,
+                2,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertFalse(plan.allKanjiMode);
+        assertEquals(2, plan.target);
+        assertTrue(plan.status, plan.status.contains("due kanji wait beyond today's cap"));
+    }
+
+    @Test
+    fun cappedAllKanjiModeNewAdmissionLimitExcludesDueRecovery() {
+        // newAdmissionLimit on the capped all-kanji path aligns with the main
+        // path: focus size minus the due-recovery items that fill focus slots.
+        val due = listOf(
+                reviewed("字0", 0L),
+                reviewed("字1", 0L)
+        );
+        val plan = plan(
+                rows(4),
+                due,
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                100,
+                AdaptiveLoadPlanner.WorkloadMode.MANUAL,
+                3,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        // 3 focus slots, 2 filled by due recovery → 1 remaining new admission.
+        assertEquals(3, plan.target);
+        assertEquals(1, plan.newAdmissionLimit);
+    }
+
+    @Test
+    fun autoWorkloadWithSingleDominantKanjiReportsConcentrated() {
+        // Exactly one non-due candidate with positive priority is, by definition,
+        // a concentrated focus of one; it must not read "spread evenly".
+        val plan = plan(
+                listOf(row("重", 42, null, null, null, 3, 1)),
+                emptyList(),
+                RecordsSchedulerModels.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                0,
+                emptySet(),
+                20,
+                AdaptiveLoadPlanner.WorkloadMode.AUTO,
+                Int.MAX_VALUE,
+                1000L,
+                RecordsSyncModels.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.status, plan.status.contains("concentrated"));
+    }
+
+    @Test
     fun manualModeStatusCoversNoHistoryRecoveryAndFullRange() {
         val noHistory = plan(
                 rows(4),

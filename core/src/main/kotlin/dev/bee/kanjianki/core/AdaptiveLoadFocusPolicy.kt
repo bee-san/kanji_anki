@@ -9,11 +9,14 @@ import kotlin.math.roundToInt
  * Decides how many kanji fit into today's focus and which ones they are.
  *
  * Auto mode uses a real Pareto criterion: it looks at how today's total
- * priority mass is distributed across ranked candidates and selects the
- * smallest head of the curve that is meaningfully more loaded than an even
- * spread would be (the maximum Lorenz gap). When priority is spread evenly
- * there is no concentrated head to exploit, so the plan falls back to the
- * small Pareto focus.
+ * priority mass is distributed across ranked candidates and selects the head
+ * of the curve that *maximizes* the Lorenz gap — its cumulative share of
+ * priority mass minus the share an even spread would give it. Among heads the
+ * max-gap prefix is the point of steepest over-concentration, so on a profile
+ * like `[0.26, 0.30]` it picks the two-kanji head (gap peaks there), not the
+ * single-kanji head. When no head clears [CONCENTRATION_GAP_THRESHOLD] the
+ * priority is effectively spread evenly, so the plan falls back to the small
+ * Pareto focus.
  *
  * The adjusted-target governor then shrinks the number under recent review
  * strain (misses, hard ratings, writing failures) and allows one extra kanji
@@ -65,7 +68,9 @@ internal object AdaptiveLoadFocusPolicy {
      * Returns the size of the concentrated head of the priority curve, or 0
      * when the curve is flat, even, or has no positive mass. The head is the
      * prefix maximizing the Lorenz gap: its share of total priority mass
-     * minus the share an even distribution would give it.
+     * minus the share an even distribution would give it. The gap is compared
+     * inclusively against [CONCENTRATION_GAP_THRESHOLD] (a gap of exactly the
+     * threshold counts as concentrated).
      */
     private fun concentratedHeadSize(ranked: List<AdaptiveLoadCandidate>): Int {
         var total = 0.0
@@ -74,6 +79,13 @@ internal object AdaptiveLoadFocusPolicy {
         }
         if (total <= 0.0) {
             return 0
+        }
+        // A single candidate with positive priority is, by definition, the whole
+        // concentrated head: one kanji carries all of today's priority. The Lorenz
+        // loop below cannot reach it (it stops before the last index), so classify
+        // it directly rather than fall back to the "spread evenly" copy.
+        if (ranked.size == 1) {
+            return 1
         }
         var cumulative = 0.0
         var bestGap = 0.0

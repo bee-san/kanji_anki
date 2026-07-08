@@ -290,6 +290,9 @@ class AdaptiveLoadPlanner {
                 focus = ArrayList(focus.subList(0, inputs.itemCap))
                 allIncluded = false
             }
+            val recoveryDue = recoveryDueCount(candidates)
+            val overflowDue = max(0, recoveryDue - focus.size)
+            val cappedRecoveryDue = min(recoveryDue, focus.size)
             val remaining = remainingCount(focus, inputs.itemByKanji, inputs.studiedToday, inputs.nowMillis)
             return RecordsSchedulerModels.AdaptiveLoadPlan(
                 false,
@@ -297,14 +300,24 @@ class AdaptiveLoadPlanner {
                 focus.size,
                 remaining,
                 focus,
-                focus.size,
+                // Align newAdmissionLimit with the main path: focus size minus the due
+                // recovery items that occupy focus slots but are not new admissions.
+                max(0, focus.size - cappedRecoveryDue),
                 allIncluded,
-                if (allIncluded) {
-                    "All current problem kanji are available today."
-                } else {
-                    "All kanji mode is capped to today's maximum."
-                }
+                allKanjiStatus(allIncluded, overflowDue),
             )
+        }
+
+        private fun allKanjiStatus(allIncluded: Boolean, overflowDue: Int): String {
+            if (allIncluded) {
+                return "All current problem kanji are available today."
+            }
+            // Capped: honor the backlog-honesty contract shared with the main path
+            // when the cap actually hides due kanji; otherwise report the plain cap.
+            if (overflowDue > 0) {
+                return AdaptiveLoadStatusFormatter.overflowStatus(overflowDue)
+            }
+            return "All kanji mode is capped to today's maximum."
         }
 
         private fun targetPlanFor(candidates: List<AdaptiveLoadCandidate>, inputs: PlanInputs, recoveryDue: Int): TargetPlan {

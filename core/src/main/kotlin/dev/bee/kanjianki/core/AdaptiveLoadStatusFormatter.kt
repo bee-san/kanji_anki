@@ -82,7 +82,7 @@ internal object AdaptiveLoadStatusFormatter {
         return "Auto Pareto found a concentrated focus: a few kanji carry most of today's priority."
     }
 
-    private fun overflowStatus(overflowDue: Int): String {
+    fun overflowStatus(overflowDue: Int): String {
         val waiting = if (overflowDue == 1) "1 due kanji waits" else "$overflowDue due kanji wait"
         return "$waiting beyond today's cap. Continue all kanji or raise Max items to catch up."
     }
