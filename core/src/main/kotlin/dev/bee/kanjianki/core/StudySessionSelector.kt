@@ -24,6 +24,13 @@ class StudySessionSelector {
             if (item.dueAtMillis > horizon) {
                 continue
             }
+            // Skip an item with no dashboard row (e.g. its kanji was removed from the
+            // collection after the study queue was built) rather than let it win and
+            // then abort the whole session — a healthy due item behind it should still
+            // be selectable.
+            if (rowByKanji[item.kanji] == null) {
+                continue
+            }
             if (best == null || compareDueItems(item, best, rowByKanji, settings) < 0) {
                 best = item
             }
@@ -31,8 +38,6 @@ class StudySessionSelector {
         if (best == null) {
             return null
         }
-        // Skip the item rather than crash when it has no dashboard row (e.g. its kanji
-        // was removed from the collection after the study queue was built).
         val row = rowByKanji[best.kanji] ?: return null
         val token = StudyTokenPolicy.studyItem(best.kanji, best.activeToken)
         val taskType = StudyTaskTypes.forRung(best.rung)
@@ -456,7 +461,7 @@ class StudySessionSelector {
             // Cosmetic queue ordering only. Deterministic (seeded) ordering uses the
             // seeded sort below; the null-seed path uses SecureRandom, which the Sonar
             // gate accepts for this non-security shuffle.
-            val secureRandom = if (seed == null) SecureRandom() else null
+            val secureRandom: SecureRandom? = if (seed == null) SecureRandom() else null
             var start = 0
             while (start < items.size) {
                 val priority = duePriority(items[start])
@@ -466,11 +471,12 @@ class StudySessionSelector {
                 }
                 if (end - start > 1) {
                     val bucket = items.subList(start, end)
-                    if (seed == null) {
-                        Collections.shuffle(bucket, secureRandom ?: SecureRandom())
+                    if (secureRandom != null) {
+                        Collections.shuffle(bucket, secureRandom)
                     } else {
+                        val nonNullSeed = seed!!
                         bucket.sortWith(
-                            compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(seed, it) }
+                            compareBy<RecordsStudyModels.StudyItem> { seededShuffleRank(nonNullSeed, it) }
                                 .thenBy { taskKeyForSeededShuffle(it) }
                         )
                     }

@@ -155,6 +155,31 @@ class LocalStoreConfusionPairTest {
         assertEquals(mapOf("拉" to mapOf("提" to 2, "謎" to 1)), counts)
     }
 
+    @Test
+    fun rebuildPrunesWrongPickRowsOlderThanMiningWindow() {
+        val now = 200L * 24L * 60L * 60L * 1000L
+        val windowStart = ConfusionPairMiner.windowStartMillis(now)
+        seedInventory(listOf("拉", "提"), now)
+        // Two rows inside the window and one row that predates it.
+        store.recordChoiceReviewLog("拉", "sig", "提", false, "meaning_kanji", now - 1_000L)
+        store.recordChoiceReviewLog("拉", "sig", "提", false, "similar_kanji", now - 2_000L)
+        store.recordChoiceReviewLog("拉", "sig", "提", false, "meaning_kanji", windowStart - 1_000L)
+        assertEquals(3, reviewLogRows(store.readableDatabase).size)
+
+        store.rebuildSimilarKanjiPairs(SimilarKanjiIndex.empty(), now)
+
+        // The out-of-window row is deleted; the two in-window rows survive.
+        val remaining = reviewLogRows(store.readableDatabase)
+        assertEquals(2, remaining.size)
+        store.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM similar_kanji_review_log WHERE reviewed_at < ?",
+            arrayOf(windowStart.toString()),
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals(0, it.getInt(0))
+        }
+    }
+
     private fun seedInventory(kanji: List<String>, nowMillis: Long) {
         val db = store.writableDatabase
         for (glyph in kanji) {

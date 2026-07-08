@@ -1069,6 +1069,32 @@ class LadderSchedulerTest {
     }
 
     @Test
+    fun realDuePassLeavesLastFailedDayUnchangedAndFailUpdatesIt() {
+        val scheduler = schedulerWithReviewIntervalDays(10);
+        val consumed = HashSet<String>();
+        // Seed a review card that already carries a prior recorded failure day.
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder().lastFailedRecognitionDayMillis(5000L).build();
+        var now = 100_000L
+        item = item.copyBuilder().dueAtMillis(now - 60_000L).build();
+
+        val passResult = scheduler.applyReview(
+                item.withToken("pass"), passRequest("裂", "pass"), consumed, now);
+        assertEquals("A real-due pass must not touch the legacy last-failed-day mirror",
+                5000L, passResult.item.lastFailedRecognitionDayMillis);
+
+        var failItem = passResult.item;
+        val failDue = failItem.dueAtMillis
+        val failNow = Math.max(failDue + 60_000L, now + 86_400_000L);
+        failItem = failItem.copyBuilder().dueAtMillis(failNow - 60_000L)
+            .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
+        val failResult = scheduler.applyReview(
+                failItem.withToken("fail"), failRequest("裂", "fail"), consumed, failNow);
+        assertEquals("A real-due fail updates the last-failed-day to the fail's due slot",
+                failItem.dueAtMillis, failResult.item.lastFailedRecognitionDayMillis);
+    }
+
+    @Test
     fun exactPromotionThresholdDoesNotPromote() {
         val scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY);
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
