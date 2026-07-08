@@ -3,7 +3,15 @@ package dev.bee.kanjianki.core
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Progress across a study session. Mutated on the io thread (review outcomes,
+ * task shown/completed) and read on the main thread (the #507 badge,
+ * completedTaskBreakdown on the done screen). Every instance method holds
+ * [lock] so reads never see torn state and iteration over the key sets cannot
+ * race a concurrent write (ConcurrentModificationException).
+ */
 class StudySessionProgressTracker {
+    private val lock = Any()
     private var completedCount = 0
     private var targetCount = 0
     private val completedTaskKeys = HashSet<String>()
@@ -11,15 +19,15 @@ class StudySessionProgressTracker {
     private val movedForwardKanji = HashSet<String>()
     private val missedKanji = HashSet<String>()
 
-    fun completedCount(): Int = completedCount
+    fun completedCount(): Int = synchronized(lock) { completedCount }
 
-    fun targetCount(): Int = targetCount
+    fun targetCount(): Int = synchronized(lock) { targetCount }
 
-    fun movedForwardCount(): Int = movedForwardKanji.size
+    fun movedForwardCount(): Int = synchronized(lock) { movedForwardKanji.size }
 
-    fun missedCount(): Int = missedKanji.size
+    fun missedCount(): Int = synchronized(lock) { missedKanji.size }
 
-    fun completedTaskBreakdown(): CompletedTaskBreakdown {
+    fun completedTaskBreakdown(): CompletedTaskBreakdown = synchronized(lock) {
         var writingChecks = 0
         var similarKanjiChoices = 0
         var similarKanjiRepairs = 0
@@ -35,7 +43,7 @@ class StudySessionProgressTracker {
                 else -> otherReviews++
             }
         }
-        return CompletedTaskBreakdown(
+        CompletedTaskBreakdown(
             writingChecks,
             similarKanjiChoices,
             similarKanjiRepairs,
@@ -44,7 +52,7 @@ class StudySessionProgressTracker {
         )
     }
 
-    fun resetProgress() {
+    fun resetProgress() = synchronized(lock) {
         completedCount = 0
         targetCount = 0
         completedTaskKeys.clear()
@@ -53,30 +61,30 @@ class StudySessionProgressTracker {
         missedKanji.clear()
     }
 
-    fun initializeTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
+    fun initializeTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) = synchronized(lock) {
         if (targetCount <= 0 && plan != null) {
             targetCount = max(0, if (plan.remaining > 0) plan.remaining else plan.target)
         }
     }
 
-    fun setTargetCount(targetCount: Int) {
+    fun setTargetCount(targetCount: Int) = synchronized(lock) {
         this.targetCount = max(0, targetCount)
     }
 
-    fun includePendingTask(key: String?): Boolean {
+    fun includePendingTask(key: String?): Boolean = synchronized(lock) {
         if (isEmpty(key) || seenTaskKeys.contains(key) || completedTaskKeys.contains(key)) {
-            return false
+            return@synchronized false
         }
         seenTaskKeys.add(key!!)
         targetCount++
-        return true
+        true
     }
 
-    fun atHardCap(continueAllKanjiSession: Boolean): Boolean {
-        return !continueAllKanjiSession && targetCount > 0 && completedCount >= targetCount
+    fun atHardCap(continueAllKanjiSession: Boolean): Boolean = synchronized(lock) {
+        !continueAllKanjiSession && targetCount > 0 && completedCount >= targetCount
     }
 
-    fun topBarProgress(activeTask: Boolean, continueAllKanjiSession: Boolean): TopBarProgress {
+    fun topBarProgress(activeTask: Boolean, continueAllKanjiSession: Boolean): TopBarProgress = synchronized(lock) {
         val completed = completedCount
         var target = targetCount
         if (activeTask && target <= completed && continueAllKanjiSession) {
@@ -91,10 +99,14 @@ class StudySessionProgressTracker {
         } else {
             max(0f, min(1f, completed / target.toFloat()))
         }
-        return TopBarProgress(visibleCompleted, target, fraction)
+        TopBarProgress(visibleCompleted, target, fraction)
     }
 
-    fun registerTaskShown(key: String?) {
+    fun registerTaskShown(key: String?) = synchronized(lock) {
+        registerTaskShownLocked(key)
+    }
+
+    private fun registerTaskShownLocked(key: String?) {
         if (isEmpty(key)) {
             return
         }
@@ -104,11 +116,11 @@ class StudySessionProgressTracker {
         }
     }
 
-    fun markTaskCompleted(key: String?) {
+    fun markTaskCompleted(key: String?) = synchronized(lock) {
         if (isEmpty(key)) {
-            return
+            return@synchronized
         }
-        registerTaskShown(key)
+        registerTaskShownLocked(key)
         if (completedTaskKeys.add(key!!)) {
             completedCount++
             targetCount = max(targetCount, completedCount)
@@ -120,10 +132,10 @@ class StudySessionProgressTracker {
         appliedRating: String?,
         before: RecordsStudyModels.StudyItem?,
         after: RecordsStudyModels.StudyItem?,
-    ) {
+    ) = synchronized(lock) {
         val safeKanji = safeKanji(kanji)
         if (safeKanji.isEmpty()) {
-            return
+            return@synchronized
         }
         val moved = BridgeScheduler.RATING_AGAIN != appliedRating || locallyImproved(before, after)
         if (moved) {
@@ -134,10 +146,10 @@ class StudySessionProgressTracker {
         }
     }
 
-    fun recordRepairOutcome(kanji: String?, passed: Boolean) {
+    fun recordRepairOutcome(kanji: String?, passed: Boolean) = synchronized(lock) {
         val safeKanji = safeKanji(kanji)
         if (safeKanji.isEmpty()) {
-            return
+            return@synchronized
         }
         if (passed) {
             movedForwardKanji.add(safeKanji)
