@@ -275,6 +275,11 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.pendingUpdateFallback(false),
                         missingPermission.pendingMessageLine
                     )
+                    assertTrue(missingPermission.showAutoUpdateInBackground)
+                    assertEquals(
+                        SettingsTextCopy.autoUpdateInBackgroundLabel(),
+                        missingPermission.autoUpdateInBackgroundLabel
+                    )
 
                     MainActivityRuntimeOverrides.setInstallPermission(true)
                     val readyUpdate = settingsUpdatePanelModel(
@@ -286,6 +291,7 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.pendingUpdateFallback(true),
                         readyUpdate.pendingMessageLine
                     )
+                    assertFalse(readyUpdate.showAutoUpdateInBackground)
 
                     activity.store.saveAutoUpdateEnabled(false)
                     val updateOff = settingsUpdatePanelModel(
@@ -296,6 +302,7 @@ class MainActivitySettingsInstrumentedTest {
                         SettingsTextCopy.automaticUpdatesToggleLabel(false),
                         updateOff.automaticUpdatesToggleLabel
                     )
+                    assertTrue(updateOff.showAutoUpdateInBackground)
 
                     activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 22, 45))
                     reminderHelper.saveReminderFromSelection(6, 15, false)

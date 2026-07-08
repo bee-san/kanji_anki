@@ -36,6 +36,10 @@ class SettingsAutomationTextCopyTest {
         assertEquals("Allow app installs first.", SettingsAutomationTextCopy.pendingUpdateFallback(false))
         assertEquals("Install verified update", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
         assertEquals("Allow app installs", SettingsAutomationTextCopy.setupAppInstallsLabel())
+        assertEquals(
+            "Automatically update in the background",
+            SettingsAutomationTextCopy.autoUpdateInBackgroundLabel(),
+        )
         assertEquals("Turn off updates", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
         assertEquals("Back to settings", SettingsAutomationTextCopy.backToSettingsLabel())
     }
@@ -107,6 +111,7 @@ class SettingsAutomationTextCopyTest {
             assertEquals("先にアプリのインストールを許可してください。", SettingsAutomationTextCopy.pendingUpdateFallback(false))
             assertEquals("確認済みの更新をインストール", SettingsAutomationTextCopy.installVerifiedUpdateLabel())
             assertEquals("アプリのインストールを許可", SettingsAutomationTextCopy.setupAppInstallsLabel())
+            assertEquals("バックグラウンドで自動更新", SettingsAutomationTextCopy.autoUpdateInBackgroundLabel())
             assertEquals("更新をオフにする", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
             assertEquals("更新をオンにする", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(false))
             assertEquals("設定に戻る", SettingsAutomationTextCopy.backToSettingsLabel())

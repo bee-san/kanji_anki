@@ -861,6 +861,9 @@ class ComposeScreenModelsTest {
                 onOpenInstallSettings = {},
                 onToggleAutomaticUpdates = {},
                 automaticUpdatesToggleLabel = "Enable",
+                showAutoUpdateInBackground = false,
+                autoUpdateInBackgroundLabel = "Automatically update in the background",
+                onAutoUpdateInBackground = {},
             ),
             openUpdaterLabel = "Open updater",
             onOpenUpdater = {},
@@ -1361,6 +1364,7 @@ class ComposeScreenModelsTest {
         val openSettings = { calls += "settings" }
         val toggle = { calls += "toggle" }
         val openUpdater = { calls += "updater" }
+        val backgroundUpdate = { calls += "background" }
         val statusColor = MainActivityUiSupport.CORAL
         val permissionColor = MainActivityUiSupport.TEAL
         val panel = SettingsUpdatePanelModel(
@@ -1379,6 +1383,9 @@ class ComposeScreenModelsTest {
             onOpenInstallSettings = openSettings,
             onToggleAutomaticUpdates = toggle,
             automaticUpdatesToggleLabel = "Turn off automatic checks",
+            showAutoUpdateInBackground = true,
+            autoUpdateInBackgroundLabel = "Automatically update in the background",
+            onAutoUpdateInBackground = backgroundUpdate,
         )
         val overview = SettingsUpdateOverviewPanelModel(
             panel = panel,
@@ -1401,14 +1408,18 @@ class ComposeScreenModelsTest {
         assertSame(openSettings, panel.onOpenInstallSettings)
         assertSame(toggle, panel.onToggleAutomaticUpdates)
         assertEquals("Turn off automatic checks", panel.automaticUpdatesToggleLabel)
+        assertEquals(true, panel.showAutoUpdateInBackground)
+        assertEquals("Automatically update in the background", panel.autoUpdateInBackgroundLabel)
+        assertSame(backgroundUpdate, panel.onAutoUpdateInBackground)
         assertSame(panel, overview.panel)
         assertEquals("Open updater", overview.openUpdaterLabel)
         assertSame(openUpdater, overview.onOpenUpdater)
         panel.onInstallVerifiedUpdate()
         panel.onOpenInstallSettings()
         panel.onToggleAutomaticUpdates()
+        panel.onAutoUpdateInBackground()
         overview.onOpenUpdater()
-        assertEquals(listOf("install", "settings", "toggle", "updater"), calls)
+        assertEquals(listOf("install", "settings", "toggle", "background", "updater"), calls)
         assertEquals(panel, panel.copy())
         assertEquals(overview, overview.copy())
     }
@@ -1435,6 +1446,9 @@ class ComposeScreenModelsTest {
             onOpenInstallSettings = {},
             onToggleAutomaticUpdates = {},
             automaticUpdatesToggleLabel = "Turn off",
+            showAutoUpdateInBackground = true,
+            autoUpdateInBackgroundLabel = "Automatically update in the background",
+            onAutoUpdateInBackground = {},
         )
         val page = SettingsUpdatePageModel(
             title = "Updater",

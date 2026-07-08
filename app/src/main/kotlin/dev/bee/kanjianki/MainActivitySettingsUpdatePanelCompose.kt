@@ -110,6 +110,15 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
                 )
             }
 
+            if (model.showAutoUpdateInBackground) {
+                SettingsUpdateOutlinedButton(
+                    label = model.autoUpdateInBackgroundLabel,
+                    minHeight = 54.dp,
+                    shape = SettingsUpdatePrimaryButtonShape,
+                    onClick = model.onAutoUpdateInBackground
+                )
+            }
+
             SettingsUpdateOutlinedButton(
                 label = model.automaticUpdatesToggleLabel,
                 minHeight = 54.dp,

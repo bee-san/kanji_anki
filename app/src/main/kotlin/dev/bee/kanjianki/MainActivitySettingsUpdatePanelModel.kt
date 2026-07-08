@@ -16,6 +16,9 @@ data class SettingsUpdatePanelModel(
     val onOpenInstallSettings: () -> Unit,
     val onToggleAutomaticUpdates: () -> Unit,
     val automaticUpdatesToggleLabel: String,
+    val showAutoUpdateInBackground: Boolean,
+    val autoUpdateInBackgroundLabel: String,
+    val onAutoUpdateInBackground: () -> Unit,
 )
 
 data class SettingsUpdateOverviewPanelModel(
