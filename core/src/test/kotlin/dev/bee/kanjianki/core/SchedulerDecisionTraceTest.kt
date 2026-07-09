@@ -111,9 +111,10 @@ class SchedulerDecisionTraceTest {
     @Test
     fun traceApplyReviewCapturesSimilarKanjiSkipWhenUnavailable() {
         val scheduler = schedulerWithReviewIntervalDays(22)
-        // Promotion from write_kanji crosses the similar_kanji rung, which has
-        // no content for this card, so the trace must record the skip.
-        val item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+        // New default order (Goal 65): promotion from meaning_kanji crosses the
+        // similar_kanji rung, which has no content for this card, so the trace
+        // must record the skip.
+        val item = reviewCard("裂", RecordsBase.LadderRung.MEANING_KANJI, 0L)
             .copyBuilder().realPassStreak(1).build()
             .withHasSimilarKanji(false)
             .withToken("similar-skip")
@@ -121,7 +122,7 @@ class SchedulerDecisionTraceTest {
             BridgeScheduler.ReviewApplication.builder(item, passRequest("裂", "similar-skip"), HashSet(), 1_000L).build()
         )
 
-        assertEquals(RecordsBase.LadderRung.TYPE_MEANING, traced.result.item.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.result.item.rung)
         assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
         assertTrue(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
     }

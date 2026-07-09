@@ -485,14 +485,16 @@ class LadderSchedulerTest {
 
     @Test
     fun similarRungIncludedWhenAvailable() {
+        // New default order (Goal 65): similar_kanji sits between meaning_kanji
+        // (below) and kanji_meaning (above).
         val demoted = BridgeScheduler.demoteRung(
-                RecordsBase.LadderRung.TYPE_MEANING,
+                RecordsBase.LadderRung.KANJI_MEANING,
                 true
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
-                RecordsBase.LadderRung.WRITE_KANJI,
+                RecordsBase.LadderRung.MEANING_KANJI,
                 true
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, promoted);
@@ -909,8 +911,9 @@ class LadderSchedulerTest {
     @Test
     fun itemRestingOnSimilarKanjiDemotesPastItWhenAvailabilityFlipsFalse() {
         // A card sitting on SIMILAR_KANJI whose hasSimilarKanji becomes false must move
-        // across that rung (down to WRITE_KANJI on a demotion) rather than stall on a
-        // rung it can no longer render.
+        // across that rung rather than stall on a rung it can no longer render. In the
+        // Goal 65 order similar_kanji maps down to meaning_kanji, which then demotes to
+        // type_meaning.
         val scheduler = BridgeScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
@@ -938,8 +941,8 @@ class LadderSchedulerTest {
         }
 
         assertEquals(
-            "Demotion crosses the unavailable SIMILAR_KANJI rung to WRITE_KANJI",
-            RecordsBase.LadderRung.WRITE_KANJI,
+            "Demotion crosses the unavailable SIMILAR_KANJI rung (mapped to meaning_kanji) down to type_meaning",
+            RecordsBase.LadderRung.TYPE_MEANING,
             item.rung,
         )
     }
@@ -1121,9 +1124,10 @@ class LadderSchedulerTest {
 
     @Test
     fun promotionLandsOnSimilarKanjiWhenAvailable() {
+        // New default order (Goal 65): meaning_kanji promotes into similar_kanji.
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
+        val item = reviewCard("裂", RecordsBase.LadderRung.MEANING_KANJI, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.MEANING_KANJI).build()
                 .withHasSimilarKanji(true);
 
         val result = applyQualifyingPasses(scheduler, item, 2);
@@ -1134,40 +1138,43 @@ class LadderSchedulerTest {
 
     @Test
     fun promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        // meaning_kanji -> (skip similar_kanji) -> kanji_meaning without content.
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
+        val item = reviewCard("裂", RecordsBase.LadderRung.MEANING_KANJI, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.MEANING_KANJI).build()
                 .withHasSimilarKanji(false);
 
         val result = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals("Promoted to TYPE_MEANING, skipping SIMILAR_KANJI",
-                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung);
+        assertEquals("Promoted to KANJI_MEANING, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.KANJI_MEANING, result.item.rung);
     }
 
     @Test
     fun demotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        // New default order (Goal 65): kanji_meaning demotes across the
+        // content-less similar_kanji rung down to meaning_kanji.
         val scheduler = BridgeScheduler();
         val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).realAgainStreak(2).build()
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.KANJI_MEANING).realAgainStreak(2).build()
                 .withHasSimilarKanji(false);
 
         val result = scheduler.applyReview(
                 item.withToken("nd"), failRequest("裂", "nd"), consumed, 1000L);
 
-        assertEquals("Demoted to WRITE_KANJI, skipping SIMILAR_KANJI",
-                RecordsBase.LadderRung.WRITE_KANJI, result.item.rung);
+        assertEquals("Demoted to MEANING_KANJI, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung);
     }
 
     @Test
     fun promotionSkipsChainedDisabledAndUnavailableRungs() {
-        // similar_kanji has no content and type_meaning is disabled: promotion
-        // from write_kanji must chain across both to meaning_kanji.
+        // similar_kanji has no content and kanji_meaning is disabled: promotion
+        // from meaning_kanji must chain across both to font_meaning.
         var ladder = RecordsBase.StudyLadderSettings.defaults()
-                .withRungEnabled(RecordsBase.LadderRung.TYPE_MEANING, false);
-        val promoted = ladder.nextRung(RecordsBase.LadderRung.WRITE_KANJI, false);
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, promoted);
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, false);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoted);
     }
 
     // ---- Custom ladder thresholds ----
@@ -1312,6 +1319,48 @@ class LadderSchedulerTest {
         assertEquals("First post-demotion pass does not re-promote",
                 RecordsBase.LadderRung.KANJI_MEANING, first.item.rung);
         assertEquals(1, first.item.realPassStreak);
+    }
+
+    // ---- Goal 65: default reorder reaches similar_kanji in one demotion step ----
+
+    @Test
+    fun firstDemotionReachesSimilarKanjiWhenContentExists() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(true)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until DEFAULT_THRESHOLD) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("a" + i), failRequest("裂", "a" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + DEFAULT_THRESHOLD * 86_400_000L)
+        }
+        assertEquals("Starting rung demotes to similar_kanji in one demotion step when content exists",
+                RecordsBase.LadderRung.SIMILAR_KANJI, result!!.item.rung)
+    }
+
+    @Test
+    fun firstDemotionSkipsSimilarKanjiToMeaningKanjiWithoutContent() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(false)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until DEFAULT_THRESHOLD) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("a" + i), failRequest("裂", "a" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + DEFAULT_THRESHOLD * 86_400_000L)
+        }
+        assertEquals("Without similar-kanji content the first demotion skips to meaning_kanji",
+                RecordsBase.LadderRung.MEANING_KANJI, result!!.item.rung)
     }
 
     // ---- Goal 64: retention-independent promotion trigger (D4) ----

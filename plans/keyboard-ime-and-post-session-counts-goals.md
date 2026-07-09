@@ -402,10 +402,10 @@ takes that space):
 
 **Done when (machine-checkable):**
 
-1. Unit tests for the compact predicate (extend the existing test coverage of
-   `studyCardImeCompact` if present — search `studyCardImeCompact` under
-   `app/src/test` — otherwise add
-   `app/src/test/kotlin/dev/bee/kanjianki/KaniImeInsetsTest.kt`) pass:
+1. `app/src/test/kotlin/dev/bee/kanjianki/StudyCardImeCompactUnitTest.kt`
+   updated deliberately — its line 15 currently pins the exact case this goal
+   flips (`imeVisible = false, hasTypingAnswer = true, revealed = false` →
+   false must become → true). Final coverage:
    - unrevealed typing card, IME hidden → compact true (the changed case);
    - unrevealed typing card, IME visible → compact true;
    - revealed typing card → compact false;

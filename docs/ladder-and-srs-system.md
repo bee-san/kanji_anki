@@ -127,16 +127,23 @@ low-to-high. Unknown wire names decode to `KANJI_MEANING` with a warning.
 `RecordsBase.kt:50-332`. Holds two lists: `orderedRungs` (low → high) and
 `enabledRungs`.
 
-Default order (`defaultsOrder()`, `:310-320`), lowest/easiest to
-highest/hardest:
+Default order (`defaultsOrder()`), most-scaffolded (bottom) to
+least-scaffolded (top):
 
 1. `write_kanji`
-2. `similar_kanji`
-3. `type_meaning`
-4. `meaning_kanji`
+2. `type_meaning`
+3. `meaning_kanji`
+4. `similar_kanji`
 5. `kanji_meaning`
 6. `font_meaning`
 7. `word_reading`
+
+`similar_kanji` sits directly below `kanji_meaning`, the new-card start rung
+(Goal 65), so the first demotion reaches discrimination practice in one
+demotion step for cards with confusion data (or skips over it to
+`meaning_kanji` for cards without). Only fresh installs and stored configs
+that lack `similar_kanji` are affected; an existing stored order round-trips
+unchanged (`storedFullOrderRoundTripsUnchanged`).
 
 **All seven rungs are enabled by default** (`defaultsEnabled()`, `:322`),
 including `meaning_kanji` (the AGENTS.md claim that it was off by

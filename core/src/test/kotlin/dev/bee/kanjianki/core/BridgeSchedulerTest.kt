@@ -229,8 +229,12 @@ public class BridgeSchedulerTest {
         assertEquals("new", session!!.item!!.state)
         assertEquals(1234L, session!!.item!!.dueAtMillis)
         assertEquals(1234L, session!!.item!!.createdAtMillis)
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, session!!.item!!.rung)
-        assertEquals("meaning_kanji", session!!.taskType)
+        // New default order (Goal 65): with kanji_meaning disabled and no
+        // similar-kanji content, the nearest enabled rung by distance is
+        // font_meaning (the content-less similar_kanji directly below is
+        // unavailable, so the mapping falls to the closer higher rung).
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, session!!.item!!.rung)
+        assertEquals("font_meaning", session!!.taskType)
         assertEquals("local reason", session!!.prompt)
         assertFalse(session!!.writingRequired)
         assertTrue(session!!.token.startsWith("謎-"))
@@ -1983,6 +1987,9 @@ public class BridgeSchedulerTest {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false)
+        // New default order (Goal 65): with kanji_meaning disabled and
+        // similar-kanji content present, the nearest enabled rung is the
+        // similar_kanji rung directly below it.
         var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withHasSimilarKanji(true)
         var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
@@ -1995,15 +2002,21 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         assertNotNull(session)
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, session!!.item!!.rung)
-        assertEquals(BridgeScheduler.TASK_MEANING_KANJI, session!!.taskType)
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, session!!.item!!.rung)
+        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session!!.taskType)
     }
 
     @Test
     public fun mappedMeaningKanjiReviewInheritsExistingSchedulerMemory() {
         var scheduler: BridgeScheduler = BridgeScheduler()
+        // New default order (Goal 65): kanji_meaning (index 4) sits above
+        // similar_kanji; with kanji_meaning and font_meaning both disabled and
+        // no similar-kanji content, the nearest enabled rung is meaning_kanji
+        // (ties prefer the lower/more-scaffolded rung), so the review maps into
+        // meaning_kanji memory.
         var ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false)
+                .withRungEnabled(RecordsBase.LadderRung.FONT_MEANING, false)
         var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
                 .copyBuilder()
                 .stability(2.5)

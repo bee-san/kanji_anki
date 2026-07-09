@@ -130,22 +130,29 @@ assertFalse(equalsNonPoint);
 The study scheduler is centered on a single ladder state machine, not on side
 queues. Every persisted study item has exactly one current rung and one phase.
 
-Default ladder order from lowest to highest rung:
+Default ladder order from most-scaffolded (bottom) to least-scaffolded (top)
+rung:
 
 1. `write_kanji`
-2. `similar_kanji`
-3. `type_meaning`
-4. `meaning_kanji`
+2. `type_meaning`
+3. `meaning_kanji`
+4. `similar_kanji`
 5. `kanji_meaning`
 6. `font_meaning`
 7. `word_reading`
+
+`similar_kanji` sits directly below `kanji_meaning` (the new-card start rung)
+so the first demotion reaches discrimination practice — the app's signature
+remediation — in one demotion step for cards that have confusion data, instead
+of three (Goal 65). This only affects fresh installs and stored configs that
+lack `similar_kanji`; a user's stored order is preserved verbatim.
 
 `meaning_kanji` is present in the editable default order and, like every other
 rung, is enabled by default (stored configurations that predate the rung also
 get it auto-enabled on load).
 Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
-rung, preferring the lower/easier rung when the distance ties. The
+rung, preferring the lower/more-scaffolded rung when the distance ties. The
 `similar_kanji` rung exists only when the app can produce valid similar-kanji
 content for that card (the `hasSimilarKanji` predicate is answered by the
 `similar_kanji_pairs` table). When the predicate is false, promotion and

@@ -308,11 +308,19 @@ abstract class RecordsBase protected constructor() {
             }
 
             private fun defaultsOrder(): List<LadderRung> {
+                // Ordered by scaffolding depth, most-supported to least-supported
+                // (see docs/ladder-and-srs-system.md §3, design properties P9/P10).
+                // similar_kanji sits directly below kanji_meaning (the new-card
+                // start) so the first demotion reaches discrimination practice —
+                // the app's signature remediation — after one demotion step
+                // (ladder_demotion_fail_streak fails) for cards that have
+                // confusion data, instead of three steps (Goal 65). Cards
+                // without similar-kanji content skip over it to meaning_kanji.
                 return listOf(
                     LadderRung.WRITE_KANJI,
-                    LadderRung.SIMILAR_KANJI,
                     LadderRung.TYPE_MEANING,
                     LadderRung.MEANING_KANJI,
+                    LadderRung.SIMILAR_KANJI,
                     LadderRung.KANJI_MEANING,
                     LadderRung.FONT_MEANING,
                     LadderRung.WORD_READING,

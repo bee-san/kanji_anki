@@ -5,4 +5,4 @@ T+1d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+
 T+1d answer rating=again task=kanji_meaning rung=KANJI_MEANING->KANJI_MEANING phase=REVIEW->REVIEW due=T+2d reasons=[review_again_lapse] fsrs=[review:again:1]
 T+2d advance now=T+2d
 T+2d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+2d reasons=[due_now,review_due,selected_best_candidate]
-T+2d answer rating=again task=kanji_meaning rung=KANJI_MEANING->MEANING_KANJI phase=REVIEW->REVIEW due=T+3d reasons=[review_again_lapse,real_again_streak_threshold] fsrs=[review:again:1]
+T+2d answer rating=again task=kanji_meaning rung=KANJI_MEANING->MEANING_KANJI phase=REVIEW->REVIEW due=T+3d reasons=[review_again_lapse,real_again_streak_threshold,similar_kanji_unavailable] fsrs=[review:again:1]

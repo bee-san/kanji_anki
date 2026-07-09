@@ -120,7 +120,9 @@ class SchedulerTimelineSimulatorTest {
 
     @Test
     fun similarKanjiSkippedWithoutContentMatchesGoldenTimeline() {
-        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, START)
+        // New default order (Goal 65): kanji_meaning demotes across the
+        // content-less similar_kanji rung to meaning_kanji, recording the skip.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
             .copyBuilder()
             .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
             .build()
@@ -134,7 +136,7 @@ class SchedulerTimelineSimulatorTest {
         simulator.nextSession()
         val answer = simulator.answer("again")
 
-        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, answer.snapshot!!.rung)
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, answer.snapshot!!.rung)
         assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
         assertTrue(answer.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
         assertGolden("similarKanjiSkippedWithoutContent", simulator.renderText())
