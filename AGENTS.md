@@ -231,6 +231,16 @@ parity decision and golden-timeline regeneration.
 
 `hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
 A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.
+Leaving the `write_kanji` rung additionally requires clean-write evidence
+(Goal 67): promotion off `write_kanji` fires only when `writingLevel >= 2`
+(two net clean, hint-free passes; `writingLevel` rises only on clean hint-free
+passes and falls on failures via `updateWritingLevel`). A chain of messy
+`CLOSE`/"Save hard" passes therefore cannot promote production out of the
+writing rung without at least one clean write, even once the interval and
+min-pass gates are met. The blocked non-move records
+`promotion_blocked_writing_level` in the trace. `updateWritingLevel` runs
+before the ladder transition so the gate sees the current attempt; this
+reorder is behavior-neutral for every non-writing rung.
 The demotion fail-streak resets only when a demotion actually moves the rung;
 at the `write_kanji` floor (where demotion cannot move) the streak keeps
 accumulating so chronically-failing floor cards keep reporting to

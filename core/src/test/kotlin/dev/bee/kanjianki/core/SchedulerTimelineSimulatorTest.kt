@@ -119,6 +119,37 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun writeKanjiExitRequiresCleanWritesMatchesGoldenTimeline() {
+        // Goal 67: a messy CLOSE ("Save hard") pass whose interval and min-pass
+        // gates both qualify still does not promote off write_kanji; only a
+        // clean, hint-free write (writingLevel >= 2) does.
+        val writing = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, START)
+            .copyBuilder()
+            .writingLevel(1)
+            .realPassStreak(1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(22),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(writing),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val close = simulator.answerWriting("hard", passed = true, clean = false, hintsUsed = 0)
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, close.snapshot!!.rung)
+        assertTrue(close.trace.transition!!.reasonCodes.contains("promotion_blocked_writing_level"))
+
+        simulator.advanceTo(close.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val clean = simulator.answerWriting("good", passed = true, clean = true, hintsUsed = 0)
+        assertEquals(RecordsBase.LadderRung.TYPE_MEANING, clean.snapshot!!.rung)
+        assertEquals("fsrs_interval_promotes", clean.trace.transition!!.movementReason)
+
+        assertGolden("writeKanjiExitRequiresCleanWrites", simulator.renderText())
+    }
+
+    @Test
     fun ceilingCardDemotesOneRungWhenColdMatchesGoldenTimeline() {
         // Goal 66 (rejected deep-demotion): pins the current single-step
         // demotion from the word_reading ceiling. A ceiling card that goes cold

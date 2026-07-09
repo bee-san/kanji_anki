@@ -107,6 +107,39 @@ class SchedulerTimelineSimulator(
         return event
     }
 
+    /**
+     * Answer the active session as an explicit handwriting attempt, so
+     * timelines can exercise the write_kanji rung with clean/messy passes
+     * (the default [answer] treats a writing-required session as a failure).
+     */
+    fun answerWriting(rating: String, passed: Boolean, clean: Boolean, hintsUsed: Int): SchedulerTimelineEvent {
+        val session = activeSession ?: throw IllegalStateException("Call nextSession() before answerWriting().")
+        val before = session.item ?: throw IllegalStateException("The active session has no study item.")
+        val request = RecordsSchedulerModels.ReviewRequest(
+            before.kanji,
+            session.token,
+            rating,
+            true,
+            passed,
+            clean,
+            false,
+            hintsUsed,
+        )
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(before, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .settings(settings)
+                .learningSettings(learningSettings)
+                .ladder(ladder)
+                .build()
+        )
+        items = replaceReviewedItem(items, before, traced.result.item)
+        activeSession = null
+        val event = SchedulerTimelineEvent("answer", nowMillis - startMillis, traced.trace, snapshot(traced.result.item), snapshot(before))
+        events.add(event)
+        return event
+    }
+
     fun advanceBy(millis: Long): SchedulerTimelineEvent {
         nowMillis += millis.coerceAtLeast(0L)
         val trace = SchedulerDecisionTrace("advance", nowMillis, null, emptyList(), emptyList(), null, emptyList())

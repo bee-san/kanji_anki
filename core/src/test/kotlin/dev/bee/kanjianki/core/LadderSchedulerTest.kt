@@ -1321,6 +1321,81 @@ class LadderSchedulerTest {
         assertEquals(1, first.item.realPassStreak);
     }
 
+    // ---- Goal 67: clean-write gate to leave write_kanji ----
+
+    private fun writeKanjiCard(writingLevel: Int, realPassStreak: Int): RecordsStudyModels.StudyItem {
+        return reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder()
+                .rung(RecordsBase.LadderRung.WRITE_KANJI)
+                .writingLevel(writingLevel)
+                .realPassStreak(realPassStreak)
+                .build()
+    }
+
+    private fun cleanWriteRequest(token: String): RecordsSchedulerModels.ReviewRequest {
+        // writingRequired, writingPassed, writingClean, manualOverride=false, hintsUsed=0
+        return RecordsSchedulerModels.ReviewRequest(
+                "裂", token, "good", true, true, true, false, 0)
+    }
+
+    private fun closeWriteRequest(token: String): RecordsSchedulerModels.ReviewRequest {
+        // A messy-but-passing ("Save hard") attempt: passed but not clean.
+        return RecordsSchedulerModels.ReviewRequest(
+                "裂", token, "hard", true, true, false, false, 0)
+    }
+
+    @Test
+    fun closePassChainDoesNotPromoteOutOfWriteKanjiWithoutCleanWrites() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        // Start with writingLevel 1 and a primed pass streak; a CLOSE pass keeps
+        // the level below 2 even though the interval and min-pass gates are met.
+        var item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until 3) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("c" + i), closeWriteRequest("c" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + 100L * 86_400_000L)
+        }
+        assertEquals("A chain of messy CLOSE passes never promotes off write_kanji",
+                RecordsBase.LadderRung.WRITE_KANJI, result!!.item.rung)
+        assertTrue("writingLevel stays below the promotion floor",
+                result.item.writingLevel < 2)
+    }
+
+    @Test
+    fun cleanWritesPromoteOutOfWriteKanji() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        // writingLevel 1 + one clean hint-free pass reaches level 2 and, with the
+        // min-pass gate already primed, promotes.
+        var item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
+        val result = scheduler.applyReview(
+                item.withToken("clean"), cleanWriteRequest("clean"), consumed, 1000L)
+
+        assertEquals("Clean hint-free writing promotes off write_kanji",
+                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung)
+        assertTrue("writingLevel reached the promotion floor",
+                result.item.writingLevel >= 2)
+    }
+
+    @Test
+    fun writingLevelDoesNotBlockNonWritingRungPromotion() {
+        // A non-writing rung with writingLevel 0 still promotes normally.
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().writingLevel(0).build()
+
+        val result = applyQualifyingPasses(scheduler, item, 2)
+
+        assertEquals("writingLevel is irrelevant off the write_kanji rung",
+                RecordsBase.LadderRung.FONT_MEANING, result.item.rung)
+    }
+
     // ---- Goal 65: default reorder reaches similar_kanji in one demotion step ----
 
     @Test

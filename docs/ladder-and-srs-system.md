@@ -221,9 +221,16 @@ four-way switch is `MainActivityStudy.renderSession`
   rating at `WritingRatingMapper.maxAllowedRating` (confidence < 0.72 or
   hints used → at most `hard`).
 - **`writingLevel`** (0–3) rises on clean, hint-free passes and falls on
-  fails (`ReviewTransitionEngine.updateWritingLevel`, `:372-381`); it seeds
+  fails (`ReviewTransitionEngine.updateWritingLevel`); it seeds
   the initial hint level for future writing sessions
-  (`WritingHintPolicy.initialHintState`).
+  (`WritingHintPolicy.initialHintState`) **and gates leaving the rung**
+  (Goal 67): promotion off `write_kanji` additionally requires
+  `writingLevel >= 2`, so a chain of messy `CLOSE`/"Save hard" passes that
+  meets the interval and min-pass gates still cannot promote production out
+  of the writing rung without at least one clean, hint-free write. The
+  blocked non-move records `promotion_blocked_writing_level`.
+  `updateWritingLevel` runs before the ladder transition so the gate sees
+  the current attempt's effect (behavior-neutral for non-writing rungs).
 - **Ladder role**: demotion floor. `previousRung` at index 0 returns the
   same rung; further `Again`s keep the card here (streak resets each time
   the demotion threshold fires).
@@ -473,7 +480,11 @@ never move the ladder.
   validated soon after unlocking. At the ceiling (`word_reading`)
   `nextRung` returns the same rung and no cap applies. When the interval
   qualifies but the min-pass gate blocks the move, the trace records
-  `promotion_blocked_min_passes`.
+  `promotion_blocked_min_passes`. On the `write_kanji` rung a third gate
+  applies: promotion additionally requires `writingLevel >= 2` (Goal 67),
+  so messy `CLOSE`/"Save hard" passes cannot promote production off the
+  writing rung without a clean, hint-free write; the blocked non-move
+  records `promotion_blocked_writing_level`.
 - **Demotion** (`applyReviewAgain`, `:320-329`): on a real-due `again`,
   `realPassStreak = 0`, `realAgainStreak++`; when the streak reaches
   `ladderDemotionFailStreak` (default **3**), the rung moves down via
