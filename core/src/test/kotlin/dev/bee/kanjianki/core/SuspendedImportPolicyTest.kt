@@ -21,10 +21,13 @@ class SuspendedImportPolicyTest {
     }
 
     @Test
-    fun importRangeChecksRejectUnknownAndOutOfRangeRanks() {
+    fun importRangeAcceptsUnknownRankButRejectsOutOfRange() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
 
-        assertFalse(SuspendedImportPolicy.importInFrequencyRange(suspendedImport("謎", null, 1L), settings))
+        // Unknown-rank kanji (not in Jiten) import by default: they are rare
+        // characters the user deliberately suspended. Only known ranks are gated
+        // by the frequency window.
+        assertTrue(SuspendedImportPolicy.importInFrequencyRange(suspendedImport("謎", null, 1L), settings))
         assertFalse(SuspendedImportPolicy.importInFrequencyRange(suspendedImport("謎", 99, 2L), settings))
         assertFalse(SuspendedImportPolicy.importInFrequencyRange(suspendedImport("謎", 3001, 3L), settings))
         assertTrue(SuspendedImportPolicy.importInFrequencyRange(suspendedImport("箱", 2500, 4L), settings))
@@ -32,19 +35,24 @@ class SuspendedImportPolicyTest {
     }
 
     @Test
-    fun mergeSkipsOutOfRangeEntriesAndKeepsInRangeEntries() {
+    fun mergeSkipsOutOfRangeEntriesKeepsInRangeAndUnknownRanks() {
         val merged = SuspendedImportPolicy.mergeSuspendedImports(
             null,
             listOf(
                 suspendedImport("低", 50, 1L),
                 suspendedImport("箱", 2500, 2L),
-                suspendedImport("謎", null, 3L)
+                suspendedImport("疎", 5000, 3L),
+                suspendedImport("謎", null, 4L)
             ),
             RecordsSyncModels.Settings.kikuDefaults()
         )
 
-        assertEquals(1, merged.size)
-        assertEquals("箱", merged[0].kanji)
+        // Out-of-range known ranks (低=50, 疎=5000) are skipped; the in-range
+        // 箱 and the unknown-rank 謎 are both kept.
+        assertEquals(2, merged.size)
+        val kanji = merged.map { it.kanji }.toSet()
+        assertTrue(kanji.contains("箱"))
+        assertTrue(kanji.contains("謎"))
     }
 
     @Test

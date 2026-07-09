@@ -38,7 +38,9 @@ class StudyMoreNewCardActionsTest {
         assertEquals(2, admission.admittedCount)
         assertEquals(result.items, writer.annotatedInput)
         assertEquals(annotated, writer.replacedInput)
-        assertEquals(listOf("謎", "示"), selected)
+        // Admission order follows the balanced-priority default sort; this test
+        // is about which kanji were admitted, not their order.
+        assertEquals(setOf("謎", "示"), selected.toSet())
         assertTrue(reset)
         assertEquals(2, target)
     }

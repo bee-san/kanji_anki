@@ -179,6 +179,15 @@ when it reaches `ladder_demotion_fail_streak` (default 3 fails). At
 card on that rung. At `word_reading` the promotion ceiling is reached and
 further passes keep the card on that rung.
 
+Exception (fail-fast demotion): the first real review after a promotion is the
+capped validation review. If that first attempt is an `Again`, the rung demotes
+immediately instead of waiting for the full fail streak, because a failed
+validation is direct evidence the promotion was premature. This only applies
+above the starting rung and only while the item is still on the capped
+first-review interval (`ReviewTransitionEngine.isFailedPromotionValidation`); a
+brand-new card's first failed review at the starting rung never demotes below
+where new cards begin.
+
 On a due review `Again`, the card enters `relearning` at step 0 if
 relearning steps exist. If relearning steps are empty, the card skips
 relearning and is rescheduled straight from the FSRS post-lapse memory
@@ -187,6 +196,43 @@ state, matching Anki's FSRS behavior.
 When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
 the new skill is validated sooner than a full promotion-sized interval.
+
+## Ingestion And Admission Notes
+
+Queue admission and evidence-based seeding are owned by `StudyQueueSeeder` and
+the pure `AdmissionEvidencePolicy`. Core principle: do not make the learner
+study kanji they do not need to.
+
+- **Evidence-based seeding.** A kanji supported by at least one mature active
+  Anki card and never suspended (`AdmissionEvidencePolicy.isAlreadyReadInContext`)
+  is seeded straight into the `review` phase at the highest enabled rung, due
+  now, with stability/difficulty derived from Anki's own memory state. It is
+  validated once and then rides a real FSRS interval instead of climbing the
+  whole ladder. Everything else keeps the conservative `new_learning` start at
+  `kanji_meaning` (the nearest enabled rung if that is disabled). New cards
+  still start at `kanji_meaning`.
+- **Admission gate.** A row whose `matureSupportCount` already meets
+  `matureSupportThreshold` (default 2) is never admitted (it is already
+  repaired), unless per-kanji repair evidence is `REGRESSING`. This removes the
+  old admit-then-retire loop.
+- **Ceiling parking.** An item at the highest enabled rung in `review` phase
+  whose scheduled interval grows past `CEILING_PARK_INTERVAL_MULTIPLIER`
+  (default 4) times the promotion threshold is "parked": it stays studyable when
+  due but no longer counts against `activeQueueCap`, so a mature suspended-only
+  kanji riding a long interval can never permanently block admission of new
+  repairs.
+- **Signature reshuffle.** A suspend/unsuspend flip in Anki can change which
+  example is preferred and thus the answer signature. When only the
+  expression/reading changes but the meaning is unchanged, the seeder preserves
+  all earned scheduler state and just adopts the new signature. A genuine
+  meaning change still resets and demotes one rung.
+
+Import and default notes: weak-card import (active leeches: FSRS difficulty
+`>= 7.5` or lapses `>= 3`) is on by default; the default new-card sort is
+`balanced_priority`; unknown-Jiten-rank suspended kanji import by default and
+sort last; `active_queue_cap` is user-editable (Deck limits panel, bounded
+8-200); ladder thresholds are bounded above (promotion days `<= 365`, fail
+streak `<= 30`).
 
 Graduation derives the initial FSRS memory state differently for new-learning
 vs relearning, and both paths are intentional:

@@ -159,9 +159,11 @@ class LearningStepSettingsTest {
         assertTrue(defaults.importSuspendedCards)
         assertFalse(defaults.importTaggedCards)
         assertTrue(defaults.importTags.isEmpty())
-        assertFalse(defaults.importWeakCards)
-        assertEquals(7.0, defaults.importWeakFsrsDifficultyThreshold, 0.001)
-        assertEquals(2, defaults.importWeakLapsesThreshold)
+        // Weak-card import is on by default (leeches are the highest-value repair
+        // targets) with stricter-than-a-single-lapse thresholds.
+        assertTrue(defaults.importWeakCards)
+        assertEquals(7.5, defaults.importWeakFsrsDifficultyThreshold, 0.001)
+        assertEquals(3, defaults.importWeakLapsesThreshold)
         assertEquals(1, defaults.importMinMatchingCardsPerKanji)
 
         val settings = RecordsSyncModels.Settings(

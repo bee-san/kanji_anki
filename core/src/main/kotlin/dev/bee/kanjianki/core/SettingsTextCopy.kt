@@ -365,6 +365,9 @@ object SettingsTextCopy {
     fun newCardsPerDayLabel(): String = SettingsStudyPlanTextCopy.newCardsPerDayLabel()
 
     @JvmStatic
+    fun activeQueueCapLabel(): String = SettingsStudyPlanTextCopy.activeQueueCapLabel()
+
+    @JvmStatic
     fun saveDeckLimitsLabel(): String = SettingsStudyPlanTextCopy.saveDeckLimitsLabel()
 
     @JvmStatic

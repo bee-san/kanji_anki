@@ -148,6 +148,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
             @JvmStatic
             fun normalizeNewCardSortMode(value: String?): String {
                 if (
+                    NEW_CARD_SORT_FREQUENCY == value ||
                     NEW_CARD_SORT_FSRS_DIFFICULTY == value ||
                     NEW_CARD_SORT_RETRIEVABILITY_RISK == value ||
                     NEW_CARD_SORT_KANI_WEAKNESS == value ||

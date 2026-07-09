@@ -139,6 +139,26 @@ abstract class RecordsBase protected constructor() {
             return effectiveRung(LadderRung.startingRung(), hasSimilarKanji)
         }
 
+        /**
+         * Highest enabled rung valid for the item, honoring the user's ladder
+         * order. Used to seed evidence-strong kanji at the top of the ladder
+         * and to detect ceiling items for queue-cap parking.
+         */
+        fun highestRung(hasSimilarKanji: Boolean): LadderRung {
+            for (i in orderedRungs.indices.reversed()) {
+                val candidate = orderedRungs[i]
+                if (isValidForItem(candidate, hasSimilarKanji)) {
+                    return candidate
+                }
+            }
+            return LadderRung.KANJI_MEANING
+        }
+
+        /** True when [current] resolves to the highest enabled rung for the item. */
+        fun isAtCeiling(current: LadderRung?, hasSimilarKanji: Boolean): Boolean {
+            return effectiveRung(current, hasSimilarKanji) == highestRung(hasSimilarKanji)
+        }
+
         fun effectiveRung(current: LadderRung?, hasSimilarKanji: Boolean): LadderRung {
             val safeCurrent = current ?: LadderRung.startingRung()
             if (isValidForItem(safeCurrent, hasSimilarKanji)) {
@@ -372,10 +392,34 @@ abstract class RecordsBase protected constructor() {
         const val DEFAULT_IMPORT_ACTIVE_CARDS: Boolean = false
         const val DEFAULT_IMPORT_SUSPENDED_CARDS: Boolean = true
         const val DEFAULT_IMPORT_TAGGED_CARDS: Boolean = false
-        const val DEFAULT_IMPORT_WEAK_CARDS: Boolean = false
-        const val DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY: Double = 7.0
-        const val DEFAULT_IMPORT_WEAK_LAPSES: Int = 2
+
+        // Weak-card import is on by default: cards the user actively and
+        // repeatedly misses (leeches) are the highest-value repair targets Kani
+        // can find, and each repair directly reduces failed reviews the user is
+        // already doing in Anki. Thresholds are deliberately stricter than a
+        // single lapse so the default queue stays Pareto-shaped.
+        const val DEFAULT_IMPORT_WEAK_CARDS: Boolean = true
+        const val DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY: Double = 7.5
+        const val DEFAULT_IMPORT_WEAK_LAPSES: Int = 3
         const val DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI: Int = 1
+
+        // Historical (pre-weak-default) import defaults. These are the
+        // fingerprint of the very first shipped default configuration and must
+        // stay frozen: the one-time "old default" repair in SyncSettings
+        // compares stored values against them to decide whether a user is still
+        // on the original active-cards-on default. Do not couple them to the
+        // live DEFAULT_* values above, or bumping a default silently disables
+        // the migration.
+        const val LEGACY_IMPORT_WEAK_FSRS_DIFFICULTY: Double = 7.0
+        const val LEGACY_IMPORT_WEAK_LAPSES: Int = 2
+        const val LEGACY_IMPORT_MIN_MATCHING_CARDS_PER_KANJI: Int = 1
+
+        // Ceiling parking (Finding 1): once an item reaches the highest enabled
+        // rung in the review phase and its scheduled interval grows past this
+        // multiple of the promotion threshold, it is "parked" — kept studyable
+        // when due, but no longer counted against the active queue cap so it can
+        // never permanently block admission of new repair targets.
+        const val CEILING_PARK_INTERVAL_MULTIPLIER: Int = 4
         const val DEFAULT_IMPORT_BROWSER_QUERY_CARDS: Boolean = false
         const val DEFAULT_IMPORT_BROWSER_QUERY: String = ""
         const val NEW_CARD_SORT_FREQUENCY: String = "frequency"
@@ -383,7 +427,13 @@ abstract class RecordsBase protected constructor() {
         const val NEW_CARD_SORT_RETRIEVABILITY_RISK: String = "retrievability_risk"
         const val NEW_CARD_SORT_KANI_WEAKNESS: String = "kani_weakness"
         const val NEW_CARD_SORT_BALANCED_PRIORITY: String = "balanced_priority"
-        const val DEFAULT_NEW_CARD_SORT_MODE: String = NEW_CARD_SORT_FREQUENCY
+
+        // Balanced priority is the default: between two candidate kanji it ranks
+        // the one currently causing the most failed reviews (weakness,
+        // retrievability risk, difficulty, suspended pressure) above the one
+        // that is merely more frequent. This applies the Pareto "value" principle
+        // to admission. A stored explicit "frequency" choice still wins.
+        const val DEFAULT_NEW_CARD_SORT_MODE: String = NEW_CARD_SORT_BALANCED_PRIORITY
         const val DEFAULT_FREQUENCY_RETENTION_ENABLED: Boolean = false
         const val DEFAULT_FREQUENCY_RETENTION_RANGES: String = ""
         const val LEARNING_REPEAT_NEW: String = "new"
