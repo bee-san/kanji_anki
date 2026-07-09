@@ -336,7 +336,8 @@ private fun ladderHealthCard(metric: StudyStatsStore.LadderHealthMetric): StatsC
             metric.demotionRiskCount,
             metric.demotionReadyCount,
             metric.ladderPromotionIntervalDays,
-            metric.ladderDemotionFailStreak
+            metric.ladderDemotionFailStreak,
+            metric.stuckCount
         ),
         lines = ladderDistributionRows(metric).map {
             StatsLineModel(

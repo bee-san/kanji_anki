@@ -10,11 +10,22 @@ object LadderHealthPolicy {
         ladderPromotionIntervalDays: Int,
         ladderDemotionFailStreak: Int,
     ): Metric {
+        return summarize(items, ladderPromotionIntervalDays, ladderDemotionFailStreak, null)
+    }
+
+    @JvmStatic
+    fun summarize(
+        items: List<ItemEvidence?>?,
+        ladderPromotionIntervalDays: Int,
+        ladderDemotionFailStreak: Int,
+        ladder: RecordsBase.StudyLadderSettings?,
+    ): Metric {
         val promotionDays = maxOf(1, ladderPromotionIntervalDays)
         val failStreak = maxOf(1, ladderDemotionFailStreak)
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
         val accumulator = Accumulator()
         for (item in items.orEmpty()) {
-            accumulator.addItem(item, promotionDays, failStreak)
+            accumulator.addItem(item, promotionDays, failStreak, safeLadder)
         }
         return accumulator.metric(promotionDays, failStreak)
     }
@@ -29,6 +40,29 @@ object LadderHealthPolicy {
         demotionRiskCount: Int,
         demotionReadyCount: Int,
     ): Metric {
+        return fromCounts(
+            rungCounts,
+            totalActiveItems,
+            ladderPromotionIntervalDays,
+            ladderDemotionFailStreak,
+            promotionReadyCount,
+            demotionRiskCount,
+            demotionReadyCount,
+            0,
+        )
+    }
+
+    @JvmStatic
+    fun fromCounts(
+        rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
+        totalActiveItems: Int,
+        ladderPromotionIntervalDays: Int,
+        ladderDemotionFailStreak: Int,
+        promotionReadyCount: Int,
+        demotionRiskCount: Int,
+        demotionReadyCount: Int,
+        stuckCount: Int,
+    ): Metric {
         return Metric(
             rungCounts,
             totalActiveItems,
@@ -37,6 +71,7 @@ object LadderHealthPolicy {
             promotionReadyCount,
             demotionRiskCount,
             demotionReadyCount,
+            stuckCount,
         )
     }
 
@@ -56,6 +91,7 @@ object LadderHealthPolicy {
         realPassStreak: Int,
         realAgainStreak: Int,
         matureIntervalDays: Int,
+        hasSimilarKanji: Boolean,
     ) {
         constructor(
             state: String?,
@@ -63,7 +99,16 @@ object LadderHealthPolicy {
             phase: RecordsBase.SchedulerPhase?,
             realPassStreak: Int,
             realAgainStreak: Int,
-        ) : this(state, rung, phase, realPassStreak, realAgainStreak, 0)
+        ) : this(state, rung, phase, realPassStreak, realAgainStreak, 0, false)
+
+        constructor(
+            state: String?,
+            rung: RecordsBase.LadderRung?,
+            phase: RecordsBase.SchedulerPhase?,
+            realPassStreak: Int,
+            realAgainStreak: Int,
+            matureIntervalDays: Int,
+        ) : this(state, rung, phase, realPassStreak, realAgainStreak, matureIntervalDays, false)
 
         private val state = state.orEmpty()
         private val rung = rung ?: RecordsBase.LadderRung.KANJI_MEANING
@@ -71,6 +116,7 @@ object LadderHealthPolicy {
         private val realPassStreak = maxOf(0, realPassStreak)
         private val realAgainStreak = maxOf(0, realAgainStreak)
         private val matureIntervalDays = maxOf(0, matureIntervalDays)
+        private val hasSimilarKanji = hasSimilarKanji
 
         fun state(): String = state
 
@@ -84,6 +130,8 @@ object LadderHealthPolicy {
 
         fun matureIntervalDays(): Int = matureIntervalDays
 
+        fun hasSimilarKanji(): Boolean = hasSimilarKanji
+
         override fun equals(other: Any?): Boolean {
             return other is ItemEvidence &&
                 state == other.state &&
@@ -91,7 +139,8 @@ object LadderHealthPolicy {
                 phase == other.phase &&
                 realPassStreak == other.realPassStreak &&
                 realAgainStreak == other.realAgainStreak &&
-                matureIntervalDays == other.matureIntervalDays
+                matureIntervalDays == other.matureIntervalDays &&
+                hasSimilarKanji == other.hasSimilarKanji
         }
 
         override fun hashCode(): Int {
@@ -101,11 +150,12 @@ object LadderHealthPolicy {
             result = 31 * result + realPassStreak
             result = 31 * result + realAgainStreak
             result = 31 * result + matureIntervalDays
+            result = 31 * result + hasSimilarKanji.hashCode()
             return result
         }
 
         override fun toString(): String {
-            return "ItemEvidence[state=$state, rung=$rung, phase=$phase, realPassStreak=$realPassStreak, realAgainStreak=$realAgainStreak, matureIntervalDays=$matureIntervalDays]"
+            return "ItemEvidence[state=$state, rung=$rung, phase=$phase, realPassStreak=$realPassStreak, realAgainStreak=$realAgainStreak, matureIntervalDays=$matureIntervalDays, hasSimilarKanji=$hasSimilarKanji]"
         }
     }
 
@@ -117,7 +167,27 @@ object LadderHealthPolicy {
         promotionReadyCount: Int,
         demotionRiskCount: Int,
         demotionReadyCount: Int,
+        stuckCount: Int,
     ) {
+        constructor(
+            rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
+            totalActiveItems: Int,
+            ladderPromotionIntervalDays: Int,
+            ladderDemotionFailStreak: Int,
+            promotionReadyCount: Int,
+            demotionRiskCount: Int,
+            demotionReadyCount: Int,
+        ) : this(
+            rungCounts,
+            totalActiveItems,
+            ladderPromotionIntervalDays,
+            ladderDemotionFailStreak,
+            promotionReadyCount,
+            demotionRiskCount,
+            demotionReadyCount,
+            0,
+        )
+
         private val rungCounts: Map<RecordsBase.LadderRung, Int>
         private val totalActiveItems = maxOf(0, totalActiveItems)
         private val ladderPromotionIntervalDays = maxOf(1, ladderPromotionIntervalDays)
@@ -125,6 +195,7 @@ object LadderHealthPolicy {
         private val promotionReadyCount = maxOf(0, promotionReadyCount)
         private val demotionRiskCount = maxOf(0, demotionRiskCount)
         private val demotionReadyCount = maxOf(0, demotionReadyCount)
+        private val stuckCount = maxOf(0, stuckCount)
 
         init {
             val normalized = emptyRungDistribution()
@@ -152,6 +223,8 @@ object LadderHealthPolicy {
 
         fun demotionReadyCount(): Int = demotionReadyCount
 
+        fun stuckCount(): Int = stuckCount
+
         fun countFor(rung: RecordsBase.LadderRung?): Int {
             return rungCounts[rung] ?: 0
         }
@@ -164,7 +237,8 @@ object LadderHealthPolicy {
                 ladderDemotionFailStreak == other.ladderDemotionFailStreak &&
                 promotionReadyCount == other.promotionReadyCount &&
                 demotionRiskCount == other.demotionRiskCount &&
-                demotionReadyCount == other.demotionReadyCount
+                demotionReadyCount == other.demotionReadyCount &&
+                stuckCount == other.stuckCount
         }
 
         override fun hashCode(): Int {
@@ -175,11 +249,12 @@ object LadderHealthPolicy {
             result = 31 * result + promotionReadyCount
             result = 31 * result + demotionRiskCount
             result = 31 * result + demotionReadyCount
+            result = 31 * result + stuckCount
             return result
         }
 
         override fun toString(): String {
-            return "Metric[rungCounts=$rungCounts, totalActiveItems=$totalActiveItems, ladderPromotionIntervalDays=$ladderPromotionIntervalDays, ladderDemotionFailStreak=$ladderDemotionFailStreak, promotionReadyCount=$promotionReadyCount, demotionRiskCount=$demotionRiskCount, demotionReadyCount=$demotionReadyCount]"
+            return "Metric[rungCounts=$rungCounts, totalActiveItems=$totalActiveItems, ladderPromotionIntervalDays=$ladderPromotionIntervalDays, ladderDemotionFailStreak=$ladderDemotionFailStreak, promotionReadyCount=$promotionReadyCount, demotionRiskCount=$demotionRiskCount, demotionReadyCount=$demotionReadyCount, stuckCount=$stuckCount]"
         }
 
         companion object {
@@ -194,6 +269,7 @@ object LadderHealthPolicy {
                     0,
                     0,
                     0,
+                    0,
                 )
             }
         }
@@ -205,8 +281,14 @@ object LadderHealthPolicy {
         private var promotionReady = 0
         private var demotionRisk = 0
         private var demotionReady = 0
+        private var stuck = 0
 
-        fun addItem(item: ItemEvidence?, promotionDays: Int, failStreak: Int) {
+        fun addItem(
+            item: ItemEvidence?,
+            promotionDays: Int,
+            failStreak: Int,
+            ladder: RecordsBase.StudyLadderSettings,
+        ) {
             if (item == null || StudyLadderRules.STATE_RETIRED == item.state()) {
                 return
             }
@@ -214,11 +296,16 @@ object LadderHealthPolicy {
             distribution[rung] = distribution.getOrDefault(rung, 0) + 1
             total++
             if (item.phase() == RecordsBase.SchedulerPhase.REVIEW) {
-                recordReviewEvidence(item, promotionDays, failStreak)
+                recordReviewEvidence(item, promotionDays, failStreak, ladder)
             }
         }
 
-        private fun recordReviewEvidence(item: ItemEvidence, promotionDays: Int, failStreak: Int) {
+        private fun recordReviewEvidence(
+            item: ItemEvidence,
+            promotionDays: Int,
+            failStreak: Int,
+            ladder: RecordsBase.StudyLadderSettings,
+        ) {
             if (item.matureIntervalDays() > promotionDays) {
                 promotionReady++
             }
@@ -228,10 +315,22 @@ object LadderHealthPolicy {
             if (item.realAgainStreak() >= failStreak) {
                 demotionReady++
             }
+            if (StuckCardPolicy.isStuck(
+                    item.state(),
+                    item.rung(),
+                    item.phase(),
+                    item.realAgainStreak(),
+                    item.hasSimilarKanji(),
+                    ladder,
+                    failStreak,
+                )
+            ) {
+                stuck++
+            }
         }
 
         fun metric(promotionDays: Int, failStreak: Int): Metric {
-            return Metric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady)
+            return Metric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady, stuck)
         }
     }
 }

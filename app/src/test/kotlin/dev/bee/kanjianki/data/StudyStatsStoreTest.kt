@@ -113,6 +113,25 @@ class StudyStatsStoreTest {
         assertEquals(1, stats.ladderHealth.demotionReadyCount)
     }
 
+    @Test
+    fun stuckCountCountsFloorCardsAtDoubleTheFailThreshold() {
+        val stats = StudyStatsStore.calculateKaniOutcomeStats(
+            emptyList<StudyStatsStore.OutcomeEvidence?>(),
+            listOf(
+                // Floor (write_kanji) card failing at 2x the threshold -> stuck.
+                item("review", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 6),
+                // Floor card just below the 2x threshold -> not stuck.
+                item("review", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 5),
+                // Non-floor card with a huge streak -> not stuck (can still demote).
+                item("review", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 20),
+            ),
+            21,
+            3,
+        )
+
+        assertEquals(1, stats.ladderHealth.stuckCount)
+    }
+
     private fun outcome(
         kanji: String,
         before: StudyStatsStore.OutcomeSnapshot?,

@@ -538,8 +538,11 @@ Consequences:
 - `LadderHealthPolicy.summarize` (`core/.../LadderHealthPolicy.kt`)
   aggregates rung distribution plus `promotionReady`
   (`matureIntervalDays > promotionDays`), `demotionRisk`
-  (`realAgainStreak > 0`), `demotionReady` (`streak >= failStreak`) over
-  non-retired items.
+  (`realAgainStreak > 0`), `demotionReady` (`streak >= failStreak`), and
+  `stuck` (`StuckCardPolicy.isStuck`: a REVIEW-phase card on its per-item
+  demotion floor with `realAgainStreak >= 2 * failStreak`, Goal 68) over
+  non-retired items. `stuckCount` surfaces on the ladder-health stats card
+  and drives the kanji-detail "STUCK" chip.
 - `debugTraceApplyReview` / `debugTraceNextSession`
   (`ReviewTransitionEngine.kt:33-51`, `StudySessionSelector.kt:42-91`)
   emit `SchedulerDecisionTrace` records with movement reason codes
@@ -880,6 +883,19 @@ were resolved by the follow-up change set on this branch; items marked
   The builder exists — migrating remaining constructor call sites and
   freezing the shapes is a mechanical but broad refactor, deferred to keep
   this change reviewable.
+- **D6 (Goal 68) — Parking chronically-stuck floor cards.** Phase 1 (landed)
+  detects stuck cards — `StuckCardPolicy.isStuck`: a `REVIEW`-phase card on
+  its per-item demotion floor whose `realAgainStreak` has reached twice the
+  demotion threshold — surfaces the count on the ladder-health stats card
+  (`stuckCount`) and a "STUCK" chip on the kanji detail screen suggesting
+  mnemonic work. Phase 2 (parking) is a **deferred product decision**:
+  whether to add a user-initiated "pause this kanji" that sets a new `parked`
+  flag excluded from selection and admission counting (schema change, DB
+  v26), or to reuse AnkiDroid-side manual suspension. It must **not** silently
+  reuse `retired`, which has seeder reopen semantics
+  (`StudyQueueSeeder.canReopenRetiredSeedItem`) that user intent must not
+  fight. Parking implementation becomes its own follow-up goal with schema
+  criteria once the direction is chosen.
 
 ### Improvement ideas (non-defect)
 

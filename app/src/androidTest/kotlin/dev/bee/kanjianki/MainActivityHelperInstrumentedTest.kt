@@ -741,6 +741,19 @@ private fun verifyDetailPanels(activity: MainActivity, inventory: RecordsImportM
         assertEquals("Historical recovery", historicalIdentity.title);
         assertEquals("", historicalIdentity.reading);
 
+        // Goal 68: a floor (write_kanji) review card failing at 2x the demotion
+        // threshold surfaces a STUCK chip.
+        val stuckItem = RecordsStudyModels.StudyItem(
+                "語", "review", 0L, 1.0, 5.0, 1, 0, 0, 0,
+                2 * RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, 0, 0L, false, null, 0L)
+                .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW);
+        val stuckIdentity = browseDetail.detailIdentityModel(null, inventory, false, stuckItem);
+        assertTrue(stuckIdentity.stateBadges.any { it.label == HomeTextCopy.stuckChipLabel() });
+
+        val healthyItem = stuckItem.copyBuilder().realAgainStreak(0).build();
+        val healthyIdentity = browseDetail.detailIdentityModel(null, inventory, false, healthyItem);
+        assertFalse(healthyIdentity.stateBadges.any { it.label == HomeTextCopy.stuckChipLabel() });
+
         var inventoryReason = browseDetail.detailReasonPanelModel(null, inventory)
         assertTrue(inventoryReason.lines.contains("Inactive; kept in recovery history."));
         assertTrue(inventoryReason.lines.contains("Anki search: kanji:語"));

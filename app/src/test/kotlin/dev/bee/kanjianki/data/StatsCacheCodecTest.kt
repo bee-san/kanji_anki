@@ -44,6 +44,7 @@ class StatsCacheCodecTest {
                 5,
                 6,
                 7,
+                8,
             ),
         )
         val studyImpact = StudyStatsStore.StudyImpactStats(12, 4, 3, 2, 1, 0)
@@ -64,6 +65,8 @@ class StatsCacheCodecTest {
 
         assertEquals(STATS_CACHE_FORMAT_VERSION, root.optInt("cacheFormatVersion", 0))
         assertEquals(2, decoded.weakKanjiImproved.improvedCount)
+        assertEquals(8, decoded.ladderHealth.stuckCount)
+        assertEquals(7, decoded.ladderHealth.demotionReadyCount)
         assertEquals(12, decodedImpact.totalReviews)
         assertEquals(4, decodedImpact.distinctReviewedKanji)
         assertEquals(2, decodedMistakes.size)

@@ -443,6 +443,15 @@ object HomeTextCopy {
     fun suspendedChipLabel(): String = localizedText("SUSPENDED", "停止中")
 
     @JvmStatic
+    fun stuckChipLabel(): String = localizedText("STUCK", "停滞")
+
+    @JvmStatic
+    fun stuckChipHint(): String = localizedText(
+        "This kanji keeps failing at the most-supported rung. Try a mnemonic or a mental story to make it stick.",
+        "この漢字は最も支援の多いラングでも失敗し続けています。語呂合わせやイメージで覚えてみましょう。",
+    )
+
+    @JvmStatic
     fun relearningChipLabel(): String = localizedText("relearning", "再学習")
 
     @JvmStatic

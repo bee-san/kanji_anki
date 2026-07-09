@@ -6,8 +6,10 @@ import android.content.Context
 import android.widget.Toast
 import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StuckCardPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
 
@@ -117,7 +119,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     ): BrowseDetailScreenModel {
         return BrowseDetailScreenModel(
             detailHeroModel(displayKanji, fromBrowse, browseQuery ?: "", customBackAction),
-            detailIdentityModel(row, inventory, suspended),
+            detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
             detailReasonPanelModel(row, inventory),
             inventory?.let(::localInventoryPanelModel),
             detailActionsModel(row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended),
@@ -152,13 +154,27 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         row: RecordsImportModels.DashboardRow?,
         inventory: RecordsImportModels.KanjiInventoryItem?,
         suspended: Boolean,
+        studyItem: RecordsStudyModels.StudyItem? = null,
     ): BrowseDetailIdentityModel {
         val title = if (row == null) HomeTextCopy.inventoryTitle(inventory) else StudyTextCopy.rowMeaning(row)
         val reading = if (row == null) inventory?.readings.orEmpty() else row.reading
-        val stateBadges = if (suspended) {
-            listOf(BrowseStateBadgeModel(HomeTextCopy.suspendedChipLabel(), MainActivityBase.CORAL))
-        } else {
-            emptyList()
+        val stateBadges = ArrayList<BrowseStateBadgeModel>()
+        if (suspended) {
+            stateBadges.add(BrowseStateBadgeModel(HomeTextCopy.suspendedChipLabel(), MainActivityBase.CORAL))
+        }
+        // Goal 68: surface a "stuck" chip when a card keeps failing at its
+        // demotion floor, suggesting the learner try a mnemonic.
+        if (!suspended && studyItem != null && StuckCardPolicy.isStuck(
+                studyItem.state,
+                studyItem.rung,
+                studyItem.phase,
+                studyItem.realAgainStreak,
+                studyItem.hasSimilarKanji,
+                null,
+                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
+            )
+        ) {
+            stateBadges.add(BrowseStateBadgeModel(HomeTextCopy.stuckChipLabel(), MainActivityBase.CORAL))
         }
         return BrowseDetailIdentityModel(title, reading, stateBadges)
     }
