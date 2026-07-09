@@ -18,6 +18,18 @@ data class SettingsReminderPresetModel(
     val minute: Int,
 )
 
+data class SettingsReminderAntiSpamModel(
+    val quietHoursLabel: String,
+    val quietHoursBody: String,
+    val quietStartLabel: String,
+    val quietEndLabel: String,
+    val maxPerDayLabel: String,
+    val onPickQuietStart: SettingsReminderAction,
+    val onPickQuietEnd: SettingsReminderAction,
+    val onDecreaseMaxPerDay: SettingsReminderAction,
+    val onIncreaseMaxPerDay: SettingsReminderAction,
+)
+
 data class SettingsReminderPanelModel(
     val title: String,
     val status: String,
@@ -34,4 +46,7 @@ data class SettingsReminderPanelModel(
     val onSave: SettingsReminderAction,
     val onTurnOff: SettingsReminderAction?,
     val onOpenNotificationSettings: SettingsReminderAction?,
+    // Anti-spam controls (quiet hours + max reminders/day). Present only when the
+    // reminder is enabled; null keeps the panel unchanged when the reminder is off.
+    val antiSpam: SettingsReminderAntiSpamModel? = null,
 ) : SettingsPanelModel

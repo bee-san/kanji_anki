@@ -131,6 +131,54 @@ class SettingsReminderComposeTest {
             .assertCountEquals(2)
     }
 
+    @Test
+    fun antiSpamControlsRenderAndFireCallbacks() {
+        var increased = false
+        var decreased = false
+        var pickedStart = false
+        var pickedEnd = false
+
+        composeRule.setContent {
+            SettingsReminderPanel(
+                reminderModel(
+                    antiSpam = SettingsReminderAntiSpamModel(
+                        quietHoursLabel = SettingsTextCopy.reminderQuietHoursLabel(22 * 60, 8 * 60),
+                        quietHoursBody = SettingsTextCopy.reminderQuietHoursBody(),
+                        quietStartLabel = SettingsTextCopy.reminderQuietStartButtonLabel(22 * 60),
+                        quietEndLabel = SettingsTextCopy.reminderQuietEndButtonLabel(8 * 60),
+                        maxPerDayLabel = SettingsTextCopy.reminderMaxPerDayLabel(2),
+                        onPickQuietStart = SettingsReminderAction { pickedStart = true },
+                        onPickQuietEnd = SettingsReminderAction { pickedEnd = true },
+                        onDecreaseMaxPerDay = SettingsReminderAction { decreased = true },
+                        onIncreaseMaxPerDay = SettingsReminderAction { increased = true },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithText(SettingsTextCopy.reminderMaxPerDayLabel(2)).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.reminderQuietStartButtonLabel(22 * 60)).performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.reminderQuietEndButtonLabel(8 * 60)).performClick()
+        composeRule.onNodeWithText("+").performClick()
+        composeRule.onNodeWithText("−").performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(pickedStart)
+            assertTrue(pickedEnd)
+            assertTrue(increased)
+            assertTrue(decreased)
+        }
+    }
+
+    @Test
+    fun antiSpamControlsHiddenWhenAbsent() {
+        composeRule.setContent {
+            SettingsReminderPanel(reminderModel())
+        }
+
+        composeRule.onAllNodesWithText(SettingsTextCopy.reminderMaxPerDayLabel(2)).assertCountEquals(0)
+    }
+
     private fun reminderModel(
         status: String = SettingsTextCopy.reminderStatus(false, false, "21:00"),
         statusColor: Int = MainActivityUiSupport.MUTED,
@@ -140,6 +188,7 @@ class SettingsReminderComposeTest {
         turnOffLabel: String? = null,
         warning: String? = null,
         notificationSettingsLabel: String? = null,
+        antiSpam: SettingsReminderAntiSpamModel? = null,
         onPickTime: (
             hour: Int,
             minute: Int,
@@ -171,7 +220,8 @@ class SettingsReminderComposeTest {
             },
             onSave = SettingsReminderAction { onSave() },
             onTurnOff = onTurnOff?.let { SettingsReminderAction { it() } },
-            onOpenNotificationSettings = onOpenNotificationSettings?.let { SettingsReminderAction { it() } }
+            onOpenNotificationSettings = onOpenNotificationSettings?.let { SettingsReminderAction { it() } },
+            antiSpam = antiSpam,
         )
     }
 }

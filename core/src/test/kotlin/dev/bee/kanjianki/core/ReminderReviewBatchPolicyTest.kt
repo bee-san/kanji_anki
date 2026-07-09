@@ -37,6 +37,8 @@ class ReminderReviewBatchPolicyTest {
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
             val now = utc(2026, Calendar.MAY, 15, 15, 30)
+            // A single overdue item below the default minimum batch size only fires
+            // when the caller lowers the threshold (e.g. a daily-time override).
             val batch = ReminderReviewBatchPolicy.nextBatch(
                 now,
                 listOf(
@@ -44,10 +46,43 @@ class ReminderReviewBatchPolicyTest {
                     studyItem(now + 2 * HOUR),
                 ),
                 0,
+                1,
             )
 
             assertEquals(now, batch?.triggerAtMillis)
             assertEquals(1, batch?.dueCount)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun suppressesSmallOverdueTailBelowDefaultMinimumBatch() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = utc(2026, Calendar.MAY, 15, 15, 30)
+            // One overdue learning-step tail (D5): nothing fires at the default
+            // minimum batch size of 3.
+            val tail = ReminderReviewBatchPolicy.nextBatch(
+                now,
+                listOf(studyItem(now - HOUR)),
+                0,
+            )
+            assertNull(tail)
+
+            // Three overdue reviews clear the default minimum and fire now.
+            val cluster = ReminderReviewBatchPolicy.nextBatch(
+                now,
+                listOf(
+                    studyItem(now - HOUR),
+                    studyItem(now - 30 * MINUTE),
+                    studyItem(now - 10 * MINUTE),
+                ),
+                0,
+            )
+            assertEquals(now, cluster?.triggerAtMillis)
+            assertEquals(3, cluster?.dueCount)
         } finally {
             TimeZone.setDefault(original)
         }
@@ -102,5 +137,6 @@ class ReminderReviewBatchPolicyTest {
 
     private companion object {
         private const val HOUR = 60 * 60 * 1000L
+        private const val MINUTE = 60 * 1000L
     }
 }

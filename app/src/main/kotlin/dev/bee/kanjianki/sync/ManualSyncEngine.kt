@@ -39,6 +39,16 @@ internal class ManualSyncEngine {
     private val progress: SyncProgress.Listener
     private val clock: AppClock
 
+    /**
+     * Seam for the post-sync reminder re-arm (D4). Defaults to the real
+     * scheduler; tests replace it to assert the success path re-arms and the
+     * failure path does not.
+     */
+    @JvmField
+    internal var reminderRescheduler: Runnable = Runnable {
+        dev.bee.kanjianki.reminders.ReminderScheduler.schedule(context)
+    }
+
     constructor(
         context: Context,
         store: LocalStore,
@@ -148,6 +158,10 @@ internal class ManualSyncEngine {
             store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
             // Study items are committed; promote the pending sync run to success.
             store.markSyncSucceeded(syncId)
+            // A sync replaces the whole study queue: cards can land newly overdue or
+            // the queue can empty. Re-arm the reminder from fresh state so the alarm
+            // timing tracks the new queue instead of a stale pre-sync schedule (D4).
+            reminderRescheduler.run()
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale

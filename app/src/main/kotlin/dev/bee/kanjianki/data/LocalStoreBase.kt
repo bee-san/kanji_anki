@@ -367,6 +367,46 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         fun displayTime(): String = TimeOfDaySettingsPolicy.displayTime(hour, minute)
     }
 
+    /**
+     * User-configurable anti-spam knobs (quiet hours + max reminders/day),
+     * normalized on read/write via [dev.bee.kanjianki.core.ReminderAntiSpamPolicy].
+     */
+    data class ReminderAntiSpamSettings(
+        @JvmField val quietStartMinuteOfDay: Int,
+        @JvmField val quietEndMinuteOfDay: Int,
+        @JvmField val maxRemindersPerDay: Int,
+    ) {
+        fun normalized(): ReminderAntiSpamSettings {
+            return ReminderAntiSpamSettings(
+                dev.bee.kanjianki.core.ReminderAntiSpamPolicy.normalizeMinuteOfDay(
+                    quietStartMinuteOfDay,
+                    dev.bee.kanjianki.core.ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE,
+                ),
+                dev.bee.kanjianki.core.ReminderAntiSpamPolicy.normalizeMinuteOfDay(
+                    quietEndMinuteOfDay,
+                    dev.bee.kanjianki.core.ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE,
+                ),
+                dev.bee.kanjianki.core.ReminderAntiSpamPolicy.normalizeMaxPerDay(maxRemindersPerDay),
+            )
+        }
+    }
+
+    /**
+     * Snapshot of persisted anti-spam throttle + decision state for one moment.
+     * Per-day counters/dismissals are already day-scoped by the reader (reset at
+     * local-day rollover). [dismissedFamilies] is the raw comma-joined wire-name
+     * list; callers parse it into [dev.bee.kanjianki.core.ReminderFamily] values.
+     */
+    data class ReminderThrottleState(
+        @JvmField val lastPostedAtMillis: Long,
+        @JvmField val lastPostedSignature: String,
+        @JvmField val dueShownToday: Int,
+        @JvmField val streakShownToday: Int,
+        @JvmField val syncShownToday: Int,
+        @JvmField val dismissedFamilies: String,
+        @JvmField val dailyOverrideUsedToday: Boolean,
+    )
+
     class AutoSyncSettings(
         @JvmField val configured: Boolean,
         @JvmField val enabled: Boolean,

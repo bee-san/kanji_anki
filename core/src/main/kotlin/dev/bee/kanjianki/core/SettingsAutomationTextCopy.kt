@@ -229,6 +229,41 @@ object SettingsAutomationTextCopy {
     }
 
     @JvmStatic
+    fun reminderMaxPerDayLabel(maxPerDay: Int): String {
+        return localizedText("Max reminders per day: $maxPerDay", "1日の最大リマインダー数: $maxPerDay")
+    }
+
+    @JvmStatic
+    fun reminderQuietHoursLabel(startMinuteOfDay: Int, endMinuteOfDay: Int): String {
+        val start = minuteOfDayLabel(startMinuteOfDay)
+        val end = minuteOfDayLabel(endMinuteOfDay)
+        return localizedText("Quiet hours: $start–$end", "サイレント時間: $start〜$end")
+    }
+
+    @JvmStatic
+    fun reminderQuietHoursBody(): String {
+        return localizedText(
+            "No reminders during quiet hours; late clusters are pulled earlier.",
+            "サイレント時間中はリマインダーを送りません。遅い時間の分は早めにまとめます。",
+        )
+    }
+
+    @JvmStatic
+    fun reminderQuietStartButtonLabel(minuteOfDay: Int): String {
+        return localizedText("Quiet start: ", "開始: ") + minuteOfDayLabel(minuteOfDay)
+    }
+
+    @JvmStatic
+    fun reminderQuietEndButtonLabel(minuteOfDay: Int): String {
+        return localizedText("Quiet end: ", "終了: ") + minuteOfDayLabel(minuteOfDay)
+    }
+
+    private fun minuteOfDayLabel(minuteOfDay: Int): String {
+        val safe = minuteOfDay.coerceIn(0, 24 * 60 - 1)
+        return TimeOfDaySettingsPolicy.displayTime(safe / 60, safe % 60)
+    }
+
+    @JvmStatic
     fun reminderTime(hour: Int, minute: Int): String {
         return TimeOfDaySettingsPolicy.displayTime(hour, minute)
     }
