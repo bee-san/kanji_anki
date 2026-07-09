@@ -698,6 +698,12 @@ applies the same rule. Pinned by
 `AdaptiveLoadRecoveryDueTest`, `AdaptiveLoadPlannerTest`, and
 `MainActivityHomePostSessionCountsTest`.
 
+The combined end-to-end promise — finish a session (learn-ahead serves the
+session's own repeats to graduation), then the home reads 0 until the
+graduated cards' FSRS due times arrive, at which point the counts reappear —
+is pinned by `PostSessionZeroStateRegressionTest`, which drives a full
+session against a real `LocalStore` + `BridgeScheduler` + `StudySessionTracker`.
+
 ---
 
 ## 9. Review Application Pipeline
