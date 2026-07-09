@@ -12,9 +12,14 @@ import kotlin.math.min
 abstract class RecordsBase protected constructor() {
     /**
      * Ladder rungs that a study item can be on. User settings own the active
-     * low-to-high order; enum order is retained for storage compatibility.
-     * New cards start near [KANJI_MEANING]. The [SIMILAR_KANJI] rung is
-     * included only when `hasSimilarKanji` is true for the card.
+     * order; enum order is retained for storage compatibility. The ladder is a
+     * scaffolding gradient, not a difficulty gradient: the bottom rungs offer
+     * the most support and deliberate practice (guided handwriting), the top
+     * rungs the least (raw contextual reading). Demotion adds scaffolding;
+     * promotion removes it (design properties P9/P10, see
+     * docs/ladder-and-srs-system.md §13). New cards start near [KANJI_MEANING].
+     * The [SIMILAR_KANJI] rung is included only when `hasSimilarKanji` is true
+     * for the card.
      */
     enum class LadderRung(private val wireNameValue: String) {
         WRITE_KANJI("write_kanji"),

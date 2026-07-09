@@ -122,15 +122,21 @@ Unknown wire names decode to `NEW_LEARNING` with a warning (`:349-360`).
 `RecordsBase.LadderRung` (`RecordsBase.kt:19-48`), wire names:
 `write_kanji`, `type_meaning`, `similar_kanji`, `meaning_kanji`,
 `kanji_meaning`, `font_meaning`, `word_reading`. Enum order is storage
-compatibility only; the *user-editable ladder order* is what defines
-low-to-high. Unknown wire names decode to `KANJI_MEANING` with a warning.
+compatibility only; the *user-editable ladder order* is what defines the
+scaffolding gradient (most-scaffolded bottom → least-scaffolded top).
+Unknown wire names decode to `KANJI_MEANING` with a warning.
 
 ---
 
 ## 3. Ladder Configuration (`StudyLadderSettings`)
 
-`RecordsBase.kt:50-332`. Holds two lists: `orderedRungs` (low → high) and
-`enabledRungs`.
+`RecordsBase.kt`. Holds two lists: `orderedRungs` (most-scaffolded bottom →
+least-scaffolded top) and `enabledRungs`. The order is a **scaffolding
+gradient, not a difficulty gradient** (P9): the bottom rung (`write_kanji`) is
+the most *supported* — guided handwriting with hints and stroke guides — and
+also the most *demanding* skill, while the top rung (`word_reading`) offers
+the least support. Demotion adds scaffolding; promotion removes it. See §13
+for P9/P10.
 
 Default order (`defaultsOrder()`), most-scaffolded (bottom) to
 least-scaffolded (top):
@@ -169,7 +175,8 @@ Invariants and behaviors:
   rung is invalid for the item (disabled, or `similar_kanji` without
   content), walk outward by distance in the ordered list, checking the
   lower neighbor before the higher one at each distance — i.e. ties prefer
-  the easier rung. Every read path (session selection, review application)
+  the more-scaffolded (lower) neighbor. Every read path (session selection,
+  review application)
   passes items through this via `StudyLadderRules.alignRungToLadder`.
 - **`nextRung`/`previousRung`** (`:171-193`): scan up/down the ordered list
   for the next *valid-for-this-item* rung; return the current effective rung
@@ -203,7 +210,7 @@ Session `taskType` is always derived from the item's rung
 four-way switch is `MainActivityStudy.renderSession`
 (`app/.../MainActivityStudy.kt:130-137`).
 
-### 4.1 `write_kanji` — handwriting production (lowest rung / demotion floor)
+### 4.1 `write_kanji` — handwriting production (most-scaffolded rung / demotion floor)
 
 - **Memory slot**: `writing_remediation_memory`.
 - **UI**: `MainActivityStudyWritingSession.kt` builds a `DrawingPadView`
@@ -310,7 +317,7 @@ four-way switch is `MainActivityStudy.renderSession`
   `random()`), to break reliance on one typeface's shapes.
 - **Legacy mapping**: `recognition_stage = 1`.
 
-### 4.7 `word_reading` — contextual reading (highest rung / promotion ceiling)
+### 4.7 `word_reading` — contextual reading (least-scaffolded rung / promotion ceiling)
 
 - **Memory slot**: `word_reading_memory`.
 - **UI**: flashcard whose hero is the whole source word (44sp) with the
@@ -779,6 +786,22 @@ values left behind by the removed sibling-suppression layer
    names default safely).
 5. **Auditability.** Every review stores full before/after scheduler state;
    decision traces exist for both selection and application.
+6. **P9 — The ladder is a scaffolding gradient, not a difficulty gradient.**
+   Bottom = maximum support and deliberate practice (guided handwriting with
+   hints and stroke guides); top = minimum support and contextual use (raw
+   word reading). Demotion adds scaffolding; promotion removes it. Describing
+   `write_kanji` as the low or easy end of the ladder is misleading —
+   production is the most *demanding* skill; it is the most *supported* rung.
+   Prefer
+   scaffolding language ("most-scaffolded rung", "the more-scaffolded
+   neighbor") over easier/harder throughout code, docs, and settings copy.
+7. **P10 — Grading objectivity decreases as trust increases.** Bottom rungs
+   grade objectively (ML-Kit ink evaluation, forced-choice correctness,
+   typed-answer matching); top rungs are self-graded reveal cards
+   (`kanji_meaning`, `font_meaning`, `word_reading`). The ladder hands
+   grading back to the learner as the card earns trust; movement rules
+   should not undermine this (e.g. the clean-write exit gate, Goal 67,
+   keeps objective evidence in charge of leaving `write_kanji`).
 
 ---
 
