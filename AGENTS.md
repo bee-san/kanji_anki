@@ -255,6 +255,15 @@ The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;
 only `again` counts as a fail.
 
+The top rung (`word_reading`) switches the tested dimension from meaning to
+pronunciation. This is deliberate: it is the contextual exit check — a card
+proves it can be read in a real word before leaving active ladder practice.
+A reading lapse deliberately demotes back through the meaning rungs because
+Kani remediates recognition, not readings, and true retirement remains
+Anki-evidence-driven (retirement fires on Anki-side `matureSupportCount`, not
+the ladder ceiling). A reading-focused rung or failure-dimension tracking is
+an explicit non-goal.
+
 Study UI renders one current rung at a time. Rung rendering:
 
 - `write_kanji` → handwriting pad and writing evaluation.

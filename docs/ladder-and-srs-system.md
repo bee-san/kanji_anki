@@ -60,6 +60,11 @@ and also the in-memory "family key" (`StudyQueueSeeder.familyKey`,
   `learningStep`.
 - Ladder state: `rung` (`LadderRung`), `phase` (`SchedulerPhase`),
   `realPassStreak`, `realAgainStreak`, `lastRealReviewDueAtMillis`.
+  `realPassStreak` counts consecutive real-due passes on the current rung and
+  gates promotion (`>= ladderPromotionMinPasses`, Goal 63; it also feeds UI
+  progress display and repair-evidence reporting). `realAgainStreak` counts
+  consecutive real-due fails and drives demotion; at the floor it keeps
+  accumulating (see §7) so `LadderHealthPolicy` can report chronic failers.
 - Writing: `writingLevel` (0–3), `writingRemediationPending` (legacy flag,
   kept in sync with `rung == WRITE_KANJI`).
 - Seven per-rung `TaskMemory` slots (see 2.2).
@@ -244,8 +249,10 @@ four-way switch is `MainActivityStudy.renderSession`
   `updateWritingLevel` runs before the ladder transition so the gate sees
   the current attempt's effect (behavior-neutral for non-writing rungs).
 - **Ladder role**: demotion floor. `previousRung` at index 0 returns the
-  same rung; further `Again`s keep the card here (streak resets each time
-  the demotion threshold fires).
+  same rung; further `Again`s keep the card here. The fail streak **keeps
+  accumulating** at the floor (only an actual rung move resets it), so
+  chronically-failing floor cards keep reporting to `LadderHealthPolicy`
+  (`demotionReady`/`stuck`) instead of silently resetting to zero.
 - **Priority**: any item on this rung sorts into the top due-priority
   bucket (`duePriority`, `StudySessionSelector.kt:461-469`).
 
@@ -326,6 +333,19 @@ four-way switch is `MainActivityStudy.renderSession`
   source word).
 - **Ladder role**: promotion ceiling; further passes keep the card here.
 - **Legacy mapping**: `recognition_stage = 2`.
+- **The meaning→reading seam.** Rungs 1–6 all test *meaning* knowledge in
+  some form; `word_reading` switches the tested dimension to *pronunciation*.
+  This is deliberate: `word_reading` is the **contextual exit check** — the
+  card demonstrates it can be read in a real word before it leaves the
+  ladder's active practice. A reading lapse demotes back into
+  `font_meaning` (more *meaning* practice), which does not directly
+  remediate a reading miss; that is accepted because Kani remediates
+  recognition, not readings, and true retirement is Anki-evidence-driven
+  (P1: retirement fires on Anki-side `matureSupportCount`, not the ladder
+  ceiling). Goal 63's min-pass gate guarantees `word_reading` is validated
+  more than once before it is treated as passed. A reading-focused rung or
+  failure-dimension tracking is an explicit non-goal (see §14) unless the
+  product direction changes.
 
 ### 4.8 Rating boundary summary
 
@@ -504,9 +524,11 @@ never move the ladder.
 - **Demotion** (`applyReviewAgain`, `:320-329`): on a real-due `again`,
   `realPassStreak = 0`, `realAgainStreak++`; when the streak reaches
   `ladderDemotionFailStreak` (default **3**), the rung moves down via
-  `demoteRung` and both streaks reset. At the floor (`write_kanji`)
+  `demoteRung` and both streaks reset. The streak reset happens **only when a
+  demotion actually moves the rung**. At the floor (`write_kanji`)
   `previousRung` returns the same rung, so the card stays and the streak
-  keeps resetting every N fails.
+  keeps accumulating (it does not reset every N fails), letting chronically-
+  failing floor cards keep reporting to `LadderHealthPolicy`.
 - **Pass/fail semantics**: `hard`, `good`, `easy` all count as a pass for
   streaks; only `again` is a fail (AGENTS.md contract, implemented by the
   branch structure itself).
@@ -919,6 +941,17 @@ were resolved by the follow-up change set on this branch; items marked
   (`StudyQueueSeeder.canReopenRetiredSeedItem`) that user intent must not
   fight. Parking implementation becomes its own follow-up goal with schema
   criteria once the direction is chosen.
+
+### Non-goals
+
+- **The meaning→reading seam at `word_reading` (Goal 72).** The top rung
+  switches the tested dimension from meaning to pronunciation and a reading
+  lapse demotes back into meaning practice. This is intentional:
+  `word_reading` is the contextual exit check, Kani remediates recognition
+  (not readings), and true retirement is Anki-evidence-driven (P1). A
+  reading-focused rung or per-dimension failure tracking is an explicit
+  non-goal unless the product direction changes. Documented in §4.7 and the
+  AGENTS.md ladder notes.
 
 ### Improvement ideas (non-defect)
 
