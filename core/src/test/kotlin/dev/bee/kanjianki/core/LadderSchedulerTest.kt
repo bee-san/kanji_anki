@@ -1314,6 +1314,68 @@ class LadderSchedulerTest {
         assertEquals(1, first.item.realPassStreak);
     }
 
+    // ---- Goal 64: retention-independent promotion trigger (D4) ----
+
+    @Test
+    fun promotionDecisionIsIdenticalAcrossTargetRetentions() {
+        // Same memory state reviewed at 0.80 / 0.90 / 0.95 must produce the same
+        // promotion decision even though the scheduled due dates differ, because
+        // promotion keys off the fixed-0.90 memory-strength interval, not the
+        // retention-scaled scheduled interval.
+        val now = 200L * BridgeScheduler.DAY
+        val rungs = HashSet<RecordsBase.LadderRung>()
+        val dueDates = HashSet<Long>()
+        for (retention in doubleArrayOf(0.80, 0.90, 0.95)) {
+            // High stability so the 0.90-equivalent interval clears the 21-day
+            // promotion threshold; primed streak so a single pass can promote.
+            val item = RecordsStudyModels.StudyItem(
+                    "裂", "review", now, 60.0, 5.0, 1, 0, 2, 1, 0, 0, 0L, false, null, 0L)
+                    .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW)
+                    .copyBuilder()
+                    .stability(60.0)
+                    .difficulty(5.0)
+                    .matureIntervalDays(60)
+                    .realPassStreak(1)
+                    .build()
+            val result = BridgeScheduler().applyReview(
+                    item.withToken("r"), passRequest("裂", "r"), HashSet<String>(), now,
+                    RecordsSchedulerModels.SchedulerParameters(retention))
+            rungs.add(result.item.rung)
+            dueDates.add(result.item.dueAtMillis)
+        }
+        assertEquals("All retentions promote to the same rung", 1, rungs.size)
+        assertEquals("Promotion lands on FONT_MEANING at every retention",
+                RecordsBase.LadderRung.FONT_MEANING, rungs.first())
+        // The capped promotion due (7 days) is retention-independent too, so
+        // due dates coincide; the un-promoted path would differ, so this also
+        // guards that all three actually promoted.
+        assertEquals("Capped promoted due is identical across retentions",
+                1, dueDates.size)
+    }
+
+    @Test
+    fun lowRetentionDoesNotPromoteWeakMemoryThatNinetyWouldReject() {
+        // A memory whose 0.90-equivalent interval is at/below threshold must not
+        // promote even at a low retention that inflates the scheduled interval
+        // past 21 days. This is the core of D4: retention cannot buy promotion.
+        val now = 200L * BridgeScheduler.DAY
+        val weak = RecordsStudyModels.StudyItem(
+                "裂", "review", now, 12.0, 5.0, 1, 0, 2, 1, 0, 0, 0L, false, null, 0L)
+                .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW)
+                .copyBuilder()
+                .stability(12.0)
+                .difficulty(5.0)
+                .matureIntervalDays(12)
+                .realPassStreak(1)
+                .build()
+        val lowRetention = BridgeScheduler().applyReview(
+                weak.withToken("low"), passRequest("裂", "low"), HashSet<String>(), now,
+                RecordsSchedulerModels.SchedulerParameters(0.70))
+
+        assertEquals("A weak memory does not promote even at low retention",
+                RecordsBase.LadderRung.KANJI_MEANING, lowRetention.item.rung)
+    }
+
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
         return schedulerWithReviewIntervalMillis(intervalDays * BridgeScheduler.DAY);
     }

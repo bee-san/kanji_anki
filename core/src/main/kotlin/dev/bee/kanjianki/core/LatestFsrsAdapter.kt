@@ -30,7 +30,7 @@ internal class LatestFsrsAdapter(
             safeRetention(targetRetention),
             MAXIMUM_INTERVAL_DAYS,
         )
-        return state.toResult(intervalDays)
+        return state.toResult(intervalDays, promotionIntervalDays(state.stability))
     }
 
     override fun review(
@@ -49,14 +49,24 @@ internal class LatestFsrsAdapter(
                 MAXIMUM_INTERVAL_DAYS,
             ),
         )
-        return output.nextState!!.toResult(output.nextIntervalDays)
+        val nextState = output.nextState!!
+        return nextState.toResult(output.nextIntervalDays, promotionIntervalDays(nextState.stability))
     }
 
-    private fun FsrsMemoryState.toResult(intervalDays: Int): KaniFsrsReviewResult =
+    /**
+     * The interval this stability would schedule at a fixed 0.90 target
+     * retention. Ladder promotion keys off this value so progression speed
+     * is decoupled from the user's retention setting (Goal 64 / D4).
+     */
+    private fun promotionIntervalDays(stability: Double): Int =
+        engine.nextIntervalDays(stability, PROMOTION_RETENTION, MAXIMUM_INTERVAL_DAYS)
+
+    private fun FsrsMemoryState.toResult(intervalDays: Int, promotionIntervalDays: Int): KaniFsrsReviewResult =
         KaniFsrsReviewResult(
             stability,
             difficulty,
             intervalDays * KaniFsrsReviewResult.DAY_MILLIS,
+            promotionIntervalDays * KaniFsrsReviewResult.DAY_MILLIS,
         )
 
     private fun String?.toFsrsRating(): FsrsRating = when (this) {
@@ -93,5 +103,8 @@ internal class LatestFsrsAdapter(
         private const val MAXIMUM_INTERVAL_DAYS = 36_500
         private const val DEFAULT_DIFFICULTY = 5.0
         private const val DEFAULT_RETENTION = 0.9
+
+        /** Fixed retention used for retention-independent promotion intervals (Goal 64 / D4). */
+        private const val PROMOTION_RETENTION = 0.9
     }
 }

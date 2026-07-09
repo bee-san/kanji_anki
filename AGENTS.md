@@ -171,10 +171,14 @@ any learning-repeat queue.
 
 Ladder movement uses real FSRS due-review evidence, not learning-repeat
 practice. A due-review `Hard`, `Good`, or `Easy` promotes the rung only when
-**both** hold: the FSRS result schedules the next review strictly more than
-`ladder_promotion_interval_days` into the future (default 21 days), and the
+**both** hold: the card's memory strength — measured as the interval it
+would schedule at a fixed 0.90 target retention, not the user's actual
+retention-scaled interval — is strictly more than
+`ladder_promotion_interval_days` (default 21 days), and the
 card has accumulated at least `ladder_promotion_min_passes` real-due passes
-on its current rung (default 2). The min-pass gate stops a mature card from
+on its current rung (default 2). Keying promotion off the fixed-0.90
+interval means changing the retention setting no longer silently changes
+ladder progression speed (closed decision D4). The min-pass gate stops a mature card from
 cascading up two rungs in two reviews after the promotion cap clones
 above-threshold stability onto the newly promoted rung, and it guards against
 demotion bounce-back (a demotion resets the pass streak to 0, so the first

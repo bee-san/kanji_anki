@@ -395,7 +395,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             // pass would re-promote. Require `ladderPromotionMinPasses` real-due
             // passes on the current rung so each skill earns at least that many
             // due-review credits before the ladder removes its practice.
-            if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays) &&
+            if (promotesByMemoryStrength(result, context.settings.ladderPromotionIntervalDays) &&
                 state.realPassStreak >= context.settings.ladderPromotionMinPasses
             ) {
                 val promoted = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
@@ -424,8 +424,15 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         }
     }
 
-    private fun promotesByFsrsInterval(result: KaniFsrsReviewResult, promotionDays: Int): Boolean {
-        return result.intervalMillis > max(1, promotionDays).toLong() * StudyLadderRules.DAY
+    /**
+     * Promotion keys off the memory strength expressed as a fixed-0.90
+     * retention interval, not the user-facing scheduled interval, so the
+     * retention setting does not silently tune ladder progression speed
+     * (Goal 64 / closed decision D4). At the 0.90 default this is identical
+     * to the scheduled interval.
+     */
+    private fun promotesByMemoryStrength(result: KaniFsrsReviewResult, promotionDays: Int): Boolean {
+        return result.promotionIntervalMillis > max(1, promotionDays).toLong() * StudyLadderRules.DAY
     }
 
     private fun countsAsRealDue(context: ReviewContext, state: ReviewState): Boolean {

@@ -444,9 +444,12 @@ never move the ladder.
 - **Promotion** (`applyReviewPass`): on a real-due pass,
   `realAgainStreak = 0`, `realPassStreak++`; the rung moves up only when
   **both** gates are satisfied:
-  1. the FSRS result schedules strictly more than
-     `ladderPromotionIntervalDays` (default **21**) into the future
-     (`promotesByFsrsInterval`, `intervalMillis > days * DAY`), and
+  1. the retention-independent memory-strength interval schedules strictly
+     more than `ladderPromotionIntervalDays` (default **21**) into the
+     future (`promotesByMemoryStrength`,
+     `promotionIntervalMillis > days * DAY`, where `promotionIntervalMillis`
+     is computed at a fixed 0.90 retention so progression speed does not
+     track the user's retention setting — closed decision D4), and
   2. `realPassStreak >= ladderPromotionMinPasses` (default **2**) — at
      least that many real-due passes have accumulated on the current rung.
   When both hold, the rung moves up via `StudyLadderRules.promoteRung` and
@@ -825,19 +828,20 @@ were resolved by the follow-up change set on this branch; items marked
   fallback for empty memories). This is deliberate scheduling continuity,
   now paired with the promotion cap; strictly independent per-rung
   evidence remains a possible future direction.
-- **D4 (was G12) — Promotion speed is coupled to target retention.**
-  Promotion fires on the *scheduled interval* (> threshold days), and the
-  interval scales with desired retention (retention 0.80 ≈ 3.3x stability,
-  0.95 ≈ 0.4x at the default decay). The interval-based contract is
-  explicitly pinned by `LadderSchedulerTest` (exact/just-over threshold
-  tests with injected fixed-interval adapters) and is the documented
-  AGENTS.md behavior: the ladder promotes when the card actually leaves
-  circulation for more than the threshold. A stability-normalized gate
-  (promote when the 90%-retention-equivalent interval, i.e. rounded
-  stability, exceeds the threshold) would decouple progression from the
-  retention setting and is identical at the 0.90 default; adopting it is a
-  contract change that should be made deliberately, with the tests and
-  AGENTS.md updated together.
+- **D4 (was G12) — Promotion speed is coupled to target retention.
+  (Closed by Goal 64.)** Promotion previously fired on the *scheduled
+  interval* (> threshold days), which scales with desired retention
+  (0.80 ≈ 3.3x stability, 0.95 ≈ 0.4x at the default decay), so tuning
+  retention silently tuned ladder progression speed. *Resolution:*
+  promotion now keys off a retention-independent memory-strength interval —
+  `KaniFsrsReviewResult.promotionIntervalMillis`, computed by the adapter
+  at a fixed 0.90 retention (`LatestFsrsAdapter.promotionIntervalDays`) —
+  compared in `promotesByMemoryStrength`. At the 0.90 default the decision
+  is identical to before, so all goldens are byte-identical; at other
+  retentions the promotion decision is unchanged even though due dates
+  differ. Pinned by
+  `LadderSchedulerTest.promotionDecisionIsIdenticalAcrossTargetRetentions`
+  and `lowRetentionDoesNotPromoteWeakMemoryThatNinetyWouldReject`.
 - **D5 (was G13) — Positional vararg constructors are a refactor hazard.**
   `StudyItem` accepts 5/9/13/17/18/19/25/26 trailing args with meaning
   decided by count; `Settings` and `ReviewRequest` use the same pattern.
