@@ -14,6 +14,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyThree(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyFour(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyFive(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentySix(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -170,6 +171,19 @@ internal object LocalStoreMigrations {
     ) {
         if (shouldRun(oldVersion, targetVersion, 25)) {
             hooks.clearStaleSuppressionFlags(db)
+        }
+    }
+
+    private fun upgradeThroughTwentySix(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 26)) {
+            // Goal 77: reading-usage content tables. Created empty; the next
+            // sync rebuilds them from the analyzed examples via the aligner.
+            hooks.createKanjiReadingTables(db)
         }
     }
 

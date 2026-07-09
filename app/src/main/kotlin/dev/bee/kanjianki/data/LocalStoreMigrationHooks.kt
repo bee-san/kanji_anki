@@ -74,6 +74,10 @@ internal class LocalStoreMigrationHooks(
         store.createSimilarKanjiPracticeTables(db)
     }
 
+    fun createKanjiReadingTables(db: SQLiteDatabase) {
+        store.createKanjiReadingTables(db)
+    }
+
     fun createHistoricalSyncTables(db: SQLiteDatabase) {
         store.createHistoricalSyncTables(db)
     }

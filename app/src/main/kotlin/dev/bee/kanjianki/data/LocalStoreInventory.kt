@@ -37,6 +37,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
     @Volatile
     private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithKanjiReading: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithReadingKanji: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithSentenceReading: Set<String>? = null
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
 
     fun newCardSortPreviewCacheVersion(): Long {
@@ -82,6 +88,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     internal override fun clearSimilarKanjiNeighborsCache() {
         cachedKanjiWithSimilarNeighbors = null
+        cachedKanjiWithKanjiReading = null
+        cachedKanjiWithReadingKanji = null
+        cachedKanjiWithSentenceReading = null
         bumpNewCardSortPreviewCacheVersion()
     }
 
@@ -503,6 +512,75 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val cached = Collections.unmodifiableSet(out)
         cachedKanjiWithSimilarNeighbors = cached
         return cached
+    }
+
+    /**
+     * Kanji that can support the `kanji_reading` rung (Goal 77): at least one
+     * attested usage row (a real word to prompt with) AND at least two distinct
+     * readings available in the pool (attested ∪ dictionary) so a ≥ 2-choice
+     * card is buildable. Per the Goal 69 lesson, availability must mean a choice
+     * card can actually be built.
+     */
+    fun kanjiWithKanjiReading(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithKanjiReading?.let { return it }
+        val sql =
+            "SELECT u.$COLUMN_KANJI FROM $TABLE_KANJI_READING_USAGE u " +
+                "JOIN (SELECT $COLUMN_KANJI, COUNT(*) AS reading_count FROM $TABLE_KANJI_READING_POOL " +
+                "GROUP BY $COLUMN_KANJI HAVING reading_count >= 2) p ON u.$COLUMN_KANJI = p.$COLUMN_KANJI " +
+                "GROUP BY u.$COLUMN_KANJI"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithKanjiReading = cached
+        return cached
+    }
+
+    /**
+     * Kanji that can support the `reading_kanji` homophone rung (Goal 77): some
+     * attested canonical reading of this kanji is also attested for at least two
+     * OTHER kanji, so a ≥ 3-choice card (target + 2 same-reading distractors)
+     * can be built from attested evidence alone.
+     */
+    fun kanjiWithReadingKanji(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithReadingKanji?.let { return it }
+        // Readings shared by >= 3 distinct kanji (attested usage rows).
+        val sharedReadings =
+            "SELECT $COLUMN_READING FROM " +
+                "(SELECT $COLUMN_READING, COUNT(DISTINCT $COLUMN_KANJI) AS kanji_count " +
+                "FROM $TABLE_KANJI_READING_USAGE GROUP BY $COLUMN_READING) " +
+                "WHERE kanji_count >= 3"
+        val sql =
+            "SELECT DISTINCT $COLUMN_KANJI FROM $TABLE_KANJI_READING_USAGE " +
+                "WHERE $COLUMN_READING IN ($sharedReadings)"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithReadingKanji = cached
+        return cached
+    }
+
+    /**
+     * Kanji that can support the `sentence_reading` rung (Goal 77): at least one
+     * example row with both a non-blank sentence and a non-blank reading.
+     */
+    fun kanjiWithSentenceReading(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithSentenceReading?.let { return it }
+        val sql =
+            "SELECT DISTINCT $COLUMN_KANJI FROM $TABLE_KANJI_EXAMPLES " +
+                "WHERE $COLUMN_SENTENCE IS NOT NULL AND TRIM($COLUMN_SENTENCE) <> '' " +
+                "AND $COLUMN_READING IS NOT NULL AND TRIM($COLUMN_READING) <> ''"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithSentenceReading = cached
+        return cached
+    }
+
+    private fun querySingleColumnSet(db: SQLiteDatabase, sql: String): Set<String> {
+        val out = HashSet<String>()
+        db.rawQuery(sql, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val value = cursor.getString(0)
+                if (!value.isNullOrEmpty()) {
+                    out.add(value)
+                }
+            }
+        }
+        return out
     }
 
     fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>?): List<RecordsStudyModels.StudyItem> {

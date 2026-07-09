@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
+import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
@@ -133,6 +134,7 @@ internal class ManualSyncEngine {
                 similarKanjiIndex,
                 selectedImports,
                 LocalStoreBase.STATUS_PENDING,
+                loadDictionary(),
             )
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
@@ -299,6 +301,18 @@ internal class ManualSyncEngine {
     @Throws(IOException::class)
     fun loadRanks(): JitenKanjiRanks {
         return DictionaryStore.open(context).jitenRanks()
+    }
+
+    // The bundled KANJIDIC2 lookup feeds KanjiReadingAligner during the sync
+    // save (Goal 77). Returns null if the dictionary cannot be opened so a
+    // dictionary hiccup degrades to empty reading-usage tables rather than
+    // failing the whole sync.
+    fun loadDictionary(): DictionaryLookup? {
+        return try {
+            DictionaryStore.open(context)
+        } catch (_: IOException) {
+            null
+        }
     }
 
     @Throws(IOException::class)

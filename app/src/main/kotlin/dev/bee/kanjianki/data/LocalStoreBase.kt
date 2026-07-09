@@ -114,6 +114,10 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreTableCreator.createSimilarKanjiPracticeTables(db)
     }
 
+    fun createKanjiReadingTables(db: SQLiteDatabase) {
+        LocalStoreTableCreator.createKanjiReadingTables(db)
+    }
+
     fun createHistoricalSyncTables(db: SQLiteDatabase) {
         LocalStoreTableCreator.createHistoricalSyncTables(db)
     }
@@ -498,6 +502,8 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val TABLE_SIMILAR_KANJI_CHOICE_STATE: String = "similar_kanji_choice_state"
         const val TABLE_SIMILAR_KANJI_REPAIR_QUEUE: String = "similar_kanji_repair_queue"
         const val TABLE_SIMILAR_KANJI_REVIEW_LOG: String = "similar_kanji_review_log"
+        const val TABLE_KANJI_READING_USAGE: String = "kanji_reading_usage"
+        const val TABLE_KANJI_READING_POOL: String = "kanji_reading_pool"
         const val TABLE_STUDY_TASK_LOG: String = "study_task_log"
         const val TABLE_KANJI_TIMELINE_EVENTS: String = "kanji_timeline_events"
         const val TABLE_SYNC_CARD_SNAPSHOTS: String = "sync_card_snapshots"
@@ -624,6 +630,8 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val COLUMN_REAL_AGAIN_STREAK: String = "real_again_streak"
         const val COLUMN_LAST_REAL_REVIEW_DUE_AT: String = "last_real_review_due_at"
         const val COLUMN_SIMILAR_KANJI_MEMORY: String = "similar_kanji_memory"
+        const val COLUMN_SOURCE_TYPE: String = "source_type"
+        const val COLUMN_ATTESTED: String = "attested"
         const val STUDY_ITEMS_TABLE_SQL: String = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', meaning_kanji_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', rung TEXT NOT NULL DEFAULT 'kanji_meaning', phase TEXT NOT NULL DEFAULT 'new_learning', real_pass_streak INTEGER NOT NULL DEFAULT 0, real_again_streak INTEGER NOT NULL DEFAULT 0, last_real_review_due_at INTEGER NOT NULL DEFAULT 0, similar_kanji_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))"
         const val LEARNING_REPEATS_TABLE_SQL: String = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))"
         const val REVIEW_LOG_TABLE_SQL: String = "CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, review_day_start INTEGER NOT NULL DEFAULT 0, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_before_json TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')"

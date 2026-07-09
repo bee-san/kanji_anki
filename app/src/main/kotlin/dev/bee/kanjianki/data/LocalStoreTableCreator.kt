@@ -83,6 +83,48 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_b ON similar_kanji_pairs(kanji_b)")
     }
 
+    fun createKanjiReadingTables(db: SQLiteDatabase) {
+        // Per-kanji attested reading usage: one row per (kanji, canonical
+        // reading, note) aligned from the user's own words. Content data, not a
+        // scheduler queue (D-R5). mature/lapses/interval mirror the Anki card so
+        // planners can prefer weak-evidence usages and mature distractors.
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_KANJI_READING_USAGE,
+            "${LocalStoreBase.COLUMN_KANJI} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_READING} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_EXPRESSION} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_NOTE_ID} INTEGER NOT NULL",
+            "${LocalStoreBase.COLUMN_SOURCE_TYPE} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_MATURE} INTEGER NOT NULL",
+            "${LocalStoreBase.COLUMN_LAPSES} INTEGER NOT NULL",
+            "${LocalStoreBase.COLUMN_INTERVAL_DAYS} INTEGER NOT NULL",
+            "PRIMARY KEY (${LocalStoreBase.COLUMN_KANJI}, ${LocalStoreBase.COLUMN_READING}, ${LocalStoreBase.COLUMN_NOTE_ID})",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_kanji_reading_usage_kanji ON " +
+                "${LocalStoreBase.TABLE_KANJI_READING_USAGE}(${LocalStoreBase.COLUMN_KANJI})",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_kanji_reading_usage_reading ON " +
+                "${LocalStoreBase.TABLE_KANJI_READING_USAGE}(${LocalStoreBase.COLUMN_READING})",
+        )
+        // The candidate reading pool per kanji: attested readings plus the
+        // kanji's bundled-dictionary canonical readings, so availability
+        // predicates that need "≥ N distinct readings exist" stay pure SQL
+        // without plumbing the dictionary into every read (Goal 77 design).
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_KANJI_READING_POOL,
+            "${LocalStoreBase.COLUMN_KANJI} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_READING} TEXT NOT NULL",
+            "${LocalStoreBase.COLUMN_ATTESTED} INTEGER NOT NULL DEFAULT 0",
+            "PRIMARY KEY (${LocalStoreBase.COLUMN_KANJI}, ${LocalStoreBase.COLUMN_READING})",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_kanji_reading_pool_reading ON " +
+                "${LocalStoreBase.TABLE_KANJI_READING_POOL}(${LocalStoreBase.COLUMN_READING})",
+        )
+    }
+
     fun createSimilarKanjiPracticeTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
