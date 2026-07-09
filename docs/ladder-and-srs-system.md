@@ -64,9 +64,14 @@ and also the in-memory "family key" (`StudyQueueSeeder.familyKey`,
   kept in sync with `rung == WRITE_KANJI`).
 - Seven per-rung `TaskMemory` slots (see 2.2).
 - `hasSimilarKanji`: **derived, never persisted.** Recomputed at read time
-  from the `similar_kanji_pairs` table
-  (`app/.../data/LocalStoreInventory.kt:378-398`, query at `:452`:
-  `SELECT kanji_a FROM similar_kanji_pairs UNION SELECT kanji_b ...`).
+  from the `similar_kanji_pairs` table by `kanjiWithSimilarNeighbors`, which
+  (Goal 69) counts a kanji only when it participates in a pair whose **both**
+  endpoints are present in the local `kanji_inventory` — the same source-set
+  rule the choice planner uses (`SimilarKanjiChoicePlanner.validPair`). This
+  guarantees a renderable ≥2-choice card exists, so the predicate and the
+  renderer cannot diverge and a plain flashcard exercise is never recorded
+  into `similar_kanji_memory`. A pair whose partner is absent from the
+  inventory no longer marks the kanji as having similar content.
 - `answerSignature`: normalized `kanji|expression|reading|meaning` of the
   preferred source example (`StudyQueueSeeder.answerSignature`,
   `StudyQueueSeeder.kt:507-528`). Changing it materially resets the item
@@ -241,18 +246,22 @@ four-way switch is `MainActivityStudy.renderSession`
 
 - **Memory slot**: `similar_kanji_memory`.
 - **Availability**: exists per-card only while `hasSimilarKanji` is true,
-  i.e. the kanji appears in `similar_kanji_pairs` (index pairs limited to
-  local inventory, plus confusion pairs mined from wrong picks in
-  `similar_kanji_review_log`;
-  `LocalStoreSimilarKanjiMaintenance.kt:14-94`). When false, promotion and
-  demotion skip this rung without pausing.
+  i.e. the kanji participates in a `similar_kanji_pairs` row whose both
+  endpoints are in the local `kanji_inventory` (Goal 69 — a renderable
+  ≥2-choice card provably exists; pairs come from index pairs limited to
+  local inventory plus confusion pairs mined from wrong picks in
+  `similar_kanji_review_log`; `LocalStoreSimilarKanjiMaintenance.kt`). When
+  false, promotion and demotion skip this rung without pausing.
 - **UI**: `MainActivityStudyChoiceSessions.prepareSimilarKanjiRender`
   (invoked from `renderSimilarKanjiSession`) — a 2-column glyph grid of
   visually similar kanji built by `SimilarKanjiChoicePlanner`, with an
   "Explore the differences" explanation screen. Store/dictionary reads run
   on the background executor; only the returned render thunk touches the
   UI. If fewer than 2 choices can be produced, it falls back to the
-  flashcard renderer while keeping the `similar_kanji` task type. A correct
+  flashcard renderer while keeping the `similar_kanji` task type; with the
+  Goal 69 buildability predicate this fallback should be unreachable in
+  practice and `SimilarKanjiChoicePlanner.choiceCardForSession` logs a
+  warning if it fires. A correct
   tap submits immediately; a wrong tap freezes the grid with red (pressed)
   / green (correct) feedback and waits for an explicit Continue tap before
   submitting (`SimilarChoiceSessionState`,

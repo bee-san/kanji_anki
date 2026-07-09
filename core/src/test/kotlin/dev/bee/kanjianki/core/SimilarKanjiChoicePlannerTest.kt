@@ -108,6 +108,46 @@ class SimilarKanjiChoicePlannerTest {
     }
 
     @Test
+    fun singleInInventoryPartnerRendersTwoChoiceCard() {
+        // Goal 69: the planner's minimum input is the answer plus one valid
+        // distractor. A target with exactly one in-inventory partner still
+        // builds a renderable two-choice card.
+        val planner = SimilarKanjiChoicePlanner()
+        val inventory = listOf(item("拉", "pull"), item("提", "carry"))
+        // 拉-外 is unbuildable (外 absent); 拉-提 is the sole valid pair.
+        val pairs = listOf(pair("拉", "提"), pair("拉", "外"))
+
+        val card = find(planner.buildCandidates(inventory, pairs), "拉")
+
+        assertEquals(listOf("拉", "提"), card.choices)
+        assertEquals("A two-choice card is renderable", 2, card.choices.size)
+    }
+
+    @Test
+    fun choiceCardForSessionFallbackEmitsWarning() {
+        // Goal 69 safety net: the no-stored-state fallback should be unreachable
+        // in practice, so it warns when it fires.
+        val logger = java.util.logging.Logger.getLogger(SimilarKanjiChoicePlanner::class.java.name)
+        val records = ArrayList<java.util.logging.LogRecord>()
+        val handler = object : java.util.logging.Handler() {
+            override fun publish(record: java.util.logging.LogRecord) { records.add(record) }
+            override fun flush() {}
+            override fun close() {}
+        }
+        logger.addHandler(handler)
+        try {
+            SimilarKanjiChoicePlanner.choiceCardForSession(null, "裂", "split", listOf(pair("裂", "列")))
+        } finally {
+            logger.removeHandler(handler)
+        }
+
+        assertTrue(
+            "Fallback must warn",
+            records.any { it.level == java.util.logging.Level.WARNING && it.message.contains("裂") },
+        )
+    }
+
+    @Test
     fun choiceCardForSessionPrefersStoredDueCard() {
         val stored = RecordsImportModels.SimilarKanjiChoiceCard(
             "裂",

@@ -94,6 +94,58 @@ class LocalStoreSimilarKanjiCacheTest {
         )
     }
 
+    @Test
+    fun similarNeighborsRequireBothEndpointsInInventory() {
+        // Goal 69: 拉 pairs only with 提 (present) and 洞 (absent from the
+        // synced rows / inventory). The valid pair 拉-提 keeps both endpoints
+        // available; the pair 拉-洞 must not mark 拉 (it already qualifies) nor
+        // introduce 洞, which has no inventory row and cannot render a choice.
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val index = SimilarKanjiIndex.parseTsv(StringReader("拉\t提\tfixture\n拉\t洞\tfixture\n提\t洞\tfixture\n"))
+        val rows = listOf(dashboardRow("拉"), dashboardRow("提"))
+        store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            rows,
+            settings,
+            LocalStoreBase.SyncTiming(1_000L, 2_000L),
+            null,
+            index,
+        )
+
+        val available = store.kanjiWithSimilarNeighbors(store.readableDatabase)
+        assertEquals(
+            "Only kanji with a fully-in-inventory pair are available; 洞 has no inventory row",
+            setOf("拉", "提"),
+            available,
+        )
+    }
+
+    @Test
+    fun similarNeighborDroppedWhenSolekPartnerMissingFromInventory() {
+        // 謎 pairs only with 洞 (absent). With no in-inventory partner, 謎 must
+        // not be annotated as having similar content, so its stored
+        // similar_kanji rung resolves to a neighbor and never records a plain
+        // flashcard into similar_kanji_memory.
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val index = SimilarKanjiIndex.parseTsv(StringReader("拉\t提\tfixture\n謎\t洞\tfixture\n"))
+        val rows = listOf(dashboardRow("拉"), dashboardRow("提"), dashboardRow("謎"))
+        store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            rows,
+            settings,
+            LocalStoreBase.SyncTiming(1_000L, 2_000L),
+            null,
+            index,
+        )
+
+        val available = store.kanjiWithSimilarNeighbors(store.readableDatabase)
+        assertTrue("拉 keeps its in-inventory partner", available.contains("拉"))
+        assertTrue("提 keeps its in-inventory partner", available.contains("提"))
+        assertEquals("謎's only partner 洞 is absent, so 謎 is not available", false, available.contains("謎"))
+    }
+
     private fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
             kanji,
