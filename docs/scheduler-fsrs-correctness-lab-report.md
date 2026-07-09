@@ -87,6 +87,30 @@ parking stuck cards), not by demoting faster. The current single-step demotion
 from the ceiling is pinned by the `ceilingCardDemotesOneRungWhenCold` golden so
 a future review does not re-derive this decision.
 
+## Goal 74 experiment — graduation state from learning history (D2) (REJECTED for now; harness retained)
+
+**Question (open decision D2).** New-learning graduation seeds FSRS from the graduating rating alone (`LatestFsrsAdapter.initialReview`, `isNewLearning = true` → `engine.initialState(graduationRating)`), so a card that needed several `again`s in learning graduates with the same initial memory as one that passed on the first Good. Should graduation instead evolve the initial state through the recorded learning answers via the FSRS same-day short-term chain (`DefaultFsrsEngine.nextState` with `elapsedDays = 0`)?
+
+**Method.** `GraduationHistoryExperimentTest` (test scope, read-only — no production behavior changed) drives two adapter paths at fixed 0.90 retention:
+- *current* — `initialState(graduatingRating)` then `nextIntervalDays`.
+- *history* — `initialState(firstAnswer)`, then `nextState(state, answer, elapsedDays = 0)` for each subsequent learning answer, ending on the graduating answer.
+
+Corpora: a breeze-through card `[Good]` and struggling cards with 1/3/5 `Again`s before the graduating `Good`.
+
+**Findings (first-interval at 0.90 retention).**
+
+| learning answers | current stability / interval | history stability / interval |
+| --- | --- | --- |
+| `[Good]` (breeze) | 2.307 → 2d | 2.307 → 2d |
+| `[Again, Good]` | 2.307 → 2d | 0.247 → 1d |
+| `[Again×3, Good]` | 2.307 → 2d | 0.046 → 1d |
+| `[Again×5, Good]` | 2.307 → 2d | 0.010 → 1d |
+
+1. The current path is **blind to in-learning struggle**: every corpus graduates with the identical 2-day first interval, confirming the D2 concern — for Kani's deliberately difficult, confusable queue (P2) this systematically over-estimates initial stability for exactly the hardest cards and delays the failure evidence the ladder needs.
+2. The history path **does** differentiate, but the FSRS same-day short-term chain treats each learning `Again` as a same-day forget that multiplies stability down hard, so even one `Again` collapses the graduating memory to ~0.25 (and five `Again`s to ~0.01) — effectively discarding the graduating `Good`. At the 0.90 default all struggling variants floor at a 1-day first interval, which is directionally right (validate sooner) but likely **over-corrected**: it makes the graduating rating almost irrelevant and would route nearly every once-failed new card into an immediate re-test, blurring the learning/review boundary the AGENTS.md contract keeps deliberate ("learning-step answers are practice-only and do not feed short-term stability").
+
+**Decision: REJECTED for now; harness retained.** The current struggle-blind path is a real deviation, but the naive history chain over-corrects and would silently change every early interval and the learning/review boundary. Adopting D2 should wait for a *tempered* variant (e.g. cap the number of learning answers fed into the chain, or blend `initialState(graduatingRating)` with the history stability) evaluated against regenerated goldens and the pinned relearning double-update (`RelearningGraduationDifficultyTest`, Goal 60), which must stay unchanged. Until then the production path is unchanged and `GraduationHistoryExperimentTest` keeps the comparison discoverable. If adopted later, it lands as its own follow-up with regenerated goldens and updated AGENTS.md graduation notes.
+
 ## Snapshot reference
 The matching compact snapshot lives in the test resources and is asserted by `SchedulerParitySnapshotTest`.
 

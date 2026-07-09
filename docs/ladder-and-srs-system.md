@@ -898,11 +898,16 @@ were resolved by the follow-up change set on this branch; items marked
   `hard` producer. Exposing Hard on flashcard rungs would be cheap if the
   product ever wants finer-grained FSRS signal.
 - **D2 (was G9) — New-learning graduation seeds FSRS from the graduating
-  rating only.** A card that needed several `again`s in learning graduates
-  with the same initial memory as one that passed immediately. Reference
-  FSRS derives initial state from the first rating and evolves it through
-  same-day reviews. Changing this alters every early interval and needs a
-  golden/parity experiment before adoption.
+  rating only. (Experiment run — Goal 74; rejected for now.)** A card that
+  needed several `again`s in learning graduates with the same initial memory
+  as one that passed immediately. The Goal 74 experiment
+  (`GraduationHistoryExperimentTest`, write-up in
+  `docs/scheduler-fsrs-correctness-lab-report.md`) confirmed the current path
+  is struggle-blind (every corpus → 2-day first interval) but found the naive
+  FSRS same-day history chain over-corrects (one `Again` collapses graduating
+  stability to ~0.25, five to ~0.01), discarding the graduating rating and
+  blurring the learning/review boundary. Deferred pending a *tempered*
+  variant; production behavior unchanged, harness retained.
 - **D3 (was part of G5) — Cross-rung memory cloning.** Movement clones the
   reviewed rung's memory into the destination rung (plus the item-level
   fallback for empty memories). This is deliberate scheduling continuity,
