@@ -10,6 +10,7 @@ object ReminderReceiverPolicy {
         NONE,
         SCHEDULE_FROM_STORED_SETTINGS,
         HANDLE_DAILY_REMINDER,
+        HANDLE_REMINDER_DISMISSED,
     }
 
     @JvmStatic
@@ -22,11 +23,19 @@ object ReminderReceiverPolicy {
 
     @JvmStatic
     fun commandFor(action: String?, dailyReminderAction: String?): ReceiverCommand {
+        return commandFor(action, dailyReminderAction, null)
+    }
+
+    @JvmStatic
+    fun commandFor(action: String?, dailyReminderAction: String?, dismissedAction: String?): ReceiverCommand {
         if (ACTION_BOOT_COMPLETED == action) {
             return ReceiverCommand.SCHEDULE_FROM_STORED_SETTINGS
         }
         if (dailyReminderAction != null && dailyReminderAction == action) {
             return ReceiverCommand.HANDLE_DAILY_REMINDER
+        }
+        if (dismissedAction != null && dismissedAction == action) {
+            return ReceiverCommand.HANDLE_REMINDER_DISMISSED
         }
         return ReceiverCommand.NONE
     }

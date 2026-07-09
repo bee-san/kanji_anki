@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.reminders
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -107,6 +108,40 @@ class ReminderSchedulerTest {
         assertEquals(1, services.ensureCount)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         assertEquals(1, notificationManager.activeNotifications.size)
+        val posted = notificationManager.activeNotifications.first().notification
+        // In-place replacement of the single slot must not re-buzz (D1/D7 fix).
+        assertTrue(posted.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
+    }
+
+    @Test
+    fun overdueDoubleFireIsThrottledAndReArmsAfterMinGap() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val services = FakeReminderServices(context)
+            val now = utc(2026, Calendar.MAY, 15, 15, 0)
+            // Studied today with three overdue reviews (meets the default min batch).
+            seedStudiedTodayWithOverdue(context, now, dueAtMillis = now - HOUR)
+
+            // First fire posts once.
+            ReminderScheduler.showReminderNotification(context, services, AppClock { now })
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            assertEquals(1, manager.activeNotifications.size)
+
+            // Receiver re-arms seconds later; the same overdue set is still due, but
+            // the throttle must push the next alarm at least the min gap out instead
+            // of firing again immediately (D1).
+            val secondsLater = now + 5_000L
+            ReminderScheduler.schedule(context, LocalStoreBase.ReminderSettings(true, 8, 30), services, secondsLater)
+            assertTrue(services.scheduledAtMillis >= now + MIN_GAP_MILLIS)
+
+            // A second post attempt within the gap is suppressed (still one visible card).
+            ReminderScheduler.showReminderNotification(context, services, AppClock { secondsLater })
+            assertEquals(1, manager.activeNotifications.size)
+        } finally {
+            TimeZone.setDefault(original)
+        }
     }
 
     @Test
@@ -195,6 +230,15 @@ class ReminderSchedulerTest {
         ReminderReceiver.handle("dev.bee.kanjianki.OTHER", actions)
 
         assertEquals("boot,daily", actions.events.joined)
+    }
+
+    @Test
+    fun reminderReceiverDispatchesDismissedActionWithFamily() {
+        val actions = FakeReceiverActions()
+
+        ReminderReceiver.handle(ReminderScheduler.ACTION_REMINDER_DISMISSED, "DUE", actions)
+
+        assertEquals("dismiss:DUE", actions.events.joined)
     }
 
     @Test
@@ -390,16 +434,20 @@ class ReminderSchedulerTest {
     }
 
     private fun seedReminderState(context: Context, reviewedAt: Long, dueAtMillis: Long) {
+        // Seed a real review batch: three distinct kanji all due at dueAtMillis so
+        // the default minimum batch size (3) is met and the cluster trigger stays
+        // at dueAtMillis. A single item would be suppressed as a learning-step tail.
+        val kanji = listOf("裂", "包", "風")
         LocalStore(context).use { store ->
             store.saveRows(
                 store.writableDatabase,
-                listOf(
+                kanji.map {
                     RecordsImportModels.DashboardRow(
-                        "裂",
+                        it,
                         120,
-                        "裂",
-                        "裂",
-                        "裂",
+                        it,
+                        it,
+                        it,
                         0,
                         "",
                         "",
@@ -407,8 +455,8 @@ class ReminderSchedulerTest {
                         0,
                         0,
                         listOf<RecordsImportModels.Example>(),
-                    ),
-                ),
+                    )
+                },
                 reviewedAt,
             )
             store.saveReview(
@@ -416,21 +464,52 @@ class ReminderSchedulerTest {
                 "good",
                 reviewedAt,
             )
-            store.saveStudyItem(
-                RecordsStudyModels.StudyItem(
-                    "裂",
-                    "review",
-                    dueAtMillis,
-                    1.0,
-                    5.0,
-                    1,
-                    0,
-                    0,
-                    0,
-                    "seed-token",
-                    reviewedAt,
+            kanji.forEach {
+                store.saveStudyItem(
+                    RecordsStudyModels.StudyItem(
+                        it,
+                        "review",
+                        dueAtMillis,
+                        1.0,
+                        5.0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        "seed-token-$it",
+                        reviewedAt,
+                    )
                 )
+            }
+        }
+    }
+
+    private fun seedStudiedTodayWithOverdue(context: Context, reviewedAt: Long, dueAtMillis: Long) {
+        val kanji = listOf("裂", "包", "風")
+        LocalStore(context).use { store ->
+            store.saveRows(
+                store.writableDatabase,
+                kanji.map {
+                    RecordsImportModels.DashboardRow(
+                        it, 120, it, it, it, 0, "", "", 0, 0, 0, listOf<RecordsImportModels.Example>(),
+                    )
+                },
+                reviewedAt,
             )
+            // A saved review marks studiedToday and sets lastStudyAtMillis; place it
+            // well before now so the activity grace window does not suppress the post.
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest("裂", "seed-token", "good", false, false, false, 0),
+                "good",
+                reviewedAt - 2 * HOUR,
+            )
+            kanji.forEach {
+                store.saveStudyItem(
+                    RecordsStudyModels.StudyItem(
+                        it, "review", dueAtMillis, 1.0, 5.0, 2, 0, 0, 0, "seed-token-$it", reviewedAt - 2 * HOUR,
+                    )
+                )
+            }
         }
     }
 
@@ -505,6 +584,10 @@ class ReminderSchedulerTest {
         override fun handleDailyReminder() {
             events.append("daily")
         }
+
+        override fun handleReminderDismissed(family: String) {
+            events.append("dismiss:$family")
+        }
     }
 
     private class FakeRescheduleActions : BootReminderReceiver.RescheduleActions {
@@ -538,5 +621,10 @@ class ReminderSchedulerTest {
             }
             joined += event
         }
+    }
+
+    private companion object {
+        const val HOUR = 60L * 60L * 1000L
+        const val MIN_GAP_MILLIS = 90L * 60L * 1000L
     }
 }

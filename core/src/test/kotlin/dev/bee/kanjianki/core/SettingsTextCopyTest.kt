@@ -387,7 +387,7 @@ class SettingsTextCopyTest {
 
     @Test
     fun newCardSortCopyPreservesModeLabelsAndStatus() {
-        assertEquals("Current: Frequency", SettingsTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
+        assertEquals("Current: Balanced mix", SettingsTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Hardest first", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
         assertEquals("Forgetting risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))
         assertEquals("Kani misses", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
@@ -400,8 +400,8 @@ class SettingsTextCopyTest {
                 "Balances misses, risk, and frequency.",
                 SettingsTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY)
         )
-        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"))
-        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null))
+        assertEquals("Balanced mix", SettingsTextCopy.newCardSortLabel("unknown"))
+        assertEquals("Balanced mix", SettingsTextCopy.newCardSortLabel(null))
         assertEquals("New card sort", SettingsTextCopy.newCardSortTitle())
         assertEquals(
                 "New cards only. Reviews and repeats stay first.",

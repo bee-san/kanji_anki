@@ -49,13 +49,19 @@ class KanjiImportSelector {
                 RecordsImportModels.SuspendedImport(
                     kanji,
                     rank,
-                    true,
+                    rank != null,
                     maxRank,
                     ArrayList(sources.values),
                 ),
             )
         }
-        results.sortWith(compareBy<RecordsImportModels.SuspendedImport> { it.jitenRank!! }.thenBy { it.kanji })
+        // Known ranks sort ascending (more frequent first); unknown-rank kanji
+        // are still imported but sorted last, matching the suspended-import spec
+        // (rare/unlisted kanji the user deliberately suspended stay in scope).
+        results.sortWith(
+            compareBy<RecordsImportModels.SuspendedImport> { it.jitenRank ?: Int.MAX_VALUE }
+                .thenBy { it.kanji },
+        )
         return results
     }
 
@@ -100,7 +106,11 @@ class KanjiImportSelector {
         val expression = TextUtil.normalizeJapanese(note.expression(settings))
         for (kanji in TextUtil.extractKanji(expression)) {
             val rank = ranks.rankOf(kanji)
-            if (rank != null && rank >= minRank && rank <= maxRank) {
+            // Import kanji whose Jiten rank falls in range, and also kanji with
+            // no Jiten rank at all (names, domain vocabulary): the user
+            // suspended them for a reason. Unknown-rank kanji are treated as
+            // "rare" and sorted last rather than silently dropped.
+            if (rank == null || (rank >= minRank && rank <= maxRank)) {
                 sourcesByKanji.getOrPut(kanji) { LinkedHashMap() }[card.cardId] =
                     sourceFromCard(kanji, card, note, expression, settings, match)
             }

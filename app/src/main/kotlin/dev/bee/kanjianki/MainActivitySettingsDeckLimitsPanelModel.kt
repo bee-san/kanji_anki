@@ -14,6 +14,8 @@ internal object SettingsDeckLimitsPanelModels {
             body = SettingsTextCopy.deckLimitsBody(),
             newPerDayLabel = SettingsTextCopy.newCardsPerDayLabel(),
             initialNewPerDayText = current.newPerDay.toString(),
+            activeQueueCapLabel = SettingsTextCopy.activeQueueCapLabel(),
+            initialActiveQueueCapText = current.activeQueueCap.toString(),
             saveLabel = SettingsTextCopy.saveDeckLimitsLabel(),
             onSave = onSave,
         )

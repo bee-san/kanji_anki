@@ -258,7 +258,7 @@ class SyncSettingsBehaviorTest {
         assertFalse(settings.importTaggedCardsEnabled())
         assertEquals(defaults.importTags, settings.importTags)
         assertEquals(defaults.importTagsText(), settings.importTagsText())
-        assertFalse(settings.importWeakCards)
+        assertTrue(settings.importWeakCards)
         assertEquals(defaults.importWeakFsrsDifficultyThreshold, settings.importWeakFsrsDifficultyThreshold, 0.001)
         assertEquals(defaults.importWeakLapsesThreshold, settings.importWeakLapsesThreshold)
         assertEquals(defaults.importMinMatchingCardsPerKanji, settings.importMinMatchingCardsPerKanji)

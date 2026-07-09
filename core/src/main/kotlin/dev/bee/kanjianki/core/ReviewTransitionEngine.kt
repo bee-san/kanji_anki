@@ -375,7 +375,13 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realAgainStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             state.lastFailedRealReviewDueAtMillis = context.item.dueAtMillis
-            if (state.realAgainStreak >= context.settings.ladderDemotionFailStreak) {
+            // A failed streak demotes as usual; additionally, a failed *first*
+            // review after a promotion (the capped validation review) is direct
+            // evidence the promotion was premature, so demote immediately rather
+            // than waiting out two more multi-month review cycles.
+            val demoteNow = state.realAgainStreak >= context.settings.ladderDemotionFailStreak ||
+                isFailedPromotionValidation(context)
+            if (demoteNow) {
                 val demoted = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
                 // Only reset the fail streak when a demotion actually moved the rung. At
                 // the WRITE_KANJI floor demoteRung returns the same rung, so keeping the
@@ -391,6 +397,26 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                 }
             }
         }
+    }
+
+    /**
+     * True when this failure is the first real review after a promotion: the
+     * item sits above its starting rung, has not yet passed or failed a real
+     * review since the promotion (both streaks are zero), and is still on the
+     * capped first-review interval. A brand-new card's first failed review at
+     * the starting rung is deliberately excluded so it is never demoted below
+     * where new cards begin.
+     */
+    private fun isFailedPromotionValidation(context: ReviewContext): Boolean {
+        val startRank = context.ladder.rankForRung(context.ladder.startingRung(context.item.hasSimilarKanji))
+        if (context.ladder.rankForRung(context.rung) <= startRank) {
+            return false
+        }
+        if (context.item.realPassStreak != 0 || context.item.realAgainStreak != 0) {
+            return false
+        }
+        val cap = max(1, context.settings.ladderPromotionIntervalDays / PROMOTED_RUNG_FIRST_REVIEW_DIVISOR)
+        return context.item.matureIntervalDays in 1..cap
     }
 
     private fun applyReviewPass(context: ReviewContext, state: ReviewState) {

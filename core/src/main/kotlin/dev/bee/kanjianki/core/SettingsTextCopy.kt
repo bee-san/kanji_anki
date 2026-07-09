@@ -365,6 +365,9 @@ object SettingsTextCopy {
     fun newCardsPerDayLabel(): String = SettingsStudyPlanTextCopy.newCardsPerDayLabel()
 
     @JvmStatic
+    fun activeQueueCapLabel(): String = SettingsStudyPlanTextCopy.activeQueueCapLabel()
+
+    @JvmStatic
     fun saveDeckLimitsLabel(): String = SettingsStudyPlanTextCopy.saveDeckLimitsLabel()
 
     @JvmStatic
@@ -594,6 +597,24 @@ object SettingsTextCopy {
 
     @JvmStatic
     fun reminderPresetButtonLabel(label: String?, hour: Int, minute: Int): String = SettingsAutomationTextCopy.reminderPresetButtonLabel(label, hour, minute)
+
+    @JvmStatic
+    fun reminderMaxPerDayLabel(maxPerDay: Int): String = SettingsAutomationTextCopy.reminderMaxPerDayLabel(maxPerDay)
+
+    @JvmStatic
+    fun reminderQuietHoursLabel(startMinuteOfDay: Int, endMinuteOfDay: Int): String =
+        SettingsAutomationTextCopy.reminderQuietHoursLabel(startMinuteOfDay, endMinuteOfDay)
+
+    @JvmStatic
+    fun reminderQuietHoursBody(): String = SettingsAutomationTextCopy.reminderQuietHoursBody()
+
+    @JvmStatic
+    fun reminderQuietStartButtonLabel(minuteOfDay: Int): String =
+        SettingsAutomationTextCopy.reminderQuietStartButtonLabel(minuteOfDay)
+
+    @JvmStatic
+    fun reminderQuietEndButtonLabel(minuteOfDay: Int): String =
+        SettingsAutomationTextCopy.reminderQuietEndButtonLabel(minuteOfDay)
 
     @JvmStatic
     fun studyAheadMinutesLabel(): String = SettingsStudyAheadTextCopy.studyAheadMinutesLabel()

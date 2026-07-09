@@ -5,6 +5,12 @@ import java.util.Locale
 object StudyLadderThresholdPolicy {
     const val POSITIVE_WHOLE_NUMBER_ERROR: String = "Use positive whole numbers."
 
+    // Upper bounds keep the ladder responsive: an unbounded promotion interval
+    // effectively freezes the ladder, and an unbounded fail streak makes
+    // demotion unreachable. These caps are generous but finite.
+    const val MAX_PROMOTION_INTERVAL_DAYS: Int = 365
+    const val MAX_DEMOTION_FAIL_STREAK: Int = 30
+
     private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
@@ -20,6 +26,9 @@ object StudyLadderThresholdPolicy {
         if (promotionDays < 1 || failStreak < 1) {
             return SaveResult.invalid(positiveWholeNumberError())
         }
+        if (promotionDays > MAX_PROMOTION_INTERVAL_DAYS || failStreak > MAX_DEMOTION_FAIL_STREAK) {
+            return SaveResult.invalid(rangeError())
+        }
         return SaveResult.valid(promotionDays, failStreak)
     }
 
@@ -27,6 +36,12 @@ object StudyLadderThresholdPolicy {
     fun positiveWholeNumberError(): String = localizedText(
         POSITIVE_WHOLE_NUMBER_ERROR,
         "正の整数を入力してください。",
+    )
+
+    @JvmStatic
+    fun rangeError(): String = localizedText(
+        "Use at most $MAX_PROMOTION_INTERVAL_DAYS promotion days and $MAX_DEMOTION_FAIL_STREAK fails.",
+        "昇格日数は最大 $MAX_PROMOTION_INTERVAL_DAYS、降格失敗回数は最大 $MAX_DEMOTION_FAIL_STREAK です。",
     )
 
     private fun parseWholeNumber(value: String): Int {

@@ -9,10 +9,16 @@ object SettingsStudyPlanTextCopy {
     fun deckLimitsTitle(): String = localizedText("Daily limits", "1日の上限")
 
     @JvmStatic
-    fun deckLimitsBody(): String = localizedText("Set the daily new-card cap.", "1日の新規カード上限を設定する。")
+    fun deckLimitsBody(): String = localizedText(
+        "Set the daily new-card cap and the maximum number of active study items.",
+        "1日の新規カード上限と、アクティブな学習項目の最大数を設定する。",
+    )
 
     @JvmStatic
     fun newCardsPerDayLabel(): String = localizedText("New cards per day", "1日の新規カード数")
+
+    @JvmStatic
+    fun activeQueueCapLabel(): String = localizedText("Active study items cap", "アクティブ学習項目の上限")
 
     @JvmStatic
     fun saveDeckLimitsLabel(): String = localizedText("Save daily limit", "1日の上限を保存")

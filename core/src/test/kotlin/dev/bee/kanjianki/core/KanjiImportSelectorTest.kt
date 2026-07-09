@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,6 +38,26 @@ class KanjiImportSelectorTest {
 
         assertEquals(listOf("謎"), kanjiList(imports))
         assertEquals(1600, imports[0].jitenRank)
+    }
+
+    @Test
+    fun unknownRankSuspendedKanjiIsImportedAndSortedLast() {
+        val settings = settings(false, true, false, "", false, 7.0, 2, 1)
+        // 珱 has no Jiten rank; 謎 does. Both are on suspended cards.
+        val ranks = ranks("謎,1600\n")
+        val snapshot = snapshot(
+            listOf(note(1, "謎", "なぞ"), note(2, "珱", "えい")),
+            listOf(card(10, 1, true), card(20, 2, true))
+        )
+
+        val imports = KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax).importFrom(snapshot, settings)
+
+        // The unknown-rank kanji is imported (not silently dropped) and sorted
+        // after the known-rank one.
+        assertEquals(listOf("謎", "珱"), kanjiList(imports))
+        assertEquals(1600, imports[0].jitenRank)
+        assertNull(imports[1].jitenRank)
+        assertFalse(imports[1].rankKnown)
     }
 
     @Test
@@ -84,7 +105,9 @@ class KanjiImportSelectorTest {
 
         val imports = KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings)
 
-        assertEquals(listOf("弱"), kanjiList(imports))
+        // 弱 (rank 1500) matches as weak; 点 shares the same weak card and has
+        // no Jiten rank, so it is imported too and sorted last (unknown rank).
+        assertEquals(listOf("弱", "点"), kanjiList(imports))
         assertEquals(listOf(RecordsBase.SOURCE_WEAK), imports[0].sources[0].ruleTypes)
     }
 
