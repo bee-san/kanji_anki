@@ -1,0 +1,248 @@
+package dev.bee.kanjianki.core
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Ingestion-side fixes on queue seeding:
+ *  - Finding 1: ceiling-parked items do not consume the active-queue cap.
+ *  - Finding 3: kanji already repaired in Anki are never admitted for study.
+ *  - Finding 7: a suspend/unsuspend reshuffle that only changes the preferred
+ *    example (same meaning) preserves earned scheduler state.
+ *  - Finding 2: evidence-strong kanji are seeded straight into review.
+ */
+class StudyQueueSeederIngestionTest {
+    private val seeder = StudyQueueSeeder()
+
+    // ---- Finding 3: admission gate on mature support ----
+
+    @Test
+    fun alreadyRepairedKanjiIsNeverAdmitted() {
+        val items = seeder.seedQueue(
+            listOf(supportedRow("古"), suspendedRow("新")),
+            emptyList(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1000L,
+            0L,
+            ladder = null,
+        )
+        assertNull("古 already has mature support and must not be admitted", find(items, "古"))
+        assertTrue("新 still needs repair and is admitted", find(items, "新") != null)
+    }
+
+    @Test
+    fun regressingEvidenceStillAdmitsAnAlreadySupportedKanji() {
+        val items = seeder.seedQueue(
+            listOf(supportedRow("古")),
+            emptyList(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1000L,
+            0L,
+            ladder = null,
+            evidenceStatusByKanji = mapOf("古" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        )
+        assertTrue("REGRESSING evidence overrides the mature-support admission gate", find(items, "古") != null)
+    }
+
+    // ---- Finding 1: ceiling parking frees the active-queue cap ----
+
+    @Test
+    fun ceilingParkedItemDoesNotBlockNewAdmission() {
+        val items = seeder.seedQueue(
+            listOf(suspendedRow("裂"), suspendedRow("新")),
+            listOf(ceilingItem("裂", matureIntervalDays = 100)),
+            settingsWithQueue(activeQueueCap = 1, newPerDay = 5),
+            2000L,
+            1000L,
+            ladder = null,
+        )
+        // 裂 rides a long interval at the top rung, so despite a cap of 1 the new
+        // kanji 新 is still admitted.
+        assertTrue("新 admitted because the parked ceiling item frees the cap", find(items, "新") != null)
+        assertEquals("review", find(items, "裂")!!.state)
+    }
+
+    @Test
+    fun shortIntervalCeilingItemStillCountsAgainstTheCap() {
+        val items = seeder.seedQueue(
+            listOf(suspendedRow("裂"), suspendedRow("新")),
+            listOf(ceilingItem("裂", matureIntervalDays = 10)),
+            settingsWithQueue(activeQueueCap = 1, newPerDay = 5),
+            2000L,
+            1000L,
+            ladder = null,
+        )
+        // A still-short interval at the ceiling is not parked, so it holds the
+        // single cap slot and blocks admission.
+        assertNull("新 blocked: the un-parked ceiling item fills the cap", find(items, "新"))
+    }
+
+    // ---- Finding 7: preserve earned state on example reshuffle ----
+
+    @Test
+    fun exampleReshuffleWithSameMeaningPreservesSchedulerState() {
+        val oldRow = exampleRow("裂", expression = "裂ける", meaning = "split")
+        val newRow = exampleRow("裂", expression = "決裂", meaning = "split")
+        val oldSignature = StudyQueueSeeder.answerSignature(oldRow)
+
+        val existing = matureReviewItem("裂", oldSignature)
+        val items = seeder.seedQueue(
+            listOf(newRow),
+            listOf(existing),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            5000L,
+            0L,
+            ladder = null,
+        )
+
+        val preserved = find(items, "裂")!!
+        assertEquals("review", preserved.state)
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, preserved.rung)
+        assertEquals(5, preserved.totalReviews)
+        assertEquals(50.0, preserved.stability, 0.001)
+        assertEquals(StudyQueueSeeder.answerSignature(newRow), preserved.answerSignature)
+    }
+
+    @Test
+    fun meaningChangeStillResetsSchedulerState() {
+        val oldRow = exampleRow("裂", expression = "裂ける", meaning = "split")
+        val changedRow = exampleRow("裂", expression = "裂ける", meaning = "tear apart")
+        val oldSignature = StudyQueueSeeder.answerSignature(oldRow)
+
+        val existing = matureReviewItem("裂", oldSignature)
+        val items = seeder.seedQueue(
+            listOf(changedRow),
+            listOf(existing),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            5000L,
+            0L,
+            ladder = null,
+        )
+
+        val reset = find(items, "裂")!!
+        assertEquals(0, reset.totalReviews)
+        assertEquals("learning", reset.state)
+        assertFalse("rung demoted on genuine content change", reset.rung == RecordsBase.LadderRung.FONT_MEANING)
+    }
+
+    // ---- Finding 2: evidence-strong kanji seed straight into review ----
+
+    @Test
+    fun matureActiveKanjiSeedsReviewAtTopRung() {
+        val items = seeder.seedQueue(
+            listOf(matureActiveRow("裂")),
+            emptyList(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1000L,
+            0L,
+            ladder = null,
+        )
+        val seeded = find(items, "裂")!!
+        assertEquals("review", seeded.state)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, seeded.rung)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, seeded.phase)
+        assertTrue("seeded stability tracks Anki evidence, not the placeholder", seeded.stability >= 20.0)
+    }
+
+    // ---- helpers ----
+
+    private fun find(items: List<RecordsStudyModels.StudyItem>, kanji: String): RecordsStudyModels.StudyItem? {
+        return items.firstOrNull { it.kanji == kanji }
+    }
+
+    private fun supportedRow(kanji: String): RecordsImportModels.DashboardRow {
+        // matureSupportCount 2 meets the default retirement threshold.
+        return RecordsImportModels.DashboardRow(
+            kanji, 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 0, 2,
+            emptyList<RecordsImportModels.Example>(),
+        )
+    }
+
+    private fun suspendedRow(kanji: String): RecordsImportModels.DashboardRow {
+        return RecordsImportModels.DashboardRow(
+            kanji, 900, "meaning", "reading", "search", 24, "suspended_archive", "reason text", 0, 1, 0,
+            emptyList<RecordsImportModels.Example>(),
+        )
+    }
+
+    private fun matureActiveRow(kanji: String): RecordsImportModels.DashboardRow {
+        return RecordsImportModels.DashboardRow(
+            kanji, 900, "meaning", "reading", "search", 5, "reason", "reason text", 1, 0, 1,
+            listOf(
+                RecordsImportModels.Example(
+                    RecordsBase.SOURCE_ACTIVE, 1L, 1L, "裂ける", "さける", "to split",
+                    "sentence", true, 0, 30, 6, 30.0, 4.0, null,
+                ),
+            ),
+        )
+    }
+
+    private fun exampleRow(kanji: String, expression: String, meaning: String): RecordsImportModels.DashboardRow {
+        return RecordsImportModels.DashboardRow(
+            kanji, 900, meaning, "reading", "search", 24, "suspended_archive", "reason text", 0, 1, 0,
+            listOf(
+                RecordsImportModels.Example(
+                    RecordsBase.SOURCE_SUSPENDED, 1L, 1L, expression, "reading", meaning,
+                    "sentence", false, 1, 0, 3, null, null, null,
+                ),
+            ),
+        )
+    }
+
+    private fun ceilingItem(kanji: String, matureIntervalDays: Int): RecordsStudyModels.StudyItem {
+        return baseItem(kanji).copyBuilder()
+            .state("review")
+            .stability(80.0)
+            .totalReviews(4)
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .matureIntervalDays(matureIntervalDays)
+            .createdAtMillis(0L)
+            .build()
+    }
+
+    private fun matureReviewItem(kanji: String, signature: String): RecordsStudyModels.StudyItem {
+        return baseItem(kanji).copyBuilder()
+            .state("review")
+            .stability(50.0)
+            .totalReviews(5)
+            .rung(RecordsBase.LadderRung.FONT_MEANING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .matureIntervalDays(60)
+            .answerSignature(signature)
+            .createdAtMillis(0L)
+            .build()
+    }
+
+    private fun baseItem(kanji: String): RecordsStudyModels.StudyItem {
+        return RecordsStudyModels.StudyItem(
+            kanji, "new", 0L, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, "", 0L, 0, "", "", 100L,
+        )
+    }
+
+    private fun settingsWithQueue(activeQueueCap: Int, newPerDay: Int): RecordsSyncModels.Settings {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        return RecordsSyncModels.Settings(
+            defaults.modelName,
+            defaults.templateName,
+            defaults.expressionField,
+            defaults.readingField,
+            defaults.meaningField,
+            defaults.sentenceField,
+            defaults.frequencyField,
+            defaults.frequencySortField,
+            defaults.matureDays,
+            defaults.matureSupportThreshold,
+            defaults.suspendedRankMin,
+            defaults.suspendedRankMax,
+            activeQueueCap,
+            newPerDay,
+            defaults.writingTriggerMissDays,
+            defaults.recognitionPromotionPasses,
+            defaults.realDueReviewsToMove,
+        )
+    }
+}

@@ -30,7 +30,7 @@ class SettingsStudyPlanTextCopyTest {
                 RecordsSchedulerModels.AdaptiveLoadPlan(40, 7, 3, listOf("語"), 1, false, "focus"),
             ),
         )
-        assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
+        assertEquals("Current: Balanced mix", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
         assertEquals("Kani misses", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
         assertEquals("Balanced mix", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
         assertEquals("Jiten frequency first.", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
@@ -53,7 +53,7 @@ class SettingsStudyPlanTextCopyTest {
             SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
         )
         assertEquals("Daily limits", SettingsStudyPlanTextCopy.deckLimitsTitle())
-        assertEquals("Set the daily new-card cap.", SettingsStudyPlanTextCopy.deckLimitsBody())
+        assertEquals("Set the daily new-card cap and the maximum number of active study items.", SettingsStudyPlanTextCopy.deckLimitsBody())
         assertEquals("New cards per day", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
         assertEquals("Save daily limit", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
@@ -136,7 +136,7 @@ class SettingsStudyPlanTextCopyTest {
                     RecordsSchedulerModels.AdaptiveLoadPlan(40, 7, 3, listOf("語"), 1, false, "focus"),
                 ),
             )
-            assertEquals("現在: 頻度", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
+            assertEquals("現在: バランス", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE))
             assertEquals("Kaniのミス", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS))
             assertEquals("バランス", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY))
             assertEquals("Jiten頻度順。", SettingsStudyPlanTextCopy.newCardSortDescription(RecordsBase.NEW_CARD_SORT_FREQUENCY))
@@ -159,7 +159,7 @@ class SettingsStudyPlanTextCopyTest {
                 SettingsStudyPlanTextCopy.newCardSortConfusablePreviewWarning(emptyList()),
             )
             assertEquals("1日の上限", SettingsStudyPlanTextCopy.deckLimitsTitle())
-            assertEquals("1日の新規カード上限を設定する。", SettingsStudyPlanTextCopy.deckLimitsBody())
+            assertEquals("1日の新規カード上限と、アクティブな学習項目の最大数を設定する。", SettingsStudyPlanTextCopy.deckLimitsBody())
             assertEquals("1日の新規カード数", SettingsStudyPlanTextCopy.newCardsPerDayLabel())
             assertEquals("1日の上限を保存", SettingsStudyPlanTextCopy.saveDeckLimitsLabel())
             assertEquals("Jiten順位 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))

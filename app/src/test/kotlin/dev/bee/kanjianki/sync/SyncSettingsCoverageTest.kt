@@ -159,7 +159,7 @@ class SyncSettingsCoverageTest {
         assertFalse(settings.importTaggedCardsEnabled())
         assertEquals(defaults.importTags, settings.importTags)
         assertEquals(defaults.importTagsText(), settings.importTagsText())
-        assertFalse(settings.importWeakCards)
+        assertTrue(settings.importWeakCards)
         assertClose(defaults.importWeakFsrsDifficultyThreshold, settings.importWeakFsrsDifficultyThreshold)
         assertEquals(defaults.importWeakLapsesThreshold, settings.importWeakLapsesThreshold)
         assertEquals(defaults.importMinMatchingCardsPerKanji, settings.importMinMatchingCardsPerKanji)

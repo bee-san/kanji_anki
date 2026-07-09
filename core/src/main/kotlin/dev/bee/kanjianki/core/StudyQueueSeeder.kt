@@ -73,7 +73,11 @@ class StudyQueueSeeder {
         for (row in request.admissionRows) {
             val rowKey = rowFamilyKey(row)
             val current = state.byFamily[rowKey]
-            val eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current)
+            val eligible = if (current == null) {
+                !isAlreadyRepairedRow(request, row)
+            } else {
+                canReopenRetiredExtraSeedItem(request.settings, row, current)
+            }
             if (eligible) {
                 available++
             }
@@ -104,7 +108,11 @@ class StudyQueueSeeder {
         for (row in request.admissionRows) {
             val rowKey = rowFamilyKey(row)
             val current = state.byFamily[rowKey]
-            val eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current)
+            val eligible = if (current == null) {
+                !isAlreadyRepairedRow(request, row)
+            } else {
+                canReopenRetiredExtraSeedItem(request.settings, row, current)
+            }
             if (eligible) {
                 available++
                 if (admittedKanji.size < requested) {
@@ -133,7 +141,7 @@ class StudyQueueSeeder {
         rowKey: String,
         current: RecordsStudyModels.StudyItem?,
     ) {
-        val admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder)
+        val admitted = newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
         if (current != null) {
             state.items.remove(current)
         }
@@ -199,7 +207,7 @@ class StudyQueueSeeder {
             val current = alignOrRetireSeedItem(request, rowIndex, item)
             state.byFamily[familyKey(current)] = current
             state.items.add(current)
-            state.trackActiveItem(current, request.startOfDayMillis)
+            state.trackActiveItem(current, request)
         }
         return state
     }
@@ -254,10 +262,20 @@ class StudyQueueSeeder {
         val rowKey = rowFamilyKey(row)
         val current = state.byFamily[rowKey]
         if (current == null) {
-            addNewSeedItemIfRoom(request, state, row, rowKey)
+            // Do not admit (and then immediately force study of) a kanji whose
+            // Anki mature support already meets the retirement threshold. Only
+            // regressing repair evidence overrides this.
+            if (!isAlreadyRepairedRow(request, row)) {
+                addNewSeedItemIfRoom(request, state, row, rowKey)
+            }
         } else if (canReopenRetiredSeedItem(request, state, row, current)) {
             reopenSeedItem(request, state, row, rowKey, current)
         }
+    }
+
+    private fun isAlreadyRepairedRow(request: SeedQueueRequest, row: RecordsImportModels.DashboardRow): Boolean {
+        return row.matureSupportCount >= request.settings.matureSupportThreshold &&
+            !hasRegressingEvidence(request, row.kanji)
     }
 
     private fun addNewSeedItemIfRoom(
@@ -269,7 +287,7 @@ class StudyQueueSeeder {
         if (!state.hasAdmissionRoom(request)) {
             return
         }
-        val item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder)
+        val item = newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
         state.items.add(item)
         state.byFamily[rowKey] = item
         state.activeCount++
@@ -301,7 +319,7 @@ class StudyQueueSeeder {
         rowKey: String,
         current: RecordsStudyModels.StudyItem,
     ) {
-        val reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder)
+        val reopened = newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
         state.items.remove(current)
         state.items.add(reopened)
         state.byFamily[rowKey] = reopened
@@ -317,14 +335,16 @@ class StudyQueueSeeder {
     }
 
     private fun newStudyItem(
-        kanji: String,
+        row: RecordsImportModels.DashboardRow,
         nowMillis: Long,
         answerSignature: String,
         ladder: RecordsBase.StudyLadderSettings,
+        settings: RecordsSyncModels.Settings,
     ): RecordsStudyModels.StudyItem {
-        val startingRung = StudyLadderRules.safeLadder(ladder).startingRung(false)
-        return RecordsStudyModels.StudyItem(
-            kanji,
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
+        val seed = AdmissionEvidencePolicy.seedFor(row, safeLadder, settings)
+        val base = RecordsStudyModels.StudyItem(
+            row.kanji,
             StudyLadderRules.STATE_NEW,
             nowMillis,
             0.4,
@@ -348,7 +368,7 @@ class StudyQueueSeeder {
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
-            startingRung,
+            safeLadder.startingRung(false),
             RecordsBase.SchedulerPhase.NEW_LEARNING,
             0,
             0,
@@ -356,6 +376,44 @@ class StudyQueueSeeder {
             false,
             RecordsStudyModels.TaskMemory.initial(),
         )
+        return applySeed(base, seed, nowMillis)
+    }
+
+    private fun applySeed(
+        base: RecordsStudyModels.StudyItem,
+        seed: AdmissionEvidencePolicy.Seed,
+        nowMillis: Long,
+    ): RecordsStudyModels.StudyItem {
+        val seeded = base.copyBuilder()
+            .state(seed.state)
+            .stability(seed.stability)
+            .difficulty(seed.difficulty)
+            .rung(seed.rung)
+            .phase(seed.phase)
+            .matureIntervalDays(seed.matureIntervalDays)
+            .recognitionStage(StudyLadderRules.rungToLegacyStage(seed.rung))
+            .writingRemediationPending(seed.rung == RecordsBase.LadderRung.WRITE_KANJI)
+            .build()
+        if (!seed.isReviewSeed()) {
+            return seeded
+        }
+        // Evidence-strong kanji skip the learning climb: carry Anki's memory
+        // state into the active rung's TaskMemory so the first confirmation
+        // review evolves the real FSRS state rather than the new-card
+        // placeholder. Due is now, so this validates the skill once and then
+        // rides a real interval.
+        val seededMemory = RecordsStudyModels.TaskMemory(
+            StudyLadderRules.STATE_REVIEW,
+            nowMillis,
+            seed.stability,
+            seed.difficulty,
+            0,
+            0,
+            0,
+            "",
+            0,
+        )
+        return seeded.withTaskMemory(seed.rung.wireName(), seededMemory)
     }
 
     private fun alignAnswerSignature(
@@ -371,6 +429,15 @@ class StudyQueueSeeder {
         val retired = StudyLadderRules.STATE_RETIRED == item.state
         if (retired) {
             return StudyLadderRules.alignRungToLadder(item.copyBuilder().answerSignature(signature).build(), ladder)
+        }
+        // A suspend/unsuspend flip in Anki can reshuffle which example is the
+        // "preferred" one and change expression/reading without the kanji's
+        // meaning changing at all. Preserve all earned scheduler state in that
+        // case and only adopt the new signature; months of ladder/FSRS progress
+        // must not be destroyed by a suspension toggle. Reset only when the
+        // meaning itself materially changed (effectively a different card).
+        if (signatureMeaning(signature) == signatureMeaning(item.answerSignature)) {
+            return StudyLadderRules.alignRungToLadder(item.withAnswerSignature(signature), ladder)
         }
         val fallbackRung = StudyLadderRules.demoteRung(item.rung, item.hasSimilarKanji, ladder)
         return item.copyBuilder()
@@ -457,14 +524,36 @@ class StudyQueueSeeder {
         var activeCount = 0
         var newToday = 0
 
-        fun trackActiveItem(item: RecordsStudyModels.StudyItem, startOfDayMillis: Long) {
+        fun trackActiveItem(item: RecordsStudyModels.StudyItem, request: SeedQueueRequest) {
             if (StudyLadderRules.STATE_RETIRED == item.state) {
                 return
             }
-            activeCount++
-            if (item.createdAtMillis >= startOfDayMillis) {
+            if (item.createdAtMillis >= request.startOfDayMillis) {
                 newToday++
             }
+            // Ceiling-parked items stay studyable when due but do not consume an
+            // active-queue slot, so a mature kanji riding a long interval at the
+            // top rung can never permanently block admission of new repairs.
+            if (isCeilingParked(item, request)) {
+                return
+            }
+            activeCount++
+        }
+
+        private fun isCeilingParked(item: RecordsStudyModels.StudyItem, request: SeedQueueRequest): Boolean {
+            if (StudyLadderRules.STATE_REVIEW != item.state ||
+                item.phase != RecordsBase.SchedulerPhase.REVIEW
+            ) {
+                return false
+            }
+            if (!request.ladder.isAtCeiling(item.rung, item.hasSimilarKanji)) {
+                return false
+            }
+            val threshold = max(
+                request.settings.matureDays,
+                request.settings.ladderPromotionIntervalDays * RecordsBase.CEILING_PARK_INTERVAL_MULTIPLIER,
+            )
+            return item.matureIntervalDays >= threshold
         }
 
         fun hasAdmissionRoom(request: SeedQueueRequest): Boolean {
@@ -529,6 +618,16 @@ class StudyQueueSeeder {
 
         private fun familyKey(kanji: String, answerSignature: String?): String {
             return kanji + "\u0000" + (answerSignature ?: "")
+        }
+
+        /**
+         * Meaning component of an answer signature
+         * (`kanji|expression|reading|meaning`). Used to distinguish a genuine
+         * content change from a mere example reshuffle caused by a suspend flip.
+         */
+        private fun signatureMeaning(signature: String): String {
+            val parts = signature.split("|", limit = 4)
+            return if (parts.size == 4) parts[3] else ""
         }
 
         private fun normalizeSignature(value: String?): String {

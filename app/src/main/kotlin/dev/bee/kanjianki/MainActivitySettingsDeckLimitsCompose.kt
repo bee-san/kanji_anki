@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SettingsDeckLimitsPanel(model: SettingsDeckLimitsPanelModel) {
     var newPerDayText by rememberSaveable { mutableStateOf(model.initialNewPerDayText) }
+    var activeQueueCapText by rememberSaveable { mutableStateOf(model.initialActiveQueueCapText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = KaniUiTokens.PanelShape,
@@ -64,11 +65,27 @@ fun SettingsDeckLimitsPanel(model: SettingsDeckLimitsPanelModel) {
                     fontSize = 20.sp,
                 ),
             )
+            OutlinedTextField(
+                value = activeQueueCapText,
+                onValueChange = { activeQueueCapText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .testTag(SettingsDeckLimitsTestTags.ACTIVE_QUEUE_CAP_INPUT)
+                    .semantics { contentDescription = model.activeQueueCapLabel },
+                label = { Text(model.activeQueueCapLabel) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = KaniUiTokens.Ink,
+                    fontSize = 20.sp,
+                ),
+            )
             KaniPrimaryButton(
                 label = model.saveLabel,
                 modifier = Modifier.padding(top = 8.dp),
             ) {
-                model.onSave.save(newPerDayText)
+                model.onSave.save(newPerDayText, activeQueueCapText)
             }
         }
     }

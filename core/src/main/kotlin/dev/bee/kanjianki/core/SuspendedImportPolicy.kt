@@ -71,11 +71,15 @@ object SuspendedImportPolicy {
         imported: RecordsImportModels.SuspendedImport?,
         settings: RecordsSyncModels.Settings?,
     ): Boolean {
+        if (imported == null) {
+            return false
+        }
         val safeSettings = settings ?: RecordsSyncModels.Settings.kikuDefaults()
-        return imported != null &&
-            imported.jitenRank != null &&
-            imported.jitenRank >= safeSettings.suspendedRankMin &&
-            imported.jitenRank <= safeSettings.suspendedRankMax
+        // Unknown-rank kanji import by default (spec: suspended-kanji import).
+        // They are deliberately rare characters the user chose to suspend; the
+        // frequency window only gates kanji that actually have a Jiten rank.
+        val rank = imported.jitenRank ?: return true
+        return rank >= safeSettings.suspendedRankMin && rank <= safeSettings.suspendedRankMax
     }
 
     private fun addImports(

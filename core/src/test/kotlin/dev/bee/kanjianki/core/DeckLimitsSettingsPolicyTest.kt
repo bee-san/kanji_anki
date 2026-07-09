@@ -26,4 +26,19 @@ class DeckLimitsSettingsPolicyTest {
         assertEquals(24, request.newPerDay)
         assertEquals("New cards/day saved: 24", request.message)
     }
+
+    @Test
+    fun normalizeActiveQueueCapClampsToBounds() {
+        assertEquals(DeckLimitsSettingsPolicy.MIN_ACTIVE_QUEUE_CAP, DeckLimitsSettingsPolicy.normalizeActiveQueueCap(1))
+        assertEquals(24, DeckLimitsSettingsPolicy.normalizeActiveQueueCap(24))
+        assertEquals(DeckLimitsSettingsPolicy.MAX_ACTIVE_QUEUE_CAP, DeckLimitsSettingsPolicy.normalizeActiveQueueCap(10000))
+    }
+
+    @Test
+    fun saveActiveQueueCapNormalizesAndReportsSavedValue() {
+        val request = DeckLimitsSettingsPolicy.saveActiveQueueCap(" 40 ")
+
+        assertEquals(40, request.newPerDay)
+        assertEquals("Active queue cap saved: 40", request.message)
+    }
 }

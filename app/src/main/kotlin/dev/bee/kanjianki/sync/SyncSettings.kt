@@ -31,6 +31,7 @@ internal object SyncSettings {
     const val IMPORT_BROWSER_QUERY_SETTING_KEY = "import_browser_query"
     const val NEW_CARD_SORT_MODE_SETTING_KEY = "new_card_sort_mode"
     const val NEW_PER_DAY_SETTING_KEY = "new_per_day"
+    const val ACTIVE_QUEUE_CAP_SETTING_KEY = "active_queue_cap"
 
     private const val ABSENT_INT_SETTING = Int.MIN_VALUE
     private val ABSENT_DOUBLE_SETTING = Double.NaN
@@ -111,6 +112,10 @@ internal object SyncSettings {
             store?.getIntSetting(NEW_PER_DAY_SETTING_KEY, defaults.newPerDay)
                 ?: defaults.newPerDay
         )
+        val activeQueueCap = DeckLimitsSettingsPolicy.normalizeActiveQueueCap(
+            store?.getIntSetting(ACTIVE_QUEUE_CAP_SETTING_KEY, defaults.activeQueueCap)
+                ?: defaults.activeQueueCap
+        )
         return RecordsSyncModels.Settings(
             modelName,
             defaults.templateName,
@@ -124,7 +129,7 @@ internal object SyncSettings {
             defaults.matureSupportThreshold,
             minRank,
             maxRank,
-            defaults.activeQueueCap,
+            activeQueueCap,
             newPerDay,
             writingTriggerMissDays,
             recognitionPromotionPasses,
@@ -151,9 +156,9 @@ internal object SyncSettings {
         }
         val repair = ImportSettingsRepairPolicy.oldDefaultRepair(
             storedImportSettings(store),
-            RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY,
-            RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES,
-            RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
+            RecordsBase.LEGACY_IMPORT_WEAK_FSRS_DIFFICULTY,
+            RecordsBase.LEGACY_IMPORT_WEAK_LAPSES,
+            RecordsBase.LEGACY_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
         )
         if (repair.shouldRepair()) {
             store.putIntSetting(IMPORT_ACTIVE_CARDS_SETTING_KEY, repair.importActiveCards())

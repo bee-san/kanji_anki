@@ -60,6 +60,36 @@ class StudyLadderThresholdPolicyTest {
         assertEquals(expectedMessage, result.message)
     }
 
+    @Test
+    fun saveRequestRejectsValuesAboveTheUpperBounds() {
+        withLocale(Locale.ENGLISH) {
+            val overDays = StudyLadderThresholdPolicy.saveRequest(
+                (StudyLadderThresholdPolicy.MAX_PROMOTION_INTERVAL_DAYS + 1).toString(),
+                "3",
+            )
+            assertFalse(overDays.valid)
+            assertEquals(StudyLadderThresholdPolicy.rangeError(), overDays.message)
+
+            val overStreak = StudyLadderThresholdPolicy.saveRequest(
+                "21",
+                (StudyLadderThresholdPolicy.MAX_DEMOTION_FAIL_STREAK + 1).toString(),
+            )
+            assertFalse(overStreak.valid)
+            assertEquals(StudyLadderThresholdPolicy.rangeError(), overStreak.message)
+        }
+    }
+
+    @Test
+    fun saveRequestAcceptsValuesAtTheUpperBounds() {
+        val result = StudyLadderThresholdPolicy.saveRequest(
+            StudyLadderThresholdPolicy.MAX_PROMOTION_INTERVAL_DAYS.toString(),
+            StudyLadderThresholdPolicy.MAX_DEMOTION_FAIL_STREAK.toString(),
+        )
+        assertTrue(result.valid)
+        assertEquals(StudyLadderThresholdPolicy.MAX_PROMOTION_INTERVAL_DAYS, result.promotionDays)
+        assertEquals(StudyLadderThresholdPolicy.MAX_DEMOTION_FAIL_STREAK, result.failStreak)
+    }
+
     private inline fun withLocale(locale: Locale, block: () -> Unit) {
         val original = Locale.getDefault()
         try {

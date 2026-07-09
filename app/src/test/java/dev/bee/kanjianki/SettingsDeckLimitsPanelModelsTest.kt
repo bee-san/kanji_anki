@@ -10,12 +10,14 @@ class SettingsDeckLimitsPanelModelsTest {
     @Test
     fun createUsesCurrentNewPerDayAndCopyContract() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val model = SettingsDeckLimitsPanelModels.create(settings) { }
+        val model = SettingsDeckLimitsPanelModels.create(settings) { _, _ -> }
 
         assertEquals(SettingsTextCopy.deckLimitsTitle(), model.title)
         assertEquals(SettingsTextCopy.deckLimitsBody(), model.body)
         assertEquals(SettingsTextCopy.newCardsPerDayLabel(), model.newPerDayLabel)
         assertEquals(settings.newPerDay.toString(), model.initialNewPerDayText)
+        assertEquals(SettingsTextCopy.activeQueueCapLabel(), model.activeQueueCapLabel)
+        assertEquals(settings.activeQueueCap.toString(), model.initialActiveQueueCapText)
         assertEquals(SettingsTextCopy.saveDeckLimitsLabel(), model.saveLabel)
         assertNotNull(model.onSave)
     }

@@ -31,8 +31,13 @@ class CoreSchedulerImportEdgeTest {
         )
 
         assertEquals(2, result.availableCount)
-        assertEquals(listOf("裂", "新"), result.admittedKanji)
-        assertEquals("new", studyItem(result.items, "裂").state)
+        // Set comparison: admission order now follows the balanced-priority
+        // default sort, but this test is about which rows reopen/admit.
+        assertEquals(setOf("裂", "新"), result.admittedKanji.toSet())
+        // 裂 is read in a mature active context and was never suspended, so it
+        // is seeded straight into review at the top rung (evidence seeding);
+        // 新 has no support and starts as a new learning card.
+        assertEquals("review", studyItem(result.items, "裂").state)
         assertEquals("retired", studyItem(result.items, "語").state)
         assertEquals("new", studyItem(result.items, "新").state)
     }
