@@ -349,6 +349,15 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             return copyBuilder().hasSimilarKanji(hasSimilarKanji).build()
         }
 
+        /**
+         * Snapshot of which conditional rungs this item can support, assembled
+         * from its (never-persisted, annotated-on-read) availability flags.
+         * Ladder-movement methods consume this instead of individual booleans.
+         */
+        fun rungAvailability(): RecordsBase.RungAvailability {
+            return RecordsBase.RungAvailability.of(hasSimilarKanji)
+        }
+
         fun withSimilarKanjiMemory(memory: TaskMemory?): StudyItem {
             return copyBuilder().similarKanjiMemory(memory).build()
         }

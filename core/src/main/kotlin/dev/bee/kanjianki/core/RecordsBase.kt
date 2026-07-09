@@ -52,6 +52,54 @@ abstract class RecordsBase protected constructor() {
         }
     }
 
+    /**
+     * Immutable snapshot of which conditional rungs a specific study item can
+     * currently support. Always-available rungs are available regardless of the
+     * flags; each conditional rung consults its own flag. This generalizes the
+     * former single `hasSimilarKanji: Boolean` parameter that was threaded
+     * through every ladder-movement method so new conditional rungs can be
+     * added by extending this value object rather than every signature.
+     *
+     * [NONE] means "no conditional data" — every conditional rung is treated as
+     * unavailable, which is the conservative default used when seeding.
+     */
+    class RungAvailability private constructor(
+        @JvmField val hasSimilarKanji: Boolean,
+    ) {
+        /**
+         * True when [rung] is available for the item this snapshot describes:
+         * always-available rungs are unconditionally available; conditional
+         * rungs consult their flag.
+         */
+        fun isAvailable(rung: LadderRung?): Boolean {
+            return StudyLadderSettings.alwaysAvailable(rung) || flagFor(rung)
+        }
+
+        private fun flagFor(rung: LadderRung?): Boolean {
+            return when (rung) {
+                LadderRung.SIMILAR_KANJI -> hasSimilarKanji
+                else -> false
+            }
+        }
+
+        fun withHasSimilarKanji(value: Boolean): RungAvailability {
+            return if (value == hasSimilarKanji) this else of(value)
+        }
+
+        companion object {
+            @JvmField
+            val NONE: RungAvailability = RungAvailability(false)
+
+            @JvmStatic
+            fun none(): RungAvailability = NONE
+
+            @JvmStatic
+            fun of(hasSimilarKanji: Boolean): RungAvailability {
+                return if (hasSimilarKanji) RungAvailability(true) else NONE
+            }
+        }
+    }
+
     class StudyLadderSettings {
         @JvmField
         val orderedRungs: List<LadderRung>
@@ -90,8 +138,8 @@ abstract class RecordsBase protected constructor() {
 
         fun isEnabled(rung: LadderRung?): Boolean = enabledRungs.contains(rung)
 
-        fun isValidForItem(rung: LadderRung?, hasSimilarKanji: Boolean): Boolean {
-            return isEnabled(rung) && (rung != LadderRung.SIMILAR_KANJI || hasSimilarKanji)
+        fun isValidForItem(rung: LadderRung?, availability: RungAvailability): Boolean {
+            return isEnabled(rung) && availability.isAvailable(rung)
         }
 
         fun withRungEnabled(rung: LadderRung?, enabled: Boolean): StudyLadderSettings {
@@ -140,8 +188,8 @@ abstract class RecordsBase protected constructor() {
             return count
         }
 
-        fun startingRung(hasSimilarKanji: Boolean): LadderRung {
-            return effectiveRung(LadderRung.startingRung(), hasSimilarKanji)
+        fun startingRung(availability: RungAvailability): LadderRung {
+            return effectiveRung(LadderRung.startingRung(), availability)
         }
 
         /**
@@ -149,10 +197,10 @@ abstract class RecordsBase protected constructor() {
          * order. Used to seed evidence-strong kanji at the top of the ladder
          * and to detect ceiling items for queue-cap parking.
          */
-        fun highestRung(hasSimilarKanji: Boolean): LadderRung {
+        fun highestRung(availability: RungAvailability): LadderRung {
             for (i in orderedRungs.indices.reversed()) {
                 val candidate = orderedRungs[i]
-                if (isValidForItem(candidate, hasSimilarKanji)) {
+                if (isValidForItem(candidate, availability)) {
                     return candidate
                 }
             }
@@ -160,13 +208,13 @@ abstract class RecordsBase protected constructor() {
         }
 
         /** True when [current] resolves to the highest enabled rung for the item. */
-        fun isAtCeiling(current: LadderRung?, hasSimilarKanji: Boolean): Boolean {
-            return effectiveRung(current, hasSimilarKanji) == highestRung(hasSimilarKanji)
+        fun isAtCeiling(current: LadderRung?, availability: RungAvailability): Boolean {
+            return effectiveRung(current, availability) == highestRung(availability)
         }
 
-        fun effectiveRung(current: LadderRung?, hasSimilarKanji: Boolean): LadderRung {
+        fun effectiveRung(current: LadderRung?, availability: RungAvailability): LadderRung {
             val safeCurrent = current ?: LadderRung.startingRung()
-            if (isValidForItem(safeCurrent, hasSimilarKanji)) {
+            if (isValidForItem(safeCurrent, availability)) {
                 return safeCurrent
             }
             var start = orderedRungs.indexOf(safeCurrent)
@@ -178,14 +226,14 @@ abstract class RecordsBase protected constructor() {
                 val before = start - distance
                 if (before >= 0) {
                     val candidate = orderedRungs[before]
-                    if (isValidForItem(candidate, hasSimilarKanji)) {
+                    if (isValidForItem(candidate, availability)) {
                         return candidate
                     }
                 }
                 val after = start + distance
                 if (after < orderedRungs.size) {
                     val candidate = orderedRungs[after]
-                    if (isValidForItem(candidate, hasSimilarKanji)) {
+                    if (isValidForItem(candidate, availability)) {
                         return candidate
                     }
                 }
@@ -193,24 +241,24 @@ abstract class RecordsBase protected constructor() {
             return LadderRung.KANJI_MEANING
         }
 
-        fun nextRung(current: LadderRung?, hasSimilarKanji: Boolean): LadderRung {
-            val effective = effectiveRung(current, hasSimilarKanji)
+        fun nextRung(current: LadderRung?, availability: RungAvailability): LadderRung {
+            val effective = effectiveRung(current, availability)
             val start = orderedRungs.indexOf(effective)
             for (i in start + 1 until orderedRungs.size) {
                 val candidate = orderedRungs[i]
-                if (isValidForItem(candidate, hasSimilarKanji)) {
+                if (isValidForItem(candidate, availability)) {
                     return candidate
                 }
             }
             return effective
         }
 
-        fun previousRung(current: LadderRung?, hasSimilarKanji: Boolean): LadderRung {
-            val effective = effectiveRung(current, hasSimilarKanji)
+        fun previousRung(current: LadderRung?, availability: RungAvailability): LadderRung {
+            val effective = effectiveRung(current, availability)
             val start = orderedRungs.indexOf(effective)
             for (i in start - 1 downTo 0) {
                 val candidate = orderedRungs[i]
-                if (isValidForItem(candidate, hasSimilarKanji)) {
+                if (isValidForItem(candidate, availability)) {
                     return candidate
                 }
             }

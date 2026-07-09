@@ -39,7 +39,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
 
     fun debugTraceApplyReview(application: BridgeScheduler.ReviewApplication): SchedulerTracedReviewResult {
         val ladder = StudyLadderRules.safeLadder(application.ladder)
-        val beforeRung = ladder.effectiveRung(application.item.rung, application.item.hasSimilarKanji)
+        val beforeRung = ladder.effectiveRung(application.item.rung, application.item.rungAvailability())
         val beforePhase = application.item.phase
         val duplicateReason = duplicateReason(application.item, application.request, application.consumedTokens)
         val result = applyReview(application)
@@ -113,9 +113,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val afterRank = ladder.rankForRung(result.item.rung)
         if (afterRank > beforeRank) {
             reasons.add("fsrs_interval_promotes")
-            if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
-                reasons.add("similar_kanji_unavailable")
-            }
+            reasons.addAll(skippedConditionalRungReasons(application.item.rungAvailability(), ladder, beforeRank, afterRank))
         } else if (afterRank == beforeRank &&
             beforePhase == RecordsBase.SchedulerPhase.REVIEW &&
             StudyRatings.AGAIN != result.appliedRating &&
@@ -131,9 +129,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             }
         } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
             reasons.add("real_again_streak_threshold")
-            if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
-                reasons.add("similar_kanji_unavailable")
-            }
+            reasons.addAll(skippedConditionalRungReasons(application.item.rungAvailability(), ladder, beforeRank, afterRank))
         }
         return reasons
     }
@@ -157,17 +153,36 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         return result.item.realPassStreak < settings.ladderPromotionMinPasses
     }
 
-    private fun skipsSimilarRungWithoutContent(
-        hasSimilarKanji: Boolean,
+    /**
+     * Trace reason codes for every conditional rung the ladder crossed *over*
+     * (strictly between [beforeRank] and [afterRank]) that the item cannot
+     * support. Each skipped conditional rung emits `"<wireName>_unavailable"`,
+     * in ladder order. Generalizes the former single-`similar_kanji` helper so a
+     * demotion/promotion that steps past several conditional rungs (e.g. both
+     * `reading_kanji` and `similar_kanji`) records one reason per skipped rung.
+     */
+    private fun skippedConditionalRungReasons(
+        availability: RecordsBase.RungAvailability,
         ladder: RecordsBase.StudyLadderSettings,
         beforeRank: Int,
         afterRank: Int,
-    ): Boolean {
-        val similarRank = ladder.rankForRung(RecordsBase.LadderRung.SIMILAR_KANJI)
-        return !hasSimilarKanji &&
-            ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI) &&
-            min(beforeRank, afterRank) < similarRank &&
-            similarRank < max(beforeRank, afterRank)
+    ): List<String> {
+        val low = min(beforeRank, afterRank)
+        val high = max(beforeRank, afterRank)
+        val reasons = ArrayList<String>()
+        for (rung in ladder.orderedRungs) {
+            if (RecordsBase.StudyLadderSettings.alwaysAvailable(rung)) {
+                continue
+            }
+            val rank = ladder.rankForRung(rung)
+            if (rank <= low || rank >= high) {
+                continue
+            }
+            if (ladder.isEnabled(rung) && !availability.isAvailable(rung)) {
+                reasons.add(rung.wireName() + "_unavailable")
+            }
+        }
+        return reasons
     }
 
     private fun movementReason(
@@ -382,7 +397,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             val demoteNow = state.realAgainStreak >= context.settings.ladderDemotionFailStreak ||
                 isFailedPromotionValidation(context)
             if (demoteNow) {
-                val demoted = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                val demoted = StudyLadderRules.demoteRung(state.rung, context.item.rungAvailability(), context.ladder)
                 // Only reset the fail streak when a demotion actually moved the rung. At
                 // the WRITE_KANJI floor demoteRung returns the same rung, so keeping the
                 // streak lets chronically-failing floor cards keep reporting in
@@ -408,7 +423,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
      * where new cards begin.
      */
     private fun isFailedPromotionValidation(context: ReviewContext): Boolean {
-        val startRank = context.ladder.rankForRung(context.ladder.startingRung(context.item.hasSimilarKanji))
+        val startRank = context.ladder.rankForRung(context.ladder.startingRung(context.item.rungAvailability()))
         if (context.ladder.rankForRung(context.rung) <= startRank) {
             return false
         }
@@ -449,7 +464,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                 state.realPassStreak >= context.settings.ladderPromotionMinPasses &&
                 writingRungPromotionAllowed(state)
             ) {
-                val promoted = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
+                val promoted = StudyLadderRules.promoteRung(state.rung, context.item.rungAvailability(), context.ladder)
                 if (promoted != state.rung) {
                     capPromotedRungFirstReview(context, state)
                 }
@@ -650,7 +665,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                 context.learningSettings = learningSettings
                 context.ladder = StudyLadderRules.safeLadder(ladder)
                 context.nowMillis = nowMillis
-                context.rung = context.ladder.effectiveRung(item.rung, item.hasSimilarKanji)
+                context.rung = context.ladder.effectiveRung(item.rung, item.rungAvailability())
                 context.phase = item.phase
                 context.reviewedTaskType = context.rung.wireName()
                 context.previousTaskMemory = context.activeTaskMemory()

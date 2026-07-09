@@ -55,7 +55,7 @@ internal class TargetedStudySessionPolicy {
             false,
             null,
             nowMillis,
-        ).withRung(safeLadder.startingRung(false))
+        ).withRung(safeLadder.startingRung(RecordsBase.RungAvailability.none()))
     }
 
     private fun promptFor(row: RecordsImportModels.DashboardRow): String {

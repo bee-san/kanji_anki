@@ -59,7 +59,7 @@ object AdmissionEvidencePolicy {
         val difficulty = evidenceDifficulty(row)
         if (row != null && isAlreadyReadInContext(row)) {
             return Seed(
-                safeLadder.highestRung(false),
+                safeLadder.highestRung(RecordsBase.RungAvailability.none()),
                 RecordsBase.SchedulerPhase.REVIEW,
                 StudyLadderRules.STATE_REVIEW,
                 evidenceStability(row, safeSettings),
@@ -67,7 +67,7 @@ object AdmissionEvidencePolicy {
             )
         }
         return Seed(
-            safeLadder.startingRung(false),
+            safeLadder.startingRung(RecordsBase.RungAvailability.none()),
             RecordsBase.SchedulerPhase.NEW_LEARNING,
             StudyLadderRules.STATE_NEW,
             PLACEHOLDER_STABILITY,

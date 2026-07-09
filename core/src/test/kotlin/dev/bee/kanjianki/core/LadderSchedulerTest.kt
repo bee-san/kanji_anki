@@ -462,24 +462,24 @@ class LadderSchedulerTest {
         // over it in both directions without pausing.
         val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.TYPE_MEANING,
-                false
+                RecordsBase.RungAvailability.none()
         );
         assertEquals(RecordsBase.LadderRung.WRITE_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.WRITE_KANJI,
-                false
+                RecordsBase.RungAvailability.none()
         );
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, promoted);
 
         // Adjacent moves that never touch SIMILAR_KANJI are unaffected.
         assertEquals(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                BridgeScheduler.demoteRung(RecordsBase.LadderRung.KANJI_MEANING, false)
+                BridgeScheduler.demoteRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.none())
         );
         assertEquals(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                BridgeScheduler.promoteRung(RecordsBase.LadderRung.TYPE_MEANING, false)
+                BridgeScheduler.promoteRung(RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.RungAvailability.none())
         );
     }
 
@@ -489,13 +489,13 @@ class LadderSchedulerTest {
         // (below) and kanji_meaning (above).
         val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.KANJI_MEANING,
-                true
+                RecordsBase.RungAvailability.of(true)
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                true
+                RecordsBase.RungAvailability.of(true)
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, promoted);
     }
@@ -1173,7 +1173,7 @@ class LadderSchedulerTest {
         // from meaning_kanji must chain across both to font_meaning.
         var ladder = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
-        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, false);
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, RecordsBase.RungAvailability.none());
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoted);
     }
 

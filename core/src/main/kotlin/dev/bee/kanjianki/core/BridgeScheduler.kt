@@ -564,28 +564,28 @@ class BridgeScheduler {
         @JvmStatic
         fun promoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean
-        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, hasSimilarKanji)
+            availability: RecordsBase.RungAvailability
+        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, availability)
 
         @JvmStatic
         fun promoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean,
+            availability: RecordsBase.RungAvailability,
             ladder: RecordsBase.StudyLadderSettings?
-        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, hasSimilarKanji, ladder)
+        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, availability, ladder)
 
         @JvmStatic
         fun demoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean
-        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, hasSimilarKanji)
+            availability: RecordsBase.RungAvailability
+        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, availability)
 
         @JvmStatic
         fun demoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean,
+            availability: RecordsBase.RungAvailability,
             ladder: RecordsBase.StudyLadderSettings?
-        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, hasSimilarKanji, ladder)
+        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, availability, ladder)
 
         @JvmStatic
         fun rungsForItem(item: RecordsStudyModels.StudyItem): List<RecordsBase.LadderRung> {

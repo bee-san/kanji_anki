@@ -320,7 +320,7 @@ object LadderHealthPolicy {
                     item.rung(),
                     item.phase(),
                     item.realAgainStreak(),
-                    item.hasSimilarKanji(),
+                    RecordsBase.RungAvailability.of(item.hasSimilarKanji()),
                     ladder,
                     failStreak,
                 )
