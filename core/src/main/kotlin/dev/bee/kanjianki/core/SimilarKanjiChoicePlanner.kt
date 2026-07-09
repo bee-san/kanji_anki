@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import java.util.TreeMap
 import java.util.TreeSet
+import java.util.logging.Logger
 
 class SimilarKanjiChoicePlanner {
     fun buildCandidates(
@@ -170,6 +171,9 @@ class SimilarKanjiChoicePlanner {
             return ArrayList(choices)
         }
 
+        @JvmField
+        val LOGGER: Logger = Logger.getLogger(SimilarKanjiChoicePlanner::class.java.name)
+
         @JvmStatic
         fun choiceCardForSession(
             stored: RecordsImportModels.SimilarKanjiChoiceCard?,
@@ -179,6 +183,15 @@ class SimilarKanjiChoicePlanner {
         ): RecordsImportModels.SimilarKanjiChoiceCard {
             if (stored != null) {
                 return stored
+            }
+            // Goal 69 safety net: with the strengthened hasSimilarKanji predicate
+            // (both pair endpoints in the local inventory), a card that reaches
+            // the similar_kanji rung should always have a pre-built choice state,
+            // so this fallback should be unreachable in practice. Warn if it
+            // fires so a divergence between predicate and planner is caught.
+            LOGGER.warning {
+                "SimilarKanjiChoicePlanner.choiceCardForSession fell back to on-the-fly " +
+                    "choices for '$targetKanji'; expected a pre-built similar-kanji choice state."
             }
             val choices = fallbackChoices(targetKanji, pairs)
             return RecordsImportModels.SimilarKanjiChoiceCard(

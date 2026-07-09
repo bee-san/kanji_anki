@@ -155,15 +155,9 @@ class LadderSchedulerTest {
     @Test
     fun realDuePassPromotesWhenFsrsIntervalExceedsThreshold() {
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        val promoting = scheduler.applyReview(
-                item.withToken("final"),
-                passRequest("裂", "final"),
-                consumed,
-                1000L
-        );
+        val promoting = applyQualifyingPasses(scheduler, item, 2);
 
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoting.item.rung);
         assertEquals("Streak resets on promotion", 0, promoting.item.realPassStreak);
@@ -172,19 +166,12 @@ class LadderSchedulerTest {
     @Test
     fun dueReviewPromotionSkipsDisabledRung() {
         val scheduler = schedulerWithReviewIntervalDays(22);
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
         val ladder = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.FONT_MEANING, false);
 
-        val result = scheduler.applyReview(
-                item.withToken("skip-font"),
-                passRequest("裂", "skip-font"),
-                HashSet<String>(),
-                1000L,
-                null,
-                RecordsSyncModels.Settings.kikuDefaults(),
-                ladder
-        );
+        val result = applyQualifyingPasses(
+                scheduler, item, 2, RecordsSyncModels.Settings.kikuDefaults(), ladder);
 
         assertEquals(RecordsBase.LadderRung.WORD_READING, result.item.rung);
         assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
@@ -214,15 +201,24 @@ class LadderSchedulerTest {
         for (rating in arrayOf("hard", "good", "easy")) {
             val scheduler = schedulerWithReviewIntervalDays(22);
             var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-            val result = scheduler.applyReview(
-                    item.withToken(rating),
-                    RecordsSchedulerModels.ReviewRequest("裂", rating, rating, false, false, false, 0),
-                    HashSet<String>(),
-                    1000L
-            );
+            val consumed = HashSet<String>();
+            var result: RecordsSchedulerModels.ReviewResult? = null
+            // Two qualifying real-due passes clear the default min-pass gate.
+            for (i in 0 until 2) {
+                val due = i.toLong() * 100L * BridgeScheduler.DAY
+                item = item.copyBuilder().dueAtMillis(due)
+                        .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+                result = scheduler.applyReview(
+                        item.withToken(rating + i),
+                        RecordsSchedulerModels.ReviewRequest("裂", rating + i, rating, false, false, false, 0),
+                        consumed,
+                        due + 1000L
+                );
+                item = result.item
+            }
 
             assertEquals("Rating " + rating + " should promote by interval",
-                    RecordsBase.LadderRung.FONT_MEANING, result.item.rung);
+                    RecordsBase.LadderRung.FONT_MEANING, result!!.item.rung);
         }
     }
 
@@ -489,14 +485,16 @@ class LadderSchedulerTest {
 
     @Test
     fun similarRungIncludedWhenAvailable() {
+        // New default order (Goal 65): similar_kanji sits between meaning_kanji
+        // (below) and kanji_meaning (above).
         val demoted = BridgeScheduler.demoteRung(
-                RecordsBase.LadderRung.TYPE_MEANING,
+                RecordsBase.LadderRung.KANJI_MEANING,
                 true
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
-                RecordsBase.LadderRung.WRITE_KANJI,
+                RecordsBase.LadderRung.MEANING_KANJI,
                 true
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, promoted);
@@ -913,8 +911,9 @@ class LadderSchedulerTest {
     @Test
     fun itemRestingOnSimilarKanjiDemotesPastItWhenAvailabilityFlipsFalse() {
         // A card sitting on SIMILAR_KANJI whose hasSimilarKanji becomes false must move
-        // across that rung (down to WRITE_KANJI on a demotion) rather than stall on a
-        // rung it can no longer render.
+        // across that rung rather than stall on a rung it can no longer render. In the
+        // Goal 65 order similar_kanji maps down to meaning_kanji, which then demotes to
+        // type_meaning.
         val scheduler = BridgeScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
@@ -942,8 +941,8 @@ class LadderSchedulerTest {
         }
 
         assertEquals(
-            "Demotion crosses the unavailable SIMILAR_KANJI rung to WRITE_KANJI",
-            RecordsBase.LadderRung.WRITE_KANJI,
+            "Demotion crosses the unavailable SIMILAR_KANJI rung (mapped to meaning_kanji) down to type_meaning",
+            RecordsBase.LadderRung.TYPE_MEANING,
             item.rung,
         )
     }
@@ -1113,14 +1112,9 @@ class LadderSchedulerTest {
     @Test
     fun justOverPromotionThresholdPromotes() {
         val scheduler = schedulerWithReviewIntervalMillis(21L * BridgeScheduler.DAY + 1L);
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        val result = scheduler.applyReview(
-                item.withToken("over"),
-                passRequest("裂", "over"),
-                HashSet<String>(),
-                1000L
-        );
+        val result = applyQualifyingPasses(scheduler, item, 2);
 
         assertEquals("Strictly more than 21 days promotes",
                 RecordsBase.LadderRung.FONT_MEANING, result.item.rung);
@@ -1130,14 +1124,13 @@ class LadderSchedulerTest {
 
     @Test
     fun promotionLandsOnSimilarKanjiWhenAvailable() {
+        // New default order (Goal 65): meaning_kanji promotes into similar_kanji.
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
+        val item = reviewCard("裂", RecordsBase.LadderRung.MEANING_KANJI, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.MEANING_KANJI).build()
                 .withHasSimilarKanji(true);
 
-        val result = scheduler.applyReview(
-                item.withToken("s"), passRequest("裂", "s"), consumed, 1000L);
+        val result = applyQualifyingPasses(scheduler, item, 2);
 
         assertEquals("Promoted to SIMILAR_KANJI when hasSimilarKanji is true",
                 RecordsBase.LadderRung.SIMILAR_KANJI, result.item.rung);
@@ -1145,42 +1138,43 @@ class LadderSchedulerTest {
 
     @Test
     fun promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        // meaning_kanji -> (skip similar_kanji) -> kanji_meaning without content.
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.WRITE_KANJI).build()
+        val item = reviewCard("裂", RecordsBase.LadderRung.MEANING_KANJI, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.MEANING_KANJI).build()
                 .withHasSimilarKanji(false);
 
-        val result = scheduler.applyReview(
-                item.withToken("ns"), passRequest("裂", "ns"), consumed, 1000L);
+        val result = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals("Promoted to TYPE_MEANING, skipping SIMILAR_KANJI",
-                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung);
+        assertEquals("Promoted to KANJI_MEANING, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.KANJI_MEANING, result.item.rung);
     }
 
     @Test
     fun demotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        // New default order (Goal 65): kanji_meaning demotes across the
+        // content-less similar_kanji rung down to meaning_kanji.
         val scheduler = BridgeScheduler();
         val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L)
-                .copyBuilder().rung(RecordsBase.LadderRung.TYPE_MEANING).realAgainStreak(2).build()
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().rung(RecordsBase.LadderRung.KANJI_MEANING).realAgainStreak(2).build()
                 .withHasSimilarKanji(false);
 
         val result = scheduler.applyReview(
                 item.withToken("nd"), failRequest("裂", "nd"), consumed, 1000L);
 
-        assertEquals("Demoted to WRITE_KANJI, skipping SIMILAR_KANJI",
-                RecordsBase.LadderRung.WRITE_KANJI, result.item.rung);
+        assertEquals("Demoted to MEANING_KANJI, skipping SIMILAR_KANJI",
+                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung);
     }
 
     @Test
     fun promotionSkipsChainedDisabledAndUnavailableRungs() {
-        // similar_kanji has no content and type_meaning is disabled: promotion
-        // from write_kanji must chain across both to meaning_kanji.
+        // similar_kanji has no content and kanji_meaning is disabled: promotion
+        // from meaning_kanji must chain across both to font_meaning.
         var ladder = RecordsBase.StudyLadderSettings.defaults()
-                .withRungEnabled(RecordsBase.LadderRung.TYPE_MEANING, false);
-        val promoted = ladder.nextRung(RecordsBase.LadderRung.WRITE_KANJI, false);
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, promoted);
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, false);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoted);
     }
 
     // ---- Custom ladder thresholds ----
@@ -1193,15 +1187,11 @@ class LadderSchedulerTest {
         val thirtyDayThreshold = settingsWithLadderThresholds(30, 3);
         val twentyNineDayThreshold = settingsWithLadderThresholds(29, 3);
 
-        val held = scheduler.applyReview(
-                item.withToken("held"), passRequest("裂", "held"), consumed, 1000L,
-                parameters = null, settings = thirtyDayThreshold, learningSettings = null);
+        val held = applyQualifyingPasses(scheduler, item, 2, thirtyDayThreshold);
         assertEquals("Exactly the custom threshold does not promote",
                 RecordsBase.LadderRung.KANJI_MEANING, held.item.rung);
 
-        val promoted = scheduler.applyReview(
-                item.withToken("promoted"), passRequest("裂", "promoted"), HashSet<String>(), 1000L,
-                parameters = null, settings = twentyNineDayThreshold, learningSettings = null);
+        val promoted = applyQualifyingPasses(scheduler, item, 2, twentyNineDayThreshold);
         assertEquals("Strictly above the custom threshold promotes",
                 RecordsBase.LadderRung.FONT_MEANING, promoted.item.rung);
     }
@@ -1235,6 +1225,333 @@ class LadderSchedulerTest {
                 RecordsBase.LadderRung.MEANING_KANJI, r.item.rung);
     }
 
+    /**
+     * Apply [passes] consecutive qualifying real-due passes to [startItem],
+     * each on a fresh past due slot so every pass counts as real-due evidence.
+     * Used by promotion tests now that a single qualifying pass no longer
+     * promotes under the default `ladderPromotionMinPasses` gate (Goal 63).
+     */
+    private fun applyQualifyingPasses(
+            scheduler: BridgeScheduler,
+            startItem: RecordsStudyModels.StudyItem,
+            passes: Int,
+            settings: RecordsSyncModels.Settings? = null,
+            ladder: RecordsBase.StudyLadderSettings? = null
+    ): RecordsSchedulerModels.ReviewResult {
+        val consumed = HashSet<String>()
+        var item = startItem
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until passes) {
+            val due = i.toLong() * 100L * BridgeScheduler.DAY
+            item = item.copyBuilder()
+                    .dueAtMillis(due)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW)
+                    .state("review")
+                    .build()
+            result = scheduler.applyReview(
+                    item.withToken("qp" + i), passRequest("裂", "qp" + i), consumed, due + 1000L,
+                    null, settings, ladder)
+            item = result.item
+        }
+        return result!!
+    }
+
+    // ---- Goal 63: minimum real-due passes before promotion ----
+
+    @Test
+    fun qualifyingIntervalWithStreakOneDoesNotPromote() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+
+        val first = applyQualifyingPasses(scheduler, item, 1);
+
+        assertEquals("A single qualifying pass does not promote at the default min-pass gate",
+                RecordsBase.LadderRung.KANJI_MEANING, first.item.rung);
+        assertEquals("Pass streak reaches 1 on the first qualifying pass",
+                1, first.item.realPassStreak);
+    }
+
+    @Test
+    fun secondQualifyingPassPromotes() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+
+        val second = applyQualifyingPasses(scheduler, item, 2);
+
+        assertEquals("The second qualifying pass promotes",
+                RecordsBase.LadderRung.FONT_MEANING, second.item.rung);
+        assertEquals("Streak resets on promotion", 0, second.item.realPassStreak);
+    }
+
+    @Test
+    fun ladderPromotionMinPassesClampsToAtLeastOne() {
+        assertEquals("Zero clamps up to 1",
+                1, settingsWithMinPasses(0).ladderPromotionMinPasses);
+        assertEquals("Negative clamps up to 1",
+                1, settingsWithMinPasses(-5).ladderPromotionMinPasses);
+        assertEquals("Default is 2",
+                2, RecordsSyncModels.Settings.kikuDefaults().ladderPromotionMinPasses);
+    }
+
+    @Test
+    fun minPassesOneReproducesLegacySinglePassPromotion() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val legacy = settingsWithMinPasses(1);
+
+        val first = applyQualifyingPasses(scheduler, item, 1, legacy);
+
+        assertEquals("With ladderPromotionMinPasses=1 a single qualifying pass promotes",
+                RecordsBase.LadderRung.FONT_MEANING, first.item.rung);
+    }
+
+    @Test
+    fun demotedMatureCardDoesNotRepromoteOnFirstPass() {
+        // Bounce-back: a formerly-mature card that was just demoted carries
+        // cloned stability above the promotion threshold, but its post-demotion
+        // pass streak restarts at zero, so the first pass must not re-promote.
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val demoted = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().realPassStreak(0).realAgainStreak(0).build();
+
+        val first = applyQualifyingPasses(scheduler, demoted, 1);
+
+        assertEquals("First post-demotion pass does not re-promote",
+                RecordsBase.LadderRung.KANJI_MEANING, first.item.rung);
+        assertEquals(1, first.item.realPassStreak);
+    }
+
+    // ---- Goal 70: demotion first-review cap with empty relearning steps ----
+
+    private fun emptyRelearningSteps(): RecordsSchedulerModels.LearningStepSettings {
+        return RecordsSchedulerModels.LearningStepSettings(
+                RecordsSchedulerModels.LearningStepSettings.defaultNewSteps(),
+                emptyList<Int?>())
+    }
+
+    @Test
+    fun demotionWithEmptyRelearningCapsFirstReviewToOneDay() {
+        // A large FSRS post-lapse interval (30d fake) would otherwise leave the
+        // newly demoted, more-scaffolded rung unpracticed for weeks. With empty
+        // relearning steps the demotion caps the first review to <= now + 1 day.
+        val scheduler = schedulerWithReviewIntervalDays(30);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().realAgainStreak(DEFAULT_THRESHOLD - 1).build()
+        val now = 100L * BridgeScheduler.DAY
+        item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+
+        val result = scheduler.applyReview(
+                item.withToken("d"), failRequest("裂", "d"), consumed, now,
+                null, RecordsSyncModels.Settings.kikuDefaults(), emptyRelearningSteps())
+
+        assertEquals("Third real-due again demotes the rung",
+                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung)
+        assertTrue("Demoted rung's first review is capped to <= now + 1 day",
+                result.item.dueAtMillis <= now + BridgeScheduler.DAY)
+    }
+
+    @Test
+    fun nonDemotingAgainWithEmptyRelearningKeepsPostLapseInterval() {
+        // A single (non-demoting) again with empty relearning steps must still
+        // reschedule from the pure FSRS post-lapse interval (G8 behavior), i.e.
+        // the cap only applies when the demotion actually moves the rung.
+        val scheduler = schedulerWithReviewIntervalDays(30);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+        val now = 100L * BridgeScheduler.DAY
+        item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+
+        val result = scheduler.applyReview(
+                item.withToken("a"), failRequest("裂", "a"), consumed, now,
+                null, RecordsSyncModels.Settings.kikuDefaults(), emptyRelearningSteps())
+
+        assertEquals("A single again does not demote", RecordsBase.LadderRung.KANJI_MEANING, result.item.rung)
+        assertEquals("Pure FSRS post-lapse interval is preserved (not capped)",
+                now + 30L * BridgeScheduler.DAY, result.item.dueAtMillis)
+    }
+
+    // ---- Goal 67: clean-write gate to leave write_kanji ----
+
+    private fun writeKanjiCard(writingLevel: Int, realPassStreak: Int): RecordsStudyModels.StudyItem {
+        return reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder()
+                .rung(RecordsBase.LadderRung.WRITE_KANJI)
+                .writingLevel(writingLevel)
+                .realPassStreak(realPassStreak)
+                .build()
+    }
+
+    private fun cleanWriteRequest(token: String): RecordsSchedulerModels.ReviewRequest {
+        // writingRequired, writingPassed, writingClean, manualOverride=false, hintsUsed=0
+        return RecordsSchedulerModels.ReviewRequest(
+                "裂", token, "good", true, true, true, false, 0)
+    }
+
+    private fun closeWriteRequest(token: String): RecordsSchedulerModels.ReviewRequest {
+        // A messy-but-passing ("Save hard") attempt: passed but not clean.
+        return RecordsSchedulerModels.ReviewRequest(
+                "裂", token, "hard", true, true, false, false, 0)
+    }
+
+    @Test
+    fun closePassChainDoesNotPromoteOutOfWriteKanjiWithoutCleanWrites() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        // Start with writingLevel 1 and a primed pass streak; a CLOSE pass keeps
+        // the level below 2 even though the interval and min-pass gates are met.
+        var item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until 3) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("c" + i), closeWriteRequest("c" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + 100L * 86_400_000L)
+        }
+        assertEquals("A chain of messy CLOSE passes never promotes off write_kanji",
+                RecordsBase.LadderRung.WRITE_KANJI, result!!.item.rung)
+        assertTrue("writingLevel stays below the promotion floor",
+                result.item.writingLevel < 2)
+    }
+
+    @Test
+    fun cleanWritesPromoteOutOfWriteKanji() {
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val consumed = HashSet<String>();
+        // writingLevel 1 + one clean hint-free pass reaches level 2 and, with the
+        // min-pass gate already primed, promotes.
+        var item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
+        val result = scheduler.applyReview(
+                item.withToken("clean"), cleanWriteRequest("clean"), consumed, 1000L)
+
+        assertEquals("Clean hint-free writing promotes off write_kanji",
+                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung)
+        assertTrue("writingLevel reached the promotion floor",
+                result.item.writingLevel >= 2)
+    }
+
+    @Test
+    fun writingLevelDoesNotBlockNonWritingRungPromotion() {
+        // A non-writing rung with writingLevel 0 still promotes normally.
+        val scheduler = schedulerWithReviewIntervalDays(22);
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().writingLevel(0).build()
+
+        val result = applyQualifyingPasses(scheduler, item, 2)
+
+        assertEquals("writingLevel is irrelevant off the write_kanji rung",
+                RecordsBase.LadderRung.FONT_MEANING, result.item.rung)
+    }
+
+    // ---- Goal 65: default reorder reaches similar_kanji in one demotion step ----
+
+    @Test
+    fun firstDemotionReachesSimilarKanjiWhenContentExists() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(true)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until DEFAULT_THRESHOLD) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("a" + i), failRequest("裂", "a" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + DEFAULT_THRESHOLD * 86_400_000L)
+        }
+        assertEquals("Starting rung demotes to similar_kanji in one demotion step when content exists",
+                RecordsBase.LadderRung.SIMILAR_KANJI, result!!.item.rung)
+    }
+
+    @Test
+    fun firstDemotionSkipsSimilarKanjiToMeaningKanjiWithoutContent() {
+        val scheduler = BridgeScheduler();
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(false)
+        var now = 1000L
+        var result: RecordsSchedulerModels.ReviewResult? = null
+        for (i in 0 until DEFAULT_THRESHOLD) {
+            item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+            result = scheduler.applyReview(
+                    item.withToken("a" + i), failRequest("裂", "a" + i), consumed, now)
+            item = result.item
+            now = Math.max(item.dueAtMillis, now + DEFAULT_THRESHOLD * 86_400_000L)
+        }
+        assertEquals("Without similar-kanji content the first demotion skips to meaning_kanji",
+                RecordsBase.LadderRung.MEANING_KANJI, result!!.item.rung)
+    }
+
+    // ---- Goal 64: retention-independent promotion trigger (D4) ----
+
+    @Test
+    fun promotionDecisionIsIdenticalAcrossTargetRetentions() {
+        // Same memory state reviewed at 0.80 / 0.90 / 0.95 must produce the same
+        // promotion decision even though the scheduled due dates differ, because
+        // promotion keys off the fixed-0.90 memory-strength interval, not the
+        // retention-scaled scheduled interval.
+        val now = 200L * BridgeScheduler.DAY
+        val rungs = HashSet<RecordsBase.LadderRung>()
+        val dueDates = HashSet<Long>()
+        for (retention in doubleArrayOf(0.80, 0.90, 0.95)) {
+            // High stability so the 0.90-equivalent interval clears the 21-day
+            // promotion threshold; primed streak so a single pass can promote.
+            val item = RecordsStudyModels.StudyItem(
+                    "裂", "review", now, 60.0, 5.0, 1, 0, 2, 1, 0, 0, 0L, false, null, 0L)
+                    .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW)
+                    .copyBuilder()
+                    .stability(60.0)
+                    .difficulty(5.0)
+                    .matureIntervalDays(60)
+                    .realPassStreak(1)
+                    .build()
+            val result = BridgeScheduler().applyReview(
+                    item.withToken("r"), passRequest("裂", "r"), HashSet<String>(), now,
+                    RecordsSchedulerModels.SchedulerParameters(retention))
+            rungs.add(result.item.rung)
+            dueDates.add(result.item.dueAtMillis)
+        }
+        assertEquals("All retentions promote to the same rung", 1, rungs.size)
+        assertEquals("Promotion lands on FONT_MEANING at every retention",
+                RecordsBase.LadderRung.FONT_MEANING, rungs.first())
+        // The capped promotion due (7 days) is retention-independent too, so
+        // due dates coincide; the un-promoted path would differ, so this also
+        // guards that all three actually promoted.
+        assertEquals("Capped promoted due is identical across retentions",
+                1, dueDates.size)
+    }
+
+    @Test
+    fun lowRetentionDoesNotPromoteWeakMemoryThatNinetyWouldReject() {
+        // A memory whose 0.90-equivalent interval is at/below threshold must not
+        // promote even at a low retention that inflates the scheduled interval
+        // past 21 days. This is the core of D4: retention cannot buy promotion.
+        val now = 200L * BridgeScheduler.DAY
+        val weak = RecordsStudyModels.StudyItem(
+                "裂", "review", now, 12.0, 5.0, 1, 0, 2, 1, 0, 0, 0L, false, null, 0L)
+                .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW)
+                .copyBuilder()
+                .stability(12.0)
+                .difficulty(5.0)
+                .matureIntervalDays(12)
+                .realPassStreak(1)
+                .build()
+        val lowRetention = BridgeScheduler().applyReview(
+                weak.withToken("low"), passRequest("裂", "low"), HashSet<String>(), now,
+                RecordsSchedulerModels.SchedulerParameters(0.70))
+
+        assertEquals("A weak memory does not promote even at low retention",
+                RecordsBase.LadderRung.KANJI_MEANING, lowRetention.item.rung)
+    }
+
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
         return schedulerWithReviewIntervalMillis(intervalDays * BridgeScheduler.DAY);
     }
@@ -1243,7 +1560,15 @@ class LadderSchedulerTest {
         return BridgeScheduler(FixedIntervalFsrsAdapter(intervalMillis));
     }
 
+    private fun settingsWithMinPasses(minPasses: Int): RecordsSyncModels.Settings {
+        return settingsWithLadderThresholds(21, 3, minPasses)
+    }
+
     private fun settingsWithLadderThresholds(promotionDays: Int, failStreak: Int): RecordsSyncModels.Settings {
+        return settingsWithLadderThresholds(promotionDays, failStreak, RecordsBase.DEFAULT_LADDER_PROMOTION_MIN_PASSES)
+    }
+
+    private fun settingsWithLadderThresholds(promotionDays: Int, failStreak: Int, minPasses: Int): RecordsSyncModels.Settings {
         return RecordsSyncModels.Settings(
                 "Kiku",
                 "Mining",
@@ -1274,7 +1599,8 @@ class LadderSchedulerTest {
                 "",
                 RecordsBase.DEFAULT_NEW_CARD_SORT_MODE,
                 promotionDays,
-                failStreak
+                failStreak,
+                minPasses
         );
     }
 

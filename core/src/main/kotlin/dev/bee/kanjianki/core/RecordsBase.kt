@@ -12,9 +12,14 @@ import kotlin.math.min
 abstract class RecordsBase protected constructor() {
     /**
      * Ladder rungs that a study item can be on. User settings own the active
-     * low-to-high order; enum order is retained for storage compatibility.
-     * New cards start near [KANJI_MEANING]. The [SIMILAR_KANJI] rung is
-     * included only when `hasSimilarKanji` is true for the card.
+     * order; enum order is retained for storage compatibility. The ladder is a
+     * scaffolding gradient, not a difficulty gradient: the bottom rungs offer
+     * the most support and deliberate practice (guided handwriting), the top
+     * rungs the least (raw contextual reading). Demotion adds scaffolding;
+     * promotion removes it (design properties P9/P10, see
+     * docs/ladder-and-srs-system.md §13). New cards start near [KANJI_MEANING].
+     * The [SIMILAR_KANJI] rung is included only when `hasSimilarKanji` is true
+     * for the card.
      */
     enum class LadderRung(private val wireNameValue: String) {
         WRITE_KANJI("write_kanji"),
@@ -328,11 +333,19 @@ abstract class RecordsBase protected constructor() {
             }
 
             private fun defaultsOrder(): List<LadderRung> {
+                // Ordered by scaffolding depth, most-supported to least-supported
+                // (see docs/ladder-and-srs-system.md §3, design properties P9/P10).
+                // similar_kanji sits directly below kanji_meaning (the new-card
+                // start) so the first demotion reaches discrimination practice —
+                // the app's signature remediation — after one demotion step
+                // (ladder_demotion_fail_streak fails) for cards that have
+                // confusion data, instead of three steps (Goal 65). Cards
+                // without similar-kanji content skip over it to meaning_kanji.
                 return listOf(
                     LadderRung.WRITE_KANJI,
-                    LadderRung.SIMILAR_KANJI,
                     LadderRung.TYPE_MEANING,
                     LadderRung.MEANING_KANJI,
+                    LadderRung.SIMILAR_KANJI,
                     LadderRung.KANJI_MEANING,
                     LadderRung.FONT_MEANING,
                     LadderRung.WORD_READING,
@@ -387,6 +400,7 @@ abstract class RecordsBase protected constructor() {
         const val DEFAULT_REAL_DUE_REVIEWS_TO_MOVE: Int = 3
         const val DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS: Int = 21
         const val DEFAULT_LADDER_DEMOTION_FAIL_STREAK: Int = 3
+        const val DEFAULT_LADDER_PROMOTION_MIN_PASSES: Int = 2
         const val DEFAULT_SUSPENDED_RANK_MIN: Int = 100
         const val DEFAULT_SUSPENDED_RANK_MAX: Int = 3000
         const val DEFAULT_IMPORT_ACTIVE_CARDS: Boolean = false

@@ -60,13 +60,23 @@ and also the in-memory "family key" (`StudyQueueSeeder.familyKey`,
   `learningStep`.
 - Ladder state: `rung` (`LadderRung`), `phase` (`SchedulerPhase`),
   `realPassStreak`, `realAgainStreak`, `lastRealReviewDueAtMillis`.
+  `realPassStreak` counts consecutive real-due passes on the current rung and
+  gates promotion (`>= ladderPromotionMinPasses`, Goal 63; it also feeds UI
+  progress display and repair-evidence reporting). `realAgainStreak` counts
+  consecutive real-due fails and drives demotion; at the floor it keeps
+  accumulating (see §7) so `LadderHealthPolicy` can report chronic failers.
 - Writing: `writingLevel` (0–3), `writingRemediationPending` (legacy flag,
   kept in sync with `rung == WRITE_KANJI`).
 - Seven per-rung `TaskMemory` slots (see 2.2).
 - `hasSimilarKanji`: **derived, never persisted.** Recomputed at read time
-  from the `similar_kanji_pairs` table
-  (`app/.../data/LocalStoreInventory.kt:378-398`, query at `:452`:
-  `SELECT kanji_a FROM similar_kanji_pairs UNION SELECT kanji_b ...`).
+  from the `similar_kanji_pairs` table by `kanjiWithSimilarNeighbors`, which
+  (Goal 69) counts a kanji only when it participates in a pair whose **both**
+  endpoints are present in the local `kanji_inventory` — the same source-set
+  rule the choice planner uses (`SimilarKanjiChoicePlanner.validPair`). This
+  guarantees a renderable ≥2-choice card exists, so the predicate and the
+  renderer cannot diverge and a plain flashcard exercise is never recorded
+  into `similar_kanji_memory`. A pair whose partner is absent from the
+  inventory no longer marks the kanji as having similar content.
 - `answerSignature`: normalized `kanji|expression|reading|meaning` of the
   preferred source example (`StudyQueueSeeder.answerSignature`,
   `StudyQueueSeeder.kt:507-528`). Changing it materially resets the item
@@ -117,26 +127,39 @@ Unknown wire names decode to `NEW_LEARNING` with a warning (`:349-360`).
 `RecordsBase.LadderRung` (`RecordsBase.kt:19-48`), wire names:
 `write_kanji`, `type_meaning`, `similar_kanji`, `meaning_kanji`,
 `kanji_meaning`, `font_meaning`, `word_reading`. Enum order is storage
-compatibility only; the *user-editable ladder order* is what defines
-low-to-high. Unknown wire names decode to `KANJI_MEANING` with a warning.
+compatibility only; the *user-editable ladder order* is what defines the
+scaffolding gradient (most-scaffolded bottom → least-scaffolded top).
+Unknown wire names decode to `KANJI_MEANING` with a warning.
 
 ---
 
 ## 3. Ladder Configuration (`StudyLadderSettings`)
 
-`RecordsBase.kt:50-332`. Holds two lists: `orderedRungs` (low → high) and
-`enabledRungs`.
+`RecordsBase.kt`. Holds two lists: `orderedRungs` (most-scaffolded bottom →
+least-scaffolded top) and `enabledRungs`. The order is a **scaffolding
+gradient, not a difficulty gradient** (P9): the bottom rung (`write_kanji`) is
+the most *supported* — guided handwriting with hints and stroke guides — and
+also the most *demanding* skill, while the top rung (`word_reading`) offers
+the least support. Demotion adds scaffolding; promotion removes it. See §13
+for P9/P10.
 
-Default order (`defaultsOrder()`, `:310-320`), lowest/easiest to
-highest/hardest:
+Default order (`defaultsOrder()`), most-scaffolded (bottom) to
+least-scaffolded (top):
 
 1. `write_kanji`
-2. `similar_kanji`
-3. `type_meaning`
-4. `meaning_kanji`
+2. `type_meaning`
+3. `meaning_kanji`
+4. `similar_kanji`
 5. `kanji_meaning`
 6. `font_meaning`
 7. `word_reading`
+
+`similar_kanji` sits directly below `kanji_meaning`, the new-card start rung
+(Goal 65), so the first demotion reaches discrimination practice in one
+demotion step for cards with confusion data (or skips over it to
+`meaning_kanji` for cards without). Only fresh installs and stored configs
+that lack `similar_kanji` are affected; an existing stored order round-trips
+unchanged (`storedFullOrderRoundTripsUnchanged`).
 
 **All seven rungs are enabled by default** (`defaultsEnabled()`, `:322`),
 including `meaning_kanji` (the AGENTS.md claim that it was off by
@@ -157,7 +180,8 @@ Invariants and behaviors:
   rung is invalid for the item (disabled, or `similar_kanji` without
   content), walk outward by distance in the ordered list, checking the
   lower neighbor before the higher one at each distance — i.e. ties prefer
-  the easier rung. Every read path (session selection, review application)
+  the more-scaffolded (lower) neighbor. Every read path (session selection,
+  review application)
   passes items through this via `StudyLadderRules.alignRungToLadder`.
 - **`nextRung`/`previousRung`** (`:171-193`): scan up/down the ordered list
   for the next *valid-for-this-item* rung; return the current effective rung
@@ -191,7 +215,7 @@ Session `taskType` is always derived from the item's rung
 four-way switch is `MainActivityStudy.renderSession`
 (`app/.../MainActivityStudy.kt:130-137`).
 
-### 4.1 `write_kanji` — handwriting production (lowest rung / demotion floor)
+### 4.1 `write_kanji` — handwriting production (most-scaffolded rung / demotion floor)
 
 - **Memory slot**: `writing_remediation_memory`.
 - **UI**: `MainActivityStudyWritingSession.kt` builds a `DrawingPadView`
@@ -214,12 +238,21 @@ four-way switch is `MainActivityStudy.renderSession`
   rating at `WritingRatingMapper.maxAllowedRating` (confidence < 0.72 or
   hints used → at most `hard`).
 - **`writingLevel`** (0–3) rises on clean, hint-free passes and falls on
-  fails (`ReviewTransitionEngine.updateWritingLevel`, `:372-381`); it seeds
+  fails (`ReviewTransitionEngine.updateWritingLevel`); it seeds
   the initial hint level for future writing sessions
-  (`WritingHintPolicy.initialHintState`).
+  (`WritingHintPolicy.initialHintState`) **and gates leaving the rung**
+  (Goal 67): promotion off `write_kanji` additionally requires
+  `writingLevel >= 2`, so a chain of messy `CLOSE`/"Save hard" passes that
+  meets the interval and min-pass gates still cannot promote production out
+  of the writing rung without at least one clean, hint-free write. The
+  blocked non-move records `promotion_blocked_writing_level`.
+  `updateWritingLevel` runs before the ladder transition so the gate sees
+  the current attempt's effect (behavior-neutral for non-writing rungs).
 - **Ladder role**: demotion floor. `previousRung` at index 0 returns the
-  same rung; further `Again`s keep the card here (streak resets each time
-  the demotion threshold fires).
+  same rung; further `Again`s keep the card here. The fail streak **keeps
+  accumulating** at the floor (only an actual rung move resets it), so
+  chronically-failing floor cards keep reporting to `LadderHealthPolicy`
+  (`demotionReady`/`stuck`) instead of silently resetting to zero.
 - **Priority**: any item on this rung sorts into the top due-priority
   bucket (`duePriority`, `StudySessionSelector.kt:461-469`).
 
@@ -227,18 +260,22 @@ four-way switch is `MainActivityStudy.renderSession`
 
 - **Memory slot**: `similar_kanji_memory`.
 - **Availability**: exists per-card only while `hasSimilarKanji` is true,
-  i.e. the kanji appears in `similar_kanji_pairs` (index pairs limited to
-  local inventory, plus confusion pairs mined from wrong picks in
-  `similar_kanji_review_log`;
-  `LocalStoreSimilarKanjiMaintenance.kt:14-94`). When false, promotion and
-  demotion skip this rung without pausing.
+  i.e. the kanji participates in a `similar_kanji_pairs` row whose both
+  endpoints are in the local `kanji_inventory` (Goal 69 — a renderable
+  ≥2-choice card provably exists; pairs come from index pairs limited to
+  local inventory plus confusion pairs mined from wrong picks in
+  `similar_kanji_review_log`; `LocalStoreSimilarKanjiMaintenance.kt`). When
+  false, promotion and demotion skip this rung without pausing.
 - **UI**: `MainActivityStudyChoiceSessions.prepareSimilarKanjiRender`
   (invoked from `renderSimilarKanjiSession`) — a 2-column glyph grid of
   visually similar kanji built by `SimilarKanjiChoicePlanner`, with an
   "Explore the differences" explanation screen. Store/dictionary reads run
   on the background executor; only the returned render thunk touches the
   UI. If fewer than 2 choices can be produced, it falls back to the
-  flashcard renderer while keeping the `similar_kanji` task type. A correct
+  flashcard renderer while keeping the `similar_kanji` task type; with the
+  Goal 69 buildability predicate this fallback should be unreachable in
+  practice and `SimilarKanjiChoicePlanner.choiceCardForSession` logs a
+  warning if it fires. A correct
   tap submits immediately; a wrong tap freezes the grid with red (pressed)
   / green (correct) feedback and waits for an explicit Continue tap before
   submitting (`SimilarChoiceSessionState`,
@@ -287,7 +324,7 @@ four-way switch is `MainActivityStudy.renderSession`
   `random()`), to break reliance on one typeface's shapes.
 - **Legacy mapping**: `recognition_stage = 1`.
 
-### 4.7 `word_reading` — contextual reading (highest rung / promotion ceiling)
+### 4.7 `word_reading` — contextual reading (least-scaffolded rung / promotion ceiling)
 
 - **Memory slot**: `word_reading_memory`.
 - **UI**: flashcard whose hero is the whole source word (44sp) with the
@@ -296,6 +333,19 @@ four-way switch is `MainActivityStudy.renderSession`
   source word).
 - **Ladder role**: promotion ceiling; further passes keep the card here.
 - **Legacy mapping**: `recognition_stage = 2`.
+- **The meaning→reading seam.** Rungs 1–6 all test *meaning* knowledge in
+  some form; `word_reading` switches the tested dimension to *pronunciation*.
+  This is deliberate: `word_reading` is the **contextual exit check** — the
+  card demonstrates it can be read in a real word before it leaves the
+  ladder's active practice. A reading lapse demotes back into
+  `font_meaning` (more *meaning* practice), which does not directly
+  remediate a reading miss; that is accepted because Kani remediates
+  recognition, not readings, and true retirement is Anki-evidence-driven
+  (P1: retirement fires on Anki-side `matureSupportCount`, not the ladder
+  ceiling). Goal 63's min-pass gate guarantees `word_reading` is validated
+  more than once before it is treated as passed. A reading-focused rung or
+  failure-dimension tracking is an explicit non-goal (see §14) unless the
+  product direction changes.
 
 ### 4.8 Rating boundary summary
 
@@ -442,29 +492,52 @@ study-ahead answers, and targeted (not-due) sessions update FSRS memory but
 never move the ladder.
 
 - **Promotion** (`applyReviewPass`): on a real-due pass,
-  `realAgainStreak = 0`, `realPassStreak++`; if the FSRS result schedules
-  strictly more than `ladderPromotionIntervalDays` (default **21**) into
-  the future (`promotesByFsrsInterval`, `intervalMillis > days * DAY`),
-  the rung moves up via `StudyLadderRules.promoteRung` and both streaks
-  reset. When the rung actually changes, the newly promoted rung's first
-  review is capped at `max(1, promotionDays / 3)` days (7 at the default
-  21) — `capPromotedRungFirstReview` — so the new skill is validated soon
-  after unlocking. At the ceiling (`word_reading`) `nextRung` returns the
-  same rung and no cap applies.
+  `realAgainStreak = 0`, `realPassStreak++`; the rung moves up only when
+  **both** gates are satisfied:
+  1. the retention-independent memory-strength interval schedules strictly
+     more than `ladderPromotionIntervalDays` (default **21**) into the
+     future (`promotesByMemoryStrength`,
+     `promotionIntervalMillis > days * DAY`, where `promotionIntervalMillis`
+     is computed at a fixed 0.90 retention so progression speed does not
+     track the user's retention setting — closed decision D4), and
+  2. `realPassStreak >= ladderPromotionMinPasses` (default **2**) — at
+     least that many real-due passes have accumulated on the current rung.
+  When both hold, the rung moves up via `StudyLadderRules.promoteRung` and
+  both streaks reset. The min-pass gate means each rung earns at least two
+  due-review credits before the ladder retires its practice, so a mature
+  card no longer cascades up two rungs in two reviews after the 7-day
+  promotion cap clones above-threshold stability onto the new rung. Setting
+  `ladderPromotionMinPasses = 1` reproduces the pre-gate single-pass
+  behavior. The gate also resolves the bounce-back idea I5: a freshly
+  demoted card restarts its streak at 0 and cannot re-promote on its first
+  post-demotion pass. When the rung actually changes, the newly promoted
+  rung's first review is capped at `max(1, promotionDays / 3)` days (7 at
+  the default 21) — `capPromotedRungFirstReview` — so the new skill is
+  validated soon after unlocking. At the ceiling (`word_reading`)
+  `nextRung` returns the same rung and no cap applies. When the interval
+  qualifies but the min-pass gate blocks the move, the trace records
+  `promotion_blocked_min_passes`. On the `write_kanji` rung a third gate
+  applies: promotion additionally requires `writingLevel >= 2` (Goal 67),
+  so messy `CLOSE`/"Save hard" passes cannot promote production off the
+  writing rung without a clean, hint-free write; the blocked non-move
+  records `promotion_blocked_writing_level`.
 - **Demotion** (`applyReviewAgain`, `:320-329`): on a real-due `again`,
   `realPassStreak = 0`, `realAgainStreak++`; when the streak reaches
   `ladderDemotionFailStreak` (default **3**), the rung moves down via
-  `demoteRung` and both streaks reset. At the floor (`write_kanji`)
+  `demoteRung` and both streaks reset. The streak reset happens **only when a
+  demotion actually moves the rung**. At the floor (`write_kanji`)
   `previousRung` returns the same rung, so the card stays and the streak
-  keeps resetting every N fails.
+  keeps accumulating (it does not reset every N fails), letting chronically-
+  failing floor cards keep reporting to `LadderHealthPolicy`.
 - **Pass/fail semantics**: `hard`, `good`, `easy` all count as a pass for
   streaks; only `again` is a fail (AGENTS.md contract, implemented by the
   branch structure itself).
 - **Settings**: `ladder_promotion_interval_days`,
-  `ladder_demotion_fail_streak` (`SyncSettings.kt:19-21`, `:67-78`;
-  defaults in `RecordsBase.kt:368-369`; both clamped to ≥ 1). The demotion
-  key falls back to the older `real_due_reviews_to_move` value for
-  pre-ladder installs.
+  `ladder_demotion_fail_streak`, `ladder_promotion_min_passes`
+  (`SyncSettings.kt`; defaults in `RecordsBase.kt`; all clamped to ≥ 1).
+  The demotion key falls back to the older `real_due_reviews_to_move`
+  value for pre-ladder installs; `ladder_promotion_min_passes` defaults
+  to **2** and has no settings UI yet.
 
 ### 7.1 Task-memory hand-off on movement
 
@@ -479,8 +552,13 @@ Consequences:
   memory, and its first due is capped at one third of the promotion
   threshold (resolved Gap G5).
 - After a demotion, the lower rung inherits the failing rung's post-lapse
-  memory and the relearning due (~10 minutes), so the easier skill is
-  practiced immediately.
+  memory. With relearning steps configured the relearning due (~10 minutes)
+  practices the more-scaffolded skill immediately; with an **empty**
+  relearning list the lapse would otherwise reschedule from the FSRS
+  post-lapse interval (days out), so `capDemotedRungFirstReview` (Goal 70)
+  caps the demoted rung's first review at one day. Either way the
+  more-scaffolded skill is practiced soon, no longer depending on the
+  relearning-steps setting.
 - Per-rung memories are therefore *seeded from* other rungs rather than
   strictly independent (deliberate continuity; see open decision D3).
 
@@ -489,8 +567,11 @@ Consequences:
 - `LadderHealthPolicy.summarize` (`core/.../LadderHealthPolicy.kt`)
   aggregates rung distribution plus `promotionReady`
   (`matureIntervalDays > promotionDays`), `demotionRisk`
-  (`realAgainStreak > 0`), `demotionReady` (`streak >= failStreak`) over
-  non-retired items.
+  (`realAgainStreak > 0`), `demotionReady` (`streak >= failStreak`), and
+  `stuck` (`StuckCardPolicy.isStuck`: a REVIEW-phase card on its per-item
+  demotion floor with `realAgainStreak >= 2 * failStreak`, Goal 68) over
+  non-retired items. `stuckCount` surfaces on the ladder-health stats card
+  and drives the kanji-detail "STUCK" chip.
 - `debugTraceApplyReview` / `debugTraceNextSession`
   (`ReviewTransitionEngine.kt:33-51`, `StudySessionSelector.kt:42-91`)
   emit `SchedulerDecisionTrace` records with movement reason codes
@@ -727,6 +808,22 @@ values left behind by the removed sibling-suppression layer
    names default safely).
 5. **Auditability.** Every review stores full before/after scheduler state;
    decision traces exist for both selection and application.
+6. **P9 — The ladder is a scaffolding gradient, not a difficulty gradient.**
+   Bottom = maximum support and deliberate practice (guided handwriting with
+   hints and stroke guides); top = minimum support and contextual use (raw
+   word reading). Demotion adds scaffolding; promotion removes it. Describing
+   `write_kanji` as the low or easy end of the ladder is misleading —
+   production is the most *demanding* skill; it is the most *supported* rung.
+   Prefer
+   scaffolding language ("most-scaffolded rung", "the more-scaffolded
+   neighbor") over easier/harder throughout code, docs, and settings copy.
+7. **P10 — Grading objectivity decreases as trust increases.** Bottom rungs
+   grade objectively (ML-Kit ink evaluation, forced-choice correctness,
+   typed-answer matching); top rungs are self-graded reveal cards
+   (`kanji_meaning`, `font_meaning`, `word_reading`). The ladder hands
+   grading back to the learner as the card earns trust; movement rules
+   should not undermine this (e.g. the clean-write exit gate, Goal 67,
+   keeps objective evidence in charge of leaving `write_kanji`).
 
 ---
 
@@ -801,35 +898,65 @@ were resolved by the follow-up change set on this branch; items marked
   `hard` producer. Exposing Hard on flashcard rungs would be cheap if the
   product ever wants finer-grained FSRS signal.
 - **D2 (was G9) — New-learning graduation seeds FSRS from the graduating
-  rating only.** A card that needed several `again`s in learning graduates
-  with the same initial memory as one that passed immediately. Reference
-  FSRS derives initial state from the first rating and evolves it through
-  same-day reviews. Changing this alters every early interval and needs a
-  golden/parity experiment before adoption.
+  rating only. (Experiment run — Goal 74; rejected for now.)** A card that
+  needed several `again`s in learning graduates with the same initial memory
+  as one that passed immediately. The Goal 74 experiment
+  (`GraduationHistoryExperimentTest`, write-up in
+  `docs/scheduler-fsrs-correctness-lab-report.md`) confirmed the current path
+  is struggle-blind (every corpus → 2-day first interval) but found the naive
+  FSRS same-day history chain over-corrects (one `Again` collapses graduating
+  stability to ~0.25, five to ~0.01), discarding the graduating rating and
+  blurring the learning/review boundary. Deferred pending a *tempered*
+  variant; production behavior unchanged, harness retained.
 - **D3 (was part of G5) — Cross-rung memory cloning.** Movement clones the
   reviewed rung's memory into the destination rung (plus the item-level
   fallback for empty memories). This is deliberate scheduling continuity,
   now paired with the promotion cap; strictly independent per-rung
   evidence remains a possible future direction.
-- **D4 (was G12) — Promotion speed is coupled to target retention.**
-  Promotion fires on the *scheduled interval* (> threshold days), and the
-  interval scales with desired retention (retention 0.80 ≈ 3.3x stability,
-  0.95 ≈ 0.4x at the default decay). The interval-based contract is
-  explicitly pinned by `LadderSchedulerTest` (exact/just-over threshold
-  tests with injected fixed-interval adapters) and is the documented
-  AGENTS.md behavior: the ladder promotes when the card actually leaves
-  circulation for more than the threshold. A stability-normalized gate
-  (promote when the 90%-retention-equivalent interval, i.e. rounded
-  stability, exceeds the threshold) would decouple progression from the
-  retention setting and is identical at the 0.90 default; adopting it is a
-  contract change that should be made deliberately, with the tests and
-  AGENTS.md updated together.
+- **D4 (was G12) — Promotion speed is coupled to target retention.
+  (Closed by Goal 64.)** Promotion previously fired on the *scheduled
+  interval* (> threshold days), which scales with desired retention
+  (0.80 ≈ 3.3x stability, 0.95 ≈ 0.4x at the default decay), so tuning
+  retention silently tuned ladder progression speed. *Resolution:*
+  promotion now keys off a retention-independent memory-strength interval —
+  `KaniFsrsReviewResult.promotionIntervalMillis`, computed by the adapter
+  at a fixed 0.90 retention (`LatestFsrsAdapter.promotionIntervalDays`) —
+  compared in `promotesByMemoryStrength`. At the 0.90 default the decision
+  is identical to before, so all goldens are byte-identical; at other
+  retentions the promotion decision is unchanged even though due dates
+  differ. Pinned by
+  `LadderSchedulerTest.promotionDecisionIsIdenticalAcrossTargetRetentions`
+  and `lowRetentionDoesNotPromoteWeakMemoryThatNinetyWouldReject`.
 - **D5 (was G13) — Positional vararg constructors are a refactor hazard.**
   `StudyItem` accepts 5/9/13/17/18/19/25/26 trailing args with meaning
   decided by count; `Settings` and `ReviewRequest` use the same pattern.
   The builder exists — migrating remaining constructor call sites and
   freezing the shapes is a mechanical but broad refactor, deferred to keep
   this change reviewable.
+- **D6 (Goal 68) — Parking chronically-stuck floor cards.** Phase 1 (landed)
+  detects stuck cards — `StuckCardPolicy.isStuck`: a `REVIEW`-phase card on
+  its per-item demotion floor whose `realAgainStreak` has reached twice the
+  demotion threshold — surfaces the count on the ladder-health stats card
+  (`stuckCount`) and a "STUCK" chip on the kanji detail screen suggesting
+  mnemonic work. Phase 2 (parking) is a **deferred product decision**:
+  whether to add a user-initiated "pause this kanji" that sets a new `parked`
+  flag excluded from selection and admission counting (schema change, DB
+  v26), or to reuse AnkiDroid-side manual suspension. It must **not** silently
+  reuse `retired`, which has seeder reopen semantics
+  (`StudyQueueSeeder.canReopenRetiredSeedItem`) that user intent must not
+  fight. Parking implementation becomes its own follow-up goal with schema
+  criteria once the direction is chosen.
+
+### Non-goals
+
+- **The meaning→reading seam at `word_reading` (Goal 72).** The top rung
+  switches the tested dimension from meaning to pronunciation and a reading
+  lapse demotes back into meaning practice. This is intentional:
+  `word_reading` is the contextual exit check, Kani remediates recognition
+  (not readings), and true retirement is Anki-evidence-driven (P1). A
+  reading-focused rung or per-dimension failure tracking is an explicit
+  non-goal unless the product direction changes. Documented in §4.7 and the
+  AGENTS.md ladder notes.
 
 ### Improvement ideas (non-defect)
 
@@ -845,11 +972,12 @@ were resolved by the follow-up change set on this branch; items marked
   whole days, so any same-day second review takes the FSRS short-term
   branch regardless of hour spacing; acceptable, but worth noting if
   sub-day scheduling is ever added.
-- **I5 — Demotion bounce-back guard.** Demotion clones the failing rung's
-  post-lapse memory into the lower rung; for a formerly mature card, one
-  subsequent real-due pass can produce an FSRS interval above the
-  promotion threshold and bounce the card straight back up (now onto a
-  capped first review). If that bounce proves unwanted, require a minimum
-  number of real-due passes on the demoted rung before promotion
-  eligibility (`realPassStreak` already counts them). Verify either way
-  with `SchedulerTimelineSimulator`.
+- **I5 — Demotion bounce-back guard. (Resolved by Goal 63.)** Demotion
+  clones the failing rung's post-lapse memory into the lower rung; for a
+  formerly mature card this used to let one subsequent real-due pass bounce
+  the card straight back up. The `ladderPromotionMinPasses` gate (default
+  2) now requires at least that many real-due passes on the current rung
+  before promotion, and a demotion resets `realPassStreak` to 0, so the
+  first post-demotion pass can no longer re-promote. Pinned by
+  `LadderSchedulerTest.demotedMatureCardDoesNotRepromoteOnFirstPass` and
+  the `promotionRequiresSecondRealDuePass` golden.

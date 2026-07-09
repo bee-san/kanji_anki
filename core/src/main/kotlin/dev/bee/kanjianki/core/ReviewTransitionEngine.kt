@@ -23,8 +23,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             application.nowMillis
         )
         val state = ReviewState.from(context)
-        applyLadderTransition(context, state)
+        // Update the writing level before the ladder transition so the
+        // write_kanji promotion gate (Goal 67) can see the current attempt's
+        // effect. The reorder is behavior-neutral for every non-writing path;
+        // only the write_kanji promotion condition reads writingLevel.
         updateWritingLevel(context, state)
+        applyLadderTransition(context, state)
         val result = RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
         // Consume the idempotency token only after the review has fully applied, so a
         // failure mid-apply leaves the token unconsumed and the retry is not rejected as
@@ -112,6 +116,19 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
                 reasons.add("similar_kanji_unavailable")
             }
+        } else if (afterRank == beforeRank &&
+            beforePhase == RecordsBase.SchedulerPhase.REVIEW &&
+            StudyRatings.AGAIN != result.appliedRating &&
+            intervalQualifiesForPromotion(application, result)
+        ) {
+            if (beforeRung == RecordsBase.LadderRung.WRITE_KANJI &&
+                result.item.writingLevel < WRITE_KANJI_PROMOTION_MIN_LEVEL
+            ) {
+                reasons.add("promotion_blocked_writing_level")
+            }
+            if (promotionBlockedByMinPasses(application, result)) {
+                reasons.add("promotion_blocked_min_passes")
+            }
         } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
             reasons.add("real_again_streak_threshold")
             if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
@@ -119,6 +136,25 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             }
         }
         return reasons
+    }
+
+    private fun intervalQualifiesForPromotion(
+        application: BridgeScheduler.ReviewApplication,
+        result: RecordsSchedulerModels.ReviewResult,
+    ): Boolean {
+        // Diagnostic approximation for trace reason codes: the persisted
+        // matureIntervalDays is the scheduled interval (equal to the
+        // promotion-strength interval at the default 0.90 retention).
+        val settings = application.settings ?: RecordsSyncModels.Settings.kikuDefaults()
+        return result.item.matureIntervalDays > max(1, settings.ladderPromotionIntervalDays)
+    }
+
+    private fun promotionBlockedByMinPasses(
+        application: BridgeScheduler.ReviewApplication,
+        result: RecordsSchedulerModels.ReviewResult,
+    ): Boolean {
+        val settings = application.settings ?: RecordsSyncModels.Settings.kikuDefaults()
+        return result.item.realPassStreak < settings.ladderPromotionMinPasses
     }
 
     private fun skipsSimilarRungWithoutContent(
@@ -355,6 +391,9 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                     state.rung = demoted
                     state.realAgainStreak = 0
                     state.realPassStreak = 0
+                    if (relearning.isEmpty()) {
+                        capDemotedRungFirstReview(context, state)
+                    }
                 }
             }
         }
@@ -400,7 +439,16 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realAgainStreak = 0
             state.realPassStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
-            if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays)) {
+            // A single qualifying interval is thin evidence that a distinct rung
+            // skill is retired: after the 7-day promotion cap a promoted rung
+            // inherits cloned stability above the threshold, so its very first
+            // pass would re-promote. Require `ladderPromotionMinPasses` real-due
+            // passes on the current rung so each skill earns at least that many
+            // due-review credits before the ladder removes its practice.
+            if (promotesByMemoryStrength(result, context.settings.ladderPromotionIntervalDays) &&
+                state.realPassStreak >= context.settings.ladderPromotionMinPasses &&
+                writingRungPromotionAllowed(state)
+            ) {
                 val promoted = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
                 if (promoted != state.rung) {
                     capPromotedRungFirstReview(context, state)
@@ -410,6 +458,22 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                 state.realAgainStreak = 0
             }
         }
+    }
+
+    /**
+     * A card may only leave the write_kanji rung once it has demonstrated
+     * clean, hint-free handwriting: `writingLevel` rises only on clean
+     * hint-free passes (`updateWritingLevel`) and falls on failures, so
+     * requiring `writingLevel >= WRITE_KANJI_PROMOTION_MIN_LEVEL` (2) blocks a
+     * chain of messy `CLOSE`/"Save hard" passes from promoting production out
+     * of the writing rung without a clean write (Goal 67). Non-writing rungs
+     * are unaffected.
+     */
+    private fun writingRungPromotionAllowed(state: ReviewState): Boolean {
+        if (state.rung != RecordsBase.LadderRung.WRITE_KANJI) {
+            return true
+        }
+        return state.writingLevel >= WRITE_KANJI_PROMOTION_MIN_LEVEL
     }
 
     /**
@@ -427,8 +491,34 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         }
     }
 
-    private fun promotesByFsrsInterval(result: KaniFsrsReviewResult, promotionDays: Int): Boolean {
-        return result.intervalMillis > max(1, promotionDays).toLong() * StudyLadderRules.DAY
+    /**
+     * Demotion moves the card to a more-scaffolded rung, which doc §7.1 sells
+     * as "the easier skill is practiced immediately" via the ~10-minute
+     * relearning due. With an empty relearning list the lapse reschedules from
+     * the FSRS post-lapse interval instead (days out), so the promise silently
+     * depended on configuration. Mirror the promotion cap on the demotion side
+     * (Goal 70): when a demotion actually moves the rung and no relearning step
+     * will deliver the near-term practice, cap the first review of the newly
+     * demoted rung at one day. With relearning steps configured the ~10-minute
+     * step already delivers the promise and this cap is not applied.
+     */
+    private fun capDemotedRungFirstReview(context: ReviewContext, state: ReviewState) {
+        val capMillis = context.nowMillis + DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS * StudyLadderRules.DAY
+        if (state.due > capMillis) {
+            state.due = capMillis
+            state.scheduledIntervalDays = min(state.scheduledIntervalDays, DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS)
+        }
+    }
+
+    /**
+     * Promotion keys off the memory strength expressed as a fixed-0.90
+     * retention interval, not the user-facing scheduled interval, so the
+     * retention setting does not silently tune ladder progression speed
+     * (Goal 64 / closed decision D4). At the 0.90 default this is identical
+     * to the scheduled interval.
+     */
+    private fun promotesByMemoryStrength(result: KaniFsrsReviewResult, promotionDays: Int): Boolean {
+        return result.promotionIntervalMillis > max(1, promotionDays).toLong() * StudyLadderRules.DAY
     }
 
     private fun countsAsRealDue(context: ReviewContext, state: ReviewState): Boolean {
@@ -643,5 +733,18 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
          * first-review cap for a freshly promoted rung.
          */
         private const val PROMOTED_RUNG_FIRST_REVIEW_DIVISOR = 3
+
+        /**
+         * Minimum `writingLevel` (net clean, hint-free passes, 0-3) required to
+         * promote off the write_kanji rung (Goal 67).
+         */
+        private const val WRITE_KANJI_PROMOTION_MIN_LEVEL = 2
+
+        /**
+         * Cap (in days) applied to a demoted rung's first review when the
+         * relearning list is empty, so the more-scaffolded skill is still
+         * practiced soon (Goal 70).
+         */
+        private const val DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS = 1
     }
 }

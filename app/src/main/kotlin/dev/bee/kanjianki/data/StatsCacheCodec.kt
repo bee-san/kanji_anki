@@ -392,6 +392,7 @@ object StatsCacheCodec {
             .put("promotionReadyCount", metric.promotionReadyCount)
             .put("demotionRiskCount", metric.demotionRiskCount)
             .put("demotionReadyCount", metric.demotionReadyCount)
+            .put("stuckCount", metric.stuckCount)
     }
 
     private fun ladderHealthFromJson(json: JSONObject?): StudyStatsStore.LadderHealthMetric {
@@ -405,7 +406,8 @@ object StatsCacheCodec {
             json.optInt("ladderDemotionFailStreak", 0),
             json.optInt("promotionReadyCount", 0),
             json.optInt("demotionRiskCount", 0),
-            json.optInt("demotionReadyCount", 0)
+            json.optInt("demotionReadyCount", 0),
+            json.optInt("stuckCount", 0)
         )
     }
 

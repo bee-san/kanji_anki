@@ -130,22 +130,29 @@ assertFalse(equalsNonPoint);
 The study scheduler is centered on a single ladder state machine, not on side
 queues. Every persisted study item has exactly one current rung and one phase.
 
-Default ladder order from lowest to highest rung:
+Default ladder order from most-scaffolded (bottom) to least-scaffolded (top)
+rung:
 
 1. `write_kanji`
-2. `similar_kanji`
-3. `type_meaning`
-4. `meaning_kanji`
+2. `type_meaning`
+3. `meaning_kanji`
+4. `similar_kanji`
 5. `kanji_meaning`
 6. `font_meaning`
 7. `word_reading`
+
+`similar_kanji` sits directly below `kanji_meaning` (the new-card start rung)
+so the first demotion reaches discrimination practice — the app's signature
+remediation — in one demotion step for cards that have confusion data, instead
+of three (Goal 65). This only affects fresh installs and stored configs that
+lack `similar_kanji`; a user's stored order is preserved verbatim.
 
 `meaning_kanji` is present in the editable default order and, like every other
 rung, is enabled by default (stored configurations that predate the rung also
 get it auto-enabled on load).
 Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
-rung, preferring the lower/easier rung when the distance ties. The
+rung, preferring the lower/more-scaffolded rung when the distance ties. The
 `similar_kanji` rung exists only when the app can produce valid similar-kanji
 content for that card (the `hasSimilarKanji` predicate is answered by the
 `similar_kanji_pairs` table). When the predicate is false, promotion and
@@ -171,8 +178,19 @@ any learning-repeat queue.
 
 Ladder movement uses real FSRS due-review evidence, not learning-repeat
 practice. A due-review `Hard`, `Good`, or `Easy` promotes the rung only when
-the FSRS result schedules the next review strictly more than
-`ladder_promotion_interval_days` into the future (default 21 days). A
+**both** hold: the card's memory strength — measured as the interval it
+would schedule at a fixed 0.90 target retention, not the user's actual
+retention-scaled interval — is strictly more than
+`ladder_promotion_interval_days` (default 21 days), and the
+card has accumulated at least `ladder_promotion_min_passes` real-due passes
+on its current rung (default 2). Keying promotion off the fixed-0.90
+interval means changing the retention setting no longer silently changes
+ladder progression speed (closed decision D4). The min-pass gate stops a mature card from
+cascading up two rungs in two reviews after the promotion cap clones
+above-threshold stability onto the newly promoted rung, and it guards against
+demotion bounce-back (a demotion resets the pass streak to 0, so the first
+post-demotion pass cannot re-promote). Setting `ladder_promotion_min_passes`
+to 1 reproduces the pre-gate single-pass promotion. A
 due-review `Again` increments a consecutive fail streak and demotes the rung
 when it reaches `ladder_demotion_fail_streak` (default 3 fails). At
 `write_kanji` the demotion floor is reached and further `Again`s keep the
@@ -191,7 +209,12 @@ where new cards begin.
 On a due review `Again`, the card enters `relearning` at step 0 if
 relearning steps exist. If relearning steps are empty, the card skips
 relearning and is rescheduled straight from the FSRS post-lapse memory
-state, matching Anki's FSRS behavior.
+state, matching Anki's FSRS behavior. One exception preserves the
+"practiced soon" promise of demotion (Goal 70): when a due `Again` both
+demotes the rung AND the relearning list is empty, the newly demoted rung's
+first review is capped at one day (`capDemotedRungFirstReview`), mirroring
+the promotion first-review cap. A non-demoting `Again` with empty relearning
+steps keeps the pure FSRS post-lapse interval unchanged.
 
 When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
@@ -259,6 +282,16 @@ parity decision and golden-timeline regeneration.
 
 `hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
 A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.
+Leaving the `write_kanji` rung additionally requires clean-write evidence
+(Goal 67): promotion off `write_kanji` fires only when `writingLevel >= 2`
+(two net clean, hint-free passes; `writingLevel` rises only on clean hint-free
+passes and falls on failures via `updateWritingLevel`). A chain of messy
+`CLOSE`/"Save hard" passes therefore cannot promote production out of the
+writing rung without at least one clean write, even once the interval and
+min-pass gates are met. The blocked non-move records
+`promotion_blocked_writing_level` in the trace. `updateWritingLevel` runs
+before the ladder transition so the gate sees the current attempt; this
+reorder is behavior-neutral for every non-writing rung.
 The demotion fail-streak resets only when a demotion actually moves the rung;
 at the `write_kanji` floor (where demotion cannot move) the streak keeps
 accumulating so chronically-failing floor cards keep reporting to
@@ -267,6 +300,15 @@ accumulating so chronically-failing floor cards keep reporting to
 The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;
 only `again` counts as a fail.
+
+The top rung (`word_reading`) switches the tested dimension from meaning to
+pronunciation. This is deliberate: it is the contextual exit check — a card
+proves it can be read in a real word before leaving active ladder practice.
+A reading lapse deliberately demotes back through the meaning rungs because
+Kani remediates recognition, not readings, and true retirement remains
+Anki-evidence-driven (retirement fires on Anki-side `matureSupportCount`, not
+the ladder ceiling). A reading-focused rung or failure-dimension tracking is
+an explicit non-goal.
 
 Study UI renders one current rung at a time. Rung rendering:
 

@@ -148,6 +148,7 @@ class SyncSettingsCoverageTest {
         assertEquals(defaults.realDueReviewsToMove, settings.realDueReviewsToMove)
         assertEquals(defaults.ladderPromotionIntervalDays, settings.ladderPromotionIntervalDays)
         assertEquals(defaults.ladderDemotionFailStreak, settings.ladderDemotionFailStreak)
+        assertEquals(defaults.ladderPromotionMinPasses, settings.ladderPromotionMinPasses)
     }
 
     private fun assertDefaultImportSettings(

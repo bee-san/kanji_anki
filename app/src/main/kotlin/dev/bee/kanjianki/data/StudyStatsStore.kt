@@ -222,6 +222,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         @JvmField val promotionReadyCount: Int
         @JvmField val demotionRiskCount: Int
         @JvmField val demotionReadyCount: Int
+        @JvmField val stuckCount: Int
 
         constructor(
             rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
@@ -237,7 +238,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             realDueReviewsToMove,
             promotionReadyCount,
             demotionRiskCount,
-            demotionReadyCount
+            demotionReadyCount,
+            0
         )
 
         constructor(
@@ -248,6 +250,26 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             promotionReadyCount: Int,
             demotionRiskCount: Int,
             demotionReadyCount: Int,
+        ) : this(
+            rungCounts,
+            totalActiveItems,
+            ladderPromotionIntervalDays,
+            ladderDemotionFailStreak,
+            promotionReadyCount,
+            demotionRiskCount,
+            demotionReadyCount,
+            0
+        )
+
+        constructor(
+            rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
+            totalActiveItems: Int,
+            ladderPromotionIntervalDays: Int,
+            ladderDemotionFailStreak: Int,
+            promotionReadyCount: Int,
+            demotionRiskCount: Int,
+            demotionReadyCount: Int,
+            stuckCount: Int,
         ) {
             val normalized = emptyRungDistribution().toMutableMap()
             if (rungCounts != null) {
@@ -266,6 +288,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             this.promotionReadyCount = promotionReadyCount.coerceAtLeast(0)
             this.demotionRiskCount = demotionRiskCount.coerceAtLeast(0)
             this.demotionReadyCount = demotionReadyCount.coerceAtLeast(0)
+            this.stuckCount = stuckCount.coerceAtLeast(0)
         }
 
         fun countFor(rung: RecordsBase.LadderRung?): Int {
@@ -281,6 +304,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                     0,
                     defaults.ladderPromotionIntervalDays,
                     defaults.ladderDemotionFailStreak,
+                    0,
                     0,
                     0,
                     0
@@ -453,6 +477,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         @JvmField val realPassStreak: Int
         @JvmField val realAgainStreak: Int
         @JvmField val matureIntervalDays: Int
+        @JvmField val hasSimilarKanji: Boolean
 
         constructor(
             state: String?,
@@ -460,7 +485,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             phase: RecordsBase.SchedulerPhase?,
             realPassStreak: Int,
             realAgainStreak: Int,
-        ) : this(state, rung, phase, realPassStreak, realAgainStreak, 0)
+        ) : this(state, rung, phase, realPassStreak, realAgainStreak, 0, false)
 
         constructor(
             state: String?,
@@ -469,6 +494,16 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             realPassStreak: Int,
             realAgainStreak: Int,
             matureIntervalDays: Int,
+        ) : this(state, rung, phase, realPassStreak, realAgainStreak, matureIntervalDays, false)
+
+        constructor(
+            state: String?,
+            rung: RecordsBase.LadderRung?,
+            phase: RecordsBase.SchedulerPhase?,
+            realPassStreak: Int,
+            realAgainStreak: Int,
+            matureIntervalDays: Int,
+            hasSimilarKanji: Boolean,
         ) {
             this.state = state ?: ""
             this.rung = rung ?: RecordsBase.LadderRung.KANJI_MEANING
@@ -476,6 +511,7 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             this.realPassStreak = realPassStreak.coerceAtLeast(0)
             this.realAgainStreak = realAgainStreak.coerceAtLeast(0)
             this.matureIntervalDays = matureIntervalDays.coerceAtLeast(0)
+            this.hasSimilarKanji = hasSimilarKanji
         }
 
         fun state(): String = state
@@ -489,6 +525,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         fun realAgainStreak(): Int = realAgainStreak
 
         fun matureIntervalDays(): Int = matureIntervalDays
+
+        fun hasSimilarKanji(): Boolean = hasSimilarKanji
     }
 
     companion object {
@@ -574,7 +612,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                             item.phase,
                             item.realPassStreak,
                             item.realAgainStreak,
-                            item.matureIntervalDays
+                            item.matureIntervalDays,
+                            item.hasSimilarKanji
                         )
                     }
                 )
@@ -591,7 +630,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                 safeMetric.ladderDemotionFailStreak(),
                 safeMetric.promotionReadyCount(),
                 safeMetric.demotionRiskCount(),
-                safeMetric.demotionReadyCount()
+                safeMetric.demotionReadyCount(),
+                safeMetric.stuckCount()
             )
         }
 
@@ -675,7 +715,8 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                 metric.ladderDemotionFailStreak,
                 metric.promotionReadyCount,
                 metric.demotionRiskCount,
-                metric.demotionReadyCount
+                metric.demotionReadyCount,
+                metric.stuckCount
             )
         }
 

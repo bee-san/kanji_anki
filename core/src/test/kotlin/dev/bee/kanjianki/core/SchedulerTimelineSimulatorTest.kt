@@ -37,6 +37,15 @@ class SchedulerTimelineSimulatorTest {
             startMillis = START,
         )
 
+        // First qualifying pass: the interval qualifies but the min-pass gate
+        // (default 2) blocks promotion, so the rung holds.
+        simulator.nextSession()
+        val firstAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, firstAnswer.snapshot!!.rung)
+        assertTrue(firstAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        // Second qualifying pass on a fresh due slot promotes.
+        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
         simulator.nextSession()
         val answer = simulator.answer("good")
 
@@ -46,6 +55,40 @@ class SchedulerTimelineSimulatorTest {
         assertTrue(answer.trace.transition!!.reasonCodes.contains("review_pass_fsrs_interval"))
         assertTrue(answer.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
         assertGolden("reviewPassPromotesAfterLongFsrsInterval", simulator.renderText())
+    }
+
+    @Test
+    fun promotionRequiresSecondRealDuePassMatchesGoldenTimeline() {
+        // Anti-cascade (Goal 63): a mature card no longer climbs two rungs in two
+        // reviews. Each rung requires two real-due passes; the first is blocked.
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(22),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val firstAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, firstAnswer.snapshot!!.rung)
+        assertEquals(1, firstAnswer.snapshot!!.realPassStreak)
+        assertEquals("rung_unchanged", firstAnswer.trace.transition!!.movementReason)
+        assertTrue(firstAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val secondAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, secondAnswer.snapshot!!.rung)
+
+        // A third pass on the newly promoted rung is again blocked: FONT_MEANING
+        // does not immediately cascade up to WORD_READING on its first pass.
+        simulator.advanceTo(secondAnswer.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val thirdAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, thirdAnswer.snapshot!!.rung)
+        assertTrue(thirdAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        assertGolden("promotionRequiresSecondRealDuePass", simulator.renderText())
     }
 
     @Test
@@ -76,8 +119,92 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun writeKanjiExitRequiresCleanWritesMatchesGoldenTimeline() {
+        // Goal 67: a messy CLOSE ("Save hard") pass whose interval and min-pass
+        // gates both qualify still does not promote off write_kanji; only a
+        // clean, hint-free write (writingLevel >= 2) does.
+        val writing = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, START)
+            .copyBuilder()
+            .writingLevel(1)
+            .realPassStreak(1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(22),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(writing),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val close = simulator.answerWriting("hard", passed = true, clean = false, hintsUsed = 0)
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, close.snapshot!!.rung)
+        assertTrue(close.trace.transition!!.reasonCodes.contains("promotion_blocked_writing_level"))
+
+        simulator.advanceTo(close.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val clean = simulator.answerWriting("good", passed = true, clean = true, hintsUsed = 0)
+        assertEquals(RecordsBase.LadderRung.TYPE_MEANING, clean.snapshot!!.rung)
+        assertEquals("fsrs_interval_promotes", clean.trace.transition!!.movementReason)
+
+        assertGolden("writeKanjiExitRequiresCleanWrites", simulator.renderText())
+    }
+
+    @Test
+    fun demotionWithEmptyRelearningStepsMatchesGoldenTimeline() {
+        // Goal 70: with empty relearning steps, a demoting third `again` whose
+        // FSRS post-lapse interval is large (30d fake) is capped to now + 1 day
+        // so the newly demoted, more-scaffolded rung is practiced soon.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(30),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+            learningSettings = noRelearningSteps(),
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, answer.snapshot!!.rung)
+        assertTrue("Demoted first review capped to <= 1 day",
+            answer.snapshot!!.dueAtMillis - START <= BridgeScheduler.DAY)
+        assertGolden("demotionWithEmptyRelearningSteps", simulator.renderText())
+    }
+
+    @Test
+    fun ceilingCardDemotesOneRungWhenColdMatchesGoldenTimeline() {
+        // Goal 66 (rejected deep-demotion): pins the current single-step
+        // demotion from the word_reading ceiling. A ceiling card that goes cold
+        // demotes exactly one rung (to font_meaning) per fail-streak, not two.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+            learningSettings = noRelearningSteps(),
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, answer.snapshot!!.rung)
+        assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
+        assertGolden("ceilingCardDemotesOneRungWhenCold", simulator.renderText())
+    }
+
+    @Test
     fun similarKanjiSkippedWithoutContentMatchesGoldenTimeline() {
-        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.TYPE_MEANING, START)
+        // New default order (Goal 65): kanji_meaning demotes across the
+        // content-less similar_kanji rung to meaning_kanji, recording the skip.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
             .copyBuilder()
             .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
             .build()
@@ -91,7 +218,7 @@ class SchedulerTimelineSimulatorTest {
         simulator.nextSession()
         val answer = simulator.answer("again")
 
-        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, answer.snapshot!!.rung)
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, answer.snapshot!!.rung)
         assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
         assertTrue(answer.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
         assertGolden("similarKanjiSkippedWithoutContent", simulator.renderText())

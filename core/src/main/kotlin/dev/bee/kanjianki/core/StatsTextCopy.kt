@@ -239,6 +239,7 @@ object StatsTextCopy {
     }
 
     @JvmStatic
+    @JvmOverloads
     fun ladderHealthBody(
         totalActiveItems: Int,
         promotionReadyCount: Int,
@@ -246,6 +247,7 @@ object StatsTextCopy {
         demotionReadyCount: Int,
         ladderPromotionIntervalDays: Int,
         ladderDemotionFailStreak: Int,
+        stuckCount: Int = 0,
     ): String {
         if (isJapaneseLocale()) {
             if (totalActiveItems == 0) {
@@ -262,6 +264,9 @@ object StatsTextCopy {
                     " · " + StudyTextCopy.countText(demotionReadyCount, "ready to fall", "ready to fall"),
                     " · 降格待ち${demotionReadyCount}件",
                 )
+            }
+            if (stuckCount > 0) {
+                body += " · 停滞${stuckCount}件"
             }
             return body + "。${ladderPromotionIntervalDays}日を超えたら昇格。${ladderDemotionFailStreak}回のミスで降格。"
         }
@@ -286,6 +291,9 @@ object StatsTextCopy {
                     "ready to fall",
                     "ready to fall",
                 )
+        }
+        if (stuckCount > 0) {
+            body += " · " + StudyTextCopy.countText(stuckCount, "stuck", "stuck")
         }
         return body +
             ". Climb after more than " +

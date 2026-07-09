@@ -19,6 +19,7 @@ internal object SyncSettings {
     const val REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY = "real_due_reviews_to_move"
     const val LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY = "ladder_promotion_interval_days"
     const val LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY = "ladder_demotion_fail_streak"
+    const val LADDER_PROMOTION_MIN_PASSES_SETTING_KEY = "ladder_promotion_min_passes"
     const val IMPORT_ACTIVE_CARDS_SETTING_KEY = "import_active_cards"
     const val IMPORT_SUSPENDED_CARDS_SETTING_KEY = "import_suspended_cards"
     const val IMPORT_TAGGED_CARDS_SETTING_KEY = "import_tagged_cards"
@@ -77,6 +78,10 @@ internal object SyncSettings {
             LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
             store.getIntSetting(REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, defaults.ladderDemotionFailStreak),
         ) ?: defaults.ladderDemotionFailStreak
+        val ladderPromotionMinPasses = store?.getIntSetting(
+            LADDER_PROMOTION_MIN_PASSES_SETTING_KEY,
+            defaults.ladderPromotionMinPasses,
+        ) ?: defaults.ladderPromotionMinPasses
         val importActiveCards = boolSetting(store, IMPORT_ACTIVE_CARDS_SETTING_KEY, defaults.importActiveCards)
         val importSuspendedCards = boolSetting(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY, defaults.importSuspendedCards)
         val importTaggedCards = boolSetting(store, IMPORT_TAGGED_CARDS_SETTING_KEY, defaults.importTaggedCards)
@@ -147,6 +152,7 @@ internal object SyncSettings {
             RecordsSyncModels.Settings.normalizeNewCardSortMode(newCardSortMode),
             ladderPromotionIntervalDays,
             ladderDemotionFailStreak,
+            ladderPromotionMinPasses,
         )
     }
 

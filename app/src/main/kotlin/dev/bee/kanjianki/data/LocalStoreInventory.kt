@@ -473,9 +473,24 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     fun kanjiWithSimilarNeighbors(db: SQLiteDatabase): Set<String> {
         cachedKanjiWithSimilarNeighbors?.let { return it }
 
+        // Goal 69: a kanji has a *buildable* similar-kanji card only when it
+        // participates in a pair whose BOTH endpoints are present in the local
+        // kanji inventory the choice planner draws from — i.e. the planner's
+        // minimum input (the answer plus at least one valid distractor = two
+        // choices) provably exists. This mirrors
+        // SimilarKanjiChoicePlanner.validPair / SimilarKanjiIndex.pairsWithin
+        // (both endpoints in the glyph set) so the hasSimilarKanji predicate and
+        // the renderer cannot diverge: a pair whose partner is absent from the
+        // inventory no longer marks the kanji as having similar content, which
+        // would otherwise record a plain flashcard exercise into
+        // similar_kanji_memory.
+        val bothInInventory =
+            "$COLUMN_KANJI_A IN (SELECT $COLUMN_KANJI FROM $TABLE_KANJI_INVENTORY) AND " +
+                "$COLUMN_KANJI_B IN (SELECT $COLUMN_KANJI FROM $TABLE_KANJI_INVENTORY)"
         val out = HashSet<String>()
         db.rawQuery(
-            "SELECT kanji_a FROM $TABLE_SIMILAR_KANJI_PAIRS UNION SELECT kanji_b FROM $TABLE_SIMILAR_KANJI_PAIRS",
+            "SELECT $COLUMN_KANJI_A FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE $bothInInventory " +
+                "UNION SELECT $COLUMN_KANJI_B FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE $bothInInventory",
             null,
         ).use { cursor ->
             while (cursor.moveToNext()) {

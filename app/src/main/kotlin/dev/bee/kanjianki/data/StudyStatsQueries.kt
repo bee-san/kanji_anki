@@ -267,9 +267,14 @@ internal class StudyStatsQueries(
     }
 
     private fun ladderItems(db: SQLiteDatabase): List<StudyStatsStore.LadderItemEvidence> {
+        // hasSimilarKanji is derived (Goal 69: both pair endpoints in inventory),
+        // so the stuck-floor detection (Goal 68) needs the per-item availability
+        // to compute the correct demotion floor.
+        val withSimilar = store.kanjiWithSimilarNeighbors(db)
         val cursor = db.query(
             TABLE_STUDY_ITEMS,
             arrayOf(
+                LocalStoreBase.COLUMN_KANJI,
                 LocalStoreBase.COLUMN_STATE,
                 LocalStoreBase.COLUMN_RUNG,
                 LocalStoreBase.COLUMN_PHASE,
@@ -293,7 +298,8 @@ internal class StudyStatsQueries(
                         RecordsBase.SchedulerPhase.fromWireName(string(it, LocalStoreBase.COLUMN_PHASE)),
                         integer(it, LocalStoreBase.COLUMN_REAL_PASS_STREAK),
                         integer(it, LocalStoreBase.COLUMN_REAL_AGAIN_STREAK),
-                        integer(it, LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS)
+                        integer(it, LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS),
+                        withSimilar.contains(string(it, LocalStoreBase.COLUMN_KANJI))
                     )
                 )
             }

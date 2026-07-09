@@ -362,6 +362,21 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun browseDetailIdentityCarriesStuckChipBadge() {
+        // Goal 68: the identity model can carry a STUCK badge alongside others.
+        val coral = 0xFFFF4C76.toInt()
+        val stuck = BrowseStateBadgeModel(dev.bee.kanjianki.core.HomeTextCopy.stuckChipLabel(), coral)
+        val model = BrowseDetailIdentityModel(
+            title = "split",
+            reading = "レツ",
+            stateBadges = listOf(stuck),
+        )
+
+        assertEquals(1, model.stateBadges.size)
+        assertEquals(dev.bee.kanjianki.core.HomeTextCopy.stuckChipLabel(), model.stateBadges.single().label)
+    }
+
+    @Test
     fun syncResultModelKeepsPrimaryAndSecondaryActions() {
         val coral = 0xFFFF4C76.toInt()
         val teal = 0xFF00AEB5.toInt()
