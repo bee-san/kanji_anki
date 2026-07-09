@@ -500,6 +500,37 @@ class LadderSchedulerTest {
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, promoted);
     }
 
+    @Test
+    fun kanjiReadingRungSkippedWhenUnavailable() {
+        // hasKanjiReading=false: word_reading demotes across the content-less
+        // kanji_reading rung straight to font_meaning, and font_meaning promotes
+        // straight to word_reading.
+        val none = RecordsBase.RungAvailability.none()
+        assertEquals(
+            RecordsBase.LadderRung.FONT_MEANING,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.WORD_READING, none),
+        )
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            BridgeScheduler.promoteRung(RecordsBase.LadderRung.FONT_MEANING, none),
+        )
+    }
+
+    @Test
+    fun kanjiReadingRungIncludedWhenAvailable() {
+        // hasKanjiReading=true: word_reading demotes into kanji_reading and
+        // font_meaning promotes into it.
+        val withReading = RecordsBase.RungAvailability.of(false, true)
+        assertEquals(
+            RecordsBase.LadderRung.KANJI_READING,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.WORD_READING, withReading),
+        )
+        assertEquals(
+            RecordsBase.LadderRung.KANJI_READING,
+            BridgeScheduler.promoteRung(RecordsBase.LadderRung.FONT_MEANING, withReading),
+        )
+    }
+
     // ---- Streak mechanics ----
 
     @Test

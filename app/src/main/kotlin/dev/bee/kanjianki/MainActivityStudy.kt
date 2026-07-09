@@ -159,6 +159,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             }
             StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session)
             StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session)
+            StudySessionRoute.Destination.KANJI_READING -> choiceSessions.prepareKanjiReadingRender(session)
             StudySessionRoute.Destination.FLASHCARD -> {
                 warmSessionDictionaryEntry(session)
                 val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session) }

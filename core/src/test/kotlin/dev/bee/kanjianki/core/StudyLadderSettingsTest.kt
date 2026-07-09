@@ -10,16 +10,19 @@ class StudyLadderSettingsTest {
     fun defaultsExposeEditableLadderOrder() {
         val ladder = RecordsBase.StudyLadderSettings.defaults()
 
-        // Goal 65 default order: write_kanji, type_meaning, meaning_kanji,
-        // similar_kanji, kanji_meaning, font_meaning, word_reading.
+        // Goal 78 default order: write_kanji, type_meaning, meaning_kanji,
+        // similar_kanji, kanji_meaning, font_meaning, kanji_reading,
+        // word_reading.
         assertEquals(RecordsBase.LadderRung.WRITE_KANJI, ladder.orderedRungs[0])
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, ladder.orderedRungs[1])
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, ladder.orderedRungs[2])
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.orderedRungs[3])
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[4])
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.orderedRungs[5])
-        assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[6])
+        assertEquals(RecordsBase.LadderRung.KANJI_READING, ladder.orderedRungs[6])
+        assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[7])
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.MEANING_KANJI))
+        assertTrue(ladder.isEnabled(RecordsBase.LadderRung.KANJI_READING))
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.startingRung(RecordsBase.RungAvailability.of(true)))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.WORD_READING))
     }
@@ -100,11 +103,24 @@ class StudyLadderSettingsTest {
     }
 
     @Test
-    fun storedFullOrderRoundTripsUnchanged() {
-        // A user's stored order (all seven rungs, e.g. the pre-Goal-65 default)
-        // is preserved verbatim; only fresh installs and configs missing rungs
-        // are affected by the default reorder.
+    fun storedFullOrderPreservedModuloNewRungSplice() {
+        // A user's stored order is preserved verbatim except that a rung
+        // postdating it (kanji_reading, Goal 78) is spliced in adjacent to its
+        // default neighbors (before word_reading). Every stored rung keeps its
+        // relative position.
         val storedOrder = "write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
+        val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
+
+        assertEquals(
+            "write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading",
+            ladder.orderText(),
+        )
+    }
+
+    @Test
+    fun storedOrderAlreadyContainingKanjiReadingIsPreservedVerbatim() {
+        // A config that already lists kanji_reading is left exactly as stored.
+        val storedOrder = "kanji_reading,write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
         val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
 
         assertEquals(storedOrder, ladder.orderText())
@@ -129,7 +145,7 @@ class StudyLadderSettingsTest {
     fun canDisableAndMoveRungs() {
         val ladder = RecordsBase.StudyLadderSettings.defaults()
             .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
-            .moveRung(RecordsBase.LadderRung.WORD_READING, -6)
+            .moveRung(RecordsBase.LadderRung.WORD_READING, -7)
 
         assertFalse(ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI))
         assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[0])

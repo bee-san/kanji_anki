@@ -244,6 +244,13 @@ object SettingsStudyPlanTextCopy {
         if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
             return if (enabled) localizedText("Included when similar kanji exist", "似た漢字があるときに含める") else skippedInStudyText()
         }
+        if (rung == RecordsBase.LadderRung.KANJI_READING) {
+            return if (enabled) {
+                localizedText("Included when the kanji has multiple known readings", "漢字に複数の読みがあるときに含める")
+            } else {
+                skippedInStudyText()
+            }
+        }
         return if (enabled) localizedText("Included in study", "学習に含める") else skippedInStudyText()
     }
 
@@ -257,6 +264,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.LadderRung.KANJI_MEANING -> localizedText("Kanji -> meaning", "漢字 → 意味")
             RecordsBase.LadderRung.FONT_MEANING -> localizedText("Font -> meaning", "フォント → 意味")
             RecordsBase.LadderRung.WORD_READING -> localizedText("Word -> reading", "単語 → 読み")
+            RecordsBase.LadderRung.KANJI_READING -> localizedText("Kanji -> reading", "漢字 → 読み")
         }
     }
 

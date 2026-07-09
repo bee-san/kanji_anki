@@ -156,6 +156,43 @@ object StudyTextCopy {
     }
 
     @JvmStatic
+    fun kanjiReadingChoiceTitle(): String = localizedText("Choose the reading", "読みを選ぶ")
+
+    @JvmStatic
+    fun kanjiReadingChoiceBody(): String =
+        localizedText("Pick how the kanji is read in this word.", "この単語での漢字の読みを選んでください。")
+
+    @JvmStatic
+    fun kanjiReadingChoiceQuestion(card: RecordsImportModels.KanjiReadingChoiceCard?): String {
+        val kanji = card?.targetKanji ?: ""
+        val word = card?.word ?: ""
+        return if (isJapaneseLocale()) {
+            "「$word」の $kanji の読みは？"
+        } else {
+            "How is $kanji read in $word?"
+        }
+    }
+
+    @JvmStatic
+    fun kanjiReadingChoiceResult(card: RecordsImportModels.KanjiReadingChoiceCard?, correct: Boolean): String {
+        val kanji = card?.targetKanji ?: ""
+        val word = card?.word ?: ""
+        val reading = card?.correctReading ?: ""
+        if (correct) {
+            return if (isJapaneseLocale()) {
+                "正解。$word の $kanji は「$reading」と読みます。"
+            } else {
+                "Correct. $kanji is read $reading in $word."
+            }
+        }
+        return if (isJapaneseLocale()) {
+            "答え：$word の $kanji は「$reading」"
+        } else {
+            "Answer: $kanji is read $reading in $word"
+        }
+    }
+
+    @JvmStatic
     fun meaningKanjiChoiceResult(
         card: RecordsImportModels.MeaningKanjiChoiceCard?,
         prompt: String?,

@@ -319,6 +319,7 @@ object StatsTextCopy {
                 RecordsBase.LadderRung.KANJI_MEANING -> "漢字の意味"
                 RecordsBase.LadderRung.FONT_MEANING -> "フォントの意味"
                 RecordsBase.LadderRung.WORD_READING -> "単語の読み"
+                RecordsBase.LadderRung.KANJI_READING -> "漢字の読み"
             }
         } else {
             when (rung) {
@@ -329,6 +330,7 @@ object StatsTextCopy {
                 RecordsBase.LadderRung.KANJI_MEANING -> "Kanji meaning"
                 RecordsBase.LadderRung.FONT_MEANING -> "Font meaning"
                 RecordsBase.LadderRung.WORD_READING -> "Word reading"
+                RecordsBase.LadderRung.KANJI_READING -> "Kanji reading"
             }
         }
     }

@@ -64,6 +64,28 @@ class LocalStoreKanjiReadingUsageTest {
         assertTrue(tableExists(db, LocalStoreBase.TABLE_KANJI_READING_POOL))
     }
 
+    @Test
+    fun migrationTwentySixToTwentySevenAddsKanjiReadingMemoryColumn() {
+        val db = SQLiteDatabase.create(null)
+        db.execSQL(
+            "CREATE TABLE ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji TEXT PRIMARY KEY, " +
+                "${LocalStoreBase.COLUMN_SIMILAR_KANJI_MEMORY} TEXT NOT NULL DEFAULT '')",
+        )
+        db.execSQL("INSERT INTO ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji) VALUES ('脱')")
+
+        store.onUpgrade(db, 26, 27)
+
+        assertTrue(columnExists(db, LocalStoreBase.TABLE_STUDY_ITEMS, LocalStoreBase.COLUMN_KANJI_READING_MEMORY))
+        db.rawQuery(
+            "SELECT ${LocalStoreBase.COLUMN_KANJI_READING_MEMORY} FROM ${LocalStoreBase.TABLE_STUDY_ITEMS}",
+            null,
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals("", it.getString(0))
+        }
+        db.close()
+    }
+
     // ---- sync-save rebuild ----
 
     @Test
@@ -233,6 +255,18 @@ class LocalStoreKanjiReadingUsageTest {
             "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
             arrayOf(table),
         ).use { return it.moveToFirst() }
+    }
+
+    private fun columnExists(db: SQLiteDatabase, table: String, column: String): Boolean {
+        db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) {
+                if (cursor.getString(nameIndex) == column) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun rowWithExamples(

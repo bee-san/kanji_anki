@@ -124,12 +124,13 @@ Unknown wire names decode to `NEW_LEARNING` with a warning (`:349-360`).
 
 ### 2.4 Rungs
 
-`RecordsBase.LadderRung` (`RecordsBase.kt:19-48`), wire names:
+`RecordsBase.LadderRung`, wire names:
 `write_kanji`, `type_meaning`, `similar_kanji`, `meaning_kanji`,
-`kanji_meaning`, `font_meaning`, `word_reading`. Enum order is storage
-compatibility only; the *user-editable ladder order* is what defines the
-scaffolding gradient (most-scaffolded bottom → least-scaffolded top).
-Unknown wire names decode to `KANJI_MEANING` with a warning.
+`kanji_meaning`, `font_meaning`, `word_reading`, `kanji_reading`. Enum order is
+storage compatibility only (new constants are appended at the end); the
+*user-editable ladder order* is what defines the scaffolding gradient
+(most-scaffolded bottom → least-scaffolded top). Unknown wire names decode to
+`KANJI_MEANING` with a warning.
 
 ---
 
@@ -152,47 +153,52 @@ least-scaffolded (top):
 4. `similar_kanji`
 5. `kanji_meaning`
 6. `font_meaning`
-7. `word_reading`
+7. `kanji_reading`
+8. `word_reading`
 
 `similar_kanji` sits directly below `kanji_meaning`, the new-card start rung
 (Goal 65), so the first demotion reaches discrimination practice in one
 demotion step for cards with confusion data (or skips over it to
-`meaning_kanji` for cards without). Only fresh installs and stored configs
-that lack `similar_kanji` are affected; an existing stored order round-trips
-unchanged (`storedFullOrderRoundTripsUnchanged`).
+`meaning_kanji` for cards without). `kanji_reading` (Goal 78) sits directly
+below `word_reading`, so a `word_reading` fail streak demotes straight into
+targeted reading discrimination (or skips over it to `font_meaning` for cards
+without reading data). Only fresh installs and stored configs that lack a rung
+are affected; an existing stored order round-trips unchanged except that a
+rung postdating it is spliced in adjacent to its default neighbors
+(`storedFullOrderPreservedModuloNewRungSplice`).
 
-**All seven rungs are enabled by default** (`defaultsEnabled()`, `:322`),
-including `meaning_kanji` (the AGENTS.md claim that it was off by
-default was a documentation error, fixed alongside this review — Gap G2).
+**All rungs are enabled by default** (`defaultsEnabled()`), including
+`meaning_kanji` and `kanji_reading`.
 
 Invariants and behaviors:
 
 - **At least one always-available rung must stay enabled.** Every rung
-  except `similar_kanji` is "always available" (`alwaysAvailable`,
-  `:224-226`). The constructor force-adds `KANJI_MEANING` if the enabled set
-  has none (`:75-77`); `withRungEnabled` refuses to disable the last one
-  (`:102-104`); `fromStored` falls back to full defaults on invalid stored
-  combos (`:62-80`, `:208-221`).
-- **Per-item availability.** `isValidForItem(rung, hasSimilarKanji)`
-  (`:88-90`): a rung is valid if enabled, and `similar_kanji` additionally
-  requires `hasSimilarKanji == true` for that card.
-- **`effectiveRung(current, hasSimilarKanji)`** (`:142-169`): if the stored
-  rung is invalid for the item (disabled, or `similar_kanji` without
-  content), walk outward by distance in the ordered list, checking the
-  lower neighbor before the higher one at each distance — i.e. ties prefer
-  the more-scaffolded (lower) neighbor. Every read path (session selection,
-  review application)
-  passes items through this via `StudyLadderRules.alignRungToLadder`.
-- **`nextRung`/`previousRung`** (`:171-193`): scan up/down the ordered list
-  for the next *valid-for-this-item* rung; return the current effective rung
-  at the ceiling/floor. This is what makes promotion/demotion "cross over"
-  `similar_kanji` without pausing when the card has no similar-kanji
-  content.
-- **New cards start at `kanji_meaning`** (`LadderRung.startingRung()`,
-  `:31-32`), mapped through `effectiveRung` if disabled
-  (`startingRung(hasSimilarKanji)`, `:138-140`). Queue-seeded items are
-  created with `startingRung(false)` (`StudyQueueSeeder.kt:325`), so a new
-  card can never start on `similar_kanji`.
+  except the conditional rungs (`similar_kanji`, `kanji_reading` —
+  `StudyLadderSettings.CONDITIONAL_RUNGS`) is "always available"
+  (`alwaysAvailable`). The constructor force-adds `KANJI_MEANING` if the
+  enabled set has none; `withRungEnabled` refuses to disable the last one;
+  `fromStored` falls back to full defaults on invalid stored combos.
+- **Per-item availability.** `isValidForItem(rung, availability)`: a rung is
+  valid if enabled and `availability.isAvailable(rung)` — always-available
+  rungs unconditionally, conditional rungs per their `RungAvailability` flag
+  (`hasSimilarKanji`, `hasKanjiReading`). The single `hasSimilarKanji: Boolean`
+  parameter that used to thread through every movement method was generalized
+  into the `RungAvailability` value object (Goal 75).
+- **`effectiveRung(current, availability)`**: if the stored rung is invalid
+  for the item (disabled, or a conditional rung without content), walk outward
+  by distance in the ordered list, checking the lower neighbor before the
+  higher one at each distance — i.e. ties prefer the more-scaffolded (lower)
+  neighbor. Every read path passes items through this via
+  `StudyLadderRules.alignRungToLadder`.
+- **`nextRung`/`previousRung`**: scan up/down the ordered list for the next
+  *valid-for-this-item* rung; return the current effective rung at the
+  ceiling/floor. This is what makes promotion/demotion "cross over" a
+  conditional rung without pausing when the card lacks its content; each
+  crossed-over conditional rung emits a `<wire>_unavailable` trace reason.
+- **New cards start at `kanji_meaning`** (`LadderRung.startingRung()`), mapped
+  through `effectiveRung` if disabled. Queue-seeded items are created with
+  `startingRung(RungAvailability.none())`, so a new card can never start on a
+  conditional rung.
 - **Storage**: two comma-joined strings under settings keys
   `study_ladder_order` / `study_ladder_enabled`
   (`app/.../data/LocalStoreStudySettings.kt:73-87`, `:353-354`).

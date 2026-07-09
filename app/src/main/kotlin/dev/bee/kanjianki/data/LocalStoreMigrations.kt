@@ -15,6 +15,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyFour(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyFive(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentySix(db, oldVersion, targetVersion, hooks)
+        upgradeThroughTwentySeven(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -184,6 +185,23 @@ internal object LocalStoreMigrations {
             // Goal 77: reading-usage content tables. Created empty; the next
             // sync rebuilds them from the analyzed examples via the aligner.
             hooks.createKanjiReadingTables(db)
+        }
+    }
+
+    private fun upgradeThroughTwentySeven(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 27)) {
+            // Goal 78: per-rung memory column for the kanji_reading rung.
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_STUDY_ITEMS,
+                LocalStoreBase.COLUMN_KANJI_READING_MEMORY,
+                LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY,
+            )
         }
     }
 

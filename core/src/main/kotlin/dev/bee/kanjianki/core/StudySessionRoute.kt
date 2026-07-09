@@ -5,6 +5,7 @@ object StudySessionRoute {
         WRITING,
         SIMILAR_KANJI,
         MEANING_KANJI,
+        KANJI_READING,
         FLASHCARD,
     }
 
@@ -13,6 +14,7 @@ object StudySessionRoute {
         session.writingRequired -> Destination.WRITING
         StudyTaskTypes.SIMILAR_KANJI == session.taskType -> Destination.SIMILAR_KANJI
         StudyTaskTypes.MEANING_KANJI == session.taskType -> Destination.MEANING_KANJI
+        StudyTaskTypes.KANJI_READING == session.taskType -> Destination.KANJI_READING
         else -> Destination.FLASHCARD
     }
 }

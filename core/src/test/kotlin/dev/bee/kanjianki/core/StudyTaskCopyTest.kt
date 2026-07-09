@@ -17,6 +17,7 @@ class StudyTaskCopyTest {
         assertEquals("Type the meaning", StudyTaskCopy.labelForTask(StudyTaskTypes.TYPE_MEANING))
         assertEquals("Font -> meaning", StudyTaskCopy.labelForTask(StudyTaskTypes.FONT_MEANING))
         assertEquals("Word -> reading", StudyTaskCopy.labelForTask(StudyTaskTypes.WORD_READING))
+        assertEquals("Kanji -> reading", StudyTaskCopy.labelForTask(StudyTaskTypes.KANJI_READING))
         assertEquals("Write kanji", StudyTaskCopy.labelForTask(StudyTaskTypes.WRITE_KANJI))
         assertEquals("Similar kanji", StudyTaskCopy.labelForTask(StudyTaskTypes.SIMILAR_KANJI))
         assertEquals("Quick recall", StudyTaskCopy.labelForTask("meaning_flashcard"))

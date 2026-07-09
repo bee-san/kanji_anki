@@ -174,10 +174,10 @@ class SettingsWriteActionsTest {
     fun moveStudyLadderUsesTheProvidedSnapshot() {
         val current = RecordsBase.StudyLadderSettings.defaults()
 
-        val next = SettingsWriteActions.moveStudyLadder(current, RecordsBase.LadderRung.WORD_READING, -6)
+        val next = SettingsWriteActions.moveStudyLadder(current, RecordsBase.LadderRung.WORD_READING, -7)
 
         assertEquals(RecordsBase.LadderRung.WORD_READING, next.orderedRungs[0])
-        assertEquals(current.moveRung(RecordsBase.LadderRung.WORD_READING, -6).orderText(), next.orderText())
+        assertEquals(current.moveRung(RecordsBase.LadderRung.WORD_READING, -7).orderText(), next.orderText())
     }
 
     @Test

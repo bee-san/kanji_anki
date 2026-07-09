@@ -80,6 +80,7 @@ object FocusQueueCopy {
                 RecordsBase.LadderRung.FONT_MEANING -> "フォント→意味"
                 RecordsBase.LadderRung.WORD_READING -> "単語→読み"
                 RecordsBase.LadderRung.KANJI_MEANING -> "漢字→意味"
+                RecordsBase.LadderRung.KANJI_READING -> "漢字の読み"
             }
         } else {
             when (item.rung) {
@@ -90,6 +91,7 @@ object FocusQueueCopy {
                 RecordsBase.LadderRung.FONT_MEANING -> "font -> meaning"
                 RecordsBase.LadderRung.WORD_READING -> "word -> reading"
                 RecordsBase.LadderRung.KANJI_MEANING -> "kanji -> meaning"
+                RecordsBase.LadderRung.KANJI_READING -> "kanji -> reading"
             }
         }
     }

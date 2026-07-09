@@ -28,7 +28,13 @@ abstract class RecordsBase protected constructor() {
         MEANING_KANJI("meaning_kanji"),
         KANJI_MEANING("kanji_meaning"),
         FONT_MEANING("font_meaning"),
-        WORD_READING("word_reading");
+        WORD_READING("word_reading"),
+
+        // New conditional rung (Goal 78). Enum declaration order is
+        // storage-compatibility-only (serialization is by wire name); ladder
+        // position is controlled exclusively via defaultsOrder(). Appended at
+        // the end so stored ordinals never shift.
+        KANJI_READING("kanji_reading");
 
         fun wireName(): String = wireNameValue
 
@@ -65,6 +71,7 @@ abstract class RecordsBase protected constructor() {
      */
     class RungAvailability private constructor(
         @JvmField val hasSimilarKanji: Boolean,
+        @JvmField val hasKanjiReading: Boolean,
     ) {
         /**
          * True when [rung] is available for the item this snapshot describes:
@@ -78,24 +85,36 @@ abstract class RecordsBase protected constructor() {
         private fun flagFor(rung: LadderRung?): Boolean {
             return when (rung) {
                 LadderRung.SIMILAR_KANJI -> hasSimilarKanji
+                LadderRung.KANJI_READING -> hasKanjiReading
                 else -> false
             }
         }
 
         fun withHasSimilarKanji(value: Boolean): RungAvailability {
-            return if (value == hasSimilarKanji) this else of(value)
+            return if (value == hasSimilarKanji) this else of(value, hasKanjiReading)
+        }
+
+        fun withHasKanjiReading(value: Boolean): RungAvailability {
+            return if (value == hasKanjiReading) this else of(hasSimilarKanji, value)
         }
 
         companion object {
             @JvmField
-            val NONE: RungAvailability = RungAvailability(false)
+            val NONE: RungAvailability = RungAvailability(false, false)
 
             @JvmStatic
             fun none(): RungAvailability = NONE
 
             @JvmStatic
-            fun of(hasSimilarKanji: Boolean): RungAvailability {
-                return if (hasSimilarKanji) RungAvailability(true) else NONE
+            fun of(hasSimilarKanji: Boolean): RungAvailability = of(hasSimilarKanji, false)
+
+            @JvmStatic
+            fun of(hasSimilarKanji: Boolean, hasKanjiReading: Boolean): RungAvailability {
+                return if (!hasSimilarKanji && !hasKanjiReading) {
+                    NONE
+                } else {
+                    RungAvailability(hasSimilarKanji, hasKanjiReading)
+                }
             }
         }
     }
@@ -271,6 +290,20 @@ abstract class RecordsBase protected constructor() {
         }
 
         companion object {
+            // Rungs whose availability depends on per-card data (never
+            // always-available). RungAvailability answers each one's flag.
+            @JvmField
+            val CONDITIONAL_RUNGS: Set<LadderRung> = java.util.Collections.unmodifiableSet(
+                java.util.EnumSet.of(LadderRung.SIMILAR_KANJI, LadderRung.KANJI_READING),
+            )
+
+            // Rungs that are auto-enabled for stored configs predating them
+            // (generalizes the original MEANING_KANJI special case, D-R4).
+            @JvmField
+            val AUTO_ENABLE_RUNGS: Set<LadderRung> = java.util.Collections.unmodifiableSet(
+                java.util.EnumSet.of(LadderRung.MEANING_KANJI, LadderRung.KANJI_READING),
+            )
+
             @JvmStatic
             fun defaults(): StudyLadderSettings {
                 val order = defaultsOrder()
@@ -281,11 +314,16 @@ abstract class RecordsBase protected constructor() {
             fun fromStored(orderValue: String?, enabledValue: String?): StudyLadderSettings {
                 val order = splitRungs(orderValue)
                 val enabled = splitRungs(enabledValue).toMutableList()
-                if (!order.contains(LadderRung.MEANING_KANJI) &&
-                    hasAlwaysAvailableRung(enabled) &&
-                    !enabled.contains(LadderRung.MEANING_KANJI)
-                ) {
-                    enabled.add(LadderRung.MEANING_KANJI)
+                // D-R4: auto-enable rungs that postdate the stored order. A rung
+                // absent from the stored order means the config predates it, so
+                // splice it in enabled (as long as an always-available rung is
+                // enabled, matching the original MEANING_KANJI behavior).
+                if (hasAlwaysAvailableRung(enabled)) {
+                    for (autoEnable in AUTO_ENABLE_RUNGS) {
+                        if (!order.contains(autoEnable) && !enabled.contains(autoEnable)) {
+                            enabled.add(autoEnable)
+                        }
+                    }
                 }
                 if (order.isEmpty() && enabled.isEmpty()) {
                     return defaults()
@@ -295,7 +333,7 @@ abstract class RecordsBase protected constructor() {
 
             @JvmStatic
             fun alwaysAvailable(rung: LadderRung?): Boolean {
-                return rung != null && rung != LadderRung.SIMILAR_KANJI
+                return rung != null && !CONDITIONAL_RUNGS.contains(rung)
             }
 
             private fun splitRungs(value: String?): List<LadderRung> {
@@ -396,6 +434,11 @@ abstract class RecordsBase protected constructor() {
                     LadderRung.SIMILAR_KANJI,
                     LadderRung.KANJI_MEANING,
                     LadderRung.FONT_MEANING,
+                    // kanji_reading (Goal 78) sits directly below word_reading so
+                    // a word_reading fail streak demotes straight into targeted
+                    // reading discrimination. Conditional: cards without reading
+                    // data cross over it.
+                    LadderRung.KANJI_READING,
                     LadderRung.WORD_READING,
                 )
             }
