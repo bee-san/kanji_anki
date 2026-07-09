@@ -183,9 +183,12 @@ private fun MainActivityScrollableRouteColumn(
             footerContent()
             // The bottom nav is unusable while typing and would sit on top of the
             // keyboard, stealing ~90dp from the already-shrunken content viewport
-            // (the kanji prompt was getting pushed off-screen). Hide it until the
-            // IME closes.
-            if (navActions != null && !imeVisible) {
+            // (the kanji prompt was getting pushed off-screen). Hide it whenever
+            // the IME is open anywhere, AND for the whole unrevealed-typing-card
+            // state so its disappearance never coincides with the keyboard
+            // animation — it is already absent from the card's first frame and
+            // toggles only at card boundaries where the content changes anyway (KB1).
+            if (navActions != null && !imeVisible && !model.studyCardKeyboardResident) {
                 KaniBottomNavBar(
                     selectedRoute = model.selectedRoute,
                     actions = navActions,

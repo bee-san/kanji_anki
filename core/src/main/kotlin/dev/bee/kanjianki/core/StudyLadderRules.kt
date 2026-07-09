@@ -9,6 +9,20 @@ object StudyLadderRules {
     const val DAY: Long = 86_400_000L
 
     const val MINUTE: Long = 60_000L
+
+    /**
+     * Anki's "learn ahead" horizon (default 20 minutes). When the only work
+     * left in an active run is that run's own learning-step repeats, the
+     * session keeps serving them up to this far in the future instead of
+     * ending — 20 minutes covers the default `1m/10m` learning steps entirely,
+     * so a session ends only once every served card has graduated past its
+     * steps. This widens the effective horizon ONLY for same-session learning
+     * repeats; ordinary queue building keeps the user's configured
+     * `study_ahead_minutes`. Serving a repeat early still schedules
+     * `now + step` at the real answer time, so no FSRS timing changes.
+     */
+    const val LEARN_AHEAD_MILLIS: Long = 20L * MINUTE
+
     const val MIN_RECOGNITION_STAGE: Int = -1
     const val MAX_RECOGNITION_STAGE: Int = 2
     const val STATE_NEW: String = "new"

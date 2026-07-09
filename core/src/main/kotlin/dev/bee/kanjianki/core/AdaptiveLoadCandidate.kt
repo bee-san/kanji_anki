@@ -101,8 +101,15 @@ internal class AdaptiveLoadCandidate(
                 .then(MANUAL_ORDER)
 
         /**
-         * A Kani study item needs recovery when it is mid-learning or when a
-         * reviewed card's FSRS due time has passed.
+         * A Kani study item needs recovery only once its due time has arrived:
+         * a mid-learning card whose step delay has elapsed, or a reviewed
+         * card whose FSRS due time has passed. A learning card scheduled a few
+         * minutes out (e.g. a card just answered `Again` in the session that
+         * ended) is NOT recovery-due until that step delay elapses, so the
+         * home counts read 0 for a while after finishing a session. The
+         * learning clause deliberately omits the `totalReviews > 0` guard the
+         * reviewed clause uses: a card abandoned mid-learning with no persisted
+         * review yet must still count once it is past due.
          */
         @JvmStatic
         fun isRecoveryDue(item: RecordsStudyModels.StudyItem?, nowMillis: Long): Boolean {
@@ -110,7 +117,7 @@ internal class AdaptiveLoadCandidate(
                 return false
             }
             if (StudyLadderRules.STATE_LEARNING == item.state) {
-                return true
+                return item.dueAtMillis <= nowMillis
             }
             return item.totalReviews > 0 && item.dueAtMillis <= nowMillis
         }

@@ -160,14 +160,96 @@ class StudySessionActionsTest {
     }
 
     @Test
-    fun plannedStudySessionKeepsFutureLearningRepeatBehindRemainingPlan() {
+    fun plannedStudySessionServesFutureLearningRepeatWhenNothingElseIsDue() {
+        // PS1 learn-ahead: when the only remaining work is this session's own
+        // learning-step repeat due a few minutes out (within the 20-minute
+        // horizon), it is served rather than ending the run. The other planned
+        // card is not yet due (future review beyond the study-ahead of 0), so
+        // learn-ahead is what keeps the run alive.
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
         tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
         val futureRepeat = item("裂")
             .copyBuilder()
             .state("learning")
-            .dueAtMillis(3_000L)
+            .dueAtMillis(2_000L + 5L * 60_000L) // 5 minutes out, inside the horizon
+            .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+            .build()
+        val notYetDueReview = item("謎")
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .dueAtMillis(2_000L + 10L * 60_000L) // future, not serveable at study-ahead 0
+            .build()
+
+        val session = StudySessionActions.plannedStudySession(
+            BridgeScheduler(),
+            tracker,
+            listOf(futureRepeat, notYetDueReview),
+            listOf(row("裂"), row("謎")),
+            2_000L,
+            0L,
+            null,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertNotNull(session)
+        val nonNullSession = session!!
+        assertEquals("裂", nonNullSession.item!!.kanji)
+        assertEquals("kanji_meaning", nonNullSession.taskType)
+    }
+
+    @Test
+    fun plannedStudySessionServesDueNowWorkBeforeFutureLearnAheadRepeat() {
+        // Learn-ahead is a fallback: a card due now (here the pending review) is
+        // served before a same-session repeat that is only due a few minutes out.
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
+        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
+        val futureRepeat = item("裂")
+            .copyBuilder()
+            .state("learning")
+            .dueAtMillis(2_000L + 5L * 60_000L)
+            .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+            .build()
+        val dueNowReview = item("謎")
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .dueAtMillis(1_000L) // due now
+            .build()
+
+        val session = StudySessionActions.plannedStudySession(
+            BridgeScheduler(),
+            tracker,
+            listOf(futureRepeat, dueNowReview),
+            listOf(row("裂"), row("謎")),
+            2_000L,
+            0L,
+            null,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertNotNull(session)
+        val nonNullSession = session!!
+        assertEquals("謎", nonNullSession.item!!.kanji)
+        assertEquals("word_reading", nonNullSession.taskType)
+    }
+
+    @Test
+    fun plannedStudySessionKeepsLearningRepeatBeyondHorizonBehindRemainingPlan() {
+        // A learning repeat whose next step delay exceeds the learn-ahead
+        // horizon (e.g. a custom step longer than 20 minutes) is NOT served
+        // early; the remaining plan is served instead.
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
+        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
+        val farFutureRepeat = item("裂")
+            .copyBuilder()
+            .state("learning")
+            .dueAtMillis(2_000L + 30L * 60_000L) // 30 minutes out, beyond the horizon
             .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
             .build()
         val pendingReview = item("謎")
@@ -179,7 +261,7 @@ class StudySessionActionsTest {
         val session = StudySessionActions.plannedStudySession(
             BridgeScheduler(),
             tracker,
-            listOf(futureRepeat, pendingReview),
+            listOf(farFutureRepeat, pendingReview),
             listOf(row("裂"), row("謎")),
             2_000L,
             0L,

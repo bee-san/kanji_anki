@@ -280,19 +280,19 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
-    fun learningCardWithFutureDueStillCountsAsRemaining() {
-        // Simulates failing a card during study-ahead: the card enters
-        // relearning with dueAtMillis in the future (e.g. +1 minute).
-        // It should still count as "remaining" so the session does not
-        // end prematurely with focusComplete().
+    fun learningCardWithFutureDueDoesNotCountUntilDue() {
+        // PS2: a card just answered `Again` in the session that ended sits in
+        // learning with dueAtMillis a few minutes out. It must NOT count as
+        // "remaining" while its step delay has not yet elapsed, so the home
+        // counts read 0 immediately after finishing a session.
         val now = 100_000L;
         val studied = HashSet<String>()
         studied.add("字0");
 
-        // Card in learning state with due time in the future (relearning step)
+        // Card in learning state with due time in the future (learning step).
         val learningFutureDue = item("字0", "learning", now + 60_000L, 1, 1);
 
-        val plan = plan(
+        val notYetDuePlan = plan(
                 rows(1),
                 listOf(learningFutureDue),
                 RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
@@ -302,8 +302,22 @@ class AdaptiveLoadPlannerTest {
                 now
         );
 
-        assertEquals(1, plan.remaining);
-        assertFalse(plan.focusComplete());
+        assertEquals(0, notYetDuePlan.remaining);
+        assertTrue(notYetDuePlan.focusComplete());
+
+        // Once the step delay elapses the same card counts again.
+        val duePlan = plan(
+                rows(1),
+                listOf(learningFutureDue),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                studied,
+                0,
+                now + 60_000L
+        );
+
+        assertEquals(1, duePlan.remaining);
+        assertFalse(duePlan.focusComplete());
     }
 
     @Test

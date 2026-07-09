@@ -3,6 +3,8 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -38,7 +40,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         study.activeStudyPlan = plan
         refreshSessionBadgeCount(plan)
-        pendingRepairOrDoneRender(plan, now, ladder)?.let { return it }
+        pendingRepairOrDoneRender(plan, now, ladder, currentItems)?.let { return it }
         if (rows.isEmpty()) {
             return { study.renderEmptyStudyQueue() }
         }
@@ -55,7 +57,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         study.activeStudyPlan = seededPlan
         refreshSessionBadgeCount(seededPlan)
-        pendingRepairOrDoneRender(seededPlan, now, ladder)?.let { return it }
+        pendingRepairOrDoneRender(seededPlan, now, ladder, seeded)?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         study.activeSession = withStudyLoadProbe("plannedStudySession") {
             StudySessionActions.plannedStudySession(
@@ -159,6 +161,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         now: Long,
         ladder: RecordsBase.StudyLadderSettings,
+        items: List<RecordsStudyModels.StudyItem>,
     ): (() -> Unit)? {
         study.initializeSessionProgressTarget(plan)
         if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
@@ -201,8 +204,20 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             }
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
-            warmStudyDoneAvailability()
-            return { study.doneActions.renderStudyRunDone(plan) }
+            // PS1 learn-ahead: do not declare the run done while this session's own
+            // learning-step repeats are due within the learn-ahead horizon. Falling
+            // through lets plannedStudySession re-serve the earliest such repeat, so
+            // a "finished" session keeps practicing its own cards until they graduate
+            // instead of abandoning them to resurface on the home screen minutes later.
+            val repeatHorizonMillis = maxOf(study.studyAheadMillis(), StudyLadderRules.LEARN_AHEAD_MILLIS)
+            val pendingRepeats = study.studySessionTracker.dueCompletedLearningRepeatTaskKeys(
+                items,
+                now + repeatHorizonMillis,
+            )
+            if (pendingRepeats.isEmpty()) {
+                warmStudyDoneAvailability()
+                return { study.doneActions.renderStudyRunDone(plan) }
+            }
         }
         return null
     }

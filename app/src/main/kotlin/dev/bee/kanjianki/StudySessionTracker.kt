@@ -78,24 +78,32 @@ internal class StudySessionTracker {
         out
     }
 
+    /**
+     * Task keys for this session's own already-completed learning-step repeats
+     * whose next step is due at or before [horizonMillis]. Passing a widened
+     * horizon (`now + learnAhead`) surfaces repeats due a few minutes out so
+     * the run can keep serving them (PS1 learn-ahead) instead of ending; the
+     * default call site passes `now` for the "due right now" set. Results are
+     * ordered earliest-due first so the run serves the soonest repeat.
+     */
     fun dueCompletedLearningRepeatTaskKeys(
         items: List<RecordsStudyModels.StudyItem>?,
-        nowMillis: Long,
+        horizonMillis: Long,
     ): List<String> = synchronized(lock) {
         if (items.isNullOrEmpty() || completedPlannedSessionTaskKeys.isEmpty()) {
             return@synchronized emptyList()
         }
-        val out = ArrayList<String>()
+        val dueByKey = LinkedHashMap<String, Long>()
         for (item in items) {
-            if (item.dueAtMillis > nowMillis || !isLearningRepeatPhase(item.phase)) {
+            if (item.dueAtMillis > horizonMillis || !isLearningRepeatPhase(item.phase)) {
                 continue
             }
             val key = plannedSessionTaskKey(item.rung.wireName(), item.kanji)
-            if (isCompletedPlannedSessionTask(key, item.kanji) && !out.contains(key)) {
-                out.add(key)
+            if (isCompletedPlannedSessionTask(key, item.kanji) && !dueByKey.containsKey(key)) {
+                dueByKey[key] = item.dueAtMillis
             }
         }
-        out
+        dueByKey.entries.sortedBy { it.value }.map { it.key }
     }
 
     fun markPlannedSessionTaskCompleted(taskType: String?, kanji: String?) = synchronized(lock) {
