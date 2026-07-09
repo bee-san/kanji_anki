@@ -616,6 +616,23 @@ kanji.
 counts only — answering an ahead-of-due card never counts as real-due
 evidence (section 7; the study-ahead settings copy states this — Gap G4).
 
+Learn-ahead (PS1) is a separate, narrower horizon. When the only work left
+in an active run is that run's own already-completed learning-step repeats
+(`StudySessionTracker.dueCompletedLearningRepeatTaskKeys`), the session keeps
+serving them up to `StudyLadderRules.LEARN_AHEAD_MILLIS` (20 minutes,
+matching Anki) in the future instead of rendering the done screen
+(`MainActivityStudyQueueCoordinator.pendingRepairOrDoneRender`;
+`StudySessionActions.plannedStudySession` serves the repeat pass at the
+widened horizon `max(studyAheadMillis, LEARN_AHEAD_MILLIS)`). The widened
+horizon applies ONLY to same-session completed repeats; ordinary queue
+building keeps the user's configured `study_ahead_minutes`, so a fresh
+not-in-session learning card due in 5 minutes is not pulled forward. A
+re-served repeat keeps its session task key, so completing it again does not
+re-increment `completedCount` or the hard cap — repeats stay practice-only.
+A learning step longer than the horizon legitimately leaves the session with
+a pending learning card; PS2 (section 8.7) keeps the home counts at 0 until
+it is due. Pinned by `StudySessionLearnAheadTest` and `StudySessionActionsTest`.
+
 ### 8.4 Queue seeding lifecycle (`StudyQueueSeeder`)
 
 `seedQueue` (`:8-54`) reconciles existing items against current dashboard
