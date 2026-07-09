@@ -82,9 +82,73 @@ fun SettingsReminderPanel(model: SettingsReminderPanelModel) {
             )
             ReminderPresetGrid(model.presets, ::updateSelection)
             ReminderPrimaryButton(model.saveLabel) { model.onSave.run() }
+            ReminderAntiSpamControls(model.antiSpam)
             ReminderOptionalOutlinedButton(model.turnOffLabel, model.onTurnOff)
             ReminderWarning(model.warning)
             ReminderOptionalOutlinedButton(model.notificationSettingsLabel, model.onOpenNotificationSettings)
+        }
+    }
+}
+
+@Composable
+private fun ReminderAntiSpamControls(model: SettingsReminderAntiSpamModel?) {
+    if (model == null) {
+        return
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("settings-reminder-anti-spam"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = model.quietHoursLabel,
+            color = ReminderInk,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = model.quietHoursBody,
+            color = ReminderMuted,
+            fontSize = 14.sp,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ReminderOutlinedButton(
+                label = model.quietStartLabel,
+                modifier = Modifier.weight(1f),
+                onClick = { model.onPickQuietStart.run() },
+            )
+            ReminderOutlinedButton(
+                label = model.quietEndLabel,
+                modifier = Modifier.weight(1f),
+                onClick = { model.onPickQuietEnd.run() },
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-reminder-max-per-day"),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ReminderOutlinedButton(
+                label = "−",
+                modifier = Modifier.weight(1f),
+                onClick = { model.onDecreaseMaxPerDay.run() },
+            )
+            Text(
+                text = model.maxPerDayLabel,
+                color = ReminderInk,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(3f),
+            )
+            ReminderOutlinedButton(
+                label = "+",
+                modifier = Modifier.weight(1f),
+                onClick = { model.onIncreaseMaxPerDay.run() },
+            )
         }
     }
 }

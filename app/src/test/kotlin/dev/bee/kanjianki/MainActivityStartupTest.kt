@@ -45,10 +45,11 @@ class MainActivityStartupTest {
             assertEquals(1, ioTasks.pendingCount())
             // Background maintenance runs on the separate maintenance executor so it cannot block
             // route loads on cold boot: (1) the scheduler block (reminders/auto-sync/auto-update/
-            // backup, incl. first-time WorkManager init) and (2) the resume-time update-install
-            // gating, which reads auto-update status off the UI thread (ANR fix). Heavy asset
+            // backup, incl. first-time WorkManager init), (2) the resume-time update-install
+            // gating, which reads auto-update status off the UI thread (ANR fix), and (3) the
+            // app-open reminder re-arm (D7) that reflects "the user is here now". Heavy asset
             // warmup runs on its own dedicated thread. Nothing runs inline on main.
-            assertEquals(2, maintenanceTasks.pendingCount())
+            assertEquals(3, maintenanceTasks.pendingCount())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

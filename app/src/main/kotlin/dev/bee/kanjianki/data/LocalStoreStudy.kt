@@ -311,6 +311,21 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun clearReviewReminderNotifications(nowMillis: Long) = studySettings().clearReviewReminderNotifications(nowMillis)
 
+    fun reminderThrottleState(nowMillis: Long): LocalStoreBase.ReminderThrottleState =
+        studySettings().reminderThrottleState(nowMillis)
+
+    fun reminderAntiSpamSettings(): LocalStoreBase.ReminderAntiSpamSettings =
+        studySettings().reminderAntiSpamSettings()
+
+    fun saveReminderAntiSpamSettings(settings: LocalStoreBase.ReminderAntiSpamSettings) =
+        studySettings().saveReminderAntiSpamSettings(settings)
+
+    fun recordReminderPosted(nowMillis: Long, family: String?, signature: String?, dailyTimeOverride: Boolean) =
+        studySettings().recordReminderPosted(nowMillis, family, signature, dailyTimeOverride)
+
+    fun recordReminderDismissed(nowMillis: Long, family: String?) =
+        studySettings().recordReminderDismissed(nowMillis, family)
+
     fun putIntSetting(key: String, value: Int) {
         studySettings().putIntSetting(key, value)
     }
