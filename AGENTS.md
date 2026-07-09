@@ -200,7 +200,12 @@ further passes keep the card on that rung.
 On a due review `Again`, the card enters `relearning` at step 0 if
 relearning steps exist. If relearning steps are empty, the card skips
 relearning and is rescheduled straight from the FSRS post-lapse memory
-state, matching Anki's FSRS behavior.
+state, matching Anki's FSRS behavior. One exception preserves the
+"practiced soon" promise of demotion (Goal 70): when a due `Again` both
+demotes the rung AND the relearning list is empty, the newly demoted rung's
+first review is capped at one day (`capDemotedRungFirstReview`), mirroring
+the promotion first-review cap. A non-demoting `Again` with empty relearning
+steps keeps the pure FSRS post-lapse interval unchanged.
 
 When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so

@@ -385,6 +385,9 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
                     state.rung = demoted
                     state.realAgainStreak = 0
                     state.realPassStreak = 0
+                    if (relearning.isEmpty()) {
+                        capDemotedRungFirstReview(context, state)
+                    }
                 }
             }
         }
@@ -459,6 +462,25 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (state.scheduledIntervalDays > capDays) {
             state.scheduledIntervalDays = capDays
             state.due = context.nowMillis + capDays * StudyLadderRules.DAY
+        }
+    }
+
+    /**
+     * Demotion moves the card to a more-scaffolded rung, which doc §7.1 sells
+     * as "the easier skill is practiced immediately" via the ~10-minute
+     * relearning due. With an empty relearning list the lapse reschedules from
+     * the FSRS post-lapse interval instead (days out), so the promise silently
+     * depended on configuration. Mirror the promotion cap on the demotion side
+     * (Goal 70): when a demotion actually moves the rung and no relearning step
+     * will deliver the near-term practice, cap the first review of the newly
+     * demoted rung at one day. With relearning steps configured the ~10-minute
+     * step already delivers the promise and this cap is not applied.
+     */
+    private fun capDemotedRungFirstReview(context: ReviewContext, state: ReviewState) {
+        val capMillis = context.nowMillis + DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS * StudyLadderRules.DAY
+        if (state.due > capMillis) {
+            state.due = capMillis
+            state.scheduledIntervalDays = min(state.scheduledIntervalDays, DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS)
         }
     }
 
@@ -691,5 +713,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
          * promote off the write_kanji rung (Goal 67).
          */
         private const val WRITE_KANJI_PROMOTION_MIN_LEVEL = 2
+
+        /**
+         * Cap (in days) applied to a demoted rung's first review when the
+         * relearning list is empty, so the more-scaffolded skill is still
+         * practiced soon (Goal 70).
+         */
+        private const val DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS = 1
     }
 }

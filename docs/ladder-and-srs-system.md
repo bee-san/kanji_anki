@@ -523,8 +523,13 @@ Consequences:
   memory, and its first due is capped at one third of the promotion
   threshold (resolved Gap G5).
 - After a demotion, the lower rung inherits the failing rung's post-lapse
-  memory and the relearning due (~10 minutes), so the easier skill is
-  practiced immediately.
+  memory. With relearning steps configured the relearning due (~10 minutes)
+  practices the more-scaffolded skill immediately; with an **empty**
+  relearning list the lapse would otherwise reschedule from the FSRS
+  post-lapse interval (days out), so `capDemotedRungFirstReview` (Goal 70)
+  caps the demoted rung's first review at one day. Either way the
+  more-scaffolded skill is practiced soon, no longer depending on the
+  relearning-steps setting.
 - Per-rung memories are therefore *seeded from* other rungs rather than
   strictly independent (deliberate continuity; see open decision D3).
 

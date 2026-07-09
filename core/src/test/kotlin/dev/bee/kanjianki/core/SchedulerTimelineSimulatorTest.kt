@@ -150,6 +150,32 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun demotionWithEmptyRelearningStepsMatchesGoldenTimeline() {
+        // Goal 70: with empty relearning steps, a demoting third `again` whose
+        // FSRS post-lapse interval is large (30d fake) is capped to now + 1 day
+        // so the newly demoted, more-scaffolded rung is practiced soon.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(30),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+            learningSettings = noRelearningSteps(),
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, answer.snapshot!!.rung)
+        assertTrue("Demoted first review capped to <= 1 day",
+            answer.snapshot!!.dueAtMillis - START <= BridgeScheduler.DAY)
+        assertGolden("demotionWithEmptyRelearningSteps", simulator.renderText())
+    }
+
+    @Test
     fun ceilingCardDemotesOneRungWhenColdMatchesGoldenTimeline() {
         // Goal 66 (rejected deep-demotion): pins the current single-step
         // demotion from the word_reading ceiling. A ceiling card that goes cold

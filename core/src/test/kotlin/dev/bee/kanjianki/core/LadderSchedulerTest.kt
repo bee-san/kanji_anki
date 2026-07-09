@@ -1321,6 +1321,58 @@ class LadderSchedulerTest {
         assertEquals(1, first.item.realPassStreak);
     }
 
+    // ---- Goal 70: demotion first-review cap with empty relearning steps ----
+
+    private fun emptyRelearningSteps(): RecordsSchedulerModels.LearningStepSettings {
+        return RecordsSchedulerModels.LearningStepSettings(
+                RecordsSchedulerModels.LearningStepSettings.defaultNewSteps(),
+                emptyList<Int?>())
+    }
+
+    @Test
+    fun demotionWithEmptyRelearningCapsFirstReviewToOneDay() {
+        // A large FSRS post-lapse interval (30d fake) would otherwise leave the
+        // newly demoted, more-scaffolded rung unpracticed for weeks. With empty
+        // relearning steps the demotion caps the first review to <= now + 1 day.
+        val scheduler = schedulerWithReviewIntervalDays(30);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().realAgainStreak(DEFAULT_THRESHOLD - 1).build()
+        val now = 100L * BridgeScheduler.DAY
+        item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+
+        val result = scheduler.applyReview(
+                item.withToken("d"), failRequest("裂", "d"), consumed, now,
+                null, RecordsSyncModels.Settings.kikuDefaults(), emptyRelearningSteps())
+
+        assertEquals("Third real-due again demotes the rung",
+                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung)
+        assertTrue("Demoted rung's first review is capped to <= now + 1 day",
+                result.item.dueAtMillis <= now + BridgeScheduler.DAY)
+    }
+
+    @Test
+    fun nonDemotingAgainWithEmptyRelearningKeepsPostLapseInterval() {
+        // A single (non-demoting) again with empty relearning steps must still
+        // reschedule from the pure FSRS post-lapse interval (G8 behavior), i.e.
+        // the cap only applies when the demotion actually moves the rung.
+        val scheduler = schedulerWithReviewIntervalDays(30);
+        val consumed = HashSet<String>();
+        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+        val now = 100L * BridgeScheduler.DAY
+        item = item.copyBuilder().dueAtMillis(now - 60_000L)
+                .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
+
+        val result = scheduler.applyReview(
+                item.withToken("a"), failRequest("裂", "a"), consumed, now,
+                null, RecordsSyncModels.Settings.kikuDefaults(), emptyRelearningSteps())
+
+        assertEquals("A single again does not demote", RecordsBase.LadderRung.KANJI_MEANING, result.item.rung)
+        assertEquals("Pure FSRS post-lapse interval is preserved (not capped)",
+                now + 30L * BridgeScheduler.DAY, result.item.dueAtMillis)
+    }
+
     // ---- Goal 67: clean-write gate to leave write_kanji ----
 
     private fun writeKanjiCard(writingLevel: Int, realPassStreak: Int): RecordsStudyModels.StudyItem {

@@ -44,6 +44,7 @@ class SchedulerParitySnapshotTest {
             appendLine("- promotionRequiresSecondRealDuePass => ${flattenGolden("promotionRequiresSecondRealDuePass")}")
             appendLine("- threeDueReviewAgainsDemote => ${flattenGolden("threeDueReviewAgainsDemote")}")
             appendLine("- ceilingCardDemotesOneRungWhenCold => ${flattenGolden("ceilingCardDemotesOneRungWhenCold")}")
+            appendLine("- demotionWithEmptyRelearningSteps => ${flattenGolden("demotionWithEmptyRelearningSteps")}")
             appendLine("- writeKanjiExitRequiresCleanWrites => ${flattenGolden("writeKanjiExitRequiresCleanWrites")}")
             appendLine("- similarKanjiSkippedWithoutContent => ${flattenGolden("similarKanjiSkippedWithoutContent")}")
             appendLine("- relearningBeatsSameFamilyReviewSibling => ${flattenGolden("relearningBeatsSameFamilyReviewSibling")}")
