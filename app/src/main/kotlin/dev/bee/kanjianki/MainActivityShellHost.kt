@@ -41,6 +41,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                         selectedRoute = selected,
                         scrollPositionLabel = scrollPositionLabel,
                         studyBadgeCount = studyBadgeCount(),
+                        studyCardKeyboardResident = studyCardKeyboardResident(selected),
                     ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
@@ -76,6 +77,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                         selectedRoute = selected,
                         scrollPositionLabel = scrollPositionLabel,
                         studyBadgeCount = studyBadgeCount(),
+                        studyCardKeyboardResident = studyCardKeyboardResident(selected),
                     ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
@@ -88,6 +90,20 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             }
             activity.styleSystemBars(systemBars)
         }
+    }
+
+    /**
+     * True when the study route is showing an unrevealed typing card — i.e. the
+     * card is about to auto-focus its field and open the keyboard. Used to hide
+     * the bottom nav for the whole keyboard-resident state, not just while the
+     * IME inset is non-zero (KB1).
+     */
+    private fun studyCardKeyboardResident(selected: String): Boolean {
+        if (MainActivityBase.NAV_STUDY != selected) {
+            return false
+        }
+        return dev.bee.kanjianki.core.StudyTaskCopy.isTypingMeaningTask(activity.activeSession) &&
+            !activity.flashcardAnswerRevealed
     }
 
     private fun studyBadgeCount(): Int? {

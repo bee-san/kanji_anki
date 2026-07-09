@@ -56,4 +56,43 @@ class MainActivityShellImeUnitTest {
 
         composeRule.onNodeWithTag("kani-bottom-nav").assertIsDisplayed()
     }
+
+    @Test
+    fun bottomNavHiddenForUnrevealedTypingCardEvenBeforeImeOpens() {
+        // KB1: a typing card is keyboard-resident, so the nav is absent from its
+        // first frame — even with the IME inset still zero — instead of vanishing
+        // mid-animation when the auto-focus opens the keyboard.
+        composeRule.setContent {
+            MainActivityRouteContent(
+                model = MainActivityShellModel(
+                    selectedRoute = MainActivityBase.NAV_STUDY,
+                    studyCardKeyboardResident = true,
+                ),
+                navActions = navActions(),
+                imeVisible = false,
+            ) {
+                Text("route content")
+            }
+        }
+
+        composeRule.onAllNodesWithTag("kani-bottom-nav").assertCountEquals(0)
+    }
+
+    @Test
+    fun bottomNavShowsForNonTypingCardWithKeyboardClosed() {
+        composeRule.setContent {
+            MainActivityRouteContent(
+                model = MainActivityShellModel(
+                    selectedRoute = MainActivityBase.NAV_STUDY,
+                    studyCardKeyboardResident = false,
+                ),
+                navActions = navActions(),
+                imeVisible = false,
+            ) {
+                Text("route content")
+            }
+        }
+
+        composeRule.onNodeWithTag("kani-bottom-nav").assertIsDisplayed()
+    }
 }

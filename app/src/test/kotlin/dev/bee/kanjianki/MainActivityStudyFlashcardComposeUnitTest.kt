@@ -153,7 +153,9 @@ class MainActivityStudyFlashcardComposeUnitTest {
             )
         }
 
-        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        // KB1: an unrevealed typing card is compact, so the hidden-answer hint
+        // is dropped from the first frame; the typing field is present.
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
         typingAnswer.updateBounds(Rect(10f, 10f, 200f, 80f))
@@ -211,7 +213,9 @@ class MainActivityStudyFlashcardComposeUnitTest {
             )
         }
 
-        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        // KB1: an unrevealed typing card is compact, so the hidden-answer hint
+        // is dropped from the first frame; the typing field is present.
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(1)
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
         typingAnswer.updateBounds(Rect(10f, 10f, 200f, 80f))
@@ -253,7 +257,11 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
-    fun typingCardKeepsFullLayoutWhileKeyboardIsClosed() {
+    fun typingCardRendersCompactFromTheFirstFrameEvenBeforeKeyboardOpens() {
+        // KB1: an unrevealed typing card is compact from the first frame (before
+        // the auto-focus opens the IME), so nothing reshapes when the keyboard
+        // animates in. Compact drops the pill, title, and hidden-answer hint;
+        // the question line and kanji hero stay.
         val revealState = FlashcardRevealState(false)
         val typingAnswer = TypingAnswerState()
 
@@ -264,10 +272,14 @@ class MainActivityStudyFlashcardComposeUnitTest {
             )
         }
 
-        composeRule.onNodeWithText("Type").assertIsDisplayed()
-        composeRule.onNodeWithText("Prompt").assertIsDisplayed()
-        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        // Question line and kanji hero stay in compact.
+        composeRule.onNodeWithText("What does it mean?").assertIsDisplayed()
         composeRule.onNodeWithText("獄").assertIsDisplayed()
+        // Secondary chrome dropped in compact: pill ("Type"), title ("Prompt"),
+        // and the hidden-answer hint.
+        composeRule.onAllNodesWithText("Type").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Prompt").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
     }
 
     @Test

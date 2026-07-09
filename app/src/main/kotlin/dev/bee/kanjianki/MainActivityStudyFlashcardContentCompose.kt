@@ -55,10 +55,12 @@ internal fun FlashcardCard(
     swipeFeedback: StudySwipeFeedbackState? = null,
     imeVisible: Boolean = kaniImeVisible(),
 ) {
-    // While the keyboard is open on a typing card, compact the layout so the kanji
-    // prompt and the answer field both fit in the reduced viewport. Without this the
-    // focused field's bring-into-view scrolls the 210dp+ hero (and the kanji) off
-    // the top of the screen.
+    // An unrevealed typing card is laid out compact from the first frame (KB1):
+    // it auto-focuses its field and opens the keyboard on entry, so committing to
+    // the reduced layout up front means the kanji prompt and the answer field
+    // already fit and nothing reshapes when the IME animates in. Compact is a
+    // function of card state, not live IME visibility (imeVisible is unused here
+    // now; kept for signature compatibility with the reveal-time full layout).
     val compact = studyCardImeCompact(
         imeVisible = imeVisible,
         hasTypingAnswer = model.typingAnswer != null,

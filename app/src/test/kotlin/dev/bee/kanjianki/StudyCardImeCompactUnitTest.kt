@@ -6,13 +6,16 @@ import org.junit.Test
 
 class StudyCardImeCompactUnitTest {
     @Test
-    fun compactRequiresKeyboardOpenOnAnUnrevealedTypingCard() {
+    fun unrevealedTypingCardCompactsWhenImeVisible() {
         assertTrue(studyCardImeCompact(imeVisible = true, hasTypingAnswer = true, revealed = false))
     }
 
     @Test
-    fun keyboardClosedKeepsTheFullCardLayout() {
-        assertFalse(studyCardImeCompact(imeVisible = false, hasTypingAnswer = true, revealed = false))
+    fun unrevealedTypingCardCompactsEvenBeforeTheImeOpens() {
+        // KB1: the card is laid out compact from the first frame (before the
+        // auto-focus opens the keyboard), so nothing reshapes when the IME
+        // then animates in. This is the case the old IME-gated rule flipped.
+        assertTrue(studyCardImeCompact(imeVisible = false, hasTypingAnswer = true, revealed = false))
     }
 
     @Test
