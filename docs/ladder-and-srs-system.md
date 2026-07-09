@@ -663,6 +663,24 @@ builds a session for a specific kanji regardless of due state (used by
 kanji detail screens), reusing the seeded item when present or creating an
 ephemeral new item at the starting rung.
 
+### 8.7 Post-session home counts
+
+The home "to study" count (adaptive plan `remaining`), the Study nav badge
+fallback, and the focus metric all derive from
+`AdaptiveLoadCandidate.isRecoveryDue`. A mid-`learning` card is recovery-due
+only once its step delay has elapsed (`item.dueAtMillis <= now`), not
+unconditionally. This means that immediately after finishing a session, the
+cards just answered `Again` sit in `learning` due 1–10 minutes out and the
+home counts read **0 until those step delays pass**, then reappear as the
+steps come due. The today plan's "N due now"
+(`DailyStudyPlanPolicy.dueNow`) has always been due-time-gated and agrees.
+The learning clause deliberately omits the `totalReviews > 0` guard the
+reviewed-card clause uses: a card abandoned mid-learning with no persisted
+review yet still counts once it is past due. `FocusedStudyPlanPolicy.itemDueForFocus`
+applies the same rule. Pinned by
+`AdaptiveLoadRecoveryDueTest`, `AdaptiveLoadPlannerTest`, and
+`MainActivityHomePostSessionCountsTest`.
+
 ---
 
 ## 9. Review Application Pipeline
