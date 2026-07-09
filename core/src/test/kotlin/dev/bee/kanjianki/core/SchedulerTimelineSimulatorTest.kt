@@ -119,6 +119,31 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun ceilingCardDemotesOneRungWhenColdMatchesGoldenTimeline() {
+        // Goal 66 (rejected deep-demotion): pins the current single-step
+        // demotion from the word_reading ceiling. A ceiling card that goes cold
+        // demotes exactly one rung (to font_meaning) per fail-streak, not two.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+            learningSettings = noRelearningSteps(),
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, answer.snapshot!!.rung)
+        assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
+        assertGolden("ceilingCardDemotesOneRungWhenCold", simulator.renderText())
+    }
+
+    @Test
     fun similarKanjiSkippedWithoutContentMatchesGoldenTimeline() {
         // New default order (Goal 65): kanji_meaning demotes across the
         // content-less similar_kanji rung to meaning_kanji, recording the skip.

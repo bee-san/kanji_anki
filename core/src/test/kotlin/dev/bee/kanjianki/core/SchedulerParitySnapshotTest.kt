@@ -43,6 +43,7 @@ class SchedulerParitySnapshotTest {
             appendLine("- reviewPassPromotesAfterLongFsrsInterval => ${flattenGolden("reviewPassPromotesAfterLongFsrsInterval")}")
             appendLine("- promotionRequiresSecondRealDuePass => ${flattenGolden("promotionRequiresSecondRealDuePass")}")
             appendLine("- threeDueReviewAgainsDemote => ${flattenGolden("threeDueReviewAgainsDemote")}")
+            appendLine("- ceilingCardDemotesOneRungWhenCold => ${flattenGolden("ceilingCardDemotesOneRungWhenCold")}")
             appendLine("- similarKanjiSkippedWithoutContent => ${flattenGolden("similarKanjiSkippedWithoutContent")}")
             appendLine("- relearningBeatsSameFamilyReviewSibling => ${flattenGolden("relearningBeatsSameFamilyReviewSibling")}")
             appendLine()
