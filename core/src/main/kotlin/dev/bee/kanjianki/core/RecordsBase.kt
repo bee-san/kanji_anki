@@ -367,6 +367,7 @@ abstract class RecordsBase protected constructor() {
         const val DEFAULT_REAL_DUE_REVIEWS_TO_MOVE: Int = 3
         const val DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS: Int = 21
         const val DEFAULT_LADDER_DEMOTION_FAIL_STREAK: Int = 3
+        const val DEFAULT_LADDER_PROMOTION_MIN_PASSES: Int = 2
         const val DEFAULT_SUSPENDED_RANK_MIN: Int = 100
         const val DEFAULT_SUSPENDED_RANK_MAX: Int = 3000
         const val DEFAULT_IMPORT_ACTIVE_CARDS: Boolean = false

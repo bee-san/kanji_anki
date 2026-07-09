@@ -442,15 +442,28 @@ study-ahead answers, and targeted (not-due) sessions update FSRS memory but
 never move the ladder.
 
 - **Promotion** (`applyReviewPass`): on a real-due pass,
-  `realAgainStreak = 0`, `realPassStreak++`; if the FSRS result schedules
-  strictly more than `ladderPromotionIntervalDays` (default **21**) into
-  the future (`promotesByFsrsInterval`, `intervalMillis > days * DAY`),
-  the rung moves up via `StudyLadderRules.promoteRung` and both streaks
-  reset. When the rung actually changes, the newly promoted rung's first
-  review is capped at `max(1, promotionDays / 3)` days (7 at the default
-  21) — `capPromotedRungFirstReview` — so the new skill is validated soon
-  after unlocking. At the ceiling (`word_reading`) `nextRung` returns the
-  same rung and no cap applies.
+  `realAgainStreak = 0`, `realPassStreak++`; the rung moves up only when
+  **both** gates are satisfied:
+  1. the FSRS result schedules strictly more than
+     `ladderPromotionIntervalDays` (default **21**) into the future
+     (`promotesByFsrsInterval`, `intervalMillis > days * DAY`), and
+  2. `realPassStreak >= ladderPromotionMinPasses` (default **2**) — at
+     least that many real-due passes have accumulated on the current rung.
+  When both hold, the rung moves up via `StudyLadderRules.promoteRung` and
+  both streaks reset. The min-pass gate means each rung earns at least two
+  due-review credits before the ladder retires its practice, so a mature
+  card no longer cascades up two rungs in two reviews after the 7-day
+  promotion cap clones above-threshold stability onto the new rung. Setting
+  `ladderPromotionMinPasses = 1` reproduces the pre-gate single-pass
+  behavior. The gate also resolves the bounce-back idea I5: a freshly
+  demoted card restarts its streak at 0 and cannot re-promote on its first
+  post-demotion pass. When the rung actually changes, the newly promoted
+  rung's first review is capped at `max(1, promotionDays / 3)` days (7 at
+  the default 21) — `capPromotedRungFirstReview` — so the new skill is
+  validated soon after unlocking. At the ceiling (`word_reading`)
+  `nextRung` returns the same rung and no cap applies. When the interval
+  qualifies but the min-pass gate blocks the move, the trace records
+  `promotion_blocked_min_passes`.
 - **Demotion** (`applyReviewAgain`, `:320-329`): on a real-due `again`,
   `realPassStreak = 0`, `realAgainStreak++`; when the streak reaches
   `ladderDemotionFailStreak` (default **3**), the rung moves down via
@@ -461,10 +474,11 @@ never move the ladder.
   streaks; only `again` is a fail (AGENTS.md contract, implemented by the
   branch structure itself).
 - **Settings**: `ladder_promotion_interval_days`,
-  `ladder_demotion_fail_streak` (`SyncSettings.kt:19-21`, `:67-78`;
-  defaults in `RecordsBase.kt:368-369`; both clamped to ≥ 1). The demotion
-  key falls back to the older `real_due_reviews_to_move` value for
-  pre-ladder installs.
+  `ladder_demotion_fail_streak`, `ladder_promotion_min_passes`
+  (`SyncSettings.kt`; defaults in `RecordsBase.kt`; all clamped to ≥ 1).
+  The demotion key falls back to the older `real_due_reviews_to_move`
+  value for pre-ladder installs; `ladder_promotion_min_passes` defaults
+  to **2** and has no settings UI yet.
 
 ### 7.1 Task-memory hand-off on movement
 
@@ -845,11 +859,12 @@ were resolved by the follow-up change set on this branch; items marked
   whole days, so any same-day second review takes the FSRS short-term
   branch regardless of hour spacing; acceptable, but worth noting if
   sub-day scheduling is ever added.
-- **I5 — Demotion bounce-back guard.** Demotion clones the failing rung's
-  post-lapse memory into the lower rung; for a formerly mature card, one
-  subsequent real-due pass can produce an FSRS interval above the
-  promotion threshold and bounce the card straight back up (now onto a
-  capped first review). If that bounce proves unwanted, require a minimum
-  number of real-due passes on the demoted rung before promotion
-  eligibility (`realPassStreak` already counts them). Verify either way
-  with `SchedulerTimelineSimulator`.
+- **I5 — Demotion bounce-back guard. (Resolved by Goal 63.)** Demotion
+  clones the failing rung's post-lapse memory into the lower rung; for a
+  formerly mature card this used to let one subsequent real-due pass bounce
+  the card straight back up. The `ladderPromotionMinPasses` gate (default
+  2) now requires at least that many real-due passes on the current rung
+  before promotion, and a demotion resets `realPassStreak` to 0, so the
+  first post-demotion pass can no longer re-promote. Pinned by
+  `LadderSchedulerTest.demotedMatureCardDoesNotRepromoteOnFirstPass` and
+  the `promotionRequiresSecondRealDuePass` golden.

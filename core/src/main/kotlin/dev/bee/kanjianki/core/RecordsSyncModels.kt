@@ -37,6 +37,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
         @JvmField val realDueReviewsToMove: Int
         @JvmField val ladderPromotionIntervalDays: Int
         @JvmField val ladderDemotionFailStreak: Int
+        @JvmField val ladderPromotionMinPasses: Int
         @JvmField val importActiveCards: Boolean
         @JvmField val importSuspendedCards: Boolean
         @JvmField val importTaggedCards: Boolean
@@ -66,6 +67,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
             realDueReviewsToMove = maxOf(1, args.realDueReviewsToMove)
             ladderPromotionIntervalDays = maxOf(1, args.ladderPromotionIntervalDays)
             ladderDemotionFailStreak = maxOf(1, args.ladderDemotionFailStreak)
+            ladderPromotionMinPasses = maxOf(1, args.ladderPromotionMinPasses)
             importActiveCards = args.importActiveCards
             importSuspendedCards = args.importSuspendedCards
             importTags = Collections.unmodifiableList(normalizeImportTags(args.importTags))
@@ -142,6 +144,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
                     DEFAULT_NEW_CARD_SORT_MODE,
                     DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
                     DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
+                    DEFAULT_LADDER_PROMOTION_MIN_PASSES,
                 )
             }
 
@@ -201,6 +204,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
             var realDueReviewsToMove: Int = DEFAULT_REAL_DUE_REVIEWS_TO_MOVE
             var ladderPromotionIntervalDays: Int = DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS
             var ladderDemotionFailStreak: Int = DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+            var ladderPromotionMinPasses: Int = DEFAULT_LADDER_PROMOTION_MIN_PASSES
             var importActiveCards: Boolean = DEFAULT_IMPORT_ACTIVE_CARDS
             var importSuspendedCards: Boolean = DEFAULT_IMPORT_SUSPENDED_CARDS
             var importTaggedCards: Boolean = DEFAULT_IMPORT_TAGGED_CARDS
@@ -216,7 +220,7 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
             companion object {
                 @JvmStatic
                 fun from(rest: Array<Any?>): SettingsArgs {
-                    requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21, 22, 24)
+                    requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21, 22, 24, 25)
                     val args = SettingsArgs()
                     args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS).orEmpty()
                     args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS).orEmpty()
@@ -266,6 +270,9 @@ abstract class RecordsSyncModels protected constructor() : RecordsBase() {
                         args.ladderDemotionFailStreak = intArg(rest, 23, CONTEXT_SETTINGS)
                     } else {
                         args.ladderDemotionFailStreak = args.realDueReviewsToMove
+                    }
+                    if (rest.size >= 25) {
+                        args.ladderPromotionMinPasses = intArg(rest, 24, CONTEXT_SETTINGS)
                     }
                     return args
                 }

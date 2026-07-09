@@ -112,6 +112,12 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
                 reasons.add("similar_kanji_unavailable")
             }
+        } else if (afterRank == beforeRank &&
+            beforePhase == RecordsBase.SchedulerPhase.REVIEW &&
+            StudyRatings.AGAIN != result.appliedRating &&
+            promotionBlockedByMinPasses(application, result)
+        ) {
+            reasons.add("promotion_blocked_min_passes")
         } else if (afterRank < beforeRank && StudyRatings.AGAIN == result.appliedRating) {
             reasons.add("real_again_streak_threshold")
             if (skipsSimilarRungWithoutContent(application.item.hasSimilarKanji, ladder, beforeRank, afterRank)) {
@@ -119,6 +125,15 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             }
         }
         return reasons
+    }
+
+    private fun promotionBlockedByMinPasses(
+        application: BridgeScheduler.ReviewApplication,
+        result: RecordsSchedulerModels.ReviewResult,
+    ): Boolean {
+        val settings = application.settings ?: RecordsSyncModels.Settings.kikuDefaults()
+        return result.item.matureIntervalDays > max(1, settings.ladderPromotionIntervalDays) &&
+            result.item.realPassStreak < settings.ladderPromotionMinPasses
     }
 
     private fun skipsSimilarRungWithoutContent(
@@ -374,7 +389,15 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             state.realAgainStreak = 0
             state.realPassStreak++
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
-            if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays)) {
+            // A single qualifying interval is thin evidence that a distinct rung
+            // skill is retired: after the 7-day promotion cap a promoted rung
+            // inherits cloned stability above the threshold, so its very first
+            // pass would re-promote. Require `ladderPromotionMinPasses` real-due
+            // passes on the current rung so each skill earns at least that many
+            // due-review credits before the ladder removes its practice.
+            if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays) &&
+                state.realPassStreak >= context.settings.ladderPromotionMinPasses
+            ) {
                 val promoted = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder)
                 if (promoted != state.rung) {
                     capPromotedRungFirstReview(context, state)

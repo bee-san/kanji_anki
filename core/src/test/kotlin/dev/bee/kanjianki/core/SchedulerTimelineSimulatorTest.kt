@@ -37,6 +37,15 @@ class SchedulerTimelineSimulatorTest {
             startMillis = START,
         )
 
+        // First qualifying pass: the interval qualifies but the min-pass gate
+        // (default 2) blocks promotion, so the rung holds.
+        simulator.nextSession()
+        val firstAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, firstAnswer.snapshot!!.rung)
+        assertTrue(firstAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        // Second qualifying pass on a fresh due slot promotes.
+        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
         simulator.nextSession()
         val answer = simulator.answer("good")
 
@@ -46,6 +55,40 @@ class SchedulerTimelineSimulatorTest {
         assertTrue(answer.trace.transition!!.reasonCodes.contains("review_pass_fsrs_interval"))
         assertTrue(answer.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
         assertGolden("reviewPassPromotesAfterLongFsrsInterval", simulator.renderText())
+    }
+
+    @Test
+    fun promotionRequiresSecondRealDuePassMatchesGoldenTimeline() {
+        // Anti-cascade (Goal 63): a mature card no longer climbs two rungs in two
+        // reviews. Each rung requires two real-due passes; the first is blocked.
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = schedulerWithReviewIntervalDays(22),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val firstAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, firstAnswer.snapshot!!.rung)
+        assertEquals(1, firstAnswer.snapshot!!.realPassStreak)
+        assertEquals("rung_unchanged", firstAnswer.trace.transition!!.movementReason)
+        assertTrue(firstAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val secondAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, secondAnswer.snapshot!!.rung)
+
+        // A third pass on the newly promoted rung is again blocked: FONT_MEANING
+        // does not immediately cascade up to WORD_READING on its first pass.
+        simulator.advanceTo(secondAnswer.snapshot!!.dueAtMillis)
+        simulator.nextSession()
+        val thirdAnswer = simulator.answer("good")
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, thirdAnswer.snapshot!!.rung)
+        assertTrue(thirdAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+
+        assertGolden("promotionRequiresSecondRealDuePass", simulator.renderText())
     }
 
     @Test

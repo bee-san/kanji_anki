@@ -41,6 +41,7 @@ class SchedulerParitySnapshotTest {
             appendLine("golden timeline extracts:")
             appendLine("- newKanjiEntersKanjiMeaning => ${flattenGolden("newKanjiEntersKanjiMeaning")}")
             appendLine("- reviewPassPromotesAfterLongFsrsInterval => ${flattenGolden("reviewPassPromotesAfterLongFsrsInterval")}")
+            appendLine("- promotionRequiresSecondRealDuePass => ${flattenGolden("promotionRequiresSecondRealDuePass")}")
             appendLine("- threeDueReviewAgainsDemote => ${flattenGolden("threeDueReviewAgainsDemote")}")
             appendLine("- similarKanjiSkippedWithoutContent => ${flattenGolden("similarKanjiSkippedWithoutContent")}")
             appendLine("- relearningBeatsSameFamilyReviewSibling => ${flattenGolden("relearningBeatsSameFamilyReviewSibling")}")

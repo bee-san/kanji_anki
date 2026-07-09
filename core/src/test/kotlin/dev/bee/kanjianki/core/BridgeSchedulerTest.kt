@@ -1175,6 +1175,9 @@ public class BridgeSchedulerTest {
                 .totalReviews(4)
                 .matureIntervalDays(7)
                 .kanjiMeaningMemory(taskMemory)
+                // Prime one prior real-due pass so this pass clears the default
+                // two-pass promotion gate (Goal 63).
+                .realPassStreak(1)
                 .build()
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
                 item.withToken("promote"),
@@ -1208,6 +1211,9 @@ public class BridgeSchedulerTest {
                 .totalReviews(4)
                 .matureIntervalDays(7)
                 .kanjiMeaningMemory(taskMemory)
+                // Prime one prior real-due pass so the beyond-boundary pass
+                // clears the default two-pass promotion gate (Goal 63).
+                .realPassStreak(1)
                 .build()
         var exactBoundary: RecordsSchedulerModels.ReviewResult = schedulerWithReviewIntervalDays(21).applyReview(
                 item.withToken("exact-boundary"),
@@ -2049,6 +2055,7 @@ public class BridgeSchedulerTest {
                 )
         )
         var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder().realPassStreak(1).build()
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
                 item.withToken("custom-order"),
                 RecordsSchedulerModels.ReviewRequest("裂", "custom-order", "good", false, false, false, 0),
