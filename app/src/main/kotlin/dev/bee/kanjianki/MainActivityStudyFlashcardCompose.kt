@@ -108,11 +108,8 @@ fun StudyFlashcardActionBar(
             .padding(horizontal = 3.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (undoMessage != null && onUndo != null) {
-            StudyUndoBanner(
-                undoMessage = undoMessage,
-                onUndo = onUndo,
-            )
+        if (revealed || undoMessage != null) {
+            StudyUndoSlot(undoMessage = undoMessage, onUndo = onUndo)
         }
         if (!revealed) {
             Column(
@@ -214,13 +211,14 @@ private fun StudyRevealButton(onReveal: () -> Unit) {
 @Composable
 private fun StudyAgainButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHapticFeedback.current
-    StudySecondaryActionButton(
+    StudyPrimaryActionButton(
         StudyReviewButtonCopy.againLabel(),
         {
             haptics.performHapticFeedback(HapticFeedbackType.Reject)
             onClick()
         },
-        modifier.semantics { contentDescription = StudyReviewButtonCopy.againContentDescription() }
+        modifier.semantics { contentDescription = StudyReviewButtonCopy.againContentDescription() },
+        tone = StudyActionTone.FAIL,
     )
 }
 
@@ -233,6 +231,7 @@ private fun StudyGoodButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
             onClick()
         },
-        modifier.semantics { contentDescription = StudyReviewButtonCopy.goodContentDescription() }
+        modifier.semantics { contentDescription = StudyReviewButtonCopy.goodContentDescription() },
+        tone = StudyActionTone.PASS,
     )
 }

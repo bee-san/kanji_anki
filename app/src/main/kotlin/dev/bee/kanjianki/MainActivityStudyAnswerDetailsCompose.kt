@@ -12,9 +12,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +32,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -46,6 +41,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.core.net.toUri
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -57,19 +53,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.StudyTextCopy
 import java.util.Locale
 import kotlinx.coroutines.delay
 
 private const val ANKI_DROID_PACKAGE = "com.ichi2.anki"
 private const val ANKI_DROID_FLASHCARDS_AUTHORITY = "com.ichi2.anki.flashcards"
+private const val DETAILS_TEST_TAG_LABEL = "Details"
+private const val BREAKDOWN_TEST_TAG_LABEL = "Breakdown"
+private const val STROKE_ORDER_TEST_TAG_LABEL = "Stroke order"
+private const val USED_IN_ANKI_TEST_TAG_LABEL = "Used in Anki"
+private const val WHY_THIS_CARD_TEST_TAG_LABEL = "Why this card?"
 
 private val StudyAnswerPlum: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.plum
 private val StudyAnswerMuted: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.muted
-private val StudyAnswerPanelFill: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.panel
 private val StudyAnswerPanelSoft: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.panelSoft
 private val StudyAnswerPanelFillSoft: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.panelFill
-private val StudyAnswerBorder: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.border
-private val StudyAnswerBorderSoft: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.borderSoft
 private val StudyAnswerPillFill: androidx.compose.ui.graphics.Color @Composable get() = KaniTheme.colors.pill
 
 private val TEST_TAG_SANITIZE_REGEX = Regex("[^a-z0-9]+")
@@ -139,6 +138,10 @@ internal fun studyAnswerUsedInAnkiToggleTestTag(): String {
     return "study-answer-used-in-anki-toggle"
 }
 
+internal fun studyAnswerDisclosureHeaderTestTag(): String {
+    return "study-answer-more-disclosure"
+}
+
 private fun sanitizeTestTagPart(value: String): String {
     return TEST_TAG_SANITIZE_REGEX.replace(value.lowercase(Locale.ROOT), "-").trim('-').ifBlank {
         "section"
@@ -153,71 +156,127 @@ internal fun StudyAnswerKanjiDetailsStack(
     onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
     initialExpandedSectionLabel: String? = null,
     initialUsedInAnkiShowAll: Boolean = false,
+    onBrowseAction: Runnable? = null,
 ) {
-    var expandedSectionLabel by rememberSaveable(panelStateKey) { mutableStateOf(initialExpandedSectionLabel) }
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        StudyAnswerDictionarySection(
-            section = details.details,
-            expanded = expandedSectionLabel == details.details.label,
-            onToggle = {
-                expandedSectionLabel = if (expandedSectionLabel == details.details.label) {
-                    null
-                } else {
-                    details.details.label
-                }
-            },
-        )
-        StudyAnswerBreakdownSection(
-            section = details.breakdown,
-            expanded = expandedSectionLabel == details.breakdown.label,
-            onToggle = {
-                expandedSectionLabel = if (expandedSectionLabel == details.breakdown.label) {
-                    null
-                } else {
-                    details.breakdown.label
-                }
-            },
-        )
-        StudyAnswerStrokeOrderSection(
-            section = details.strokeOrder,
-            expanded = expandedSectionLabel == details.strokeOrder.label,
-            onToggle = {
-                expandedSectionLabel = if (expandedSectionLabel == details.strokeOrder.label) {
-                    null
-                } else {
-                    details.strokeOrder.label
-                }
-            },
-        )
-        StudyAnswerUsedInAnkiSection(
-            section = details.usedInAnki,
-            expanded = expandedSectionLabel == details.usedInAnki.label,
-            panelStateKey = panelStateKey,
-            onToggle = {
-                expandedSectionLabel = if (expandedSectionLabel == details.usedInAnki.label) {
-                    null
-                } else {
-                    details.usedInAnki.label
-                }
-            },
-            initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
-            onAnkiTapAction = onAnkiTapAction,
-        )
-        StudyAnswerWhyThisCardSection(
-            section = details.whyThisCard,
-            expanded = expandedSectionLabel == details.whyThisCard.label,
-            onToggle = {
-                expandedSectionLabel = if (expandedSectionLabel == details.whyThisCard.label) {
-                    null
-                } else {
-                    details.whyThisCard.label
-                }
-            },
-        )
+    val hasDetails = details.hasRenderableContent()
+    if (!hasDetails && onBrowseAction == null) {
+        return
     }
+    var disclosureExpanded by rememberSaveable("$panelStateKey|disclosure") {
+        mutableStateOf(initialExpandedSectionLabel != null)
+    }
+    var expandedSectionLabel by rememberSaveable("$panelStateKey|section") {
+        mutableStateOf(initialExpandedSectionLabel)
+    }
+    val toggleSection: (String) -> Unit = { label ->
+        expandedSectionLabel = if (expandedSectionLabel == label) null else label
+    }
+    val disclosureLabel = StudyTextCopy.moreAboutKanjiLabel(details.kanji)
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = KaniUiTokens.StudyShapeMedium,
+        color = StudyAnswerPanelSoft,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag(studyAnswerDisclosureHeaderTestTag())
+                    .semantics {
+                        stateDescription = if (disclosureExpanded) {
+                            StudyTextCopy.expandedStateDescription()
+                        } else {
+                            StudyTextCopy.collapsedStateDescription()
+                        }
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { disclosureExpanded = !disclosureExpanded },
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = disclosureLabel,
+                    color = StudyAnswerPlum,
+                    style = detailTextStyle(KaniUiTokens.StudyBodyTextSizeSp),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (disclosureExpanded) "▴" else "▾",
+                    color = StudyAnswerMuted,
+                    style = detailTextStyle(KaniUiTokens.StudyActionTextSizeSp),
+                    modifier = Modifier.clearAndSetSemantics { },
+                )
+            }
+            AnimatedVisibility(
+                visible = disclosureExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StudyAnswerDictionarySection(
+                        section = details.details,
+                        expanded = expandedSectionLabel == details.details.label,
+                        onToggle = { toggleSection(details.details.label) },
+                    )
+                    StudyAnswerBreakdownSection(
+                        section = details.breakdown,
+                        expanded = expandedSectionLabel == details.breakdown.label,
+                        onToggle = { toggleSection(details.breakdown.label) },
+                    )
+                    StudyAnswerStrokeOrderSection(
+                        section = details.strokeOrder,
+                        expanded = expandedSectionLabel == details.strokeOrder.label,
+                        onToggle = { toggleSection(details.strokeOrder.label) },
+                    )
+                    StudyAnswerUsedInAnkiSection(
+                        section = details.usedInAnki,
+                        expanded = expandedSectionLabel == details.usedInAnki.label,
+                        panelStateKey = panelStateKey,
+                        onToggle = { toggleSection(details.usedInAnki.label) },
+                        initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
+                        onAnkiTapAction = onAnkiTapAction,
+                    )
+                    StudyAnswerWhyThisCardSection(
+                        section = details.whyThisCard,
+                        expanded = expandedSectionLabel == details.whyThisCard.label,
+                        onToggle = { toggleSection(details.whyThisCard.label) },
+                    )
+                    if (onBrowseAction != null && details.kanji.isNotBlank()) {
+                        StudySecondaryActionButton(
+                            label = StudyTextCopy.openInBrowseLabel(),
+                            onClick = { onBrowseAction.run() },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun StudyAnswerKanjiDetailsModel.hasRenderableContent(): Boolean {
+    return details.isRenderable() ||
+        breakdown.isRenderable() ||
+        strokeOrder.isRenderable() ||
+        usedInAnki.isRenderable() ||
+        whyThisCard.isRenderable()
+}
+
+private fun StudyAnswerDetailSectionModel<*>.isRenderable(): Boolean {
+    return contentState == StudyAnswerSectionContentState.READY && body != null
 }
 
 @Composable
@@ -226,23 +285,15 @@ private fun StudyAnswerDictionarySection(
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
-    StudyAnswerAccordionSection(
+    val body = section.body?.takeIf { section.contentState == StudyAnswerSectionContentState.READY } ?: return
+    StudyAnswerDisclosureSection(
         label = section.label,
         summary = section.summary,
+        testTagLabel = DETAILS_TEST_TAG_LABEL,
         expanded = expanded,
         onToggle = onToggle,
     ) {
-        when (section.contentState) {
-            StudyAnswerSectionContentState.READY -> {
-                section.body?.let { body ->
-                    StudyAnswerDictionaryMetadataBody(body)
-                } ?: StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-            StudyAnswerSectionContentState.EMPTY,
-            StudyAnswerSectionContentState.UNAVAILABLE -> {
-                StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-        }
+        StudyAnswerDictionaryMetadataBody(body)
     }
 }
 
@@ -252,23 +303,15 @@ private fun StudyAnswerBreakdownSection(
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
-    StudyAnswerAccordionSection(
+    val body = section.body?.takeIf { section.contentState == StudyAnswerSectionContentState.READY } ?: return
+    StudyAnswerDisclosureSection(
         label = section.label,
         summary = section.summary,
+        testTagLabel = BREAKDOWN_TEST_TAG_LABEL,
         expanded = expanded,
         onToggle = onToggle,
     ) {
-        when (section.contentState) {
-            StudyAnswerSectionContentState.READY -> {
-                section.body?.let { body ->
-                    StudyAnswerBreakdownBody(body)
-                } ?: StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-            StudyAnswerSectionContentState.EMPTY,
-            StudyAnswerSectionContentState.UNAVAILABLE -> {
-                StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-        }
+        StudyAnswerBreakdownBody(body)
     }
 }
 
@@ -278,23 +321,15 @@ private fun StudyAnswerStrokeOrderSection(
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
-    StudyAnswerAccordionSection(
+    val body = section.body?.takeIf { section.contentState == StudyAnswerSectionContentState.READY } ?: return
+    StudyAnswerDisclosureSection(
         label = section.label,
         summary = section.summary,
+        testTagLabel = STROKE_ORDER_TEST_TAG_LABEL,
         expanded = expanded,
         onToggle = onToggle,
     ) {
-        when (section.contentState) {
-            StudyAnswerSectionContentState.READY -> {
-                section.body?.let { body ->
-                    StudyAnswerStrokeOrderBody(body)
-                } ?: StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-            StudyAnswerSectionContentState.EMPTY,
-            StudyAnswerSectionContentState.UNAVAILABLE -> {
-                StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-        }
+        StudyAnswerStrokeOrderBody(body)
     }
 }
 
@@ -307,28 +342,20 @@ private fun StudyAnswerUsedInAnkiSection(
     initialUsedInAnkiShowAll: Boolean,
     onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
 ) {
-    StudyAnswerAccordionSection(
+    val body = section.body?.takeIf { section.contentState == StudyAnswerSectionContentState.READY } ?: return
+    StudyAnswerDisclosureSection(
         label = section.label,
         summary = section.summary,
+        testTagLabel = USED_IN_ANKI_TEST_TAG_LABEL,
         expanded = expanded,
         onToggle = onToggle,
     ) {
-        when (section.contentState) {
-            StudyAnswerSectionContentState.READY -> {
-                section.body?.let { body ->
-                    StudyAnswerUsedInAnkiBody(
-                        body = body,
-                        panelStateKey = panelStateKey,
-                        initialShowAll = initialUsedInAnkiShowAll,
-                        onAnkiTapAction = onAnkiTapAction,
-                    )
-                } ?: StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-            StudyAnswerSectionContentState.EMPTY,
-            StudyAnswerSectionContentState.UNAVAILABLE -> {
-                StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-        }
+        StudyAnswerUsedInAnkiBody(
+            body = body,
+            panelStateKey = panelStateKey,
+            initialShowAll = initialUsedInAnkiShowAll,
+            onAnkiTapAction = onAnkiTapAction,
+        )
     }
 }
 
@@ -338,30 +365,23 @@ private fun StudyAnswerWhyThisCardSection(
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
-    StudyAnswerAccordionSection(
+    val body = section.body?.takeIf { section.contentState == StudyAnswerSectionContentState.READY } ?: return
+    StudyAnswerDisclosureSection(
         label = section.label,
         summary = section.summary,
+        testTagLabel = WHY_THIS_CARD_TEST_TAG_LABEL,
         expanded = expanded,
         onToggle = onToggle,
     ) {
-        when (section.contentState) {
-            StudyAnswerSectionContentState.READY -> {
-                section.body?.let { body ->
-                    StudyAnswerWhyThisCardBody(body)
-                } ?: StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-            StudyAnswerSectionContentState.EMPTY,
-            StudyAnswerSectionContentState.UNAVAILABLE -> {
-                StudyAnswerEmptyState(section.emptyTitle, section.emptyBody)
-            }
-        }
+        StudyAnswerWhyThisCardBody(body)
     }
 }
 
 @Composable
-private fun StudyAnswerAccordionSection(
+private fun StudyAnswerDisclosureSection(
     label: String,
     summary: String,
+    testTagLabel: String,
     expanded: Boolean,
     onToggle: () -> Unit,
     content: @Composable () -> Unit,
@@ -369,32 +389,33 @@ private fun StudyAnswerAccordionSection(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
-            .testTag(studyAnswerAccordionHeaderTestTag(label))
-            .semantics {
-                stateDescription = if (expanded) "Expanded" else "Collapsed"
-            }
-            .clickable(
-                role = Role.Button,
-                onClick = onToggle,
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = StudyAnswerPanelSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorder),
+            .animateContentSize(),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelFillSoft,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 44.dp)
+                    .testTag(studyAnswerAccordionHeaderTestTag(testTagLabel))
+                    .semantics {
+                        stateDescription = if (expanded) {
+                            StudyTextCopy.expandedStateDescription()
+                        } else {
+                            StudyTextCopy.collapsedStateDescription()
+                        }
+                    }
+                    .clickable(role = Role.Button, onClick = onToggle)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = label,
                     color = StudyAnswerPlum,
-                    style = detailTextStyle(14),
+                    style = detailTextStyle(KaniUiTokens.StudyBodyTextSizeSp),
                     fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -403,7 +424,7 @@ private fun StudyAnswerAccordionSection(
                     Text(
                         text = summary,
                         color = StudyAnswerMuted,
-                        style = detailTextStyle(12),
+                        style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -414,7 +435,7 @@ private fun StudyAnswerAccordionSection(
                 Text(
                     text = if (expanded) "▴" else "▾",
                     color = StudyAnswerMuted,
-                    style = detailTextStyle(18),
+                    style = detailTextStyle(KaniUiTokens.StudyActionTextSizeSp),
                     modifier = Modifier.clearAndSetSemantics { },
                 )
             }
@@ -440,7 +461,7 @@ private fun StudyAnswerAccordionSection(
 private fun StudyAnswerDictionaryMetadataBody(body: StudyAnswerDictionaryMetadataModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (body.meanings.isNotEmpty()) {
-            StudyAnswerSectionHeading("Meanings")
+            StudyAnswerSectionHeading(StudyTextCopy.studyAnswerMeaningsHeading())
             StudyAnswerChipFlow(body.meanings)
         }
         if (body.readingGroups.isNotEmpty()) {
@@ -452,28 +473,28 @@ private fun StudyAnswerDictionaryMetadataBody(body: StudyAnswerDictionaryMetadat
         StudyAnswerMetricGrid(
             metrics = listOf(
                 StudyAnswerMetric(
-                    label = "Strokes",
-                    value = body.strokeCount?.toString() ?: "Not available",
+                    label = StudyTextCopy.studyAnswerStrokesLabel(),
+                    value = body.strokeCount?.toString() ?: StudyTextCopy.studyAnswerNotAvailableValue(),
                     available = body.strokeCount != null,
                 ),
                 StudyAnswerMetric(
-                    label = "Grade",
-                    value = body.grade?.toString() ?: "Not graded",
+                    label = StudyTextCopy.studyAnswerGradeLabel(),
+                    value = body.grade?.toString() ?: StudyTextCopy.studyAnswerNotGradedValue(),
                     available = body.grade != null,
                 ),
                 StudyAnswerMetric(
-                    label = "Radical",
-                    value = body.radical?.toString() ?: "Not available",
+                    label = StudyTextCopy.studyAnswerRadicalLabel(),
+                    value = body.radical?.toString() ?: StudyTextCopy.studyAnswerNotAvailableValue(),
                     available = body.radical != null,
                 ),
                 StudyAnswerMetric(
-                    label = "Frequency",
-                    value = body.frequency?.toString() ?: "Not available",
+                    label = StudyTextCopy.studyAnswerFrequencyLabel(),
+                    value = body.frequency?.toString() ?: StudyTextCopy.studyAnswerNotAvailableValue(),
                     available = body.frequency != null,
                 ),
                 StudyAnswerMetric(
-                    label = "Jiten rank",
-                    value = body.jitenRank?.toString() ?: "Not available",
+                    label = StudyTextCopy.studyAnswerJitenRankLabel(),
+                    value = body.jitenRank?.toString() ?: StudyTextCopy.studyAnswerNotAvailableValue(),
                     available = body.jitenRank != null,
                 ),
             ),
@@ -488,7 +509,7 @@ private fun StudyAnswerBreakdownBody(body: StudyAnswerBreakdownModel) {
             StudyAnswerMetricGrid(
                 metrics = listOf(
                     StudyAnswerMetric(
-                        label = "Radical",
+                        label = StudyTextCopy.studyAnswerRadicalLabel(),
                         value = radical.toString(),
                         available = true,
                     ),
@@ -496,7 +517,7 @@ private fun StudyAnswerBreakdownBody(body: StudyAnswerBreakdownModel) {
             )
         }
         if (body.componentRows.isNotEmpty()) {
-            StudyAnswerSectionHeading("Components")
+            StudyAnswerSectionHeading(StudyTextCopy.studyAnswerComponentsHeading())
             StudyAnswerChipFlow(body.componentRows)
         }
         body.fallbackCopy?.let { fallback ->
@@ -512,7 +533,7 @@ private fun StudyAnswerStrokeOrderBody(body: StudyAnswerStrokeOrderModel) {
             StudyAnswerMetricGrid(
                 metrics = listOf(
                     StudyAnswerMetric(
-                        label = "Stroke count",
+                        label = StudyTextCopy.studyAnswerStrokeCountLabel(),
                         value = strokeCount.toString(),
                         available = true,
                     ),
@@ -522,8 +543,8 @@ private fun StudyAnswerStrokeOrderBody(body: StudyAnswerStrokeOrderModel) {
         when (body.availability) {
             StudyAnswerStrokeOrderAvailability.ASSET_AVAILABLE -> {
                 body.assetReference?.takeIf { it.isNotBlank() }?.let { reference ->
-                    StudyAnswerBodyNote("Planned: $reference")
-                } ?: StudyAnswerBodyNote("Animated guide ready")
+                    StudyAnswerBodyNote(StudyTextCopy.studyAnswerPlannedAssetNote(reference))
+                } ?: StudyAnswerBodyNote(StudyTextCopy.studyAnswerAnimatedGuideReadySummary())
             }
             StudyAnswerStrokeOrderAvailability.COUNT_ONLY -> {
                 body.fallbackCopy?.let { fallback ->
@@ -583,13 +604,13 @@ private fun StudyAnswerUsedInAnkiBody(
 private fun StudyAnswerWhyThisCardBody(body: StudyAnswerWhyThisCardModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         body.sourceExpression?.let { expression ->
-            StudyAnswerBodyNote("From: $expression", bold = true)
+            StudyAnswerBodyNote(StudyTextCopy.studyAnswerFromSummary(expression), bold = true)
         }
         body.sourceReading?.let { reading ->
-            StudyAnswerBodyNote("Reading: $reading")
+            StudyAnswerBodyNote(StudyTextCopy.studyAnswerReadingNote(reading))
         }
         if (body.previewExamples.isNotEmpty()) {
-            StudyAnswerSectionHeading("Also appears in...")
+            StudyAnswerSectionHeading(StudyTextCopy.studyAnswerAlsoAppearsInHeading())
             body.previewExamples.forEach { preview ->
                 StudyAnswerPreviewExampleCard(preview)
             }
@@ -600,51 +621,16 @@ private fun StudyAnswerWhyThisCardBody(body: StudyAnswerWhyThisCardModel) {
 }
 
 @Composable
-private fun StudyAnswerEmptyState(
-    title: String?,
-    body: String?,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            if (!title.isNullOrBlank()) {
-                Text(
-                    text = title,
-                    color = StudyAnswerPlum,
-                    style = detailTextStyle(13),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            if (!body.isNullOrBlank()) {
-                Text(
-                    text = body,
-                    color = StudyAnswerMuted,
-                    style = detailTextStyle(12),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun StudyAnswerInlineFeedbackBanner(message: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelSoft,
     ) {
         Text(
             text = message,
             color = StudyAnswerPlum,
-            style = detailTextStyle(12),
+            style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             maxLines = 2,
@@ -661,7 +647,7 @@ private fun StudyAnswerBodyNote(
     Text(
         text = text,
         color = StudyAnswerMuted,
-        style = detailTextStyle(if (bold) 13 else 12),
+        style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
     )
 }
@@ -671,7 +657,7 @@ private fun StudyAnswerSectionHeading(text: String) {
     Text(
         text = text,
         color = StudyAnswerPlum,
-        style = detailTextStyle(12),
+        style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
         fontWeight = FontWeight.Bold,
     )
 }
@@ -695,14 +681,13 @@ private fun StudyAnswerChipFlow(values: List<String>) {
 @Composable
 private fun StudyAnswerChip(text: String) {
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = KaniUiTokens.StudyShapeSmall,
         color = StudyAnswerPillFill,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
     ) {
         Text(
             text = text,
             color = StudyAnswerPlum,
-            style = detailTextStyle(12),
+            style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             maxLines = 1,
@@ -752,9 +737,8 @@ private fun StudyAnswerMetricCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelSoft,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -763,13 +747,13 @@ private fun StudyAnswerMetricCard(
             Text(
                 text = metric.label,
                 color = StudyAnswerMuted,
-                style = detailTextStyle(11),
+                style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = metric.value,
                 color = if (metric.available) StudyAnswerPlum else StudyAnswerMuted,
-                style = detailTextStyle(12),
+                style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -782,9 +766,8 @@ private fun StudyAnswerMetricCard(
 private fun StudyAnswerPreviewExampleCard(example: StudyAnswerWhyThisCardExampleModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelSoft,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
@@ -794,7 +777,7 @@ private fun StudyAnswerPreviewExampleCard(example: StudyAnswerWhyThisCardExample
                 Text(
                     text = example.expression,
                     color = StudyAnswerPlum,
-                    style = detailTextStyle(13),
+                    style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -802,14 +785,14 @@ private fun StudyAnswerPreviewExampleCard(example: StudyAnswerWhyThisCardExample
                 Text(
                     text = example.reading,
                     color = StudyAnswerMuted,
-                    style = detailTextStyle(12),
+                    style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                 )
             }
             if (example.meaning.isNotBlank()) {
                 Text(
                     text = example.meaning,
                     color = StudyAnswerMuted,
-                    style = detailTextStyle(12),
+                    style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -851,12 +834,8 @@ private fun StudyAnswerUsedInAnkiRow(
     }
     Surface(
         modifier = surfaceModifier,
-        shape = RoundedCornerShape(14.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(
-            1.dp,
-            if (row.isPrimarySource) StudyAnswerBorder else StudyAnswerBorderSoft,
-        ),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelSoft,
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
@@ -870,14 +849,14 @@ private fun StudyAnswerUsedInAnkiRow(
                 Text(
                     text = row.expression,
                     color = StudyAnswerPlum,
-                    style = detailTextStyle(14),
+                    style = detailTextStyle(KaniUiTokens.StudyBodyTextSizeSp),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (row.isPrimarySource) {
-                    StudyAnswerChip("Current")
+                    StudyAnswerChip(StudyTextCopy.currentLabel())
                 }
             }
             val secondaryText = listOf(row.reading.trim(), row.meaning.trim())
@@ -887,7 +866,7 @@ private fun StudyAnswerUsedInAnkiRow(
                 Text(
                     text = secondaryText,
                     color = StudyAnswerMuted,
-                    style = detailTextStyle(12),
+                    style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -922,9 +901,8 @@ private fun StudyAnswerUsedInAnkiToggle(
                 role = Role.Button,
                 onClick = onClick,
             ),
-        shape = RoundedCornerShape(14.dp),
-        color = StudyAnswerPanelFillSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorderSoft),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = StudyAnswerPanelSoft,
     ) {
         Row(
             modifier = Modifier
@@ -933,16 +911,20 @@ private fun StudyAnswerUsedInAnkiToggle(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (showAll) "Show fewer" else "Show all $totalRows",
+                text = if (showAll) {
+                    StudyTextCopy.showFewerLabel()
+                } else {
+                    StudyTextCopy.showAllLabel(totalRows)
+                },
                 color = StudyAnswerPlum,
-                style = detailTextStyle(13),
+                style = detailTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = if (showAll) "▴" else "▾",
                 color = StudyAnswerMuted,
-                style = detailTextStyle(18),
+                style = detailTextStyle(KaniUiTokens.StudyActionTextSizeSp),
                 modifier = Modifier.clearAndSetSemantics { },
             )
         }

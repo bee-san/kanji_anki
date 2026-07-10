@@ -26,6 +26,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         lateinit var route: WritingSessionRouteModel
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
+            studySessionActive = true,
             beforeContent = { route = routeProvider() },
             content = {
                 Column {
@@ -78,8 +79,6 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                 writingPromptHeaderModel(session),
                 answerPanel,
                 answerPanelState,
-                writingSectionTitle(session),
-                MainActivityUiSupport.STUDY_PLUM,
                 status,
                 drawingPad,
                 home.studyPadHeight(),
@@ -92,28 +91,22 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         return WritingPromptHeaderModel(
             StudyTaskCopy.studyModeLabel(session),
             StudyWritingCopy.title(),
-            StudyTaskCopy.labelForTask(session.taskType),
-            home.studyReasonLine(session),
             writingPromptLines(session)
         )
-    }
-
-    private fun writingSectionTitle(session: RecordsSchedulerModels.StudySession): String {
-        return StudyWritingCopy.sectionTitle(session)
     }
 
     private fun writingPromptLines(session: RecordsSchedulerModels.StudySession): List<WritingPromptLineModel> {
         val lines = mutableListOf<WritingPromptLineModel>()
         val row = session.row
         if (row == null) {
-            lines.add(WritingPromptLineModel(safeText(session.prompt), 17, MainActivityUiSupport.STUDY_MUTED, false))
+            lines.add(WritingPromptLineModel(safeText(session.prompt), KaniUiTokens.StudyActionTextSizeSp, MainActivityUiSupport.STUDY_MUTED, false))
             return lines
         }
         if (!StudyTaskCopy.isRecallTask(session)) {
             lines.add(
                 WritingPromptLineModel(
                     StudyWritingCopy.referenceInstruction(),
-                    15,
+                    KaniUiTokens.StudyBodyTextSizeSp,
                     MainActivityUiSupport.STUDY_MUTED,
                     false
                 )
@@ -123,18 +116,18 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         lines.add(
             WritingPromptLineModel(
                 StudyWritingCopy.recallPromptLine(StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)),
-                17,
+                KaniUiTokens.StudyActionTextSizeSp,
                 MainActivityUiSupport.STUDY_PLUM,
                 true
             )
         )
         if (row.reading.isNotEmpty()) {
-            lines.add(WritingPromptLineModel(StudyWritingCopy.readingLine(row.reading), 15, MainActivityUiSupport.STUDY_MUTED, false))
+            lines.add(WritingPromptLineModel(StudyWritingCopy.readingLine(row.reading), KaniUiTokens.StudyBodyTextSizeSp, MainActivityUiSupport.STUDY_MUTED, false))
         }
         lines.add(
             WritingPromptLineModel(
                 StudyWritingCopy.promptInstruction(),
-                15,
+                KaniUiTokens.StudyBodyTextSizeSp,
                 MainActivityUiSupport.STUDY_MUTED,
                 false
             )
@@ -178,13 +171,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         val state = route.actionBarState ?: return
         val undoMessage = home.studyUndoState.undoMessageOrNull()
         Column {
-            if (undoMessage != null) {
-                StudyUndoBanner(
-                    undoMessage = undoMessage,
-                    onUndo = home::undoLastRating,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
+            StudyUndoSlot(undoMessage = undoMessage, onUndo = home::undoLastRating)
             WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
         }
     }

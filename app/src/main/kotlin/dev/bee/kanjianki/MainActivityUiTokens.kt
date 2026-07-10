@@ -1,18 +1,23 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,6 +44,28 @@ internal object KaniUiTokens {
     val ButtonShape = RoundedCornerShape(12.dp)
     val WideButtonShape = RoundedCornerShape(22.dp)
 
+    // Study screens deliberately use a small, shared scale. Keeping these tokens
+    // here prevents each renderer from growing its own near-identical type, radius,
+    // and elevation vocabulary.
+    val StudyRadiusSmall = 12.dp
+    val StudyRadiusMedium = 20.dp
+    val StudyRadiusLarge = 28.dp
+    val StudyShapeSmall = RoundedCornerShape(StudyRadiusSmall)
+    val StudyShapeMedium = RoundedCornerShape(StudyRadiusMedium)
+    val StudyShapeLarge = RoundedCornerShape(StudyRadiusLarge)
+    val StudyElevation = 0.dp
+    const val StudyCaptionTextSizeSp = 13
+    const val StudyBodyTextSizeSp = 15
+    const val StudyActionTextSizeSp = 17
+    const val StudyHeadingTextSizeSp = 21
+    const val StudyQuestionTextSizeSp = 27
+    const val StudyHeroTextSizeSp = 80
+    // Content heroes are deliberate scale exceptions: the compact value is the
+    // KB1 keyboard fit, while word and front-kanji heroes carry the card's focus.
+    const val StudyCompactHeroTextSizeSp = 64
+    const val StudyWordHeroTextSizeSp = 44
+    const val StudyFrontHeroTextSizeSp = 116
+
     /**
      * Picks dark ink or white, whichever is more readable on [background].
      * Backgrounds passed here are saturated accents, so the choice is
@@ -48,16 +75,46 @@ internal object KaniUiTokens {
         val ink = Color(MainActivityUiSupport.INK)
         val inkContrast = contrastRatio(ink, background)
         val whiteContrast = contrastRatio(Color.White, background)
-        return if (inkContrast >= whiteContrast) ink else Color.White
+        val preferred = if (inkContrast >= whiteContrast) ink else Color.White
+        val preferredContrast = max(inkContrast, whiteContrast)
+        if (preferredContrast >= 4.5) {
+            return preferred
+        }
+        // A palette accent can land fractionally below the WCAG AA boundary
+        // against the branded ink and white. Pure black is the safe final fallback.
+        return Color.Black
     }
 }
 
-private fun contrastRatio(foreground: Color, background: Color): Double {
+internal fun contrastRatio(foreground: Color, background: Color): Double {
     val foregroundLuminance = foreground.luminance().toDouble()
     val backgroundLuminance = background.luminance().toDouble()
     val lighter = max(foregroundLuminance, backgroundLuminance)
     val darker = min(foregroundLuminance, backgroundLuminance)
     return (lighter + 0.05) / (darker + 0.05)
+}
+
+/** The single compact mode marker used by every active study renderer. */
+@Composable
+internal fun StudyModeChip(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = KaniTheme.colors.pill,
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
+            Text(
+                text = label,
+                color = KaniTheme.colors.primary,
+                fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+            )
+        }
+    }
 }
 
 @Composable

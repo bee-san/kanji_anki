@@ -7,27 +7,8 @@ import org.junit.Test
 class StudyWritingCopyTest {
     @Test
     fun studyWritingCopySwitchesBetweenEnglishAndJapaneseCopy() {
-        val studySession = RecordsSchedulerModels.StudySession(
-            null,
-            null,
-            "session-token",
-            "targeted_writing",
-            false,
-            "prompt text",
-        )
-        val repairSession = RecordsSchedulerModels.StudySession(
-            null,
-            null,
-            "session-token",
-            "repair_writing",
-            false,
-            "prompt text",
-        )
-
         withLocale(Locale.US) {
             assertEquals("Draw this kanji", StudyWritingCopy.title())
-            assertEquals("Writing", StudyWritingCopy.sectionTitle(studySession))
-            assertEquals("", StudyWritingCopy.sectionTitle(repairSession))
             assertEquals("Use the reference, trace, then check.", StudyWritingCopy.referenceInstruction())
             assertEquals("Prompt: split, rend", StudyWritingCopy.recallPromptLine("split, rend"))
             assertEquals("Reading: レツ", StudyWritingCopy.readingLine("レツ"))
@@ -61,8 +42,6 @@ class StudyWritingCopyTest {
 
         withLocale(Locale.JAPAN) {
             assertEquals("この漢字を書いてください", StudyWritingCopy.title())
-            assertEquals("書き取り", StudyWritingCopy.sectionTitle(studySession))
-            assertEquals("", StudyWritingCopy.sectionTitle(repairSession))
             assertEquals("参考を見てなぞってから確認してください。", StudyWritingCopy.referenceInstruction())
             assertEquals("書き取りプロンプト: split, rend", StudyWritingCopy.recallPromptLine("split, rend"))
             assertEquals("読み: レツ", StudyWritingCopy.readingLine("レツ"))

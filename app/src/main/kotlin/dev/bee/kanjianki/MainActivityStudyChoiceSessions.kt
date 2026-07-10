@@ -1,6 +1,8 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
@@ -12,6 +14,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
 import dev.bee.kanjianki.core.StudyCueFormatter
+import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
@@ -80,7 +83,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val question = StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
-        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
         // Precompute both result texts here on the background executor: the result
         // resolver runs in the answer click handler on the main thread, and the copy
         // only depends on whether the pick was correct, not on which glyph was picked.
@@ -92,10 +94,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             resetChoiceSession(true)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
-                StudyTextCopy.studyChoiceTitle(),
-                taskLabel,
-                StudyTextCopy.studyChoiceBody(),
-                "",
                 question,
                 choiceCard.choices,
                 answerPanel,
@@ -121,7 +119,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     MeaningChoiceResultModel(
                         if (correct) resultCorrectText else resultWrongText,
                         if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
                         correctChoice = choiceCard.targetKanji,
                         selectedChoiceCorrect = correct,
                     )
@@ -132,18 +130,24 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     private fun renderMeaningChoiceRoute(model: MeaningChoiceSessionModel, state: MeaningChoiceSessionState) {
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
         val browseAction = model.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
             Runnable { home.renderDetail(glyph, false, null, Runnable { renderMeaningChoiceRoute(model, state) }) }
         }
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
+            studySessionActive = true,
             content = {
-                MeaningChoiceSessionCard(
-                    model = model,
-                    state = state,
-                    showInlineResultAction = false,
-                    onBrowseAction = browseAction,
-                )
+                Column {
+                    ChoiceStudyTopBar(progress)
+                    MeaningChoiceSessionCard(
+                        model = model,
+                        state = state,
+                        showInlineResultAction = false,
+                        onBrowseAction = browseAction,
+                    )
+                }
             },
             actionBar = { MeaningChoiceResultActionBar(model = model, state = state) },
         )
@@ -172,7 +176,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val question = StudyTextCopy.kanjiReadingChoiceQuestion(choiceCard)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
-        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
         val resultCorrectText = StudyTextCopy.kanjiReadingChoiceResult(choiceCard, true)
         val resultWrongText = StudyTextCopy.kanjiReadingChoiceResult(choiceCard, false)
 
@@ -180,10 +183,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             resetChoiceSession(true)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
-                StudyTextCopy.kanjiReadingChoiceTitle(),
-                taskLabel,
-                StudyTextCopy.kanjiReadingChoiceBody(),
-                "",
                 question,
                 choiceCard.choices,
                 answerPanel,
@@ -206,7 +205,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     MeaningChoiceResultModel(
                         if (correct) resultCorrectText else resultWrongText,
                         if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
                         correctChoice = choiceCard.correctReading,
                         selectedChoiceCorrect = correct,
                     )
@@ -247,7 +246,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val answerPanel = home.meaningChoiceAnswerPanelModel(session)
         val question = StudyTextCopy.readingKanjiChoiceQuestion(choiceCard)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
-        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
         val resultCorrectText = StudyTextCopy.readingKanjiChoiceResult(choiceCard, true)
         val resultWrongText = StudyTextCopy.readingKanjiChoiceResult(choiceCard, false)
 
@@ -255,10 +253,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             resetChoiceSession(true)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
-                StudyTextCopy.readingKanjiChoiceTitle(),
-                taskLabel,
-                StudyTextCopy.readingKanjiChoiceBody(),
-                "",
                 question,
                 choiceCard.choices,
                 answerPanel,
@@ -281,7 +275,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     MeaningChoiceResultModel(
                         if (correct) resultCorrectText else resultWrongText,
                         if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
                         correctChoice = choiceCard.targetKanji,
                         selectedChoiceCorrect = correct,
                     )
@@ -340,12 +334,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         choices.shuffle()
 
         val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
-        val reason = StudyTextCopy.studyReasonLine(
-            home.activeSimilarWritingRepair != null,
-            session,
-            home.settings().matureSupportThreshold,
-            System.currentTimeMillis()
-        )
         val explanation = SimilarKanjiExplanationPolicy.explain(
             choiceCard.targetKanji,
             home.store.searchKanjiInventory(""),
@@ -354,16 +342,11 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         )
         val explanationLines = similarKanjiExplanationLines(explanation)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
-        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
 
         return {
             resetChoiceSession(false)
             val model = SimilarChoiceSessionModel(
                 modeLabel,
-                StudyTextCopy.studyChoiceTitle(),
-                taskLabel,
-                StudyTextCopy.studyChoiceBody(),
-                reason,
                 StudyTextCopy.studyChoiceQuestion(meaning),
                 SimilarChoiceGridModel(
                     choices,
@@ -386,21 +369,29 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     private fun renderSimilarChoiceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
         home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
+            studySessionActive = true,
             content = {
-                SimilarChoiceSessionCard(
-                    model = model,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-                    showInlineChoices = true,
-                    detailsExpandedByDefault = false,
-                    onExploreDifferences = Runnable { renderSimilarDifferenceRoute(model, differenceModel) },
-                )
+                Column {
+                    ChoiceStudyTopBar(progress)
+                    SimilarChoiceSessionCard(
+                        model = model,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                        showInlineChoices = true,
+                        detailsExpandedByDefault = false,
+                        onExploreDifferences = Runnable { renderSimilarDifferenceRoute(model, differenceModel) },
+                    )
+                }
             },
         )
     }
 
     private fun renderSimilarDifferenceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
         val withBrowseActions = differenceModel.copy(
             choices = differenceModel.choices.map { choice ->
                 choice.copy(
@@ -420,11 +411,15 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         )
         home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
+            studySessionActive = true,
             content = {
-                SimilarKanjiDifferenceScreen(
-                    model = withBrowseActions,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-                )
+                Column {
+                    ChoiceStudyTopBar(progress)
+                    SimilarKanjiDifferenceScreen(
+                        model = withBrowseActions,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                    )
+                }
             },
         )
     }
@@ -483,6 +478,17 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
     fun resetChoiceSession(resetTouchTracking: Boolean) {
         MainActivityStudyInteractionReset.resetChoice(home, resetTouchTracking)
+    }
+
+    @Composable
+    private fun ChoiceStudyTopBar(progress: StudySessionProgressTracker.TopBarProgress) {
+        StudyTopBar(
+            completed = progress.completed,
+            target = progress.target,
+            fraction = progress.fraction,
+            onClose = home::renderHome,
+            onSettings = home::renderSettings,
+        )
     }
 
 }

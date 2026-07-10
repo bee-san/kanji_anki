@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -27,7 +26,7 @@ internal fun WritingPadPanel(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = KaniUiTokens.StudyShapeMedium,
         color = WritingPadFill,
         border = BorderStroke(1.dp, WritingPadBorder)
     ) {

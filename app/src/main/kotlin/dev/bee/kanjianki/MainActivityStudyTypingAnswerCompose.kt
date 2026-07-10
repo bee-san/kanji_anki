@@ -7,14 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,11 +29,9 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -73,25 +68,13 @@ internal fun TypingMeaningAnswer(
             .padding(top = 14.dp, bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = label,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            color = TypingAnswerMuted,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 16.sp,
-            textAlign = TextAlign.Center,
-            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
-        )
         BasicTextField(
             value = state.text,
             onValueChange = state::updateText,
             singleLine = true,
             textStyle = TextStyle(
                 color = TypingAnswerText,
-                fontSize = 20.sp,
+                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
                 platformStyle = PlatformTextStyle(includeFontPadding = true)
             ),
             keyboardOptions = KeyboardOptions(
@@ -122,7 +105,7 @@ internal fun TypingMeaningAnswer(
             decorationBox = { innerTextField ->
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = KaniUiTokens.StudyShapeMedium,
                     color = KaniTheme.colors.surface,
                     border = BorderStroke(1.dp, TypingAnswerBorder)
                 ) {
@@ -136,7 +119,7 @@ internal fun TypingMeaningAnswer(
                             Text(
                                 text = label,
                                 color = TypingAnswerMuted,
-                                fontSize = 20.sp,
+                                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
                                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
                             )
                         }

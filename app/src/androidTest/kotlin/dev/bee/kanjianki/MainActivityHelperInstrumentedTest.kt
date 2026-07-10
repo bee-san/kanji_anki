@@ -320,10 +320,6 @@ fun studySessionHelpersPickExamplesPromptsTitlesAndTaskKinds() {
 
                 assertEquals("What is the reading?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("Read this word", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("Type the meaning", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertEquals("Recognise this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
-                assertEquals("Name this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("Read", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals("Type", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
                 assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
@@ -1646,7 +1642,7 @@ fun homeBrowseDetailStatsAndSyncControlsCoverNonEmptyBranches() {
             // renderStudyForKanji renders asynchronously: trigger on main, then poll
             // from the instrumentation thread for the loaded content.
             scenario.onActivity { activity -> activity.renderStudyForKanji("裂") }
-            waitForText(scenario, "Name this kanji")
+            waitForText(scenario, "What does this kanji mean?")
             scenario.onActivity { activity ->
                 verifyBrowseSuspensionControls(activity);
                 verifyRecentMistakesAndEmptyTimeline(activity);
@@ -1814,7 +1810,6 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
 private fun verifySyncResultStudyNow(activity: MainActivity) {
         activity.renderSyncResult(syncResult(true, false, 1, 0, "", ""));
         performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_STUDY_NOW);
-        assertHasText(activity, "Name this kanji");
         assertHasText(activity, "What does this kanji mean?");
 
         var summary = LinearLayout(activity)

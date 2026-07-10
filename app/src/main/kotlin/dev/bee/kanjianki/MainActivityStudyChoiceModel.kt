@@ -16,7 +16,7 @@ fun interface MeaningChoiceResultResolver {
 data class MeaningChoiceResultModel(
     val status: String,
     val statusColor: Int,
-    val actionLabel: String,
+    val actionTone: StudyActionTone,
     val correctChoice: String? = null,
     val selectedChoiceCorrect: Boolean? = null,
 )
@@ -131,10 +131,6 @@ private fun addJoinedLine(
 
 data class SimilarChoiceSessionModel(
     val modeLabel: String,
-    val title: String,
-    val taskLabel: String,
-    val body: String,
-    val reasonLine: String,
     val question: String,
     val gridModel: SimilarChoiceGridModel,
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
@@ -160,10 +156,6 @@ internal data class SimilarKanjiDifferenceModel(
 
 internal data class MeaningChoiceSessionModel(
     val modeLabel: String,
-    val title: String,
-    val taskLabel: String,
-    val body: String,
-    val reasonLine: String,
     val question: String,
     val choices: List<String>,
     val answerPanel: StudyAnswerPanelModel,

@@ -9,8 +9,6 @@ internal data class WritingSessionCardModel(
     val promptHeader: WritingPromptHeaderModel,
     val answerPanel: StudyAnswerPanelModel,
     val answerPanelState: WritingAnswerPanelState,
-    val writingTitle: String,
-    val writingTitleColor: Int,
     val status: WritingStatusState,
     val drawingPad: View,
     val padMaxSizePx: Int,

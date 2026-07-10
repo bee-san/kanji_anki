@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,7 +39,13 @@ internal fun flashcardAnswerPanelModel(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): StudyAnswerPanelModel {
-    return answerPanelModel(activity, session, "Answer", 76, null)
+    return answerPanelModel(
+        activity,
+        session,
+        StudyTextCopy.answerLabel(),
+        KaniUiTokens.StudyHeroTextSizeSp,
+        null,
+    )
 }
 
 internal fun meaningChoiceAnswerPanelModel(
@@ -50,8 +55,8 @@ internal fun meaningChoiceAnswerPanelModel(
     return answerPanelModel(
         activity,
         session,
-        "Answer",
-        76,
+        StudyTextCopy.answerLabel(),
+        KaniUiTokens.StudyHeroTextSizeSp,
         null,
     ) { example ->
         StudyCuePolicy.meaningChoiceAnswerLines(
@@ -66,7 +71,13 @@ internal fun learningPanelModel(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): StudyAnswerPanelModel {
-    return answerPanelModel(activity, session, "Reference", 72, "Trace it below, then check.")
+    return answerPanelModel(
+        activity,
+        session,
+        StudyTextCopy.referenceLabel(),
+        KaniUiTokens.StudyHeroTextSizeSp,
+        StudyTextCopy.writingReferenceHelper(),
+    )
 }
 
 private fun answerPanelModel(
@@ -93,7 +104,11 @@ private fun answerPanelModel(
                 } else {
                     MainActivityUiSupport.STUDY_PLUM
                 },
-                sizeSp = if (index == 0) 17 else 15,
+                sizeSp = if (index == 0) {
+                    KaniUiTokens.StudyActionTextSizeSp
+                } else {
+                    KaniUiTokens.StudyBodyTextSizeSp
+                },
                 bold = true
             )
         }
@@ -102,7 +117,7 @@ private fun answerPanelModel(
             StudyAnswerLineModel(
                 text = session.prompt,
                 color = MainActivityUiSupport.STUDY_MUTED,
-                sizeSp = 15,
+                sizeSp = KaniUiTokens.StudyBodyTextSizeSp,
                 bold = false
             )
         )
@@ -130,7 +145,7 @@ internal fun StudyAnswerPanel(
     val panelStateKey = studyAnswerPanelStateKey(model)
     Surface(
         modifier = modifier.fillMaxWidth().animateContentSize(),
-        shape = RoundedCornerShape(22.dp),
+        shape = KaniUiTokens.StudyShapeMedium,
         color = StudyAnswerPanelFill,
         border = BorderStroke(1.dp, StudyAnswerBorder)
     ) {
@@ -138,7 +153,7 @@ internal fun StudyAnswerPanel(
             Text(
                 text = model.title,
                 color = StudyAnswerPlum,
-                style = studyAnswerTextStyle(19),
+                style = studyAnswerTextStyle(KaniUiTokens.StudyHeadingTextSizeSp),
                 fontWeight = FontWeight.Bold
             )
             Row(
@@ -158,22 +173,16 @@ internal fun StudyAnswerPanel(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    model.lines.forEach { line ->
-                        Text(
-                            text = line.text,
-                            color = kaniColor(line.color),
-                            style = studyAnswerTextStyle(line.sizeSp),
-                            fontWeight = if (line.bold) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
+                StudyAnswerLines(
+                    lines = model.lines,
+                    modifier = Modifier.weight(1f),
+                )
             }
             model.helperText?.let { helper ->
                 Text(
                     text = helper,
                     color = StudyAnswerMuted,
-                    style = studyAnswerTextStyle(13)
+                    style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp)
                 )
             }
             model.kanjiDetails?.let { details ->
@@ -184,23 +193,59 @@ internal fun StudyAnswerPanel(
                     onAnkiTapAction = onAnkiTapAction,
                     initialExpandedSectionLabel = initialExpandedSectionLabel,
                     initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
+                    onBrowseAction = onBrowseAction,
                 )
             }
-            if (onBrowseAction != null && model.glyph.isNotBlank()) {
-                Text(
-                    text = StudyTextCopy.viewKanjiDetailsLabel(),
-                    color = StudyAnswerMuted,
-                    style = studyAnswerTextStyle(13),
-                    modifier = Modifier.padding(top = 10.dp)
-                )
-                StudySecondaryActionButton(
-                    label = StudyTextCopy.openInBrowseLabel(),
-                    onClick = { onBrowseAction.run() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                )
-            }
+        }
+    }
+}
+
+/**
+ * Revealed flashcard content that sits directly below the persistent kanji hero.
+ * It deliberately omits the answer title, duplicate glyph, and an additional
+ * panel surface so reveal keeps one visual anchor.
+ */
+@Composable
+internal fun StudyFlashcardAnswerContent(
+    model: StudyAnswerPanelModel,
+    modifier: Modifier = Modifier,
+    onBrowseAction: Runnable? = null,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        StudyAnswerLines(lines = model.lines)
+        model.helperText?.takeIf { it.isNotBlank() }?.let { helper ->
+            Text(
+                text = helper,
+                color = StudyAnswerMuted,
+                style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
+            )
+        }
+        model.kanjiDetails?.let { details ->
+            StudyAnswerKanjiDetailsStack(
+                details = details,
+                panelStateKey = studyAnswerPanelStateKey(model),
+                onBrowseAction = onBrowseAction,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun StudyAnswerLines(
+    lines: List<StudyAnswerLineModel>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        lines.forEach { line ->
+            Text(
+                text = line.text,
+                color = kaniColor(line.color),
+                style = studyAnswerTextStyle(line.sizeSp),
+                fontWeight = if (line.bold) FontWeight.Bold else FontWeight.Normal,
+            )
         }
     }
 }

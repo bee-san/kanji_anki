@@ -14,7 +14,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         // LocalStore reads/writes and scheduler work run on the background executor, and
         // only the returned render thunk runs on the main thread.
         study.loadRouteAsync(
-            showLoading = { study.renderStudyLoading() },
+            showLoading = { study.renderStudyLoading(study.activeSession != null) },
             load = { withStudyLoadProbe("renderStudy.total") { computeStudyRender() } },
             render = { it() },
             traceName = "study-route",
@@ -100,7 +100,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         // dashboard/study-item reads and queue persistence, which used to run on the
         // main thread for undo and browse-detail entry points.
         study.loadRouteAsync(
-            showLoading = { study.renderStudyLoading() },
+            showLoading = { study.renderStudyLoading(study.activeSession != null) },
             load = { computeStudyForKanjiRender(kanji) },
             render = { it() },
             traceName = "study-kanji-route",

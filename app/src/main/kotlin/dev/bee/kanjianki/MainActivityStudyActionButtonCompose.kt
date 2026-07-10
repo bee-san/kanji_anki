@@ -6,7 +6,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -31,6 +30,13 @@ private val StudyActionDisabledPrimaryFill: Color @Composable get() = KaniTheme.
 
 internal fun studyActionButtonTestTag(label: String): String = "study-action-button-$label"
 
+enum class StudyActionTone {
+    PRIMARY,
+    SECONDARY,
+    FAIL,
+    PASS,
+}
+
 @Composable
 internal fun StudyPrimaryActionButton(
     label: String,
@@ -39,18 +45,21 @@ internal fun StudyPrimaryActionButton(
     enabled: Boolean = true,
     minHeight: Dp = 62.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+    tone: StudyActionTone = StudyActionTone.PRIMARY,
     leadingContent: @Composable RowScope.() -> Unit = {},
 ) {
+    val containerColor = studyActionContainerColor(tone)
+    val contentColor = studyActionContentColor(tone, containerColor)
     Button(
         onClick = { withButtonTrace(label) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))
             .heightIn(min = minHeight),
-        shape = RoundedCornerShape(20.dp),
+        shape = KaniUiTokens.StudyShapeMedium,
         colors = ButtonDefaults.buttonColors(
-            containerColor = StudyActionPrimaryColor,
-            contentColor = KaniTheme.colors.onPrimary,
+            containerColor = containerColor,
+            contentColor = contentColor,
             disabledContainerColor = StudyActionDisabledPrimaryFill,
             disabledContentColor = KaniTheme.colors.onPrimary,
         ),
@@ -58,7 +67,7 @@ internal fun StudyPrimaryActionButton(
         contentPadding = contentPadding,
     ) {
         leadingContent()
-        StudyActionButtonText(label = label, color = KaniTheme.colors.onPrimary)
+        StudyActionButtonText(label = label, color = contentColor)
     }
 }
 
@@ -69,14 +78,26 @@ internal fun StudySecondaryActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     minHeight: Dp = 62.dp,
+    tone: StudyActionTone = StudyActionTone.SECONDARY,
 ) {
+    if (tone != StudyActionTone.SECONDARY) {
+        StudyPrimaryActionButton(
+            label = label,
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            minHeight = minHeight,
+            tone = tone,
+        )
+        return
+    }
     OutlinedButton(
         onClick = { withButtonTrace(label) { onClick() } },
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))
             .heightIn(min = minHeight),
-        shape = RoundedCornerShape(20.dp),
+        shape = KaniUiTokens.StudyShapeMedium,
         border = BorderStroke(1.dp, if (enabled) StudyActionBorderColor else StudyActionDisabledBorder),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = StudyActionSecondaryFill,
@@ -94,11 +115,27 @@ internal fun StudySecondaryActionButton(
 }
 
 @Composable
+private fun studyActionContainerColor(tone: StudyActionTone): Color = when (tone) {
+    StudyActionTone.PRIMARY -> StudyActionPrimaryColor
+    StudyActionTone.SECONDARY -> StudyActionSecondaryFill
+    StudyActionTone.FAIL -> KaniTheme.colors.coral
+    StudyActionTone.PASS -> KaniTheme.colors.teal
+}
+
+@Composable
+private fun studyActionContentColor(tone: StudyActionTone, containerColor: Color): Color = when (tone) {
+    StudyActionTone.PRIMARY -> KaniTheme.colors.onPrimary
+    StudyActionTone.SECONDARY -> StudyActionPrimaryColor
+    StudyActionTone.FAIL,
+    StudyActionTone.PASS -> KaniUiTokens.readableTextColor(containerColor)
+}
+
+@Composable
 private fun StudyActionButtonText(label: String, color: Color) {
     Text(
         text = label,
         color = color,
-        fontSize = 19.sp,
+        fontSize = KaniUiTokens.StudyActionTextSizeSp.sp,
         fontWeight = FontWeight.Bold,
         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
     )

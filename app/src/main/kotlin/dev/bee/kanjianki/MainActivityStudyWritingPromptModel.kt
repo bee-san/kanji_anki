@@ -3,8 +3,6 @@ package dev.bee.kanjianki
 data class WritingPromptHeaderModel(
     val modeLabel: String,
     val title: String,
-    val taskLabel: String,
-    val reasonLine: String,
     val detailLines: List<WritingPromptLineModel>,
 )
 

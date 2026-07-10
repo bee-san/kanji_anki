@@ -3,12 +3,14 @@ package dev.bee.kanjianki
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
@@ -73,10 +75,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 model = FlashcardCardModel(
                     promptHeader = FlashcardPromptHeaderModel(
                         modeLabel = "Type",
-                        title = "Meaning",
                         question = "What does it mean?",
-                        hiddenHint = "Answer hidden until reveal",
-                        reasonLine = "From 宮"
                     ),
                     heroPanel = FlashcardHeroPanelModel(
                         glyph = "獄",
@@ -104,13 +103,20 @@ class MainActivityStudyFlashcardComposeUnitTest {
         }
 
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
+        val heroCenterBeforeReveal = composeRule.onNodeWithText("獄").fetchSemanticsNode().boundsInRoot.center
 
         composeRule.runOnIdle {
             revealState.reveal()
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("split").assertExists()
+        composeRule.onAllNodesWithText("What does it mean?").assertCountEquals(0)
+        composeRule.onAllNodesWithText("獄").assertCountEquals(1)
+        composeRule.onAllNodesWithText("Answer").assertCountEquals(0)
+        val heroCenterAfterReveal = composeRule.onNodeWithText("獄").fetchSemanticsNode().boundsInRoot.center
+        assertEquals(heroCenterBeforeReveal.x, heroCenterAfterReveal.x, 1f)
+        assertEquals(heroCenterBeforeReveal.y, heroCenterAfterReveal.y, 1f)
     }
 
     @Test
@@ -123,10 +129,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 model = FlashcardCardModel(
                     promptHeader = FlashcardPromptHeaderModel(
                         modeLabel = "Type",
-                        title = "Prompt",
                         question = "What does it mean?",
-                        hiddenHint = "Answer hidden until reveal",
-                        reasonLine = "From 宮",
                     ),
                     heroPanel = FlashcardHeroPanelModel(
                         glyph = "獄",
@@ -170,7 +173,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         assertFalse(typingAnswer.containsWindowPoint(20f, 20f))
-        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("split").assertExists()
     }
 
     @Test
@@ -183,10 +186,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 model = FlashcardCardModel(
                     promptHeader = FlashcardPromptHeaderModel(
                         modeLabel = "Type",
-                        title = "Prompt",
                         question = "What does it mean?",
-                        hiddenHint = "Answer hidden until reveal",
-                        reasonLine = "From 宮",
                     ),
                     heroPanel = FlashcardHeroPanelModel(
                         glyph = "獄",
@@ -230,7 +230,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         assertFalse(typingAnswer.containsWindowPoint(20f, 20f))
-        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("split").assertExists()
     }
 
     @Test
@@ -245,9 +245,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
             )
         }
 
-        // Secondary chrome is dropped so the prompt, kanji, and answer field all fit
-        // above the keyboard.
-        composeRule.onAllNodesWithText("Type").assertCountEquals(0)
+        // The compact shared header, kanji, and answer field all fit above the keyboard.
+        composeRule.onNodeWithText("Type").assertIsDisplayed()
         composeRule.onAllNodesWithText("Prompt").assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         // The essentials stay: question, kanji hero, and the typing field.
@@ -260,8 +259,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
     fun typingCardRendersCompactFromTheFirstFrameEvenBeforeKeyboardOpens() {
         // KB1: an unrevealed typing card is compact from the first frame (before
         // the auto-focus opens the IME), so nothing reshapes when the keyboard
-        // animates in. Compact drops the pill, title, and hidden-answer hint;
-        // the question line and kanji hero stay.
+        // animates in. The shared chip, question line, and kanji hero stay.
         val revealState = FlashcardRevealState(false)
         val typingAnswer = TypingAnswerState()
 
@@ -275,9 +273,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         // Question line and kanji hero stay in compact.
         composeRule.onNodeWithText("What does it mean?").assertIsDisplayed()
         composeRule.onNodeWithText("獄").assertIsDisplayed()
-        // Secondary chrome dropped in compact: pill ("Type"), title ("Prompt"),
-        // and the hidden-answer hint.
-        composeRule.onAllNodesWithText("Type").assertCountEquals(0)
+        composeRule.onNodeWithText("Type").assertIsDisplayed()
         composeRule.onAllNodesWithText("Prompt").assertCountEquals(0)
         composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
     }
@@ -294,7 +290,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
         }
 
         composeRule.onNodeWithText("Type").assertIsDisplayed()
-        composeRule.onNodeWithText("Prompt").assertIsDisplayed()
+        composeRule.onNodeWithText("What does it mean?").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Prompt").assertCountEquals(0)
         composeRule.onNodeWithText("獄").assertIsDisplayed()
     }
 
@@ -305,10 +302,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         return FlashcardCardModel(
             promptHeader = FlashcardPromptHeaderModel(
                 modeLabel = "Type",
-                title = "Prompt",
                 question = "What does it mean?",
-                hiddenHint = "Answer hidden until reveal",
-                reasonLine = "From 宮",
             ),
             heroPanel = FlashcardHeroPanelModel(
                 glyph = "獄",
@@ -356,5 +350,34 @@ class MainActivityStudyFlashcardComposeUnitTest {
             .performClick()
 
         assertTrue(undoTriggered)
+    }
+
+    @Test
+    fun undoBannerDoesNotMoveRevealedRatingActions() {
+        val undoMessage = mutableStateOf<String?>(null)
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                undoMessage = undoMessage.value,
+                onUndo = {},
+            )
+        }
+
+        val failTag = studyActionButtonTestTag(StudyReviewButtonCopy.againLabel())
+        val passTag = studyActionButtonTestTag(StudyReviewButtonCopy.goodLabel())
+        val failBefore = composeRule.onNodeWithTag(failTag).fetchSemanticsNode().boundsInRoot
+        val passBefore = composeRule.onNodeWithTag(passTag).fetchSemanticsNode().boundsInRoot
+
+        composeRule.runOnIdle {
+            undoMessage.value = StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD)
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(failBefore, composeRule.onNodeWithTag(failTag).fetchSemanticsNode().boundsInRoot)
+        assertEquals(passBefore, composeRule.onNodeWithTag(passTag).fetchSemanticsNode().boundsInRoot)
     }
 }

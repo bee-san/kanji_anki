@@ -16,14 +16,12 @@ class MainActivityStudyWritingPromptComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun writingPromptHeaderShowsWhyThisPromptReason() {
+    fun writingPromptHeaderShowsOnlyModeTitleAndInstruction() {
         composeRule.setContent {
             WritingPromptHeader(
                 WritingPromptHeaderModel(
                     modeLabel = "Review",
                     title = "Draw this kanji",
-                    taskLabel = "Write kanji",
-                    reasonLine = "Why this prompt: writing fell behind recognition",
                     detailLines = listOf(
                         WritingPromptLineModel(
                             text = "Prompt: split, rend",
@@ -36,7 +34,8 @@ class MainActivityStudyWritingPromptComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Why this prompt: writing fell behind recognition").assertIsDisplayed()
+        composeRule.onNodeWithText("Review").assertIsDisplayed()
+        composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Prompt: split, rend").assertIsDisplayed()
     }
 }

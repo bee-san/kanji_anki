@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,8 +45,8 @@ private val StudyHeroPink: Color @Composable get() = KaniTheme.colors.primary
 private val StudyHeroPinkDark: Color @Composable get() = KaniTheme.colors.primary
 private val StudyHeroTrack: Color @Composable get() = KaniTheme.colors.track
 private val StudyTopBarButtonFill: Color @Composable get() = KaniTheme.colors.pill
-private val StudyTopBarButtonShape = RoundedCornerShape(28.dp)
-internal val StudyTopBarButtonElevation = 0.dp
+private val StudyTopBarButtonShape = KaniUiTokens.StudyShapeLarge
+internal val StudyTopBarButtonElevation = KaniUiTokens.StudyElevation
 object StudyTopBarDescriptions {
     val PROGRESS: String
         get() = StudyTextCopy.studyProgressDescription()
@@ -55,7 +54,7 @@ object StudyTopBarDescriptions {
 
 private val StudyTopBarProgressTextStyle: TextStyle
     @Composable get() = TextStyle(
-        fontSize = 18.sp,
+        fontSize = KaniUiTokens.StudyActionTextSizeSp.sp,
         fontWeight = FontWeight.Bold,
         color = StudyHeroPlum,
         textAlign = TextAlign.Center,

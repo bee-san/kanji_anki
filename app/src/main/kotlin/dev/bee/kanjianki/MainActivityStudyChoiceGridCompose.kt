@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -135,7 +134,7 @@ private fun SimilarChoiceButton(
             .heightIn(min = SimilarChoiceButtonHeight)
             .testTag(similarChoiceTestTag(glyph))
             .choiceFeedbackSemantics(feedback),
-        shape = RoundedCornerShape(20.dp),
+        shape = KaniUiTokens.StudyShapeMedium,
         border = BorderStroke(1.dp, borderColor),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = containerColor,
@@ -148,7 +147,7 @@ private fun SimilarChoiceButton(
             text = choiceButtonText(glyph, feedback),
             modifier = Modifier.fillMaxWidth(),
             color = contentColor,
-            fontSize = 34.sp,
+            fontSize = KaniUiTokens.StudyQuestionTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))

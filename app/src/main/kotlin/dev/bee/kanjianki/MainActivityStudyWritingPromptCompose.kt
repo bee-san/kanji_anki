@@ -2,13 +2,10 @@
 
 package dev.bee.kanjianki
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -24,27 +21,13 @@ fun WritingPromptHeader(model: WritingPromptHeaderModel) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        WritingModePill(model.modeLabel)
+        StudyModeChip(model.modeLabel, Modifier.padding(bottom = 8.dp))
         WritingPromptText(
             text = model.title,
-            sizeSp = 30,
+            sizeSp = KaniUiTokens.StudyQuestionTextSizeSp,
             color = MainActivityUiSupport.STUDY_PLUM,
             bold = true
         )
-        WritingPromptText(
-            text = model.taskLabel,
-            sizeSp = 16,
-            color = MainActivityUiSupport.STUDY_PINK_DARK,
-            bold = true
-        )
-        if (model.reasonLine.isNotBlank()) {
-            WritingPromptText(
-                text = model.reasonLine,
-                sizeSp = 14,
-                color = MainActivityUiSupport.STUDY_MUTED,
-                bold = false
-            )
-        }
         model.detailLines.forEach { line ->
             WritingPromptText(
                 text = line.text,
@@ -53,25 +36,6 @@ fun WritingPromptHeader(model: WritingPromptHeaderModel) {
                 bold = line.bold
             )
         }
-    }
-}
-
-@Composable
-private fun WritingModePill(label: String) {
-    Surface(
-        modifier = Modifier.padding(bottom = 8.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = KaniTheme.colors.pill,
-        border = BorderStroke(1.dp, KaniTheme.colors.border)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            color = KaniTheme.colors.primary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-        )
     }
 }
 

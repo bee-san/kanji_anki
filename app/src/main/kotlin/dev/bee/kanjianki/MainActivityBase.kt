@@ -387,9 +387,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
+        studySessionActive: Boolean = false,
         content: @Composable () -> Unit,
     ) {
-        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, onScrollY, content)
+        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, onScrollY, studySessionActive, content)
     }
 
     fun composeRouteWithActionBar(
@@ -397,11 +398,21 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
+        studySessionActive: Boolean = false,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        shellHost.composeRouteWithActionBar(selected, initialScrollY, scrollPositionLabel, onScrollY, beforeContent, content, actionBar)
+        shellHost.composeRouteWithActionBar(
+            selected,
+            initialScrollY,
+            scrollPositionLabel,
+            onScrollY,
+            studySessionActive,
+            beforeContent,
+            content,
+            actionBar,
+        )
     }
 
     fun isActiveToken(token: String): Boolean {

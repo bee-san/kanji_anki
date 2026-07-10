@@ -6,6 +6,14 @@ import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
+internal fun writingNextActionTone(repairSkipVisible: Boolean, passed: Boolean): StudyActionTone {
+    return when {
+        repairSkipVisible -> StudyActionTone.PRIMARY
+        passed -> StudyActionTone.PASS
+        else -> StudyActionTone.FAIL
+    }
+}
+
 internal class MainActivityStudyWritingUi(private val activity: MainActivityStudy) {
     private val writingStatus = MainActivityStudyWritingStatus(activity)
     private val writingToolbar = MainActivityStudyWritingToolbar(activity)
@@ -77,6 +85,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 nextText = if (repairSkipVisible) StudyWritingCopy.continueAnywayLabel() else presentation.nextLabel,
                 nextVisible = presentation.nextVisible || repairSkipVisible,
                 nextEnabled = if (repairSkipVisible) presentation.checkEnabled else true,
+                nextTone = writingNextActionTone(repairSkipVisible, presentation.passed),
                 onCheck = if (presentation.messyPass) {
                     Runnable { activity.startCleanerRetry() }
                 } else {

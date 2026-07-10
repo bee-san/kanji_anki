@@ -18,6 +18,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class MainActivityStudyWritingUiTest {
     @Test
+    fun nextActionToneUsesResultSemanticsInsteadOfLocalizedLabels() {
+        assertEquals(StudyActionTone.PASS, writingNextActionTone(repairSkipVisible = false, passed = true))
+        assertEquals(StudyActionTone.FAIL, writingNextActionTone(repairSkipVisible = false, passed = false))
+        assertEquals(StudyActionTone.PRIMARY, writingNextActionTone(repairSkipVisible = true, passed = true))
+        assertEquals(StudyActionTone.PRIMARY, writingNextActionTone(repairSkipVisible = true, passed = false))
+    }
+
+    @Test
     fun similarWritingRepairShowsContinueAnywayBeforeChecking() {
         val activity = createActivity()
         try {
@@ -33,6 +41,7 @@ class MainActivityStudyWritingUiTest {
             assertTrue(primary.nextVisible)
             assertEquals(StudyWritingCopy.continueAnywayLabel(), primary.nextText)
             assertFalse(primary.nextEnabled)
+            assertEquals(StudyActionTone.PRIMARY, primary.nextTone)
             assertFalse(fallback.manualOverrideVisible)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)

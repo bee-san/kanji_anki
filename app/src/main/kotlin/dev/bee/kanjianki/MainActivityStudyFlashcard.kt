@@ -28,6 +28,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         lateinit var route: ComposeFlashcardRouteModel
         activity.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
+            studySessionActive = true,
             beforeContent = { route = routeProvider() },
             content = {
                 Column {
@@ -69,17 +70,17 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             // to the plain word.
             StudyTaskCopy.isSentenceReadingTask(session) -> FlashcardHeroPanelModel(
                 StudyTextCopy.sentencePrompt(session),
-                28,
+                KaniUiTokens.StudyQuestionTextSizeSp,
                 Typeface.DEFAULT,
             )
             StudyTaskCopy.isWordReadingTask(session) -> FlashcardHeroPanelModel(
                 StudyTextCopy.wordPrompt(session),
-                44,
+                KaniUiTokens.StudyWordHeroTextSizeSp,
                 Typeface.DEFAULT,
             )
             else -> FlashcardHeroPanelModel(
                 session.item?.kanji ?: "",
-                116,
+                KaniUiTokens.StudyFrontHeroTextSizeSp,
                 if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT,
             )
         }
@@ -92,10 +93,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val cardModel = FlashcardCardModel(
             FlashcardPromptHeaderModel(
                 StudyTaskCopy.studyModeLabel(session),
-                StudyTaskCopy.flashcardTitle(session),
                 StudyTextCopy.heroQuestion(session),
-                StudyTextCopy.answerHiddenHint(),
-                activity.studyReasonLine(session)
             ),
             heroPanel,
             typingAnswer,

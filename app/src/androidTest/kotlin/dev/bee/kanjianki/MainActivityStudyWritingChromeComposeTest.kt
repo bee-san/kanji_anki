@@ -15,15 +15,6 @@ class MainActivityStudyWritingChromeComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun rendersWritingSectionTitle() {
-        composeRule.setContent {
-            WritingSectionTitle(title = "Writing", color = MainActivityUiSupport.STUDY_PLUM)
-        }
-
-        composeRule.onNodeWithText("Writing").assertIsDisplayed()
-    }
-
-    @Test
     fun rendersWritingStatusText() {
         composeRule.setContent {
             WritingStatusText(
