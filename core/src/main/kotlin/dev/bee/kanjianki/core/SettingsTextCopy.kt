@@ -167,6 +167,9 @@ object SettingsTextCopy {
     fun browserQueryLabel(): String = SettingsImportFiltersTextCopy.browserQueryLabel()
 
     @JvmStatic
+    fun tagRepairedCardsLabel(): String = SettingsImportFiltersTextCopy.tagRepairedCardsLabel()
+
+    @JvmStatic
     fun ankiBrowserQueryHint(): String = SettingsImportFiltersTextCopy.ankiBrowserQueryHint()
 
     @JvmStatic

@@ -20,4 +20,5 @@ data class HomeScreenModel(
     val previewCards: List<HomeFocusQueueCardModel>,
     /** Cards remaining in the current/next focus study session. */
     val studyRemainingCount: Int = 0,
+    val repairedHandoff: HomeRepairedHandoffCardModel? = null,
 )

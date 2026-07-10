@@ -2,6 +2,9 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.ConfusionPairMiner
+import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
+import dev.bee.kanjianki.sync.SyncSettings
 
 internal class StatsPrecomputeStore(
     private val store: LocalStore,
@@ -14,6 +17,8 @@ internal class StatsPrecomputeStore(
         fun studyImpactStats(db: SQLiteDatabase): StudyStatsStore.StudyImpactStats = StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)
         fun recentMistakes(db: SQLiteDatabase, limit: Int): List<StudyStatsStore.RecentMistake> = emptyList()
         fun kanjiRepairEvidence(db: SQLiteDatabase): List<StudyStatsStore.KanjiRepairEvidence> = emptyList()
+        fun wrongPickCounts(db: SQLiteDatabase, nowMillis: Long): Map<String, Map<String, Int>> = emptyMap()
+        fun ladderForecast(db: SQLiteDatabase, nowMillis: Long): LadderCompletionForecastPolicy.Forecast? = null
     }
 
     fun refresh(
@@ -26,18 +31,25 @@ internal class StatsPrecomputeStore(
         val impactReport = computations.impactReport(db)
         val studyImpactStats = computations.studyImpactStats(db)
         val recentMistakes = computations.recentMistakes(db, STATS_RECENT_MISTAKE_LIMIT)
+        val queries = StudyStatsQueries(store, db)
+        val wrongPickCounts = computations.wrongPickCounts(db, generatedAtMillis)
         val snapshot = StatsCacheStore.Snapshot(
-            outcomeStats,
-            impactReport,
-            generatedAtMillis,
-            sourceVersion,
-            studyImpactStats,
-            recentMistakes,
-            statsStore.studyStreak(generatedAtMillis),
-            statsStore.studyTaskTimeStats(generatedAtMillis),
-            STATS_CACHE_FORMAT_VERSION,
-            StudyStatsQueries(store, db).reviewDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT),
-            computations.kanjiRepairEvidence(db),
+            outcomeStats = outcomeStats,
+            impactReport = impactReport,
+            generatedAtMillis = generatedAtMillis,
+            sourceVersion = sourceVersion,
+            studyImpactStats = studyImpactStats,
+            recentMistakes = recentMistakes,
+            studyStreak = statsStore.studyStreak(generatedAtMillis),
+            studyTaskTimeStats = statsStore.studyTaskTimeStats(generatedAtMillis),
+            cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+            reviewDaySummaries = queries.reviewDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT),
+            kanjiRepairEvidence = computations.kanjiRepairEvidence(db),
+            taskTypeDaySummaries = queries.taskTypeDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT),
+            cumulativeKanjiPracticed = queries.cumulativeKanjiPracticed(),
+            wrongPickCounts = wrongPickCounts,
+            confusionMeanings = queries.confusionMeanings(wrongPickCounts),
+            ladderForecast = computations.ladderForecast(db, generatedAtMillis),
         )
         cacheStore.write(db, snapshot)
         return snapshot
@@ -62,6 +74,23 @@ internal class StatsPrecomputeStore(
 
         override fun kanjiRepairEvidence(db: SQLiteDatabase): List<StudyStatsStore.KanjiRepairEvidence> {
             return StudyStatsStore(store, db).kanjiRepairEvidence()
+        }
+
+        override fun wrongPickCounts(db: SQLiteDatabase, nowMillis: Long): Map<String, Map<String, Int>> {
+            return store.choiceWrongPickCounts(nowMillis)
+        }
+
+        override fun ladderForecast(db: SQLiteDatabase, nowMillis: Long): LadderCompletionForecastPolicy.Forecast {
+            return LadderCompletionForecastPolicy.forecast(
+                rows = store.dashboardRows(),
+                startingItems = store.studyItems(),
+                settings = SyncSettings.fromStore(store),
+                parameters = store.schedulerParameters(),
+                learningSettings = store.learningStepSettings(),
+                ladder = store.studyLadderSettings(),
+                nowMillis = nowMillis,
+                weights = store.schedulerFsrsWeights(),
+            )
         }
     }
 }

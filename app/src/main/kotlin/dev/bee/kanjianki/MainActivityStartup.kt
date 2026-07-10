@@ -11,6 +11,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
+import dev.bee.kanjianki.fsrs.FsrsFitScheduler
 
 internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
@@ -64,6 +65,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 withUiTrace("kani.startup.auto-sync-scheduler") { AutoSyncScheduler.schedule(activity) }
                 withUiTrace("kani.startup.auto-update-scheduler") { AutoUpdateScheduler.schedule(activity) }
                 withUiTrace("kani.startup.backup-scheduler") { DatabaseBackupScheduler.schedule(activity) }
+                withUiTrace("kani.startup.fsrs-fit-scheduler") { FsrsFitScheduler.schedule(activity) }
             }
         }
     }
@@ -88,7 +90,9 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             return
         }
         activity.screenshotThemeChoiceOverride = null
-        if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
+        if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false)) {
+            activity.renderStudy()
+        } else if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
             activity.renderUpdate()
         } else {
             activity.renderHome()

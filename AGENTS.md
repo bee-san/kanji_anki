@@ -226,6 +226,18 @@ when it reaches `ladder_demotion_fail_streak` (default 3 fails). At
 card on that rung. At `word_reading` the promotion ceiling is reached and
 further passes keep the card on that rung.
 
+FSRS weights are default-neutral but may be personalized when the user opts
+in. `scheduler_fsrs_weights` stores all 21 values as a full-precision
+comma-separated string; malformed vectors fail open to the built-in defaults.
+The same selected weights drive normal/relearning review intervals, sync
+seeding, forecast simulation, and the fixed-0.90 `promotionIntervalDays`
+memory-strength signal above (D-S7). The weekly on-device fitter trains only
+from persisted `review`-phase evidence and adopts a vector only with at least
+400 samples in the 80% training partition (about 500 total samples) and at
+least a 1% time-ordered validation log-loss improvement;
+the toggle is off by default and turning it off immediately clears the live
+custom vector.
+
 Exception (fail-fast demotion): the first real review after a promotion is the
 capped validation review. If that first attempt is an `Again`, the rung demotes
 immediately instead of waiting for the full fail streak, because a failed
@@ -386,6 +398,34 @@ rungs have no legacy source; they are reached through configured ladder movement
 when `hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` /
 `hasSentenceReading` is true.
 
+## Provider Write-Back, Backup, And Widget Notes
+
+Kani's AnkiDroid write surface is deliberately note-tag-only. Sync may add
+`kani_archived` to fully imported suspended notes and, when the user enables
+the default-off `tag_repaired_cards` setting, add `kani_repaired` to fully
+suspended notes whose kanji have passed the repair gate. Both paths use
+idempotent per-note read-modify-write, isolate failures, and retry on a later
+sync; neither may fail an otherwise committed sync. Repaired tagging is also
+manual-confirm-only: the Home confirmation shows the proposal count and the
+automatic sync runner is not authorized to perform this write-back. Kani never writes card
+queue, due date, interval, ease, deck, or any other Anki scheduling state.
+Successful repaired-note writes stamp `suspended_archive.restored_at`, and the
+Home hand-off copies `tag:kani_repaired is:suspended` so the user can review
+and unsuspend the cards in AnkiDroid.
+
+Automatic database backups remain WAL-safe gzip snapshots with the tiered
+7-daily/4-weekly retention policy. Settings > Automation > Backup & restore
+can export a fresh snapshot through Android's document picker and can validate
+and stage a whole-file restore. A staged restore is applied on the next process
+start before ordinary components open the database, after first taking a
+pre-restore safety snapshot and before deleting stale WAL/SHM sidecars.
+
+The home-screen widget follows the same `ReminderEligibilityPolicy` filter as
+notifications (D-S6): its due count cannot advertise work that the Study route
+will reject. Widget refresh is event-driven after committed sync, completed
+study, daily reminder evaluation, and system widget updates; it has no separate
+periodic worker.
+
 ## What Was Tested For v0.3.6
 
 The `_id is unknown` / `queue _id is unknown` fix was validated with:
@@ -397,13 +437,13 @@ The `_id is unknown` / `queue _id is unknown` fix was validated with:
   `dev.bee.kanjianki`.
 - Full Android instrumentation with `kanjiLiveAnkiDroid=true`.
 - The actual app button path: tap `Sync AnkiDroid`, confirm
-  `Sync and tag archive`, then wait for a successful sync row and non-empty
+  `Sync cards`, then wait for a successful sync row and non-empty
   dashboard/study queue.
 - Local production gate: JVM tests, Android test compilation, lint, and signed
   release APK assembly.
 - GitHub Actions release workflow for tag `v0.3.6`.
 
-Passing results from the latest live release testing:
+Passing results for v0.3.6:
 
 - Live emulator instrumentation: `OK (20 tests)`.
 - Local production gate: `BUILD SUCCESSFUL`.
@@ -411,6 +451,17 @@ Passing results from the latest live release testing:
   `3006`.
 - Release APK signature: verified with APK Signature Scheme v2.
 - GitHub Actions release run: success.
+
+## Latest Provider Gate For Goals 82–95
+
+The Goal 94 write-back batch was revalidated on 2026-07-10 against the same
+real AnkiDroid 2.24.0 provider and copied user collection, with the default
+7,000-note threshold. The targeted command below completed `OK (61 tests)`:
+one foreground sync-button test, 58 fake-provider contract tests, and two real
+provider tests. The non-destructive card update probe wrote the card's existing
+queue value back to its own card URI; AnkiDroid rejected it with
+`IllegalArgumentException` (`updatedRows=-1`) and the reread queue remained `2`.
+This confirms that Kani's supported write surface remains note tags only.
 
 ## Live AnkiDroid Emulator Setup
 
@@ -526,17 +577,19 @@ adb shell am instrument -w \
 Expected result:
 
 ```text
-OK (10 tests)
+OK (61 tests)
 ```
 
 Important live tests:
 
 - `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`
-  taps `Sync AnkiDroid`, confirms `Sync and tag archive`, and verifies a
+  taps `Sync AnkiDroid`, confirms `Sync cards`, and verifies a
   successful sync, dashboard rows, and study items.
 - `RealAnkiDroidLiveProviderInstrumentedTest` reads the copied Kiku collection
   through the real AnkiDroid provider once and asserts at least 7,000 Kiku
-  notes/cards plus real scheduler state.
+  notes/cards plus real scheduler state. Its second test probes a same-value
+  card-queue update, asserts the queue is unchanged, and prints the provider's
+  observed result for the parity record.
 - `AnkiDroidGatewayProviderInstrumentedTest` uses the fake provider to reject
   explicit `_id` projections, unsupported scheduler projections, and deferred
   cursor-time errors such as `Queue "queue" is unknown`.

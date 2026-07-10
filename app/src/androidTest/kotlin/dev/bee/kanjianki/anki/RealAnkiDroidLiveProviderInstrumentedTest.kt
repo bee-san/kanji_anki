@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.anki
 
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -54,6 +56,34 @@ class RealAnkiDroidLiveProviderInstrumentedTest {
         assertTrue("Expected the copied user Kiku collection, got ${snapshot.cards.size} cards.", snapshot.cards.size >= minimumNotes)
         assertAllCardsHaveNotes(snapshot)
         assertHasRealSchedulerState(snapshot)
+    }
+
+    /**
+     * Time-boxed D-S8 probe. Writing the card's existing queue value makes the
+     * experiment semantically non-destructive even if a future provider accepts it.
+     */
+    @Test
+    fun probesWhetherRealProviderAcceptsCardQueueUpdatesWithoutChangingState() {
+        val gateway = AnkiDroidGateway(context)
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val before = gateway.readCollection(settings).cards.first()
+        val uri = Uri.parse("content://com.ichi2.anki.flashcards/cards/${before.cardId}")
+        var errorType = "none"
+        val updatedRows = try {
+            context.contentResolver.update(
+                uri,
+                ContentValues().apply { put("queue", before.queue) },
+                null,
+                null,
+            )
+        } catch (error: RuntimeException) {
+            errorType = error.javaClass.simpleName
+            -1
+        }
+        val after = gateway.readCollection(settings).cards.first { it.cardId == before.cardId }
+
+        println("KANI_LIVE_QUEUE_UPDATE_PROBE updatedRows=$updatedRows error=$errorType queue=${before.queue}")
+        assertEquals("The non-destructive probe must not alter queue state.", before.queue, after.queue)
     }
 
     private fun liveMinimumNotes(): Int {

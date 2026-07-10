@@ -125,6 +125,68 @@ internal class StudyStatsQueries(
         }
     }
 
+    fun taskTypeDaySummaries(nowMillis: Long, days: Int): List<StatsCacheStore.TaskTypeDaySummarySnapshot> {
+        if (days <= 0) return emptyList()
+        val startDay = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(nowMillis), -(days - 1))
+        val endDayExclusive = LocalDayPolicy.nextLocalDayStart(nowMillis)
+        val out = ArrayList<StatsCacheStore.TaskTypeDaySummarySnapshot>()
+        db().rawQuery(
+            "SELECT review_day_start, task_type, COUNT(*) AS total, " +
+                "COALESCE(SUM(CASE WHEN rating<>'again' THEN 1 ELSE 0 END), 0) AS correct " +
+                "FROM $TABLE_REVIEW_LOG WHERE review_day_start>=? AND review_day_start<? " +
+                "GROUP BY review_day_start, task_type ORDER BY review_day_start ASC, task_type ASC",
+            arrayOf(startDay.toString(), endDayExclusive.toString()),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                out += StatsCacheStore.TaskTypeDaySummarySnapshot(
+                    dayStartMillis = cursor.getLong(0),
+                    taskType = cursor.getString(1).orEmpty(),
+                    total = cursor.getInt(2),
+                    correct = cursor.getInt(3),
+                )
+            }
+        }
+        return out
+    }
+
+    /** Cumulative distinct kanji practiced, keyed by each kanji's first review day. */
+    fun cumulativeKanjiPracticed(): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+        val newByDay = ArrayList<Pair<Long, Int>>()
+        db().rawQuery(
+            "SELECT first_day, COUNT(*) FROM (" +
+                "SELECT kanji, MIN(review_day_start) AS first_day FROM $TABLE_REVIEW_LOG " +
+                "WHERE kanji<>'' GROUP BY kanji) GROUP BY first_day ORDER BY first_day ASC",
+            null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) newByDay += cursor.getLong(0) to cursor.getInt(1)
+        }
+        var cumulative = 0
+        return newByDay.map { (day, count) ->
+            cumulative += count
+            StatsCacheStore.CumulativeKanjiSnapshot(day, cumulative)
+        }
+    }
+
+    fun confusionMeanings(counts: Map<String, Map<String, Int>>): Map<String, String> {
+        val glyphs = linkedSetOf<String>()
+        counts.forEach { (target, selected) ->
+            glyphs += target
+            glyphs += selected.keys
+        }
+        if (glyphs.isEmpty()) return emptyMap()
+        val placeholders = glyphs.joinToString(",") { "?" }
+        val out = linkedMapOf<String, String>()
+        db().query(
+            LocalStoreBase.TABLE_KANJI_INVENTORY,
+            arrayOf(LocalStoreBase.COLUMN_KANJI, "primary_meaning"),
+            "${LocalStoreBase.COLUMN_KANJI} IN ($placeholders)",
+            glyphs.toTypedArray(), null, null, LocalStoreBase.COLUMN_KANJI,
+        ).use { cursor ->
+            while (cursor.moveToNext()) out[cursor.getString(0)] = cursor.getString(1).orEmpty()
+        }
+        return out
+    }
+
     fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
         val cursor = db().rawQuery(
             "SELECT " +

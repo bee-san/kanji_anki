@@ -33,6 +33,7 @@ internal object SyncSettings {
     const val NEW_CARD_SORT_MODE_SETTING_KEY = "new_card_sort_mode"
     const val NEW_PER_DAY_SETTING_KEY = "new_per_day"
     const val ACTIVE_QUEUE_CAP_SETTING_KEY = "active_queue_cap"
+    const val TAG_REPAIRED_CARDS_SETTING_KEY = "tag_repaired_cards"
 
     private const val ABSENT_INT_SETTING = Int.MIN_VALUE
     private val ABSENT_DOUBLE_SETTING = Double.NaN
@@ -155,6 +156,10 @@ internal object SyncSettings {
             ladderPromotionMinPasses,
         )
     }
+
+    @JvmStatic
+    fun tagRepairedCards(store: LocalStore?): Boolean =
+        boolSetting(store, TAG_REPAIRED_CARDS_SETTING_KEY, false)
 
     private fun repairOldDefaultImportSettings(store: LocalStore?) {
         if (store == null) {

@@ -49,6 +49,10 @@ fun HomeScreen(model: HomeScreenModel) {
 @Composable
 private fun HomeSecondaryPanels(model: HomeScreenModel) {
     Spacer(modifier = Modifier.height(12.dp))
+    model.repairedHandoff?.let {
+        HomeRepairedHandoffCard(it)
+        Spacer(modifier = Modifier.height(12.dp))
+    }
     HomeMetricRow(metrics = model.metrics)
     if (model.todayPlan.summary.isNotBlank() || model.todayPlan.details.isNotEmpty() || model.todayPlan.actionLabel != null) {
         Spacer(modifier = Modifier.height(12.dp))

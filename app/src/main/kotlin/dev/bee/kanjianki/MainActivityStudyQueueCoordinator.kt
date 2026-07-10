@@ -61,7 +61,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         study.activeSession = withStudyLoadProbe("plannedStudySession") {
             StudySessionActions.plannedStudySession(
-                BridgeScheduler(),
+                BridgeScheduler.withWeights(study.store.schedulerFsrsWeights()),
                 study.studySessionTracker,
                 seeded,
                 rows,
@@ -132,7 +132,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.adaptivePlan(rows, seeded, now)
         }
         refreshSessionBadgeCount(study.activeStudyPlan)
-        val session = BridgeScheduler().targetedSession(
+        val session = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights()).targetedSession(
             seeded,
             row,
             now,
@@ -177,7 +177,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 )
                 val activeRepair = active.repair
                 study.activeSimilarWritingRepair = activeRepair
-                val item = BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, ladder)
+                val item = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+                    .newTargetedStudyItem(activeRepair.repairKanji, now, ladder)
                 val session = RecordsSchedulerModels.StudySession(
                     item.withToken(active.token),
                     null,

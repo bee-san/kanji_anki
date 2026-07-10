@@ -16,7 +16,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class MainActivityHomeSyncCacheTest {
     @Test
-    fun confirmSyncReusesCachedPlanUntilHomeRendersAgain() {
+    fun confirmSyncBuildsFreshConsentInsteadOfUsingTheCachedHomePlan() {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val activity = Robolectric.buildActivity(CountingHomeActivity::class.java)
@@ -26,11 +26,11 @@ class MainActivityHomeSyncCacheTest {
                 .get()
 
             activity.confirmSync()
-            assertEquals(1, activity.importPlanCalls)
+            assertEquals(0, activity.importPlanCalls)
             assertNotNull(activity.pendingHomeSyncDialog)
 
             activity.confirmSync()
-            assertEquals(1, activity.importPlanCalls)
+            assertEquals(0, activity.importPlanCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

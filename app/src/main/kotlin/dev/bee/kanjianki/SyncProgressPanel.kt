@@ -105,7 +105,8 @@ private fun shouldShowSpinner(currentStage: SyncProgressCopy.Stage?): Boolean {
         SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS,
         SyncProgressCopy.Stage.SAVING_LOCAL_DATA,
         SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE,
-        SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS -> true
+        SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS,
+        SyncProgressCopy.Stage.TAGGING_REPAIRED -> true
         else -> false
     }
 }

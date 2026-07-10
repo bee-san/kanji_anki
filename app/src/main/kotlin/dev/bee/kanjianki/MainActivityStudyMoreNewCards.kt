@@ -46,7 +46,7 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
         val rows = loadData.rows
         val existing = loadData.existing
         val now = System.currentTimeMillis()
-        val result = BridgeScheduler().seedExtraNewCards(
+        val result = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights()).seedExtraNewCards(
             rows,
             existing,
             study.settings(),

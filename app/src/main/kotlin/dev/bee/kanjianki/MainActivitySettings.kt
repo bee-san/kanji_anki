@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.net.Uri
 import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
@@ -10,6 +11,7 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
+import kotlin.system.exitProcess
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
@@ -17,9 +19,19 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var cachedNewCardSortPreviewRows: SettingsNewCardSortPreviewRowsSnapshot? = null
     internal var newCardSortPreviewRefreshPending = false
     internal var newCardSortPreviewRerenderOnResumePending = false
+    internal var pendingBackupRestoreDialog: BackupRestoreConfirmDialogModel? = null
+    private val backupRestoreSettings by lazy { MainActivitySettingsAutomationBackup(this) }
 
     private fun ankiSource(): MainActivitySettingsAnkiSource {
         return MainActivitySettingsAnkiSource(this)
+    }
+
+    protected final override fun onBackupExportDocumentSelected(uri: Uri?) {
+        backupRestoreSettings.onExportDocumentSelected(uri)
+    }
+
+    protected final override fun onBackupRestoreDocumentSelected(uri: Uri?) {
+        backupRestoreSettings.onRestoreDocumentSelected(uri)
     }
 
     override fun renderUpdate() {
@@ -257,7 +269,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     private fun composeSettingsRoute(route: String, initialScrollY: Int, onScrollY: (Int) -> Unit, content: @Composable () -> Unit) {
-        composeRoute(route, initialScrollY, onScrollY = onScrollY, content = content)
+        composeRoute(route, initialScrollY, onScrollY = onScrollY) {
+            content()
+            BackupRestoreConfirmDialog(pendingBackupRestoreDialog)
+        }
     }
 
     private fun rememberSettingsScroll(route: String, scrollY: Int) {
@@ -350,6 +365,15 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun debugLogSettingsPanelModel(): SettingsDebugLogPanelModel {
         return MainActivitySettingsAutomationDebugLog(this).debugLogSettingsPanelModel()
+    }
+
+    fun backupSettingsPanelModel(): SettingsBackupPanelModel {
+        return backupRestoreSettings.backupSettingsPanelModel()
+    }
+
+    internal fun closeForStagedRestore() {
+        finishAffinity()
+        exitProcess(0)
     }
 
     fun runUpdate(cachedPending: Boolean) {

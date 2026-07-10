@@ -187,6 +187,7 @@ dependencies {
     implementation(project(":update-core"))
     implementation(project(":writing-core"))
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.glance.appwidget)
     implementation(libs.mlkit.digital.ink)
     testImplementation(composeBom)
     testImplementation(libs.junit)

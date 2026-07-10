@@ -37,6 +37,7 @@ class SyncSettingsBehaviorTest {
             assertFalse(settings.importActiveCards)
             assertTrue(settings.importSuspendedCards)
             assertFalse(settings.importBrowserQueryCards)
+            assertFalse(SyncSettings.tagRepairedCards(store))
             assertEquals("", settings.importBrowserQuery)
             assertFalse(settings.browserQueryImportEnabled())
             assertTrue(settings.hasImportSourceEnabled())
@@ -59,6 +60,7 @@ class SyncSettingsBehaviorTest {
             store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 2)
             store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, 1)
             store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, " rated:30:1 ")
+            store.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, 1)
 
             val settings = SyncSettings.fromStore(store)
 
@@ -73,6 +75,7 @@ class SyncSettingsBehaviorTest {
             assertTrue(settings.importBrowserQueryCards)
             assertEquals("rated:30:1", settings.normalizedBrowserQuery())
             assertTrue(settings.browserQueryImportEnabled())
+            assertTrue(SyncSettings.tagRepairedCards(store))
         } finally {
             store.close()
         }

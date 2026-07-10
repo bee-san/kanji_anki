@@ -6,58 +6,6 @@ import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-internal fun screenshotStatsScreenModel(): StatsScreenModel {
-    return StatsScreenModel(
-        title = "Stats",
-        intro = "Static screenshot mode renders the stats layout without loading the store or launcher startup work.",
-        verdict = StatsCardModel(
-            title = "Working",
-            body = "The screenshot route is deterministic and ready for CI capture.",
-            fillColor = STATS_VERDICT_WORKING_FILL,
-            strokeColor = STATS_TEAL_COLOR,
-            emptyState = false,
-            titleColor = STATS_TEAL_COLOR,
-            bodyColor = STATS_INK_COLOR,
-            titleSizeSp = 24,
-            bodySizeSp = 15,
-        ),
-        sections = listOf(
-            StatsCardModel(
-                title = "Weak kanji trend",
-                summary = "3 weak kanji improved",
-                body = "These examples keep the first card readable on a phone screen.",
-                lines = listOf(
-                    StatsLineModel("川 12.4 → 8.2"),
-                    StatsLineModel("海 11.8 → 7.9"),
-                    StatsLineModel("森 10.5 → 7.1"),
-                ),
-                strokeColor = STATS_TEAL_COLOR,
-            ),
-            StatsCardModel(
-                title = "Anki support",
-                summary = "2 mature cards gained",
-                body = "Enough mature support has accumulated to keep the loop moving.",
-                lines = listOf(
-                    StatsLineModel("復 gained 2 mature cards"),
-                    StatsLineModel("語 gained 1 mature card"),
-                ),
-                strokeColor = STATS_BLUE_COLOR,
-            ),
-            StatsCardModel(
-                title = "Ladder status",
-                summary = "6 active kanji on the ladder",
-                body = "Promotion and demotion counts stay visible without touching the database.",
-                lines = listOf(
-                    StatsLineModel("Promotion ready: 2"),
-                    StatsLineModel("Demotion risk: 1"),
-                    StatsLineModel("Inactive: 3"),
-                ),
-                strokeColor = STATS_GOLD_COLOR,
-            ),
-        ),
-    )
-}
-
 internal fun screenshotGamesScreenModel(): GamesScreenModel {
     return GamesScreenModel(
         title = KanjiGameCopy.LABEL_GAMES,
@@ -147,7 +95,7 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 title = SettingsTextCopy.settingsStudyBehaviorTitle(),
                 summary = SettingsTextCopy.settingsStudyBehaviorBody(),
                 iconRes = R.drawable.ic_study_24,
-                panelCount = SettingsTextCopy.settingsCategoryPanelCount(8),
+                panelCount = SettingsTextCopy.settingsCategoryPanelCount(9),
                 contentDescription = SettingsTextCopy.sectionOpenDescription(SettingsTextCopy.settingsStudyBehaviorTitle()),
                 onOpen = Runnable {},
             ),
@@ -156,7 +104,7 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 title = SettingsTextCopy.settingsAutomationTitle(),
                 summary = SettingsTextCopy.settingsAutomationBody(),
                 iconRes = R.drawable.ic_sync_24,
-                panelCount = SettingsTextCopy.settingsCategoryPanelCount(3),
+                panelCount = SettingsTextCopy.settingsCategoryPanelCount(4),
                 contentDescription = SettingsTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAutomationTitle()),
                 onOpen = Runnable {},
             ),

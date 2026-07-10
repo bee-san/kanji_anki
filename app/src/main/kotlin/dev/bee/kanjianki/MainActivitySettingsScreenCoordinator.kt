@@ -41,6 +41,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
                 MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
                 MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
+                MainActivitySettingsPersonalizedScheduling(activity).panelModel(),
                 activity.learningStepsSettingsPanelModel(),
                 MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
                 MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
@@ -65,6 +66,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                     activity.renderUpdate()
                 },
                 activity.debugLogSettingsPanelModel(),
+                activity.backupSettingsPanelModel(),
             ),
         )
     }
@@ -189,7 +191,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 title = SettingsTextCopy.settingsStudyBehaviorTitle(),
                 summary = SettingsTextCopy.settingsStudyBehaviorBody(),
                 iconRes = R.drawable.ic_study_24,
-                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(8),
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(9),
                 contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsStudyBehaviorTitle()),
                 onOpen = Runnable { activity.renderSettingsStudyBehavior() },
             ),
@@ -198,7 +200,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 title = SettingsTextCopy.settingsAutomationTitle(),
                 summary = SettingsTextCopy.settingsAutomationBody(),
                 iconRes = R.drawable.ic_sync_24,
-                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(3),
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(4),
                 contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsAutomationTitle()),
                 onOpen = Runnable { activity.renderSettingsAutomation() },
             ),

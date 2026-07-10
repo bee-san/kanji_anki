@@ -65,6 +65,24 @@ class HomeImportOnboardingPolicyTest {
     }
 
     @Test
+    fun syncConsentNamesRepairedTaggingOnlyWhenEnabledAndProposed() {
+        val settings = settings(true, true, false, emptyList(), false, false, "")
+        val enabled = HomeImportOnboardingPolicy.plan(
+            true, true, true, null, null, settings, true, 3,
+        )
+        val disabled = HomeImportOnboardingPolicy.plan(
+            true, true, true, null, null, settings, false, 3,
+        )
+        val empty = HomeImportOnboardingPolicy.plan(
+            true, true, true, null, null, settings, true, 0,
+        )
+
+        assertTrue(enabled.body().contains("tag 3 repaired kanji in AnkiDroid"))
+        assertTrue(!disabled.body().contains("repaired kanji"))
+        assertTrue(!empty.body().contains("repaired kanji"))
+    }
+
+    @Test
     fun syncStatusTransitionsRecoverFailuresAndSummarizeSuccess() {
         val permissionFailure = HomeImportOnboardingPolicy.plan(
             true,

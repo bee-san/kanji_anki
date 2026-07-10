@@ -163,6 +163,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsDeckLimitsPanelModel -> SettingsDeckLimitsPanel(panel)
         is SettingsWorkloadPanelModel -> SettingsWorkloadPanel(panel)
         is SettingsRetentionPanelModel -> SettingsRetentionPanel(panel)
+        is SettingsPersonalizedSchedulingPanelModel -> SettingsPersonalizedSchedulingPanel(panel)
         is SettingsLearningStepsPanelModel -> SettingsLearningStepsPanel(panel)
         is SettingsStudyAheadPanelModel -> SettingsStudyAheadPanel(panel)
         is SettingsStudyLadderPanelModel -> SettingsStudyLadderPanel(panel)
@@ -171,6 +172,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsAutoSyncPanelModel -> SettingsAutoSyncPanel(panel)
         is SettingsUpdateOverviewPanelModel -> SettingsUpdateOverviewPanel(panel)
         is SettingsDebugLogPanelModel -> SettingsDebugLogPanel(panel)
+        is SettingsBackupPanelModel -> SettingsBackupPanel(panel)
         is SettingsThemePanelModel -> SettingsThemePanel(panel)
         is SettingsReferenceDataLinkModel -> ReferenceDataLinkPanel(panel)
     }
@@ -212,6 +214,7 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
         is SettingsDeckLimitsPanelModel -> "settings-panel-deck-limits"
         is SettingsWorkloadPanelModel -> "settings-panel-workload"
         is SettingsRetentionPanelModel -> "settings-panel-retention"
+        is SettingsPersonalizedSchedulingPanelModel -> "settings-panel-personalized-scheduling"
         is SettingsLearningStepsPanelModel -> "settings-panel-learning-steps"
         is SettingsStudyAheadPanelModel -> "settings-panel-study-ahead"
         is SettingsStudyLadderPanelModel -> "settings-panel-study-ladder"
@@ -220,6 +223,7 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
         is SettingsAutoSyncPanelModel -> "settings-panel-auto-sync"
         is SettingsUpdateOverviewPanelModel -> "settings-panel-app-updates"
         is SettingsDebugLogPanelModel -> "settings-panel-debug-log"
+        is SettingsBackupPanelModel -> "settings-panel-backup"
         is SettingsThemePanelModel -> "settings-panel-theme"
         is SettingsReferenceDataLinkModel -> "settings-panel-reference-data"
     }

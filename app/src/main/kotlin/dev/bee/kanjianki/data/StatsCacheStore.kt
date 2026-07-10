@@ -5,10 +5,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 5
-internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 90
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 9
+internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 366
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 
 internal class StatsCacheStore(private val store: LocalStore) {
@@ -23,6 +24,18 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val writingFailed: Int,
     )
 
+    data class TaskTypeDaySummarySnapshot(
+        val dayStartMillis: Long,
+        val taskType: String,
+        val correct: Int,
+        val total: Int,
+    )
+
+    data class CumulativeKanjiSnapshot(
+        val dayStartMillis: Long,
+        val cumulativeCount: Int,
+    )
+
     data class Snapshot(
         val outcomeStats: StudyStatsStore.KaniOutcomeStats,
         val impactReport: KanjiImpactAnalyzer.Report,
@@ -35,6 +48,11 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val cacheFormatVersion: Int = 1,
         val reviewDaySummaries: List<ReviewDaySummarySnapshot> = emptyList(),
         val kanjiRepairEvidence: List<StudyStatsStore.KanjiRepairEvidence> = emptyList(),
+        val taskTypeDaySummaries: List<TaskTypeDaySummarySnapshot> = emptyList(),
+        val cumulativeKanjiPracticed: List<CumulativeKanjiSnapshot> = emptyList(),
+        val wrongPickCounts: Map<String, Map<String, Int>> = emptyMap(),
+        val confusionMeanings: Map<String, String> = emptyMap(),
+        val ladderForecast: LadderCompletionForecastPolicy.Forecast? = null,
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -117,6 +135,11 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.studyTaskTimeStats,
                     snapshot.reviewDaySummaries,
                     snapshot.kanjiRepairEvidence,
+                    snapshot.taskTypeDaySummaries,
+                    snapshot.cumulativeKanjiPracticed,
+                    snapshot.wrongPickCounts,
+                    snapshot.confusionMeanings,
+                    snapshot.ladderForecast,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -149,6 +172,11 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 cacheFormatVersion = outcomeRoot.optInt("cacheFormatVersion", 1),
                 reviewDaySummaries = StatsCacheCodec.reviewDaySummariesFromJson(outcomeRoot.optJSONArray("reviewDaySummaries")),
                 kanjiRepairEvidence = StatsCacheCodec.kanjiRepairEvidenceFromJson(outcomeRoot.optJSONArray("kanjiRepairEvidence")),
+                taskTypeDaySummaries = StatsCacheCodec.taskTypeDaySummariesFromJson(outcomeRoot.optJSONArray("taskTypeDaySummaries")),
+                cumulativeKanjiPracticed = StatsCacheCodec.cumulativeKanjiFromJson(outcomeRoot.optJSONArray("cumulativeKanjiPracticed")),
+                wrongPickCounts = StatsCacheCodec.wrongPickCountsFromJson(outcomeRoot.optJSONObject("wrongPickCounts")),
+                confusionMeanings = StatsCacheCodec.stringMapFromJson(outcomeRoot.optJSONObject("confusionMeanings")),
+                ladderForecast = StatsCacheCodec.forecastFromJson(outcomeRoot.optJSONObject("ladderForecast")),
             )
         } catch (_: Exception) {
             null

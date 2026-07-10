@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsImportPreset
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.sync.SyncSettings
 import java.util.Locale
 
 internal class MainActivitySettingsAnkiSourceImportFilters(
@@ -24,7 +25,8 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             tags = trimmed(current.importTagsText()),
             difficulty = decimalText(current.importWeakFsrsDifficultyThreshold),
             lapses = thresholdText(current.importWeakLapsesThreshold),
-            minMatching = thresholdText(current.importMinMatchingCardsPerKanji)
+            minMatching = thresholdText(current.importMinMatchingCardsPerKanji),
+            tagRepairedCards = SyncSettings.tagRepairedCards(activity.store),
         )
 
         return SettingsImportFiltersPanelModel(
@@ -48,7 +50,8 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             lapsesLabel = SettingsTextCopy.lapsesLabel(),
             minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
             saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-            onSave = SettingsImportFilterAction { saveImportFilters(state) }
+            onSave = SettingsImportFilterAction { saveImportFilters(state) },
+            tagRepairedCardsLabel = SettingsTextCopy.tagRepairedCardsLabel(),
         )
     }
 
@@ -100,7 +103,8 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
                         parsedThresholds.lapseThreshold,
                         parsedThresholds.minCards,
                         state.browserQueryCards,
-                        queryText
+                        queryText,
+                        state.tagRepairedCards,
                     ),
                     SettingsStoreWriter(activity)
                 )
@@ -126,7 +130,8 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
                         preset.weakLapses(),
                         preset.minMatchingCards(),
                         preset.browserQueryCards(),
-                        preset.browserQuery()
+                        preset.browserQuery(),
+                        SyncSettings.tagRepairedCards(activity.store),
                     ),
                     SettingsStoreWriter(activity)
                 )

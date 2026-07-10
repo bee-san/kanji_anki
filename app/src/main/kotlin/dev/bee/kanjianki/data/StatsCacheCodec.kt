@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
+import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,13 +17,21 @@ object StatsCacheCodec {
         studyTaskTimeStats: StudyStatsStore.StudyTaskTimeStats? = null,
         reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>? = null,
         kanjiRepairEvidence: List<StudyStatsStore.KanjiRepairEvidence>? = null,
+        taskTypeDaySummaries: List<StatsCacheStore.TaskTypeDaySummarySnapshot>? = null,
+        cumulativeKanjiPracticed: List<StatsCacheStore.CumulativeKanjiSnapshot>? = null,
+        wrongPickCounts: Map<String, Map<String, Int>>? = null,
+        confusionMeanings: Map<String, String>? = null,
+        ladderForecast: LadderCompletionForecastPolicy.Forecast? = null,
     ): String {
         val safe = stats ?: StudyStatsStore.KaniOutcomeStats.empty()
         val root = JSONObject()
             .put("weakKanjiImproved", weakKanjiImprovedToJson(safe.weakKanjiImproved))
             .put("matureSupportGained", matureSupportGainedToJson(safe.matureSupportGained))
             .put("ladderHealth", ladderHealthToJson(safe.ladderHealth))
-        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null || studyTaskTimeStats != null || reviewDaySummaries != null || kanjiRepairEvidence != null
+        val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null ||
+            studyTaskTimeStats != null || reviewDaySummaries != null || kanjiRepairEvidence != null ||
+            taskTypeDaySummaries != null || cumulativeKanjiPracticed != null || wrongPickCounts != null ||
+            confusionMeanings != null || ladderForecast != null
         if (hasExtras) {
             root.put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION)
             root.put("studyImpactStats", studyImpactStatsToJson(studyImpactStats ?: StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)))
@@ -31,6 +40,11 @@ object StatsCacheCodec {
             root.put("studyTaskTimeStats", studyTaskTimeStatsToJson(studyTaskTimeStats ?: StudyStatsStore.StudyTaskTimeStats(0L, 0L, 0)))
             root.put("reviewDaySummaries", reviewDaySummariesToJson(reviewDaySummaries ?: emptyList()))
             root.put("kanjiRepairEvidence", kanjiRepairEvidenceToJson(kanjiRepairEvidence ?: emptyList()))
+            root.put("taskTypeDaySummaries", taskTypeDaySummariesToJson(taskTypeDaySummaries ?: emptyList()))
+            root.put("cumulativeKanjiPracticed", cumulativeKanjiToJson(cumulativeKanjiPracticed ?: emptyList()))
+            root.put("wrongPickCounts", wrongPickCountsToJson(wrongPickCounts ?: emptyMap()))
+            root.put("confusionMeanings", stringMapToJson(confusionMeanings ?: emptyMap()))
+            ladderForecast?.let { root.put("ladderForecast", forecastToJson(it)) }
         } else {
             root.put("cacheFormatVersion", 1)
         }
@@ -186,6 +200,83 @@ object StatsCacheCodec {
         return out
     }
 
+    @JvmStatic
+    internal fun taskTypeDaySummariesFromJson(array: JSONArray?): List<StatsCacheStore.TaskTypeDaySummarySnapshot> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { index ->
+            array.optJSONObject(index)?.let {
+                StatsCacheStore.TaskTypeDaySummarySnapshot(
+                    it.optLong("dayStartMillis", 0L),
+                    it.optString("taskType", ""),
+                    it.optInt("correct", 0),
+                    it.optInt("total", 0),
+                )
+            }
+        }
+    }
+
+    @JvmStatic
+    internal fun cumulativeKanjiFromJson(array: JSONArray?): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { index ->
+            array.optJSONObject(index)?.let {
+                StatsCacheStore.CumulativeKanjiSnapshot(
+                    it.optLong("dayStartMillis", 0L),
+                    it.optInt("cumulativeCount", 0),
+                )
+            }
+        }
+    }
+
+    @JvmStatic
+    internal fun wrongPickCountsFromJson(json: JSONObject?): Map<String, Map<String, Int>> {
+        if (json == null) return emptyMap()
+        val out = linkedMapOf<String, Map<String, Int>>()
+        val targets = json.keys().asSequence().toList().sorted()
+        targets.forEach { target ->
+            val selections = json.optJSONObject(target) ?: return@forEach
+            out[target] = selections.keys().asSequence().toList().sorted().associateWith { selections.optInt(it, 0) }
+        }
+        return out
+    }
+
+    @JvmStatic
+    internal fun stringMapFromJson(json: JSONObject?): Map<String, String> {
+        if (json == null) return emptyMap()
+        return json.keys().asSequence().toList().sorted().associateWith { json.optString(it, "") }
+    }
+
+    @JvmStatic
+    internal fun forecastFromJson(json: JSONObject?): LadderCompletionForecastPolicy.Forecast? {
+        if (json == null) return null
+        val points = json.optJSONArray("burnDown")?.let { array ->
+            (0 until array.length()).mapNotNull { index ->
+                array.optJSONObject(index)?.let {
+                    LadderCompletionForecastPolicy.MonthPoint(
+                        it.optLong("monthStartMillis", 0L),
+                        it.optInt("completedItems", 0),
+                        it.optInt("remainingItems", 0),
+                    )
+                }
+            }
+        }.orEmpty()
+        val assumptions = json.optJSONArray("assumptionCopyIds")?.let { array ->
+            (0 until array.length()).map { array.optString(it, "") }
+        }.orEmpty()
+        return LadderCompletionForecastPolicy.Forecast(
+            totalItems = json.optInt("totalItems", 0),
+            burnDown = points,
+            projectedCompletionMonthMillis = if (json.has("projectedCompletionMonthMillis") && !json.isNull("projectedCompletionMonthMillis")) {
+                json.optLong("projectedCompletionMonthMillis")
+            } else null,
+            beyondHorizon = json.optBoolean("beyondHorizon", false),
+            alreadyAtCeiling = json.optInt("alreadyAtCeiling", 0),
+            alreadyParked = json.optInt("alreadyParked", 0),
+            alreadyRetired = json.optInt("alreadyRetired", 0),
+            assumptionCopyIds = assumptions,
+        )
+    }
+
     private fun weakKanjiImprovedToJson(metric: StudyStatsStore.WeakKanjiImprovedMetric): JSONObject {
         return JSONObject()
             .put("improvedCount", metric.improvedCount)
@@ -317,6 +408,55 @@ object StatsCacheCodec {
             }
         }
     }
+
+    private fun taskTypeDaySummariesToJson(summaries: List<StatsCacheStore.TaskTypeDaySummarySnapshot>): JSONArray =
+        JSONArray().also { array ->
+            summaries.forEach { summary ->
+                array.put(JSONObject()
+                    .put("dayStartMillis", summary.dayStartMillis)
+                    .put("taskType", summary.taskType)
+                    .put("correct", summary.correct)
+                    .put("total", summary.total))
+            }
+        }
+
+    private fun cumulativeKanjiToJson(points: List<StatsCacheStore.CumulativeKanjiSnapshot>): JSONArray =
+        JSONArray().also { array ->
+            points.forEach { point ->
+                array.put(JSONObject()
+                    .put("dayStartMillis", point.dayStartMillis)
+                    .put("cumulativeCount", point.cumulativeCount))
+            }
+        }
+
+    private fun wrongPickCountsToJson(counts: Map<String, Map<String, Int>>): JSONObject = JSONObject().also { root ->
+        counts.toSortedMap().forEach { (target, selections) ->
+            root.put(target, JSONObject().also { nested ->
+                selections.toSortedMap().forEach { (selected, count) -> nested.put(selected, count) }
+            })
+        }
+    }
+
+    private fun stringMapToJson(values: Map<String, String>): JSONObject = JSONObject().also { root ->
+        values.toSortedMap().forEach { (key, value) -> root.put(key, value) }
+    }
+
+    private fun forecastToJson(forecast: LadderCompletionForecastPolicy.Forecast): JSONObject = JSONObject()
+        .put("totalItems", forecast.totalItems)
+        .put("burnDown", JSONArray().also { array ->
+            forecast.burnDown.forEach { point ->
+                array.put(JSONObject()
+                    .put("monthStartMillis", point.monthStartMillis)
+                    .put("completedItems", point.completedItems)
+                    .put("remainingItems", point.remainingItems))
+            }
+        })
+        .put("projectedCompletionMonthMillis", forecast.projectedCompletionMonthMillis ?: JSONObject.NULL)
+        .put("beyondHorizon", forecast.beyondHorizon)
+        .put("alreadyAtCeiling", forecast.alreadyAtCeiling)
+        .put("alreadyParked", forecast.alreadyParked)
+        .put("alreadyRetired", forecast.alreadyRetired)
+        .put("assumptionCopyIds", JSONArray(forecast.assumptionCopyIds))
 
     private fun kanjiRepairEvidenceToJson(evidence: List<StudyStatsStore.KanjiRepairEvidence>): JSONArray {
         return JSONArray().also { array ->

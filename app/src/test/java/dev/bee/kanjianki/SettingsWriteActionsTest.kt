@@ -296,12 +296,13 @@ class SettingsWriteActionsTest {
                 4,
                 2,
                 true,
-                "deck:Mining"
+                "deck:Mining",
+                true,
             ),
             writer
         )
 
-        assertEquals(10, writer.settings.size)
+        assertEquals(11, writer.settings.size)
         assertEquals(1, writer.settings[SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY])
         assertEquals(0, writer.settings[SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY])
         assertEquals(1, writer.settings[SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY])
@@ -312,6 +313,7 @@ class SettingsWriteActionsTest {
         assertEquals(2, writer.settings[SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY])
         assertEquals(1, writer.settings[SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY])
         assertEquals("deck:Mining", writer.settings[SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY])
+        assertEquals(1, writer.settings[SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY])
     }
 
     @Test

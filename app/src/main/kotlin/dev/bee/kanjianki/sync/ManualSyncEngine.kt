@@ -21,12 +21,16 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SuspendedImportPolicy
 import dev.bee.kanjianki.data.DictionaryStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.recordRepairedWriteBack
+import dev.bee.kanjianki.data.repairedWriteBackProposal
 import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.io.IOException
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
@@ -39,6 +43,8 @@ internal class ManualSyncEngine {
     private val settings: RecordsSyncModels.Settings
     private val progress: SyncProgress.Listener
     private val clock: AppClock
+    private val repairedWriteBackAuthorized: Boolean
+    private val confirmedRepairedNoteIds: Set<Long>?
 
     /**
      * Seam for the post-sync reminder re-arm (D4). Defaults to the real
@@ -49,6 +55,22 @@ internal class ManualSyncEngine {
     internal var reminderRescheduler: Runnable = Runnable {
         dev.bee.kanjianki.reminders.ReminderScheduler.schedule(context)
     }
+
+    /** Refreshes any installed widget from the same committed queue snapshot. */
+    @JvmField
+    internal var widgetRefresher: Runnable = Runnable {
+        KaniWidgetUpdater.requestUpdate(context)
+    }
+
+    internal var repairedProposalProvider:
+        (RecordsSyncModels.CollectionSnapshot, Int) -> RepairedWriteBackPolicy.Proposal =
+        { snapshot, threshold -> store.repairedWriteBackProposal(snapshot, threshold) }
+
+    internal var repairedWriteBackRecorder:
+        (RepairedWriteBackPolicy.Proposal, Set<Long>, Long, Long) -> List<String> =
+        { proposal, tagged, occurredAt, syncId ->
+            store.recordRepairedWriteBack(proposal, tagged, occurredAt, syncId)
+        }
 
     constructor(
         context: Context,
@@ -72,6 +94,8 @@ internal class ManualSyncEngine {
         settings: RecordsSyncModels.Settings,
         progress: SyncProgress.Listener?,
         clock: AppClock?,
+        repairedWriteBackAuthorized: Boolean = false,
+        confirmedRepairedNoteIds: Set<Long>? = null,
     ) {
         this.context = context.applicationContext
         this.store = store
@@ -79,6 +103,8 @@ internal class ManualSyncEngine {
         this.settings = settings
         this.progress = progress ?: SyncProgress.NONE
         this.clock = AppClock.orSystem(clock)
+        this.repairedWriteBackAuthorized = repairedWriteBackAuthorized
+        this.confirmedRepairedNoteIds = confirmedRepairedNoteIds?.toSet()
     }
 
     fun run(): SyncResult {
@@ -138,7 +164,7 @@ internal class ManualSyncEngine {
             )
 
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
-            val scheduler = BridgeScheduler()
+            val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
             val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
             val plan = adaptivePlan(activeRows, currentItems, finished)
@@ -164,6 +190,7 @@ internal class ManualSyncEngine {
             // the queue can empty. Re-arm the reminder from fresh state so the alarm
             // timing tracks the new queue instead of a stale pre-sync schedule (D4).
             reminderRescheduler.run()
+            widgetRefresher.run()
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale
@@ -179,7 +206,48 @@ internal class ManualSyncEngine {
                     "Archive tagging failed and will be retried on the next sync: ${error.message}",
                 )
             }
-            store.updateSyncRemovalMessage(syncId, removal.message)
+            var syncMessage = removal.message
+            if (repairedWriteBackAuthorized && SyncSettings.tagRepairedCards(store)) {
+                val proposal = try {
+                    repairedProposalProvider(snapshot, settings.matureSupportThreshold)
+                } catch (error: Exception) {
+                    AppDebugLog.logError("Could not prepare repaired-note write-back; retrying next sync", error)
+                    syncMessage = appendSyncMessage(
+                        syncMessage,
+                        "Repaired-note tagging could not be prepared and will retry on the next sync.",
+                    )
+                    null
+                }
+                val confirmedProposal = proposal?.let(::confirmedProposal)
+                if (confirmedProposal != null && !confirmedProposal.isEmpty()) {
+                    val tagging = try {
+                        gateway.tagRepairedNotes(confirmedProposal.noteIdsToTag, progress)
+                    } catch (error: Exception) {
+                        dev.bee.kanjianki.anki.RepairedTagSummary(
+                            confirmedProposal.noteIdsToTag,
+                            emptySet(),
+                            confirmedProposal.noteIdsToTag,
+                            "Repaired-note tagging failed and will retry on the next sync: ${error.message}",
+                        )
+                    }
+                    var stampFailureMessage = ""
+                    try {
+                        repairedWriteBackRecorder(
+                            confirmedProposal,
+                            tagging.taggedNoteIds,
+                            clock.nowMillis(),
+                            syncId,
+                        )
+                    } catch (error: Exception) {
+                        AppDebugLog.logError("Could not stamp repaired-note write-back; retrying next sync", error)
+                        stampFailureMessage =
+                            "Repaired-note confirmation could not be saved and will retry on the next sync."
+                    }
+                    syncMessage = appendSyncMessage(syncMessage, tagging.message)
+                    syncMessage = appendSyncMessage(syncMessage, stampFailureMessage)
+                }
+            }
+            store.updateSyncRemovalMessage(syncId, syncMessage)
             val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, seeded, finished)
             val readyCount = if (activeRows.isEmpty()) {
                 0
@@ -202,7 +270,7 @@ internal class ManualSyncEngine {
                 false,
                 rows.size,
                 currentSuspendedImports.size,
-                removal.message,
+                syncMessage,
                 plan.status,
                 readyCount,
                 AdaptiveFocusCopy.adaptiveFocusText(postSyncPlan),
@@ -232,6 +300,31 @@ internal class ManualSyncEngine {
             persistFailedSync(started, finished, "retryable_error", "unexpected", error)
             return SyncResult.create(false, false, 0, 0, error.message, "")
         }
+    }
+
+    private fun confirmedProposal(
+        proposal: RepairedWriteBackPolicy.Proposal,
+    ): RepairedWriteBackPolicy.Proposal {
+        val confirmed = confirmedRepairedNoteIds ?: return proposal
+        val noteIds = proposal.noteIdsToTag.intersect(confirmed)
+        if (noteIds.isEmpty()) {
+            return proposal.copy(
+                noteIdsToTag = emptySet(),
+                cardIdsByNote = emptyMap(),
+                kanjiByNote = emptyMap(),
+                repairedKanji = emptyList(),
+                candidateSourceCount = 0,
+            )
+        }
+        val cards = proposal.cardIdsByNote.filterKeys { it in noteIds }
+        val kanji = proposal.kanjiByNote.filterKeys { it in noteIds }
+        return proposal.copy(
+            noteIdsToTag = noteIds,
+            cardIdsByNote = cards,
+            kanjiByNote = kanji,
+            repairedKanji = kanji.values.flatten().distinct().sorted(),
+            candidateSourceCount = cards.values.sumOf { it.size },
+        )
     }
 
     /**
@@ -381,5 +474,11 @@ internal class ManualSyncEngine {
     companion object {
         private const val TAG = "ManualSyncEngine"
         private val RUNNING = AtomicBoolean(false)
+
+        @JvmStatic
+        internal fun isRunning(): Boolean = RUNNING.get()
+
+        private fun appendSyncMessage(current: String, addition: String): String =
+            listOf(current, addition).filter(String::isNotBlank).joinToString(" ")
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
@@ -12,6 +13,8 @@ import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -54,8 +57,9 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("Stats overview", snapshot.overview.title)
         assertEquals(12, snapshot.overview.totalReviews.value)
         assertEquals("12", snapshot.overview.totalReviews.valueLabel)
-        assertEquals("5 / 6", snapshot.progressByLevel.overallLearned.valueLabel)
-        assertEquals(83, snapshot.progressByLevel.overallLearned.percent)
+        assertEquals("0 active items", snapshot.progressByLevel.overallLearned.valueLabel)
+        assertEquals(0, snapshot.progressByLevel.overallLearned.percent)
+        assertEquals(5, snapshot.overview.kanjiLearned.value)
 
         val reviews = snapshot.reviewsAnalytics
         assertEquals(4, reviews.totalReviews.value)
@@ -65,12 +69,17 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(1, reviews.reviewsPerDay.values.last())
         assertTrue(reviews.accessibilitySummary.contains("4 total reviews"))
 
-        assertEquals(listOf("Meaning", "Reading", "Writing", "Similar kanji"), snapshot.overview.cardTypeBreakdown.segments.map { it.label })
+        assertEquals(listOf("Meaning", "Reading", "Writing", "Discrimination"), snapshot.overview.cardTypeBreakdown.segments.map { it.label })
         assertEquals(listOf(3, 1, 2, 2), snapshot.overview.cardTypeBreakdown.segments.map { it.value })
-        assertEquals(listOf("Accuracy %", "7-day avg"), snapshot.accuracyRetention.accuracyTrend.series.map { it.label })
-        assertEquals(listOf("Meaning", "Reading", "Writing", "Similar kanji"), snapshot.accuracyRetention.retentionByCardType.map { it.label })
+        assertEquals(listOf("Accuracy %"), snapshot.accuracyRetention.accuracyTrend.series.map { it.label })
+        assertEquals(listOf("Meaning", "Reading", "Writing", "Discrimination"), snapshot.accuracyRetention.retentionByCardType.map { it.label })
+        val seriesValues = snapshot.accuracyRetention.accuracyTrend.series.flatMap { it.values }
+        assertEquals(ChartAxisPolicy.forValues(seriesValues), snapshot.accuracyRetention.accuracyTrend.axis)
         assertEquals(listOf("痛", "弱"), snapshot.weaknessInsights.mostMissedKanji.map { it.kanji })
+        assertEquals(listOf("徴"), snapshot.weaknessInsights.confusionPairs.map { it.firstKanji })
         assertEquals("Needs improvement", snapshot.weaknessInsights.focusScore.status)
+        assertNull(snapshot.overview.accuracy.deltaLabel)
+        assertEquals("Last 7 days", snapshot.overview.focusSessions.detailLabel)
     }
 
     @Test
@@ -96,6 +105,9 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(listOf(now), source.recomputeReads)
         assertEquals(17, snapshot.overview.totalReviews.value)
         assertEquals("17", snapshot.overview.totalReviews.valueLabel)
+        assertFalse(snapshot.weaknessInsights.focusScoreAvailable)
+        assertEquals(0, snapshot.weaknessInsights.focusScore.value)
+        assertTrue(snapshot.weaknessInsights.weaknessRows.isEmpty())
     }
 
     private fun writeFreshStatsSnapshot(now: Long, reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>) {
@@ -155,6 +167,15 @@ class ProgressAnalyticsLiveDataSourceTest {
                 ),
                 cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
                 reviewDaySummaries = reviewDaySummaries,
+                taskTypeDaySummaries = listOf(
+                    StatsCacheStore.TaskTypeDaySummarySnapshot(now, "kanji_meaning", 2, 3),
+                    StatsCacheStore.TaskTypeDaySummarySnapshot(now, "word_reading", 1, 1),
+                    StatsCacheStore.TaskTypeDaySummarySnapshot(now, "write_kanji", 1, 2),
+                    StatsCacheStore.TaskTypeDaySummarySnapshot(now, "similar_kanji", 1, 2),
+                ),
+                cumulativeKanjiPracticed = listOf(StatsCacheStore.CumulativeKanjiSnapshot(now, 5)),
+                wrongPickCounts = mapOf("徴" to mapOf("微" to 2)),
+                confusionMeanings = mapOf("徴" to "sign", "微" to "minute"),
             ),
         )
     }

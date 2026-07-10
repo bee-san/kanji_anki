@@ -53,6 +53,8 @@ class StatsPrecomputeStoreTest {
         val directStreak = StudyStatsStore(localStore).studyStreak(generatedAtMillis)
         val directTaskTime = StudyStatsStore(localStore).studyTaskTimeStats(generatedAtMillis)
         val directRepairEvidence = StudyStatsStore(localStore).kanjiRepairEvidence()
+        val directTaskTypes = StudyStatsQueries(localStore, db).taskTypeDaySummaries(generatedAtMillis, STATS_REVIEW_DAY_SUMMARY_LIMIT)
+        val directCumulative = StudyStatsQueries(localStore, db).cumulativeKanjiPracticed()
 
         StatsPrecomputeStore(localStore).refresh(db, generatedAtMillis = generatedAtMillis)
 
@@ -67,6 +69,10 @@ class StatsPrecomputeStoreTest {
         assertStudyStreakEquals(directStreak, cached.studyStreak)
         assertStudyTaskTimeStatsEquals(directTaskTime, cached.studyTaskTimeStats)
         assertRepairEvidenceEquals(directRepairEvidence, cached.kanjiRepairEvidence)
+        assertEquals(directTaskTypes, cached.taskTypeDaySummaries)
+        assertEquals(directCumulative, cached.cumulativeKanjiPracticed)
+        assertEquals(mapOf("徴" to mapOf("微" to 2)), cached.wrongPickCounts)
+        assertEquals(mapOf("微" to "minute", "徴" to "sign"), cached.confusionMeanings)
         assertEquals(STATS_CACHE_FORMAT_VERSION, cached.cacheFormatVersion)
         assertEquals(STATS_REVIEW_DAY_SUMMARY_LIMIT, cached.reviewDaySummaries.size)
         assertEquals(
@@ -168,6 +174,7 @@ class StatsPrecomputeStoreTest {
         insertReview("弱", "good", 1_800L)
         insertStudyItem("痛", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 3, 0, 22)
         insertStudyItem("弱", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 2, 1)
+        insertConfusionFixture()
     }
 
     private fun seedReviewDaySummaryInputs(startDay: Long) {
@@ -220,11 +227,12 @@ class StatsPrecomputeStoreTest {
         writingRequired: Boolean = true,
         writingPassed: Boolean = true,
         manualOverride: Boolean = false,
+        taskType: String = "kanji_meaning",
     ) {
         db.execSQL(
             "INSERT INTO review_log " +
-                "(kanji, token, rating, writing_required, writing_passed, manual_override, reviewed_at, review_day_start) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "(kanji, token, rating, writing_required, writing_passed, manual_override, reviewed_at, review_day_start, task_type) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any>(
                 kanji,
                 "$kanji-$reviewedAt",
@@ -234,8 +242,23 @@ class StatsPrecomputeStoreTest {
                 if (manualOverride) 1 else 0,
                 reviewedAt,
                 dayStart,
+                taskType,
             ),
         )
+    }
+
+    private fun insertConfusionFixture() {
+        db.execSQL(
+            "INSERT INTO kanji_inventory (kanji, primary_meaning, readings, browser_search, search_text, source_count, example_count, first_seen_at, last_seen_at) VALUES " +
+                "('徴', 'sign', '', '', '', 1, 1, 1, 1), ('微', 'minute', '', '', '', 1, 1, 1, 1)",
+        )
+        val now = 1_700_000_000_000L
+        repeat(2) { index ->
+            db.execSQL(
+                "INSERT INTO similar_kanji_review_log (target_kanji, choice_signature, selected_kanji, correct, reviewed_at, rung) VALUES (?, ?, ?, 0, ?, 'similar_kanji')",
+                arrayOf<Any>("徴", "fixture-$index", "微", now - index),
+            )
+        }
     }
 
     private fun insertStudyItem(

@@ -430,6 +430,46 @@ stored under `scheduler_*` settings keys (`LocalStoreStudySettings.kt`).
   `SchedulerTuner` were removed (see resolved Gap G1): they were persisted
   and adjusted but never applied to any interval computation.
 
+### 5.2 Optional personalized weights (Goals 92–93 / D-S7)
+
+`BridgeScheduler.withWeights` is the single production construction seam.
+With no stored vector it follows the exact pre-personalization default path;
+with a vector it validates all 21 finite values through `FsrsParameters.of`
+and constructs the same `LatestFsrsAdapter` around that engine. The setting
+`scheduler_fsrs_weights` is a comma-separated, full-precision string (never
+`SettingsRepository.putDouble`, which rounds to four decimals). Invalid
+stored data produces one sanitized diagnostic and fails open to defaults.
+
+Every scheduler consumer uses that seam: foreground reviews, sync queue
+seeding, and ladder forecast simulation. Consequently personalized weights
+affect both the ordinary retention-scaled interval and the fixed-0.90
+`promotionIntervalDays` memory-strength signal used by ladder promotion.
+This is D-S7: personalization changes the FSRS model consistently; it does
+not create a second ladder-specific model.
+
+Personalization is opt-in and off by default. `FsrsTrainingDataQueries`
+groups `review_log` by `(kanji, answer_signature, task_type)`, drops legacy
+rows without rich memory/phase data, and excludes learning/relearning
+practice from prediction loss. The first `review` row's exact
+`memory_before` is the sequence seed (also the documented approximation for
+evidence-seeded items); elapsed whole days mirror
+`ReviewContext.elapsedReviewDays`, including zero-day short-term samples.
+`FsrsReplayEvaluator` replays ratings through the production FSRS-6 engine
+and scores binary recall log-loss. `FsrsWeightFitter` uses bounded,
+deterministic finite-difference Adam with an oldest-80% / newest-20%
+time-ordered split and early stopping.
+
+The adoption gate requires both at least 400 real review samples in the 80%
+training partition (about 500 total samples) and a validation log-loss
+improvement of at least 1% over the built-in defaults.
+Every run stores counts, losses, reason, adoption state, and timestamp in
+`scheduler_fsrs_fit_summary`; only a passing run writes live weights. A
+charging + battery-not-low periodic worker runs every seven days while the
+toggle is enabled, and Settings can enqueue an expedited one-shot fit or
+clear the fitted vector and summary. Turning the toggle off clears the live
+weights immediately. Therefore an unset key, or the default-off feature,
+leaves all scheduler goldens and parity snapshots byte-identical.
+
 ---
 
 ## 6. Phase Machine (Anki Semantics)
@@ -1004,6 +1044,58 @@ were resolved by the follow-up change set on this branch; items marked
   fight. Parking implementation becomes its own follow-up goal with schema
   criteria once the direction is chosen.
 
+### Repair-loop and stats decision log (Goals 82–95)
+
+- **D-S1 — One stats surface.** `ProgressAnalyticsDashboardScreen` is the
+  sole production Stats route. The unused `StatsScreen`/`StatsCardModel`
+  stack and its second bottom navigation were deleted so cached insights and
+  presentation cannot drift between parallel implementations.
+- **D-S2 — Truth before decoration.** Stats values, chart geometry, and axes
+  must derive from persisted evidence. Unknown data renders an empty state;
+  it is never replaced by minimum chart floors, arithmetic offsets, invented
+  labels, or an unrelated metric under a friendlier name.
+- **D-S3 — Recent confusion means 90 days.** Confusion insights use the same
+  bounded `similar_kanji_review_log` window as `ConfusionPairMiner`. No second
+  unbounded history is retained, and non-kanji choice values are filtered.
+- **D-S4 — Forecast ladder completion, not retirement.** The deterministic
+  forecast runs the production scheduler under an explicit all-passes
+  assumption until each repair reaches and validates its highest available
+  rung. Anki evidence still owns retirement; the forecast never predicts it.
+- **D-S5 — Restore by staged whole-file replacement.** A selected backup is
+  validated fail-closed, staged privately, and swapped at the next process
+  start after a safety snapshot. Row merging and in-process replacement are
+  rejected because open-helper quiescence cannot be proven.
+- **D-S6 — Widget and reminders share eligibility.** Widget due counts pass
+  through `ReminderEligibilityPolicy`, preserving the invariant that a tap on
+  advertised work cannot open an empty Study route.
+- **D-S7 — One fitted FSRS model everywhere.** Optional custom weights feed
+  reviews, seeding, forecasts, and the fixed-0.90 promotion-strength interval.
+  This extends closed decision D4 without reintroducing retention coupling:
+  the retention preference still does not control promotion, while the
+  selected memory model consistently informs every interval calculation.
+- **D-S8 — Provider write-back remains tag-only.** Kani may add
+  `kani_archived` or opt-in `kani_repaired` note tags, but it never rewrites
+  Anki queue, due, interval, ease, deck, or other scheduling state. Repaired
+  cards are handed back to the user with an exact AnkiDroid browser search;
+  direct unsuspend remains outside this goal unless a future provider contract
+  is proven.
+
+### Ladder-completion forecast
+
+The Stats screen's completion forecast is a deterministic simulation of
+ladder **practice**, not a prediction that a card will retire in Anki. It runs
+the production `StudyQueueSeeder`, `ReviewTransitionEngine`, and FSRS adapter
+forward under an explicit all-passes assumption, including queue-cap admission
+waves, promotion validation intervals, conditional-rung crossings, and ceiling
+parking. The displayed month is therefore the point at which every currently
+eligible weak kanji is projected to have reached and validated its highest
+enabled valid rung.
+
+Retirement remains evidence-driven and separate: only later AnkiDroid sync
+evidence can establish mature support and retire a repair. The forecast never
+claims that ladder completion changes Anki scheduling state or proves repair
+outcomes (decision D-S4 / Goal 88).
+
 ### Non-goals
 
 - **The meaning→reading seam at `word_reading` (Goal 72).** The top rung
@@ -1021,10 +1113,16 @@ were resolved by the follow-up change set on this branch; items marked
   computes promotion-ready/demotion-risk counts; surfacing per-card "next
   rung at interval > N days" in the kanji detail screen would make the
   ladder legible to users.
-- **I3 — FSRS parameter optimization.** Parameters are fixed at the FSRS
-  defaults; `review_log` stores everything needed to fit per-user weights
-  offline. A periodic fit (or import of AnkiDroid-optimized weights during
-  sync) would improve interval quality.
+- **I3 — FSRS parameter optimization. (Closed by Goal 93.)** The opt-in
+  on-device fitter now replays real `review`-phase histories with the
+  production FSRS-6 engine, uses bounded finite-difference Adam and a
+  time-ordered 80/20 split, and adopts only with at least 400 training samples
+  (about 500 total samples) and a ≥1% validation log-loss improvement over
+  defaults. The full-precision
+  vector is threaded through reviews, sync seeding, forecasts, and the
+  fixed-0.90 promotion-strength calculation; default-off behavior remains
+  golden-neutral. Importing AnkiDroid-optimized weights remains a separate
+  possible enhancement, not a missing plumbing path.
 - **I4 — Same-day elapsed granularity.** `elapsedReviewDays` floors to
   whole days, so any same-day second review takes the FSRS short-term
   branch regardless of hour spacing; acceptable, but worth noting if

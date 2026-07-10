@@ -472,6 +472,40 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         studySettings().saveSchedulerParameters(parameters)
     }
 
+    fun schedulerFsrsWeights(): DoubleArray? = studySettings().schedulerFsrsWeights()
+
+    fun saveSchedulerFsrsWeights(weights: DoubleArray?) {
+        studySettings().saveSchedulerFsrsWeights(weights)
+    }
+
+    fun commitFsrsFitOutcome(
+        weightsToAdopt: DoubleArray?,
+        summaryJson: String,
+        disabledSummaryJson: String?,
+        preserveExistingWeights: Boolean,
+    ): Boolean = studySettings().commitFsrsFitOutcome(
+        weightsToAdopt,
+        summaryJson,
+        disabledSummaryJson,
+        preserveExistingWeights,
+    )
+
+    fun fsrsPersonalizationEnabled(): Boolean = studySettings().fsrsPersonalizationEnabled()
+
+    fun saveFsrsPersonalizationEnabled(enabled: Boolean) {
+        studySettings().saveFsrsPersonalizationEnabled(enabled)
+    }
+
+    fun fsrsFitSummaryJson(): String = studySettings().fsrsFitSummaryJson()
+
+    fun saveFsrsFitSummaryJson(summaryJson: String?) {
+        studySettings().saveFsrsFitSummaryJson(summaryJson)
+    }
+
+    fun resetFsrsPersonalization() {
+        studySettings().resetFsrsPersonalization()
+    }
+
     fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings = studySettings().learningStepSettings()
 
     fun saveLearningStepSettings(settings: RecordsSchedulerModels.LearningStepSettings?) {

@@ -901,7 +901,7 @@ private fun assertWeaknessBurnDownPanel(activity: MainActivity) {
 
 private fun assertSupportConversionPanel(activity: MainActivity) {
         assertHasText(activity, "Progress by level");
-        assertHasText(activity, "All levels");
+        assertHasText(activity, "Ladder rung distribution");
         assertHasText(activity, "Cumulative progress");
     }
 

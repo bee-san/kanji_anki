@@ -43,6 +43,7 @@ class SchedulerTimelineSimulator(
     private val parameters: RecordsSchedulerModels.SchedulerParameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
     private val learningSettings: RecordsSchedulerModels.LearningStepSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
     private val ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults(),
+    private val retainEvents: Boolean = true,
 ) {
     private val rows: List<RecordsImportModels.DashboardRow> = Collections.unmodifiableList(ArrayList(rows))
     private val consumedTokens: MutableSet<String> = HashSet()
@@ -53,7 +54,7 @@ class SchedulerTimelineSimulator(
 
     fun seedQueue(): SchedulerTimelineEvent {
         val beforeKeys = items.map { itemKey(it) }.toHashSet()
-        items = scheduler.seedQueue(rows, items, settings, nowMillis, startMillis, ladder)
+        items = scheduler.seedQueue(rows, items, settings, nowMillis, LocalDayPolicy.localDayStart(nowMillis), ladder)
         val admitted = items
             .filter { !beforeKeys.contains(itemKey(it)) }
             .sortedWith(compareBy({ it.kanji }, { StudyTaskTypes.forRung(it.rung) }))
@@ -68,7 +69,7 @@ class SchedulerTimelineSimulator(
             emptyList(),
         )
         val event = SchedulerTimelineEvent("seed", nowMillis - startMillis, trace, first?.let { snapshot(it) }, null)
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -76,7 +77,7 @@ class SchedulerTimelineSimulator(
         val trace = scheduler.debugTraceNextSession(items, rows, nowMillis, 0L, null, settings, ladder)
         activeSession = scheduler.nextSession(items, rows, nowMillis, 0L, null, settings, ladder)
         val event = SchedulerTimelineEvent("next", nowMillis - startMillis, trace, activeSession?.item?.let { snapshot(it) }, null)
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -103,7 +104,7 @@ class SchedulerTimelineSimulator(
         items = replaceReviewedItem(items, before, traced.result.item)
         activeSession = null
         val event = SchedulerTimelineEvent("answer", nowMillis - startMillis, traced.trace, snapshot(traced.result.item), snapshot(before))
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -136,7 +137,7 @@ class SchedulerTimelineSimulator(
         items = replaceReviewedItem(items, before, traced.result.item)
         activeSession = null
         val event = SchedulerTimelineEvent("answer", nowMillis - startMillis, traced.trace, snapshot(traced.result.item), snapshot(before))
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -144,7 +145,7 @@ class SchedulerTimelineSimulator(
         nowMillis += millis.coerceAtLeast(0L)
         val trace = SchedulerDecisionTrace("advance", nowMillis, null, emptyList(), emptyList(), null, emptyList())
         val event = SchedulerTimelineEvent("advance", nowMillis - startMillis, trace, null, null)
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -152,7 +153,7 @@ class SchedulerTimelineSimulator(
         nowMillis = maxOf(nowMillis, targetMillis)
         val trace = SchedulerDecisionTrace("advance", nowMillis, null, emptyList(), emptyList(), null, emptyList())
         val event = SchedulerTimelineEvent("advance", nowMillis - startMillis, trace, null, null)
-        events.add(event)
+        retain(event)
         return event
     }
 
@@ -162,6 +163,10 @@ class SchedulerTimelineSimulator(
 
     fun events(): List<SchedulerTimelineEvent> {
         return Collections.unmodifiableList(ArrayList(events))
+    }
+
+    private fun retain(event: SchedulerTimelineEvent) {
+        if (retainEvents) events.add(event)
     }
 
     fun renderText(): String {

@@ -5,6 +5,7 @@ import java.util.LinkedHashMap
 class ProviderNotePolicy private constructor() {
     companion object {
         const val ARCHIVED_TAG: String = "kani_archived"
+        const val REPAIRED_TAG: String = "kani_repaired"
         private const val LEGACY_ARCHIVED_TAG = "kanji_anki_archived"
         private const val NOTE_MODEL_QUERY_PREFIX = "note:\""
 
@@ -12,6 +13,9 @@ class ProviderNotePolicy private constructor() {
         fun isArchivedTagPresent(tags: List<String>?): Boolean {
             return tags != null && (tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG))
         }
+
+        @JvmStatic
+        fun isRepairedTagPresent(tags: List<String>?): Boolean = tags?.contains(REPAIRED_TAG) == true
 
         @JvmStatic
         fun selectRequiredFields(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -41,6 +42,8 @@ internal object KaniUiTokens {
     val SubtleButtonBorder: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.borderSoft
     val ButtonBorder: Color @Composable @ReadOnlyComposable get() = KaniTheme.colors.borderSoft
     val PanelShape = RoundedCornerShape(24.dp)
+    val LeafShape = RoundedCornerShape(18.dp)
+    val PillShape = CircleShape
     val ButtonShape = RoundedCornerShape(12.dp)
     val WideButtonShape = RoundedCornerShape(22.dp)
 

@@ -129,94 +129,18 @@ fun HomeMetricCard(
     model: HomeMetricModel,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(8.dp)
     val accentColor = kaniColor(model.accent)
-    val borderColor = if (KaniTheme.colors.isDark) {
-        accentColor.copy(alpha = 0.35f)
-    } else {
-        accentColor.copy(alpha = 0.22f)
-    }
-    val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     val compactBody = remember(model.body) { model.body?.let { StudyTextCopy.compact(it, 22) } }
-    val contentDescriptionText = remember(model.label, model.value, compactBody) {
-        listOfNotNull(
-            HomeTextCopy.homeMetricCardDescription(),
-            model.label,
-            model.value,
-            compactBody,
-        ).joinToString(", ")
-    }
-    val cardModifier = modifier
-        .testTag(homeMetricCardTestTag(model.label))
-        .semantics {
-            contentDescription = contentDescriptionText
-        }
-        .then(
-            model.onClick?.let { action ->
-                Modifier.clickable(
-                    role = Role.Button,
-                    onClick = {
-                        withButtonTrace("Home metric ${model.label}") {
-                            action()
-                        }
-                    }
-                )
-            } ?: Modifier
-        )
-    Box(
-        modifier = cardModifier
-            .fillMaxWidth()
-            .heightIn(min = 118.dp)
-            .clip(shape)
-            .background(KaniTheme.colors.surface)
-            .border(1.dp, borderColor, shape)
-            .padding(14.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.Top
-        ) {
-            Icon(
-                painter = painterResource(id = model.iconRes),
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier
-                    .size(22.dp)
-                    .padding(bottom = 5.dp)
-            )
-            Text(
-                text = model.label,
-                color = accentColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = labelStyle
-            )
-            Text(
-                text = model.value,
-                color = HomeMetricInk,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp, bottom = 2.dp),
-                style = labelStyle
-            )
-            if (!compactBody.isNullOrEmpty()) {
-                Text(
-                    text = compactBody,
-                    color = HomeMetricMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 3.dp),
-                    style = labelStyle
-                )
-            }
-        }
-    }
+    KaniMetricCard(
+        iconRes = model.iconRes,
+        label = model.label,
+        value = model.value,
+        delta = compactBody,
+        accent = accentColor,
+        modifier = modifier.fillMaxWidth().heightIn(min = 118.dp).testTag(homeMetricCardTestTag(model.label)),
+        onClick = model.onClick?.let { action -> { withButtonTrace("Home metric ${model.label}") { action() } } },
+        contentDescriptionPrefix = HomeTextCopy.homeMetricCardDescription(),
+    )
 }
 
 private val HomeMetricInk: Color @Composable get() = KaniTheme.colors.ink

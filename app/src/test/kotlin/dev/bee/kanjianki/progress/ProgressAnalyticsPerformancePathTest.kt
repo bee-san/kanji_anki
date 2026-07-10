@@ -26,7 +26,7 @@ class ProgressAnalyticsPerformancePathTest {
 
         val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
 
-        assertEquals(now, state.generatedAtMillis)
+        assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
         assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
@@ -46,7 +46,7 @@ class ProgressAnalyticsPerformancePathTest {
 
         val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
 
-        assertEquals(now, state.generatedAtMillis)
+        assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(0, source.directRecomputes)
@@ -65,7 +65,7 @@ class ProgressAnalyticsPerformancePathTest {
 
         val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
 
-        assertEquals(now, state.generatedAtMillis)
+        assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
         assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)

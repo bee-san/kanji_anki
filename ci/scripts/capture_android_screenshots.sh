@@ -76,6 +76,7 @@ captured_system_modes=()
 
 original_accelerometer_rotation="$(adb shell settings get system accelerometer_rotation 2>/dev/null | tr -d '\r' || true)"
 original_user_rotation="$(adb shell settings get system user_rotation 2>/dev/null | tr -d '\r' || true)"
+original_fixed_to_user_rotation="$(adb shell wm fixed-to-user-rotation 2>/dev/null | tr -d '\r' || true)"
 original_ui_night_mode="$(adb shell settings get secure ui_night_mode 2>/dev/null | tr -d '\r' || true)"
 
 restore_setting() {
@@ -138,8 +139,16 @@ set_system_night_mode() {
 }
 
 cleanup() {
+  if [ "${original_accelerometer_rotation}" = "1" ]; then
+    adb shell wm user-rotation free >/dev/null 2>&1 || true
+  elif [ -n "${original_user_rotation}" ] && [ "${original_user_rotation}" != "null" ]; then
+    adb shell wm user-rotation lock "${original_user_rotation}" >/dev/null 2>&1 || true
+  fi
   restore_setting system accelerometer_rotation "${original_accelerometer_rotation}"
   restore_setting system user_rotation "${original_user_rotation}"
+  if [ -n "${original_fixed_to_user_rotation}" ]; then
+    adb shell wm fixed-to-user-rotation "${original_fixed_to_user_rotation}" >/dev/null 2>&1 || true
+  fi
   restore_setting secure ui_night_mode "${original_ui_night_mode}"
   adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
 }
@@ -254,22 +263,60 @@ wait_for_route() {
   exit 1
 }
 
+current_display_rotation() {
+  adb shell dumpsys window displays 2>/dev/null \
+    | tr -d '\r' \
+    | sed -nE 's/.*mDisplayRotation=ROTATION_(0|90|180|270).*/\1/p' \
+    | head -n 1
+}
+
+wait_for_orientation() {
+  local orientation="$1"
+  local expected_rotation
+  case "${orientation}" in
+    portrait) expected_rotation=0 ;;
+    landscape) expected_rotation=90 ;;
+    *)
+      echo "Unsupported orientation '${orientation}'" >&2
+      exit 1
+      ;;
+  esac
+  local attempt
+  for attempt in $(seq 1 30); do
+    if [ "$(current_display_rotation)" = "${expected_rotation}" ]; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  echo "Timed out waiting for ${orientation} display rotation." >&2
+  exit 1
+}
+
 set_orientation() {
   local orientation="$1"
+  # Emulator/device activity orientation requests can race the user-rotation
+  # setting. During deterministic capture, keep the display fixed to the
+  # requested user rotation and restore the original policy on exit.
+  adb shell wm fixed-to-user-rotation enabled >/dev/null 2>&1 || true
   case "${orientation}" in
     portrait)
-      adb shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
-      adb shell settings put system user_rotation 0 >/dev/null 2>&1 || true
+      adb shell wm user-rotation lock 0 >/dev/null 2>&1 || {
+        adb shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
+        adb shell settings put system user_rotation 0 >/dev/null 2>&1 || true
+      }
       ;;
     landscape)
-      adb shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
-      adb shell settings put system user_rotation 1 >/dev/null 2>&1 || true
+      adb shell wm user-rotation lock 1 >/dev/null 2>&1 || {
+        adb shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
+        adb shell settings put system user_rotation 1 >/dev/null 2>&1 || true
+      }
       ;;
     *)
       echo "Unsupported orientation '${orientation}'" >&2
       exit 1
       ;;
   esac
+  wait_for_orientation "${orientation}"
 }
 
 logical_screen_height() {
@@ -372,6 +419,7 @@ capture_route_variant() {
   set_orientation "${orientation}"
   launch_screenshot_route "${launch_target}" "${capture_theme_choice}" "${scroll_position}" "${scroll_y}"
   wait_for_route "${capture_name}" "${expected_terms[@]}"
+  wait_for_orientation "${orientation}"
   output_path="$(capture_png "${capture_name}")"
   ui_dump_path="$(capture_ui_xml "${capture_name}")"
   captured_routes+=("${route_name}")

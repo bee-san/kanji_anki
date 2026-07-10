@@ -24,6 +24,7 @@ class SyncProgressCopyTest {
                 "Archiving imported suspended cards",
                 SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS),
             )
+            assertEquals("Tagging repaired cards", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.TAGGING_REPAIRED))
             assertEquals("Syncing cards", SyncProgressCopy.stageTitle(null))
 
             assertEquals("Checking collection shape.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
@@ -50,6 +51,10 @@ class SyncProgressCopyTest {
             assertEquals(
                 "Updating archived suspended cards.",
                 SyncProgressCopy.stageBody(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS),
+            )
+            assertEquals(
+                "Tagging repaired notes in AnkiDroid.",
+                SyncProgressCopy.stageBody(SyncProgressCopy.Stage.TAGGING_REPAIRED),
             )
             assertEquals("Preparing card scan.", SyncProgressCopy.stageBody(null))
             assertEquals("Sync progress: Finding note type", SyncProgressCopy.progressDescription("Finding note type"))
@@ -127,6 +132,7 @@ class SyncProgressCopyTest {
                 "取り込んだ休止カードをアーカイブ中",
                 SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS),
             )
+            assertEquals("修復済みカードをタグ付け中", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.TAGGING_REPAIRED))
             assertEquals("カードを同期中", SyncProgressCopy.stageTitle(null))
 
             assertEquals("コレクションの形を確認しています。", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
@@ -153,6 +159,10 @@ class SyncProgressCopyTest {
             assertEquals(
                 "取り込んだ休止カードをアーカイブしています。",
                 SyncProgressCopy.stageBody(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS),
+            )
+            assertEquals(
+                "修復済みノートをAnkiDroidでタグ付けしています。",
+                SyncProgressCopy.stageBody(SyncProgressCopy.Stage.TAGGING_REPAIRED),
             )
             assertEquals("カードをスキャンする準備をしています。", SyncProgressCopy.stageBody(null))
             assertEquals("同期の進捗: ノートタイプを確認中", SyncProgressCopy.progressDescription("ノートタイプを確認中"))

@@ -894,9 +894,19 @@ class ComposeScreenModelsTest {
             shareLabel = "Share debug log",
             onShare = noop,
         )
+        val backup = SettingsBackupPanelModel(
+            title = "Backup & restore",
+            body = "Export or restore Kani data.",
+            lastBackupLine = "Last automatic backup: not yet",
+            archiveCountLine = "0 automatic backups kept on this device",
+            exportLabel = "Export now",
+            onExport = noop,
+            restoreLabel = "Restore from backup…",
+            onRestore = noop,
+        )
 
         val importSync = settingsAnkiSourceCategoryModel(true, noop, noteType, importFilters, frequency, autoSync)
-        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update, debugLog)
+        val advanced = settingsAutomationCategoryModel(false, noop, reminder, update, debugLog, backup)
         val appearance = settingsAppearanceCategoryModel(false, noop, theme)
         val referenceData = settingsReferenceDataCategoryModel(
             false,
@@ -920,7 +930,7 @@ class ComposeScreenModelsTest {
         assertEquals("4 cards", importSync.panelCount)
         assertEquals("Automation", advanced.title)
         assertEquals("Manage reminders, sync, and updates.", advanced.summary)
-        assertEquals("3 cards", advanced.panelCount)
+        assertEquals("4 cards", advanced.panelCount)
         assertEquals("Appearance", appearance.title)
         assertEquals("Choose your app theme.", appearance.summary)
         assertEquals("1 card", appearance.panelCount)
@@ -932,7 +942,7 @@ class ComposeScreenModelsTest {
         assertEquals("8 cards", collapsedBehavior.panelCount)
         assertTrue(collapsedBehavior.panels.isEmpty())
 
-        assertEquals(listOf(reminder, update, debugLog), advanced.panels)
+        assertEquals(listOf(reminder, update, debugLog, backup), advanced.panels)
         assertEquals(listOf(theme), appearance.panels)
     }
 
@@ -1735,66 +1745,6 @@ class ComposeScreenModelsTest {
 
         assertEquals(true, hidden.visible)
         assertEquals(false, visible.visible)
-    }
-
-    @Test
-    fun statsModelsKeepVerdictSectionsAndDefaults() {
-        val line = StatsLineModel("裂: 88 -> 33")
-        val verdict = StatsCardModel(
-            title = "Kani is working",
-            body = "Weak kanji and support are both improving.",
-            fillColor = STATS_VERDICT_WORKING_FILL,
-            strokeColor = STATS_TEAL_COLOR,
-        )
-        val section = StatsCardModel(
-            title = "Weak kanji trend",
-            summary = "3 weak kanji improved",
-            body = "Average weakness fell.",
-            lines = listOf(line),
-            strokeColor = STATS_CORAL_COLOR,
-            titleSizeSp = 20,
-            summarySizeSp = 24,
-            bodySizeSp = 16,
-        )
-        val screen = StatsScreenModel(
-            title = "Stats",
-            intro = "Kani repairs weak kanji.",
-            verdict = verdict,
-            sections = listOf(section),
-        )
-
-        assertEquals("Stats", screen.title)
-        assertEquals("Kani repairs weak kanji.", screen.intro)
-        assertSame(verdict, screen.verdict)
-        assertEquals(listOf(section), screen.sections)
-        assertEquals("Kani is working", verdict.title)
-        assertEquals(null, verdict.summary)
-        assertEquals("Weak kanji and support are both improving.", verdict.body)
-        assertEquals(emptyList<StatsLineModel>(), verdict.lines)
-        assertEquals(STATS_VERDICT_WORKING_FILL, verdict.fillColor)
-        assertEquals(STATS_TEAL_COLOR, verdict.strokeColor)
-        assertEquals(STATS_MUTED_COLOR, verdict.titleColor)
-        assertEquals(STATS_INK_COLOR, verdict.summaryColor)
-        assertEquals(STATS_MUTED_COLOR, verdict.bodyColor)
-        assertEquals(18, verdict.titleSizeSp)
-        assertEquals(25, verdict.summarySizeSp)
-        assertEquals(15, verdict.bodySizeSp)
-        assertEquals("Weak kanji trend", section.title)
-        assertEquals("3 weak kanji improved", section.summary)
-        assertEquals("Average weakness fell.", section.body)
-        assertEquals(listOf(line), section.lines)
-        assertEquals(STATS_WHITE_COLOR, section.fillColor)
-        assertEquals(STATS_CORAL_COLOR, section.strokeColor)
-        assertEquals(20, section.titleSizeSp)
-        assertEquals(24, section.summarySizeSp)
-        assertEquals(16, section.bodySizeSp)
-        assertEquals("裂: 88 -> 33", line.text)
-        assertEquals(STATS_INK_COLOR, line.color)
-        assertEquals(true, line.bold)
-        assertEquals(16, line.sizeSp)
-        assertEquals(screen, screen.copy())
-        assertEquals(section, section.copy())
-        assertEquals(line, line.copy())
     }
 
     @Test

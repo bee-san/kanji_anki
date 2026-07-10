@@ -21,6 +21,7 @@ androidxTestUiautomator = "2.3.0"
 composeBom = "2026.04.01"
 activityCompose = "1.13.0"
 workRuntime = "2.11.2"
+glance = "1.1.1"
 mlkitDigitalInk = "19.0.0"
 
 [libraries]
@@ -43,6 +44,7 @@ compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 mlkit-digital-ink = { module = "com.google.mlkit:digital-ink-recognition", version.ref = "mlkitDigitalInk" }
 
 [plugins]

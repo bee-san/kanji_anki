@@ -189,7 +189,8 @@ class SettingsImportFiltersComposeTest {
                         lapsesLabel = SettingsTextCopy.lapsesLabel(),
                         minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
                         saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-                        onSave = SettingsImportFilterAction { onSave() }
+                        onSave = SettingsImportFilterAction { onSave() },
+                        tagRepairedCardsLabel = SettingsTextCopy.tagRepairedCardsLabel(),
                     )
                 )
             }
