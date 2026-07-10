@@ -78,7 +78,9 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     activity.flashcardTouchTracking = false
                     return false
                 }
-                activity.flashcardTouchTracking = isTouchInsideFlashcard(event)
+                val insideFlashcard = isTouchInsideFlashcard(event)
+                activity.flashcardTouchTracking = insideFlashcard &&
+                    (activity.flashcardSwipeFeedback?.beginDrag() != false)
                 if (activity.flashcardTouchTracking) {
                     activity.flashcardTouchStartX = event.rawX
                     activity.flashcardTouchStartY = event.rawY
@@ -98,13 +100,12 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     return false
                 }
                 activity.flashcardTouchTracking = false
-                activity.flashcardSwipeFeedback?.reset()
                 handleFlashcardRelease(event)
             }
 
             MotionEvent.ACTION_CANCEL -> {
                 activity.flashcardTouchTracking = false
-                activity.flashcardSwipeFeedback?.reset()
+                activity.flashcardSwipeFeedback?.settleBack()
                 false
             }
 
@@ -125,6 +126,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         )
         return when (decision.action) {
             FlashcardGesturePolicy.Decision.Action.REVEAL -> {
+                activity.flashcardSwipeFeedback?.settleBack()
                 revealFlashcardAnswer()
                 true
             }
@@ -135,11 +137,20 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     rating = decision.rating,
                     durationMs = (event.eventTime - event.downTime).coerceAtLeast(0L),
                 )
-                activity.submitReview(decision.rating, false)
+                submitReviewWithSwipeFeedback(activity.flashcardSwipeFeedback, decision.rating) {
+                    activity.submitReview(
+                        rating = decision.rating,
+                        override = false,
+                        interactionSource = "card",
+                    )
+                }
                 true
             }
 
-            else -> false
+            else -> {
+                activity.flashcardSwipeFeedback?.settleBack()
+                false
+            }
         }
     }
 

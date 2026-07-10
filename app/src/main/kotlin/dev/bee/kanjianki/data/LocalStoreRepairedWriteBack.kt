@@ -195,6 +195,9 @@ internal fun LocalStore.recordRepairedWriteBack(
             SQLiteDatabase.CONFLICT_REPLACE,
         )
     }
+    // This transaction intentionally writes the settings table directly so its timeline/archive
+    // updates stay atomic. Publish that write to the bulk settings cache after commit.
+    settingsRepository().invalidate()
     return repairedKanji
 }
 

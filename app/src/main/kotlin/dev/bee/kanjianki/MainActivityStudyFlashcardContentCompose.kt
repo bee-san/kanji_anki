@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -63,9 +64,11 @@ internal fun FlashcardCard(
     // Typing cards stay in their compact geometry through reveal. This preserves
     // KB1 and prevents the hero jumping when the IME/prompt disappears.
     val stableCompact = compact || model.typingAnswer != null
+    StudySwipeReleaseEffect(swipeFeedback)
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .onSizeChanged { size -> swipeFeedback?.updateCardWidth(size.width.toFloat()) }
             .studySwipeFeedback(swipeFeedback)
             .animateContentSize()
             .heightIn(min = if (stableCompact) 0.dp else 360.dp),
@@ -127,7 +130,7 @@ private fun Modifier.studySwipeFeedback(swipeFeedback: StudySwipeFeedbackState?)
     val cornerRadius = KaniUiTokens.StudyRadiusLarge
     return this
         .graphicsLayer {
-            translationX = swipeFeedback.dragOffsetX * 0.5f
+            translationX = swipeFeedback.dragOffsetX
             rotationZ = swipeFeedback.progress * 1.5f
         }
         .drawWithContent {
