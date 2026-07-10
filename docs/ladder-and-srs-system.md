@@ -672,7 +672,7 @@ rows and admits new ones:
   regression evidence appears (`canReopenRetiredSeedItem`, `:279-291`).
 - **Answer-signature reset** (`alignAnswerSignature`, `:361-405`): if the
   source note's expression/reading/meaning changed materially, the item is
-  fully reset (FSRS fields, all seven memories, streaks, phase
+  fully reset (FSRS fields, all per-rung memories, streaks, phase
   `new_learning`) and demoted one rung.
 - After seeding, the app re-annotates `hasSimilarKanji`
   (`HomeStudyQueueActions.kt`).
@@ -901,7 +901,7 @@ were resolved by the follow-up change set on this branch; items marked
   models exactly what the scheduler consumes: target retention plus the
   frequency-retention override. FSRS is the single interval authority.
 - **G2 (Medium) — `meaning_kanji` default contradicted AGENTS.md.** Code
-  enables all seven rungs by default and auto-enables `meaning_kanji` for
+  enables all rungs by default and auto-enables `meaning_kanji` for
   stored configs that predate it; AGENTS.md claimed it was off by default.
   *Fix:* corrected AGENTS.md (code behavior was intentional).
 - **G3 (Medium) — Sibling suppression was structurally inert.**
@@ -1038,3 +1038,33 @@ were resolved by the follow-up change set on this branch; items marked
   first post-demotion pass can no longer re-promote. Pinned by
   `LadderSchedulerTest.demotedMatureCardDoesNotRepromoteOnFirstPass` and
   the `promotionRequiresSecondRealDuePass` golden.
+
+### Reading-aware rungs decision log (Goals 75–80)
+
+Three reading-focused conditional rungs were added on top of the Goal 75
+`RungAvailability` generalization and the Goal 76 `KanjiReadingAligner`. Their
+decisions of record:
+
+- **D-R1 — Ladder movement stays in-app.** Anki-side lapse counts do NOT feed
+  promotion/demotion; only persisted FSRS-due review attempts in the `review`
+  phase move the ladder. Anki-side maturity/lapse data is used only inside the
+  content planners (`KanjiReadingChoicePlanner`, `ReadingKanjiChoicePlanner`):
+  mature attested readings qualify as distractors and lapse-heavy readings are
+  preferred as the tested contrast — the same targeting-without-movement pattern
+  `similar_kanji` already uses.
+- **D-R2 — Canonical readings.** Usage rows and choice options are keyed by
+  canonical reading (on-readings → hiragana; kun-readings canonicalized to the
+  pre-`.` stem; rendaku/sokuon surface variants mapped back to their base), so
+  evidence groups correctly (心配's ぱい counts as はい) and choice lists carry
+  no near-duplicates.
+- **D-R3 — Jukujikun exclusion is by design.** Words the aligner cannot attribute
+  (明日=あした, 大人=おとな, …) produce no usage rows and therefore never gate or
+  feed the new rungs. No per-word special cases.
+- **D-R4 — Auto-enable on upgrade.** `meaning_kanji`, `kanji_reading`,
+  `reading_kanji`, and `sentence_reading` are auto-enabled for stored configs
+  that predate them (`StudyLadderSettings.AUTO_ENABLE_RUNGS`, generalizing the
+  original single-`MEANING_KANJI` clause). A user's stored order is preserved
+  verbatim modulo the documented `insertMissingRung` splice.
+- **D-R5 — No parallel queues.** All three rungs are ordinary ladder rungs over
+  `study_items`. `kanji_reading_usage` / `kanji_reading_pool` are content/data
+  tables like `similar_kanji_pairs`, not scheduler queues.
