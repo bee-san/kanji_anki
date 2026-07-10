@@ -5,17 +5,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -27,6 +30,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -42,12 +46,16 @@ class MainActivityStudyFlashcardComposeTest {
     private fun setStudyAnswerPanelContent(
         model: StudyAnswerPanelModel,
         onAnkiTapAction: ((StudyAnswerAnkiTapActionModel) -> Unit)? = null,
+        onBrowseAction: Runnable? = null,
+        initialExpandedSectionLabel: String? = null,
     ) {
         composeRule.setContent {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 StudyAnswerPanel(
                     model = model,
                     onAnkiTapAction = onAnkiTapAction,
+                    onBrowseAction = onBrowseAction,
+                    initialExpandedSectionLabel = initialExpandedSectionLabel,
                 )
             }
         }
@@ -104,50 +112,46 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersRecognitionPill() {
+    fun rendersSharedStudyModeChip() {
         composeRule.setContent {
-            RecognitionPill("Recognise")
+            StudyModeChip("Recognise")
         }
 
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
     }
 
     @Test
-    fun hidesFlashcardPromptHeaderReason() {
+    fun rendersFlashcardPromptHeaderWithModeAndQuestionOnly() {
         composeRule.setContent {
             FlashcardPromptHeader(
                 model = FlashcardPromptHeaderModel(
                     modeLabel = "Recognise",
-                    title = "What does this kanji mean?",
                     question = "Recall the meaning",
-                    hiddenHint = "Answer hidden until reveal",
-                    reasonLine = "Weak Anki evidence"
                 )
             )
         }
 
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
-        composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
         composeRule.onNodeWithText("Recall the meaning").assertIsDisplayed()
-        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        composeRule.onAllNodesWithText("What does this kanji mean?").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Answer hidden until reveal").assertCountEquals(0)
         composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
     }
 
     @Test
-    fun keepsFlashcardPromptHeaderCleanWhenReasonEmpty() {
+    fun answeredFlashcardPromptHeaderHidesQuestionButKeepsMode() {
         composeRule.setContent {
             FlashcardPromptHeader(
                 model = FlashcardPromptHeaderModel(
                     modeLabel = "Recognise",
-                    title = "What does this kanji mean?",
                     question = "Recall the meaning",
-                    hiddenHint = "Answer hidden until reveal",
-                    reasonLine = ""
-                )
+                ),
+                showQuestion = false,
             )
         }
 
-        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
+        composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Recall the meaning").assertCountEquals(0)
     }
 
     @Test
@@ -173,10 +177,7 @@ class MainActivityStudyFlashcardComposeTest {
                 model = FlashcardCardModel(
                     promptHeader = FlashcardPromptHeaderModel(
                         modeLabel = "Recognise",
-                        title = "Name this kanji",
                         question = "What does this kanji mean?",
-                        hiddenHint = "Answer hidden until reveal",
-                        reasonLine = ""
                     ),
                     heroPanel = FlashcardHeroPanelModel(
                         glyph = "裂",
@@ -197,7 +198,7 @@ class MainActivityStudyFlashcardComposeTest {
         }
 
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
-        composeRule.onNodeWithText("Name this kanji").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Name this kanji").assertCountEquals(0)
         composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
 
@@ -205,7 +206,9 @@ class MainActivityStudyFlashcardComposeTest {
             revealState.reveal()
         }
 
-        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onAllNodesWithText("What does this kanji mean?").assertCountEquals(0)
+        composeRule.onAllNodesWithText("裂").assertCountEquals(1)
+        composeRule.onNodeWithText("split").assertExists()
     }
 
     @Test
@@ -218,7 +221,7 @@ class MainActivityStudyFlashcardComposeTest {
             TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, state = state)
         }
 
-        composeRule.onNodeWithText(MainActivityBase.LABEL_MEANING).assertIsDisplayed()
+        composeRule.onAllNodesWithText(MainActivityBase.LABEL_MEANING).assertCountEquals(0)
         composeRule.onNode(hasSetTextAction()).assertTextEquals("split")
         composeRule.onNode(hasSetTextAction()).performTextReplacement("split open")
         composeRule.runOnIdle {
@@ -228,11 +231,11 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersStudyAnswerPanel() {
+    fun rendersWritingReferenceAnswerPanel() {
         composeRule.setContent {
             StudyAnswerPanel(
                 model = StudyAnswerPanelModel(
-                    title = "Answer",
+                    title = "Reference",
                     glyph = "裂",
                     glyphSizeSp = 76,
                     lines = listOf(
@@ -244,7 +247,7 @@ class MainActivityStudyFlashcardComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Answer").assertIsDisplayed()
+        composeRule.onNodeWithText("Reference").assertIsDisplayed()
         composeRule.onNodeWithText("裂").assertIsDisplayed()
         composeRule.onNodeWithText("split").assertIsDisplayed()
         composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
@@ -252,14 +255,61 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun expandsOnlyOneStudyAnswerAccordionAtATime() {
+    fun flashcardAnswerContentOmitsAnswerTitleAndDuplicateGlyph() {
+        composeRule.setContent {
+            StudyFlashcardAnswerContent(
+                model = StudyAnswerPanelModel(
+                    title = "Answer",
+                    glyph = "裂",
+                    glyphSizeSp = 76,
+                    lines = listOf(
+                        StudyAnswerLineModel("split", MainActivityUiSupport.STUDY_PLUM, 17, true),
+                        StudyAnswerLineModel("Reading: レツ", MainActivityUiSupport.STUDY_PINK_DARK, 15, true),
+                    ),
+                    helperText = null,
+                ),
+            )
+        }
+
+        composeRule.onAllNodesWithText("Answer").assertCountEquals(0)
+        composeRule.onAllNodesWithText("裂").assertCountEquals(0)
+        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
+    }
+
+    @Test
+    fun collapsesReadyAnswerDetailsIntoOneDisclosureWithBrowseInside() {
+        var browseClicks = 0
         setStudyAnswerPanelContent(
             model = sampleStudyAnswerPanelModel(
                 details = sampleStudyAnswerDetails(
                     breakdownComponentRows = listOf("left component", "right component"),
                 ),
             ),
+            onBrowseAction = Runnable { browseClicks++ },
         )
+
+        composeRule.onNodeWithText(StudyTextCopy.moreAboutKanjiLabel("裂")).assertIsDisplayed()
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.openInBrowseLabel()).assertCountEquals(0)
+        composeRule.onAllNodesWithText("View kanji details").assertCountEquals(0)
+
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details"))
+            .assertExists()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Breakdown"))
+            .assertExists()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Stroke order"))
+            .assertExists()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .assertExists()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Why this card?"))
+            .assertExists()
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerComponentsHeading()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerStrokeCountLabel()).assertCountEquals(0)
 
         composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
@@ -269,14 +319,18 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Breakdown")).performScrollTo().performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        composeRule.onAllNodesWithText("Components").assertCountEquals(1)
         composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerComponentsHeading()).assertCountEquals(1)
 
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Stroke order")).performClick()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Stroke order")).performScrollTo().performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        composeRule.onAllNodesWithText("Stroke count").assertCountEquals(1)
-        composeRule.onAllNodesWithText("Components").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerComponentsHeading()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerStrokeCountLabel()).assertCountEquals(1)
+        composeRule.onNodeWithText(StudyTextCopy.openInBrowseLabel())
+            .performScrollTo()
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, browseClicks) }
     }
 
     @Test
@@ -291,7 +345,12 @@ class MainActivityStudyFlashcardComposeTest {
             ),
         )
 
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .performScrollTo()
+            .performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
         composeRule.onAllNodesWithText("甲").assertCountEquals(1)
@@ -303,11 +362,11 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
         composeRule.onAllNodesWithText("乙").assertCountEquals(1)
-        composeRule.onAllNodesWithText("Show fewer").assertCountEquals(1)
+        composeRule.onAllNodesWithText(StudyTextCopy.showFewerLabel()).assertCountEquals(1)
     }
 
     @Test
-    fun emptyStudyAnswerAccordionsShowFriendlyCopy() {
+    fun disclosureOmitsEmptyAndUnavailableSections() {
         setStudyAnswerPanelContent(
             model = sampleStudyAnswerPanelModel(
                 details = studyAnswerKanjiDetailsModel(
@@ -325,17 +384,71 @@ class MainActivityStudyFlashcardComposeTest {
             ),
         )
 
+        composeRule.onAllNodesWithTag(studyAnswerDisclosureHeaderTestTag()).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(studyAnswerAccordionHeaderTestTag("Details"))
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithTag(studyAnswerAccordionHeaderTestTag("Breakdown"))
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithTag(studyAnswerAccordionHeaderTestTag("Stroke order"))
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithTag(studyAnswerAccordionHeaderTestTag("Why this card?"))
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerDetailsEmptyTitle()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerUsedInAnkiEmptyTitle()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerWhyThisCardEmptyBody()).assertCountEquals(0)
+    }
+
+    @Test
+    fun initialExpandedSectionSelectsOneInnerAccordion() {
+        setStudyAnswerPanelContent(
+            model = sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(
+                    breakdownComponentRows = listOf("left component", "right component"),
+                ),
+            ),
+            initialExpandedSectionLabel = StudyTextCopy.studyAnswerBreakdownLabel(),
+        )
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText(StudyTextCopy.studyAnswerComponentsHeading())
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerStrokeCountLabel()).assertCountEquals(0)
+    }
+
+    @Test
+    fun disclosureExpansionIsKeyedToTheAnswerPanel() {
+        val modelState = mutableStateOf(
+            sampleStudyAnswerPanelModel(
+                details = sampleStudyAnswerDetails(),
+            ),
+        )
+        composeRule.setContent {
+            StudyAnswerPanel(model = modelState.value)
+        }
+
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Kani couldn't find local details for this kanji yet.").assertIsDisplayed()
-        composeRule.onNodeWithText("Review still works; this drawer can fill in after dictionary data syncs.").assertIsDisplayed()
+        composeRule.onNodeWithText("tear apart").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
-        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.runOnIdle {
+            modelState.value = modelState.value.copy(
+                stateKey = "study-answer-test-next",
+                kanjiDetails = requireNotNull(modelState.value.kanjiDetails).copy(kanji = "別"),
+            )
+        }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("No other synced Anki words yet.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync more cards and Kani will connect them here.").assertIsDisplayed()
+
+        composeRule.onNodeWithText(StudyTextCopy.moreAboutKanjiLabel("別")).assertIsDisplayed()
+        composeRule.onAllNodesWithText("tear apart").assertCountEquals(0)
     }
 
     @Test
@@ -354,7 +467,10 @@ class MainActivityStudyFlashcardComposeTest {
             onAnkiTapAction = { tappedAction = it },
         )
 
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki")).performClick()
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
+        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
+            .performScrollTo()
+            .performClick()
         composeRule.onNodeWithTag(studyAnswerUsedInAnkiRowTestTag(0)).performClick()
 
         assertNotNull(tappedAction)
@@ -376,22 +492,20 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.waitForIdle()
         captureStudyScreenshot("01-rich-collapsed.png")
 
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Details")).performClick()
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        captureStudyScreenshot("02-rich-details-expanded.png")
+        captureStudyScreenshot("02-rich-more-expanded.png")
 
         composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
             .performScrollTo()
             .performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        captureStudyScreenshot("03-rich-used-in-anki-collapsed.png")
-
-        composeRule.onNodeWithText("Show all 4").performClick()
+        composeRule.onNodeWithText(StudyTextCopy.showAllLabel(4)).performScrollTo().performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        captureStudyScreenshot("04-rich-used-in-anki-expanded.png")
+        captureStudyScreenshot("03-rich-used-in-anki-expanded.png")
     }
 
     @Test
@@ -408,6 +522,9 @@ class MainActivityStudyFlashcardComposeTest {
             ),
         )
         composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
             .performScrollTo()
             .performClick()
@@ -416,7 +533,7 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.onNodeWithTag(studyAnswerUsedInAnkiRowTestTag(0)).performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Anki link unavailable — copied note ID.").assertIsDisplayed()
+        composeRule.onNodeWithText(StudyTextCopy.studyAnswerAnkiNoteIdCopiedMessage()).assertIsDisplayed()
         captureStudyScreenshot("05-fallback-banner.png")
     }
 
@@ -432,13 +549,11 @@ class MainActivityStudyFlashcardComposeTest {
             ),
         )
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(studyAnswerAccordionHeaderTestTag("Used in Anki"))
-            .performScrollTo()
-            .performClick()
+        composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag()).performClick()
         composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("No other synced Anki words yet.").assertIsDisplayed()
-        captureStudyScreenshot("06-empty-used-in-anki.png")
+        composeRule.onAllNodesWithText(StudyTextCopy.studyAnswerUsedInAnkiEmptyTitle()).assertCountEquals(0)
+        captureStudyScreenshot("06-empty-sections-omitted.png")
     }
     private fun captureStudyScreenshot(fileName: String) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

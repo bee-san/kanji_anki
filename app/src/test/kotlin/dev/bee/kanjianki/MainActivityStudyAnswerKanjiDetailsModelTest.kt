@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class MainActivityStudyAnswerKanjiDetailsModelTest {
     @Test
@@ -76,6 +77,27 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals("Stroke data is not available for this kanji yet.", model.strokeOrder.summary)
         assertEquals("Stroke data is not available for this kanji yet.", model.strokeOrder.emptyTitle)
         assertEquals("Stroke-order animation needs a licensed offline asset before Kani can draw it here.", model.strokeOrder.emptyBody)
+    }
+
+    @Test
+    fun treatsContentlessDictionaryEntryAsEmpty() {
+        val section = studyAnswerDictionarySection(
+            kanjiEntry(
+                literal = "抗",
+                meanings = emptyList(),
+                onReadings = emptyList(),
+                kunReadings = emptyList(),
+                nanoriReadings = emptyList(),
+                strokeCount = 0,
+                grade = 0,
+                radical = 0,
+                kanjidicFrequency = 0,
+                jitenRank = null,
+            ),
+        )
+
+        assertEquals(StudyAnswerSectionContentState.EMPTY, section.contentState)
+        assertEquals(null, section.body)
     }
 
     @Test
@@ -297,9 +319,38 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals(null, section.body!!.fallbackCopy)
 
         val fallback = studyAnswerWhyThisCardSection(examples = emptyList(), currentExample = null)
-        assertEquals("This card came from your synced study queue.", fallback.summary)
-        assertEquals("This card came from your synced study queue.", fallback.body!!.fallbackCopy)
-        assertTrue(fallback.body!!.previewExamples.isEmpty())
+        assertEquals(StudyAnswerSectionContentState.EMPTY, fallback.contentState)
+        assertEquals(null, fallback.body)
+        assertEquals("This card came from your synced study queue.", fallback.emptyBody)
+    }
+
+    @Test
+    fun detailsModelsUseLocalizedCopy() {
+        val previousLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+            val details = studyAnswerKanjiDetailsModel(
+                kanji = "抗",
+                dictionaryEntry = null,
+                examples = emptyList(),
+            )
+
+            assertEquals("詳細", details.details.label)
+            assertEquals("ローカル辞書", details.details.summary)
+            assertEquals("構成", details.breakdown.label)
+            assertEquals("筆順", details.strokeOrder.label)
+            assertEquals("Ankiでの使用例", details.usedInAnki.label)
+            assertEquals("このカードが出た理由", details.whyThisCard.label)
+
+            val copyAction = studyAnswerAnkiTapAction(
+                noteId = 42,
+                cardId = null,
+                openAnkiDroidSupported = false,
+            ) as StudyAnswerAnkiTapActionModel.CopyId
+            assertEquals("Ankiリンクを利用できないため、ノートIDをコピーしました。", copyAction.toastMessage)
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 
     private fun kanjiEntry(

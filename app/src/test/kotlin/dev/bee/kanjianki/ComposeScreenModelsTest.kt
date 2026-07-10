@@ -526,15 +526,11 @@ class ComposeScreenModelsTest {
         val model = WritingPromptHeaderModel(
             modeLabel = "Practice",
             title = "Draw this kanji",
-            taskLabel = "Write kanji",
-            reasonLine = "Weak Anki evidence",
             detailLines = listOf(promptLine, readingLine),
         )
 
         assertEquals("Practice", model.modeLabel)
         assertEquals("Draw this kanji", model.title)
-        assertEquals("Write kanji", model.taskLabel)
-        assertEquals("Weak Anki evidence", model.reasonLine)
         assertEquals(listOf(promptLine, readingLine), model.detailLines)
         assertEquals("Prompt: split, rend", promptLine.text)
         assertEquals(17, promptLine.sizeSp)
@@ -632,6 +628,7 @@ class ComposeScreenModelsTest {
         assertEquals(MainActivityBase.LABEL_PASS, initial.nextText)
         assertEquals(false, initial.nextVisible)
         assertEquals(true, initial.nextEnabled)
+        assertEquals(StudyActionTone.PRIMARY, initial.nextTone)
         assertEquals(StudyWritingCopy.skipLabel(), initial.skipText)
         assertEquals(false, initial.skipVisible)
         assertEquals(true, initial.skipEnabled)
@@ -654,6 +651,7 @@ class ComposeScreenModelsTest {
             nextText = "Save hard",
             nextVisible = true,
             nextEnabled = false,
+            nextTone = StudyActionTone.PASS,
             onCheck = check,
             onDownload = download,
             onNext = next,
@@ -671,6 +669,7 @@ class ComposeScreenModelsTest {
         assertEquals("Save hard", model.nextText)
         assertEquals(true, model.nextVisible)
         assertEquals(false, model.nextEnabled)
+        assertEquals(StudyActionTone.PASS, model.nextTone)
         assertEquals("Skip", model.skipText)
         assertEquals(true, model.skipVisible)
         assertEquals(false, model.skipEnabled)
@@ -1538,7 +1537,7 @@ class ComposeScreenModelsTest {
     }
 
     @Test
-    fun studyChoiceModelsKeepSessionTextAndChoiceCallbacks() {
+    fun studyChoiceModelsKeepEssentialSessionTextAndChoiceCallbacks() {
         val calls = mutableListOf<String>()
         val handler = KanjiChoiceHandler { calls += it }
         val grid = SimilarChoiceGridModel(
@@ -1574,20 +1573,12 @@ class ComposeScreenModelsTest {
         val explanationLines = similarKanjiExplanationLines(explanation)
         val similar = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
-            title = "Choose the kanji",
-            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the matching kanji.",
-            reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = grid,
             explanationLines = explanationLines,
         )
         val meaning = MeaningChoiceSessionModel(
             modeLabel = "Recall",
-            title = "Choose the kanji",
-            taskLabel = "meaning -> kanji",
-            body = "Pick the matching kanji.",
-            reasonLine = "",
             question = "Which kanji means split?",
             choices = listOf("裂", "列", "烈", "劣"),
             answerPanel = answer,
@@ -1598,10 +1589,6 @@ class ComposeScreenModelsTest {
         assertEquals(true, grid.balanceLastRow)
         assertSame(handler, grid.onChoice)
         assertEquals("Recognise", similar.modeLabel)
-        assertEquals("Choose the kanji", similar.title)
-        assertEquals(MainActivityBase.LABEL_SIMILAR_KANJI, similar.taskLabel)
-        assertEquals("Pick the matching kanji.", similar.body)
-        assertEquals("Weak Anki evidence", similar.reasonLine)
         assertEquals("Which kanji means split?", similar.question)
         assertSame(grid, similar.gridModel)
         assertEquals(
@@ -1637,24 +1624,25 @@ class ComposeScreenModelsTest {
         )
         assertEquals(explanationLines, similar.explanationLines)
         assertEquals("Recall", meaning.modeLabel)
-        assertEquals("meaning -> kanji", meaning.taskLabel)
         assertEquals(listOf("裂", "列", "烈", "劣"), meaning.choices)
         assertSame(answer, meaning.answerPanel)
         assertSame(handler, meaning.onChoice)
         val correctResult = MeaningChoiceResultModel(
             status = "Correct",
             statusColor = 0xFF00AEB5.toInt(),
-            actionLabel = "Good",
+            actionTone = StudyActionTone.PASS,
             correctChoice = "裂",
             selectedChoiceCorrect = true,
         )
         val wrongResult = MeaningChoiceResultModel(
             status = "Wrong",
             statusColor = 0xFFFF4C76.toInt(),
-            actionLabel = "Fail",
+            actionTone = StudyActionTone.FAIL,
             correctChoice = "裂",
             selectedChoiceCorrect = false,
         )
+        assertEquals(StudyActionTone.PASS, correctResult.actionTone)
+        assertEquals(StudyActionTone.FAIL, wrongResult.actionTone)
         assertEquals(KanjiChoiceFeedback.CORRECT, feedbackForMeaningChoice("裂", "裂", correctResult))
         assertEquals(KanjiChoiceFeedback.CORRECT, feedbackForMeaningChoice("裂", "列", wrongResult))
         assertEquals(KanjiChoiceFeedback.INCORRECT, feedbackForMeaningChoice("列", "列", wrongResult))

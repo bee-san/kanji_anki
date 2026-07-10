@@ -102,6 +102,7 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
                     downloadVisible = false,
                     nextText = "Save hard",
                     nextVisible = true,
+                    nextTone = StudyActionTone.PASS,
                     onCheck = Runnable {},
                     onDownload = Runnable {},
                     onNext = Runnable { submitted = true }
@@ -219,6 +220,7 @@ class MainActivityStudyWritingPrimaryActionsComposeTest {
                     downloadVisible = false,
                     nextText = MainActivityBase.LABEL_PASS,
                     nextVisible = true,
+                    nextTone = StudyActionTone.PASS,
                     onCheck = Runnable {},
                     onDownload = Runnable {},
                     onNext = Runnable {}

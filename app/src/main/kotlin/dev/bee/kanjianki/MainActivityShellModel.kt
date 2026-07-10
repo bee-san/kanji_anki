@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.StudyTextCopy
+
 data class MainActivityShellModel(
     val selectedRoute: String = "home",
     val scrollPositionLabel: String? = null,
@@ -12,17 +14,12 @@ data class MainActivityShellModel(
      * — it toggles only at card boundaries (KB1).
      */
     val studyCardKeyboardResident: Boolean = false,
+    /** True only while the Study route owns a concrete card/session. */
+    val studySessionActive: Boolean = false,
 ) {
     val routeTestTag: String
         get() = "main-route-$selectedRoute"
 
     val routeContentDescription: String
-        get() = buildString {
-            append("Kani route ")
-            append(selectedRoute)
-            scrollPositionLabel?.takeIf { it.isNotBlank() }?.let { label ->
-                append(" scroll ")
-                append(label)
-            }
-        }
+        get() = StudyTextCopy.routeContentDescription(selectedRoute, scrollPositionLabel)
 }

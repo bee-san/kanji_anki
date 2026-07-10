@@ -48,18 +48,6 @@ object StudyTaskCopy {
     }
 
     @JvmStatic
-    fun flashcardTitle(session: RecordsSchedulerModels.StudySession?): String = when {
-        isSentenceReadingTask(session) -> localizedText("Read the word in context", "文中で読む")
-        isWordReadingTask(session) -> localizedText("Read this word", "この単語を読む")
-        isTypingMeaningTask(session) -> localizedText("Type the meaning", "意味を入力")
-        isKanjiReadingTask(session) -> localizedText("Choose the reading", "読みを選ぶ")
-        isReadingKanjiTask(session) -> localizedText("Choose the kanji", "漢字を選ぶ")
-        isMeaningKanjiTask(session) -> localizedText("Choose the kanji", "漢字を選ぶ")
-        isFontRecognitionTask(session) -> localizedText("Recognise this kanji", "この漢字を見分ける")
-        else -> localizedText("Name this kanji", "この漢字の意味は？")
-    }
-
-    @JvmStatic
     fun studyModeLabel(session: RecordsSchedulerModels.StudySession?): String = when {
         isNewLearningRepeat(session) -> localizedText("Learn", "学習")
         isRelearning(session) -> localizedText("Relearning", "再学習")

@@ -79,12 +79,31 @@ class MainActivityShellImeUnitTest {
     }
 
     @Test
-    fun bottomNavShowsForNonTypingCardWithKeyboardClosed() {
+    fun bottomNavHidesForActiveNonTypingStudyCardWithKeyboardClosed() {
         composeRule.setContent {
             MainActivityRouteContent(
                 model = MainActivityShellModel(
                     selectedRoute = MainActivityBase.NAV_STUDY,
                     studyCardKeyboardResident = false,
+                    studySessionActive = true,
+                ),
+                navActions = navActions(),
+                imeVisible = false,
+            ) {
+                Text("route content")
+            }
+        }
+
+        composeRule.onAllNodesWithTag("kani-bottom-nav").assertCountEquals(0)
+    }
+
+    @Test
+    fun bottomNavStillShowsForInactiveStudyScreen() {
+        composeRule.setContent {
+            MainActivityRouteContent(
+                model = MainActivityShellModel(
+                    selectedRoute = MainActivityBase.NAV_STUDY,
+                    studySessionActive = false,
                 ),
                 navActions = navActions(),
                 imeVisible = false,

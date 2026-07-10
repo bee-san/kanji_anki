@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.theme.KaniThemeChoice
 
 internal val NoOpRouteScrollY: (Int) -> Unit = {}
@@ -90,7 +91,7 @@ private fun MainActivityShellFrame(
                 .fillMaxSize()
                 .testTag("main-activity-shell")
                 .semantics {
-                    contentDescription = "Kani shell ${model.selectedRoute}"
+                    contentDescription = StudyTextCopy.shellContentDescription(model.selectedRoute)
                 }
         ) {
             content()
@@ -188,7 +189,8 @@ private fun MainActivityScrollableRouteColumn(
             // state so its disappearance never coincides with the keyboard
             // animation — it is already absent from the card's first frame and
             // toggles only at card boundaries where the content changes anyway (KB1).
-            if (navActions != null && !imeVisible && !model.studyCardKeyboardResident) {
+            val activeStudySession = model.selectedRoute == MainActivityBase.NAV_STUDY && model.studySessionActive
+            if (navActions != null && !imeVisible && !model.studyCardKeyboardResident && !activeStudySession) {
                 KaniBottomNavBar(
                     selectedRoute = model.selectedRoute,
                     actions = navActions,

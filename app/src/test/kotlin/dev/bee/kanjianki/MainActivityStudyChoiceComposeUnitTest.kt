@@ -43,10 +43,6 @@ class MainActivityStudyChoiceComposeUnitTest {
         var selected = ""
         val model = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
-            title = "Choose the kanji",
-            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the matching kanji.",
-            reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
@@ -107,10 +103,6 @@ class MainActivityStudyChoiceComposeUnitTest {
     fun similarChoiceRouteHidesExplanationDetailsBehindAToggleByDefault() {
         val model = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
-            title = "Choose the kanji",
-            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the matching kanji.",
-            reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
@@ -170,10 +162,6 @@ class MainActivityStudyChoiceComposeUnitTest {
         var selected = ""
         val model = SimilarChoiceSessionModel(
             modeLabel = "Recognise",
-            title = "Choose the kanji",
-            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the matching kanji.",
-            reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
@@ -277,10 +265,6 @@ class MainActivityStudyChoiceComposeUnitTest {
     ): SimilarChoiceSessionModel {
         return SimilarChoiceSessionModel(
             modeLabel = "Recognise",
-            title = "Choose the kanji",
-            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-            body = "Pick the matching kanji.",
-            reasonLine = "Weak Anki evidence",
             question = "Which kanji means split?",
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),

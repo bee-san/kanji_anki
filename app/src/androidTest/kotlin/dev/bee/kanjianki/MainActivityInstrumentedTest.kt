@@ -1096,7 +1096,6 @@ fun testLearnNextProblemKanjiFromHomeAdmitsStudyItem() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, STUDY_NOW);
             scenario.onActivity { activity ->
-                assertHasText(activity, "Name this kanji");
                 assertHasText(activity, RECOGNISE);
                 assertHasText(activity, RECOGNITION_QUESTION);
                 assertHasText(activity, REVEAL);
@@ -1223,7 +1222,6 @@ fun testHomeQueuePreviewOrderMatchesReviewFirstStudySelection() {
             }
             clickText(scenario, STUDY_NOW);
             scenario.onActivity { activity ->
-                assertHasText(activity, "Name this kanji");
                 assertHasText(activity, RECOGNISE);
                 assertHasText(activity, RECOGNITION_QUESTION);
             }
@@ -1473,7 +1471,7 @@ fun testNewKanjiStartsAsHiddenFlashcardAndKnownAnswerLogsRecognitionReview() {
             var hiddenCardHeight = recognitionCardHeight(scenario)
             assertTrue("Hidden card should be measured", hiddenCardHeight > 0);
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Name this kanji", RECOGNISE, "Answer hidden until reveal");
+                assertHasTexts(activity, RECOGNISE, RECOGNITION_QUESTION);
                 assertNoTexts(activity, "拉麺");
                 var root = activity.findViewById<View>(android.R.id.content)
                 var reveal = findExactText(root, REVEAL)
@@ -1484,13 +1482,13 @@ fun testNewKanjiStartsAsHiddenFlashcardAndKnownAnswerLogsRecognitionReview() {
             }
             clickText(scenario, REVEAL);
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Answer", "拉", "Fail", "Pass");
+                assertHasTexts(activity, "拉", "Latin, kidnap", "Fail", "Pass");
                 assertTrue("Revealed card should keep full study height",
                         flashcardBounds(activity).height() >= hiddenCardHeight - 2);
                 var failBounds = Rect()
                 var passBounds = Rect()
                 var root = activity.findViewById<View>(android.R.id.content)
-                var answer = findExactText(root, "Answer")
+                var answer = findExactText(root, "Latin, kidnap")
                 var fail = findExactText(root, "Fail")
                 var pass = findExactText(root, "Pass")
                 val answerView = requireNotNull(answer)
@@ -1540,7 +1538,7 @@ fun testHiddenRecognitionSwipeDoesNotGradeBeforeReveal() {
             swipeRecognitionCard(scenario, true);
 
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Name this kanji", "Answer hidden until reveal", REVEAL);
+                assertHasTexts(activity, RECOGNISE, RECOGNITION_QUESTION, REVEAL);
                 assertNoTexts(activity, "Latin, kidnap", "Fail", "Pass");
             }
             LocalStore(context).use { store ->
@@ -1806,7 +1804,7 @@ fun testTypingMeaningAutoPassesCorrectAnswerAndAllowsManualWrongGrading() {
             forceStudyItemDue("拉", -1, false);
             clickText(scenario, "Back home");
             clickText(scenario, STUDY_NOW);
-            scenario.onActivity { activity -> assertHasTexts(activity, "Type the meaning", "Meaning", REVEAL) }
+            scenario.onActivity { activity -> assertHasTexts(activity, "Type", RECOGNITION_QUESTION, "Meaning", REVEAL) }
             enterFirstEditText(scenario, "kidnap");
             clickText(scenario, REVEAL);
 
@@ -1817,7 +1815,7 @@ fun testTypingMeaningAutoPassesCorrectAnswerAndAllowsManualWrongGrading() {
             clickText(scenario, STUDY_NOW);
             enterFirstEditText(scenario, "wrong");
             clickText(scenario, REVEAL);
-            scenario.onActivity { activity -> assertHasTexts(activity, "Answer", "Latin, kidnap", "Fail", "Pass") }
+            scenario.onActivity { activity -> assertHasTexts(activity, "Latin, kidnap", "Fail", "Pass") }
             clickText(scenario, "Fail");
 
             assertWrongTypingMeaningReviewStored();
@@ -1832,13 +1830,13 @@ fun testWordReadingRungPromptsRevealsAndLogsTaskType() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, STUDY_NOW);
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Read", "Read this word", "What is the reading?", "拉致", REVEAL);
+                assertHasTexts(activity, "Read", "What is the reading?", "拉致", REVEAL);
                 assertNoTexts(activity, "Reading: らち", "From: 拉致");
             }
 
             clickText(scenario, REVEAL);
             scenario.onActivity { activity ->
-                assertHasTexts(activity, "Answer", "Reading: らち", "From: 拉致", "Fail", "Pass");
+                assertHasTexts(activity, "Reading: らち", "From: 拉致", "Fail", "Pass");
                 assertNoText(activity, "Latin, kidnap");
             }
             clickText(scenario, "Pass");
@@ -2670,20 +2668,6 @@ private fun waitForFlashcardBounds(scenario: ActivityScenario<MainActivity>, tim
     return requireNotNull(bounds) { "Missing flashcard bounds\nActivity may not have rendered the study card yet" }
 }
 
-private fun recognitionCard(activity: MainActivity): View {
-    val root = activity.findViewById<View>(android.R.id.content)
-    var title = findExactText(root, "Name this kanji")
-    if (title == null) {
-        title = findExactText(root, "Type the meaning")
-    }
-    if (title == null) {
-        title = findExactText(root, "Read this word")
-    }
-    val nonNullTitle = requireNotNull(title) { "Missing recognition card title" }
-    val parent = requireNotNull(nonNullTitle.parent as? View) { "Recognition title parent should be the card" }
-    return parent
-}
-
 private fun swipeRecognitionCard(scenario: ActivityScenario<MainActivity>, right: Boolean) {
     val bounds = waitForFlashcardBounds(scenario)
     scenario.onActivity { activity ->
@@ -2723,7 +2707,7 @@ private fun swipeRecognitionCardFromAnswerPanel(scenario: ActivityScenario<MainA
 
 private fun revealedAnswerPanel(activity: MainActivity): Rect {
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-    val answer = findDeviceTextNow(device, "Answer") ?: findDeviceTextNow(device, "Reference")
+    val answer = findDeviceTextNow(device, "Latin, kidnap") ?: findDeviceTextNow(device, "Reference")
     val answerObject = requireNotNull(answer) { "Missing revealed answer panel\nDevice text: ${deviceVisibleText(device)}" }
     return answerObject.getVisibleBounds()
 }
@@ -2997,12 +2981,12 @@ private fun assertKanjiDetailReady(activity: MainActivity) {
     }
 
 private fun assertHiddenRecognitionCard(activity: MainActivity) {
-        assertHasTexts(activity, "Name this kanji", RECOGNISE, "Answer hidden until reveal", RECOGNITION_QUESTION, REVEAL);
+        assertHasTexts(activity, RECOGNISE, RECOGNITION_QUESTION, REVEAL);
         assertNoTexts(activity, "Example: 拉麺  らーめん", "From: 拉麺");
     }
 
 private fun assertRevealedRecognitionCard(activity: MainActivity) {
-        assertHasTexts(activity, "Answer", "Latin, kidnap", "Reading: らーめん", "From: 拉麺", "Fail", "Pass");
+        assertHasTexts(activity, "Latin, kidnap", "Reading: らーめん", "From: 拉麺", "Fail", "Pass");
         assertNoTexts(activity, CHECK);
     }
 

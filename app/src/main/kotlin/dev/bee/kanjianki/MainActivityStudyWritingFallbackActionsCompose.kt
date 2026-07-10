@@ -60,7 +60,8 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
                 label = model.manualOverrideLabel,
                 onClick = { model.onManualOverride.run() },
                 modifier = Modifier.weight(1f),
-                minHeight = 56.dp
+                minHeight = 56.dp,
+                tone = StudyActionTone.PASS,
             )
         }
         if (model.practiceWithGuideVisible) {

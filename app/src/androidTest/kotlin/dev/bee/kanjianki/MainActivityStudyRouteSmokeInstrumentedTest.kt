@@ -16,7 +16,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
-import dev.bee.kanjianki.core.StudyReviewButtonCopy
+import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStoreBase
 import java.io.StringReader
 import org.junit.After
@@ -82,11 +83,23 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             }
 
             assertVisible("Recognise")
-            assertVisible("Name this kanji")
-            clickVisible("Reveal")
-            assertVisible(StudyReviewButtonCopy.againLabel())
-            assertVisible(StudyReviewButtonCopy.goodLabel())
-            scenario.onActivity { activity -> assertTrue(activity.flashcardAnswerRevealed) }
+            assertVisible("What does this kanji mean?")
+            assertVisible("裂")
+            assertVisible("0 / 1")
+            assertDescriptionVisible(StudyTextCopy.closeStudyLabel())
+            assertDescriptionVisible(SettingsTextCopy.settingsTitle())
+            assertBottomNavHidden()
+            assertVisible("Reveal")
+            scenario.onActivity { activity -> activity.revealFlashcardAnswer() }
+            scenario.onActivity { activity ->
+                assertTrue(activity.flashcardAnswerRevealed)
+                assertTrue(requireNotNull(activity.flashcardActionBarState).revealed)
+                val activeSession = requireNotNull(activity.activeSession)
+                assertTrue(
+                    activity.flashcardAnswerPanelModel(activeSession).lines
+                        .any { it.text == "Reading: れつ" },
+                )
+            }
 
             scenario.onActivity { activity ->
                 val writing = session(
@@ -109,8 +122,10 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
 
             assertVisible(MainActivityBase.LABEL_PRACTICE)
             assertVisible("Draw this kanji")
-            assertVisible("Writing")
             assertVisible("Check")
+            assertDescriptionVisible(StudyTextCopy.closeStudyLabel())
+            assertDescriptionVisible(SettingsTextCopy.settingsTitle())
+            assertBottomNavHidden()
             scenario.onActivity { activity ->
                 assertNotNull(activity.drawingPad)
                 assertNotNull(activity.studyStatus)
@@ -137,11 +152,13 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 activity.renderSession(similarChoice)
             }
 
-            assertVisible("Choose the kanji")
             assertVisible("Recognise")
             assertVisibleAfterScroll("Which kanji means Split, rend?")
             assertVisible("裂")
             assertVisible("列")
+            assertDescriptionVisible(StudyTextCopy.closeStudyLabel())
+            assertDescriptionVisible(SettingsTextCopy.settingsTitle())
+            assertBottomNavHidden()
 
             scenario.onActivity { activity ->
                 seedMeaningChoiceRows(activity)
@@ -164,10 +181,12 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             }
 
             assertVisible("Recall")
-            assertVisible("Choose the kanji")
             assertVisibleAfterScroll("Which kanji means Split?")
             assertVisible("裂")
             assertVisible("烈")
+            assertDescriptionVisible(StudyTextCopy.closeStudyLabel())
+            assertDescriptionVisible(SettingsTextCopy.settingsTitle())
+            assertBottomNavHidden()
         }
     }
 
@@ -303,6 +322,28 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         assertNotNull("Missing visible text: $text", object2)
     }
 
+    private fun assertDescriptionVisible(description: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val pkg = instrumentation.targetContext.packageName
+        instrumentation.waitForIdleSync()
+        device.waitForIdle(500L)
+        assertNotNull(
+            "Missing visible description: $description",
+            device.findObject(By.pkg(pkg).desc(description)),
+        )
+    }
+
+    private fun assertBottomNavHidden() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val pkg = instrumentation.targetContext.packageName
+        instrumentation.waitForIdleSync()
+        device.waitForIdle(500L)
+        assertFalse(device.hasObject(By.pkg(pkg).text("Home")))
+        assertFalse(device.hasObject(By.pkg(pkg).text("Stats")))
+    }
+
     private fun assertVisibleAfterScroll(text: String) {
         waitForText(text)?.let { return }
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
@@ -315,20 +356,6 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             waitForText(text)?.let { return }
         }
         assertNotNull("Missing visible text after scroll: $text", waitForText(text))
-    }
-
-    private fun clickVisible(text: String) {
-        val object2 = waitForText(text)
-        assertNotNull("Missing clickable text: $text", object2)
-        var clickable = object2
-        while (clickable != null && !clickable.isClickable) {
-            clickable = clickable.parent
-        }
-        val clickableNode = requireNotNull(clickable) {
-            "Visible text is not inside a clickable node: $text"
-        }
-        clickableNode.click()
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2_000L)
     }
 
     private fun waitForText(text: String): UiObject2? {

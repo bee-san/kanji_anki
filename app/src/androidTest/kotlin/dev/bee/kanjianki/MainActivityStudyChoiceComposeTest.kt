@@ -74,10 +74,6 @@ onChoice = KanjiChoiceHandler { selected = it }
             SimilarChoiceSessionCard(
                 model = SimilarChoiceSessionModel(
                     modeLabel = "Recognise",
-                    title = "Choose the kanji",
-                    taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
-                    body = "Pick the matching kanji.",
-                    reasonLine = "Weak Anki evidence",
                     question = "Which kanji means split?",
                     gridModel = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
@@ -90,10 +86,9 @@ onChoice = KanjiChoiceHandler { selected = it }
         }
 
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertIsDisplayed()
-        composeRule.onNodeWithText("Pick the matching kanji.").assertIsDisplayed()
-        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Choose the kanji").assertCountEquals(0)
+        composeRule.onAllNodesWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertCountEquals(0)
+        composeRule.onAllNodesWithText("Pick the matching kanji.").assertCountEquals(0)
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
         composeRule.onNodeWithText("Compare shapes: 裂 vs 列").assertIsDisplayed()
         composeRule.onNodeWithText("Seen in: source one • source two").assertIsDisplayed()
@@ -112,10 +107,6 @@ onChoice = KanjiChoiceHandler { selected = it }
             MeaningChoiceSessionCard(
                 model = MeaningChoiceSessionModel(
                     modeLabel = "Recall",
-                    title = "Choose the kanji",
-                    taskLabel = "Meaning -> kanji",
-                    body = "Pick the matching kanji.",
-                    reasonLine = "",
                     question = "Which kanji means split?",
                     choices = listOf("裂", "列", "烈", "劣"),
                     answerPanel = StudyAnswerPanelModel(
@@ -138,7 +129,7 @@ onChoice = KanjiChoiceHandler { selected = it }
         }
 
         composeRule.onNodeWithText("Recall").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Choose the kanji").assertCountEquals(0)
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
         composeRule.onAllNodesWithText("Answer detail").assertCountEquals(0)
 
@@ -163,13 +154,12 @@ onChoice = KanjiChoiceHandler { selected = it }
                     choices = listOf("弱", "強", "広", "近"),
                     answerGlyph = "弱",
                     answerDetail = "Weakness",
-                    reasonLine = debugReason,
                     onChoice = { },
                 )
             )
         }
 
-        composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Choose the kanji").assertCountEquals(0)
         composeRule.onAllNodesWithText("Meaning -> kanji").assertCountEquals(0)
         composeRule.onAllNodesWithText("Pick the matching kanji.").assertCountEquals(0)
         composeRule.onAllNodesWithText(debugReason).assertCountEquals(0)
@@ -212,7 +202,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                         MeaningChoiceResultModel(
                             status = "Selected: $glyph",
                             statusColor = MainActivityBase.TEAL,
-                            actionLabel = MainActivityBase.LABEL_PASS,
+                            actionTone = StudyActionTone.PASS,
                         )
                     },
                 )
@@ -227,13 +217,13 @@ onChoice = KanjiChoiceHandler { selected = it }
         composeRule.runOnIdle { assertEquals("", selected) }
 
         composeRule.onAllNodesWithText("Next").assertCountEquals(0)
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).performClick()
 
         assertEquals("列", selected)
     }
 
     @Test
-    fun meaningChoiceResultActionUsesFailLabelForWrongChoice() {
+    fun meaningChoiceResultActionUsesContinueLabelForWrongChoice() {
         composeRule.setContent {
             MeaningChoiceSessionCard(
                 model = meaningChoiceModel(
@@ -246,7 +236,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                         MeaningChoiceResultModel(
                             status = "Selected: $glyph",
                             statusColor = MainActivityBase.CORAL,
-                            actionLabel = MainActivityBase.LABEL_FAIL,
+                            actionTone = StudyActionTone.FAIL,
                             correctChoice = "裂",
                             selectedChoiceCorrect = false,
                         )
@@ -258,7 +248,7 @@ onChoice = KanjiChoiceHandler { selected = it }
         composeRule.onNodeWithText("列").performClick()
 
         composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("列"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, StudyTextCopy.choiceIncorrectStateDescription()))
         composeRule.onNodeWithTag(similarChoiceTestTag("裂"))
@@ -280,7 +270,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                         MeaningChoiceResultModel(
                             status = "Selected: $glyph",
                             statusColor = MainActivityBase.TEAL,
-                            actionLabel = MainActivityBase.LABEL_PASS,
+                            actionTone = StudyActionTone.PASS,
                             correctChoice = "裂",
                             selectedChoiceCorrect = true,
                         )
@@ -313,7 +303,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                     MeaningChoiceResultModel(
                         status = "Selected: $glyph",
                         statusColor = MainActivityBase.CORAL,
-                        actionLabel = MainActivityBase.LABEL_FAIL,
+                        actionTone = StudyActionTone.FAIL,
                     )
                 },
             )
@@ -336,8 +326,8 @@ onChoice = KanjiChoiceHandler { selected = it }
             )
         }
 
-        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).performClick()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).performClick()
 
         assertEquals("劣", selected)
     }
@@ -357,7 +347,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                     MeaningChoiceResultModel(
                         status = "Selected: $glyph",
                         statusColor = MainActivityBase.CORAL,
-                        actionLabel = MainActivityBase.LABEL_FAIL,
+                        actionTone = StudyActionTone.FAIL,
                     )
                 },
             )
@@ -387,17 +377,17 @@ onChoice = KanjiChoiceHandler { selected = it }
         composeRule.onNodeWithText("劣").performClick()
 
         composeRule.onNodeWithText("Loss of strength exhaustion weakness").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).assertIsDisplayed()
 
         val viewportBounds = composeRule.onNodeWithTag(PHONE_VIEWPORT_TAG)
             .fetchSemanticsNode()
             .boundsInRoot
-        val failBounds = composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL)
+        val failBounds = composeRule.onNodeWithText(StudyTextCopy.continueLabel())
             .fetchSemanticsNode()
             .boundsInRoot
         assertTrue(failBounds.bottom <= viewportBounds.bottom)
 
-        composeRule.onNodeWithText(MainActivityBase.LABEL_FAIL).performClick()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).performClick()
         assertEquals("劣", selected)
     }
 
@@ -451,14 +441,14 @@ onChoice = KanjiChoiceHandler { selected = it }
             MeaningChoiceResultActionBar(
                 status = "Correct: 裂",
                 statusColor = MainActivityUiSupport.TEAL,
-                actionLabel = MainActivityBase.LABEL_PASS,
+                actionTone = StudyActionTone.PASS,
                 onNext = { nextClicks++ }
             )
         }
 
         composeRule.onNodeWithText("Correct: 裂").assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_PASS).performClick()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).performClick()
 
         assertEquals(1, nextClicks)
     }
@@ -510,14 +500,9 @@ onChoice = KanjiChoiceHandler { selected = it }
             answerDetail: String,
             onChoice: (String) -> Unit,
             resultResolver: MeaningChoiceResultResolver? = null,
-            reasonLine: String = "",
         ): MeaningChoiceSessionModel {
             return MeaningChoiceSessionModel(
                 modeLabel = "Recall",
-                title = "Choose the kanji",
-                taskLabel = "Meaning -> kanji",
-                body = "Pick the matching kanji.",
-                reasonLine = reasonLine,
                 question = question,
                 choices = choices,
                 answerPanel = StudyAnswerPanelModel(

@@ -2,26 +2,11 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.StudyTextCopy
 import java.util.Locale
 
 internal const val STUDY_ANSWER_USED_IN_ANKI_VISIBLE_ROW_LIMIT: Int = 3
 
-private const val DETAILS_LABEL = "Details"
-private const val BREAKDOWN_LABEL = "Breakdown"
-private const val STROKE_ORDER_LABEL = "Stroke order"
-private const val USED_IN_ANKI_LABEL = "Used in Anki"
-private const val WHY_THIS_CARD_LABEL = "Why this card?"
-
-private const val DETAILS_EMPTY_TITLE = "Kani couldn't find local details for this kanji yet."
-private const val DETAILS_EMPTY_BODY = "Review still works; this drawer can fill in after dictionary data syncs."
-private const val BREAKDOWN_EMPTY_TITLE = "No radical or component data yet."
-private const val BREAKDOWN_EMPTY_BODY = "Component breakdown is still molting. Radical data is shown for now."
-private const val BREAKDOWN_RADICAL_ONLY_SUMMARY = "Radical only"
-private const val STROKE_ORDER_EMPTY_TITLE = "Stroke data is not available for this kanji yet."
-private const val STROKE_ORDER_EMPTY_BODY = "Stroke-order animation needs a licensed offline asset before Kani can draw it here."
-private const val USED_IN_ANKI_EMPTY_TITLE = "No other synced Anki words yet."
-private const val USED_IN_ANKI_EMPTY_BODY = "Sync more cards and Kani will connect them here."
-private const val WHY_THIS_CARD_EMPTY_BODY = "This card came from your synced study queue."
 private const val MAX_LABEL_LENGTH = 32
 
 internal enum class StudyAnswerSectionContentState {
@@ -140,10 +125,18 @@ internal sealed class StudyAnswerAnkiTapActionModel {
                 return OpenAnkiDroid(safeNoteId, safeCardId)
             }
             if (safeNoteId != null) {
-                return CopyId(StudyAnswerAnkiCopiedIdKind.NOTE, safeNoteId, "Anki link unavailable — copied note ID.")
+                return CopyId(
+                    StudyAnswerAnkiCopiedIdKind.NOTE,
+                    safeNoteId,
+                    StudyTextCopy.studyAnswerAnkiNoteIdCopiedMessage(),
+                )
             }
             if (safeCardId != null) {
-                return CopyId(StudyAnswerAnkiCopiedIdKind.CARD, safeCardId, "Anki link unavailable — copied card ID.")
+                return CopyId(
+                    StudyAnswerAnkiCopiedIdKind.CARD,
+                    safeCardId,
+                    StudyTextCopy.studyAnswerAnkiCardIdCopiedMessage(),
+                )
             }
             return Unavailable
         }
@@ -211,21 +204,41 @@ internal fun studyAnswerDictionarySection(
 ): StudyAnswerDetailSectionModel<StudyAnswerDictionaryMetadataModel> {
     if (dictionaryEntry == null) {
         return StudyAnswerDetailSectionModel(
-            label = DETAILS_LABEL,
-            summary = "Local dictionary",
+            label = StudyTextCopy.studyAnswerDetailsLabel(),
+            summary = StudyTextCopy.studyAnswerLocalDictionarySummary(),
             contentState = StudyAnswerSectionContentState.EMPTY,
             body = null,
-            emptyTitle = DETAILS_EMPTY_TITLE,
-            emptyBody = DETAILS_EMPTY_BODY,
+            emptyTitle = StudyTextCopy.studyAnswerDetailsEmptyTitle(),
+            emptyBody = StudyTextCopy.studyAnswerDetailsEmptyBody(),
         )
     }
     val body = studyAnswerDictionaryMetadataModel(dictionaryEntry)
+    if (!body.hasContent()) {
+        return StudyAnswerDetailSectionModel(
+            label = StudyTextCopy.studyAnswerDetailsLabel(),
+            summary = StudyTextCopy.studyAnswerLocalDictionarySummary(),
+            contentState = StudyAnswerSectionContentState.EMPTY,
+            body = null,
+            emptyTitle = StudyTextCopy.studyAnswerDetailsEmptyTitle(),
+            emptyBody = StudyTextCopy.studyAnswerDetailsEmptyBody(),
+        )
+    }
     return StudyAnswerDetailSectionModel(
-        label = DETAILS_LABEL,
+        label = StudyTextCopy.studyAnswerDetailsLabel(),
         summary = dictionarySummary(body),
         contentState = StudyAnswerSectionContentState.READY,
         body = body,
     )
+}
+
+private fun StudyAnswerDictionaryMetadataModel.hasContent(): Boolean {
+    return meanings.isNotEmpty() ||
+        readingGroups.isNotEmpty() ||
+        strokeCount != null ||
+        grade != null ||
+        radical != null ||
+        frequency != null ||
+        jitenRank != null
 }
 
 internal fun studyAnswerDictionaryMetadataModel(
@@ -235,13 +248,13 @@ internal fun studyAnswerDictionaryMetadataModel(
         meanings = normalizedTextList(dictionaryEntry.meanings),
         readingGroups = buildList {
             normalizedTextList(dictionaryEntry.onReadings).takeIf { it.isNotEmpty() }?.let {
-                add(StudyAnswerReadingGroupModel("On", it))
+                add(StudyAnswerReadingGroupModel(StudyTextCopy.studyAnswerOnReadingLabel(), it))
             }
             normalizedTextList(dictionaryEntry.kunReadings).takeIf { it.isNotEmpty() }?.let {
-                add(StudyAnswerReadingGroupModel("Kun", it))
+                add(StudyAnswerReadingGroupModel(StudyTextCopy.studyAnswerKunReadingLabel(), it))
             }
             normalizedTextList(dictionaryEntry.nanoriReadings).takeIf { it.isNotEmpty() }?.let {
-                add(StudyAnswerReadingGroupModel("Nanori", it))
+                add(StudyAnswerReadingGroupModel(StudyTextCopy.studyAnswerNanoriReadingLabel(), it))
             }
         },
         strokeCount = dictionaryEntry.strokeCount.takeIf { it > 0 },
@@ -260,23 +273,27 @@ internal fun studyAnswerBreakdownSection(
     val normalizedComponents = normalizedTextList(componentRows)
     if (radical == null && normalizedComponents.isEmpty()) {
         return StudyAnswerDetailSectionModel(
-            label = BREAKDOWN_LABEL,
-            summary = BREAKDOWN_EMPTY_TITLE,
+            label = StudyTextCopy.studyAnswerBreakdownLabel(),
+            summary = StudyTextCopy.studyAnswerBreakdownEmptyTitle(),
             contentState = StudyAnswerSectionContentState.EMPTY,
             body = null,
-            emptyTitle = BREAKDOWN_EMPTY_TITLE,
+            emptyTitle = StudyTextCopy.studyAnswerBreakdownEmptyTitle(),
             emptyBody = null,
         )
     }
-    val fallbackCopy = if (normalizedComponents.isEmpty()) BREAKDOWN_EMPTY_BODY else null
+    val fallbackCopy = if (normalizedComponents.isEmpty()) StudyTextCopy.studyAnswerBreakdownEmptyBody() else null
     val body = StudyAnswerBreakdownModel(
         radicalNumber = radical,
         componentRows = normalizedComponents,
         fallbackCopy = fallbackCopy,
     )
     return StudyAnswerDetailSectionModel(
-        label = BREAKDOWN_LABEL,
-        summary = if (normalizedComponents.isEmpty()) BREAKDOWN_RADICAL_ONLY_SUMMARY else "Radical + components",
+        label = StudyTextCopy.studyAnswerBreakdownLabel(),
+        summary = if (normalizedComponents.isEmpty()) {
+            StudyTextCopy.studyAnswerRadicalOnlySummary()
+        } else {
+            StudyTextCopy.studyAnswerRadicalAndComponentsSummary()
+        },
         contentState = StudyAnswerSectionContentState.READY,
         body = body,
     )
@@ -299,11 +316,15 @@ internal fun studyAnswerStrokeOrderSection(
                     StudyAnswerStrokeOrderAvailability.COUNT_ONLY
                 },
                 assetReference = assetReference,
-                fallbackCopy = if (strokeOrderAssetAvailable) null else STROKE_ORDER_EMPTY_BODY,
+                fallbackCopy = if (strokeOrderAssetAvailable) {
+                    null
+                } else {
+                    StudyTextCopy.studyAnswerStrokeOrderEmptyBody()
+                },
             )
             StudyAnswerDetailSectionModel(
-                label = STROKE_ORDER_LABEL,
-                summary = "$strokeCount strokes",
+                label = StudyTextCopy.studyAnswerStrokeOrderLabel(),
+                summary = StudyTextCopy.studyAnswerStrokeCountSummary(strokeCount),
                 contentState = StudyAnswerSectionContentState.READY,
                 body = body,
             )
@@ -316,19 +337,19 @@ internal fun studyAnswerStrokeOrderSection(
                 fallbackCopy = null,
             )
             StudyAnswerDetailSectionModel(
-                label = STROKE_ORDER_LABEL,
-                summary = "Animated guide ready",
+                label = StudyTextCopy.studyAnswerStrokeOrderLabel(),
+                summary = StudyTextCopy.studyAnswerAnimatedGuideReadySummary(),
                 contentState = StudyAnswerSectionContentState.READY,
                 body = body,
             )
         }
         else -> StudyAnswerDetailSectionModel(
-            label = STROKE_ORDER_LABEL,
-            summary = STROKE_ORDER_EMPTY_TITLE,
+            label = StudyTextCopy.studyAnswerStrokeOrderLabel(),
+            summary = StudyTextCopy.studyAnswerStrokeOrderEmptyTitle(),
             contentState = StudyAnswerSectionContentState.UNAVAILABLE,
             body = null,
-            emptyTitle = STROKE_ORDER_EMPTY_TITLE,
-            emptyBody = STROKE_ORDER_EMPTY_BODY,
+            emptyTitle = StudyTextCopy.studyAnswerStrokeOrderEmptyTitle(),
+            emptyBody = StudyTextCopy.studyAnswerStrokeOrderEmptyBody(),
         )
     }
 }
@@ -350,12 +371,12 @@ internal fun studyAnswerUsedInAnkiSection(
     )
     if (rows.isEmpty()) {
         return StudyAnswerDetailSectionModel(
-            label = USED_IN_ANKI_LABEL,
-            summary = "No synced words",
+            label = StudyTextCopy.studyAnswerUsedInAnkiLabel(),
+            summary = StudyTextCopy.studyAnswerNoSyncedWordsSummary(),
             contentState = StudyAnswerSectionContentState.EMPTY,
             body = null,
-            emptyTitle = USED_IN_ANKI_EMPTY_TITLE,
-            emptyBody = USED_IN_ANKI_EMPTY_BODY,
+            emptyTitle = StudyTextCopy.studyAnswerUsedInAnkiEmptyTitle(),
+            emptyBody = StudyTextCopy.studyAnswerUsedInAnkiEmptyBody(),
         )
     }
     val visibleRows = if (showAll || rows.size <= STUDY_ANSWER_USED_IN_ANKI_VISIBLE_ROW_LIMIT) {
@@ -366,8 +387,8 @@ internal fun studyAnswerUsedInAnkiSection(
     val hiddenRowCount = (rows.size - visibleRows.size).coerceAtLeast(0)
     val toggleLabel = when {
         rows.size <= STUDY_ANSWER_USED_IN_ANKI_VISIBLE_ROW_LIMIT -> null
-        showAll -> "Show fewer"
-        else -> "Show all ${rows.size}"
+        showAll -> StudyTextCopy.showFewerLabel()
+        else -> StudyTextCopy.showAllLabel(rows.size)
     }
     val body = StudyAnswerUsedInAnkiModel(
         rows = rows,
@@ -378,7 +399,7 @@ internal fun studyAnswerUsedInAnkiSection(
         toggleLabel = toggleLabel,
     )
     return StudyAnswerDetailSectionModel(
-        label = USED_IN_ANKI_LABEL,
+        label = StudyTextCopy.studyAnswerUsedInAnkiLabel(),
         summary = usedInAnkiSummary(rows.size),
         contentState = StudyAnswerSectionContentState.READY,
         body = body,
@@ -442,15 +463,26 @@ internal fun studyAnswerWhyThisCardSection(
         examples = examples,
         currentExample = currentExample,
     )
+    if (sourceExpression == null && sourceReading == null && previewExamples.isEmpty()) {
+        return StudyAnswerDetailSectionModel(
+            label = StudyTextCopy.studyAnswerWhyThisCardLabel(),
+            summary = "",
+            contentState = StudyAnswerSectionContentState.EMPTY,
+            body = null,
+            emptyTitle = StudyTextCopy.studyAnswerWhyThisCardLabel(),
+            emptyBody = StudyTextCopy.studyAnswerWhyThisCardEmptyBody(),
+        )
+    }
     val body = StudyAnswerWhyThisCardModel(
         sourceExpression = sourceExpression,
         sourceReading = sourceReading,
         previewExamples = previewExamples,
-        fallbackCopy = if (sourceExpression.isNullOrBlank()) WHY_THIS_CARD_EMPTY_BODY else null,
+        fallbackCopy = null,
     )
+    val summaryExpression = sourceExpression ?: previewExamples.firstOrNull()?.expression
     return StudyAnswerDetailSectionModel(
-        label = WHY_THIS_CARD_LABEL,
-        summary = sourceExpression?.let { "From: $it" } ?: WHY_THIS_CARD_EMPTY_BODY,
+        label = StudyTextCopy.studyAnswerWhyThisCardLabel(),
+        summary = summaryExpression?.let { StudyTextCopy.studyAnswerFromSummary(it) }.orEmpty(),
         contentState = StudyAnswerSectionContentState.READY,
         body = body,
     )
@@ -474,10 +506,10 @@ private fun studyAnswerWhyThisCardPreviewExamples(
 
 private fun dictionarySummary(model: StudyAnswerDictionaryMetadataModel): String {
     val parts = ArrayList<String>(2)
-    model.strokeCount?.let { parts.add("$it strokes") }
-    model.radical?.let { parts.add("radical $it") }
+    model.strokeCount?.let { parts.add(StudyTextCopy.studyAnswerStrokeCountSummary(it)) }
+    model.radical?.let { parts.add(StudyTextCopy.studyAnswerRadicalSummary(it)) }
     if (parts.isEmpty()) {
-        return "Local dictionary"
+        return StudyTextCopy.studyAnswerLocalDictionarySummary()
     }
     return parts.joinToString(" • ")
 }
@@ -519,11 +551,7 @@ private fun sortedExampleList(
 }
 
 private fun usedInAnkiSummary(rowCount: Int): String {
-    return if (rowCount == 1) {
-        "1 synced word"
-    } else {
-        "$rowCount synced words"
-    }
+    return StudyTextCopy.studyAnswerSyncedWordsSummary(rowCount)
 }
 
 private fun normalizedTextList(values: List<String>?): List<String> {

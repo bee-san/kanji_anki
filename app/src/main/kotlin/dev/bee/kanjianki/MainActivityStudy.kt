@@ -68,8 +68,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyQueueCoordinator.renderStudy()
     }
 
-    fun renderStudyLoading() {
-        renderComposeStudyRoute {
+    fun renderStudyLoading(studySessionActive: Boolean) {
+        renderComposeStudyRoute(studySessionActive = studySessionActive) {
             HomeRouteLoadingScreen(
                 title = dev.bee.kanjianki.core.StudyTextCopy.studyPracticeTitle(),
                 homeLabel = dev.bee.kanjianki.core.HomeTextCopy.homeLabel(),
@@ -215,15 +215,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun hideStudyActionBar() {
         writingSession.hideStudyActionBar()
-    }
-
-    fun studyReasonLine(session: RecordsSchedulerModels.StudySession): String {
-        return dev.bee.kanjianki.core.StudyTextCopy.studyReasonLine(
-            activeSimilarWritingRepair != null,
-            session,
-            settings().matureSupportThreshold,
-            System.currentTimeMillis()
-        )
     }
 
     fun resetStudyRunProgress() {

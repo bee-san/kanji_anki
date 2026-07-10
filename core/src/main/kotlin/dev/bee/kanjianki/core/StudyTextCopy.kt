@@ -99,16 +99,226 @@ object StudyTextCopy {
     }
 
     @JvmStatic
-    fun studyChoiceTitle(): String = localizedText("Choose the kanji", "漢字を選ぶ")
-
-    @JvmStatic
-    fun studyChoiceBody(): String = localizedText("Pick the matching kanji.", "一致する漢字を選んでください。")
-
-    @JvmStatic
-    fun viewKanjiDetailsLabel(): String = localizedText("View kanji details", "漢字の詳細を見る")
-
-    @JvmStatic
     fun openInBrowseLabel(): String = localizedText("Open in Browse", "Browseで開く")
+
+    @JvmStatic
+    fun answerLabel(): String = localizedText("Answer", "答え")
+
+    @JvmStatic
+    fun referenceLabel(): String = localizedText("Reference", "お手本")
+
+    @JvmStatic
+    fun writingReferenceHelper(): String = localizedText(
+        "Trace it below, then check.",
+        "下になぞってから確認してください。",
+    )
+
+    @JvmStatic
+    fun moreAboutKanjiLabel(kanji: String): String = localizedText(
+        "More about $kanji",
+        "${kanji}についてもっと見る",
+    )
+
+    @JvmStatic
+    fun showAllLabel(count: Int): String = localizedText("Show all $count", "${count}件すべて表示")
+
+    @JvmStatic
+    fun showFewerLabel(): String = localizedText("Show fewer", "一部だけ表示")
+
+    @JvmStatic
+    fun currentLabel(): String = localizedText("Current", "現在")
+
+    @JvmStatic
+    fun expandedStateDescription(): String = localizedText("Expanded", "展開済み")
+
+    @JvmStatic
+    fun collapsedStateDescription(): String = localizedText("Collapsed", "折りたたみ済み")
+
+    @JvmStatic
+    fun shellContentDescription(route: String): String = localizedText("Kani shell $route", "Kani画面 $route")
+
+    @JvmStatic
+    fun routeContentDescription(route: String, scrollPositionLabel: String?): String {
+        val scrollLabel = scrollPositionLabel?.takeIf { it.isNotBlank() }
+        return if (isJapaneseLocale()) {
+            buildString {
+                append("Kaniルート ").append(route)
+                scrollLabel?.let { append(" スクロール位置 ").append(it) }
+            }
+        } else {
+            buildString {
+                append("Kani route ").append(route)
+                scrollLabel?.let { append(" scroll ").append(it) }
+            }
+        }
+    }
+
+    @JvmStatic
+    fun studyAnswerDetailsLabel(): String = localizedText("Details", "詳細")
+
+    @JvmStatic
+    fun studyAnswerBreakdownLabel(): String = localizedText("Breakdown", "構成")
+
+    @JvmStatic
+    fun studyAnswerStrokeOrderLabel(): String = localizedText("Stroke order", "筆順")
+
+    @JvmStatic
+    fun studyAnswerUsedInAnkiLabel(): String = localizedText("Used in Anki", "Ankiでの使用例")
+
+    @JvmStatic
+    fun studyAnswerWhyThisCardLabel(): String = localizedText("Why this card?", "このカードが出た理由")
+
+    @JvmStatic
+    fun studyAnswerDetailsEmptyTitle(): String = localizedText(
+        "Kani couldn't find local details for this kanji yet.",
+        "この漢字のローカル詳細はまだ見つかりません。",
+    )
+
+    @JvmStatic
+    fun studyAnswerDetailsEmptyBody(): String = localizedText(
+        "Review still works; this drawer can fill in after dictionary data syncs.",
+        "レビューは続けられます。辞書データを同期すると、ここに詳細が表示されます。",
+    )
+
+    @JvmStatic
+    fun studyAnswerBreakdownEmptyTitle(): String = localizedText(
+        "No radical or component data yet.",
+        "部首や構成要素のデータはまだありません。",
+    )
+
+    @JvmStatic
+    fun studyAnswerBreakdownEmptyBody(): String = localizedText(
+        "Component breakdown is still molting. Radical data is shown for now.",
+        "構成要素の内訳は準備中です。今は部首データのみ表示します。",
+    )
+
+    @JvmStatic
+    fun studyAnswerRadicalOnlySummary(): String = localizedText("Radical only", "部首のみ")
+
+    @JvmStatic
+    fun studyAnswerStrokeOrderEmptyTitle(): String = localizedText(
+        "Stroke data is not available for this kanji yet.",
+        "この漢字の筆順データはまだ利用できません。",
+    )
+
+    @JvmStatic
+    fun studyAnswerStrokeOrderEmptyBody(): String = localizedText(
+        "Stroke-order animation needs a licensed offline asset before Kani can draw it here.",
+        "筆順アニメーションを表示するには、ライセンス済みのオフライン素材が必要です。",
+    )
+
+    @JvmStatic
+    fun studyAnswerUsedInAnkiEmptyTitle(): String = localizedText(
+        "No other synced Anki words yet.",
+        "同期済みのAnki単語はほかにありません。",
+    )
+
+    @JvmStatic
+    fun studyAnswerUsedInAnkiEmptyBody(): String = localizedText(
+        "Sync more cards and Kani will connect them here.",
+        "さらにカードを同期すると、ここに関連する単語が表示されます。",
+    )
+
+    @JvmStatic
+    fun studyAnswerWhyThisCardEmptyBody(): String = localizedText(
+        "This card came from your synced study queue.",
+        "このカードは同期済みの学習キューから選ばれました。",
+    )
+
+    @JvmStatic
+    fun studyAnswerAnkiNoteIdCopiedMessage(): String = localizedText(
+        "Anki link unavailable — copied note ID.",
+        "Ankiリンクを利用できないため、ノートIDをコピーしました。",
+    )
+
+    @JvmStatic
+    fun studyAnswerAnkiCardIdCopiedMessage(): String = localizedText(
+        "Anki link unavailable — copied card ID.",
+        "Ankiリンクを利用できないため、カードIDをコピーしました。",
+    )
+
+    @JvmStatic
+    fun studyAnswerLocalDictionarySummary(): String = localizedText("Local dictionary", "ローカル辞書")
+
+    @JvmStatic
+    fun studyAnswerOnReadingLabel(): String = localizedText("On", "音読み")
+
+    @JvmStatic
+    fun studyAnswerKunReadingLabel(): String = localizedText("Kun", "訓読み")
+
+    @JvmStatic
+    fun studyAnswerNanoriReadingLabel(): String = localizedText("Nanori", "名乗り")
+
+    @JvmStatic
+    fun studyAnswerRadicalAndComponentsSummary(): String = localizedText("Radical + components", "部首＋構成要素")
+
+    @JvmStatic
+    fun studyAnswerStrokeCountSummary(count: Int): String = localizedText("$count strokes", "${count}画")
+
+    @JvmStatic
+    fun studyAnswerAnimatedGuideReadySummary(): String = localizedText(
+        "Animated guide ready",
+        "アニメーションガイドを利用できます",
+    )
+
+    @JvmStatic
+    fun studyAnswerNoSyncedWordsSummary(): String = localizedText("No synced words", "同期済みの単語なし")
+
+    @JvmStatic
+    fun studyAnswerFromSummary(expression: String): String = localizedText("From: $expression", "出典：$expression")
+
+    @JvmStatic
+    fun studyAnswerRadicalSummary(radicalNumber: Int): String = localizedText(
+        "radical $radicalNumber",
+        "部首 $radicalNumber",
+    )
+
+    @JvmStatic
+    fun studyAnswerSyncedWordsSummary(count: Int): String {
+        if (isJapaneseLocale()) {
+            return "${count}件の同期済み単語"
+        }
+        return countText(count, "synced word", "synced words")
+    }
+
+    @JvmStatic
+    fun studyAnswerMeaningsHeading(): String = localizedText("Meanings", "意味")
+
+    @JvmStatic
+    fun studyAnswerStrokesLabel(): String = localizedText("Strokes", "画数")
+
+    @JvmStatic
+    fun studyAnswerNotAvailableValue(): String = localizedText("Not available", "利用不可")
+
+    @JvmStatic
+    fun studyAnswerGradeLabel(): String = localizedText("Grade", "学年")
+
+    @JvmStatic
+    fun studyAnswerNotGradedValue(): String = localizedText("Not graded", "学年指定なし")
+
+    @JvmStatic
+    fun studyAnswerRadicalLabel(): String = localizedText("Radical", "部首")
+
+    @JvmStatic
+    fun studyAnswerFrequencyLabel(): String = localizedText("Frequency", "頻度")
+
+    @JvmStatic
+    fun studyAnswerJitenRankLabel(): String = localizedText("Jiten rank", "Jiten順位")
+
+    @JvmStatic
+    fun studyAnswerComponentsHeading(): String = localizedText("Components", "構成要素")
+
+    @JvmStatic
+    fun studyAnswerStrokeCountLabel(): String = localizedText("Stroke count", "画数")
+
+    @JvmStatic
+    fun studyAnswerPlannedAssetNote(reference: String): String = localizedText("Planned: $reference", "予定：$reference")
+
+    @JvmStatic
+    fun studyAnswerReadingNote(reading: String): String = localizedText("Reading: $reading", "読み：$reading")
+
+    @JvmStatic
+    fun studyAnswerAlsoAppearsInHeading(): String = localizedText("Also appears in...", "ほかの用例")
 
     @JvmStatic
     fun exploreDifferencesLabel(): String = localizedText("Explore the differences", "違いを見比べる")
@@ -182,13 +392,6 @@ object StudyTextCopy {
     }
 
     @JvmStatic
-    fun kanjiReadingChoiceTitle(): String = localizedText("Choose the reading", "読みを選ぶ")
-
-    @JvmStatic
-    fun kanjiReadingChoiceBody(): String =
-        localizedText("Pick how the kanji is read in this word.", "この単語での漢字の読みを選んでください。")
-
-    @JvmStatic
     fun kanjiReadingChoiceQuestion(card: RecordsImportModels.KanjiReadingChoiceCard?): String {
         val kanji = card?.targetKanji ?: ""
         val word = card?.word ?: ""
@@ -217,13 +420,6 @@ object StudyTextCopy {
             "Answer: $kanji is read $reading in $word"
         }
     }
-
-    @JvmStatic
-    fun readingKanjiChoiceTitle(): String = localizedText("Choose the kanji", "漢字を選ぶ")
-
-    @JvmStatic
-    fun readingKanjiChoiceBody(): String =
-        localizedText("Pick the kanji read this way here.", "ここでこの読みになる漢字を選んでください。")
 
     @JvmStatic
     fun readingKanjiChoiceQuestion(card: RecordsImportModels.ReadingKanjiChoiceCard?): String {
@@ -320,9 +516,6 @@ object StudyTextCopy {
 
     @JvmStatic
     fun failLabel(): String = localizedText("Fail", "不合格")
-
-    @JvmStatic
-    fun answerHiddenHint(): String = localizedText("Answer hidden until reveal", "答えを表示するまで非表示")
 
     @JvmStatic
     fun cancelLabel(): String = localizedText("Cancel", "キャンセル")
@@ -519,17 +712,6 @@ object StudyTextCopy {
                 }
             }
         }
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    @JvmStatic
-    fun studyReasonLine(
-        similarRepairActive: Boolean,
-        session: RecordsSchedulerModels.StudySession?,
-        matureSupportThreshold: Int,
-        nowMillis: Long,
-    ): String {
-        return ""
     }
 
     @JvmStatic

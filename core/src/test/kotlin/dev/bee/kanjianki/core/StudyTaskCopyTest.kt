@@ -35,18 +35,6 @@ class StudyTaskCopyTest {
     }
 
     @Test
-    fun flashcardTitlePreservesPromptHeadings() {
-        assertEquals("Read this word", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.WORD_READING, false)))
-        assertEquals("Type the meaning", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.TYPING_MEANING, false)))
-        assertEquals("Type the meaning", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.TYPE_MEANING, false)))
-        assertEquals("Choose the kanji", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.MEANING_KANJI, false)))
-        assertEquals("Recognise this kanji", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.FONT_MEANING, false)))
-        assertEquals("Recognise this kanji", StudyTaskCopy.flashcardTitle(session("font_recognition", false)))
-        assertEquals("Name this kanji", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.KANJI_MEANING, false)))
-        assertEquals("Name this kanji", StudyTaskCopy.flashcardTitle(null))
-    }
-
-    @Test
     fun studyModeLabelPreservesModePills() {
         assertEquals("Practice", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.WORD_READING, true)))
         assertEquals("Read", StudyTaskCopy.studyModeLabel(session(StudyTaskTypes.WORD_READING, false)))
@@ -120,12 +108,6 @@ class StudyTaskCopyTest {
             assertEquals("記憶確認", StudyTaskCopy.labelForTask("blind_writing"))
             assertEquals("記憶確認", StudyTaskCopy.labelForTask("sampled_handwriting"))
             assertEquals("形を覚える", StudyTaskCopy.labelForTask("confusable_recognition"))
-
-            assertEquals("この単語を読む", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.WORD_READING, false)))
-            assertEquals("意味を入力", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.TYPING_MEANING, false)))
-            assertEquals("漢字を選ぶ", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.MEANING_KANJI, false)))
-            assertEquals("この漢字を見分ける", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.FONT_MEANING, false)))
-            assertEquals("この漢字の意味は？", StudyTaskCopy.flashcardTitle(session(StudyTaskTypes.KANJI_MEANING, false)))
 
             assertEquals("学習", StudyTaskCopy.studyModeLabel(sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.NEW_LEARNING)))
             assertEquals("再学習", StudyTaskCopy.studyModeLabel(sessionWithPhase(StudyTaskTypes.KANJI_MEANING, false, RecordsBase.SchedulerPhase.RELEARNING)))

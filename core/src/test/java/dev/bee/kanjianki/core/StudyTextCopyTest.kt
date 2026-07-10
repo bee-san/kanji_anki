@@ -163,8 +163,6 @@ class StudyTextCopyTest {
     fun kanjiReadingChoiceCopyPreservesEnglishLabelsAndResultBranches() {
         val card = RecordsImportModels.KanjiReadingChoiceCard("脱", "脱出", "escape", "だつ", listOf("だつ", "しゅつ"))
 
-        assertEquals("Choose the reading", StudyTextCopy.kanjiReadingChoiceTitle())
-        assertEquals("Pick how the kanji is read in this word.", StudyTextCopy.kanjiReadingChoiceBody())
         assertEquals("How is 脱 read in 脱出?", StudyTextCopy.kanjiReadingChoiceQuestion(card))
         assertEquals("Correct. 脱 is read だつ in 脱出.", StudyTextCopy.kanjiReadingChoiceResult(card, true))
         assertEquals("Answer: 脱 is read だつ in 脱出", StudyTextCopy.kanjiReadingChoiceResult(card, false))
@@ -178,8 +176,6 @@ class StudyTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
-            assertEquals("読みを選ぶ", StudyTextCopy.kanjiReadingChoiceTitle())
-            assertEquals("この単語での漢字の読みを選んでください。", StudyTextCopy.kanjiReadingChoiceBody())
             assertEquals("「脱出」の 脱 の読みは？", StudyTextCopy.kanjiReadingChoiceQuestion(card))
             assertEquals("正解。脱出 の 脱 は「だつ」と読みます。", StudyTextCopy.kanjiReadingChoiceResult(card, true))
             assertEquals("答え：脱出 の 脱 は「だつ」", StudyTextCopy.kanjiReadingChoiceResult(card, false))
@@ -193,8 +189,6 @@ class StudyTextCopyTest {
         val card = RecordsImportModels.ReadingKanjiChoiceCard("脱", "だつ", "〇出", "escape", listOf("脱", "出"))
         val noMeaning = RecordsImportModels.ReadingKanjiChoiceCard("脱", "だつ", "〇出", "", listOf("脱", "出"))
 
-        assertEquals("Choose the kanji", StudyTextCopy.readingKanjiChoiceTitle())
-        assertEquals("Pick the kanji read this way here.", StudyTextCopy.readingKanjiChoiceBody())
         assertEquals("だつ — which kanji is 〇出? (escape)", StudyTextCopy.readingKanjiChoiceQuestion(card))
         assertEquals("だつ — which kanji is 〇出?", StudyTextCopy.readingKanjiChoiceQuestion(noMeaning))
         assertEquals("Correct. 脱 is read だつ.", StudyTextCopy.readingKanjiChoiceResult(card, true))
@@ -208,8 +202,6 @@ class StudyTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
-            assertEquals("漢字を選ぶ", StudyTextCopy.readingKanjiChoiceTitle())
-            assertEquals("ここでこの読みになる漢字を選んでください。", StudyTextCopy.readingKanjiChoiceBody())
             assertEquals("「だつ」— 〇出 はどの漢字？（escape）", StudyTextCopy.readingKanjiChoiceQuestion(card))
             assertEquals("正解。脱 は「だつ」です。", StudyTextCopy.readingKanjiChoiceResult(card, true))
             assertEquals("答え：脱 ・ だつ", StudyTextCopy.readingKanjiChoiceResult(card, false))
@@ -241,8 +233,6 @@ class StudyTextCopyTest {
             listOf("静", "青", "清", "晴"),
         )
 
-        assertEquals("Choose the kanji", StudyTextCopy.studyChoiceTitle())
-        assertEquals("Pick the matching kanji.", StudyTextCopy.studyChoiceBody())
         assertEquals("Which kanji means Quiet?", StudyTextCopy.studyChoiceQuestion("Quiet"))
         assertEquals("Which kanji means Quiet?", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
         assertEquals("Correct. 静 means Quiet.", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
@@ -263,8 +253,6 @@ class StudyTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
-            assertEquals("漢字を選ぶ", StudyTextCopy.studyChoiceTitle())
-            assertEquals("一致する漢字を選んでください。", StudyTextCopy.studyChoiceBody())
             assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.studyChoiceQuestion("Quiet"))
             assertEquals("「Quiet」はどの漢字ですか？", StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"))
             assertEquals("正解。静 は「Quiet」です。", StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true))
@@ -277,7 +265,6 @@ class StudyTextCopyTest {
 
     @Test
     fun kanjiExplorationCopyPreservesEnglishLabels() {
-        assertEquals("View kanji details", StudyTextCopy.viewKanjiDetailsLabel())
         assertEquals("Open in Browse", StudyTextCopy.openInBrowseLabel())
         assertEquals("Explore the differences", StudyTextCopy.exploreDifferencesLabel())
         assertEquals("Explore the differences", StudyTextCopy.similarKanjiDifferencesTitle())
@@ -297,7 +284,6 @@ class StudyTextCopyTest {
         try {
             Locale.setDefault(Locale.JAPANESE)
 
-            assertEquals("漢字の詳細を見る", StudyTextCopy.viewKanjiDetailsLabel())
             assertEquals("Browseで開く", StudyTextCopy.openInBrowseLabel())
             assertEquals("違いを見比べる", StudyTextCopy.exploreDifferencesLabel())
             assertEquals("違いを見比べる", StudyTextCopy.similarKanjiDifferencesTitle())
@@ -311,6 +297,150 @@ class StudyTextCopyTest {
             assertEquals("学習に戻る", StudyTextCopy.backToStudyLabel())
         } finally {
             Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
+    fun studyAnswerDetailsCopyPreservesEnglishLabelsAndSummaries() {
+        withLocale(Locale.ENGLISH) {
+            assertEquals("Details", StudyTextCopy.studyAnswerDetailsLabel())
+            assertEquals("Breakdown", StudyTextCopy.studyAnswerBreakdownLabel())
+            assertEquals("Stroke order", StudyTextCopy.studyAnswerStrokeOrderLabel())
+            assertEquals("Used in Anki", StudyTextCopy.studyAnswerUsedInAnkiLabel())
+            assertEquals("Why this card?", StudyTextCopy.studyAnswerWhyThisCardLabel())
+            assertEquals(
+                "Kani couldn't find local details for this kanji yet.",
+                StudyTextCopy.studyAnswerDetailsEmptyTitle(),
+            )
+            assertEquals(
+                "Review still works; this drawer can fill in after dictionary data syncs.",
+                StudyTextCopy.studyAnswerDetailsEmptyBody(),
+            )
+            assertEquals("No radical or component data yet.", StudyTextCopy.studyAnswerBreakdownEmptyTitle())
+            assertEquals(
+                "Component breakdown is still molting. Radical data is shown for now.",
+                StudyTextCopy.studyAnswerBreakdownEmptyBody(),
+            )
+            assertEquals("Radical only", StudyTextCopy.studyAnswerRadicalOnlySummary())
+            assertEquals(
+                "Stroke data is not available for this kanji yet.",
+                StudyTextCopy.studyAnswerStrokeOrderEmptyTitle(),
+            )
+            assertEquals(
+                "Stroke-order animation needs a licensed offline asset before Kani can draw it here.",
+                StudyTextCopy.studyAnswerStrokeOrderEmptyBody(),
+            )
+            assertEquals("No other synced Anki words yet.", StudyTextCopy.studyAnswerUsedInAnkiEmptyTitle())
+            assertEquals(
+                "Sync more cards and Kani will connect them here.",
+                StudyTextCopy.studyAnswerUsedInAnkiEmptyBody(),
+            )
+            assertEquals(
+                "This card came from your synced study queue.",
+                StudyTextCopy.studyAnswerWhyThisCardEmptyBody(),
+            )
+            assertEquals(
+                "Anki link unavailable — copied note ID.",
+                StudyTextCopy.studyAnswerAnkiNoteIdCopiedMessage(),
+            )
+            assertEquals(
+                "Anki link unavailable — copied card ID.",
+                StudyTextCopy.studyAnswerAnkiCardIdCopiedMessage(),
+            )
+            assertEquals("Local dictionary", StudyTextCopy.studyAnswerLocalDictionarySummary())
+            assertEquals("On", StudyTextCopy.studyAnswerOnReadingLabel())
+            assertEquals("Kun", StudyTextCopy.studyAnswerKunReadingLabel())
+            assertEquals("Nanori", StudyTextCopy.studyAnswerNanoriReadingLabel())
+            assertEquals("Radical + components", StudyTextCopy.studyAnswerRadicalAndComponentsSummary())
+            assertEquals("8 strokes", StudyTextCopy.studyAnswerStrokeCountSummary(8))
+            assertEquals("Animated guide ready", StudyTextCopy.studyAnswerAnimatedGuideReadySummary())
+            assertEquals("No synced words", StudyTextCopy.studyAnswerNoSyncedWordsSummary())
+            assertEquals("From: 抗議", StudyTextCopy.studyAnswerFromSummary("抗議"))
+            assertEquals("radical 64", StudyTextCopy.studyAnswerRadicalSummary(64))
+            assertEquals("1 synced word", StudyTextCopy.studyAnswerSyncedWordsSummary(1))
+            assertEquals("4 synced words", StudyTextCopy.studyAnswerSyncedWordsSummary(4))
+            assertEquals("Meanings", StudyTextCopy.studyAnswerMeaningsHeading())
+            assertEquals("Strokes", StudyTextCopy.studyAnswerStrokesLabel())
+            assertEquals("Not available", StudyTextCopy.studyAnswerNotAvailableValue())
+            assertEquals("Grade", StudyTextCopy.studyAnswerGradeLabel())
+            assertEquals("Not graded", StudyTextCopy.studyAnswerNotGradedValue())
+            assertEquals("Radical", StudyTextCopy.studyAnswerRadicalLabel())
+            assertEquals("Frequency", StudyTextCopy.studyAnswerFrequencyLabel())
+            assertEquals("Jiten rank", StudyTextCopy.studyAnswerJitenRankLabel())
+            assertEquals("Components", StudyTextCopy.studyAnswerComponentsHeading())
+            assertEquals("Stroke count", StudyTextCopy.studyAnswerStrokeCountLabel())
+            assertEquals("Planned: kanji.svg", StudyTextCopy.studyAnswerPlannedAssetNote("kanji.svg"))
+            assertEquals("Reading: こう", StudyTextCopy.studyAnswerReadingNote("こう"))
+            assertEquals("Also appears in...", StudyTextCopy.studyAnswerAlsoAppearsInHeading())
+        }
+    }
+
+    @Test
+    fun studyAnswerDetailsCopyTranslatesLabelsAndSummariesToJapanese() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals("詳細", StudyTextCopy.studyAnswerDetailsLabel())
+            assertEquals("構成", StudyTextCopy.studyAnswerBreakdownLabel())
+            assertEquals("筆順", StudyTextCopy.studyAnswerStrokeOrderLabel())
+            assertEquals("Ankiでの使用例", StudyTextCopy.studyAnswerUsedInAnkiLabel())
+            assertEquals("このカードが出た理由", StudyTextCopy.studyAnswerWhyThisCardLabel())
+            assertEquals("この漢字のローカル詳細はまだ見つかりません。", StudyTextCopy.studyAnswerDetailsEmptyTitle())
+            assertEquals(
+                "レビューは続けられます。辞書データを同期すると、ここに詳細が表示されます。",
+                StudyTextCopy.studyAnswerDetailsEmptyBody(),
+            )
+            assertEquals("部首や構成要素のデータはまだありません。", StudyTextCopy.studyAnswerBreakdownEmptyTitle())
+            assertEquals(
+                "構成要素の内訳は準備中です。今は部首データのみ表示します。",
+                StudyTextCopy.studyAnswerBreakdownEmptyBody(),
+            )
+            assertEquals("部首のみ", StudyTextCopy.studyAnswerRadicalOnlySummary())
+            assertEquals("この漢字の筆順データはまだ利用できません。", StudyTextCopy.studyAnswerStrokeOrderEmptyTitle())
+            assertEquals(
+                "筆順アニメーションを表示するには、ライセンス済みのオフライン素材が必要です。",
+                StudyTextCopy.studyAnswerStrokeOrderEmptyBody(),
+            )
+            assertEquals("同期済みのAnki単語はほかにありません。", StudyTextCopy.studyAnswerUsedInAnkiEmptyTitle())
+            assertEquals(
+                "さらにカードを同期すると、ここに関連する単語が表示されます。",
+                StudyTextCopy.studyAnswerUsedInAnkiEmptyBody(),
+            )
+            assertEquals(
+                "このカードは同期済みの学習キューから選ばれました。",
+                StudyTextCopy.studyAnswerWhyThisCardEmptyBody(),
+            )
+            assertEquals(
+                "Ankiリンクを利用できないため、ノートIDをコピーしました。",
+                StudyTextCopy.studyAnswerAnkiNoteIdCopiedMessage(),
+            )
+            assertEquals(
+                "Ankiリンクを利用できないため、カードIDをコピーしました。",
+                StudyTextCopy.studyAnswerAnkiCardIdCopiedMessage(),
+            )
+            assertEquals("ローカル辞書", StudyTextCopy.studyAnswerLocalDictionarySummary())
+            assertEquals("音読み", StudyTextCopy.studyAnswerOnReadingLabel())
+            assertEquals("訓読み", StudyTextCopy.studyAnswerKunReadingLabel())
+            assertEquals("名乗り", StudyTextCopy.studyAnswerNanoriReadingLabel())
+            assertEquals("部首＋構成要素", StudyTextCopy.studyAnswerRadicalAndComponentsSummary())
+            assertEquals("8画", StudyTextCopy.studyAnswerStrokeCountSummary(8))
+            assertEquals("アニメーションガイドを利用できます", StudyTextCopy.studyAnswerAnimatedGuideReadySummary())
+            assertEquals("同期済みの単語なし", StudyTextCopy.studyAnswerNoSyncedWordsSummary())
+            assertEquals("出典：抗議", StudyTextCopy.studyAnswerFromSummary("抗議"))
+            assertEquals("部首 64", StudyTextCopy.studyAnswerRadicalSummary(64))
+            assertEquals("1件の同期済み単語", StudyTextCopy.studyAnswerSyncedWordsSummary(1))
+            assertEquals("4件の同期済み単語", StudyTextCopy.studyAnswerSyncedWordsSummary(4))
+            assertEquals("意味", StudyTextCopy.studyAnswerMeaningsHeading())
+            assertEquals("画数", StudyTextCopy.studyAnswerStrokesLabel())
+            assertEquals("利用不可", StudyTextCopy.studyAnswerNotAvailableValue())
+            assertEquals("学年", StudyTextCopy.studyAnswerGradeLabel())
+            assertEquals("学年指定なし", StudyTextCopy.studyAnswerNotGradedValue())
+            assertEquals("部首", StudyTextCopy.studyAnswerRadicalLabel())
+            assertEquals("頻度", StudyTextCopy.studyAnswerFrequencyLabel())
+            assertEquals("Jiten順位", StudyTextCopy.studyAnswerJitenRankLabel())
+            assertEquals("構成要素", StudyTextCopy.studyAnswerComponentsHeading())
+            assertEquals("画数", StudyTextCopy.studyAnswerStrokeCountLabel())
+            assertEquals("予定：kanji.svg", StudyTextCopy.studyAnswerPlannedAssetNote("kanji.svg"))
+            assertEquals("読み：こう", StudyTextCopy.studyAnswerReadingNote("こう"))
+            assertEquals("ほかの用例", StudyTextCopy.studyAnswerAlsoAppearsInHeading())
         }
     }
 
@@ -432,25 +562,22 @@ class StudyTextCopyTest {
     }
 
     @Test
-    fun studyReasonLineIsHiddenFromStudyCards() {
-        val item = studyItem("裂")
-        val row = row("裂", "split", "reason", emptyList())
-        val session = session(item, row, "prompt")
-
-        assertEquals("", StudyTextCopy.studyReasonLine(true, session, 3, 1000L))
-        assertEquals("", StudyTextCopy.studyReasonLine(false, session, 3, 1000L))
-        assertEquals("", StudyTextCopy.studyReasonLine(false, null, 3, 1000L))
-        assertEquals("", StudyTextCopy.studyReasonLine(false, session(item, null, "prompt"), 3, 1000L))
-    }
-
-    @Test
     fun copyHelpersTolerateLegacyNullItemSessionSentinel() {
         val row = row("裂", "split", "reason", emptyList())
         val session = session(null, row, "fallback prompt")
 
         assertEquals("Split", StudyTextCopy.sessionClue(DictionaryLookup.empty(), session))
         assertEquals("", StudyTextCopy.wordPrompt(session))
-        assertEquals("", StudyTextCopy.studyReasonLine(false, session, 3, 1000L))
+    }
+
+    private fun withLocale(locale: Locale, block: () -> Unit) {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(locale)
+            block()
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 
     private fun session(

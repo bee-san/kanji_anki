@@ -25,8 +25,6 @@ class MainActivityStudyWritingPromptComposeTest {
                 model = WritingPromptHeaderModel(
                     modeLabel = "Practice",
                     title = "Draw this kanji",
-                    taskLabel = "Write kanji",
-                    reasonLine = "Weak Anki evidence",
                     detailLines = listOf(
                         WritingPromptLineModel(
                             text = "Prompt: split, rend",
@@ -53,7 +51,7 @@ class MainActivityStudyWritingPromptComposeTest {
 
         composeRule.onNodeWithText("Practice").assertIsDisplayed()
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
-        composeRule.onNodeWithText("Write kanji").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Write kanji").assertCountEquals(0)
         composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
         composeRule.onNodeWithText("Prompt: split, rend").assertIsDisplayed()
         composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
@@ -67,8 +65,6 @@ class MainActivityStudyWritingPromptComposeTest {
                 model = WritingPromptHeaderModel(
                     modeLabel = "Practice",
                     title = "Draw this kanji",
-                    taskLabel = "Write kanji",
-                    reasonLine = "",
                     detailLines = listOf(
                         WritingPromptLineModel(
                             text = "Learn it from the reference, trace it, then check.",
@@ -95,14 +91,10 @@ class MainActivityStudyWritingPromptComposeTest {
                     promptHeader = WritingPromptHeaderModel(
                         modeLabel = "Practice",
                         title = "Draw this kanji",
-                        taskLabel = "Write kanji",
-                        reasonLine = "",
                         detailLines = emptyList()
                     ),
                     answerPanel = writingAnswerPanelModel(),
                     answerPanelState = answerState,
-                    writingTitle = "Writing",
-                    writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
                     status = WritingStatusState().apply {
                         setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
                     },
@@ -118,7 +110,7 @@ class MainActivityStudyWritingPromptComposeTest {
         composeRule.onNodeWithText("Practice").assertIsDisplayed()
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Reference answer").assertIsDisplayed()
-        composeRule.onNodeWithText("Writing").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Writing").assertCountEquals(0)
         composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
         composeRule.onNodeWithText("Result").assertIsDisplayed()
     }
@@ -129,22 +121,18 @@ class MainActivityStudyWritingPromptComposeTest {
         val previousParent = FrameLayout(context)
         val drawingPad = DrawingPadView(context).apply { setTarget("裂") }
         previousParent.addView(drawingPad)
-        val title = mutableStateOf("Writing")
+        val title = mutableStateOf("Draw this kanji")
 
         composeRule.setContent {
             WritingSessionCard(
                 WritingSessionCardModel(
                     promptHeader = WritingPromptHeaderModel(
                         modeLabel = "Practice",
-                        title = "Draw this kanji",
-                        taskLabel = "Write kanji",
-                        reasonLine = "",
+                        title = title.value,
                         detailLines = emptyList()
                     ),
                     answerPanel = writingAnswerPanelModel(),
                     answerPanelState = WritingAnswerPanelState(false),
-                    writingTitle = title.value,
-                    writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
                     status = WritingStatusState().apply {
                         setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
                     },
@@ -162,12 +150,12 @@ class MainActivityStudyWritingPromptComposeTest {
         assertNotNull(drawingPad.parent)
 
         composeRule.runOnIdle {
-            title.value = "Writing again"
+            title.value = "Draw this kanji again"
         }
         composeRule.waitForIdle()
 
         assertNotNull(drawingPad.parent)
-        composeRule.onNodeWithText("Writing again").assertIsDisplayed()
+        composeRule.onNodeWithText("Draw this kanji again").assertIsDisplayed()
         composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
         composeRule.onNodeWithText("Result").assertIsDisplayed()
     }

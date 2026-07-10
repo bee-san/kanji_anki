@@ -71,7 +71,8 @@ internal fun WritingPrimaryActions(model: WritingPrimaryActionsModel) {
                 label = model.nextText,
                 enabled = model.nextEnabled,
                 onClick = { model.onNext.run() },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                tone = model.nextTone,
             )
         }
     }
@@ -84,8 +85,9 @@ internal fun WritingPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     minHeight: Dp = 62.dp,
+    tone: StudyActionTone = StudyActionTone.PRIMARY,
 ) {
-    StudyPrimaryActionButton(label, onClick, modifier, enabled, minHeight)
+    StudyPrimaryActionButton(label, onClick, modifier, enabled, minHeight, tone = tone)
 }
 
 @Composable
@@ -95,6 +97,7 @@ internal fun WritingSecondaryButton(
     modifier: Modifier = Modifier,
     minHeight: Dp = 62.dp,
     enabled: Boolean = true,
+    tone: StudyActionTone = StudyActionTone.SECONDARY,
 ) {
-    StudySecondaryActionButton(label, onClick, modifier, enabled, minHeight)
+    StudySecondaryActionButton(label, onClick, modifier, enabled, minHeight, tone = tone)
 }

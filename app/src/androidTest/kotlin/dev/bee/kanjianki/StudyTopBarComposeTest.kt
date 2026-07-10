@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -71,12 +72,26 @@ class StudyTopBarComposeTest {
 
     @Test
     fun progressPillClampsOutOfRangeFractions() {
-        setTopBarWithProgress(fraction = -0.5f)
+        val fraction = mutableFloatStateOf(-0.5f)
+        composeRule.setContent {
+            MaterialTheme {
+                Box(modifier = Modifier.width(260.dp)) {
+                    StudyTopBar(
+                        completed = 2,
+                        target = 5,
+                        fraction = fraction.floatValue,
+                        onClose = {},
+                        onSettings = {},
+                    )
+                }
+            }
+        }
         composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
             .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
         assertEquals(StudyProgressTrackColor, captureProgressPixels().leftSample)
 
-        setTopBarWithProgress(fraction = 1.5f)
+        composeRule.runOnIdle { fraction.floatValue = 1.5f }
+        composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
             .assertRangeInfoEquals(ProgressBarRangeInfo(1f, 0f..1f))
         assertEquals(StudyProgressFillColor, captureProgressPixels().rightSample)
@@ -115,7 +130,7 @@ class StudyTopBarComposeTest {
     )
 
     private companion object {
-        val StudyProgressFillColor = Color(0xFFF82D72)
-        val StudyProgressTrackColor = Color(0xFFFBDDEC)
+        val StudyProgressFillColor = LightKaniColors.primary
+        val StudyProgressTrackColor = LightKaniColors.track
     }
 }

@@ -23,7 +23,14 @@ internal fun studySessionBadgeCount(
 }
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
-    fun composeRoute(selected: String, initialScrollY: Int = 0, scrollPositionLabel: String? = null, onScrollY: (Int) -> Unit = NoOpRouteScrollY, content: @Composable () -> Unit) {
+    fun composeRoute(
+        selected: String,
+        initialScrollY: Int = 0,
+        scrollPositionLabel: String? = null,
+        onScrollY: (Int) -> Unit = NoOpRouteScrollY,
+        studySessionActive: Boolean = false,
+        content: @Composable () -> Unit,
+    ) {
         withRouteTrace(selected) {
             prepareRoute(selected)
             activity.contentScrollY = initialScrollY
@@ -42,6 +49,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                         scrollPositionLabel = scrollPositionLabel,
                         studyBadgeCount = studyBadgeCount(),
                         studyCardKeyboardResident = studyCardKeyboardResident(selected),
+                        studySessionActive = studySessionActive,
                     ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
@@ -60,6 +68,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         initialScrollY: Int = 0,
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
+        studySessionActive: Boolean = false,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
@@ -78,6 +87,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
                         scrollPositionLabel = scrollPositionLabel,
                         studyBadgeCount = studyBadgeCount(),
                         studyCardKeyboardResident = studyCardKeyboardResident(selected),
+                        studySessionActive = studySessionActive,
                     ),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,

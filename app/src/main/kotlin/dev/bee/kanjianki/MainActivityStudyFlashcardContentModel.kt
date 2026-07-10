@@ -7,10 +7,7 @@ import androidx.compose.runtime.setValue
 
 data class FlashcardPromptHeaderModel(
     val modeLabel: String,
-    val title: String,
     val question: String,
-    val hiddenHint: String,
-    val reasonLine: String,
 )
 
 data class FlashcardHeroPanelModel(

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -25,7 +24,7 @@ internal fun MeaningChoiceResultActionBar(
     MeaningChoiceResultActionBar(
         status = result.status,
         statusColor = result.statusColor,
-        actionLabel = result.actionLabel,
+        actionTone = result.actionTone,
         onNext = { model.onChoice.onChoice(selectedChoice) },
     )
 }
@@ -34,7 +33,7 @@ internal fun MeaningChoiceResultActionBar(
 internal fun MeaningChoiceResultActionBar(
     status: String,
     statusColor: Int,
-    actionLabel: String,
+    actionTone: StudyActionTone,
     onNext: () -> Unit,
 ) {
     Column(
@@ -46,16 +45,17 @@ internal fun MeaningChoiceResultActionBar(
             text = status,
             modifier = Modifier.padding(bottom = 8.dp),
             color = kaniColor(statusColor),
-            fontSize = 15.sp,
+            fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 18.sp,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
         )
         StudyPrimaryActionButton(
-            label = actionLabel,
+            label = dev.bee.kanjianki.core.StudyTextCopy.continueLabel(),
             onClick = onNext,
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            tone = actionTone,
         )
     }
 }

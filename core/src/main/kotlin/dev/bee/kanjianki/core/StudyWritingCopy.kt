@@ -9,14 +9,6 @@ object StudyWritingCopy {
     fun title(): String = localizedText("Draw this kanji", "この漢字を書いてください")
 
     @JvmStatic
-    fun sectionTitle(session: RecordsSchedulerModels.StudySession?): String {
-        if (StudyTaskCopy.isRepairWritingTask(session)) {
-            return ""
-        }
-        return localizedText("Writing", "書き取り")
-    }
-
-    @JvmStatic
     fun referenceInstruction(): String = localizedText(
         "Use the reference, trace, then check.",
         "参考を見てなぞってから確認してください。",
