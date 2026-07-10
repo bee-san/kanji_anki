@@ -573,6 +573,31 @@ class LadderSchedulerTest {
         assertTrue(reasons.contains("reading_kanji_unavailable"))
     }
 
+    @Test
+    fun sentenceReadingIsCeilingOnlyWhenDataAvailable() {
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        // Without sentence data, word_reading is the ceiling: promotion returns
+        // the current rung.
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            ladder.nextRung(RecordsBase.LadderRung.WORD_READING, RecordsBase.RungAvailability.none()),
+        )
+        assertTrue(ladder.isAtCeiling(RecordsBase.LadderRung.WORD_READING, RecordsBase.RungAvailability.none()))
+        // With sentence data, word_reading promotes into sentence_reading, which
+        // is then the ceiling.
+        val withSentence = RecordsBase.RungAvailability.of(false, false, false, true)
+        assertEquals(
+            RecordsBase.LadderRung.SENTENCE_READING,
+            ladder.nextRung(RecordsBase.LadderRung.WORD_READING, withSentence),
+        )
+        assertTrue(ladder.isAtCeiling(RecordsBase.LadderRung.SENTENCE_READING, withSentence))
+        // A demotion from the new ceiling lands back on word_reading.
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            ladder.previousRung(RecordsBase.LadderRung.SENTENCE_READING, withSentence),
+        )
+    }
+
     // ---- Streak mechanics ----
 
     @Test

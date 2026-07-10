@@ -103,6 +103,28 @@ class LocalStoreKanjiReadingUsageTest {
     }
 
     @Test
+    fun migrationTwentyEightToTwentyNineAddsSentenceReadingMemoryColumn() {
+        val db = SQLiteDatabase.create(null)
+        db.execSQL(
+            "CREATE TABLE ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji TEXT PRIMARY KEY, " +
+                "${LocalStoreBase.COLUMN_READING_KANJI_MEMORY} TEXT NOT NULL DEFAULT '')",
+        )
+        db.execSQL("INSERT INTO ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji) VALUES ('文')")
+
+        store.onUpgrade(db, 28, 29)
+
+        assertTrue(columnExists(db, LocalStoreBase.TABLE_STUDY_ITEMS, LocalStoreBase.COLUMN_SENTENCE_READING_MEMORY))
+        db.rawQuery(
+            "SELECT ${LocalStoreBase.COLUMN_SENTENCE_READING_MEMORY} FROM ${LocalStoreBase.TABLE_STUDY_ITEMS}",
+            null,
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals("", it.getString(0))
+        }
+        db.close()
+    }
+
+    @Test
     fun freshInstallHasReadingUsageTables() {
         val db = store.writableDatabase
         assertTrue(tableExists(db, LocalStoreBase.TABLE_KANJI_READING_USAGE))

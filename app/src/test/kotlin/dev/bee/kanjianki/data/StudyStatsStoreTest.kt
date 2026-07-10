@@ -81,12 +81,13 @@ class StudyStatsStoreTest {
                 item("review", RecordsBase.LadderRung.KANJI_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
                 item("review", RecordsBase.LadderRung.READING_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
                 item("review", RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                item("review", RecordsBase.LadderRung.SENTENCE_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
                 item("retired", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 3, 3),
             ),
             3,
         )
 
-        assertEquals(9, stats.ladderHealth.totalActiveItems)
+        assertEquals(10, stats.ladderHealth.totalActiveItems)
         for (rung in RecordsBase.LadderRung.values()) {
             assertEquals(1, stats.ladderHealth.countFor(rung))
         }

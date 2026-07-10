@@ -124,6 +124,17 @@ class SettingsStudyPlanTextCopyTest {
                 RecordsBase.LadderRung.READING_KANJI,
             ),
         )
+        assertEquals(
+            "Sentence reading",
+            SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SENTENCE_READING),
+        )
+        assertEquals(
+            "Included when a mined sentence is available",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SENTENCE_READING, true),
+                RecordsBase.LadderRung.SENTENCE_READING,
+            ),
+        )
     }
 
     @Test

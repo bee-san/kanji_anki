@@ -142,6 +142,7 @@ rung:
 7. `font_meaning`
 8. `kanji_reading`
 9. `word_reading`
+10. `sentence_reading`
 
 `similar_kanji` sits directly below `kanji_meaning` (the new-card start rung)
 so the first demotion reaches discrimination practice — the app's signature
@@ -164,22 +165,29 @@ discrimination ("How is 脱 read in 脱出?"). It is a conditional rung: the
 two distinct candidate readings) must hold, else promotion and demotion cross
 over it without pausing, exactly like `similar_kanji`.
 
-`meaning_kanji`, `reading_kanji`, and `kanji_reading` are present in the
-editable default order and, like every other rung, enabled by default. Stored
-configurations that predate a rung get it auto-enabled on load and spliced into
-the stored order adjacent to its default neighbors
+`sentence_reading` (Goal 80) is the new ladder ceiling: read the target word
+inside the user's own mined sentence. It is conditional on `hasSentenceReading`
+(≥ 1 example with both a non-blank sentence and reading); cards without sentence
+data keep `word_reading` as their effective ceiling because `nextRung` returns
+the current rung when no higher valid rung exists.
+
+`meaning_kanji`, `reading_kanji`, `kanji_reading`, and `sentence_reading` are
+present in the editable default order and, like every other rung, enabled by
+default. Stored configurations that predate a rung get it auto-enabled on load
+and spliced into the stored order adjacent to its default neighbors
 (`StudyLadderSettings.AUTO_ENABLE_RUNGS`, generalizing the original
 single-`meaning_kanji` clause; D-R4).
 Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
 rung, preferring the lower/more-scaffolded rung when the distance ties. The
-conditional rungs (`similar_kanji`, `kanji_reading`, `reading_kanji`) exist only
-when the app can build a valid card for that card's kanji. When a conditional
-predicate is false, promotion and demotion cross over that rung without pausing
-(a `<wire>_unavailable` trace reason is recorded per skipped rung; a move that
-crosses several conditional rungs at once records one code each). Settings must
-keep at least one always-available rung enabled; the conditional rungs alone
-are not enough because they depend on per-card data.
+conditional rungs (`similar_kanji`, `kanji_reading`, `reading_kanji`,
+`sentence_reading`) exist only when the app can build a valid card for that
+card's kanji. When a conditional predicate is false, promotion and demotion
+cross over that rung without pausing (a `<wire>_unavailable` trace reason is
+recorded per skipped rung; a move that crosses several conditional rungs at once
+records one code each). Settings must keep at least one always-available rung
+enabled; the conditional rungs alone are not enough because they depend on
+per-card data.
 
 Phases: `new_learning`, `review`, `relearning`. Learning and relearning follow
 Anki semantics:
@@ -345,6 +353,9 @@ Study UI renders one current rung at a time. Rung rendering:
   〈kanji〉 read in 〈word〉?"); falls back to a plain flashcard when fewer than
   two choices can be built.
 - `word_reading` → reading prompt.
+- `sentence_reading` → flashcard front is the mined sentence (target word
+  emphasized; small font); back is the word reading + word + meaning. Self-graded
+  Pass/Fail. Falls back to the plain word when no sentence example exists.
 
 The study UI exposes `Pass` and `Fail` labels. In the core scheduler the
 wire format stays `good`/`again`/`hard`/`easy`; the UI translates
@@ -370,9 +381,10 @@ Legacy field mapping used by the DB v16 migration (fresh start):
 - `recognition_stage = 1` → rung `font_meaning`
 - `recognition_stage = 2` → rung `word_reading`
 
-The `similar_kanji`, `kanji_reading`, and `reading_kanji` rungs have no legacy
-source; they are reached through configured ladder movement when
-`hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` is true.
+The `similar_kanji`, `kanji_reading`, `reading_kanji`, and `sentence_reading`
+rungs have no legacy source; they are reached through configured ladder movement
+when `hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` /
+`hasSentenceReading` is true.
 
 ## What Was Tested For v0.3.6
 

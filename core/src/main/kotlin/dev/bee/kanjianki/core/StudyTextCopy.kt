@@ -52,8 +52,34 @@ object StudyTextCopy {
         return session?.item?.kanji ?: ""
     }
 
+    /**
+     * The sentence_reading front (Goal 80): the mined sentence for the card, or
+     * the plain expression / kanji when no sentence example exists.
+     */
+    @JvmStatic
+    fun sentencePrompt(session: RecordsSchedulerModels.StudySession?): String {
+        val example = if (session == null) null else StudyExampleSelector.sentenceReadingExample(session.row)
+        if (example != null && example.sentence.isNotEmpty()) {
+            return example.sentence
+        }
+        return wordPrompt(session)
+    }
+
+    /** The target word shown beneath the sentence on the sentence_reading card. */
+    @JvmStatic
+    fun sentenceReadingWord(session: RecordsSchedulerModels.StudySession?): String {
+        val example = if (session == null) null else StudyExampleSelector.sentenceReadingExample(session.row)
+        if (example != null && example.expression.isNotEmpty()) {
+            return example.expression
+        }
+        return session?.item?.kanji ?: ""
+    }
+
     @JvmStatic
     fun heroQuestion(session: RecordsSchedulerModels.StudySession?): String {
+        if (session != null && StudyTaskTypes.SENTENCE_READING == session.taskType) {
+            return localizedText("How is the word read here?", "この語はどう読む？")
+        }
         if (session != null && StudyTaskTypes.WORD_READING == session.taskType) {
             return localizedText("What is the reading?", "読み方は？")
         }

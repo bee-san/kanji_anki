@@ -30,12 +30,13 @@ abstract class RecordsBase protected constructor() {
         FONT_MEANING("font_meaning"),
         WORD_READING("word_reading"),
 
-        // New conditional rungs (Goals 78-79). Enum declaration order is
+        // New conditional rungs (Goals 78-80). Enum declaration order is
         // storage-compatibility-only (serialization is by wire name); ladder
         // position is controlled exclusively via defaultsOrder(). Appended at
         // the end so stored ordinals never shift.
         KANJI_READING("kanji_reading"),
-        READING_KANJI("reading_kanji");
+        READING_KANJI("reading_kanji"),
+        SENTENCE_READING("sentence_reading");
 
         fun wireName(): String = wireNameValue
 
@@ -74,6 +75,7 @@ abstract class RecordsBase protected constructor() {
         @JvmField val hasSimilarKanji: Boolean,
         @JvmField val hasKanjiReading: Boolean,
         @JvmField val hasReadingKanji: Boolean,
+        @JvmField val hasSentenceReading: Boolean,
     ) {
         /**
          * True when [rung] is available for the item this snapshot describes:
@@ -89,46 +91,59 @@ abstract class RecordsBase protected constructor() {
                 LadderRung.SIMILAR_KANJI -> hasSimilarKanji
                 LadderRung.KANJI_READING -> hasKanjiReading
                 LadderRung.READING_KANJI -> hasReadingKanji
+                LadderRung.SENTENCE_READING -> hasSentenceReading
                 else -> false
             }
         }
 
         fun withHasSimilarKanji(value: Boolean): RungAvailability {
-            return if (value == hasSimilarKanji) this else of(value, hasKanjiReading, hasReadingKanji)
+            return if (value == hasSimilarKanji) this else of(value, hasKanjiReading, hasReadingKanji, hasSentenceReading)
         }
 
         fun withHasKanjiReading(value: Boolean): RungAvailability {
-            return if (value == hasKanjiReading) this else of(hasSimilarKanji, value, hasReadingKanji)
+            return if (value == hasKanjiReading) this else of(hasSimilarKanji, value, hasReadingKanji, hasSentenceReading)
         }
 
         fun withHasReadingKanji(value: Boolean): RungAvailability {
-            return if (value == hasReadingKanji) this else of(hasSimilarKanji, hasKanjiReading, value)
+            return if (value == hasReadingKanji) this else of(hasSimilarKanji, hasKanjiReading, value, hasSentenceReading)
+        }
+
+        fun withHasSentenceReading(value: Boolean): RungAvailability {
+            return if (value == hasSentenceReading) this else of(hasSimilarKanji, hasKanjiReading, hasReadingKanji, value)
         }
 
         companion object {
             @JvmField
-            val NONE: RungAvailability = RungAvailability(false, false, false)
+            val NONE: RungAvailability = RungAvailability(false, false, false, false)
 
             @JvmStatic
             fun none(): RungAvailability = NONE
 
             @JvmStatic
-            fun of(hasSimilarKanji: Boolean): RungAvailability = of(hasSimilarKanji, false, false)
+            fun of(hasSimilarKanji: Boolean): RungAvailability = of(hasSimilarKanji, false, false, false)
 
             @JvmStatic
             fun of(hasSimilarKanji: Boolean, hasKanjiReading: Boolean): RungAvailability =
-                of(hasSimilarKanji, hasKanjiReading, false)
+                of(hasSimilarKanji, hasKanjiReading, false, false)
 
             @JvmStatic
             fun of(
                 hasSimilarKanji: Boolean,
                 hasKanjiReading: Boolean,
                 hasReadingKanji: Boolean,
+            ): RungAvailability = of(hasSimilarKanji, hasKanjiReading, hasReadingKanji, false)
+
+            @JvmStatic
+            fun of(
+                hasSimilarKanji: Boolean,
+                hasKanjiReading: Boolean,
+                hasReadingKanji: Boolean,
+                hasSentenceReading: Boolean,
             ): RungAvailability {
-                return if (!hasSimilarKanji && !hasKanjiReading && !hasReadingKanji) {
+                return if (!hasSimilarKanji && !hasKanjiReading && !hasReadingKanji && !hasSentenceReading) {
                     NONE
                 } else {
-                    RungAvailability(hasSimilarKanji, hasKanjiReading, hasReadingKanji)
+                    RungAvailability(hasSimilarKanji, hasKanjiReading, hasReadingKanji, hasSentenceReading)
                 }
             }
         }
@@ -313,6 +328,7 @@ abstract class RecordsBase protected constructor() {
                     LadderRung.SIMILAR_KANJI,
                     LadderRung.KANJI_READING,
                     LadderRung.READING_KANJI,
+                    LadderRung.SENTENCE_READING,
                 ),
             )
 
@@ -324,6 +340,7 @@ abstract class RecordsBase protected constructor() {
                     LadderRung.MEANING_KANJI,
                     LadderRung.KANJI_READING,
                     LadderRung.READING_KANJI,
+                    LadderRung.SENTENCE_READING,
                 ),
             )
 
@@ -469,6 +486,11 @@ abstract class RecordsBase protected constructor() {
                     // data cross over it.
                     LadderRung.KANJI_READING,
                     LadderRung.WORD_READING,
+                    // sentence_reading (Goal 80) is the new ceiling: read the
+                    // word inside the user's own mined sentence. Conditional on
+                    // sentence+reading data; cards without it keep word_reading
+                    // as their effective ceiling.
+                    LadderRung.SENTENCE_READING,
                 )
             }
 

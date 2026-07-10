@@ -61,11 +61,28 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.studyAnswerPanel = null
         val swipeFeedback = StudySwipeFeedbackState()
         activity.flashcardSwipeFeedback = swipeFeedback
-        val heroPanel = FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item?.kanji ?: "",
-            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
-            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
-        )
+        val heroPanel = when {
+            // sentence_reading (Goal 80): the front is the mined sentence. It is
+            // longer than a word, so it renders well below the 116sp kanji hero
+            // and the 44sp word_reading hero — 28sp keeps a typical sentence on
+            // screen. When no sentence example exists sentencePrompt falls back
+            // to the plain word.
+            StudyTaskCopy.isSentenceReadingTask(session) -> FlashcardHeroPanelModel(
+                StudyTextCopy.sentencePrompt(session),
+                28,
+                Typeface.DEFAULT,
+            )
+            StudyTaskCopy.isWordReadingTask(session) -> FlashcardHeroPanelModel(
+                StudyTextCopy.wordPrompt(session),
+                44,
+                Typeface.DEFAULT,
+            )
+            else -> FlashcardHeroPanelModel(
+                session.item?.kanji ?: "",
+                116,
+                if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT,
+            )
+        }
         val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
             typingAnswerField()
         } else {

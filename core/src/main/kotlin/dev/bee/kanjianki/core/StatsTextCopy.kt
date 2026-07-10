@@ -321,6 +321,7 @@ object StatsTextCopy {
                 RecordsBase.LadderRung.WORD_READING -> "単語の読み"
                 RecordsBase.LadderRung.KANJI_READING -> "漢字の読み"
                 RecordsBase.LadderRung.READING_KANJI -> "読みから漢字"
+                RecordsBase.LadderRung.SENTENCE_READING -> "文中の読み"
             }
         } else {
             when (rung) {
@@ -333,6 +334,7 @@ object StatsTextCopy {
                 RecordsBase.LadderRung.WORD_READING -> "Word reading"
                 RecordsBase.LadderRung.KANJI_READING -> "Kanji reading"
                 RecordsBase.LadderRung.READING_KANJI -> "Reading kanji"
+                RecordsBase.LadderRung.SENTENCE_READING -> "Sentence reading"
             }
         }
     }

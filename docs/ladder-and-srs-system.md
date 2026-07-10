@@ -127,7 +127,7 @@ Unknown wire names decode to `NEW_LEARNING` with a warning (`:349-360`).
 `RecordsBase.LadderRung`, wire names:
 `write_kanji`, `type_meaning`, `similar_kanji`, `meaning_kanji`,
 `kanji_meaning`, `font_meaning`, `word_reading`, `kanji_reading`,
-`reading_kanji`. Enum order is
+`reading_kanji`, `sentence_reading`. Enum order is
 storage compatibility only (new constants are appended at the end); the
 *user-editable ladder order* is what defines the scaffolding gradient
 (most-scaffolded bottom → least-scaffolded top). Unknown wire names decode to
@@ -157,6 +157,7 @@ least-scaffolded (top):
 7. `font_meaning`
 8. `kanji_reading`
 9. `word_reading`
+10. `sentence_reading`
 
 `similar_kanji` sits directly below `kanji_meaning`, the new-card start rung
 (Goal 65), so the first demotion reaches discrimination practice in one
@@ -166,13 +167,17 @@ without). `reading_kanji` (Goal 79), the phonetic sibling, sits directly below
 holds. `kanji_reading` (Goal 78) sits directly
 below `word_reading`, so a `word_reading` fail streak demotes straight into
 targeted reading discrimination (or skips over it to `font_meaning` for cards
-without reading data). Only fresh installs and stored configs that lack a rung
-are affected; an existing stored order round-trips unchanged except that a
-rung postdating it is spliced in adjacent to its default neighbors
+without reading data). `sentence_reading` (Goal 80) is the new ceiling: cards
+with a mined sentence promote past `word_reading` into contextual reading, while
+cards without sentence data keep `word_reading` as their effective ceiling
+(`nextRung` returns the current rung when no higher valid rung exists). Only
+fresh installs and stored configs that lack a rung are affected; an existing
+stored order round-trips unchanged except that a rung postdating it is spliced
+in adjacent to its default neighbors
 (`storedFullOrderPreservedModuloNewRungSplice`).
 
 **All rungs are enabled by default** (`defaultsEnabled()`), including
-`meaning_kanji`, `kanji_reading`, and `reading_kanji`.
+`meaning_kanji`, `kanji_reading`, `reading_kanji`, and `sentence_reading`.
 
 Invariants and behaviors:
 

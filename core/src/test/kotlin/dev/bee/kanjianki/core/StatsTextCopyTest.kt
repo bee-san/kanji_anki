@@ -69,6 +69,7 @@ class StatsTextCopyTest {
         assertEquals("Word reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.WORD_READING))
         assertEquals("Kanji reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.KANJI_READING))
         assertEquals("Reading kanji", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.READING_KANJI))
+        assertEquals("Sentence reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.SENTENCE_READING))
     }
 
     @Test

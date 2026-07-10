@@ -479,6 +479,19 @@ class RecordsValueModelsTest {
     }
 
     @Test
+    fun sentenceReadingMemorySlotRoundTrips() {
+        val fixture = studyItemFixture()
+        val viaSetter = fixture.compact.withSentenceReadingMemory(fixture.word)
+        assertEquals(fixture.word, viaSetter.sentenceReadingMemory)
+        assertEquals(fixture.word, viaSetter.memoryForRung(RecordsBase.LadderRung.SENTENCE_READING))
+        assertEquals(fixture.word, viaSetter.memoryForTaskType(StudyTaskTypes.SENTENCE_READING))
+        val viaTaskMemory = fixture.compact.withTaskMemory(BridgeScheduler.TASK_SENTENCE_READING, fixture.font)
+        assertEquals(fixture.font, viaTaskMemory.sentenceReadingMemory)
+        assertTrue(fixture.compact.withHasSentenceReading(true).rungAvailability().hasSentenceReading)
+        assertFalse(fixture.compact.rungAvailability().hasSentenceReading)
+    }
+
+    @Test
     fun studyItemCopyBuilderTransitionsStayCompatible() {
         val fixture = studyItemFixture()
 

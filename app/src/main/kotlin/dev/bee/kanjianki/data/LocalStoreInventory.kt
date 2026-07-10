@@ -728,9 +728,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val withSimilar = kanjiWithSimilarNeighbors(db)
         val withKanjiReading = kanjiWithKanjiReading(db)
         val withReadingKanji = kanjiWithReadingKanji(db)
+        val withSentenceReading = kanjiWithSentenceReading(db)
         val out = ArrayList<RecordsStudyModels.StudyItem>(items.size)
         for (item in items) {
-            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading, withReadingKanji))
+            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading, withReadingKanji, withSentenceReading))
         }
         return out
     }
@@ -742,8 +743,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val withSimilar = kanjiWithSimilarNeighbors(db)
         val withKanjiReading = kanjiWithKanjiReading(db)
         val withReadingKanji = kanjiWithReadingKanji(db)
+        val withSentenceReading = kanjiWithSentenceReading(db)
         for (i in items.indices) {
-            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading, withReadingKanji)
+            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading, withReadingKanji, withSentenceReading)
         }
     }
 
@@ -752,10 +754,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         withSimilar: Set<String>,
         withKanjiReading: Set<String>,
         withReadingKanji: Set<String>,
+        withSentenceReading: Set<String>,
     ): RecordsStudyModels.StudyItem {
         val hasSimilar = withSimilar.contains(item.kanji)
         val hasKanjiReading = withKanjiReading.contains(item.kanji)
         val hasReadingKanji = withReadingKanji.contains(item.kanji)
+        val hasSentenceReading = withSentenceReading.contains(item.kanji)
         var result = item
         if (hasSimilar != result.hasSimilarKanji) {
             result = result.withHasSimilarKanji(hasSimilar)
@@ -765,6 +769,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
         if (hasReadingKanji != result.hasReadingKanji) {
             result = result.withHasReadingKanji(hasReadingKanji)
+        }
+        if (hasSentenceReading != result.hasSentenceReading) {
+            result = result.withHasSentenceReading(hasSentenceReading)
         }
         return result
     }

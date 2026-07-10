@@ -10,9 +10,9 @@ class StudyLadderSettingsTest {
     fun defaultsExposeEditableLadderOrder() {
         val ladder = RecordsBase.StudyLadderSettings.defaults()
 
-        // Goal 79 default order: write_kanji, type_meaning, meaning_kanji,
+        // Goal 80 default order: write_kanji, type_meaning, meaning_kanji,
         // reading_kanji, similar_kanji, kanji_meaning, font_meaning,
-        // kanji_reading, word_reading.
+        // kanji_reading, word_reading, sentence_reading.
         assertEquals(RecordsBase.LadderRung.WRITE_KANJI, ladder.orderedRungs[0])
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, ladder.orderedRungs[1])
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, ladder.orderedRungs[2])
@@ -22,9 +22,11 @@ class StudyLadderSettingsTest {
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.orderedRungs[6])
         assertEquals(RecordsBase.LadderRung.KANJI_READING, ladder.orderedRungs[7])
         assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[8])
+        assertEquals(RecordsBase.LadderRung.SENTENCE_READING, ladder.orderedRungs[9])
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.MEANING_KANJI))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.KANJI_READING))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.READING_KANJI))
+        assertTrue(ladder.isEnabled(RecordsBase.LadderRung.SENTENCE_READING))
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.startingRung(RecordsBase.RungAvailability.of(true)))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.WORD_READING))
     }
@@ -115,7 +117,7 @@ class StudyLadderSettingsTest {
         val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
 
         assertEquals(
-            "write_kanji,similar_kanji,type_meaning,meaning_kanji,reading_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading",
+            "write_kanji,similar_kanji,type_meaning,meaning_kanji,reading_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading,sentence_reading",
             ladder.orderText(),
         )
     }
@@ -124,7 +126,7 @@ class StudyLadderSettingsTest {
     fun storedOrderAlreadyContainingNewRungsIsPreservedVerbatim() {
         // A config that already lists every rung (incl. reading_kanji and
         // kanji_reading) is left exactly as stored.
-        val storedOrder = "kanji_reading,reading_kanji,write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
+        val storedOrder = "kanji_reading,reading_kanji,sentence_reading,write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
         val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
 
         assertEquals(storedOrder, ladder.orderText())

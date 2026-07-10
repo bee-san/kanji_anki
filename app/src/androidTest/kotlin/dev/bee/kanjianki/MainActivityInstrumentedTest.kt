@@ -2412,6 +2412,7 @@ fun forceStudyItemDue(kanji: String, recognitionStage: Int, writingRemediationPe
             RecordsBase.LadderRung.WORD_READING -> builder.wordReadingMemory(dueTaskMemory)
             RecordsBase.LadderRung.KANJI_READING -> builder.kanjiReadingMemory(dueTaskMemory)
             RecordsBase.LadderRung.READING_KANJI -> builder.readingKanjiMemory(dueTaskMemory)
+            RecordsBase.LadderRung.SENTENCE_READING -> builder.sentenceReadingMemory(dueTaskMemory)
             RecordsBase.LadderRung.KANJI_MEANING,
             RecordsBase.LadderRung.SIMILAR_KANJI,
             RecordsBase.LadderRung.MEANING_KANJI -> builder.kanjiMeaningMemory(dueTaskMemory)

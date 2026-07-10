@@ -83,7 +83,7 @@ private fun answerPanelModel(
             activity.currentDictionaryLookup(),
             session,
             example,
-            StudyTaskCopy.isWordReadingTask(session)
+            StudyTaskCopy.isWordReadingTask(session) || StudyTaskCopy.isSentenceReadingTask(session)
         )
         textLines.mapIndexed { index, line ->
             StudyAnswerLineModel(

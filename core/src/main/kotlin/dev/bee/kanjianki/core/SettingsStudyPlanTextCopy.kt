@@ -258,6 +258,13 @@ object SettingsStudyPlanTextCopy {
                 skippedInStudyText()
             }
         }
+        if (rung == RecordsBase.LadderRung.SENTENCE_READING) {
+            return if (enabled) {
+                localizedText("Included when a mined sentence is available", "例文があるときに含める")
+            } else {
+                skippedInStudyText()
+            }
+        }
         return if (enabled) localizedText("Included in study", "学習に含める") else skippedInStudyText()
     }
 
@@ -273,6 +280,7 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.LadderRung.WORD_READING -> localizedText("Word -> reading", "単語 → 読み")
             RecordsBase.LadderRung.KANJI_READING -> localizedText("Kanji -> reading", "漢字 → 読み")
             RecordsBase.LadderRung.READING_KANJI -> localizedText("Reading -> kanji", "読み → 漢字")
+            RecordsBase.LadderRung.SENTENCE_READING -> localizedText("Sentence reading", "文で読む")
         }
     }
 
