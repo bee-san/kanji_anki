@@ -1,0 +1,53 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-07-10T14:40:46Z",
+  "captures": [
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "stats-heatmap.png",
+      "route": "stats",
+      "scroll_position": "1280",
+      "scroll_y": 1280,
+      "scrollable": true,
+      "sha256": "ec9a0027a32bfee0a9a1ee51107532113f2e140499515fec49d8fdbe4d34c861",
+      "system_mode": "",
+      "theme": "girlypop",
+      "theme_choice": "girlypop",
+      "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+      "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "stats-heatmap",
+    "girlypop"
+  ],
+  "device": {
+    "api_level": "35",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "stats-heatmap.png"
+  ],
+  "git_ref": "codex/repair-loop-and-stats-goals",
+  "git_sha": "25c1bdaf03407666156c1a45b3f35a6a19c71fb9",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+    "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_locale": "",
+  "requested_route": "stats-heatmap",
+  "requested_system_mode": "",
+  "requested_theme": "girlypop",
+  "requested_theme_choice": "girlypop",
+  "routes": [
+    "stats"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

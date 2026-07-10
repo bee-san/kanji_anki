@@ -1,0 +1,534 @@
+{
+  "capture_status": "complete",
+  "captured_at_utc": "2026-07-10T14:38:45Z",
+  "command_argv": [
+    "ci/scripts/capture_kani_theme_screenshots.sh",
+    "stats"
+  ],
+  "files": [
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png",
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png",
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png",
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png",
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png",
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png"
+  ],
+  "git_ref": "codex/repair-loop-and-stats-goals",
+  "git_sha": "25c1bdaf03407666156c1a45b3f35a6a19c71fb9",
+  "manifest_files": [
+    "girlypop/manifest.json",
+    "light/manifest.json",
+    "dark/manifest.json",
+    "system-light/manifest.json",
+    "system-dark/manifest.json",
+    "autumn/manifest.json"
+  ],
+  "notes": [
+    "Each theme run writes its own manifest in a per-theme subdirectory.",
+    "The root manifest aggregates the requested theme matrix and all per-theme capture manifests."
+  ],
+  "requested_route": "stats",
+  "requested_theme_matrix": [
+    "girlypop",
+    "light",
+    "dark",
+    "system-light",
+    "system-dark",
+    "autumn"
+  ],
+  "theme_count": 6,
+  "theme_runs": [
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "b1dcca8bf6783f0fc48b49acb587dab885b0c2c25b589a03217f242093897afe",
+          "system_mode": "",
+          "theme": "girlypop",
+          "theme_choice": "girlypop",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "4426f42eb5d286f3259bc284edfbf1054e43f44155ede6ce32ba3c6fb8451bf4",
+          "system_mode": "",
+          "theme": "girlypop",
+          "theme_choice": "girlypop",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "52d46d8c257a50ca9180362a40dfec26b80c05dad853d638d992a0f1f011a1f7",
+          "system_mode": "",
+          "theme": "girlypop",
+          "theme_choice": "girlypop",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "girlypop"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "girlypop/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "",
+      "requested_theme": "girlypop",
+      "requested_theme_choice": "girlypop",
+      "routes": [
+        "stats"
+      ],
+      "theme": "girlypop"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "03d4333b146963d2b24e8229ece829338a00cd73552cdff493a1eeb7be1f54b5",
+          "system_mode": "",
+          "theme": "light",
+          "theme_choice": "light",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "ec7e352a3f835e6afe3de4b3a67f6b19ce7b6b755c649fee62cc62adb6ddd871",
+          "system_mode": "",
+          "theme": "light",
+          "theme_choice": "light",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "51b37ecef0c22c35daee4d51a15343513bfe545c84da5799f3d8867ce2f55fdd",
+          "system_mode": "",
+          "theme": "light",
+          "theme_choice": "light",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "light"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "light/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "",
+      "requested_theme": "light",
+      "requested_theme_choice": "light",
+      "routes": [
+        "stats"
+      ],
+      "theme": "light"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "7ead03db34177e4723bab7945f43b9de18badc0aa4a9fdb5b4310f2f916895f5",
+          "system_mode": "",
+          "theme": "dark",
+          "theme_choice": "dark",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "160dfb3be4024607fd12b0d507a3604fec4ded9dbbb481695e08cfab4f66f4a2",
+          "system_mode": "",
+          "theme": "dark",
+          "theme_choice": "dark",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "77ab68b4e50b999bf9099e8ca9ab887cf8dcd2494b2211d100cd9ada388c58ba",
+          "system_mode": "",
+          "theme": "dark",
+          "theme_choice": "dark",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "dark"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "dark/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "",
+      "requested_theme": "dark",
+      "requested_theme_choice": "dark",
+      "routes": [
+        "stats"
+      ],
+      "theme": "dark"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "a8eb26546f59d3bd2858934bc7762f6c77bd7301c0c906d1fba8f739dadc8102",
+          "system_mode": "light",
+          "theme": "system-light",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "9e005cd80ff36adce9815b08e37794e02a71e6ddc9f21f024ec392b69b30c292",
+          "system_mode": "light",
+          "theme": "system-light",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "2d2185ec54417d98c58f1ced7653f97f5941f619cf44e36da14dbdffe9d27601",
+          "system_mode": "light",
+          "theme": "system-light",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "system-light"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "system-light/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "light",
+      "requested_theme": "system-light",
+      "requested_theme_choice": "system",
+      "routes": [
+        "stats"
+      ],
+      "theme": "system-light"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "44be0ed194cd1dca7e0629d59a0ec5346439107b49cd32960ba384425ca57ce4",
+          "system_mode": "dark",
+          "theme": "system-dark",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "69926785ac5c40ed4159c7be87badcabdcf70a6ef83caecbfef9b17e75c00b84",
+          "system_mode": "dark",
+          "theme": "system-dark",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "d5f79c9dafd77798ddfae369878aa5d0aca3fab06260ce1e835df3c5a75bd34a",
+          "system_mode": "dark",
+          "theme": "system-dark",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "system-dark"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "system-dark/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "dark",
+      "requested_theme": "system-dark",
+      "requested_theme_choice": "system",
+      "routes": [
+        "stats"
+      ],
+      "theme": "system-dark"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-top.png",
+          "route": "stats",
+          "scroll_position": "top",
+          "scroll_y": 0,
+          "scrollable": true,
+          "sha256": "c3a2e2c991b7bc7ec447875b10ad0304a14b7d8d7ebfd1a32882fe68466aad35",
+          "system_mode": "",
+          "theme": "autumn",
+          "theme_choice": "autumn",
+          "uiautomator_dump_path": "stats-top.uiautomator.xml",
+          "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-middle.png",
+          "route": "stats",
+          "scroll_position": "middle",
+          "scroll_y": 640,
+          "scrollable": true,
+          "sha256": "ea02c06a2a076842a0b0f7771e93fde01f4b30d5b13c530228d02ff717d7b2ba",
+          "system_mode": "",
+          "theme": "autumn",
+          "theme_choice": "autumn",
+          "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+          "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+        },
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-bottom.png",
+          "route": "stats",
+          "scroll_position": "bottom",
+          "scroll_y": 5120,
+          "scrollable": true,
+          "sha256": "323b6b21f5d1565f604704dc399d373a77cde15c208b999012f78e2a565e491e",
+          "system_mode": "",
+          "theme": "autumn",
+          "theme_choice": "autumn",
+          "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+          "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats",
+        "autumn"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-top.png",
+        "stats-middle.png",
+        "stats-bottom.png"
+      ],
+      "manifest_path": "autumn/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats",
+      "requested_system_mode": "",
+      "requested_theme": "autumn",
+      "requested_theme_choice": "autumn",
+      "routes": [
+        "stats"
+      ],
+      "theme": "autumn"
+    }
+  ]
+}

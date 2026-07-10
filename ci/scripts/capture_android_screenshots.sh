@@ -462,10 +462,12 @@ fi
 
 stats_label="Stats"
 study_label="Study"
+route_label_prefix="Kani route"
 requested_locale_lower="$(printf '%s' "${requested_locale}" | tr '[:upper:]' '[:lower:]')"
 if [[ "${requested_locale_lower}" == ja* ]]; then
   stats_label="統計"
   study_label="学習"
+  route_label_prefix="Kaniルート"
 fi
 if [ -n "${requested_locale}" ]; then
   log "Using screenshot locale ${requested_locale}"
@@ -473,40 +475,43 @@ fi
 
 case "${requested_route}" in
   all)
-    capture_route_triplet home home portrait "Kani route home"
-    capture_route_triplet study study portrait "Kani route study" "${study_label}"
-    capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
-    capture_route_triplet settings settings portrait "Kani route settings" "Settings"
+    capture_route_triplet home home portrait "${route_label_prefix} home"
+    capture_route_triplet study study portrait "${route_label_prefix} study" "${study_label}"
+    capture_route_triplet stats stats portrait "${route_label_prefix} stats" "${stats_label}"
+    capture_route_triplet settings settings portrait "${route_label_prefix} settings" "Settings"
     capture_route_triplet games games portrait "Games"
-    capture_route_triplet narrow home portrait "Kani route home"
-    capture_route_triplet wide home landscape "Kani route home"
+    capture_route_triplet narrow home portrait "${route_label_prefix} home"
+    capture_route_triplet wide home landscape "${route_label_prefix} home"
     ;;
   launcher-home|home)
-    capture_route_triplet home home portrait "Kani route home"
+    capture_route_triplet home home portrait "${route_label_prefix} home"
     ;;
   study)
-    capture_route_triplet study study portrait "Kani route study" "${study_label}"
+    capture_route_triplet study study portrait "${route_label_prefix} study" "${study_label}"
     ;;
   stats)
-    capture_route_triplet stats stats portrait "Kani route stats" "${stats_label}"
+    capture_route_triplet stats stats portrait "${route_label_prefix} stats" "${stats_label}"
+    ;;
+  stats-heatmap)
+    capture_route_variant stats stats-heatmap stats portrait 1280 "${route_label_prefix} stats" "${stats_label}"
     ;;
   settings)
-    capture_route_triplet settings settings portrait "Kani route settings" "Settings"
+    capture_route_triplet settings settings portrait "${route_label_prefix} settings" "Settings"
     ;;
   games)
     capture_route_triplet games games portrait "Games"
     ;;
   narrow)
-    capture_route_triplet narrow home portrait "Kani route home"
+    capture_route_triplet narrow home portrait "${route_label_prefix} home"
     ;;
   wide)
-    capture_route_triplet wide home landscape "Kani route home"
+    capture_route_triplet wide home landscape "${route_label_prefix} home"
     ;;
   update)
-    capture_route_triplet update update portrait "Kani route settings" "GitHub updater"
+    capture_route_triplet update update portrait "${route_label_prefix} settings" "GitHub updater"
     ;;
   *)
-    echo "Unsupported screenshot route '${requested_route}'. Expected one of: all, home, launcher-home, study, stats, settings, games, narrow, wide, update." >&2
+    echo "Unsupported screenshot route '${requested_route}'. Expected one of: all, home, launcher-home, study, stats, stats-heatmap, settings, games, narrow, wide, update." >&2
     exit 1
     ;;
 esac

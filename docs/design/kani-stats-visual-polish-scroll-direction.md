@@ -21,8 +21,10 @@ Inputs inspected:
 > states, plus the year heatmap, confusion pairs, and ladder forecast. The
 > P1 hierarchy, compact-layout, distribution readability, and bottom-padding
 > requirements below are implemented. The final six-theme wrapper contains
-> 126 hashed captures plus UI dumps with validated orientation dimensions;
-> separate narrow-phone JP Girlypop/Dark QA also passed.
+> 126 hashed captures plus UI dumps with validated orientation dimensions.
+> Committed supplemental matrices add 18 six-theme narrow-phone Japanese
+> Stats captures and six dedicated heatmap captures, each with a matching UI
+> dump; the scored review is recorded beside the baselines.
 
 ## Visual diagnosis
 

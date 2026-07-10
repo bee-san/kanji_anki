@@ -3,11 +3,13 @@
 > **Implementation status (2026-07-10):** Goals 82–94 are landed in the
 > isolated `codex/repair-loop-and-stats-goals` worktree. The local portion of
 > Goal 95 is complete: `ciFast`, `ciQuality`, and the signed `ciRelease` gate
-> pass; the v2-signed local APK is `0.4.33 (4033)`; and the final six-theme
-> wrapper contains 126 reviewed top/middle/bottom captures with matching UI
-> dumps, hashes, and real portrait/landscape dimensions. Narrow EN/JA Stats QA
-> covers the redesigned hierarchy, computed axes, circular donut, compact
-> year heatmap, confusion insights, and scheduler-backed forecast.
+> pass; the v2-signed local APK is `0.4.33 (4033)`. The committed visual QA
+> contains 150 captures and 150 matching UI dumps: the 126-capture full
+> six-theme top/middle/bottom matrix, an 18-capture six-theme Japanese
+> narrow-phone Stats matrix, and six dedicated heatmap captures. All 300
+> artifact hashes and real portrait/landscape dimensions validate. The 9/10
+> review covers hierarchy, computed axes, circular donut, compact year
+> heatmap, confusion insights, and scheduler-backed forecast.
 >
 > The mandatory Goal 94 real-collection gate passed against AnkiDroid 2.24.0
 > with the default 7,000-note threshold: `OK (62 tests)` in 71.640 seconds.
