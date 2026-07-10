@@ -39,6 +39,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
         AsyncHomeRouteLoader(
             background = io,
             postToMain = { task -> main.post(task) },
+            onRouteRequested = ::onAsyncRouteRequested,
+            onRouteCanceled = ::onAsyncRouteCanceled,
+            onRouteSettled = ::onAsyncRouteSettled,
         )
     }
     private val statsPrecomputeScheduler by lazy {

@@ -58,6 +58,80 @@ class AsyncHomeRouteLoaderTest {
     }
 
     @Test
+    fun callbacksIdentifyRequestsAndSettleOnlyTheAcceptedResult() {
+        val background = ManualExecutor()
+        val mainQueue = ArrayDeque<Runnable>()
+        val requested = mutableListOf<Triple<Int, String, String>>()
+        val settled = mutableListOf<Triple<Int, String, Boolean>>()
+        val stale = mutableListOf<Triple<Int, Int, String>>()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { mainQueue.add(it) },
+            onRouteRequested = { requestId, route -> requested.add(Triple(requestId, route, "requested")) },
+            onRouteSettled = { requestId, route, succeeded -> settled.add(Triple(requestId, route, succeeded)) },
+            onStaleResult = { requestId, currentId, route -> stale.add(Triple(requestId, currentId, route)) },
+        )
+
+        loader.load(
+            showLoading = {},
+            load = { "old" },
+            render = {},
+            traceLabel = "home-route",
+        )
+        loader.load(
+            showLoading = {},
+            load = { "new" },
+            render = {},
+            traceLabel = "study-route",
+        )
+        while (background.runNext()) {
+            // Drain both loads.
+        }
+        while (mainQueue.isNotEmpty()) {
+            mainQueue.removeFirst().run()
+        }
+
+        assertEquals(
+            listOf(Triple(1, "home-route", "requested"), Triple(2, "study-route", "requested")),
+            requested,
+        )
+        assertEquals(listOf(Triple(1, 2, "home-route")), stale)
+        assertEquals(listOf(Triple(2, "study-route", true)), settled)
+    }
+
+    @Test
+    fun acceptedLoadErrorStillSettlesAndCancelReportsTheCanceledRequest() {
+        val background = ManualExecutor()
+        val mainQueue = ArrayDeque<Runnable>()
+        val canceled = mutableListOf<Int>()
+        val settled = mutableListOf<Triple<Int, String, Boolean>>()
+        val loader = AsyncHomeRouteLoader(
+            background = background,
+            postToMain = { mainQueue.add(it) },
+            onRouteCanceled = canceled::add,
+            onRouteSettled = { requestId, route, succeeded -> settled.add(Triple(requestId, route, succeeded)) },
+        )
+
+        loader.load(showLoading = {}, load = { "canceled" }, render = {})
+        loader.cancelPending()
+        background.runNext()
+        mainQueue.removeFirst().run()
+
+        loader.load(
+            showLoading = {},
+            load = { error("broken model") },
+            render = {},
+            renderError = {},
+            traceLabel = "settings-route",
+        )
+        background.runNext()
+        mainQueue.removeFirst().run()
+
+        assertEquals(listOf(1), canceled)
+        assertEquals(listOf(Triple(3, "settings-route", false)), settled)
+    }
+
+    @Test
     fun concurrentLoadsPublishGenerationSafelyAcrossThreads() {
         // Stress the generation counter from many threads to catch visibility races.
         val pool = Executors.newFixedThreadPool(8)

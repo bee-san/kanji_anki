@@ -351,6 +351,22 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingReview.submitSimilarKanjiChoice(card, selectedKanji)
     }
 
+    fun submitLoggedChoiceReview(
+        targetKanji: String,
+        choiceSignature: String,
+        selectedChoice: String,
+        correct: Boolean,
+        rung: RecordsBase.LadderRung,
+    ) {
+        writingReview.submitLoggedChoiceReview(
+            targetKanji,
+            choiceSignature,
+            selectedChoice,
+            correct,
+            rung,
+        )
+    }
+
     fun showNoInkWhenNeeded(): Boolean {
         return writingFlow.showNoInkWhenNeeded()
     }

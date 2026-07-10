@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.database.DatabaseUtils
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -18,6 +19,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowToast
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
@@ -31,7 +33,99 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class MainActivityStudyReviewFlowSubmitTest {
     @Test
-    fun submitReviewQueuesStoreWritesOnBackgroundExecutorAndStaysIdempotent() {
+    fun submitReviewSuppressesDuplicateBeforeAndAfterWorkerExecution() {
+        withReviewActivity("裂") { activity, store, reviewIo, session ->
+            ShadowToast.reset()
+            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+
+            // The duplicate is rejected at tap time, before it can queue any store
+            // work, toast, or replacement Study route.
+            assertFalse(store.hasConsumedToken(session.token))
+            assertEquals(1, reviewIo.pendingCount())
+            assertEquals(0, activity.renderCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(1, store.consumedTokens().size)
+            assertEquals(1, activity.renderCount())
+            assertEquals(1, ShadowToast.shownToastCount())
+
+            // The token stays claimed after success. A late duplicate is also a
+            // complete no-op rather than a persisted duplicate that still toasts and
+            // reloads Study.
+            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals(0, reviewIo.pendingCount())
+            assertEquals(1, store.consumedTokens().size)
+            assertEquals(1, activity.renderCount())
+            assertEquals(1, ShadowToast.shownToastCount())
+        }
+    }
+
+    @Test
+    fun failedReviewProcessingReleasesTokenForRetry() {
+        withReviewActivity("衡") { activity, store, reviewIo, session ->
+            // Simulate a processing-time dependency failure after the task has been
+            // accepted and dequeued. The review wrapper must release the in-memory
+            // claim because persistence never consumed the token.
+            clearStore(activity)
+            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertEquals(1, reviewIo.pendingCount())
+
+            reviewIo.runNext()
+
+            assertEquals(0, reviewIo.pendingCount())
+            assertEquals(0, activity.renderCount())
+
+            activity.store = store
+            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertEquals(1, reviewIo.pendingCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun loggedChoiceUsesSameGateSoDuplicateWritesOneChoiceRowAndOneReview() {
+        withReviewActivity("拉") { activity, store, reviewIo, session ->
+            activity.submitLoggedChoiceReview(
+                "拉",
+                "choice-signature",
+                "提",
+                false,
+                RecordsBase.LadderRung.MEANING_KANJI,
+            )
+            activity.submitLoggedChoiceReview(
+                "拉",
+                "choice-signature",
+                "提",
+                false,
+                RecordsBase.LadderRung.MEANING_KANJI,
+            )
+
+            assertEquals(1, reviewIo.pendingCount())
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(1L, choiceLogCount(store, "拉"))
+            assertEquals(1, store.consumedTokens().size)
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    private fun withReviewActivity(
+        kanji: String,
+        test: (TestMainActivity, LocalStore, QueueingExecutorService, RecordsSchedulerModels.StudySession) -> Unit,
+    ) {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val startupIo = QueueingExecutorService()
         val startupMaintenance = QueueingExecutorService()
@@ -63,33 +157,20 @@ class MainActivityStudyReviewFlowSubmitTest {
                     "split",
                 )
                 activity.activeSession = session
-                activity.clearRenderedStudy()
-
-                activity.submitReview(MainActivityBase.RATING_GOOD, false)
-
-                // The click handler only queued the write: nothing persisted yet and
-                // no re-render happened synchronously.
-                assertFalse(store.hasConsumedToken(session.token))
-                assertEquals(1, reviewIo.pendingCount())
-                assertFalse(activity.renderedStudy())
-
-                reviewIo.runNext()
-                shadowOf(Looper.getMainLooper()).idle()
-
-                assertTrue(store.hasConsumedToken(session.token))
-                assertTrue(activity.renderedStudy())
-                assertEquals(1, store.consumedTokens().size)
-
-                // A queued double-tap of the same session stays a no-op duplicate.
-                activity.submitReview(MainActivityBase.RATING_GOOD, false)
-                reviewIo.runNext()
-                shadowOf(Looper.getMainLooper()).idle()
-
-                assertEquals(1, store.consumedTokens().size)
+                activity.clearRenderCount()
+                test(activity, store, reviewIo, session)
             }
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
+    }
+
+    private fun choiceLogCount(store: LocalStore, targetKanji: String): Long {
+        return DatabaseUtils.longForQuery(
+            store.readableDatabase,
+            "SELECT COUNT(*) FROM similar_kanji_review_log WHERE target_kanji = ?",
+            arrayOf(targetKanji),
+        )
     }
 
     private fun fakeAnkiDroidGateway(): AnkiDroidGateway {
@@ -117,6 +198,12 @@ class MainActivityStudyReviewFlowSubmitTest {
         val field = MainActivityBase::class.java.getDeclaredField(propertyName)
         field.isAccessible = true
         field.set(activity, value)
+    }
+
+    private fun clearStore(activity: MainActivity) {
+        val field = MainActivityBase::class.java.getDeclaredField("store")
+        field.isAccessible = true
+        field.set(activity, null)
     }
 
     private class QueueingExecutorService : AbstractExecutorService() {
@@ -163,18 +250,18 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     private class TestMainActivity : MainActivity() {
-        private var studyRendered = false
+        private var studyRenderCount = 0
 
         override fun renderStudy() {
-            studyRendered = true
+            studyRenderCount += 1
         }
 
-        fun clearRenderedStudy() {
-            studyRendered = false
+        fun clearRenderCount() {
+            studyRenderCount = 0
         }
 
-        fun renderedStudy(): Boolean {
-            return studyRendered
+        fun renderCount(): Int {
+            return studyRenderCount
         }
     }
 }

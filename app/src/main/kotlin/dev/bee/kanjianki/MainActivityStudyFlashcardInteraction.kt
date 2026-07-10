@@ -130,6 +130,11 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             }
 
             FlashcardGesturePolicy.Decision.Action.REVIEW -> {
+                logReviewSwipeGesture(
+                    source = "card",
+                    rating = decision.rating,
+                    durationMs = (event.eventTime - event.downTime).coerceAtLeast(0L),
+                )
                 activity.submitReview(decision.rating, false)
                 true
             }
@@ -153,4 +158,13 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         val bounds = activity.flashcardGestureBounds ?: return false
         return bounds.contains(event.rawX.toInt(), event.rawY.toInt())
     }
+}
+
+internal fun logReviewSwipeGesture(source: String, rating: String, durationMs: Long) {
+    if (!AppDebugLog.isCapturing()) {
+        return
+    }
+    AppDebugLog.log(
+        "gesture source=$source rating=$rating duration_ms=$durationMs",
+    )
 }

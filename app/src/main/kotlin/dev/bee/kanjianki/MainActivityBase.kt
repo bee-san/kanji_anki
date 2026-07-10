@@ -372,6 +372,26 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         startup.handleLaunchIntent(intent)
     }
 
+    /**
+     * Coalesces a reminder alarm refresh behind the currently loading route. Callers that mutate
+     * study state should render/queue the replacement route first, then request this refresh.
+     */
+    fun requestReminderRearm(reason: String) {
+        activityLifecycle.requestReminderRearm(reason)
+    }
+
+    internal fun onAsyncRouteRequested(requestId: Int, route: String) {
+        activityLifecycle.onAsyncRouteRequested(requestId, route)
+    }
+
+    internal fun onAsyncRouteCanceled(requestId: Int) {
+        activityLifecycle.onAsyncRouteCanceled(requestId)
+    }
+
+    internal fun onAsyncRouteSettled(requestId: Int, route: String, succeeded: Boolean) {
+        activityLifecycle.onAsyncRouteSettled(requestId, route, succeeded)
+    }
+
     fun requestAnkiPermissionIfNeeded() {
         permissionHandler.requestAnkiPermissionIfNeeded()
     }

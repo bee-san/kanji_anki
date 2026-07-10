@@ -44,12 +44,12 @@ class MainActivityStartupTest {
             // route load is not, because NoopStartupActivity overrides renderHome to a no-op.
             assertEquals(1, ioTasks.pendingCount())
             // Background maintenance runs on the separate maintenance executor so it cannot block
-            // route loads on cold boot: (1) the scheduler block (reminders/auto-sync/auto-update/
-            // backup, incl. first-time WorkManager init), (2) the resume-time update-install
-            // gating, which reads auto-update status off the UI thread (ANR fix), and (3) the
-            // app-open reminder re-arm (D7) that reflects "the user is here now". Heavy asset
-            // warmup runs on its own dedicated thread. Nothing runs inline on main.
-            assertEquals(3, maintenanceTasks.pendingCount())
+            // route loads on cold boot: (1) the scheduler block (auto-sync/auto-update/backup,
+            // incl. first-time WorkManager init), and (2) the resume-time update-install gating,
+            // which reads auto-update status off the UI thread (ANR fix). The reminder re-arm is
+            // deliberately still pending because this no-op activity never settles a real async
+            // route. Heavy asset warmup runs on its own dedicated thread.
+            assertEquals(2, maintenanceTasks.pendingCount())
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

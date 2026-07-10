@@ -90,7 +90,7 @@ internal class LocalStoreInventoryData(
             null,
             null,
             "source_type DESC, id ASC",
-            "8",
+            EXAMPLES_PER_KANJI_CAP.toString(),
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 examples.add(readExample(cursor))
@@ -100,13 +100,13 @@ internal class LocalStoreInventoryData(
     }
 
     /**
-     * Batched replacement for calling [examplesForKanji] once per dashboard row.
+     * Loads the displayed examples for a bounded set of dashboard rows.
      *
-     * Loading dashboard rows previously fired one query per kanji (up to 120), which on a cold
-     * boot cost ~240ms on the main thread because each query paid its own cursor + file-cache
-     * cost. This reads every example for the requested kanji in a single query, then groups in
-     * memory while preserving the original per-kanji ordering (source_type DESC, id ASC) and the
-     * 8-example cap.
+     * A single `kanji IN (...)` query looks attractive, but SQLite must read and sort every
+     * matching example before Kotlin can discard all but eight per kanji. Real collections may
+     * have thousands of examples for one kanji, which made that query dominate cold start. The
+     * composite `(kanji, source_type DESC, id ASC)` index turns these into cheap ordered seeks,
+     * and the SQL `LIMIT` guarantees that at most eight rows per requested kanji cross the cursor.
      */
     fun examplesForKanjiBatch(
         db: SQLiteDatabase,
@@ -116,24 +116,11 @@ internal class LocalStoreInventoryData(
         if (distinct.isEmpty()) {
             return emptyMap()
         }
-        val result = LinkedHashMap<String, ArrayList<RecordsImportModels.Example>>()
-        val placeholders = distinct.joinToString(",") { "?" }
-        db.query(
-            LocalStoreBase.TABLE_KANJI_EXAMPLES,
-            null,
-            "${LocalStoreBase.COLUMN_KANJI} IN ($placeholders)",
-            distinct.toTypedArray(),
-            null,
-            null,
-            "${LocalStoreBase.COLUMN_KANJI} ASC, source_type DESC, id ASC",
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                val rowKanji = LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI)
-                val bucket = result.getOrPut(rowKanji) { ArrayList() }
-                if (bucket.size >= EXAMPLES_PER_KANJI_CAP) {
-                    continue
-                }
-                bucket.add(readExample(cursor))
+        val result = LinkedHashMap<String, List<RecordsImportModels.Example>>(distinct.size)
+        for (rowKanji in distinct) {
+            val examples = examplesForKanji(db, rowKanji)
+            if (examples.isNotEmpty()) {
+                result[rowKanji] = examples
             }
         }
         return result

@@ -50,6 +50,10 @@ internal class LocalStoreMigrationHooks(
         store.createStatsIndexes(db)
     }
 
+    fun createDashboardIndexes(db: SQLiteDatabase) {
+        store.createDashboardIndexes(db)
+    }
+
     fun createStatsCacheTables(db: SQLiteDatabase) {
         store.createStatsCacheTables(db)
     }

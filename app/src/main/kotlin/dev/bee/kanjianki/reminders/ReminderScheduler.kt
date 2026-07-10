@@ -54,6 +54,25 @@ object ReminderScheduler {
         }
     }
 
+    /**
+     * Activity-owned-store variant used by foreground re-arms. Reusing the same [LocalStore]
+     * preserves its dashboard/study caches after a route load and avoids opening a second helper
+     * that repeats the full dashboard read.
+     */
+    @JvmStatic
+    internal fun schedule(context: Context, store: LocalStore) {
+        schedule(store, androidReminderServices(context), AppClock.systemClock().nowMillis())
+    }
+
+    @JvmStatic
+    internal fun schedule(
+        store: LocalStore,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        schedule(store.reminderSettings(), store, services, nowMillis)
+    }
+
     @JvmStatic
     fun schedule(context: Context?, settings: LocalStoreBase.ReminderSettings?) {
         schedule(context, settings, AppClock.systemClock())

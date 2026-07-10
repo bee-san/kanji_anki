@@ -27,6 +27,20 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_finished ON ${LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS}(kanji, finished_at)")
     }
 
+    fun createDashboardIndexes(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_dashboard_rows_priority ON " +
+                "${LocalStoreBase.TABLE_DASHBOARD_ROWS}(weakness_score DESC, suspended_example_count DESC, kanji ASC)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_kanji_examples_ordered ON " +
+                "${LocalStoreBase.TABLE_KANJI_EXAMPLES}(kanji, source_type DESC, id ASC)",
+        )
+        // The ordered index has the same leading kanji column, so retaining the old single-column
+        // index would only double index maintenance for every sync insert.
+        db.execSQL("DROP INDEX IF EXISTS idx_examples_kanji")
+    }
+
     fun createStatsCacheTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_STATS_CACHE_STATE,
