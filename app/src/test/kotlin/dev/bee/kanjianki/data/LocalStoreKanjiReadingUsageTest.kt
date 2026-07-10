@@ -58,6 +58,51 @@ class LocalStoreKanjiReadingUsageTest {
     }
 
     @Test
+    fun migrationTwentySevenToTwentyEightAddsReadingKanjiMemoryColumn() {
+        val db = SQLiteDatabase.create(null)
+        db.execSQL(
+            "CREATE TABLE ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji TEXT PRIMARY KEY, " +
+                "${LocalStoreBase.COLUMN_KANJI_READING_MEMORY} TEXT NOT NULL DEFAULT '')",
+        )
+        db.execSQL("INSERT INTO ${LocalStoreBase.TABLE_STUDY_ITEMS} (kanji) VALUES ('配')")
+
+        store.onUpgrade(db, 27, 28)
+
+        assertTrue(columnExists(db, LocalStoreBase.TABLE_STUDY_ITEMS, LocalStoreBase.COLUMN_READING_KANJI_MEMORY))
+        db.rawQuery(
+            "SELECT ${LocalStoreBase.COLUMN_READING_KANJI_MEMORY} FROM ${LocalStoreBase.TABLE_STUDY_ITEMS}",
+            null,
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals("", it.getString(0))
+        }
+        db.close()
+    }
+
+    @Test
+    fun readingKanjiCandidatesSharedByThreeKanji() {
+        // こう read by 校/高/光. Target 校's candidates for こう = {高, 光}.
+        saveSync(
+            dictionary = DictionaryLookup.fromKanjiEntries(
+                listOf(
+                    kanjiEntry("校", on = listOf("コウ"), kun = emptyList()),
+                    kanjiEntry("高", on = listOf("コウ"), kun = emptyList()),
+                    kanjiEntry("光", on = listOf("コウ"), kun = emptyList()),
+                ),
+            ),
+            rows = listOf(
+                rowWithExamples("校", example("校", "こう", noteId = 11, mature = true)),
+                rowWithExamples("高", example("高", "こう", noteId = 12, mature = true)),
+                rowWithExamples("光", example("光", "こう", noteId = 13)),
+            ),
+        )
+        val candidates = store.readingKanjiCandidatesFor("校")
+        assertEquals(setOf("高", "光"), candidates["こう"].orEmpty().map { it.kanji }.toSet())
+        // 高 is mature-attested with こう.
+        assertTrue(candidates["こう"].orEmpty().first { it.kanji == "高" }.matureAttested)
+    }
+
+    @Test
     fun freshInstallHasReadingUsageTables() {
         val db = store.writableDatabase
         assertTrue(tableExists(db, LocalStoreBase.TABLE_KANJI_READING_USAGE))

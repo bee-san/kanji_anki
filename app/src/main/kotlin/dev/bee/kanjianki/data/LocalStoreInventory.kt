@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
+import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
@@ -625,6 +626,62 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return out
     }
 
+    /** Attested usages for [kanji] shaped for ReadingKanjiChoicePlanner. */
+    fun kanjiReadingUsagesForReadingKanji(kanji: String?): List<ReadingKanjiChoicePlanner.TargetUsage> {
+        return kanjiReadingUsagesFor(kanji).map { usage ->
+            ReadingKanjiChoicePlanner.TargetUsage(
+                usage.word,
+                usage.reading,
+                usage.meaning,
+                usage.noteId,
+                usage.mature,
+                usage.lapses,
+            )
+        }
+    }
+
+    /**
+     * Same-reading distractor kanji for [kanji]'s reading_kanji card, keyed by
+     * canonical reading: for each reading the target is attested with, the OTHER
+     * inventory kanji attested with that reading, flagged mature when any of
+     * their usages of that reading is mature.
+     */
+    fun readingKanjiCandidatesFor(kanji: String?): Map<String, List<ReadingKanjiChoicePlanner.Candidate>> {
+        val normalized = normalizeSingleKanji(kanji)
+        if (normalized.isEmpty()) {
+            return emptyMap()
+        }
+        val db = readableDatabase
+        // Readings the target is attested with.
+        val targetReadings = ArrayList<String>()
+        db.rawQuery(
+            "SELECT DISTINCT $COLUMN_READING FROM $TABLE_KANJI_READING_USAGE WHERE $COLUMN_KANJI = ?",
+            arrayOf(normalized),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                cursor.getString(0)?.let { targetReadings.add(it) }
+            }
+        }
+        val out = LinkedHashMap<String, List<ReadingKanjiChoicePlanner.Candidate>>()
+        for (reading in targetReadings) {
+            val candidates = LinkedHashMap<String, Boolean>()
+            db.rawQuery(
+                "SELECT $COLUMN_KANJI, MAX($COLUMN_MATURE) FROM $TABLE_KANJI_READING_USAGE " +
+                    "WHERE $COLUMN_READING = ? AND $COLUMN_KANJI <> ? GROUP BY $COLUMN_KANJI",
+                arrayOf(reading, normalized),
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    val other = cursor.getString(0) ?: continue
+                    candidates[other] = cursor.getInt(1) == 1
+                }
+            }
+            if (candidates.isNotEmpty()) {
+                out[reading] = candidates.map { ReadingKanjiChoicePlanner.Candidate(it.key, it.value) }
+            }
+        }
+        return out
+    }
+
     private fun wordMeaningFor(expression: String?): String {
         // Best-effort gloss for the prompt word from its example row; empty when
         // unknown (the planner's meaning is only a context cue).
@@ -670,9 +727,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val db = readableDatabase
         val withSimilar = kanjiWithSimilarNeighbors(db)
         val withKanjiReading = kanjiWithKanjiReading(db)
+        val withReadingKanji = kanjiWithReadingKanji(db)
         val out = ArrayList<RecordsStudyModels.StudyItem>(items.size)
         for (item in items) {
-            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading))
+            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading, withReadingKanji))
         }
         return out
     }
@@ -683,8 +741,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     ) {
         val withSimilar = kanjiWithSimilarNeighbors(db)
         val withKanjiReading = kanjiWithKanjiReading(db)
+        val withReadingKanji = kanjiWithReadingKanji(db)
         for (i in items.indices) {
-            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading)
+            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading, withReadingKanji)
         }
     }
 
@@ -692,15 +751,20 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         item: RecordsStudyModels.StudyItem,
         withSimilar: Set<String>,
         withKanjiReading: Set<String>,
+        withReadingKanji: Set<String>,
     ): RecordsStudyModels.StudyItem {
         val hasSimilar = withSimilar.contains(item.kanji)
         val hasKanjiReading = withKanjiReading.contains(item.kanji)
+        val hasReadingKanji = withReadingKanji.contains(item.kanji)
         var result = item
         if (hasSimilar != result.hasSimilarKanji) {
             result = result.withHasSimilarKanji(hasSimilar)
         }
         if (hasKanjiReading != result.hasKanjiReading) {
             result = result.withHasKanjiReading(hasKanjiReading)
+        }
+        if (hasReadingKanji != result.hasReadingKanji) {
+            result = result.withHasReadingKanji(hasReadingKanji)
         }
         return result
     }

@@ -126,7 +126,8 @@ Unknown wire names decode to `NEW_LEARNING` with a warning (`:349-360`).
 
 `RecordsBase.LadderRung`, wire names:
 `write_kanji`, `type_meaning`, `similar_kanji`, `meaning_kanji`,
-`kanji_meaning`, `font_meaning`, `word_reading`, `kanji_reading`. Enum order is
+`kanji_meaning`, `font_meaning`, `word_reading`, `kanji_reading`,
+`reading_kanji`. Enum order is
 storage compatibility only (new constants are appended at the end); the
 *user-editable ladder order* is what defines the scaffolding gradient
 (most-scaffolded bottom → least-scaffolded top). Unknown wire names decode to
@@ -150,16 +151,19 @@ least-scaffolded (top):
 1. `write_kanji`
 2. `type_meaning`
 3. `meaning_kanji`
-4. `similar_kanji`
-5. `kanji_meaning`
-6. `font_meaning`
-7. `kanji_reading`
-8. `word_reading`
+4. `reading_kanji`
+5. `similar_kanji`
+6. `kanji_meaning`
+7. `font_meaning`
+8. `kanji_reading`
+9. `word_reading`
 
 `similar_kanji` sits directly below `kanji_meaning`, the new-card start rung
 (Goal 65), so the first demotion reaches discrimination practice in one
-demotion step for cards with confusion data (or skips over it to
-`meaning_kanji` for cards without). `kanji_reading` (Goal 78) sits directly
+demotion step for cards with confusion data (or skips over it for cards
+without). `reading_kanji` (Goal 79), the phonetic sibling, sits directly below
+`similar_kanji` — not between it and `kanji_meaning` — so the Goal 65 invariant
+holds. `kanji_reading` (Goal 78) sits directly
 below `word_reading`, so a `word_reading` fail streak demotes straight into
 targeted reading discrimination (or skips over it to `font_meaning` for cards
 without reading data). Only fresh installs and stored configs that lack a rung
@@ -168,13 +172,14 @@ rung postdating it is spliced in adjacent to its default neighbors
 (`storedFullOrderPreservedModuloNewRungSplice`).
 
 **All rungs are enabled by default** (`defaultsEnabled()`), including
-`meaning_kanji` and `kanji_reading`.
+`meaning_kanji`, `kanji_reading`, and `reading_kanji`.
 
 Invariants and behaviors:
 
 - **At least one always-available rung must stay enabled.** Every rung
-  except the conditional rungs (`similar_kanji`, `kanji_reading` —
-  `StudyLadderSettings.CONDITIONAL_RUNGS`) is "always available"
+  except the conditional rungs (`similar_kanji`, `kanji_reading`,
+  `reading_kanji` — `StudyLadderSettings.CONDITIONAL_RUNGS`) is "always
+  available"
   (`alwaysAvailable`). The constructor force-adds `KANJI_MEANING` if the
   enabled set has none; `withRungEnabled` refuses to disable the last one;
   `fromStored` falls back to full defaults on invalid stored combos.

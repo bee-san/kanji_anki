@@ -113,6 +113,17 @@ class SettingsStudyPlanTextCopyTest {
             "Kanji -> reading",
             SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.KANJI_READING),
         )
+        assertEquals(
+            "Reading -> kanji",
+            SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.READING_KANJI),
+        )
+        assertEquals(
+            "Included when other known kanji share a reading",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.READING_KANJI, true),
+                RecordsBase.LadderRung.READING_KANJI,
+            ),
+        )
     }
 
     @Test

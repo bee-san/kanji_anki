@@ -136,17 +136,25 @@ rung:
 1. `write_kanji`
 2. `type_meaning`
 3. `meaning_kanji`
-4. `similar_kanji`
-5. `kanji_meaning`
-6. `font_meaning`
-7. `kanji_reading`
-8. `word_reading`
+4. `reading_kanji`
+5. `similar_kanji`
+6. `kanji_meaning`
+7. `font_meaning`
+8. `kanji_reading`
+9. `word_reading`
 
 `similar_kanji` sits directly below `kanji_meaning` (the new-card start rung)
 so the first demotion reaches discrimination practice — the app's signature
 remediation — in one demotion step for cards that have confusion data, instead
 of three (Goal 65). This only affects fresh installs and stored configs that
 lack `similar_kanji`; a user's stored order is preserved verbatim.
+
+`reading_kanji` (Goal 79) is the phonetic sibling of `similar_kanji` and sits
+directly below it (not between `similar_kanji` and `kanji_meaning`), preserving
+the Goal 65 invariant that `similar_kanji` stays directly below the start rung.
+It is a conditional homophone-discrimination rung ("だつ — which kanji is 〇出?")
+gated by `hasReadingKanji` (some attested reading of the kanji is shared by ≥ 2
+other inventory kanji, so a ≥ 3-choice card exists).
 
 `kanji_reading` (Goal 78) sits directly below `word_reading` so a
 `word_reading` fail streak demotes straight into targeted reading
@@ -156,18 +164,20 @@ discrimination ("How is 脱 read in 脱出?"). It is a conditional rung: the
 two distinct candidate readings) must hold, else promotion and demotion cross
 over it without pausing, exactly like `similar_kanji`.
 
-`meaning_kanji` and `kanji_reading` are present in the editable default order
-and, like every other rung, enabled by default. Stored configurations that
-predate a rung get it auto-enabled on load and spliced into the stored order
-adjacent to its default neighbors (`StudyLadderSettings.AUTO_ENABLE_RUNGS`,
-generalizing the original single-`meaning_kanji` clause; D-R4).
+`meaning_kanji`, `reading_kanji`, and `kanji_reading` are present in the
+editable default order and, like every other rung, enabled by default. Stored
+configurations that predate a rung get it auto-enabled on load and spliced into
+the stored order adjacent to its default neighbors
+(`StudyLadderSettings.AUTO_ENABLE_RUNGS`, generalizing the original
+single-`meaning_kanji` clause; D-R4).
 Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
 rung, preferring the lower/more-scaffolded rung when the distance ties. The
-conditional rungs (`similar_kanji`, `kanji_reading`) exist only when the app can
-build a valid card for that card's kanji. When a conditional predicate is
-false, promotion and demotion cross over that rung without pausing (a
-`<wire>_unavailable` trace reason is recorded per skipped rung). Settings must
+conditional rungs (`similar_kanji`, `kanji_reading`, `reading_kanji`) exist only
+when the app can build a valid card for that card's kanji. When a conditional
+predicate is false, promotion and demotion cross over that rung without pausing
+(a `<wire>_unavailable` trace reason is recorded per skipped rung; a move that
+crosses several conditional rungs at once records one code each). Settings must
 keep at least one always-available rung enabled; the conditional rungs alone
 are not enough because they depend on per-card data.
 
@@ -326,6 +336,8 @@ Study UI renders one current rung at a time. Rung rendering:
 - `write_kanji` → handwriting pad and writing evaluation.
 - `type_meaning` → typed answer box.
 - `similar_kanji` → multiple-choice selector from visually similar kanji.
+- `reading_kanji` → multiple-choice selector of same-reading kanji (reading +
+  blanked word + meaning gloss); ≥ 3 choices required, else a plain flashcard.
 - `meaning_kanji` → multiple-choice selector from four local kanji.
 - `kanji_meaning` → standard recognition card.
 - `font_meaning` → recognition card with font variation.
@@ -358,9 +370,9 @@ Legacy field mapping used by the DB v16 migration (fresh start):
 - `recognition_stage = 1` → rung `font_meaning`
 - `recognition_stage = 2` → rung `word_reading`
 
-The `similar_kanji` and `kanji_reading` rungs have no legacy source; they are
-reached through configured ladder movement when `hasSimilarKanji` /
-`hasKanjiReading` is true.
+The `similar_kanji`, `kanji_reading`, and `reading_kanji` rungs have no legacy
+source; they are reached through configured ladder movement when
+`hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` is true.
 
 ## What Was Tested For v0.3.6
 

@@ -30,6 +30,7 @@ object StudyTaskCopy {
         StudyTaskTypes.FONT_MEANING -> localizedText("Font -> meaning", "フォント→意味")
         StudyTaskTypes.WORD_READING -> localizedText("Word -> reading", "単語→読み")
         StudyTaskTypes.KANJI_READING -> localizedText("Kanji -> reading", "漢字→読み")
+        StudyTaskTypes.READING_KANJI -> localizedText("Reading -> kanji", "読み→漢字")
         StudyTaskTypes.WRITE_KANJI -> localizedText("Write kanji", "漢字を書く")
         StudyTaskTypes.SIMILAR_KANJI -> localizedText(LABEL_SIMILAR_KANJI, "似た漢字")
         TASK_MEANING_FLASHCARD -> localizedText("Quick recall", "素早く復習")
@@ -50,6 +51,7 @@ object StudyTaskCopy {
         isWordReadingTask(session) -> localizedText("Read this word", "この単語を読む")
         isTypingMeaningTask(session) -> localizedText("Type the meaning", "意味を入力")
         isKanjiReadingTask(session) -> localizedText("Choose the reading", "読みを選ぶ")
+        isReadingKanjiTask(session) -> localizedText("Choose the kanji", "漢字を選ぶ")
         isMeaningKanjiTask(session) -> localizedText("Choose the kanji", "漢字を選ぶ")
         isFontRecognitionTask(session) -> localizedText("Recognise this kanji", "この漢字を見分ける")
         else -> localizedText("Name this kanji", "この漢字の意味は？")
@@ -63,6 +65,7 @@ object StudyTaskCopy {
         isWordReadingTask(session) -> localizedText("Read", "読む")
         isTypingMeaningTask(session) -> localizedText("Type", "入力")
         isKanjiReadingTask(session) -> localizedText("Choose", "選ぶ")
+        isReadingKanjiTask(session) -> localizedText("Choose", "選ぶ")
         isMeaningKanjiTask(session) -> localizedText("Recall", "思い出す")
         else -> localizedText("Recognise", "見分ける")
     }
@@ -118,6 +121,10 @@ object StudyTaskCopy {
     @JvmStatic
     fun isKanjiReadingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
         session != null && StudyTaskTypes.KANJI_READING == session.taskType
+
+    @JvmStatic
+    fun isReadingKanjiTask(session: RecordsSchedulerModels.StudySession?): Boolean =
+        session != null && StudyTaskTypes.READING_KANJI == session.taskType
 
     private fun localizedText(english: String, japanese: String): String =
         if (isJapaneseLocale()) japanese else english

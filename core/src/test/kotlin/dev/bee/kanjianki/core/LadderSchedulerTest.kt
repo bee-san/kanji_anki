@@ -531,6 +531,48 @@ class LadderSchedulerTest {
         )
     }
 
+    @Test
+    fun readingKanjiRungSkippedWhenUnavailable() {
+        // hasReadingKanji=false: reading_kanji sits between meaning_kanji and
+        // similar_kanji; movements crossing it skip over it.
+        val none = RecordsBase.RungAvailability.none()
+        assertEquals(
+            RecordsBase.LadderRung.MEANING_KANJI,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.RungAvailability.of(true)),
+        )
+        // With reading data available, a demotion from similar_kanji lands on it.
+        assertEquals(
+            RecordsBase.LadderRung.READING_KANJI,
+            BridgeScheduler.demoteRung(
+                RecordsBase.LadderRung.SIMILAR_KANJI,
+                RecordsBase.RungAvailability.of(true, false, true),
+            ),
+        )
+    }
+
+    @Test
+    fun demotionChainsAcrossBothConditionalRungsWhenNeitherAvailable() {
+        // Goal 79: a kanji_meaning demotion with neither similar_kanji nor
+        // reading_kanji available crosses BOTH conditional rungs in one move,
+        // landing on meaning_kanji, and records both unavailable reason codes.
+        val scheduler = BridgeScheduler()
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder()
+            .hasSimilarKanji(false)
+            .hasKanjiReading(false)
+            .hasReadingKanji(false)
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+            .withToken("chain")
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(item, failRequest("裂", "chain"), HashSet(), 1_000L).build(),
+        )
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
+        val reasons = traced.trace.transition!!.reasonCodes
+        assertTrue(reasons.contains("similar_kanji_unavailable"))
+        assertTrue(reasons.contains("reading_kanji_unavailable"))
+    }
+
     // ---- Streak mechanics ----
 
     @Test
@@ -943,8 +985,9 @@ class LadderSchedulerTest {
     fun itemRestingOnSimilarKanjiDemotesPastItWhenAvailabilityFlipsFalse() {
         // A card sitting on SIMILAR_KANJI whose hasSimilarKanji becomes false must move
         // across that rung rather than stall on a rung it can no longer render. In the
-        // Goal 65 order similar_kanji maps down to meaning_kanji, which then demotes to
-        // type_meaning.
+        // Goal 79 order reading_kanji sits directly below similar_kanji (both
+        // conditional), so an unavailable similar_kanji maps UP to kanji_meaning;
+        // one demotion then lands on meaning_kanji.
         val scheduler = BridgeScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
@@ -972,8 +1015,8 @@ class LadderSchedulerTest {
         }
 
         assertEquals(
-            "Demotion crosses the unavailable SIMILAR_KANJI rung (mapped to meaning_kanji) down to type_meaning",
-            RecordsBase.LadderRung.TYPE_MEANING,
+            "Unavailable SIMILAR_KANJI maps up to kanji_meaning; one demotion lands on meaning_kanji",
+            RecordsBase.LadderRung.MEANING_KANJI,
             item.rung,
         )
     }

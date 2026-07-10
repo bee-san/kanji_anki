@@ -466,6 +466,19 @@ class RecordsValueModelsTest {
     }
 
     @Test
+    fun readingKanjiMemorySlotRoundTrips() {
+        val fixture = studyItemFixture()
+        val viaSetter = fixture.compact.withReadingKanjiMemory(fixture.word)
+        assertEquals(fixture.word, viaSetter.readingKanjiMemory)
+        assertEquals(fixture.word, viaSetter.memoryForRung(RecordsBase.LadderRung.READING_KANJI))
+        assertEquals(fixture.word, viaSetter.memoryForTaskType(StudyTaskTypes.READING_KANJI))
+        val viaTaskMemory = fixture.compact.withTaskMemory(BridgeScheduler.TASK_READING_KANJI, fixture.font)
+        assertEquals(fixture.font, viaTaskMemory.readingKanjiMemory)
+        assertTrue(fixture.compact.withHasReadingKanji(true).rungAvailability().hasReadingKanji)
+        assertFalse(fixture.compact.rungAvailability().hasReadingKanji)
+    }
+
+    @Test
     fun studyItemCopyBuilderTransitionsStayCompatible() {
         val fixture = studyItemFixture()
 

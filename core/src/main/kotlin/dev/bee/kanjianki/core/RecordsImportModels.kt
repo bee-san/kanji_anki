@@ -437,6 +437,40 @@ abstract class RecordsImportModels protected constructor() : RecordsSyncModels()
             correctReading == nullToEmpty(selectedReading).trim()
     }
 
+    /**
+     * A reading_kanji homophone-discrimination choice card (Goal 79): show the
+     * target [reading] in kana plus the attested [blankedWord] (the word with
+     * the target kanji replaced by 〇) and its [meaning] gloss; the learner picks
+     * the correct kanji among same-reading candidates. [choices] are kanji
+     * glyphs (target + distractors), pre-shuffled.
+     */
+    class ReadingKanjiChoiceCard(
+        targetKanji: String?,
+        reading: String?,
+        blankedWord: String?,
+        meaning: String?,
+        choices: List<String?>?
+    ) {
+        @JvmField val targetKanji: String = nullToEmpty(targetKanji).trim()
+        @JvmField val reading: String = nullToEmpty(reading).trim()
+        @JvmField val blankedWord: String = nullToEmpty(blankedWord).trim()
+        @JvmField val meaning: String = cleanMeaning(meaning)
+        @JvmField val choices: List<String>
+
+        init {
+            val normalizedChoices = ArrayList<String>()
+            for (choice in nullToEmptyList(choices)) {
+                val value = nullToEmpty(choice).trim()
+                if (value.isNotEmpty() && !normalizedChoices.contains(value)) {
+                    normalizedChoices.add(value)
+                }
+            }
+            this.choices = Collections.unmodifiableList(normalizedChoices)
+        }
+
+        fun isCorrect(selectedKanji: String?): Boolean = targetKanji == nullToEmpty(selectedKanji).trim()
+    }
+
     class SimilarKanjiWritingRepair(
         id: Long,
         targetKanji: String?,

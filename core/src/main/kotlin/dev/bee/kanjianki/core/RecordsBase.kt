@@ -30,11 +30,12 @@ abstract class RecordsBase protected constructor() {
         FONT_MEANING("font_meaning"),
         WORD_READING("word_reading"),
 
-        // New conditional rung (Goal 78). Enum declaration order is
+        // New conditional rungs (Goals 78-79). Enum declaration order is
         // storage-compatibility-only (serialization is by wire name); ladder
         // position is controlled exclusively via defaultsOrder(). Appended at
         // the end so stored ordinals never shift.
-        KANJI_READING("kanji_reading");
+        KANJI_READING("kanji_reading"),
+        READING_KANJI("reading_kanji");
 
         fun wireName(): String = wireNameValue
 
@@ -72,6 +73,7 @@ abstract class RecordsBase protected constructor() {
     class RungAvailability private constructor(
         @JvmField val hasSimilarKanji: Boolean,
         @JvmField val hasKanjiReading: Boolean,
+        @JvmField val hasReadingKanji: Boolean,
     ) {
         /**
          * True when [rung] is available for the item this snapshot describes:
@@ -86,34 +88,47 @@ abstract class RecordsBase protected constructor() {
             return when (rung) {
                 LadderRung.SIMILAR_KANJI -> hasSimilarKanji
                 LadderRung.KANJI_READING -> hasKanjiReading
+                LadderRung.READING_KANJI -> hasReadingKanji
                 else -> false
             }
         }
 
         fun withHasSimilarKanji(value: Boolean): RungAvailability {
-            return if (value == hasSimilarKanji) this else of(value, hasKanjiReading)
+            return if (value == hasSimilarKanji) this else of(value, hasKanjiReading, hasReadingKanji)
         }
 
         fun withHasKanjiReading(value: Boolean): RungAvailability {
-            return if (value == hasKanjiReading) this else of(hasSimilarKanji, value)
+            return if (value == hasKanjiReading) this else of(hasSimilarKanji, value, hasReadingKanji)
+        }
+
+        fun withHasReadingKanji(value: Boolean): RungAvailability {
+            return if (value == hasReadingKanji) this else of(hasSimilarKanji, hasKanjiReading, value)
         }
 
         companion object {
             @JvmField
-            val NONE: RungAvailability = RungAvailability(false, false)
+            val NONE: RungAvailability = RungAvailability(false, false, false)
 
             @JvmStatic
             fun none(): RungAvailability = NONE
 
             @JvmStatic
-            fun of(hasSimilarKanji: Boolean): RungAvailability = of(hasSimilarKanji, false)
+            fun of(hasSimilarKanji: Boolean): RungAvailability = of(hasSimilarKanji, false, false)
 
             @JvmStatic
-            fun of(hasSimilarKanji: Boolean, hasKanjiReading: Boolean): RungAvailability {
-                return if (!hasSimilarKanji && !hasKanjiReading) {
+            fun of(hasSimilarKanji: Boolean, hasKanjiReading: Boolean): RungAvailability =
+                of(hasSimilarKanji, hasKanjiReading, false)
+
+            @JvmStatic
+            fun of(
+                hasSimilarKanji: Boolean,
+                hasKanjiReading: Boolean,
+                hasReadingKanji: Boolean,
+            ): RungAvailability {
+                return if (!hasSimilarKanji && !hasKanjiReading && !hasReadingKanji) {
                     NONE
                 } else {
-                    RungAvailability(hasSimilarKanji, hasKanjiReading)
+                    RungAvailability(hasSimilarKanji, hasKanjiReading, hasReadingKanji)
                 }
             }
         }
@@ -294,14 +309,22 @@ abstract class RecordsBase protected constructor() {
             // always-available). RungAvailability answers each one's flag.
             @JvmField
             val CONDITIONAL_RUNGS: Set<LadderRung> = java.util.Collections.unmodifiableSet(
-                java.util.EnumSet.of(LadderRung.SIMILAR_KANJI, LadderRung.KANJI_READING),
+                java.util.EnumSet.of(
+                    LadderRung.SIMILAR_KANJI,
+                    LadderRung.KANJI_READING,
+                    LadderRung.READING_KANJI,
+                ),
             )
 
             // Rungs that are auto-enabled for stored configs predating them
             // (generalizes the original MEANING_KANJI special case, D-R4).
             @JvmField
             val AUTO_ENABLE_RUNGS: Set<LadderRung> = java.util.Collections.unmodifiableSet(
-                java.util.EnumSet.of(LadderRung.MEANING_KANJI, LadderRung.KANJI_READING),
+                java.util.EnumSet.of(
+                    LadderRung.MEANING_KANJI,
+                    LadderRung.KANJI_READING,
+                    LadderRung.READING_KANJI,
+                ),
             )
 
             @JvmStatic
@@ -431,6 +454,12 @@ abstract class RecordsBase protected constructor() {
                     LadderRung.WRITE_KANJI,
                     LadderRung.TYPE_MEANING,
                     LadderRung.MEANING_KANJI,
+                    // reading_kanji (Goal 79) is the phonetic sibling of
+                    // similar_kanji; it sits directly below it (not between
+                    // similar_kanji and kanji_meaning) so the Goal 65 invariant
+                    // holds: the first demotion from the start rung still reaches
+                    // similar_kanji in one step.
+                    LadderRung.READING_KANJI,
                     LadderRung.SIMILAR_KANJI,
                     LadderRung.KANJI_MEANING,
                     LadderRung.FONT_MEANING,

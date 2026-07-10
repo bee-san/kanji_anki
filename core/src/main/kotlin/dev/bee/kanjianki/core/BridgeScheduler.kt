@@ -553,6 +553,7 @@ class BridgeScheduler {
         const val TASK_FONT_MEANING: String = StudyTaskTypes.FONT_MEANING
         const val TASK_WORD_READING: String = StudyTaskTypes.WORD_READING
         const val TASK_KANJI_READING: String = StudyTaskTypes.KANJI_READING
+        const val TASK_READING_KANJI: String = StudyTaskTypes.READING_KANJI
 
         const val TASK_TYPING_MEANING: String = StudyTaskTypes.TYPING_MEANING
         const val TASK_WRITING_REMEDIATION: String = StudyTaskTypes.WRITING_REMEDIATION

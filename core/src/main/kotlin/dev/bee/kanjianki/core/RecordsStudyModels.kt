@@ -265,6 +265,12 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
         @JvmField
         val kanjiReadingMemory: TaskMemory
 
+        @JvmField
+        val hasReadingKanji: Boolean
+
+        @JvmField
+        val readingKanjiMemory: TaskMemory
+
         init {
             val args = StudyItemArgs.from(state, dueAtMillis, stability, difficulty, totalReviews, rest)
             this.kanji = nullToEmpty(kanji)
@@ -305,6 +311,8 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             this.similarKanjiMemory = args.similarKanjiMemory ?: TaskMemory.initial()
             this.hasKanjiReading = args.hasKanjiReading
             this.kanjiReadingMemory = args.kanjiReadingMemory ?: TaskMemory.initial()
+            this.hasReadingKanji = args.hasReadingKanji
+            this.readingKanjiMemory = args.readingKanjiMemory ?: TaskMemory.initial()
         }
 
         fun withToken(token: String?): StudyItem {
@@ -363,7 +371,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
          * Ladder-movement methods consume this instead of individual booleans.
          */
         fun rungAvailability(): RecordsBase.RungAvailability {
-            return RecordsBase.RungAvailability.of(hasSimilarKanji, hasKanjiReading)
+            return RecordsBase.RungAvailability.of(hasSimilarKanji, hasKanjiReading, hasReadingKanji)
         }
 
         fun withHasKanjiReading(hasKanjiReading: Boolean): StudyItem {
@@ -372,6 +380,14 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
 
         fun withKanjiReadingMemory(memory: TaskMemory?): StudyItem {
             return copyBuilder().kanjiReadingMemory(memory).build()
+        }
+
+        fun withHasReadingKanji(hasReadingKanji: Boolean): StudyItem {
+            return copyBuilder().hasReadingKanji(hasReadingKanji).build()
+        }
+
+        fun withReadingKanjiMemory(memory: TaskMemory?): StudyItem {
+            return copyBuilder().readingKanjiMemory(memory).build()
         }
 
         fun withSimilarKanjiMemory(memory: TaskMemory?): StudyItem {
@@ -390,6 +406,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 BridgeScheduler.TASK_WORD_READING -> wordReadingMemory
                 BridgeScheduler.TASK_FONT_MEANING -> fontMeaningMemory
                 BridgeScheduler.TASK_KANJI_READING -> kanjiReadingMemory
+                BridgeScheduler.TASK_READING_KANJI -> readingKanjiMemory
                 else -> kanjiMeaningMemory
             }
         }
@@ -405,6 +422,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 RecordsBase.LadderRung.WORD_READING -> wordReadingMemory
                 RecordsBase.LadderRung.KANJI_MEANING -> kanjiMeaningMemory
                 RecordsBase.LadderRung.KANJI_READING -> kanjiReadingMemory
+                RecordsBase.LadderRung.READING_KANJI -> readingKanjiMemory
             }
         }
 
@@ -420,6 +438,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 BridgeScheduler.TASK_WORD_READING -> copyBuilder().wordReadingMemory(memory).build()
                 BridgeScheduler.TASK_FONT_MEANING -> copyBuilder().fontMeaningMemory(memory).build()
                 BridgeScheduler.TASK_KANJI_READING -> copyBuilder().kanjiReadingMemory(memory).build()
+                BridgeScheduler.TASK_READING_KANJI -> copyBuilder().readingKanjiMemory(memory).build()
                 else -> copyBuilder().kanjiMeaningMemory(memory).build()
             }
         }
@@ -493,6 +512,8 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             var similarKanjiMemory: TaskMemory? = src.similarKanjiMemory
             var hasKanjiReading: Boolean = src.hasKanjiReading
             var kanjiReadingMemory: TaskMemory? = src.kanjiReadingMemory
+            var hasReadingKanji: Boolean = src.hasReadingKanji
+            var readingKanjiMemory: TaskMemory? = src.readingKanjiMemory
             var legacyFieldModified: Boolean = false
             var rungExplicitlySet: Boolean = false
 
@@ -664,6 +685,16 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 return this
             }
 
+            fun hasReadingKanji(value: Boolean): StudyItemBuilder {
+                this.hasReadingKanji = value
+                return this
+            }
+
+            fun readingKanjiMemory(value: TaskMemory?): StudyItemBuilder {
+                this.readingKanjiMemory = value
+                return this
+            }
+
             fun build(): StudyItem {
                 val effectiveRung = if (legacyFieldModified && !rungExplicitlySet) null else rung
                 return StudyItem(
@@ -701,6 +732,8 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     similarKanjiMemory,
                     hasKanjiReading,
                     kanjiReadingMemory,
+                    hasReadingKanji,
+                    readingKanjiMemory,
                 )
             }
         }
@@ -734,6 +767,8 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             var similarKanjiMemory: TaskMemory? = null
             var hasKanjiReading: Boolean = false
             var kanjiReadingMemory: TaskMemory? = null
+            var hasReadingKanji: Boolean = false
+            var readingKanjiMemory: TaskMemory? = null
 
             companion object {
                 fun from(
@@ -745,7 +780,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     rest: Array<out Any?>,
                 ): StudyItemArgs {
                     val args = rest.toStudyArgsArray()
-                    requireArgCount(CONTEXT_STUDY_ITEM, args, 5, 9, 13, 17, 18, 19, 25, 26, 27, 28)
+                    requireArgCount(CONTEXT_STUDY_ITEM, args, 5, 9, 13, 17, 18, 19, 25, 26, 27, 28, 29, 30)
                     val result = StudyItemArgs()
                     result.lapses = intArg(args, 0, CONTEXT_STUDY_ITEM)
                     result.learningStep = intArg(args, 1, CONTEXT_STUDY_ITEM)
@@ -778,13 +813,14 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     if (memoryStart >= 0) {
                         result.applyMemories(args, memoryStart)
                     }
-                    if (args.size == 25 || args.size == 26 || args.size == 27 || args.size == 28) {
+                    if (args.size in intArrayOf(25, 26, 27, 28, 29, 30)) {
                         // 25/26: the original 7 trailing state fields ending in
-                        // similarKanjiMemory. 27/28 append 2 more
-                        // (hasKanjiReading, kanjiReadingMemory) for the
-                        // kanji_reading rung (Goal 78). stateStart depends on
-                        // whether the meaning_kanji memory is present.
-                        val stateStart = if (args.size == 25 || args.size == 27) 18 else 19
+                        // similarKanjiMemory. 27/28 append (hasKanjiReading,
+                        // kanjiReadingMemory) for kanji_reading (Goal 78);
+                        // 29/30 append (hasReadingKanji, readingKanjiMemory) for
+                        // reading_kanji (Goal 79). stateStart depends on whether
+                        // the meaning_kanji memory is present.
+                        val stateStart = if (args.size % 2 == 1) 18 else 19
                         result.rung = arg(args, stateStart, CONTEXT_STUDY_ITEM) as? RecordsBase.LadderRung
                         result.phase = arg(args, stateStart + 1, CONTEXT_STUDY_ITEM) as? RecordsBase.SchedulerPhase
                         result.realPassStreak = intArg(args, stateStart + 2, CONTEXT_STUDY_ITEM)
@@ -792,9 +828,13 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                         result.lastRealReviewDueAtMillis = longArg(args, stateStart + 4, CONTEXT_STUDY_ITEM)
                         result.hasSimilarKanji = booleanArg(args, stateStart + 5, CONTEXT_STUDY_ITEM)
                         result.similarKanjiMemory = arg(args, stateStart + 6, CONTEXT_STUDY_ITEM) as? TaskMemory
-                        if (args.size == 27 || args.size == 28) {
+                        if (args.size >= 27) {
                             result.hasKanjiReading = booleanArg(args, stateStart + 7, CONTEXT_STUDY_ITEM)
                             result.kanjiReadingMemory = arg(args, stateStart + 8, CONTEXT_STUDY_ITEM) as? TaskMemory
+                        }
+                        if (args.size >= 29) {
+                            result.hasReadingKanji = booleanArg(args, stateStart + 9, CONTEXT_STUDY_ITEM)
+                            result.readingKanjiMemory = arg(args, stateStart + 10, CONTEXT_STUDY_ITEM) as? TaskMemory
                         }
                     }
                     return result
@@ -815,6 +855,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     writingRemediationMemory = seedMemoryForWriting(this, state, dueAtMillis, stability, difficulty, totalReviews)
                     similarKanjiMemory = TaskMemory.initial()
                     kanjiReadingMemory = TaskMemory.initial()
+                    readingKanjiMemory = TaskMemory.initial()
                 }
 
                 private fun StudyItemArgs.applyMemories(rest: Array<Any?>, start: Int) {
@@ -826,7 +867,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                         return
                     }
                     typingMeaningMemory = arg(rest, start, CONTEXT_STUDY_ITEM) as? TaskMemory
-                    if (rest.size == 19 || rest.size == 26 || rest.size == 28) {
+                    if (rest.size == 19 || rest.size == 26 || rest.size == 28 || rest.size == 30) {
                         meaningKanjiMemory = arg(rest, start + 1, CONTEXT_STUDY_ITEM) as? TaskMemory
                         kanjiMeaningMemory = arg(rest, start + 2, CONTEXT_STUDY_ITEM) as? TaskMemory
                         fontMeaningMemory = arg(rest, start + 3, CONTEXT_STUDY_ITEM) as? TaskMemory
