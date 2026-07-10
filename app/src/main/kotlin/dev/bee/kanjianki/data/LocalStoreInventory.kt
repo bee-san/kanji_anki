@@ -626,6 +626,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return out
     }
 
+    /** Number of rows in kanji_reading_usage — used by the live gate assertion. */
+    fun kanjiReadingUsageRowCount(): Int {
+        readableDatabase.rawQuery("SELECT COUNT(*) FROM $TABLE_KANJI_READING_USAGE", null).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        }
+    }
+
     /** Attested usages for [kanji] shaped for ReadingKanjiChoicePlanner. */
     fun kanjiReadingUsagesForReadingKanji(kanji: String?): List<ReadingKanjiChoicePlanner.TargetUsage> {
         return kanjiReadingUsagesFor(kanji).map { usage ->

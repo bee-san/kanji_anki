@@ -2179,6 +2179,26 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
             LocalStore(context).use { store ->
                 assertFalse(store.dashboardRows().isEmpty());
                 assertFalse(store.studyItems().isEmpty());
+                // Goal 81 live gate: the reading-usage table is rebuilt from the
+                // real collection, and the reading-aware availability flags are
+                // annotated onto real study items.
+                assertTrue(
+                    "kanji_reading_usage should be non-empty after a real sync",
+                    store.kanjiReadingUsageRowCount() > 0,
+                )
+                val items = store.studyItems()
+                assertTrue(
+                    "at least one study item should carry hasKanjiReading",
+                    items.any { it.hasKanjiReading },
+                )
+                assertTrue(
+                    "at least one study item should carry hasReadingKanji",
+                    items.any { it.hasReadingKanji },
+                )
+                assertTrue(
+                    "at least one study item should carry hasSentenceReading",
+                    items.any { it.hasSentenceReading },
+                )
             }
         }
 
