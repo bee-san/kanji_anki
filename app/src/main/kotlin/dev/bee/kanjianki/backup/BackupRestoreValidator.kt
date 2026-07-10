@@ -52,7 +52,7 @@ internal object BackupRestoreValidator {
             false
         }
         if (!decompressed) {
-            temp.delete()
+            BackupRestoreStager.deleteBestEffort(temp)
             return rejected(BackupRestorePolicy.CopyId.TRUNCATED_GZIP)
         }
 
@@ -64,7 +64,7 @@ internal object BackupRestoreValidator {
             false
         }
         if (!magicPresent) {
-            temp.delete()
+            BackupRestoreStager.deleteBestEffort(temp)
             return rejected(BackupRestorePolicy.CopyId.BAD_SQLITE_MAGIC)
         }
 
@@ -79,16 +79,16 @@ internal object BackupRestoreValidator {
                 )
             }
         } catch (_: SQLiteException) {
-            temp.delete()
+            BackupRestoreStager.deleteBestEffort(temp)
             return rejected(BackupRestorePolicy.CopyId.QUICK_CHECK_FAILED)
         } catch (_: RuntimeException) {
-            temp.delete()
+            BackupRestoreStager.deleteBestEffort(temp)
             return rejected(BackupRestorePolicy.CopyId.QUICK_CHECK_FAILED)
         }
 
         val policy = BackupRestorePolicy.validate(facts, LocalStoreSchema.DB_VERSION)
         if (!policy.accepted) {
-            temp.delete()
+            BackupRestoreStager.deleteBestEffort(temp)
             return BackupRestoreValidation(policy)
         }
         return BackupRestoreValidation(policy, ValidatedBackup(temp, sourceName))

@@ -117,13 +117,13 @@ internal object StagedRestoreApplier {
             snapshotter.snapshot(databaseFile, raw)
             DatabaseBackupWorker.gzipFile(raw, destination)
         } catch (error: IOException) {
-            destination.delete()
+            BackupRestoreStager.deleteBestEffort(destination)
             throw error
         } catch (error: RuntimeException) {
-            destination.delete()
+            BackupRestoreStager.deleteBestEffort(destination)
             throw error
         } finally {
-            raw.delete()
+            BackupRestoreStager.deleteBestEffort(raw)
         }
         DatabaseBackupWorker.pruneOldBackups(backupDir)
     }
@@ -140,6 +140,6 @@ internal object StagedRestoreApplier {
     }
 
     private fun deleteEmptyRestoreDir(restoreDir: File) {
-        if (restoreDir.list()?.isEmpty() == true) restoreDir.delete()
+        if (restoreDir.list()?.isEmpty() == true) BackupRestoreStager.deleteBestEffort(restoreDir)
     }
 }

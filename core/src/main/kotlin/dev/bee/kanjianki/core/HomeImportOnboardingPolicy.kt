@@ -33,6 +33,7 @@ object HomeImportOnboardingPolicy {
         fun primaryActionLabel(): String = primaryActionLabelValue
     }
 
+    @Suppress("kotlin:S107")
     @JvmStatic
     fun plan(
         providerInstalled: Boolean,
@@ -116,7 +117,7 @@ object HomeImportOnboardingPolicy {
     private fun repairedTaggingLine(enabled: Boolean, count: Int): String {
         if (!enabled || count <= 0) return ""
         return localizedText(
-            "\nThis sync will also tag $count repaired ${if (count == 1) "kanji" else "kanji"} in AnkiDroid.",
+            "\nThis sync will also tag $count repaired kanji in AnkiDroid.",
             "\nこの同期では、修復済みの漢字${count}件もAnkiDroidでタグ付けします。",
         )
     }

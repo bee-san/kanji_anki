@@ -174,7 +174,7 @@ internal class MainActivitySettingsAutomationBackup(
             },
         ) {
             if (!staged.get()) {
-                validated.databaseFile.delete()
+                BackupRestoreStager.deleteBestEffort(validated.databaseFile)
                 Toast.makeText(activity, BackupRestorePolicy.stagingFailedMessage(), Toast.LENGTH_LONG).show()
                 activity.renderSettingsAutomation(true)
                 return@runSettingsWrite
@@ -196,7 +196,7 @@ internal class MainActivitySettingsAutomationBackup(
     }
 
     private fun discardPendingValidatedBackup() {
-        pendingValidatedBackup?.databaseFile?.delete()
+        pendingValidatedBackup?.databaseFile?.let { BackupRestoreStager.deleteBestEffort(it) }
         pendingValidatedBackup = null
     }
 

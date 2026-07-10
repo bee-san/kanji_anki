@@ -44,6 +44,7 @@ class FsrsWeightFitter(
             relativeImprovement(defaultValidationLoss, fittedValidationLoss)
     }
 
+    @Suppress("kotlin:S3776")
     fun fit(
         sequences: List<FsrsReplaySequence>,
         shouldStop: () -> Boolean = { false },
@@ -149,6 +150,7 @@ class FsrsWeightFitter(
         FsrsReplayEvaluator.Evaluation(keys.size, Double.POSITIVE_INFINITY)
     }
 
+    @Suppress("kotlin:S107")
     private fun result(
         weights: DoubleArray,
         split: Split,

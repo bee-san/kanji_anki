@@ -99,7 +99,8 @@ internal object BackupExportOperations {
             BackupExportCopyResult(false, BackupExportPolicy.exportWriteFailed())
         } finally {
             deleteQuietly(prepared.file)
-            prepared.file.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }?.delete()
+            prepared.file.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }
+                ?.let(BackupRestoreStager::deleteBestEffort)
         }
     }
 
@@ -107,11 +108,12 @@ internal object BackupExportOperations {
     fun discard(prepared: PreparedBackupExport?) {
         if (prepared == null) return
         deleteQuietly(prepared.file)
-        prepared.file.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }?.delete()
+        prepared.file.parentFile?.takeIf { it.listFiles().isNullOrEmpty() }
+            ?.let(BackupRestoreStager::deleteBestEffort)
     }
 
     private fun deleteQuietly(file: File) {
-        if (file.exists()) file.delete()
+        BackupRestoreStager.deleteBestEffort(file)
     }
 }
 

@@ -27,12 +27,15 @@ import androidx.glance.unit.ColorProvider
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.core.WidgetTextCopy
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class KaniWidget : GlanceAppWidget() {
+internal class KaniWidget(
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = withContext(Dispatchers.IO) {
+        val snapshot = withContext(ioDispatcher) {
             KaniWidgetSnapshotLoader.load(context)
         }
         provideContent {

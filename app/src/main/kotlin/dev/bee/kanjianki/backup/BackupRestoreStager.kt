@@ -26,7 +26,14 @@ internal object BackupRestoreStager {
     @JvmStatic
     fun cleanupOrphanValidationFiles(restoreDir: File) {
         restoreDir.listFiles { file -> file.isFile && file.name.endsWith(VALIDATING_SUFFIX) }
-            ?.forEach { it.delete() }
+            ?.forEach(::deleteBestEffort)
+    }
+
+    @JvmStatic
+    fun deleteBestEffort(file: File) {
+        if (file.exists() && !file.delete()) {
+            file.deleteOnExit()
+        }
     }
 
     @JvmStatic
@@ -42,12 +49,12 @@ internal object BackupRestoreStager {
             moveAtomically(markerTemp, marker)
             true
         } catch (_: IOException) {
-            markerTemp.delete()
-            staged.delete()
+            deleteBestEffort(markerTemp)
+            deleteBestEffort(staged)
             false
         } catch (_: RuntimeException) {
-            markerTemp.delete()
-            staged.delete()
+            deleteBestEffort(markerTemp)
+            deleteBestEffort(staged)
             false
         }
     }

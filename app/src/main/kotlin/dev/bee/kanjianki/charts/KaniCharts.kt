@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.ReviewHeatmapPolicy
@@ -46,6 +47,7 @@ internal const val KaniHeatmapMonthTagPrefix = "kani-heatmap-month-"
 
 private val KaniYAxisWidth = 32.dp
 private val KaniPlotHeight = 150.dp
+private val KaniHeatmapGap = 2.dp
 
 internal object KaniChartGeometry {
     data class SquareBounds(val left: Float, val top: Float, val size: Float)
@@ -71,33 +73,44 @@ internal fun KaniLineChart(
     colors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
-    val stroke = 3.dp
     Column(modifier = modifier.semantics { contentDescription = chart.accessibilitySummary }) {
         PlotWithYAxis(chart.axis, KaniLineChartTag) {
-            chart.series.forEachIndexed { seriesIndex, series ->
-                if (series.values.isEmpty()) return@forEachIndexed
-                val path = Path()
-                series.values.forEachIndexed { index, value ->
-                    val x = if (series.values.size == 1) size.width / 2f else size.width * index / (series.values.size - 1f)
-                    val y = size.height * (1f - KaniChartGeometry.normalized(value, chart.axis))
-                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                drawPath(
-                    path = path,
-                    color = colors.getOrElse(seriesIndex) { colors.firstOrNull() ?: Color.Black },
-                    style = Stroke(
-                        width = stroke.toPx(),
-                        cap = StrokeCap.Round,
-                        pathEffect = if (series.style == ProgressSeriesStyle.DASHED) {
-                            PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))
-                        } else null,
-                    ),
-                )
-            }
+            drawLineSeries(chart, colors)
         }
         PlotXAxisLabels(chart.xAxisLabels)
     }
 }
+
+private fun DrawScope.drawLineSeries(chart: ProgressLineChartState, colors: List<Color>) {
+    chart.series.forEachIndexed { seriesIndex, series ->
+        if (series.values.isEmpty()) return@forEachIndexed
+        drawPath(
+            path = linePath(series.values, chart.axis),
+            color = colors.getOrElse(seriesIndex) { colors.firstOrNull() ?: Color.Black },
+            style = lineStroke(series.style),
+        )
+    }
+}
+
+private fun DrawScope.linePath(values: List<Int>, axis: ChartAxisPolicy.Axis): Path {
+    val path = Path()
+    values.forEachIndexed { index, value ->
+        val x = if (values.size == 1) size.width / 2f else size.width * index / (values.size - 1f)
+        val y = size.height * (1f - KaniChartGeometry.normalized(value, axis))
+        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    return path
+}
+
+private fun DrawScope.lineStroke(style: ProgressSeriesStyle): Stroke = Stroke(
+    width = 3.dp.toPx(),
+    cap = StrokeCap.Round,
+    pathEffect = if (style == ProgressSeriesStyle.DASHED) {
+        PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))
+    } else {
+        null
+    },
+)
 
 @Composable
 internal fun KaniBarChart(
@@ -160,56 +173,88 @@ internal fun KaniHeatmapChart(
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
-    val gap = 2.dp
     Column(
         modifier = modifier.fillMaxWidth().testTag(KaniHeatmapChartTag)
             .semantics { contentDescription = grid.accessibilitySummary },
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
-            val weekWidth = if (grid.weeks.isEmpty()) 0.dp else maxWidth / grid.weeks.size
-            var monthOrdinal = 0
-            grid.weeks.forEachIndexed { weekIndex, week ->
-                week.monthLabel?.let { label ->
-                    val showLabel = maxWidth >= 420.dp || monthOrdinal % 2 == 0
-                    monthOrdinal++
-                    if (showLabel) {
-                        Text(
-                            label,
-                            modifier = Modifier.offset(x = weekWidth * weekIndex)
-                                .testTag(KaniHeatmapMonthTagPrefix + weekIndex),
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
-        }
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val cell = if (grid.weeks.isEmpty()) 0.dp else {
-                minOf((maxWidth - gap * (grid.weeks.size - 1)) / grid.weeks.size, 13.dp).coerceAtLeast(0.dp)
-            }
-            val gridHeight = if (cell == 0.dp) 0.dp else cell * 7 + gap * 6
-            Canvas(Modifier.fillMaxWidth().height(gridHeight).testTag(KaniHeatmapGridTag)) {
-                if (grid.weeks.isEmpty()) return@Canvas
-                val cellPx = cell.toPx()
-                grid.weeks.forEachIndexed { weekIndex, week ->
-                    week.cells.forEachIndexed { dayIndex, day ->
-                        val alpha = when (day.intensity) { 1 -> .22f; 2 -> .42f; 3 -> .68f; 4 -> 1f; else -> .08f }
-                        drawRect(
-                            color = accent.copy(alpha = alpha),
-                            topLeft = Offset(weekIndex * (cellPx + gap.toPx()), dayIndex * (cellPx + gap.toPx())),
-                            size = Size(cellPx, cellPx),
-                        )
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().height(1.dp)) {
-            grid.weeks.forEach {
-                Spacer(Modifier.weight(1f).testTag(KaniHeatmapWeekTag))
-            }
-        }
+        HeatmapMonthLabels(grid)
+        HeatmapGrid(grid, accent)
+        HeatmapWeekMarkers(grid.weeks.size)
         Text(grid.weekdayLabels.joinToString(" · "), style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun HeatmapMonthLabels(grid: ReviewHeatmapPolicy.Grid) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
+        val weekWidth = if (grid.weeks.isEmpty()) 0.dp else maxWidth / grid.weeks.size
+        var monthOrdinal = 0
+        grid.weeks.forEachIndexed { weekIndex, week ->
+            week.monthLabel?.let { label ->
+                val showLabel = maxWidth >= 420.dp || monthOrdinal % 2 == 0
+                monthOrdinal++
+                if (showLabel) {
+                    Text(
+                        label,
+                        modifier = Modifier.offset(x = weekWidth * weekIndex)
+                            .testTag(KaniHeatmapMonthTagPrefix + weekIndex),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatmapGrid(grid: ReviewHeatmapPolicy.Grid, accent: Color) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val cell = heatmapCellSize(maxWidth, grid.weeks.size)
+        val gridHeight = if (cell == 0.dp) 0.dp else cell * 7 + KaniHeatmapGap * 6
+        Canvas(Modifier.fillMaxWidth().height(gridHeight).testTag(KaniHeatmapGridTag)) {
+            drawHeatmapCells(grid, accent, cell.toPx(), KaniHeatmapGap.toPx())
+        }
+    }
+}
+
+private fun heatmapCellSize(maxWidth: Dp, weekCount: Int): Dp {
+    if (weekCount == 0) return 0.dp
+    return minOf((maxWidth - KaniHeatmapGap * (weekCount - 1)) / weekCount, 13.dp).coerceAtLeast(0.dp)
+}
+
+private fun DrawScope.drawHeatmapCells(
+    grid: ReviewHeatmapPolicy.Grid,
+    accent: Color,
+    cellPx: Float,
+    gapPx: Float,
+) {
+    if (grid.weeks.isEmpty()) return
+    grid.weeks.forEachIndexed { weekIndex, week ->
+        week.cells.forEachIndexed { dayIndex, day ->
+            drawRect(
+                color = accent.copy(alpha = heatmapAlpha(day.intensity)),
+                topLeft = Offset(weekIndex * (cellPx + gapPx), dayIndex * (cellPx + gapPx)),
+                size = Size(cellPx, cellPx),
+            )
+        }
+    }
+}
+
+private fun heatmapAlpha(intensity: Int): Float = when (intensity) {
+    1 -> .22f
+    2 -> .42f
+    3 -> .68f
+    4 -> 1f
+    else -> .08f
+}
+
+@Composable
+private fun HeatmapWeekMarkers(weekCount: Int) {
+    Row(Modifier.fillMaxWidth().height(1.dp)) {
+        repeat(weekCount) {
+            Spacer(Modifier.weight(1f).testTag(KaniHeatmapWeekTag))
+        }
     }
 }
 

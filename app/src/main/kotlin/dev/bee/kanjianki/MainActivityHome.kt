@@ -52,7 +52,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private var latestHomeRouteBackAction: Runnable? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
     internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
-    private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
     private var confirmedRepairedNoteIds: Set<Long> = emptySet()
 
     abstract fun renderGames()
@@ -61,7 +60,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         asyncHomeRouteLoader.cancelPending()
         activeUpdateUiRunToken = 0
         clearStudyModeOverrides()
-        cachedImportOnboardingPlan = null
         if (isScreenshotRouteRequested()) {
             renderScreenshotHome()
             return
@@ -268,10 +266,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
             ),
             repairedNoteIds = repairedProposal?.noteIdsToTag.orEmpty(),
         )
-    }
-
-    private fun currentImportOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
-        return cachedImportOnboardingPlan ?: importOnboardingPlan().also { cachedImportOnboardingPlan = it }
     }
 
     private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {

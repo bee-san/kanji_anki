@@ -26,6 +26,7 @@ object LadderCompletionForecastPolicy {
         val assumptionCopyIds: List<String>,
     )
 
+    @Suppress("kotlin:S107", "kotlin:S3776")
     @JvmStatic
     @JvmOverloads
     fun forecast(

@@ -8,6 +8,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object StatsCacheCodec {
+    // These optional fields deliberately mirror the versioned JSON document. Keeping the
+    // named-argument boundary avoids coupling callers to a mutable serialization bag.
+    @Suppress("kotlin:S107")
     @JvmStatic
     internal fun outcomeToJson(
         stats: StudyStatsStore.KaniOutcomeStats?,

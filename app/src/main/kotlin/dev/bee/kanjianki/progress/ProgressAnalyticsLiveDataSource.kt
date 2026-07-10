@@ -205,7 +205,7 @@ internal fun progressAnalyticsSnapshot(
             confusionPairs = confusionPairs,
             focusScoreAvailable = impact.helpedCount + impact.notHelpingCount + impact.needsMoreCardsCount > 0,
         ),
-        forecast = forecastState(snapshot, nowMillis, copy),
+        forecast = forecastState(snapshot, copy),
     )
     return state
 }
@@ -352,7 +352,6 @@ private fun cumulativeSevenDayDelta(points: List<StatsCacheStore.CumulativeKanji
 
 private fun forecastState(
     snapshot: StatsCacheStore.Snapshot,
-    nowMillis: Long,
     dashboardCopy: StatsDashboardCopy,
 ): ProgressForecastState? {
     val forecast = snapshot.ladderForecast ?: return null

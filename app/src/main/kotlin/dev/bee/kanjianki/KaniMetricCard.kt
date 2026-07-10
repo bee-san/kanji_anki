@@ -23,6 +23,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+// This stable named-argument Compose API keeps metric call sites readable; grouping its
+// modifier, action, or accessibility fields would only replace that clarity with a bag type.
+@Suppress("kotlin:S107")
 @Composable
 internal fun KaniMetricCard(
     iconRes: Int,

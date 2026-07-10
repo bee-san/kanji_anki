@@ -27,7 +27,7 @@ object RepairedHandoffPolicy {
         return Card(
             kanji = normalized,
             title = localizedText(
-                "$count ${if (count == 1) "kanji" else "kanji"} repaired",
+                "$count kanji repaired",
                 "${count}件の漢字を修復しました",
             ),
             body = localizedText(
