@@ -18,6 +18,7 @@ class SyncProgressPanelTest {
         assertEquals(SyncProgressCopy.Stage.SAVING_LOCAL_DATA, SyncProgress.coreStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
         assertEquals(SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE, SyncProgress.coreStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
         assertEquals(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS, SyncProgress.coreStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+        assertEquals(SyncProgressCopy.Stage.TAGGING_REPAIRED, SyncProgress.coreStage(SyncProgress.Stage.TAGGING_REPAIRED))
         assertEquals(SyncProgressCopy.Stage.SCANNING_CARDS, SyncProgress.cardsScanned(1, 2).coreStage())
         assertNull(SyncProgress.coreStage(null))
     }

@@ -23,6 +23,7 @@ class SyncProgress private constructor(
         SAVING_LOCAL_DATA,
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS,
+        TAGGING_REPAIRED,
     }
 
     companion object {
@@ -50,6 +51,7 @@ class SyncProgress private constructor(
                 Stage.SAVING_LOCAL_DATA -> SyncProgressCopy.Stage.SAVING_LOCAL_DATA
                 Stage.BUILDING_PRACTICE_QUEUE -> SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE
                 Stage.ARCHIVING_IMPORTED_CARDS -> SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS
+                Stage.TAGGING_REPAIRED -> SyncProgressCopy.Stage.TAGGING_REPAIRED
             }
         }
     }

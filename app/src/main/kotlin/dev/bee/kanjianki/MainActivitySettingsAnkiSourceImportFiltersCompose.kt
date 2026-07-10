@@ -74,6 +74,11 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
             ImportFilterCheckbox(model.taggedCardsLabel, model.state.taggedCards) { model.state.taggedCards = it }
             ImportFilterCheckbox(model.weakCardsLabel, model.state.weakCards) { model.state.weakCards = it }
             ImportFilterCheckbox(model.browserQueryCardsLabel, model.state.browserQueryCards) { model.state.browserQueryCards = it }
+            if (model.tagRepairedCardsLabel.isNotBlank()) {
+                ImportFilterCheckbox(model.tagRepairedCardsLabel, model.state.tagRepairedCards) {
+                    model.state.tagRepairedCards = it
+                }
+            }
             ImportFilterTextField(
                 label = model.browserQueryLabel,
                 value = model.state.browserQuery,

@@ -14,6 +14,18 @@ Inputs inspected:
   - `app/src/main/kotlin/dev/bee/kanjianki/ProgressAnalyticsCompose.kt`
   - Legacy/simple stats code still present in `MainActivityStatsCompose.kt`, but the current route uses `ProgressAnalyticsDashboardScreen` through the standard shell.
 
+> **Landed (Goals 82–88, 2026-07-10):** the legacy stats surface and second
+> bottom nav are deleted. The live dashboard now has a three-metric hero strip,
+> a two-column compact metric layout, one-border section hierarchy with tinted
+> leaf cards, wrapped range/status chips, truthful chart axes and zero-data
+> states, plus the year heatmap, confusion pairs, and ladder forecast. The
+> P1 hierarchy, compact-layout, distribution readability, and bottom-padding
+> requirements below are implemented. The final six-theme wrapper contains
+> 126 hashed captures plus UI dumps with validated orientation dimensions.
+> Committed supplemental matrices add 18 six-theme narrow-phone Japanese
+> Stats captures and six dedicated heatmap captures, each with a matching UI
+> dump; the scored review is recorded beside the baselines.
+
 ## Visual diagnosis
 
 The old broken screenshot is unacceptable, not just rough:

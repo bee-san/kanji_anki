@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
 import java.util.Locale
@@ -33,6 +34,7 @@ class TimelineCopyTest {
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone(TimelineCopy.EVENT_REVIEW_PASSED))
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone("support_improved"))
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone("retired"))
+        assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone(TimelineCopy.EVENT_REPAIR_TAGGED))
         assertEquals(TimelineCopy.Tone.NEUTRAL, TimelineCopy.eventTone("sync"))
     }
 
@@ -61,6 +63,8 @@ class TimelineCopyTest {
         )
         assertEquals("Weak support seen", TimelineCopy.weakSupportSeenTitle())
         assertEquals("Retired by Anki support", TimelineCopy.retiredByAnkiSupportTitle())
+        assertEquals("Marked repaired in AnkiDroid", TimelineCopy.repairTaggedTitle())
+        assertTrue(TimelineCopy.repairTaggedDetail().contains("tag:kani_repaired"))
         assertEquals(
             "Kani had already retired this repair before timeline tracking was added.",
             TimelineCopy.historicalRetiredDetail(),
@@ -135,6 +139,7 @@ class TimelineCopyTest {
             assertEquals("この漢字には過去のKani学習状態があります。", TimelineCopy.firstSeenHistoricalStudyDetail())
             assertEquals("弱いサポートを検出", TimelineCopy.weakSupportSeenTitle())
             assertEquals("Ankiの支えで修了", TimelineCopy.retiredByAnkiSupportTitle())
+            assertEquals("AnkiDroidで修復済みに設定", TimelineCopy.repairTaggedTitle())
             assertEquals(
                 "タイムライン記録が追加される前に、Kaniはすでにこの修復を完了していました。",
                 TimelineCopy.historicalRetiredDetail(),

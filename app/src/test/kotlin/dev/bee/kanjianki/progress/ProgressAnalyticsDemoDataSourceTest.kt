@@ -18,10 +18,10 @@ class ProgressAnalyticsDemoDataSourceTest {
         assertEquals("Your learning at a glance", overview.subtitle)
         assertEquals(2_842, overview.totalReviews.value)
         assertEquals("2,842", overview.totalReviews.valueLabel)
-        assertEquals("+18% vs last 7d", overview.totalReviews.deltaLabel)
+        assertEquals("+18% vs previous 7d", overview.totalReviews.deltaLabel)
         assertEquals(92, overview.accuracy.value)
         assertEquals("92%", overview.accuracy.valueLabel)
-        assertEquals("+4% vs last 7d", overview.accuracy.deltaLabel)
+        assertEquals("+4% vs previous 30d", overview.accuracy.deltaLabel)
         assertEquals(6, overview.currentStreak.currentDays)
         assertEquals(14, overview.currentStreak.bestDays)
         assertEquals(126, overview.kanjiLearned.value)
@@ -41,11 +41,11 @@ class ProgressAnalyticsDemoDataSourceTest {
             "Reviews over time, 30-day range. Total reviews 2,842. Final point May 18 with 142 reviews. Trend is generally upward with small dips.",
             overview.reviewsOverTime.accessibilitySummary,
         )
-        assertEquals(listOf("Meaning", "Reading", "Writing", "Similar kanji"), overview.cardTypeBreakdown.segments.map { it.label })
+        assertEquals(listOf("Meaning", "Reading", "Writing", "Discrimination"), overview.cardTypeBreakdown.segments.map { it.label })
         assertEquals(listOf(1_079, 767, 512, 484), overview.cardTypeBreakdown.segments.map { it.value })
         assertEquals(listOf(38, 27, 18, 17), overview.cardTypeBreakdown.segments.map { it.percent })
         assertEquals(
-            "Card type breakdown. Total 2,842 reviews. Meaning 38 percent, Reading 27 percent, Writing 18 percent, Similar kanji 17 percent.",
+            "Review share by rung group. Total 2,842 reviews. Meaning 38 percent, Reading 27 percent, Writing 18 percent, Discrimination 17 percent.",
             overview.cardTypeBreakdown.accessibilitySummary,
         )
         assertEquals(listOf("Correct", "Incorrect"), overview.correctIncorrectBreakdown.segments.map { it.label })
@@ -74,7 +74,7 @@ class ProgressAnalyticsDemoDataSourceTest {
         assertEquals("Keep the streak going with a short review session today.", reviews.tip)
 
         val accuracy = snapshot.accuracyRetention
-        assertEquals("Accuracy & retention", accuracy.title)
+        assertEquals("Accuracy by rung group", accuracy.title)
         assertEquals(AnalyticsRange.THIRTY_DAYS, accuracy.selectedRange)
         assertEquals(listOf("Accuracy %", "7-day avg"), accuracy.accuracyTrend.series.map { it.label })
         assertEquals(92, accuracy.accuracyTrend.series.first().values.last())
@@ -83,32 +83,32 @@ class ProgressAnalyticsDemoDataSourceTest {
             "Accuracy over time, 30-day range. Current accuracy is 92 percent on May 18. Accuracy has generally increased over the past 30 days.",
             accuracy.accuracyTrend.accessibilitySummary,
         )
-        assertEquals(listOf("Meaning", "Reading", "Writing", "Similar kanji"), accuracy.retentionByCardType.map { it.label })
+        assertEquals(listOf("Meaning", "Reading", "Writing", "Discrimination"), accuracy.retentionByCardType.map { it.label })
         assertEquals(listOf(93, 90, 85, 78), accuracy.retentionByCardType.map { it.percent })
         assertEquals(
-            "Retention by card type. Meaning 93 percent, Reading 90 percent, Writing 85 percent, Similar kanji 78 percent.",
+            "Accuracy by rung group. Meaning 93 percent, Reading 90 percent, Writing 85 percent, Discrimination 78 percent.",
             accuracy.retentionSummary,
         )
-        assertEquals(listOf("Excellent", "Great", "Good", "Needs focus"), accuracy.categoryStatuses.map { it.status })
+        assertEquals(listOf("Excellent", "Excellent", "Great", "Good"), accuracy.categoryStatuses.map { it.status })
 
         val progress = snapshot.progressByLevel
-        assertEquals("Progress by level", progress.title)
-        assertEquals("All levels", progress.selectedFilterLabel)
+        assertEquals("Ladder rung distribution", progress.title)
+        assertEquals("", progress.selectedFilterLabel)
         assertEquals(126, progress.overallLearned.value)
-        assertEquals(1_026, progress.overallLearned.total)
-        assertEquals(12, progress.overallLearned.percent)
+        assertEquals(126, progress.overallLearned.total)
+        assertEquals(100, progress.overallLearned.percent)
         assertEquals(
-            "Progress by level, All levels. 126 of 1,026 kanji learned, 12 percent complete.",
+            "Ladder rung distribution for 126 active items.",
             progress.overallLearned.accessibilityLabel,
         )
-        assertEquals(listOf("N5", "N4", "N3", "N2", "N1"), progress.levelRows.map { it.level })
-        assertEquals(listOf(58, 41, 31, 18, 6), progress.levelRows.map { it.learned })
-        assertEquals(listOf(90, 150, 210, 270, 306), progress.levelRows.map { it.total })
-        assertEquals(listOf(64, 27, 15, 7, 2), progress.levelRows.map { it.percent })
+        assertEquals(listOf("Kanji meaning", "Font meaning", "Word reading", "Write kanji"), progress.levelRows.map { it.level })
+        assertEquals(listOf(58, 31, 21, 16), progress.levelRows.map { it.learned })
+        assertEquals(listOf(126, 126, 126, 126), progress.levelRows.map { it.total })
+        assertEquals(listOf(46, 25, 17, 13), progress.levelRows.map { it.percent })
         assertEquals(listOf("Apr 19", "Apr 26", "May 3", "May 10", "May 17"), progress.cumulativeProgress.xAxisLabels)
         assertEquals(listOf(25, 48, 72, 103, 135), progress.cumulativeProgress.series.single().values)
         assertEquals(
-            "Cumulative progress by level. All levels selected. Progress rises from 25 to 135 learned kanji across the displayed range.",
+            "Cumulative distinct kanji practiced rises from 25 to 135 across the displayed range.",
             progress.cumulativeProgress.accessibilitySummary,
         )
 

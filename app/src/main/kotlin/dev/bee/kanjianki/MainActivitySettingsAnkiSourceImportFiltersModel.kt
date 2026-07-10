@@ -23,6 +23,7 @@ class SettingsImportFiltersState(
     difficulty: String?,
     lapses: String?,
     minMatching: String?,
+    tagRepairedCards: Boolean = false,
 ) {
     var activeCards by mutableStateOf(activeCards)
     var suspendedCards by mutableStateOf(suspendedCards)
@@ -34,6 +35,7 @@ class SettingsImportFiltersState(
     var difficulty by mutableStateOf(difficulty.orEmpty())
     var lapses by mutableStateOf(lapses.orEmpty())
     var minMatching by mutableStateOf(minMatching.orEmpty())
+    var tagRepairedCards by mutableStateOf(tagRepairedCards)
 }
 
 fun interface SettingsImportFilterAction {
@@ -67,4 +69,5 @@ data class SettingsImportFiltersPanelModel(
     val minMatchingLabel: String,
     val saveLabel: String,
     val onSave: SettingsImportFilterAction,
+    val tagRepairedCardsLabel: String = "",
 ) : SettingsPanelModel

@@ -101,6 +101,9 @@ internal object SettingsWriteActions {
             SettingsImportPreset.boolFlag(request.browserQueryCards),
         )
         writer.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, request.browserQuery)
+        request.tagRepairedCards?.let {
+            writer.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(it))
+        }
     }
 
     fun interface IntSettingWriter {
@@ -141,6 +144,7 @@ internal object SettingsWriteActions {
         val minMatchingCards: Int,
         val browserQueryCards: Boolean,
         val browserQuery: String?,
+        val tagRepairedCards: Boolean? = null,
     )
 
     @JvmRecord

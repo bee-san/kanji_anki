@@ -1,0 +1,330 @@
+{
+  "capture_status": "complete",
+  "captured_at_utc": "2026-07-10T14:41:27Z",
+  "command_argv": [
+    "ci/scripts/capture_kani_theme_screenshots.sh",
+    "stats-heatmap"
+  ],
+  "files": [
+    "stats-heatmap.png",
+    "stats-heatmap.png",
+    "stats-heatmap.png",
+    "stats-heatmap.png",
+    "stats-heatmap.png",
+    "stats-heatmap.png"
+  ],
+  "git_ref": "codex/repair-loop-and-stats-goals",
+  "git_sha": "25c1bdaf03407666156c1a45b3f35a6a19c71fb9",
+  "manifest_files": [
+    "girlypop/manifest.json",
+    "light/manifest.json",
+    "dark/manifest.json",
+    "system-light/manifest.json",
+    "system-dark/manifest.json",
+    "autumn/manifest.json"
+  ],
+  "notes": [
+    "Each theme run writes its own manifest in a per-theme subdirectory.",
+    "The root manifest aggregates the requested theme matrix and all per-theme capture manifests."
+  ],
+  "requested_route": "stats-heatmap",
+  "requested_theme_matrix": [
+    "girlypop",
+    "light",
+    "dark",
+    "system-light",
+    "system-dark",
+    "autumn"
+  ],
+  "theme_count": 6,
+  "theme_runs": [
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "ec9a0027a32bfee0a9a1ee51107532113f2e140499515fec49d8fdbe4d34c861",
+          "system_mode": "",
+          "theme": "girlypop",
+          "theme_choice": "girlypop",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "girlypop"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "girlypop/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "",
+      "requested_theme": "girlypop",
+      "requested_theme_choice": "girlypop",
+      "routes": [
+        "stats"
+      ],
+      "theme": "girlypop"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "3b943dac8a3367ec3e8263282ee9d2a86e7e36fd9caebeb23e474155d4608bac",
+          "system_mode": "",
+          "theme": "light",
+          "theme_choice": "light",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "light"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "light/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "",
+      "requested_theme": "light",
+      "requested_theme_choice": "light",
+      "routes": [
+        "stats"
+      ],
+      "theme": "light"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "f431fd6c2c70056bf216d49da4519f323d85a4fb4965ab3fce7657a750720ae5",
+          "system_mode": "",
+          "theme": "dark",
+          "theme_choice": "dark",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "dark"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "dark/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "",
+      "requested_theme": "dark",
+      "requested_theme_choice": "dark",
+      "routes": [
+        "stats"
+      ],
+      "theme": "dark"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "4ff50764c9b349a2ec5b4c53bbff5cc20cd99d1bac1371d55cdaf69394113a89",
+          "system_mode": "light",
+          "theme": "system-light",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "system-light"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "system-light/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "light",
+      "requested_theme": "system-light",
+      "requested_theme_choice": "system",
+      "routes": [
+        "stats"
+      ],
+      "theme": "system-light"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "5389fa2536f7063411f2d47f4c01537c1c29efd6cf2331ccd413dd203f2b8a1b",
+          "system_mode": "dark",
+          "theme": "system-dark",
+          "theme_choice": "system",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "system-dark"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "system-dark/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "dark",
+      "requested_theme": "system-dark",
+      "requested_theme_choice": "system",
+      "routes": [
+        "stats"
+      ],
+      "theme": "system-dark"
+    },
+    {
+      "capture_status": "complete",
+      "captures": [
+        {
+          "launch_target": "stats",
+          "orientation": "portrait",
+          "path": "stats-heatmap.png",
+          "route": "stats",
+          "scroll_position": "1280",
+          "scroll_y": 1280,
+          "scrollable": true,
+          "sha256": "59be1b3f69879160f0697432b31a9e9e9429ac87052b71f8e68d395b7fe3d943",
+          "system_mode": "",
+          "theme": "autumn",
+          "theme_choice": "autumn",
+          "uiautomator_dump_path": "stats-heatmap.uiautomator.xml",
+          "uiautomator_dump_sha256": "47d1d9559cc721d7fc6845cd28415fb495f36a8aa6af1a3de33e639153c5e1c3"
+        }
+      ],
+      "command_argv": [
+        "ci/scripts/capture_android_screenshots.sh",
+        "stats-heatmap",
+        "autumn"
+      ],
+      "device": {
+        "api_level": "35",
+        "manufacturer": "Google",
+        "model": "sdk_gphone64_arm64",
+        "profile": "",
+        "sdk": "35"
+      },
+      "files": [
+        "stats-heatmap.png"
+      ],
+      "manifest_path": "autumn/manifest.json",
+      "notes": [
+        "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+        "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+      ],
+      "requested_route": "stats-heatmap",
+      "requested_system_mode": "",
+      "requested_theme": "autumn",
+      "requested_theme_choice": "autumn",
+      "routes": [
+        "stats"
+      ],
+      "theme": "autumn"
+    }
+  ]
+}

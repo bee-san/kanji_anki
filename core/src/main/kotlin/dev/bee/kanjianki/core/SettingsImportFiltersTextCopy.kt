@@ -27,6 +27,12 @@ object SettingsImportFiltersTextCopy {
     fun browserQueryLabel(): String = localizedText("Browser query", "ブラウザ検索")
 
     @JvmStatic
+    fun tagRepairedCardsLabel(): String = localizedText(
+        "Tag repaired notes in AnkiDroid (ask before each sync)",
+        "修復済みノートをAnkiDroidでタグ付け（同期前に確認）",
+    )
+
+    @JvmStatic
     fun ankiBrowserQueryHint(): String = "deck:Japanese tag:kani"
 
     @JvmStatic

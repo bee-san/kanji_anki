@@ -30,6 +30,13 @@ class FakeAnkiDroidProvider : ContentProvider() {
             "browserQueryQueries" -> result.putInt("value", browserQueryQueries)
             "cardProjectionRejects" -> result.putInt("value", cardProjectionRejects)
             "suspendedTags" -> result.putString("value", suspendedTags)
+            "repairedTags" -> result.putInt("value", repairedTags)
+            "repairedTagUpdates" -> result.putInt("value", repairedTagUpdates)
+            "repairedTagsForNote" -> result.putString("value", repairedTagsByNote[arg?.toLongOrNull()].orEmpty())
+            "failRepairedNote" -> {
+                failRepairedNoteId = arg?.toLongOrNull()
+                result.putBoolean("ok", true)
+            }
             "failSuspendedSearch" -> {
                 failSuspendedSearch = true
                 result.putBoolean("ok", true)
@@ -149,6 +156,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
             }
             "pretagSuspendedArchived" -> {
                 suspendedTags = "leech kani_archived"
+                result.putBoolean("ok", true)
+            }
+            "pretagSuspendedRepaired" -> {
+                suspendedTags = "leech kani_repaired"
                 result.putBoolean("ok", true)
             }
         }
@@ -584,7 +595,14 @@ class FakeAnkiDroidProvider : ContentProvider() {
         }
         val noteId = uri.lastPathSegment!!.toLong()
         val tags = values?.getAsString("tags") ?: ""
-        return when (noteId) {
+        val repairedUpdate = tags.split(Regex("\\s+")).contains("kani_repaired")
+        if (repairedUpdate) {
+            repairedTagUpdates++
+            if (noteId == failRepairedNoteId) {
+                return 0
+            }
+        }
+        val updated = when (noteId) {
             1L -> {
                 activeTags = tags
                 1
@@ -595,6 +613,11 @@ class FakeAnkiDroidProvider : ContentProvider() {
             }
             else -> 0
         }
+        if (updated > 0 && repairedUpdate) {
+            repairedTagsByNote[noteId] = tags
+            repairedTags = repairedTagsByNote.size
+        }
+        return updated
     }
 
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int {
@@ -688,6 +711,18 @@ class FakeAnkiDroidProvider : ContentProvider() {
 
         @JvmField
         var suspendedTags = ""
+
+        @JvmField
+        var repairedTags = 0
+
+        @JvmField
+        var repairedTagUpdates = 0
+
+        @JvmField
+        var repairedTagsByNote: MutableMap<Long, String> = linkedMapOf()
+
+        @JvmField
+        var failRepairedNoteId: Long? = null
 
         @JvmField
         var failSuspendedSearch = false
@@ -787,6 +822,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
             cardProjectionRejects = 0
             activeTags = ""
             suspendedTags = ""
+            repairedTags = 0
+            repairedTagUpdates = 0
+            repairedTagsByNote = linkedMapOf()
+            failRepairedNoteId = null
             failSuspendedSearch = false
             rejectFsrsProjection = false
             dataOnlyFsrs = false

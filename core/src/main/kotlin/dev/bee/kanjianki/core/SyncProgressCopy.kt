@@ -16,6 +16,7 @@ object SyncProgressCopy {
                 Stage.SAVING_LOCAL_DATA -> "ローカルデータを保存中"
                 Stage.BUILDING_PRACTICE_QUEUE -> "練習キューを作成中"
                 Stage.ARCHIVING_IMPORTED_CARDS -> "取り込んだ休止カードをアーカイブ中"
+                Stage.TAGGING_REPAIRED -> "修復済みカードをタグ付け中"
                 null -> "カードを同期中"
             }
         } else {
@@ -27,6 +28,7 @@ object SyncProgressCopy {
                 Stage.SAVING_LOCAL_DATA -> "Saving local data"
                 Stage.BUILDING_PRACTICE_QUEUE -> "Building practice queue"
                 Stage.ARCHIVING_IMPORTED_CARDS -> "Archiving imported suspended cards"
+                Stage.TAGGING_REPAIRED -> "Tagging repaired cards"
                 null -> "Syncing cards"
             }
         }
@@ -42,6 +44,7 @@ object SyncProgressCopy {
                 Stage.SAVING_LOCAL_DATA -> "Anki のスナップショットと取り込み証跡を保存しています。"
                 Stage.BUILDING_PRACTICE_QUEUE -> "練習キューを保存しています。"
                 Stage.ARCHIVING_IMPORTED_CARDS -> "取り込んだ休止カードをアーカイブしています。"
+                Stage.TAGGING_REPAIRED -> "修復済みノートをAnkiDroidでタグ付けしています。"
                 Stage.SCANNING_CARDS,
                 null -> "カードをスキャンする準備をしています。"
             }
@@ -53,6 +56,7 @@ object SyncProgressCopy {
                 Stage.SAVING_LOCAL_DATA -> "Saving the Anki snapshot and import evidence."
                 Stage.BUILDING_PRACTICE_QUEUE -> "Saving the practice queue."
                 Stage.ARCHIVING_IMPORTED_CARDS -> "Updating archived suspended cards."
+                Stage.TAGGING_REPAIRED -> "Tagging repaired notes in AnkiDroid."
                 Stage.SCANNING_CARDS,
                 null -> "Preparing card scan."
             }
@@ -154,5 +158,6 @@ object SyncProgressCopy {
         SAVING_LOCAL_DATA,
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS,
+        TAGGING_REPAIRED,
     }
 }

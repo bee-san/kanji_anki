@@ -7,6 +7,7 @@ object TimelineCopy {
     const val EVENT_REVIEW_FAILED = "review_failed"
     const val EVENT_REVIEW_PASSED = "review_passed"
     const val EVENT_REOPENED = "reopened"
+    const val EVENT_REPAIR_TAGGED = "repair_tagged"
 
     private const val JAPANESE_LANGUAGE = "ja"
     private const val RATING_AGAIN = "again"
@@ -43,7 +44,12 @@ object TimelineCopy {
         if (EVENT_REVIEW_FAILED == eventType || "support_dropped" == eventType || EVENT_REOPENED == eventType) {
             return Tone.WARNING
         }
-        if (EVENT_REVIEW_PASSED == eventType || "support_improved" == eventType || StudyLadderRules.STATE_RETIRED == eventType) {
+        if (
+            EVENT_REVIEW_PASSED == eventType ||
+            "support_improved" == eventType ||
+            StudyLadderRules.STATE_RETIRED == eventType ||
+            EVENT_REPAIR_TAGGED == eventType
+        ) {
             return Tone.POSITIVE
         }
         return Tone.NEUTRAL
@@ -90,6 +96,15 @@ object TimelineCopy {
 
     @JvmStatic
     fun retiredByAnkiSupportTitle(): String = localizedText("Retired by Anki support", "Ankiの支えで修了")
+
+    @JvmStatic
+    fun repairTaggedTitle(): String = localizedText("Marked repaired in AnkiDroid", "AnkiDroidで修復済みに設定")
+
+    @JvmStatic
+    fun repairTaggedDetail(): String = localizedText(
+        "Kani added tag:kani_repaired; use the AnkiDroid card browser to unsuspend when ready.",
+        "Kaniがtag:kani_repairedを追加しました。準備ができたらAnkiDroidのカードブラウザで停止を解除できます。",
+    )
 
     @JvmStatic
     fun historicalRetiredDetail(): String = localizedText(

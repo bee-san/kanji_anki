@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Kani</string>
     <string name="copied_anki_search">Copied</string>
+    <string name="kani_widget_description">Due reviews and study streak</string>
+    <string name="kani_widget_loading">Loading Kani…</string>
 </resources>

@@ -118,7 +118,9 @@ Current Kani snapshot used for this review:
 
 8. Import/sync should document source-of-truth and conflict boundaries.
 
-   Current Kani: syncs from AnkiDroid’s provider, scans active/suspended/tagged/weak/browser-query sources, extracts FSRS memory state, and mirrors active/suspended card indexes. Auto-sync exists locally, but this is not AnkiWeb multi-device sync.
+   Current Kani: syncs from AnkiDroid’s local provider, scans active/suspended/tagged/weak/browser-query sources, extracts FSRS memory state, and mirrors active/suspended card indexes. Auto-sync exists locally, but this is not AnkiWeb multi-device sync. Kani's provider write surface is deliberately note-tag-only: `kani_archived` for the existing archive flow and opt-in, manual-confirmed `kani_repaired` for verified repairs. It never writes queue, due date, interval, ease, deck, or another scheduling field. Repaired cards are handed back with the exact browser search `tag:kani_repaired is:suspended`; the user reviews and unsuspends them in AnkiDroid. Provider-write failures are isolated and retried without failing the committed sync, and the Backup & restore flow gives users WAL-safe external exports and staged, validated restore before destructive recovery.
+
+   Live boundary verification (2026-07-10): the real AnkiDroid 2.24.0 gate passed `OK (62 tests)` against the copied 7,000+ note collection. A non-destructive probe called `resolver.update` on a real card URI with that card's existing queue value. The provider rejected it with `IllegalArgumentException` (`updatedRows=-1`), and a reread confirmed queue `2` was unchanged. Direct card unsuspend is therefore not a supported provider operation in Kani.
 
    Manual anchors:
    - AnkiWeb sync “allows you to keep your collection synchronized across multiple devices, and to study online.” Source: https://docs.ankiweb.net/syncing.html
@@ -127,9 +129,9 @@ Current Kani snapshot used for this review:
    - Text import supports plain text, CSV, TSV, semicolon-delimited files, and HTML-in-fields options. Source: https://docs.ankiweb.net/importing/text-files.html
 
    Checklist:
-   - [ ] Make clear that Kani sync is AnkiDroid-provider import/mirror, not AnkiWeb collection sync.
-   - [ ] Document what data Kani writes back, if any, versus what remains read-only/imported.
-   - [ ] Document conflict behavior and backup expectations before destructive provider/archive operations.
+   - [x] Make clear that Kani sync is AnkiDroid-provider import/mirror, not AnkiWeb collection sync.
+   - [x] Document what data Kani writes back, if any, versus what remains read-only/imported.
+   - [x] Document conflict behavior and backup expectations before destructive provider/archive operations.
    - [ ] If text/CSV import is planned, define whether it mirrors Anki text import behavior or is out of scope.
 
 ## Evidence summary

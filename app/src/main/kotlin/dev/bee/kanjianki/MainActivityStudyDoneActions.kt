@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.widget.KaniWidgetUpdater
 
 internal class MainActivityStudyDoneActions(private val home: MainActivityStudy) {
     private var renderedPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
@@ -118,6 +119,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         model: StudyDoneScreenModel,
     ) {
+        KaniWidgetUpdater.requestUpdate(home)
         renderedPlan = plan
         renderedScreenModel = model
         renderCurrentStudyDone(plan, model)
@@ -189,7 +191,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
                 countAvailable = { loadData ->
                     val now = System.currentTimeMillis()
-                    BridgeScheduler().countExtraNewCardsAvailable(
+                    BridgeScheduler.withWeights(home.store.schedulerFsrsWeights()).countExtraNewCardsAvailable(
                         loadData.rows,
                         loadData.existing,
                         home.settings(),

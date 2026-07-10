@@ -32,4 +32,30 @@ interface CollectionGateway {
     ): AnkiDroidGateway.RemovalSummary {
         return removeArchivedSuspendedCards(snapshot, progress)
     }
+
+    /**
+     * Optional note-tag write-back. The default deliberately does nothing so test
+     * gateways and non-Anki providers remain source-compatible.
+     */
+    fun tagRepairedNotes(
+        noteIds: Set<Long>,
+        progress: SyncProgress.Listener?,
+    ): RepairedTagSummary = RepairedTagSummary.noOp()
+}
+
+data class RepairedTagSummary(
+    val requestedNoteIds: Set<Long>,
+    val taggedNoteIds: Set<Long>,
+    val failedNoteIds: Set<Long>,
+    val message: String,
+) {
+    companion object {
+        @JvmStatic
+        fun noOp(): RepairedTagSummary = RepairedTagSummary(
+            emptySet(),
+            emptySet(),
+            emptySet(),
+            "No repaired notes needed provider tagging.",
+        )
+    }
 }

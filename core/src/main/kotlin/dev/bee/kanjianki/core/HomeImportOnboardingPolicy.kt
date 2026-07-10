@@ -33,6 +33,7 @@ object HomeImportOnboardingPolicy {
         fun primaryActionLabel(): String = primaryActionLabelValue
     }
 
+    @Suppress("kotlin:S107")
     @JvmStatic
     fun plan(
         providerInstalled: Boolean,
@@ -41,6 +42,8 @@ object HomeImportOnboardingPolicy {
         lastSync: LastSync?,
         permissionName: String?,
         settings: RecordsSyncModels.Settings,
+        tagRepairedCards: Boolean = false,
+        repairedKanjiCount: Int = 0,
     ): Plan {
         if (!providerInstalled) {
             return Plan(
@@ -70,13 +73,14 @@ object HomeImportOnboardingPolicy {
             )
         }
         val status = lastSync?.status ?: ""
+        val repairedTaggingLine = repairedTaggingLine(tagRepairedCards, repairedKanjiCount)
         if (status == "success") {
             val sync = lastSync ?: LastSync(null, 0, null)
             return Plan(
                 State.SYNCED,
                 localizedText(
-                    "Last sync imported " + StudyTextCopy.countText(sync.importedKanji, "kanji", "kanji") + ". " + sourceAndModelLine(settings),
-                    "前回の同期で${sync.importedKanji}件の漢字をインポートしました。 " + sourceAndModelLine(settings),
+                    "Last sync imported " + StudyTextCopy.countText(sync.importedKanji, "kanji", "kanji") + ". " + sourceAndModelLine(settings) + repairedTaggingLine,
+                    "前回の同期で${sync.importedKanji}件の漢字をインポートしました。 " + sourceAndModelLine(settings) + repairedTaggingLine,
                 ),
                 localizedText("Sync again", "もう一度同期"),
             )
@@ -97,16 +101,24 @@ object HomeImportOnboardingPolicy {
             return Plan(
                 State.RECOVER_SYNC,
                 localizedText(
-                    "Last sync failed: $error. Check source settings, then try again.",
-                    "前回の同期に失敗しました: $error。インポート元設定を確認してから、もう一度試してください。",
+                    "Last sync failed: $error. Check source settings, then try again.$repairedTaggingLine",
+                    "前回の同期に失敗しました: $error。インポート元設定を確認してから、もう一度試してください。$repairedTaggingLine",
                 ),
                 localizedText("Try sync again", "もう一度同期"),
             )
         }
         return Plan(
             State.READY_FIRST_SYNC,
-            HomeTextCopy.syncDialogMessage(settings),
+            HomeTextCopy.syncDialogMessage(settings) + repairedTaggingLine,
             localizedText("Sync cards", "カードを同期"),
+        )
+    }
+
+    private fun repairedTaggingLine(enabled: Boolean, count: Int): String {
+        if (!enabled || count <= 0) return ""
+        return localizedText(
+            "\nThis sync will also tag $count repaired kanji in AnkiDroid.",
+            "\nこの同期では、修復済みの漢字${count}件もAnkiDroidでタグ付けします。",
         )
     }
 

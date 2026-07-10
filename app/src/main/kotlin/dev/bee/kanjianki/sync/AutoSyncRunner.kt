@@ -48,6 +48,7 @@ internal class AutoSyncRunner @JvmOverloads constructor(
             SyncSettings.fromStore(store),
             SyncProgress.NONE,
             syncClock,
+            repairedWriteBackAuthorized = false,
         ).run()
         if (!sync.skipped) {
             store.recordAutoSyncAttempt(now, sync.success)

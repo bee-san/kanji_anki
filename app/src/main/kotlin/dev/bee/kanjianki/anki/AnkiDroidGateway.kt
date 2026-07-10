@@ -28,6 +28,7 @@ class AnkiDroidGateway private constructor(
     private val resolver: ContentResolver
     private val cardReader: AnkiDroidCardReader
     private val archiveCleanup: AnkiDroidArchiveCleanup
+    private val repairedTagging: AnkiDroidRepairedTagging
     private val permissionChecker: PermissionChecker
 
     constructor(context: Context) : this(context, ProviderTarget.TARGETS, SyncCancellation.NONE)
@@ -46,6 +47,7 @@ class AnkiDroidGateway private constructor(
         resolver = appContext.contentResolver
         cardReader = AnkiDroidCardReader(resolver, cancellation)
         archiveCleanup = AnkiDroidArchiveCleanup(resolver)
+        repairedTagging = AnkiDroidRepairedTagging(resolver)
         permissionChecker = PermissionChecker { permission -> appContext.checkSelfPermission(permission) }
     }
 
@@ -186,6 +188,23 @@ class AnkiDroidGateway private constructor(
             return RemovalSummary(0, 0, 0, "No provider removal attempted.")
         }
         return archiveCleanup.removeArchivedSuspendedCards(target.authority, snapshot, selectedSuspendedImports)
+    }
+
+    override fun tagRepairedNotes(
+        noteIds: Set<Long>,
+        progress: SyncProgress.Listener?,
+    ): RepairedTagSummary {
+        val reporter = progress ?: SyncProgress.NONE
+        reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.TAGGING_REPAIRED))
+        if (noteIds.isEmpty()) return RepairedTagSummary.noOp()
+        val target = resolveProviderTarget()
+            ?: return RepairedTagSummary(
+                noteIds,
+                emptySet(),
+                noteIds,
+                "Repaired-note tagging could not reach AnkiDroid and will retry next sync.",
+            )
+        return repairedTagging.tagRepairedNotes(target.authority, noteIds)
     }
 
     @Throws(SyncFailure::class)

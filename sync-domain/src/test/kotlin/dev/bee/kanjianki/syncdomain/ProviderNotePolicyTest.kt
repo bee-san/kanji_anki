@@ -106,6 +106,9 @@ class ProviderNotePolicyTest {
         assertTrue(ProviderNotePolicy.isArchivedTagPresent(listOf("kani_archived", "kanji_anki_archived")))
         assertFalse(ProviderNotePolicy.isArchivedTagPresent(listOf("marked")))
         assertFalse(ProviderNotePolicy.isArchivedTagPresent(null))
+        assertTrue(ProviderNotePolicy.isRepairedTagPresent(listOf("leech", ProviderNotePolicy.REPAIRED_TAG)))
+        assertFalse(ProviderNotePolicy.isRepairedTagPresent(listOf("kani_archived")))
+        assertFalse(ProviderNotePolicy.isRepairedTagPresent(null))
     }
 
     @Test

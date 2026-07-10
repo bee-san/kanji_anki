@@ -4,12 +4,17 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolvePalette
 
@@ -88,10 +93,6 @@ internal class KaniColors(
             put(MainActivityUiSupport.STUDY_HERO_PINK, primary)
             put(MainActivityUiSupport.STUDY_HERO_PLUM, ink)
             put(MainActivityUiSupport.STUDY_HERO_MUTED, muted)
-            // Stats verdict card fills (pale tints in light, deep tints in dark).
-            put(STATS_VERDICT_WORKING_FILL, if (isDark) Color(0xFF1E3537) else Color(STATS_VERDICT_WORKING_FILL))
-            put(STATS_VERDICT_LADDER_FILL, if (isDark) Color(0xFF38301C) else Color(STATS_VERDICT_LADDER_FILL))
-            put(STATS_VERDICT_IDLE_FILL, if (isDark) Color(0xFF2A2330) else Color(STATS_VERDICT_IDLE_FILL))
         }
     }
 }
@@ -228,6 +229,20 @@ internal val DarkKaniColors = KaniColors(
 
 internal val LocalKaniColors = staticCompositionLocalOf { LightKaniColors }
 
+internal val KaniTypography = Typography(
+    headlineLarge = TextStyle(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold),
+    headlineSmall = TextStyle(fontSize = 21.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 18.sp),
+    labelSmall = TextStyle(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium),
+)
+
+internal val KaniShapes = Shapes(
+    small = KaniUiTokens.ButtonShape,
+    medium = KaniUiTokens.LeafShape,
+    large = KaniUiTokens.PanelShape,
+)
+
 /** Accessor mirror of [MaterialTheme]: `KaniTheme.colors` inside composables. */
 internal object KaniTheme {
     val colors: KaniColors
@@ -287,7 +302,7 @@ internal fun KaniTheme(
         )
     }
     CompositionLocalProvider(LocalKaniColors provides colors) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = KaniTypography, shapes = KaniShapes, content = content)
     }
 }
 

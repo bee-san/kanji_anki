@@ -1,0 +1,85 @@
+{
+  "apk_path": "app/build/outputs/apk/debug/app-debug.apk",
+  "captured_at_utc": "2026-07-10T14:37:45Z",
+  "captures": [
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "stats-top.png",
+      "route": "stats",
+      "scroll_position": "top",
+      "scroll_y": 0,
+      "scrollable": true,
+      "sha256": "7ead03db34177e4723bab7945f43b9de18badc0aa4a9fdb5b4310f2f916895f5",
+      "system_mode": "",
+      "theme": "dark",
+      "theme_choice": "dark",
+      "uiautomator_dump_path": "stats-top.uiautomator.xml",
+      "uiautomator_dump_sha256": "9a37efec1018681f68e5d29947269ec8021abea73849bb2c35d1aee517267b45"
+    },
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "stats-middle.png",
+      "route": "stats",
+      "scroll_position": "middle",
+      "scroll_y": 640,
+      "scrollable": true,
+      "sha256": "160dfb3be4024607fd12b0d507a3604fec4ded9dbbb481695e08cfab4f66f4a2",
+      "system_mode": "",
+      "theme": "dark",
+      "theme_choice": "dark",
+      "uiautomator_dump_path": "stats-middle.uiautomator.xml",
+      "uiautomator_dump_sha256": "bfa095acef8420c33eddf96a6fa6478a04405734fefa45d3317dbf54b0f2d74e"
+    },
+    {
+      "launch_target": "stats",
+      "orientation": "portrait",
+      "path": "stats-bottom.png",
+      "route": "stats",
+      "scroll_position": "bottom",
+      "scroll_y": 5120,
+      "scrollable": true,
+      "sha256": "77ab68b4e50b999bf9099e8ca9ab887cf8dcd2494b2211d100cd9ada388c58ba",
+      "system_mode": "",
+      "theme": "dark",
+      "theme_choice": "dark",
+      "uiautomator_dump_path": "stats-bottom.uiautomator.xml",
+      "uiautomator_dump_sha256": "63e59bee8bedcf18aa8995e6d125afec1cb6bd2b7cf2c0a62ac546d8b309c4a6"
+    }
+  ],
+  "command_argv": [
+    "ci/scripts/capture_android_screenshots.sh",
+    "stats",
+    "dark"
+  ],
+  "device": {
+    "api_level": "35",
+    "manufacturer": "Google",
+    "model": "sdk_gphone64_arm64",
+    "profile": "",
+    "sdk": "35"
+  },
+  "files": [
+    "stats-top.png",
+    "stats-middle.png",
+    "stats-bottom.png"
+  ],
+  "git_ref": "codex/repair-loop-and-stats-goals",
+  "git_sha": "25c1bdaf03407666156c1a45b3f35a6a19c71fb9",
+  "notes": [
+    "Route capture waits for the requested screen and fails fast on Android ANR dialogs.",
+    "Each capture may include a UIAutomator XML dump alongside the PNG for route assertions."
+  ],
+  "package": "dev.bee.kanjianki",
+  "requested_locale": "ja",
+  "requested_route": "stats",
+  "requested_system_mode": "",
+  "requested_theme": "dark",
+  "requested_theme_choice": "dark",
+  "routes": [
+    "stats"
+  ],
+  "workflow_run_attempt": "",
+  "workflow_run_id": ""
+}

@@ -11,12 +11,17 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RepairedHandoffPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StatsPrecomputeStore
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.dismissRepairedHandoff
+import dev.bee.kanjianki.data.pendingRepairedHandoffKanji
+import dev.bee.kanjianki.data.repairedWriteBackPreview
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
+import dev.bee.kanjianki.sync.SyncSettings
 
 internal abstract class MainActivityHome : MainActivityBase() {
     // Written on the main thread and read from a background route-load lambda, so it is
@@ -47,7 +52,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private var latestHomeRouteBackAction: Runnable? = null
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
     internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
-    private var cachedImportOnboardingPlan: HomeImportOnboardingPolicy.Plan? = null
+    private var confirmedRepairedNoteIds: Set<Long> = emptySet()
 
     abstract fun renderGames()
 
@@ -55,7 +60,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         asyncHomeRouteLoader.cancelPending()
         activeUpdateUiRunToken = 0
         clearStudyModeOverrides()
-        cachedImportOnboardingPlan = null
         if (isScreenshotRouteRequested()) {
             renderScreenshotHome()
             return
@@ -133,7 +137,25 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
             },
             studyRemainingCount = studyRemaining,
+            repairedHandoff = RepairedHandoffPolicy.card(store.pendingRepairedHandoffKanji())?.let { card ->
+                HomeRepairedHandoffCardModel(
+                    card = card,
+                    onCopySearch = { copyRepairedAnkiSearch(card.search) },
+                    onDismiss = ::dismissRepairedHandoffCard,
+                )
+            },
         )
+    }
+
+    private fun copyRepairedAnkiSearch(search: String) {
+        copyRepairedAnkiSearch(this, search)
+    }
+
+    private fun dismissRepairedHandoffCard() {
+        io.execute {
+            store.dismissRepairedHandoff()
+            postToMainIfActive(::renderHome)
+        }
     }
 
     private fun renderHomeScreen(
@@ -198,16 +220,20 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        val plan = currentImportOnboardingPlan()
+        confirmedRepairedNoteIds = emptySet()
+        val consent = currentSyncConsent()
+        val plan = consent.plan
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
             message = plan.body(),
             confirmLabel = plan.primaryActionLabel(),
             onConfirm = Runnable {
                 pendingHomeSyncDialog = null
+                confirmedRepairedNoteIds = consent.repairedNoteIds
                 handleImportOnboardingAction(plan.state())
             },
             onDismiss = Runnable {
                 pendingHomeSyncDialog = null
+                confirmedRepairedNoteIds = emptySet()
                 rerenderLatestHomeRoute()
             },
         )
@@ -215,20 +241,31 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     protected open fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
-        val current = settings()
-        val provider = gateway.status()
-        return HomeImportOnboardingPolicy.plan(
-            provider.installed,
-            provider.permissionGranted,
-            provider.canSync,
-            onboardingLastSync(),
-            provider.permission,
-            current,
-        )
+        return currentSyncConsent().plan
     }
 
-    private fun currentImportOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
-        return cachedImportOnboardingPlan ?: importOnboardingPlan().also { cachedImportOnboardingPlan = it }
+    private fun currentSyncConsent(): SyncConsent {
+        val current = settings()
+        val provider = gateway.status()
+        val tagRepaired = SyncSettings.tagRepairedCards(store)
+        val repairedProposal = if (tagRepaired) {
+            store.repairedWriteBackPreview(current.matureSupportThreshold)
+        } else {
+            null
+        }
+        return SyncConsent(
+            plan = HomeImportOnboardingPolicy.plan(
+                provider.installed,
+                provider.permissionGranted,
+                provider.canSync,
+                onboardingLastSync(),
+                provider.permission,
+                current,
+                tagRepaired,
+                repairedProposal?.repairedKanji?.size ?: 0,
+            ),
+            repairedNoteIds = repairedProposal?.noteIdsToTag.orEmpty(),
+        )
     }
 
     private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
@@ -266,6 +303,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun runSync() {
+        val repairedNoteIds = confirmedRepairedNoteIds
+        confirmedRepairedNoteIds = emptySet()
         val progressView = SyncProgressPanel()
         renderHomeRoute {
             SyncProgressScreen(
@@ -284,6 +323,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
                     syncGateway,
                     settings(),
                     progress,
+                    dev.bee.kanjianki.time.AppClock.systemClock(),
+                    repairedWriteBackAuthorized = true,
+                    confirmedRepairedNoteIds = repairedNoteIds,
                 ).run()
             },
             {
@@ -294,6 +336,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
         coordinator.start { update -> main.post { progressView.render(update) } }
     }
+
+    private data class SyncConsent(
+        val plan: HomeImportOnboardingPolicy.Plan,
+        val repairedNoteIds: Set<Long>,
+    )
 
     fun renderSyncResult(result: ManualSyncEngine.SyncResult) {
         if (result.skipped) {

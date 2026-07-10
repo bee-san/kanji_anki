@@ -30,6 +30,8 @@ class MainActivityScreenshotModelsTest {
         val model = screenshotSettingsScreenModel(activity)
         val appearance = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE }
         val referenceData = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE }
+        val studyBehavior = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE }
+        val automation = model.cards.single { it.routeKey == MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE }
 
         assertEquals(SettingsTextCopy.settingsAppearanceTitle(), appearance.title)
         assertEquals("1 card", appearance.panelCount)
@@ -37,5 +39,7 @@ class MainActivityScreenshotModelsTest {
         assertEquals(SettingsTextCopy.settingsReferenceDataTitle(), referenceData.title)
         assertEquals("1 card", referenceData.panelCount)
         assertFalse(referenceData.contentDescription.isBlank())
+        assertEquals("9 cards", studyBehavior.panelCount)
+        assertEquals("4 cards", automation.panelCount)
     }
 }

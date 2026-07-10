@@ -3,12 +3,15 @@ package dev.bee.kanjianki
 import android.content.Intent
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
@@ -271,6 +274,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val startup by lazy { MainActivityStartup(this as MainActivityHome) }
     private val activityLifecycle by lazy { MainActivityLifecycle(this) }
 
+    private lateinit var backupExportDocumentLauncher: ActivityResultLauncher<String>
+    private lateinit var backupRestoreDocumentLauncher: ActivityResultLauncher<Array<String>>
+
     abstract fun renderHome()
     abstract fun renderUpdate()
     abstract fun renderStats()
@@ -312,8 +318,33 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // SAF launchers must be registered once, before the activity reaches STARTED.
+        // Settings prepares/validates private files on the IO executor and these callbacks
+        // bridge the system picker result back to that flow.
+        backupExportDocumentLauncher = registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/gzip"),
+        ) { uri -> onBackupExportDocumentSelected(uri) }
+        backupRestoreDocumentLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri -> onBackupRestoreDocumentSelected(uri) }
         onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
+    }
+
+    protected open fun onBackupExportDocumentSelected(uri: Uri?) = Unit
+
+    protected open fun onBackupRestoreDocumentSelected(uri: Uri?) = Unit
+
+    fun launchBackupExportDocument(suggestedName: String): Boolean {
+        return runCatching { backupExportDocumentLauncher.launch(suggestedName) }.isSuccess
+    }
+
+    fun launchBackupRestoreDocument(): Boolean {
+        return runCatching {
+            backupRestoreDocumentLauncher.launch(
+                arrayOf("application/gzip", "application/octet-stream", "*/*"),
+            )
+        }.isSuccess
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -539,6 +570,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     companion object {
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
+        const val EXTRA_OPEN_STUDY = "dev.bee.kanjianki.extra.OPEN_STUDY"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"

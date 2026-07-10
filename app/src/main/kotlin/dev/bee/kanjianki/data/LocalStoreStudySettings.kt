@@ -1,7 +1,9 @@
 package dev.bee.kanjianki.data
 
+import android.util.Log
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.FsrsPersonalization
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -421,6 +423,80 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    /** Returns null for unset or malformed data so reviews always remain usable. */
+    fun schedulerFsrsWeights(): DoubleArray? {
+        val encoded = getStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, "")
+        return try {
+            FsrsPersonalization.decodeWeights(encoded)
+        } catch (_: RuntimeException) {
+            warnInvalidFsrsWeights()
+            null
+        }
+    }
+
+    fun saveSchedulerFsrsWeights(weights: DoubleArray?) {
+        val encoded = if (weights == null) "" else FsrsPersonalization.encodeWeights(weights)
+        inTransaction {
+            putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, encoded)
+            markStatsDirty()
+        }
+    }
+
+    /** Atomically publishes a fit summary with its corresponding live-weight decision. */
+    fun commitFsrsFitOutcome(
+        weightsToAdopt: DoubleArray?,
+        summaryJson: String,
+        disabledSummaryJson: String?,
+        preserveExistingWeights: Boolean,
+    ): Boolean {
+        val encoded = weightsToAdopt?.let { FsrsPersonalization.encodeWeights(it) }
+        var adopted = false
+        inTransaction {
+            val enabled = getIntSetting(FsrsPersonalization.ENABLED_SETTING_KEY, 0) == 1
+            if (encoded != null && enabled) {
+                putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, encoded)
+                markStatsDirty()
+                adopted = true
+            } else if (encoded == null && !preserveExistingWeights) {
+                putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, "")
+                markStatsDirty()
+            }
+            putStringSetting(
+                FsrsPersonalization.FIT_SUMMARY_SETTING_KEY,
+                if (encoded != null && !enabled) disabledSummaryJson ?: summaryJson else summaryJson,
+            )
+        }
+        return adopted
+    }
+
+    fun fsrsPersonalizationEnabled(): Boolean =
+        getIntSetting(FsrsPersonalization.ENABLED_SETTING_KEY, 0) == 1
+
+    fun saveFsrsPersonalizationEnabled(enabled: Boolean) {
+        inTransaction {
+            putIntSetting(FsrsPersonalization.ENABLED_SETTING_KEY, if (enabled) 1 else 0)
+            if (!enabled) {
+                putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, "")
+                markStatsDirty()
+            }
+        }
+    }
+
+    fun fsrsFitSummaryJson(): String =
+        getStringSetting(FsrsPersonalization.FIT_SUMMARY_SETTING_KEY, "")
+
+    fun saveFsrsFitSummaryJson(summaryJson: String?) {
+        putStringSetting(FsrsPersonalization.FIT_SUMMARY_SETTING_KEY, summaryJson ?: "")
+    }
+
+    fun resetFsrsPersonalization() {
+        inTransaction {
+            putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, "")
+            putStringSetting(FsrsPersonalization.FIT_SUMMARY_SETTING_KEY, "")
+            markStatsDirty()
+        }
+    }
+
     fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings {
         val defaults = RecordsSchedulerModels.LearningStepSettings.defaults()
         val newSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
@@ -459,7 +535,18 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         StatsCacheStore(store as LocalStore).markDirty(store.writableDatabase)
     }
 
+    private fun warnInvalidFsrsWeights() {
+        try {
+            // Never include the stored value: a single sanitized line is enough
+            // to diagnose fallback without leaking or flooding diagnostics.
+            Log.w(TAG, "Invalid scheduler_fsrs_weights; using FSRS defaults.")
+        } catch (_: RuntimeException) {
+            // android.util.Log is unavailable in plain local JVM tests.
+        }
+    }
+
     private companion object {
+        const val TAG = "LocalStoreStudySettings"
         const val KEY_STUDY_LADDER_ORDER = "study_ladder_order"
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
         const val KEY_REVIEW_REMINDER_DAY_START = "review_reminder_day_start"

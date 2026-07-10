@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import dev.bee.kanjianki.progress.progressAnalyticsDemoSnapshot
 import java.util.Locale
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -20,6 +21,8 @@ class ProgressAnalyticsLocaleComposeTest {
     @Test
     fun dashboardRendersJapaneseProgressAnalyticsCopy() = withDefaultLocale(Locale.JAPAN) {
         val state = progressAnalyticsDemoSnapshot(1_747_000_000_000L)
+        assertEquals("残りの項目", state.forecast?.burnDown?.title)
+        assertEquals("残り", state.forecast?.burnDown?.series?.single()?.label)
 
         composeRule.setContent {
             ProgressAnalyticsDashboardScreen(state)
@@ -33,38 +36,18 @@ class ProgressAnalyticsLocaleComposeTest {
         assertTextExists("復習分析")
         assertTextExists("1日平均")
         assertTextExists("最多の日")
-        assertTextExists("正答率と定着")
-        assertTextExists("レベル別進捗")
-        assertTextExists("全レベルの学習済み")
+        assertTextExists("段階別正答率")
+        assertTextExists("ラダー段階の分布")
         assertTextExists("弱点の分析")
         assertTextExists("集中スコア")
         assertTextExists("ミス42回")
         assertTextExists("支援が必要")
     }
 
-    @Test
-    fun bottomNavRendersJapaneseLabels() = withDefaultLocale(Locale.JAPAN) {
-        composeRule.setContent {
-            ProgressAnalyticsBottomNav(
-                selectedTab = ProgressAnalyticsBottomNavTab.Progress,
-                onHome = {},
-                onStudy = {},
-                onProgress = {},
-                onProfile = {},
-            )
-        }
-        composeRule.waitForIdle()
-
-        assertTextExists("ホーム")
-        assertTextExists("学習")
-        assertTextExists("進捗")
-        assertTextExists("プロフィール")
-    }
-
     private fun assertTextExists(text: String) {
         assertTrue(
             "Expected Compose text <$text> to exist",
-            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty(),
+            composeRule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty(),
         )
     }
 

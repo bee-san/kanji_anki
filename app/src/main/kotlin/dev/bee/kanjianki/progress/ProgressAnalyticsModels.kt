@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.progress
 
+import dev.bee.kanjianki.core.ChartAxisPolicy
+import dev.bee.kanjianki.core.ReviewHeatmapPolicy
+
 enum class AnalyticsRange(val days: Int, val label: String) {
     SEVEN_DAYS(7, "7 days"),
     THIRTY_DAYS(30, "30 days"),
@@ -13,6 +16,14 @@ data class ProgressAnalyticsState(
     val accuracyRetention: ProgressAccuracyRetentionState,
     val progressByLevel: ProgressByLevelState,
     val weaknessInsights: ProgressWeaknessInsightsState,
+    val forecast: ProgressForecastState? = null,
+)
+
+data class ProgressForecastState(
+    val totalItems: Int,
+    val headline: String,
+    val assumption: String,
+    val burnDown: ProgressLineChartState,
 )
 
 data class ProgressOverviewState(
@@ -24,6 +35,7 @@ data class ProgressOverviewState(
     val kanjiLearned: ProgressCountMetricState,
     val focusSessions: ProgressCountMetricState,
     val studyTime: ProgressDurationMetricState,
+    val reviewsToday: ProgressCountMetricState = ProgressCountMetricState(0, "0"),
     val reviewsOverTime: ProgressLineChartState,
     val cardTypeBreakdown: ProgressDistributionChartState,
     val correctIncorrectBreakdown: ProgressDistributionChartState,
@@ -64,6 +76,7 @@ data class ProgressReviewsAnalyticsState(
     val tip: String,
     val accessibilitySummary: String,
     val rangeData: Map<AnalyticsRange, ProgressReviewsRangeData> = emptyMap(),
+    val heatmap: ReviewHeatmapPolicy.Grid? = null,
 )
 
 data class ProgressReviewsRangeData(
@@ -127,6 +140,17 @@ data class ProgressWeaknessInsightsState(
     val weaknessRows: List<ProgressWeaknessRowState>,
     val mostMissedKanji: List<ProgressMissedKanjiState>,
     val supportNeeded: List<ProgressSupportNeedState>,
+    val confusionPairs: List<ProgressConfusionPairState> = emptyList(),
+    val focusScoreAvailable: Boolean = true,
+)
+
+data class ProgressConfusionPairState(
+    val firstKanji: String,
+    val secondKanji: String,
+    val firstMeaning: String,
+    val secondMeaning: String,
+    val firstToSecond: Int,
+    val secondToFirst: Int,
 )
 
 data class ProgressScoreMetricState(
@@ -160,16 +184,17 @@ data class ProgressBarChartState(
     val values: List<Int>,
     val accessibilitySummary: String,
     val selectedRange: AnalyticsRange? = null,
+    val axis: ChartAxisPolicy.Axis = ChartAxisPolicy.forValues(values),
 )
 
 data class ProgressLineChartState(
     val title: String,
     val xAxisLabels: List<String>,
-    val yAxisLabels: List<String>,
     val series: List<ProgressSeriesState>,
     val accessibilitySummary: String,
     val selectedRange: AnalyticsRange? = null,
     val tooltipLabel: String? = null,
+    val axis: ChartAxisPolicy.Axis = ChartAxisPolicy.forValues(series.flatMap { it.values }),
 )
 
 data class ProgressSeriesState(

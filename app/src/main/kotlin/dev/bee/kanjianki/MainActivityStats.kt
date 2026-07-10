@@ -25,7 +25,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
                 composeRoute(
                     selected = MainActivityBase.NAV_STATS_ROUTE,
                 ) {
-                    ProgressAnalyticsDashboardScreen(state = model)
+                    ProgressAnalyticsDashboardScreen(state = model, onBrowseKanji = { renderBrowseKanji(it) })
                 }
             },
         )

@@ -153,7 +153,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             return
         }
         val item = session.item ?: return
-        val scheduler = BridgeScheduler()
         // Idempotency is anchored in persistence: hasConsumedToken() checks the
         // review_log, and a token only lands there after a review is successfully
         // saved (see ReviewTransitionEngine, which consumes the in-memory token only
@@ -168,6 +167,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         }
         val now = System.currentTimeMillis()
         val parameters = activity.store.schedulerParameters()
+        val scheduler = BridgeScheduler.withWeights(activity.store.schedulerFsrsWeights())
         val sessionRank = session.row?.jitenRank
         val effectiveParameters = parameters.withTargetRetention(
             parameters.targetRetentionForRank(sessionRank)

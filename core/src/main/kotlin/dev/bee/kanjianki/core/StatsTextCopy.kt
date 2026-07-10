@@ -566,17 +566,17 @@ object StatsTextCopy {
 
     @JvmStatic
     fun formatWeakness(weakness: Double): String {
-        return String.format(Locale.ROOT, "%.2f", weakness)
+        return StatsValueFormatter.decimal(weakness, 2)
     }
 
     @JvmStatic
     fun formatSignedPercent(value: Double): String {
-        return String.format(Locale.ROOT, "%+.0f%%", value * 100.0)
+        return StatsValueFormatter.decimal(value * 100.0, 0, signed = true) + "%"
     }
 
     @JvmStatic
     fun formatSignedDecimal(value: Double): String {
-        return String.format(Locale.ROOT, "%+.1f", value)
+        return StatsValueFormatter.decimal(value, 1, signed = true)
     }
 
     @JvmStatic
@@ -698,7 +698,7 @@ object StatsTextCopy {
         if (cleaned.isBlank()) {
             return "Mistake"
         }
-        return cleaned.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+        return cleaned.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     }
 
     private fun localizedText(english: String, japanese: String): String =

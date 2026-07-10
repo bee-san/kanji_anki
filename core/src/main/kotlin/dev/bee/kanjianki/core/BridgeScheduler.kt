@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.core
 
+import dev.bee.fsrs.FsrsEngine
+import dev.bee.fsrs.FsrsParameters
 import java.util.ArrayList
 import java.util.Collections
 import java.util.HashSet
@@ -537,6 +539,21 @@ class BridgeScheduler {
     }
 
     companion object {
+        /**
+         * Builds the production scheduler with an optional personalized FSRS-6
+         * parameter vector. A missing vector deliberately takes the exact legacy
+         * construction path so installations that have not opted in remain
+         * byte-for-byte scheduler-neutral.
+         */
+        @JvmStatic
+        fun withWeights(weights: DoubleArray?): BridgeScheduler {
+            if (weights == null) {
+                return BridgeScheduler()
+            }
+            val parameters = FsrsParameters.of(weights)
+            return BridgeScheduler(LatestFsrsAdapter(FsrsEngine.create(parameters)))
+        }
+
         @JvmField
         val DAY: Long = StudyLadderRules.DAY
 

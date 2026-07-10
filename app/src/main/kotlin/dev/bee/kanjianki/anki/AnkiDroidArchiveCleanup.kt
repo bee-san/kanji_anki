@@ -72,20 +72,18 @@ internal class AnkiDroidArchiveCleanup(
 
     private fun tagNoteArchived(authority: String, noteId: Long): Boolean {
         val noteUri = uriFor(authority, URI_SEGMENT_NOTES, noteId.toString())
-        var tags = ""
         val rawCursor = resolver.query(noteUri, arrayOf(COLUMN_TAGS), null, null, null)
-        if (rawCursor != null) {
-            rawCursor.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    tags = value(cursor, COLUMN_TAGS)
-                }
-            }
+            ?: return false
+        val tags = rawCursor.use { cursor ->
+            if (!cursor.moveToFirst()) return false
+            value(cursor, COLUMN_TAGS)
         }
+        var updatedTags = tags
         if (!ProviderNotePolicy.isArchivedTagPresent(splitTags(tags))) {
-            tags = "$tags ${ProviderNotePolicy.ARCHIVED_TAG}".trim()
+            updatedTags = "$tags ${ProviderNotePolicy.ARCHIVED_TAG}".trim()
         }
         val values = ContentValues()
-        values.put(COLUMN_TAGS, tags)
+        values.put(COLUMN_TAGS, updatedTags)
         return resolver.update(noteUri, values, null, null) > 0
     }
 

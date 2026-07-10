@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
+import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -15,6 +16,43 @@ import java.util.LinkedHashMap
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class StatsCacheCodecTest {
+    @Test
+    fun currentFormatIsNineAfterAllStatsSnapshotExtensions() {
+        assertEquals(9, STATS_CACHE_FORMAT_VERSION)
+        assertEquals(366, STATS_REVIEW_DAY_SUMMARY_LIMIT)
+    }
+
+    @Test
+    fun extendedStatsSnapshotFieldsRoundTrip() {
+        val taskTypes = listOf(StatsCacheStore.TaskTypeDaySummarySnapshot(1_000L, "kanji_meaning", 4, 5))
+        val cumulative = listOf(StatsCacheStore.CumulativeKanjiSnapshot(1_000L, 12))
+        val wrong = mapOf("徴" to mapOf("微" to 5))
+        val meanings = mapOf("徴" to "sign", "微" to "minute")
+        val forecast = LadderCompletionForecastPolicy.Forecast(
+            12,
+            listOf(LadderCompletionForecastPolicy.MonthPoint(1_000L, 3, 9)),
+            2_000L,
+            false,
+            1,
+            2,
+            3,
+            listOf("all_passes", "anki_retirement_separate"),
+        )
+        val json = StatsCacheCodec.outcomeToJson(
+            StudyStatsStore.KaniOutcomeStats.empty(),
+            taskTypeDaySummaries = taskTypes,
+            cumulativeKanjiPracticed = cumulative,
+            wrongPickCounts = wrong,
+            confusionMeanings = meanings,
+            ladderForecast = forecast,
+        )
+        val root = JSONObject(json)
+        assertEquals(taskTypes, StatsCacheCodec.taskTypeDaySummariesFromJson(root.optJSONArray("taskTypeDaySummaries")))
+        assertEquals(cumulative, StatsCacheCodec.cumulativeKanjiFromJson(root.optJSONArray("cumulativeKanjiPracticed")))
+        assertEquals(wrong, StatsCacheCodec.wrongPickCountsFromJson(root.optJSONObject("wrongPickCounts")))
+        assertEquals(meanings, StatsCacheCodec.stringMapFromJson(root.optJSONObject("confusionMeanings")))
+        assertEquals(forecast, StatsCacheCodec.forecastFromJson(root.optJSONObject("ladderForecast")))
+    }
     @Test
     fun outcomeStatsRoundTripPreservesCachedExtras() {
         val rungCounts = LinkedHashMap<RecordsBase.LadderRung, Int>()

@@ -758,7 +758,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun providerCleanupCanTagWhenExistingNoteTagsCursorIsNull() {
+    fun providerCleanupRetriesWithoutWritingWhenExistingNoteTagsCursorIsNull() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         val snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults())
         context.contentResolver.call(providerUri(), "nullNoteCursor", null, null)
@@ -770,8 +770,9 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         )
 
         assertEquals(1, summary.sourceCards)
-        assertEquals(1, summary.taggedNotes)
-        assertEquals("kani_archived", providerString("suspendedTags"))
+        assertEquals(0, summary.taggedNotes)
+        assertTrue(summary.message?.contains("kept in the local archive") == true)
+        assertEquals("", providerString("suspendedTags"))
     }
 
     @Test
@@ -843,6 +844,88 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    fun repairedTaggingTagsRequestedNotes() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+
+        val summary = gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+
+        assertEquals(setOf(1L), summary.taggedNoteIds)
+        assertTrue(summary.failedNoteIds.isEmpty())
+        assertEquals(1, providerInt("repairedTags"))
+        assertTrue(providerString("repairedTagsForNote", "1")!!.contains("kani_repaired"))
+    }
+
+    @Test
+    fun repairedTaggingLeavesExcludedNotesUntouched() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+
+        gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+
+        assertEquals("", providerString("repairedTagsForNote", "2"))
+    }
+
+    @Test
+    fun repairedTaggingIsIdempotentWhenTagAlreadyExists() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "pretagSuspendedRepaired", null, null)
+
+        val summary = gateway.tagRepairedNotes(setOf(2L), SyncProgress.NONE)
+
+        assertEquals(setOf(2L), summary.taggedNoteIds)
+        assertEquals("leech kani_repaired", providerString("repairedTagsForNote", "2"))
+    }
+
+    @Test
+    fun repairedTaggingRetriesWithoutWritingWhenTagsCursorIsNull() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "nullNoteCursor", null, null)
+
+        val summary = gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+
+        assertTrue(summary.taggedNoteIds.isEmpty())
+        assertEquals(setOf(1L), summary.failedNoteIds)
+        assertEquals(0, providerInt("repairedTagUpdates"))
+        assertEquals("", providerString("repairedTagsForNote", "1"))
+    }
+
+    @Test
+    fun repairedTaggingIsolatesPartialProviderFailure() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "failRepairedNote", "1", null)
+
+        val summary = gateway.tagRepairedNotes(setOf(1L, 2L), SyncProgress.NONE)
+
+        assertEquals(setOf(2L), summary.taggedNoteIds)
+        assertEquals(setOf(1L), summary.failedNoteIds)
+        assertEquals("", providerString("repairedTagsForNote", "1"))
+        assertTrue(providerString("repairedTagsForNote", "2")!!.contains("kani_repaired"))
+    }
+
+    @Test
+    fun unupdatableRepairedNoteRemainsFailedForRetry() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+
+        val first = gateway.tagRepairedNotes(setOf(3L), SyncProgress.NONE)
+        val second = gateway.tagRepairedNotes(setOf(3L), SyncProgress.NONE)
+
+        assertTrue(first.taggedNoteIds.isEmpty())
+        assertEquals(setOf(3L), first.failedNoteIds)
+        assertEquals(setOf(3L), second.failedNoteIds)
+        assertEquals(2, providerInt("repairedTagUpdates"))
+        assertEquals(0, providerInt("repairedTags"))
+    }
+
+    @Test
+    fun emptyRepairedTaggingRequestIsNoOp() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+
+        val summary = gateway.tagRepairedNotes(emptySet(), SyncProgress.NONE)
+
+        assertTrue(summary.requestedNoteIds.isEmpty())
+        assertEquals(0, providerInt("repairedTagUpdates"))
+    }
+
+    @Test
     fun unparseableFsrsDataDoesNotBlockProviderRead() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "unparseableFsrsData", null, null)
@@ -878,6 +961,11 @@ class AnkiDroidGatewayProviderInstrumentedTest {
 
     private fun providerString(method: String): String? {
         val result = context.contentResolver.call(providerUri(), method, null, null)
+        return result?.getString("value")
+    }
+
+    private fun providerString(method: String, arg: String): String? {
+        val result = context.contentResolver.call(providerUri(), method, arg, null)
         return result?.getString("value")
     }
 

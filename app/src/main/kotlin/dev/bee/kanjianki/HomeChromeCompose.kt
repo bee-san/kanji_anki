@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -101,9 +102,8 @@ fun HomeSectionHeader(
         Text(
             text = title,
             color = KaniUiTokens.Ink,
-            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+            style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier
                 .weight(1f)
                 .then(
