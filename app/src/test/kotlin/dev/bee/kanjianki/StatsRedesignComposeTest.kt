@@ -82,7 +82,7 @@ class StatsRedesignComposeTest {
         composeRule.setContent { ProgressAnalyticsDashboardScreen(state) }
         composeRule.waitForIdle()
 
-        assertTrue(composeRule.onAllNodesWithText("Your story starts here 🦀").fetchSemanticsNodes().isNotEmpty())
+        composeRule.onAllNodesWithText("Your story starts here 🦀").assertCountEquals(5)
         composeRule.onAllNodesWithTag(KaniLineChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniBarChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniDonutChartTag).assertCountEquals(0)

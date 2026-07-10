@@ -18,6 +18,24 @@ class StagedRestoreApplierTest {
     val temp = TemporaryFolder()
 
     @Test
+    fun noOpWhenRestoreDirectoryWasNeverCreated() {
+        val root = temp.newFolder("never-staged")
+        val filesDir = File(root, "files").apply { assertTrue(mkdirs()) }
+        val database = File(root, "live.db").apply { writeText("current") }
+
+        val result = StagedRestoreApplier.applyOrThrow(
+            filesDir,
+            database,
+            NOW,
+            snapshotter = { _, _ -> throw AssertionError("no snapshot on no-op") },
+        )
+
+        assertEquals(StagedRestoreApplier.Result.NO_OP, result)
+        assertEquals("current", database.readText())
+        assertFalse(BackupRestoreStager.restoreDir(filesDir).exists())
+    }
+
+    @Test
     fun fullApplyCreatesSafetySnapshotReplacesDatabaseAndDeletesSidecars() {
         val fixture = fixture("full")
 
@@ -27,6 +45,7 @@ class StagedRestoreApplierTest {
         assertArrayEquals(fixture.restoredBytes, fixture.database.readBytes())
         assertFalse(BackupRestoreStager.stagedFile(fixture.filesDir).exists())
         assertFalse(BackupRestoreStager.markerFile(fixture.filesDir).exists())
+        assertFalse(BackupRestoreStager.restoreDir(fixture.filesDir).exists())
         assertFalse(fixture.wal.exists())
         assertFalse(fixture.shm.exists())
         val safety = DatabaseBackupPolicy.backupFile(fixture.filesDir, NOW)
@@ -57,6 +76,7 @@ class StagedRestoreApplierTest {
             assertArrayEquals("restored bytes after $step", fixture.restoredBytes, fixture.database.readBytes())
             assertFalse("staged after $step", BackupRestoreStager.stagedFile(fixture.filesDir).exists())
             assertFalse("marker after $step", BackupRestoreStager.markerFile(fixture.filesDir).exists())
+            assertFalse("restore dir after $step", BackupRestoreStager.restoreDir(fixture.filesDir).exists())
             assertFalse("wal after $step", fixture.wal.exists())
             assertFalse("shm after $step", fixture.shm.exists())
             assertTrue("safety snapshot after $step", DatabaseBackupPolicy.backupFile(fixture.filesDir, NOW).isFile)
@@ -84,6 +104,7 @@ class StagedRestoreApplierTest {
         assertEquals("current", database.readText())
         assertFalse(DatabaseBackupPolicy.backupDir(filesDir).exists())
         assertFalse(orphan.exists())
+        assertFalse(restoreDir.exists())
     }
 
     private fun fixture(name: String): Fixture {

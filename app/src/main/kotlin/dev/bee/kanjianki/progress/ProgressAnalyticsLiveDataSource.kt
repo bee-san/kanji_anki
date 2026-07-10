@@ -144,11 +144,12 @@ internal fun progressAnalyticsSnapshot(
             reviewsOverTime = volumeChart(reviewDays30, copy),
             cardTypeBreakdown = ProgressDistributionChartState(
                 copy.reviewShare, reviewShare,
-                distributionSummary(copy.reviewShare, reviewShare),
+                distributionSummary(copy.reviewShare, reviewShare, copy),
             ),
             correctIncorrectBreakdown = distribution(
                 copy.correctVsIncorrect,
                 listOf(copy.correct to correct30, copy.incorrect to (total30 - correct30).coerceAtLeast(0)),
+                copy,
             ),
         ),
         reviewsAnalytics = ProgressReviewsAnalyticsState(
@@ -198,13 +199,13 @@ internal fun progressAnalyticsSnapshot(
                 focusScore(impact), 100, copy.focusStatus(focusScore(impact)),
                 "${focusScore(impact)} / 100 · ${copy.focusStatus(focusScore(impact))}",
             ),
-            weaknessRows = weaknessRows(impact),
+            weaknessRows = weaknessRows(impact, copy),
             mostMissedKanji = mostMissedKanji(snapshot.recentMistakes),
-            supportNeeded = supportNeeded(outcome),
+            supportNeeded = supportNeeded(outcome, copy),
             confusionPairs = confusionPairs,
             focusScoreAvailable = impact.helpedCount + impact.notHelpingCount + impact.needsMoreCardsCount > 0,
         ),
-        forecast = forecastState(snapshot, nowMillis),
+        forecast = forecastState(snapshot, nowMillis, copy),
     )
     return state
 }
@@ -270,7 +271,7 @@ private fun volumeChart(days: List<ReviewDaySummary>, copy: StatsDashboardCopy):
         copy.reviewsOverTime, buckets.map { dayLabel(it.dayStart, "MMM d") },
         if (buckets.sumOf { it.total } == 0) emptyList() else listOf(ProgressSeriesState(copy.reviews, buckets.map { it.total })),
         copy.volumeSummary(), AnalyticsRange.THIRTY_DAYS,
-        buckets.lastOrNull()?.let { "${dayLabel(it.dayStart, "MMM d")}, ${it.total} reviews" },
+        buckets.lastOrNull()?.let { copy.reviewsTooltip(dayLabel(it.dayStart, "MMM d"), it.total) },
     )
 }
 
@@ -282,7 +283,7 @@ private fun cumulativeChart(points: List<StatsCacheStore.CumulativeKanjiSnapshot
         if (shown.isEmpty()) emptyList() else listOf(ProgressSeriesState(copy.practicedKanji, shown.map { it.cumulativeCount })),
         copy.cumulativeSummary(),
         AnalyticsRange.NINETY_DAYS,
-        shown.lastOrNull()?.let { "${dayLabel(it.dayStartMillis, "MMM d")}, ${it.cumulativeCount} kanji" },
+        shown.lastOrNull()?.let { copy.practicedTooltip(dayLabel(it.dayStartMillis, "MMM d"), it.cumulativeCount) },
     )
 }
 
@@ -316,16 +317,23 @@ private fun distributionFromAccuracy(groups: List<TaskTypeAccuracyPolicy.Accurac
     return groups.map { ProgressDistributionSegmentState(copy.group(it.group), it.total, percent(it.total, total)) }
 }
 
-private fun distribution(title: String, values: List<Pair<String, Int>>): ProgressDistributionChartState {
+private fun distribution(
+    title: String,
+    values: List<Pair<String, Int>>,
+    copy: StatsDashboardCopy,
+): ProgressDistributionChartState {
     val total = values.sumOf { it.second.coerceAtLeast(0) }
     val segments = if (total == 0) emptyList() else values.filter { it.second > 0 }.map {
         ProgressDistributionSegmentState(it.first, it.second, percent(it.second, total))
     }
-    return ProgressDistributionChartState(title, segments, distributionSummary(title, segments))
+    return ProgressDistributionChartState(title, segments, distributionSummary(title, segments, copy))
 }
 
-private fun distributionSummary(title: String, segments: List<ProgressDistributionSegmentState>): String =
-    "$title. " + segments.joinToString { "${it.label} ${it.value}, ${it.percent} percent" }
+private fun distributionSummary(
+    title: String,
+    segments: List<ProgressDistributionSegmentState>,
+    copy: StatsDashboardCopy,
+): String = "$title. " + segments.joinToString { "${it.label} ${it.value}, ${it.percent} ${copy.percentWord}" }
 
 private fun ladderRows(metric: StudyStatsStore.LadderHealthMetric, copy: StatsDashboardCopy): List<ProgressLevelRowState> {
     val total = metric.rungCounts.values.sum()
@@ -342,7 +350,11 @@ private fun cumulativeSevenDayDelta(points: List<StatsCacheStore.CumulativeKanji
     return (current - before).coerceAtLeast(0)
 }
 
-private fun forecastState(snapshot: StatsCacheStore.Snapshot, nowMillis: Long): ProgressForecastState? {
+private fun forecastState(
+    snapshot: StatsCacheStore.Snapshot,
+    nowMillis: Long,
+    dashboardCopy: StatsDashboardCopy,
+): ProgressForecastState? {
     val forecast = snapshot.ladderForecast ?: return null
     if (forecast.totalItems < 1) return null
     val copy = ForecastTextCopy.forLocale()
@@ -353,21 +365,29 @@ private fun forecastState(snapshot: StatsCacheStore.Snapshot, nowMillis: Long): 
         headline = copy.headline.format(forecast.totalItems, completion),
         assumption = copy.assumption,
         burnDown = lineChart(
-            "Items remaining", shown.map { StatsValueFormatter.date(it.monthStartMillis, "MMM") },
-            listOf(ProgressSeriesState("Remaining", shown.map { it.remainingItems })),
-            "${forecast.totalItems} weak kanji forecast; ${shown.lastOrNull()?.remainingItems ?: forecast.totalItems} remaining by the final displayed month.",
+            dashboardCopy.itemsRemaining,
+            shown.map { StatsValueFormatter.date(it.monthStartMillis, "MMM") },
+            listOf(ProgressSeriesState(dashboardCopy.remaining, shown.map { it.remainingItems })),
+            dashboardCopy.forecastSummary(
+                forecast.totalItems,
+                shown.lastOrNull()?.remainingItems ?: forecast.totalItems,
+            ),
         ),
     )
 }
 
-private fun weaknessRows(impact: KanjiImpactAnalyzer.Report): List<ProgressWeaknessRowState> {
+private fun weaknessRows(
+    impact: KanjiImpactAnalyzer.Report,
+    copy: StatsDashboardCopy,
+): List<ProgressWeaknessRowState> {
     if (impact.rows.isNotEmpty()) return impact.rows.take(4).map { row ->
         val accuracy = (row.currentRetention * 100).roundToInt().coerceIn(0, 100)
-        ProgressWeaknessRowState(row.kanji, accuracy, row.reviewCount.coerceAtLeast(0), when (row.bucket) {
-            KanjiImpactAnalyzer.BUCKET_HELPED -> "Low"
-            KanjiImpactAnalyzer.BUCKET_NOT_HELPING -> "Medium"
-            else -> "High"
-        })
+        ProgressWeaknessRowState(
+            row.kanji,
+            accuracy,
+            row.reviewCount.coerceAtLeast(0),
+            copy.impactSeverity(row.bucket),
+        )
     }
     return emptyList()
 }
@@ -377,9 +397,12 @@ private fun mostMissedKanji(mistakes: List<StudyStatsStore.RecentMistake>): List
     .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).take(5)
     .map { ProgressMissedKanjiState(it.key, it.value) }
 
-private fun supportNeeded(outcome: StudyStatsStore.KaniOutcomeStats): List<ProgressSupportNeedState> =
+private fun supportNeeded(
+    outcome: StudyStatsStore.KaniOutcomeStats,
+    copy: StatsDashboardCopy,
+): List<ProgressSupportNeedState> =
     outcome.matureSupportGained.examples.take(4).map {
-        ProgressSupportNeedState(it.kanji, "Mature support", it.afterMatureSupport.coerceAtLeast(0))
+        ProgressSupportNeedState(it.kanji, copy.matureSupport, it.afterMatureSupport.coerceAtLeast(0))
     }
 
 private fun focusScore(impact: KanjiImpactAnalyzer.Report): Int {

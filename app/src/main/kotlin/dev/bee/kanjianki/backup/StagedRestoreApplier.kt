@@ -57,10 +57,17 @@ internal object StagedRestoreApplier {
         snapshotter: DatabaseBackupWorker.Snapshotter,
         stepHook: StepHook = StepHook {},
     ): Result {
+        val restoreDir = BackupRestoreStager.restoreDir(filesDir)
+        // Fresh installs never create this directory, so the normal startup path is one
+        // existence check and no directory listing or database work.
+        if (!restoreDir.exists()) return Result.NO_OP
         val staged = BackupRestoreStager.stagedFile(filesDir)
         val marker = BackupRestoreStager.markerFile(filesDir)
-        BackupRestoreStager.cleanupOrphanValidationFiles(BackupRestoreStager.restoreDir(filesDir))
-        if (!staged.exists() && !marker.exists()) return Result.NO_OP
+        BackupRestoreStager.cleanupOrphanValidationFiles(restoreDir)
+        if (!staged.exists() && !marker.exists()) {
+            deleteEmptyRestoreDir(restoreDir)
+            return Result.NO_OP
+        }
 
         // A marker without a staged file means the atomic database move completed before a
         // crash. Finish only the idempotent sidecar/marker cleanup.
@@ -69,6 +76,7 @@ internal object StagedRestoreApplier {
             stepHook.after(Step.SIDECARS_DELETED)
             deleteRequired(marker)
             stepHook.after(Step.MARKER_DELETED)
+            deleteEmptyRestoreDir(restoreDir)
             return Result.APPLIED
         }
 
@@ -88,6 +96,7 @@ internal object StagedRestoreApplier {
 
         deleteRequired(marker)
         stepHook.after(Step.MARKER_DELETED)
+        deleteEmptyRestoreDir(restoreDir)
         return Result.APPLIED
     }
 
@@ -128,5 +137,9 @@ internal object StagedRestoreApplier {
     @Throws(IOException::class)
     private fun deleteRequired(file: File) {
         if (file.exists() && !file.delete()) throw IOException("Unable to delete ${file.name}")
+    }
+
+    private fun deleteEmptyRestoreDir(restoreDir: File) {
+        if (restoreDir.list()?.isEmpty() == true) restoreDir.delete()
     }
 }

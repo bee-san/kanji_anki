@@ -74,6 +74,24 @@ the next process start safely retries or completes the remaining cleanup. If the
 pre-restore safety snapshot cannot be written, Kani leaves the current database
 in place and retries the staged restore on a later start.
 
+## Device verification (2026-07-10)
+
+The production UI path was exercised end to end on the release emulator, not
+only through the file-operation seams. **Export now** opened Android
+DocumentsUI through `CreateDocument`, saved an 8,520-byte gzip in Downloads,
+and the pulled artifact passed `gzip -t`, had the exact
+`SQLite format 3\0` header, returned `ok` from `PRAGMA quick_check`, and
+contained the Kani `settings` table.
+
+For restore, a copy with a sentinel setting and `user_version = 28` was selected
+through the production `OpenDocument` picker. **Restore and close Kani** ended
+the app process with both the staged database and marker present. A fresh
+ordinary activity launch applied the swap before opening the activity, removed
+the staged artifacts, created the timestamped pre-restore safety gzip, migrated
+the database to version 29, passed `quick_check`, and exposed the sentinel. This
+shell-observed process boundary complements the instrumented startup-hook test,
+which cannot kill its own instrumentation process.
+
 ## Recovery restore with adb
 
 If Kani cannot reach its settings screen, the adb recovery path remains

@@ -24,10 +24,12 @@ class ReviewHeatmapPolicyTest {
             ),
             now, utc, Locale.US,
         )
-        assertTrue(grid.weeks.size in 52..54)
+        assertEquals(53, grid.weeks.size)
         assertEquals(7, grid.weeks.first().cells.size)
         assertTrue(grid.weeks.mapNotNull { it.monthLabel }.contains("Jul"))
         assertEquals(7, grid.weekdayLabels.size)
+        val missingDay = LocalDayPolicy.moveLocalDays(today, -5, utc)
+        assertEquals(0, grid.weeks.flatMap { it.cells }.single { it.dayStartMillis == missingDay }.reviews)
         assertTrue(grid.accessibilitySummary.contains("11 reviews across 2 days"))
         assertTrue(grid.accessibilitySummary.contains("with 9"))
     }

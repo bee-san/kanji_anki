@@ -844,7 +844,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
-    fun repairedTaggingTagsRequestedNotesAndLeavesExcludedNotesUntouched() {
+    fun repairedTaggingTagsRequestedNotes() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
         val summary = gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
@@ -853,6 +853,14 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(summary.failedNoteIds.isEmpty())
         assertEquals(1, providerInt("repairedTags"))
         assertTrue(providerString("repairedTagsForNote", "1")!!.contains("kani_repaired"))
+    }
+
+    @Test
+    fun repairedTaggingLeavesExcludedNotesUntouched() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+
+        gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+
         assertEquals("", providerString("repairedTagsForNote", "2"))
     }
 

@@ -28,5 +28,12 @@ class StatsPresentationPolicyTest {
         assertEquals("前の7日比 +4%", japanese.deltaVsPreviousSeven("+4%"))
         assertEquals("Word reading", english.rung("word_reading"))
         assertEquals("単語の読み", japanese.rung("word_reading"))
+        assertEquals("Items remaining", english.itemsRemaining)
+        assertEquals("残りの項目", japanese.itemsRemaining)
+        assertEquals("Jul 10, 3 reviews", english.reviewsTooltip("Jul 10", 3))
+        assertEquals("7月 10、復習3件", japanese.reviewsTooltip("7月 10", 3))
+        assertEquals("Medium", english.impactSeverity(KanjiImpactAnalyzer.BUCKET_NOT_HELPING))
+        assertEquals("中", japanese.impactSeverity(KanjiImpactAnalyzer.BUCKET_NOT_HELPING))
+        assertTrue(japanese.forecastSummary(8, 2).contains("残り2字"))
     }
 }

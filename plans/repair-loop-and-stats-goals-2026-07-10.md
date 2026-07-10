@@ -10,13 +10,20 @@
 > year heatmap, confusion insights, and scheduler-backed forecast.
 >
 > The mandatory Goal 94 real-collection gate passed against AnkiDroid 2.24.0
-> with the default 7,000-note threshold: `OK (61 tests)` in 78.006 seconds.
+> with the default 7,000-note threshold: `OK (62 tests)` in 71.640 seconds.
 > The time-boxed, non-destructive card probe attempted to write the card's
 > existing queue value and was rejected exactly as expected:
 > `updatedRows=-1`, `error=IllegalArgumentException`, `queue=2`; the reread
 > queue value was unchanged. Direct unsuspend therefore remains deferred;
 > shipped write-back is opt-in, manual-confirmed `kani_repaired` note tagging
 > plus the exact AnkiDroid browser hand-off.
+>
+> Backup and restore were also verified through their production device UI:
+> `Export now` opened Android DocumentsUI and produced a standalone gzip whose
+> SQLite header and `quick_check` passed. A selected version-28 fixture then
+> staged successfully, `Restore and close Kani` ended the process, and a fresh
+> ordinary launch created the safety backup, applied the sentinel-bearing DB,
+> removed the marker/staged files, and migrated it to schema version 29.
 >
 > **External-only pending:** this isolated branch has not been pushed or merged
 > to `main`, so the first containing `Android CI` run and the advisory

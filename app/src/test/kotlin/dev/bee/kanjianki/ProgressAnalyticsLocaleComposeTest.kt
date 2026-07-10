@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import dev.bee.kanjianki.progress.progressAnalyticsDemoSnapshot
 import java.util.Locale
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -20,6 +21,8 @@ class ProgressAnalyticsLocaleComposeTest {
     @Test
     fun dashboardRendersJapaneseProgressAnalyticsCopy() = withDefaultLocale(Locale.JAPAN) {
         val state = progressAnalyticsDemoSnapshot(1_747_000_000_000L)
+        assertEquals("残りの項目", state.forecast?.burnDown?.title)
+        assertEquals("残り", state.forecast?.burnDown?.series?.single()?.label)
 
         composeRule.setContent {
             ProgressAnalyticsDashboardScreen(state)

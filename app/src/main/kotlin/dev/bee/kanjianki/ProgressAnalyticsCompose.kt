@@ -227,17 +227,20 @@ private fun ReviewsSection(state: ProgressReviewsAnalyticsState, compact: Boolea
         HomeSectionHeader(state.title, null, null)
         ProgressRangeChips(state.availableRanges, selected, onSelect = { selected = it }, compact = compact, scope = "reviews")
         val heatmap = state.heatmap
-        if (heatmap == null || heatmap.weeks.sumOf { week -> week.cells.sumOf { it.reviews } } == 0) {
+        val hasHeatmapData = heatmap != null && heatmap.weeks.any { week -> week.cells.any { it.reviews > 0 } }
+        val hasReviewBars = selectedData.reviewsPerDay.values.any { it > 0 }
+        if (!hasHeatmapData && !hasReviewBars) {
             EmptyCharts()
-        } else {
-            ChartLeaf {
-                Text(copy.reviewCalendar, style = MaterialTheme.typography.titleMedium)
-                KaniHeatmapChart(heatmap, KaniTheme.colors.primary)
+        }
+        heatmap?.let { populatedHeatmap ->
+            if (hasHeatmapData) {
+                ChartLeaf {
+                    Text(copy.reviewCalendar, style = MaterialTheme.typography.titleMedium)
+                    KaniHeatmapChart(populatedHeatmap, KaniTheme.colors.primary)
+                }
             }
         }
-        if (selectedData.reviewsPerDay.values.sum() == 0) {
-            EmptyCharts()
-        } else {
+        if (hasReviewBars) {
             ChartLeaf { KaniBarChart(selectedData.reviewsPerDay, KaniTheme.colors.teal) }
             MiniMetrics(
                 listOf(

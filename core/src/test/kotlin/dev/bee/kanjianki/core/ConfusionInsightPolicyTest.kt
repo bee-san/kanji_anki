@@ -26,6 +26,22 @@ class ConfusionInsightPolicyTest {
         assertEquals(emptyList<ConfusionInsightPolicy.Pair>(), ConfusionInsightPolicy.topPairs(null, null, -1))
     }
 
+    @Test fun equalCountPairsUseGlyphTieBreakInsteadOfInputIterationOrder() {
+        val firstOrder = linkedMapOf(
+            "未" to mapOf("末" to 2),
+            "待" to mapOf("持" to 2),
+        )
+        val reverseOrder = linkedMapOf(
+            "待" to mapOf("持" to 2),
+            "未" to mapOf("末" to 2),
+        )
+
+        val expected = ConfusionInsightPolicy.topPairs(firstOrder, emptyList())
+
+        assertEquals(expected, ConfusionInsightPolicy.topPairs(reverseOrder, emptyList()))
+        assertEquals(listOf("待", "未"), expected.map { it.firstKanji })
+    }
+
     private fun inventory(kanji: String, meaning: String) =
         RecordsImportModels.KanjiInventoryItem(kanji, meaning, "", "", 1, 1, false, 1L)
 }

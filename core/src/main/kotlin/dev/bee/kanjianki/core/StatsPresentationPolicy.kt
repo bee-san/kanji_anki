@@ -106,6 +106,10 @@ class StatsDashboardCopy private constructor(private val locale: Locale) {
     val reviewsPerDay: String get() = text("Reviews per day", "1日ごとの復習")
     val accuracyOverTime: String get() = text("Accuracy over time", "正答率の推移")
     val cumulativePracticed: String get() = text("Cumulative distinct kanji practiced", "練習した漢字の累計")
+    val itemsRemaining: String get() = text("Items remaining", "残りの項目")
+    val remaining: String get() = text("Remaining", "残り")
+    val matureSupport: String get() = text("Mature support", "定着した支援")
+    val percentWord: String get() = text("percent", "パーセント")
     val keepStreakTip: String get() = text("Keep the streak going with a short review session today.", "今日も短い復習で連続学習を続けましょう。")
     val startMomentumTip: String get() = text("Start a short review session today to build momentum.", "今日短く復習して勢いを作りましょう。")
 
@@ -155,6 +159,23 @@ class StatsDashboardCopy private constructor(private val locale: Locale) {
         "Cumulative distinct kanji practiced from each kanji's first recorded review.",
         "各漢字の最初の復習日から数えた、練習した漢字の累計です。",
     )
+    fun reviewsTooltip(date: String, count: Int): String = text(
+        "$date, ${StatsValueFormatter.integer(count, locale)} reviews",
+        "$date、復習${StatsValueFormatter.integer(count, locale)}件",
+    )
+    fun practicedTooltip(date: String, count: Int): String = text(
+        "$date, ${StatsValueFormatter.integer(count, locale)} kanji",
+        "$date、漢字${StatsValueFormatter.integer(count, locale)}字",
+    )
+    fun forecastSummary(total: Int, remainingCount: Int): String = text(
+        "$total weak kanji forecast; $remainingCount remaining by the final displayed month.",
+        "弱点の漢字${total}字の予測。表示期間の最終月には残り${remainingCount}字です。",
+    )
+    fun impactSeverity(bucket: String): String = when (bucket) {
+        KanjiImpactAnalyzer.BUCKET_HELPED -> text("Low", "低")
+        KanjiImpactAnalyzer.BUCKET_NOT_HELPING -> text("Medium", "中")
+        else -> text("High", "高")
+    }
     fun misses(value: Int): String = text("$value misses", "ミス${value}回")
     fun rung(wireName: String): String = when (wireName) {
         "write_kanji" -> text("Write kanji", "漢字を書く")

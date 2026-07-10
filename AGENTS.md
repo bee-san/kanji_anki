@@ -456,7 +456,7 @@ Passing results for v0.3.6:
 
 The Goal 94 write-back batch was revalidated on 2026-07-10 against the same
 real AnkiDroid 2.24.0 provider and copied user collection, with the default
-7,000-note threshold. The targeted command below completed `OK (61 tests)`:
+7,000-note threshold. The targeted command below completed `OK (62 tests)`:
 one foreground sync-button test, 58 fake-provider contract tests, and two real
 provider tests. The non-destructive card update probe wrote the card's existing
 queue value back to its own card URI; AnkiDroid rejected it with
@@ -577,7 +577,7 @@ adb shell am instrument -w \
 Expected result:
 
 ```text
-OK (61 tests)
+OK (62 tests)
 ```
 
 Important live tests:
