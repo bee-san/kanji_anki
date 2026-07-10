@@ -99,20 +99,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 answerPanel,
                 KanjiChoiceHandler { glyph ->
                     val correct = choiceCard.isCorrect(glyph)
-                    // The choice log write and the review submit both run on the
-                    // single-threaded io executor, in order; the click handler stays
-                    // off the database entirely.
-                    home.io.execute {
-                        home.store.recordChoiceReviewLog(
-                            choiceCard.targetKanji,
-                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
-                            glyph,
-                            correct,
-                            RecordsBase.LadderRung.MEANING_KANJI.wireName(),
-                            System.currentTimeMillis(),
-                        )
-                    }
-                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                    home.submitLoggedChoiceReview(
+                        choiceCard.targetKanji,
+                        SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                        glyph,
+                        correct,
+                        RecordsBase.LadderRung.MEANING_KANJI,
+                    )
                 },
                 MeaningChoiceResultResolver { glyph ->
                     val correct = choiceCard.isCorrect(glyph)
@@ -188,17 +181,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 answerPanel,
                 KanjiChoiceHandler { reading ->
                     val correct = choiceCard.isCorrect(reading)
-                    home.io.execute {
-                        home.store.recordChoiceReviewLog(
-                            choiceCard.targetKanji,
-                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
-                            reading,
-                            correct,
-                            RecordsBase.LadderRung.KANJI_READING.wireName(),
-                            System.currentTimeMillis(),
-                        )
-                    }
-                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                    home.submitLoggedChoiceReview(
+                        choiceCard.targetKanji,
+                        SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                        reading,
+                        correct,
+                        RecordsBase.LadderRung.KANJI_READING,
+                    )
                 },
                 MeaningChoiceResultResolver { reading ->
                     val correct = choiceCard.isCorrect(reading)
@@ -258,17 +247,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 answerPanel,
                 KanjiChoiceHandler { glyph ->
                     val correct = choiceCard.isCorrect(glyph)
-                    home.io.execute {
-                        home.store.recordChoiceReviewLog(
-                            choiceCard.targetKanji,
-                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
-                            glyph,
-                            correct,
-                            RecordsBase.LadderRung.READING_KANJI.wireName(),
-                            System.currentTimeMillis(),
-                        )
-                    }
-                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                    home.submitLoggedChoiceReview(
+                        choiceCard.targetKanji,
+                        SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                        glyph,
+                        correct,
+                        RecordsBase.LadderRung.READING_KANJI,
+                    )
                 },
                 MeaningChoiceResultResolver { glyph ->
                     val correct = choiceCard.isCorrect(glyph)

@@ -18,6 +18,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentySeven(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyEight(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyNine(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirty(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -238,6 +239,19 @@ internal object LocalStoreMigrations {
                 LocalStoreBase.COLUMN_SENTENCE_READING_MEMORY,
                 LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY,
             )
+        }
+    }
+
+    private fun upgradeThroughThirty(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 30)) {
+            // Keep cold dashboard reads bounded: one ordering index for the 120 headers,
+            // then one ordered index lookup capped at eight examples for each selected kanji.
+            hooks.createDashboardIndexes(db)
         }
     }
 

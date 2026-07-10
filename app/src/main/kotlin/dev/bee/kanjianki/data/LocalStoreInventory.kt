@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
 import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
@@ -104,9 +105,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
         val loadStart = android.os.SystemClock.elapsedRealtime()
         val db = readableDatabase
-        // First read the (capped) row headers, then batch-load examples for all of them in a
-        // single query instead of firing one example query per kanji. On cold boot the old N+1
-        // pattern cost ~240ms on the main thread; batching collapses it to two queries.
+        // First read the capped row headers, then issue bounded ordered index seeks for their
+        // examples. The old IN query scanned every matching example before Kotlin applied the
+        // per-kanji cap, so a single high-volume kanji could dominate cold start.
         data class RowHeader(
             val kanji: String,
             val jitenRank: Int?,
@@ -121,6 +122,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             val matureSupportCount: Int,
         )
         val headers = ArrayList<RowHeader>()
+        val headerStart = android.os.SystemClock.elapsedRealtime()
         db.query(
             TABLE_DASHBOARD_ROWS,
             null,
@@ -149,7 +151,20 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 )
             }
         }
+        val headerDuration = android.os.SystemClock.elapsedRealtime() - headerStart
+        logDashboardPhase("headers", "rows=${headers.size}", headerDuration)
+
+        val examplesStart = android.os.SystemClock.elapsedRealtime()
         val examplesByKanji = examplesForKanjiBatch(db, headers.map { it.kanji })
+        val examplesDuration = android.os.SystemClock.elapsedRealtime() - examplesStart
+        val materializedExamples = examplesByKanji.values.sumOf { it.size }
+        logDashboardPhase(
+            "examples",
+            "requested_kanji=${headers.size} materialized_rows=$materializedExamples",
+            examplesDuration,
+        )
+
+        val assembleStart = android.os.SystemClock.elapsedRealtime()
         val rows = ArrayList<RecordsImportModels.DashboardRow>(headers.size)
         for (header in headers) {
             rows.add(
@@ -170,11 +185,22 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             )
         }
         cachedDashboardRows = rows
-        dev.bee.kanjianki.studyLoadDebug(
-            "dashboardRows LOADED size=${rows.size} " +
-                "(batched examples) duration_ms=${android.os.SystemClock.elapsedRealtime() - loadStart}"
+        val assembleDuration = android.os.SystemClock.elapsedRealtime() - assembleStart
+        val totalDuration = android.os.SystemClock.elapsedRealtime() - loadStart
+        logDashboardPhase(
+            "assembled",
+            "rows=${rows.size} examples=$materializedExamples total_duration_ms=$totalDuration",
+            assembleDuration,
         )
         return rows
+    }
+
+    private fun logDashboardPhase(phase: String, counts: String, durationMillis: Long) {
+        val message = "dashboard phase=$phase $counts duration_ms=$durationMillis"
+        dev.bee.kanjianki.studyLoadDebug(message)
+        if (AppDebugLog.isCapturing()) {
+            AppDebugLog.log(message)
+        }
     }
 
     fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {

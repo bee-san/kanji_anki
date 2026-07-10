@@ -83,6 +83,10 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreTableCreator.createStatsIndexes(db)
     }
 
+    fun createDashboardIndexes(db: SQLiteDatabase) {
+        LocalStoreTableCreator.createDashboardIndexes(db)
+    }
+
     fun createStatsCacheTables(db: SQLiteDatabase) {
         LocalStoreTableCreator.createStatsCacheTables(db)
     }

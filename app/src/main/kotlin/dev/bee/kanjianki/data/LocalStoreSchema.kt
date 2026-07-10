@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 
 internal object LocalStoreSchema {
     const val DB_NAME: String = "kanji_anki_simple.db"
-    const val DB_VERSION: Int = 29
+    const val DB_VERSION: Int = 30
 
     @JvmStatic
     fun createInitialTables(db: SQLiteDatabase, hooks: LocalStoreMigrationHooks) {
@@ -26,7 +26,7 @@ internal object LocalStoreSchema {
         db.execSQL(LocalStoreBase.LEARNING_REPEATS_TABLE_SQL.replace(LocalStoreBase.SQL_CREATE_TABLE, LocalStoreBase.SQL_CREATE_TABLE_IF_NEEDED))
         db.execSQL(LocalStoreBase.REVIEW_LOG_TABLE_SQL.replace(LocalStoreBase.SQL_CREATE_TABLE, LocalStoreBase.SQL_CREATE_TABLE_IF_NEEDED))
         hooks.createStudyTaskLogTable(db)
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_examples_kanji ON " + LocalStoreBase.TABLE_KANJI_EXAMPLES + "(kanji)")
+        hooks.createDashboardIndexes(db)
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON " + LocalStoreBase.TABLE_STUDY_ITEMS + "(state, due_at)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_repeats_due ON " + LocalStoreBase.TABLE_LEARNING_REPEATS + "(due_at)")
         hooks.createTimelineTables(db)

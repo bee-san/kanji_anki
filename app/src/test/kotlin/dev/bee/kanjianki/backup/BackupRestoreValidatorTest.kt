@@ -25,7 +25,7 @@ class BackupRestoreValidatorTest {
 
     @Test
     fun acceptsCurrentKaniDatabaseAndKeepsValidatedPrivateTemp() {
-        val gzip = fixtureGzip(userVersion = 29, createSettings = true)
+        val gzip = fixtureGzip(userVersion = 30, createSettings = true)
         val restoreDir = temp.newFolder("restore")
         val orphan = File(restoreDir, "old${BackupRestoreStager.VALIDATING_SUFFIX}").apply {
             writeText("orphan")
@@ -62,13 +62,13 @@ class BackupRestoreValidatorTest {
         assertEquals(
             BackupRestorePolicy.CopyId.NEWER_DATABASE_VERSION,
             BackupRestoreValidator.validate(restoreDir, "newer") {
-                ByteArrayInputStream(fixtureGzip(userVersion = 30, createSettings = true))
+                ByteArrayInputStream(fixtureGzip(userVersion = 31, createSettings = true))
             }.policy.copyId,
         )
         assertEquals(
             BackupRestorePolicy.CopyId.MISSING_SETTINGS_TABLE,
             BackupRestoreValidator.validate(restoreDir, "other") {
-                ByteArrayInputStream(fixtureGzip(userVersion = 29, createSettings = false))
+                ByteArrayInputStream(fixtureGzip(userVersion = 30, createSettings = false))
             }.policy.copyId,
         )
         assertTrue(restoreDir.listFiles().isNullOrEmpty())

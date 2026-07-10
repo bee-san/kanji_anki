@@ -112,7 +112,7 @@ class BackupAndRestoreInstrumentedTest {
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "fixture.db")
         fixture.parentFile!!.mkdirs()
         // Build a complete current schema, plant a sentinel, then lower user_version so the
-        // next LocalStore open must execute the v29 migration path.
+        // next LocalStore open must execute the v29 and v30 migration paths.
         val liveDatabase = context.getDatabasePath(LocalStoreSchema.DB_NAME)
         LocalStore(context).use { store ->
             store.writableDatabase.execSQL(

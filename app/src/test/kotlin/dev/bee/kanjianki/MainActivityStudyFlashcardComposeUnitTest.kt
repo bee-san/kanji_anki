@@ -40,6 +40,12 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
+    fun nextCardEnterMotionStaysWithinTheFastInteractionBudget() {
+        assertEquals(90, STUDY_CARD_ENTER_FADE_MILLIS)
+        assertEquals(120, STUDY_CARD_ENTER_SLIDE_MILLIS)
+    }
+
+    @Test
     fun typingMeaningAnswerSubmitsOnImeAction() {
         var submitCount = 0
         val state = TypingAnswerState()

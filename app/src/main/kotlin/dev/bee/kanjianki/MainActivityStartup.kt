@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.fsrs.FsrsFitScheduler
@@ -54,14 +53,15 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         handleLaunchIntent(launchIntent)
         if (runBackgroundTasks) {
             // Runs on the maintenance executor, NOT io: this block does first-time WorkManager
-            // init and several store reads that used to sit in the io queue directly behind the
-            // first route load, stalling every screen the user tapped during cold boot. Each
-            // scheduler is traced separately so the debug log shows which one is slow.
+            // init and scheduler setup that used to sit in the io queue directly behind the first
+            // route load, stalling every screen the user tapped during cold boot. Reminder
+            // evaluation is intentionally absent: the lifecycle coordinator runs it only after
+            // the accepted launch route settles, reusing the activity store's warmed caches.
+            // Each remaining scheduler is traced separately so the debug log shows which is slow.
             activity.maintenance.execute {
                 // Ensure the io theme-warm has opened/migrated the DB before these scheduler-owned
                 // LocalStore instances open theirs, avoiding a concurrent-migration write-lock race.
                 runCatching { migrationReady.await(MIGRATION_WAIT_SECONDS, TimeUnit.SECONDS) }
-                withUiTrace("kani.startup.reminder-scheduler") { ReminderScheduler.schedule(activity) }
                 withUiTrace("kani.startup.auto-sync-scheduler") { AutoSyncScheduler.schedule(activity) }
                 withUiTrace("kani.startup.auto-update-scheduler") { AutoUpdateScheduler.schedule(activity) }
                 withUiTrace("kani.startup.backup-scheduler") { DatabaseBackupScheduler.schedule(activity) }

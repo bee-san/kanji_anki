@@ -346,6 +346,33 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun scheduleWithActivityStoreUsesFreshStateWithoutClosingTheSharedStore() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val now = utc(2026, Calendar.MAY, 15, 9, 0)
+            val dueAt = utc(2026, Calendar.MAY, 15, 14, 0)
+            seedReminderState(context, now, dueAt)
+            val services = FakeReminderServices()
+
+            LocalStore(context).use { activityStore ->
+                activityStore.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 8, 30))
+                // Warm the exact cache that Home populates before the lifecycle re-arm runs.
+                assertEquals(3, activityStore.activeDashboardRows().size)
+
+                ReminderScheduler.schedule(activityStore, services, now)
+
+                assertEquals(dueAt, services.scheduledAtMillis)
+                // The overload borrows rather than owns the activity store.
+                assertTrue(activityStore.reminderSettings().enabled)
+            }
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
     fun scheduleWithNullContextDoesNothing() {
         val services = FakeReminderServices()
         val now = utc(2026, Calendar.MAY, 15, 9, 0)

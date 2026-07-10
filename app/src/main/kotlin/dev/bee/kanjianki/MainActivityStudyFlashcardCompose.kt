@@ -85,12 +85,18 @@ internal fun StudyCardEnterTransition(content: @Composable () -> Unit) {
     val enterState = remember { MutableTransitionState(false).apply { targetState = true } }
     AnimatedVisibility(
         visibleState = enterState,
-        enter = fadeIn(animationSpec = tween(durationMillis = 180)) +
-            slideInHorizontally(animationSpec = tween(durationMillis = 240)) { fullWidth -> fullWidth / 3 },
+        enter = fadeIn(animationSpec = tween(durationMillis = STUDY_CARD_ENTER_FADE_MILLIS)) +
+            slideInHorizontally(animationSpec = tween(durationMillis = STUDY_CARD_ENTER_SLIDE_MILLIS)) {
+                fullWidth -> fullWidth / STUDY_CARD_ENTER_DISTANCE_DIVISOR
+            },
     ) {
         content()
     }
 }
+
+internal const val STUDY_CARD_ENTER_FADE_MILLIS = 90
+internal const val STUDY_CARD_ENTER_SLIDE_MILLIS = 120
+private const val STUDY_CARD_ENTER_DISTANCE_DIVISOR = 6
 
 @Composable
 fun StudyFlashcardActionBar(
@@ -150,6 +156,7 @@ private fun Modifier.revealedReviewSwipeGestures(
     return pointerInput(onFail, onPass, touchSlop, minimumSwipeDistance, swipeFeedback) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val gestureStartedAtNanos = System.nanoTime()
             var endPosition = down.position
             var consumingReviewSwipe = false
             do {
@@ -169,17 +176,25 @@ private fun Modifier.revealedReviewSwipeGestures(
             } while (event.changes.any { it.pressed })
             swipeFeedback?.reset()
 
-            when (
-                FlashcardGesturePolicy.release(
-                    down.position.x,
-                    down.position.y,
-                    endPosition.x,
-                    endPosition.y,
-                    touchSlop,
-                    minimumSwipeDistance,
-                    true,
-                ).rating
-            ) {
+            val rating = FlashcardGesturePolicy.release(
+                down.position.x,
+                down.position.y,
+                endPosition.x,
+                endPosition.y,
+                touchSlop,
+                minimumSwipeDistance,
+                true,
+            ).rating
+            if (rating.isNotEmpty()) {
+                val gestureDurationMs = ((System.nanoTime() - gestureStartedAtNanos) / 1_000_000L)
+                    .coerceAtLeast(0L)
+                logReviewSwipeGesture(
+                    source = "action-bar",
+                    rating = rating,
+                    durationMs = gestureDurationMs,
+                )
+            }
+            when (rating) {
                 StudyRatings.AGAIN -> onFail()
                 StudyRatings.GOOD -> onPass()
             }

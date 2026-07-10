@@ -22,13 +22,20 @@ internal class AsyncHomeRouteLoader(
     private val loadingTaskScheduler: LoadingTaskScheduler = RealLoadingTaskScheduler,
     private val onQueueWait: (route: String, waitNanos: Long) -> Unit = ::logAsyncLoadQueueWait,
     private val nanoClock: () -> Long = ::defaultLoaderNanoTime,
+    private val onRouteRequested: (requestId: Int, route: String) -> Unit = { _, _ -> },
+    private val onRouteCanceled: (requestId: Int) -> Unit = {},
+    private val onRouteSettled: (requestId: Int, route: String, succeeded: Boolean) -> Unit = { _, _, _ -> },
+    private val onStaleResult: (requestId: Int, currentRequestId: Int, route: String) -> Unit = ::logStaleRouteResult,
 ) {
     // Mutated on the main thread (cancelPending / load) and read on background and
     // loading-guard threads, so it must be atomically published.
     private val generation = AtomicInteger(0)
 
     fun cancelPending() {
-        generation.incrementAndGet()
+        val canceledRequestId = generation.getAndIncrement()
+        if (canceledRequestId > 0) {
+            runCatching { onRouteCanceled(canceledRequestId) }
+        }
     }
 
     fun <T> load(
@@ -41,6 +48,7 @@ internal class AsyncHomeRouteLoader(
     ) {
         val token = generation.incrementAndGet()
         val finished = AtomicBoolean(false)
+        runCatching { onRouteRequested(token, traceLabel) }
 
         if (showLoadingAfterMs <= 0) {
             withAsyncLoadTrace(traceLabel, "show-loading") {
@@ -95,16 +103,34 @@ internal class AsyncHomeRouteLoader(
 
             postToMain(
                 Runnable {
-                    if (token != generation.get()) {
+                    val currentToken = generation.get()
+                    if (token != currentToken) {
+                        runCatching { onStaleResult(token, currentToken, traceLabel) }
                         return@Runnable
                     }
-                    withAsyncLoadTrace(traceLabel, "render") {
-                        result.fold(render, renderError)
+                    try {
+                        withAsyncLoadTrace(traceLabel, "render") {
+                            result.fold(render, renderError)
+                        }
+                    } finally {
+                        // Both a rendered model and a rendered recoverable error release deferred
+                        // maintenance. Superseded results return above and never settle.
+                        runCatching { onRouteSettled(token, traceLabel, result.isSuccess) }
                     }
                 }
             )
         }
     }
+}
+
+private fun logStaleRouteResult(requestId: Int, currentRequestId: Int, route: String) {
+    if (!AppDebugLog.isCapturing()) {
+        return
+    }
+    AppDebugLog.log(
+        "route stale-result dropped request_id=$requestId current_request_id=$currentRequestId " +
+            "route=${traceToken(route)}",
+    )
 }
 
 /** Monotonic clock for queue-wait measurement; falls back off-Android for plain JVM tests. */
