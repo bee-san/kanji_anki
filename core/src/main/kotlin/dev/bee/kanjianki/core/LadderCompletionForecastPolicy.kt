@@ -51,22 +51,33 @@ object LadderCompletionForecastPolicy {
             rows.filter { it.matureSupportCount < settings.matureSupportThreshold }.mapTo(this) { it.kanji }
             startingItems.filter { it.state != StudyLadderRules.STATE_RETIRED }.mapTo(this) { it.kanji }
         }
+        val remainingTargets = LinkedHashSet(targetKanji)
         val completionAt = linkedMapOf<String, Long>()
+        fun recordCompletion(kanji: String, completedAtMillis: Long) {
+            completionAt.putIfAbsent(kanji, completedAtMillis)
+            remainingTargets.remove(kanji)
+        }
         startingItems.filter {
             it.state == StudyLadderRules.STATE_RETIRED || parked(it, settings, ladder) ||
                 (atCeiling(it, ladder) && it.phase == RecordsBase.SchedulerPhase.REVIEW && it.realPassStreak > 0)
         }
-            .forEach { completionAt.putIfAbsent(it.kanji, nowMillis) }
+            .forEach { recordCompletion(it.kanji, nowMillis) }
 
         simulator.seedQueue()
         var simulatedNow = nowMillis
         var iterations = 0
-        while (completionAt.keys.intersect(targetKanji).size < targetKanji.size && simulatedNow <= horizon && iterations < MAX_ITERATIONS) {
+        while (remainingTargets.isNotEmpty() && simulatedNow <= horizon && iterations < MAX_ITERATIONS) {
             iterations++
             simulator.seedQueue()
             val items = simulator.currentItems()
-            items.filter { it.state == StudyLadderRules.STATE_RETIRED }.forEach { completionAt.putIfAbsent(it.kanji, simulatedNow) }
-            val nextDue = items.filter { it.state != StudyLadderRules.STATE_RETIRED }.minOfOrNull { it.dueAtMillis }
+            var nextDue: Long? = null
+            for (item in items) {
+                if (item.state == StudyLadderRules.STATE_RETIRED) {
+                    recordCompletion(item.kanji, simulatedNow)
+                } else {
+                    nextDue = nextDue?.let { minOf(it, item.dueAtMillis) } ?: item.dueAtMillis
+                }
+            }
             if (nextDue == null) {
                 simulatedNow = LocalDayPolicy.moveLocalDays(simulatedNow, 1, FORECAST_ZONE)
                 simulator.advanceTo(simulatedNow)
@@ -93,7 +104,7 @@ object LadderCompletionForecastPolicy {
                     it.kanji == after.kanji && it.rung == after.rung && it.dueAtMillis == after.dueAtMillis
                 }
                 if (item != null && atCeiling(item, ladder) && item.phase == RecordsBase.SchedulerPhase.REVIEW && item.realPassStreak > 0) {
-                    completionAt.putIfAbsent(item.kanji, simulatedNow)
+                    recordCompletion(item.kanji, simulatedNow)
                 }
             }
         }
