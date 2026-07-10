@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
@@ -98,6 +99,37 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
         auditImports: List<RecordsImportModels.SuspendedImport>?,
         initialStatus: String,
     ): Long {
+        return saveSuccessfulSync(
+            snapshot,
+            imports,
+            rows,
+            settings,
+            timing,
+            removalMessage,
+            similarIndex,
+            auditImports,
+            initialStatus,
+            null,
+        )
+    }
+
+    /**
+     * Terminal overload. [dictionary] (the bundled KANJIDIC2 lookup) is used to
+     * rebuild the reading-usage content tables (Goal 77); pass null in tests
+     * that do not exercise reading rungs — the tables are then left empty.
+     */
+    fun saveSuccessfulSync(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        imports: List<RecordsImportModels.SuspendedImport>,
+        rows: List<RecordsImportModels.DashboardRow>,
+        settings: RecordsSyncModels.Settings,
+        timing: LocalStoreBase.SyncTiming,
+        removalMessage: String?,
+        similarIndex: SimilarKanjiIndex?,
+        auditImports: List<RecordsImportModels.SuspendedImport>?,
+        initialStatus: String,
+        dictionary: DictionaryLookup?,
+    ): Long {
         val db = writableDatabase
         return db.transaction {
             val decisionImports = auditImports ?: imports
@@ -154,6 +186,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
                 rebuildSimilarKanjiPairs(db, similarIndex, timing.finishedAt)
             }
             rebuildSimilarKanjiChoiceStates(db, timing.finishedAt)
+            LocalStoreKanjiReadingMaintenance().rebuildKanjiReadingUsage(db, rows, dictionary)
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings)
             StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(db)
             clearDashboardRowsCache()

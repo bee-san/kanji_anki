@@ -3,7 +3,9 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
+import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -144,6 +146,160 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 )
             },
             actionBar = { MeaningChoiceResultActionBar(model = model, state = state) },
+        )
+    }
+
+    fun renderKanjiReadingSession(session: RecordsSchedulerModels.StudySession) {
+        prepareKanjiReadingRender(session).invoke()
+    }
+
+    /**
+     * Background-safe preparation for the kanji_reading rung (Goal 78). Builds a
+     * kana forced-choice card ("How is 〈kanji〉 read in 〈word〉?"); if fewer than
+     * two choices can be built it falls back to a plain flashcard, matching the
+     * meaning_kanji fallback pattern.
+     */
+    fun prepareKanjiReadingRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+        val choiceCard = kanjiReadingChoiceCardForSession(session)
+        if (choiceCard == null || choiceCard.choices.size < KanjiReadingChoicePlanner.MIN_CHOICE_COUNT) {
+            home.warmSessionDictionaryEntry(session)
+            return {
+                resetChoiceSession(true)
+                home.renderComposeFlashcardSession(session)
+            }
+        }
+
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
+        val question = StudyTextCopy.kanjiReadingChoiceQuestion(choiceCard)
+        val modeLabel = StudyTaskCopy.studyModeLabel(session)
+        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
+        val resultCorrectText = StudyTextCopy.kanjiReadingChoiceResult(choiceCard, true)
+        val resultWrongText = StudyTextCopy.kanjiReadingChoiceResult(choiceCard, false)
+
+        return {
+            resetChoiceSession(true)
+            val model = MeaningChoiceSessionModel(
+                modeLabel,
+                StudyTextCopy.kanjiReadingChoiceTitle(),
+                taskLabel,
+                StudyTextCopy.kanjiReadingChoiceBody(),
+                "",
+                question,
+                choiceCard.choices,
+                answerPanel,
+                KanjiChoiceHandler { reading ->
+                    val correct = choiceCard.isCorrect(reading)
+                    home.io.execute {
+                        home.store.recordChoiceReviewLog(
+                            choiceCard.targetKanji,
+                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                            reading,
+                            correct,
+                            RecordsBase.LadderRung.KANJI_READING.wireName(),
+                            System.currentTimeMillis(),
+                        )
+                    }
+                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                },
+                MeaningChoiceResultResolver { reading ->
+                    val correct = choiceCard.isCorrect(reading)
+                    MeaningChoiceResultModel(
+                        if (correct) resultCorrectText else resultWrongText,
+                        if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        correctChoice = choiceCard.correctReading,
+                        selectedChoiceCorrect = correct,
+                    )
+                },
+            )
+            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+        }
+    }
+
+    fun kanjiReadingChoiceCardForSession(
+        session: RecordsSchedulerModels.StudySession?,
+    ): RecordsImportModels.KanjiReadingChoiceCard? {
+        val kanji = session?.item?.kanji?.takeIf { it.isNotBlank() } ?: return null
+        return KanjiReadingChoicePlanner.buildChoiceCard(
+            kanji,
+            home.store.kanjiReadingUsagesFor(kanji),
+            home.store.kanjiReadingPoolFor(kanji),
+            meaningChoiceRandom,
+        )
+    }
+
+    /**
+     * Background-safe preparation for the reading_kanji homophone rung (Goal 79).
+     * Builds a kanji-glyph forced-choice card; falls back to a flashcard when
+     * fewer than three choices can be built (a 2-option homophone card is a coin
+     * flip).
+     */
+    fun prepareReadingKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+        val choiceCard = readingKanjiChoiceCardForSession(session)
+        if (choiceCard == null || choiceCard.choices.size < ReadingKanjiChoicePlanner.MIN_CHOICE_COUNT) {
+            home.warmSessionDictionaryEntry(session)
+            return {
+                resetChoiceSession(true)
+                home.renderComposeFlashcardSession(session)
+            }
+        }
+
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
+        val question = StudyTextCopy.readingKanjiChoiceQuestion(choiceCard)
+        val modeLabel = StudyTaskCopy.studyModeLabel(session)
+        val taskLabel = StudyTaskCopy.labelForTask(session.taskType)
+        val resultCorrectText = StudyTextCopy.readingKanjiChoiceResult(choiceCard, true)
+        val resultWrongText = StudyTextCopy.readingKanjiChoiceResult(choiceCard, false)
+
+        return {
+            resetChoiceSession(true)
+            val model = MeaningChoiceSessionModel(
+                modeLabel,
+                StudyTextCopy.readingKanjiChoiceTitle(),
+                taskLabel,
+                StudyTextCopy.readingKanjiChoiceBody(),
+                "",
+                question,
+                choiceCard.choices,
+                answerPanel,
+                KanjiChoiceHandler { glyph ->
+                    val correct = choiceCard.isCorrect(glyph)
+                    home.io.execute {
+                        home.store.recordChoiceReviewLog(
+                            choiceCard.targetKanji,
+                            SimilarKanjiChoicePlanner.choiceSignature(choiceCard.choices),
+                            glyph,
+                            correct,
+                            RecordsBase.LadderRung.READING_KANJI.wireName(),
+                            System.currentTimeMillis(),
+                        )
+                    }
+                    home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+                },
+                MeaningChoiceResultResolver { glyph ->
+                    val correct = choiceCard.isCorrect(glyph)
+                    MeaningChoiceResultModel(
+                        if (correct) resultCorrectText else resultWrongText,
+                        if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                        if (correct) StudyTextCopy.passLabel() else StudyTextCopy.failLabel(),
+                        correctChoice = choiceCard.targetKanji,
+                        selectedChoiceCorrect = correct,
+                    )
+                },
+            )
+            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+        }
+    }
+
+    fun readingKanjiChoiceCardForSession(
+        session: RecordsSchedulerModels.StudySession?,
+    ): RecordsImportModels.ReadingKanjiChoiceCard? {
+        val kanji = session?.item?.kanji?.takeIf { it.isNotBlank() } ?: return null
+        return ReadingKanjiChoicePlanner.buildChoiceCard(
+            kanji,
+            home.store.kanjiReadingUsagesForReadingKanji(kanji),
+            home.store.readingKanjiCandidatesFor(kanji),
+            meaningChoiceRandom,
         )
     }
 

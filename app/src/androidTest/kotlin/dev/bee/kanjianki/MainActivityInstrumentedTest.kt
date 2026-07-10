@@ -2179,6 +2179,26 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
             LocalStore(context).use { store ->
                 assertFalse(store.dashboardRows().isEmpty());
                 assertFalse(store.studyItems().isEmpty());
+                // Goal 81 live gate: the reading-usage table is rebuilt from the
+                // real collection, and the reading-aware availability flags are
+                // annotated onto real study items.
+                assertTrue(
+                    "kanji_reading_usage should be non-empty after a real sync",
+                    store.kanjiReadingUsageRowCount() > 0,
+                )
+                val items = store.studyItems()
+                assertTrue(
+                    "at least one study item should carry hasKanjiReading",
+                    items.any { it.hasKanjiReading },
+                )
+                assertTrue(
+                    "at least one study item should carry hasReadingKanji",
+                    items.any { it.hasReadingKanji },
+                )
+                assertTrue(
+                    "at least one study item should carry hasSentenceReading",
+                    items.any { it.hasSentenceReading },
+                )
             }
         }
 
@@ -2410,6 +2430,9 @@ fun forceStudyItemDue(kanji: String, recognitionStage: Int, writingRemediationPe
             RecordsBase.LadderRung.TYPE_MEANING -> builder.typingMeaningMemory(dueTaskMemory)
             RecordsBase.LadderRung.FONT_MEANING -> builder.fontMeaningMemory(dueTaskMemory)
             RecordsBase.LadderRung.WORD_READING -> builder.wordReadingMemory(dueTaskMemory)
+            RecordsBase.LadderRung.KANJI_READING -> builder.kanjiReadingMemory(dueTaskMemory)
+            RecordsBase.LadderRung.READING_KANJI -> builder.readingKanjiMemory(dueTaskMemory)
+            RecordsBase.LadderRung.SENTENCE_READING -> builder.sentenceReadingMemory(dueTaskMemory)
             RecordsBase.LadderRung.KANJI_MEANING,
             RecordsBase.LadderRung.SIMILAR_KANJI,
             RecordsBase.LadderRung.MEANING_KANJI -> builder.kanjiMeaningMemory(dueTaskMemory)

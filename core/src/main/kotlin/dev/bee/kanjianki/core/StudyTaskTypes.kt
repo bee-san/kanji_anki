@@ -12,6 +12,9 @@ object StudyTaskTypes {
     const val KANJI_MEANING: String = "kanji_meaning"
     const val FONT_MEANING: String = "font_meaning"
     const val WORD_READING: String = "word_reading"
+    const val KANJI_READING: String = "kanji_reading"
+    const val READING_KANJI: String = "reading_kanji"
+    const val SENTENCE_READING: String = "sentence_reading"
 
     // Legacy wire-format aliases retained for persisted task memory rows.
     const val TYPING_MEANING: String = "typing_meaning"

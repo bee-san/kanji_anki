@@ -5,6 +5,8 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
+import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
+import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
@@ -37,6 +39,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
     @Volatile
     private var cachedKanjiWithSimilarNeighbors: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithKanjiReading: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithReadingKanji: Set<String>? = null
+    @Volatile
+    private var cachedKanjiWithSentenceReading: Set<String>? = null
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
 
     fun newCardSortPreviewCacheVersion(): Long {
@@ -82,6 +90,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     internal override fun clearSimilarKanjiNeighborsCache() {
         cachedKanjiWithSimilarNeighbors = null
+        cachedKanjiWithKanjiReading = null
+        cachedKanjiWithReadingKanji = null
+        cachedKanjiWithSentenceReading = null
         bumpNewCardSortPreviewCacheVersion()
     }
 
@@ -410,14 +421,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items.add(readStudyItem(cursor))
             }
         }
-        val withSimilar = kanjiWithSimilarNeighbors(db)
-        for (i in items.indices) {
-            val current = items[i]
-            val hasSimilar = withSimilar.contains(current.kanji)
-            if (hasSimilar != current.hasSimilarKanji) {
-                items[i] = current.withHasSimilarKanji(hasSimilar)
-            }
-        }
+        annotateConditionalRungsInPlace(db, items)
         cachedStudyItems = items
         return items
     }
@@ -455,14 +459,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             "studyItemsForKanji LOADED size=${items.size} keys=${distinctKanji.size} " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
-        val withSimilar = kanjiWithSimilarNeighbors(db)
-        for (i in items.indices) {
-            val current = items[i]
-            val hasSimilar = withSimilar.contains(current.kanji)
-            if (hasSimilar != current.hasSimilarKanji) {
-                items[i] = current.withHasSimilarKanji(hasSimilar)
-            }
-        }
+        annotateConditionalRungsInPlace(db, items)
         val caches = cachedStudyItemsByKanji ?: ConcurrentHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
             cachedStudyItemsByKanji = it
         }
@@ -505,17 +502,285 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return cached
     }
 
+    /**
+     * Kanji that can support the `kanji_reading` rung (Goal 77): at least one
+     * attested usage row (a real word to prompt with) AND at least two distinct
+     * readings available in the pool (attested ∪ dictionary) so a ≥ 2-choice
+     * card is buildable. Per the Goal 69 lesson, availability must mean a choice
+     * card can actually be built.
+     */
+    fun kanjiWithKanjiReading(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithKanjiReading?.let { return it }
+        val sql =
+            "SELECT u.$COLUMN_KANJI FROM $TABLE_KANJI_READING_USAGE u " +
+                "JOIN (SELECT $COLUMN_KANJI, COUNT(*) AS reading_count FROM $TABLE_KANJI_READING_POOL " +
+                "GROUP BY $COLUMN_KANJI HAVING reading_count >= 2) p ON u.$COLUMN_KANJI = p.$COLUMN_KANJI " +
+                "GROUP BY u.$COLUMN_KANJI"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithKanjiReading = cached
+        return cached
+    }
+
+    /**
+     * Kanji that can support the `reading_kanji` homophone rung (Goal 77): some
+     * attested canonical reading of this kanji is also attested for at least two
+     * OTHER kanji, so a ≥ 3-choice card (target + 2 same-reading distractors)
+     * can be built from attested evidence alone.
+     */
+    fun kanjiWithReadingKanji(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithReadingKanji?.let { return it }
+        // Readings shared by >= 3 distinct kanji (attested usage rows).
+        val sharedReadings =
+            "SELECT $COLUMN_READING FROM " +
+                "(SELECT $COLUMN_READING, COUNT(DISTINCT $COLUMN_KANJI) AS kanji_count " +
+                "FROM $TABLE_KANJI_READING_USAGE GROUP BY $COLUMN_READING) " +
+                "WHERE kanji_count >= 3"
+        val sql =
+            "SELECT DISTINCT $COLUMN_KANJI FROM $TABLE_KANJI_READING_USAGE " +
+                "WHERE $COLUMN_READING IN ($sharedReadings)"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithReadingKanji = cached
+        return cached
+    }
+
+    /**
+     * Kanji that can support the `sentence_reading` rung (Goal 77): at least one
+     * example row with both a non-blank sentence and a non-blank reading.
+     */
+    fun kanjiWithSentenceReading(db: SQLiteDatabase): Set<String> {
+        cachedKanjiWithSentenceReading?.let { return it }
+        val sql =
+            "SELECT DISTINCT $COLUMN_KANJI FROM $TABLE_KANJI_EXAMPLES " +
+                "WHERE $COLUMN_SENTENCE IS NOT NULL AND TRIM($COLUMN_SENTENCE) <> '' " +
+                "AND $COLUMN_READING IS NOT NULL AND TRIM($COLUMN_READING) <> ''"
+        val cached = Collections.unmodifiableSet(querySingleColumnSet(db, sql))
+        cachedKanjiWithSentenceReading = cached
+        return cached
+    }
+
+    /** Attested reading usages for [kanji], feeding KanjiReadingChoicePlanner. */
+    fun kanjiReadingUsagesFor(kanji: String?): List<KanjiReadingChoicePlanner.Usage> {
+        val normalized = normalizeSingleKanji(kanji)
+        if (normalized.isEmpty()) {
+            return emptyList()
+        }
+        val out = ArrayList<KanjiReadingChoicePlanner.Usage>()
+        readableDatabase.rawQuery(
+            "SELECT $COLUMN_READING, $COLUMN_EXPRESSION, $COLUMN_NOTE_ID, $COLUMN_MATURE, $COLUMN_LAPSES " +
+                "FROM $TABLE_KANJI_READING_USAGE WHERE $COLUMN_KANJI = ? " +
+                "ORDER BY $COLUMN_NOTE_ID ASC",
+            arrayOf(normalized),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                out.add(
+                    KanjiReadingChoicePlanner.Usage(
+                        cursor.getString(1) ?: "",
+                        cursor.getString(0) ?: "",
+                        wordMeaningFor(cursor.getString(1)),
+                        cursor.getLong(2),
+                        cursor.getInt(3) == 1,
+                        cursor.getInt(4),
+                    ),
+                )
+            }
+        }
+        return out
+    }
+
+    /** Candidate reading pool for [kanji] (attested union dictionary readings). */
+    fun kanjiReadingPoolFor(kanji: String?): List<KanjiReadingChoicePlanner.PoolReading> {
+        val normalized = normalizeSingleKanji(kanji)
+        if (normalized.isEmpty()) {
+            return emptyList()
+        }
+        // A pool reading is mature-attested when some usage row for this kanji
+        // with that reading is mature.
+        val matureReadings = HashSet<String>()
+        readableDatabase.rawQuery(
+            "SELECT DISTINCT $COLUMN_READING FROM $TABLE_KANJI_READING_USAGE " +
+                "WHERE $COLUMN_KANJI = ? AND $COLUMN_MATURE = 1",
+            arrayOf(normalized),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                cursor.getString(0)?.let { matureReadings.add(it) }
+            }
+        }
+        val out = ArrayList<KanjiReadingChoicePlanner.PoolReading>()
+        readableDatabase.rawQuery(
+            "SELECT $COLUMN_READING, $COLUMN_ATTESTED FROM $TABLE_KANJI_READING_POOL " +
+                "WHERE $COLUMN_KANJI = ? ORDER BY $COLUMN_READING ASC",
+            arrayOf(normalized),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val reading = cursor.getString(0) ?: continue
+                val attested = cursor.getInt(1) == 1
+                out.add(
+                    KanjiReadingChoicePlanner.PoolReading(
+                        reading,
+                        attested,
+                        attested && matureReadings.contains(reading),
+                    ),
+                )
+            }
+        }
+        return out
+    }
+
+    /** Number of rows in kanji_reading_usage — used by the live gate assertion. */
+    fun kanjiReadingUsageRowCount(): Int {
+        readableDatabase.rawQuery("SELECT COUNT(*) FROM $TABLE_KANJI_READING_USAGE", null).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        }
+    }
+
+    /** Attested usages for [kanji] shaped for ReadingKanjiChoicePlanner. */
+    fun kanjiReadingUsagesForReadingKanji(kanji: String?): List<ReadingKanjiChoicePlanner.TargetUsage> {
+        return kanjiReadingUsagesFor(kanji).map { usage ->
+            ReadingKanjiChoicePlanner.TargetUsage(
+                usage.word,
+                usage.reading,
+                usage.meaning,
+                usage.noteId,
+                usage.mature,
+                usage.lapses,
+            )
+        }
+    }
+
+    /**
+     * Same-reading distractor kanji for [kanji]'s reading_kanji card, keyed by
+     * canonical reading: for each reading the target is attested with, the OTHER
+     * inventory kanji attested with that reading, flagged mature when any of
+     * their usages of that reading is mature.
+     */
+    fun readingKanjiCandidatesFor(kanji: String?): Map<String, List<ReadingKanjiChoicePlanner.Candidate>> {
+        val normalized = normalizeSingleKanji(kanji)
+        if (normalized.isEmpty()) {
+            return emptyMap()
+        }
+        val db = readableDatabase
+        // Readings the target is attested with.
+        val targetReadings = ArrayList<String>()
+        db.rawQuery(
+            "SELECT DISTINCT $COLUMN_READING FROM $TABLE_KANJI_READING_USAGE WHERE $COLUMN_KANJI = ?",
+            arrayOf(normalized),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                cursor.getString(0)?.let { targetReadings.add(it) }
+            }
+        }
+        val out = LinkedHashMap<String, List<ReadingKanjiChoicePlanner.Candidate>>()
+        for (reading in targetReadings) {
+            val candidates = LinkedHashMap<String, Boolean>()
+            db.rawQuery(
+                "SELECT $COLUMN_KANJI, MAX($COLUMN_MATURE) FROM $TABLE_KANJI_READING_USAGE " +
+                    "WHERE $COLUMN_READING = ? AND $COLUMN_KANJI <> ? GROUP BY $COLUMN_KANJI",
+                arrayOf(reading, normalized),
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    val other = cursor.getString(0) ?: continue
+                    candidates[other] = cursor.getInt(1) == 1
+                }
+            }
+            if (candidates.isNotEmpty()) {
+                out[reading] = candidates.map { ReadingKanjiChoicePlanner.Candidate(it.key, it.value) }
+            }
+        }
+        return out
+    }
+
+    private fun wordMeaningFor(expression: String?): String {
+        // Best-effort gloss for the prompt word from its example row; empty when
+        // unknown (the planner's meaning is only a context cue).
+        val expr = expression?.trim().orEmpty()
+        if (expr.isEmpty()) {
+            return ""
+        }
+        readableDatabase.rawQuery(
+            "SELECT $COLUMN_MEANING FROM $TABLE_KANJI_EXAMPLES WHERE $COLUMN_EXPRESSION = ? LIMIT 1",
+            arrayOf(expr),
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return cursor.getString(0) ?: ""
+            }
+        }
+        return ""
+    }
+
+    private fun querySingleColumnSet(db: SQLiteDatabase, sql: String): Set<String> {
+        val out = HashSet<String>()
+        db.rawQuery(sql, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val value = cursor.getString(0)
+                if (!value.isNullOrEmpty()) {
+                    out.add(value)
+                }
+            }
+        }
+        return out
+    }
+
+    /**
+     * Annotate every conditional-rung availability flag on the given items from
+     * the current content tables. Named for its original single flag but now
+     * covers all conditional rungs (similar_kanji, kanji_reading — Goal 78) so
+     * every seeding/annotate seam produces items whose rungAvailability() is
+     * consistent with on-device data.
+     */
     fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>?): List<RecordsStudyModels.StudyItem> {
         if (items.isNullOrEmpty()) {
             return items ?: emptyList()
         }
-        val withSimilar = kanjiWithSimilarNeighbors(readableDatabase)
+        val db = readableDatabase
+        val withSimilar = kanjiWithSimilarNeighbors(db)
+        val withKanjiReading = kanjiWithKanjiReading(db)
+        val withReadingKanji = kanjiWithReadingKanji(db)
+        val withSentenceReading = kanjiWithSentenceReading(db)
         val out = ArrayList<RecordsStudyModels.StudyItem>(items.size)
         for (item in items) {
-            val hasSimilar = withSimilar.contains(item.kanji)
-            out.add(if (hasSimilar == item.hasSimilarKanji) item else item.withHasSimilarKanji(hasSimilar))
+            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading, withReadingKanji, withSentenceReading))
         }
         return out
+    }
+
+    private fun annotateConditionalRungsInPlace(
+        db: SQLiteDatabase,
+        items: MutableList<RecordsStudyModels.StudyItem>,
+    ) {
+        val withSimilar = kanjiWithSimilarNeighbors(db)
+        val withKanjiReading = kanjiWithKanjiReading(db)
+        val withReadingKanji = kanjiWithReadingKanji(db)
+        val withSentenceReading = kanjiWithSentenceReading(db)
+        for (i in items.indices) {
+            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading, withReadingKanji, withSentenceReading)
+        }
+    }
+
+    private fun annotateConditionalRungs(
+        item: RecordsStudyModels.StudyItem,
+        withSimilar: Set<String>,
+        withKanjiReading: Set<String>,
+        withReadingKanji: Set<String>,
+        withSentenceReading: Set<String>,
+    ): RecordsStudyModels.StudyItem {
+        val hasSimilar = withSimilar.contains(item.kanji)
+        val hasKanjiReading = withKanjiReading.contains(item.kanji)
+        val hasReadingKanji = withReadingKanji.contains(item.kanji)
+        val hasSentenceReading = withSentenceReading.contains(item.kanji)
+        var result = item
+        if (hasSimilar != result.hasSimilarKanji) {
+            result = result.withHasSimilarKanji(hasSimilar)
+        }
+        if (hasKanjiReading != result.hasKanjiReading) {
+            result = result.withHasKanjiReading(hasKanjiReading)
+        }
+        if (hasReadingKanji != result.hasReadingKanji) {
+            result = result.withHasReadingKanji(hasReadingKanji)
+        }
+        if (hasSentenceReading != result.hasSentenceReading) {
+            result = result.withHasSentenceReading(hasSentenceReading)
+        }
+        return result
     }
 
     fun suspendedImports(): List<RecordsImportModels.SuspendedImport> {

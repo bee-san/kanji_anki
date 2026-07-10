@@ -244,6 +244,27 @@ object SettingsStudyPlanTextCopy {
         if (rung == RecordsBase.LadderRung.SIMILAR_KANJI) {
             return if (enabled) localizedText("Included when similar kanji exist", "似た漢字があるときに含める") else skippedInStudyText()
         }
+        if (rung == RecordsBase.LadderRung.KANJI_READING) {
+            return if (enabled) {
+                localizedText("Included when the kanji has multiple known readings", "漢字に複数の読みがあるときに含める")
+            } else {
+                skippedInStudyText()
+            }
+        }
+        if (rung == RecordsBase.LadderRung.READING_KANJI) {
+            return if (enabled) {
+                localizedText("Included when other known kanji share a reading", "他の既知の漢字と読みが重なるときに含める")
+            } else {
+                skippedInStudyText()
+            }
+        }
+        if (rung == RecordsBase.LadderRung.SENTENCE_READING) {
+            return if (enabled) {
+                localizedText("Included when a mined sentence is available", "例文があるときに含める")
+            } else {
+                skippedInStudyText()
+            }
+        }
         return if (enabled) localizedText("Included in study", "学習に含める") else skippedInStudyText()
     }
 
@@ -257,6 +278,9 @@ object SettingsStudyPlanTextCopy {
             RecordsBase.LadderRung.KANJI_MEANING -> localizedText("Kanji -> meaning", "漢字 → 意味")
             RecordsBase.LadderRung.FONT_MEANING -> localizedText("Font -> meaning", "フォント → 意味")
             RecordsBase.LadderRung.WORD_READING -> localizedText("Word -> reading", "単語 → 読み")
+            RecordsBase.LadderRung.KANJI_READING -> localizedText("Kanji -> reading", "漢字 → 読み")
+            RecordsBase.LadderRung.READING_KANJI -> localizedText("Reading -> kanji", "読み → 漢字")
+            RecordsBase.LadderRung.SENTENCE_READING -> localizedText("Sentence reading", "文で読む")
         }
     }
 

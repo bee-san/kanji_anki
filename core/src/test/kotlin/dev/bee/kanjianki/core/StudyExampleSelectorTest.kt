@@ -41,6 +41,31 @@ class StudyExampleSelectorTest {
         assertNull(StudyExampleSelector.exampleForSession(null))
     }
 
+    @Test
+    fun sentenceReadingExamplePrefersBothFieldsSuspendedThenActive() {
+        // Only examples with BOTH a sentence and a reading qualify.
+        val active = exampleWith("active", "有効", sentence = "有効な文。", reading = "ゆうこう")
+        val suspended = exampleWith("suspended", "休止", sentence = "休止の文。", reading = "きゅうし")
+        val noSentence = exampleWith("active", "無文", sentence = "", reading = "むぶん")
+        val noReading = exampleWith("suspended", "無読", sentence = "文だけ。", reading = "")
+
+        assertSame(suspended, StudyExampleSelector.sentenceReadingExample(row(noSentence, active, suspended)))
+        assertSame(active, StudyExampleSelector.sentenceReadingExample(row(noSentence, active)))
+        // No example carries both fields → null (rung unavailable for the card).
+        assertNull(StudyExampleSelector.sentenceReadingExample(row(noSentence, noReading)))
+        assertNull(StudyExampleSelector.sentenceReadingExample(null))
+        assertNull(StudyExampleSelector.sentenceReadingExample(row()))
+    }
+
+    @Test
+    fun exampleForSessionUsesSentenceReadingSelectionForSentenceReadingTasks() {
+        val active = exampleWith("active", "有効", sentence = "有効な文。", reading = "ゆうこう")
+        val suspended = exampleWith("suspended", "休止", sentence = "休止の文。", reading = "きゅうし")
+        val row = row(active, suspended)
+
+        assertSame(suspended, StudyExampleSelector.exampleForSession(session(StudyTaskTypes.SENTENCE_READING, row)))
+    }
+
     private fun session(taskType: String, row: RecordsImportModels.DashboardRow?): RecordsSchedulerModels.StudySession {
         return RecordsSchedulerModels.StudySession(
             RecordsStudyModels.StudyItem("x", "review", 0L, 1.0, 5.0, 1, 0, 0, 1, null, 0L),
@@ -70,14 +95,23 @@ class StudyExampleSelectorTest {
     }
 
     private fun example(sourceType: String, expression: String): RecordsImportModels.Example {
+        return exampleWith(sourceType, expression, "sentence", "reading")
+    }
+
+    private fun exampleWith(
+        sourceType: String,
+        expression: String,
+        sentence: String,
+        reading: String,
+    ): RecordsImportModels.Example {
         return RecordsImportModels.Example(
             sourceType,
             1L,
             2L,
             expression,
-            "reading",
+            reading,
             "meaning",
-            "sentence",
+            sentence,
             false,
             0,
             0,

@@ -169,7 +169,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 studyItem.rung,
                 studyItem.phase,
                 studyItem.realAgainStreak,
-                studyItem.hasSimilarKanji,
+                studyItem.rungAvailability(),
                 null,
                 RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
             )

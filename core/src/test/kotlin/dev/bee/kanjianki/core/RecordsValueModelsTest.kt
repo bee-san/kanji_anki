@@ -451,6 +451,47 @@ class RecordsValueModelsTest {
     }
 
     @Test
+    fun kanjiReadingMemorySlotRoundTrips() {
+        val fixture = studyItemFixture()
+        // Round-trip via the dedicated setter and via the task-type router.
+        val viaSetter = fixture.compact.withKanjiReadingMemory(fixture.word)
+        assertEquals(fixture.word, viaSetter.kanjiReadingMemory)
+        assertEquals(fixture.word, viaSetter.memoryForRung(RecordsBase.LadderRung.KANJI_READING))
+        assertEquals(fixture.word, viaSetter.memoryForTaskType(StudyTaskTypes.KANJI_READING))
+        val viaTaskMemory = fixture.compact.withTaskMemory(BridgeScheduler.TASK_KANJI_READING, fixture.font)
+        assertEquals(fixture.font, viaTaskMemory.kanjiReadingMemory)
+        // Availability round-trips through the flag.
+        assertTrue(fixture.compact.withHasKanjiReading(true).rungAvailability().hasKanjiReading)
+        assertFalse(fixture.compact.rungAvailability().hasKanjiReading)
+    }
+
+    @Test
+    fun readingKanjiMemorySlotRoundTrips() {
+        val fixture = studyItemFixture()
+        val viaSetter = fixture.compact.withReadingKanjiMemory(fixture.word)
+        assertEquals(fixture.word, viaSetter.readingKanjiMemory)
+        assertEquals(fixture.word, viaSetter.memoryForRung(RecordsBase.LadderRung.READING_KANJI))
+        assertEquals(fixture.word, viaSetter.memoryForTaskType(StudyTaskTypes.READING_KANJI))
+        val viaTaskMemory = fixture.compact.withTaskMemory(BridgeScheduler.TASK_READING_KANJI, fixture.font)
+        assertEquals(fixture.font, viaTaskMemory.readingKanjiMemory)
+        assertTrue(fixture.compact.withHasReadingKanji(true).rungAvailability().hasReadingKanji)
+        assertFalse(fixture.compact.rungAvailability().hasReadingKanji)
+    }
+
+    @Test
+    fun sentenceReadingMemorySlotRoundTrips() {
+        val fixture = studyItemFixture()
+        val viaSetter = fixture.compact.withSentenceReadingMemory(fixture.word)
+        assertEquals(fixture.word, viaSetter.sentenceReadingMemory)
+        assertEquals(fixture.word, viaSetter.memoryForRung(RecordsBase.LadderRung.SENTENCE_READING))
+        assertEquals(fixture.word, viaSetter.memoryForTaskType(StudyTaskTypes.SENTENCE_READING))
+        val viaTaskMemory = fixture.compact.withTaskMemory(BridgeScheduler.TASK_SENTENCE_READING, fixture.font)
+        assertEquals(fixture.font, viaTaskMemory.sentenceReadingMemory)
+        assertTrue(fixture.compact.withHasSentenceReading(true).rungAvailability().hasSentenceReading)
+        assertFalse(fixture.compact.rungAvailability().hasSentenceReading)
+    }
+
+    @Test
     fun studyItemCopyBuilderTransitionsStayCompatible() {
         val fixture = studyItemFixture()
 

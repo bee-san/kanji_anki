@@ -402,6 +402,75 @@ abstract class RecordsImportModels protected constructor() : RecordsSyncModels()
         fun isCorrect(selectedKanji: String?): Boolean = targetKanji == nullToEmpty(selectedKanji).trim()
     }
 
+    /**
+     * A kanji_reading choice card (Goal 78): "How is <targetKanji> read in
+     * <word>?" The learner picks the correct reading among the kanji's other
+     * canonical readings. [word] is the attested prompt word, [meaning] its
+     * gloss (context cue), [correctReading] the answer, and [choices] the kana
+     * reading options (correct + distractors), pre-shuffled.
+     */
+    class KanjiReadingChoiceCard(
+        targetKanji: String?,
+        word: String?,
+        meaning: String?,
+        correctReading: String?,
+        choices: List<String?>?
+    ) {
+        @JvmField val targetKanji: String = nullToEmpty(targetKanji).trim()
+        @JvmField val word: String = nullToEmpty(word).trim()
+        @JvmField val meaning: String = cleanMeaning(meaning)
+        @JvmField val correctReading: String = nullToEmpty(correctReading).trim()
+        @JvmField val choices: List<String>
+
+        init {
+            val normalizedChoices = ArrayList<String>()
+            for (choice in nullToEmptyList(choices)) {
+                val value = nullToEmpty(choice).trim()
+                if (value.isNotEmpty() && !normalizedChoices.contains(value)) {
+                    normalizedChoices.add(value)
+                }
+            }
+            this.choices = Collections.unmodifiableList(normalizedChoices)
+        }
+
+        fun isCorrect(selectedReading: String?): Boolean =
+            correctReading == nullToEmpty(selectedReading).trim()
+    }
+
+    /**
+     * A reading_kanji homophone-discrimination choice card (Goal 79): show the
+     * target [reading] in kana plus the attested [blankedWord] (the word with
+     * the target kanji replaced by 〇) and its [meaning] gloss; the learner picks
+     * the correct kanji among same-reading candidates. [choices] are kanji
+     * glyphs (target + distractors), pre-shuffled.
+     */
+    class ReadingKanjiChoiceCard(
+        targetKanji: String?,
+        reading: String?,
+        blankedWord: String?,
+        meaning: String?,
+        choices: List<String?>?
+    ) {
+        @JvmField val targetKanji: String = nullToEmpty(targetKanji).trim()
+        @JvmField val reading: String = nullToEmpty(reading).trim()
+        @JvmField val blankedWord: String = nullToEmpty(blankedWord).trim()
+        @JvmField val meaning: String = cleanMeaning(meaning)
+        @JvmField val choices: List<String>
+
+        init {
+            val normalizedChoices = ArrayList<String>()
+            for (choice in nullToEmptyList(choices)) {
+                val value = nullToEmpty(choice).trim()
+                if (value.isNotEmpty() && !normalizedChoices.contains(value)) {
+                    normalizedChoices.add(value)
+                }
+            }
+            this.choices = Collections.unmodifiableList(normalizedChoices)
+        }
+
+        fun isCorrect(selectedKanji: String?): Boolean = targetKanji == nullToEmpty(selectedKanji).trim()
+    }
+
     class SimilarKanjiWritingRepair(
         id: Long,
         targetKanji: String?,

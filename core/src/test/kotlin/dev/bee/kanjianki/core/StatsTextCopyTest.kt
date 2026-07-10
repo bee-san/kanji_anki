@@ -67,6 +67,9 @@ class StatsTextCopyTest {
         assertEquals("Kanji meaning", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.KANJI_MEANING))
         assertEquals("Font meaning", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.FONT_MEANING))
         assertEquals("Word reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.WORD_READING))
+        assertEquals("Kanji reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.KANJI_READING))
+        assertEquals("Reading kanji", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.READING_KANJI))
+        assertEquals("Sentence reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.SENTENCE_READING))
     }
 
     @Test

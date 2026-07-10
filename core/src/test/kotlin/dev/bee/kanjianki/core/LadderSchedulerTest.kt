@@ -462,24 +462,24 @@ class LadderSchedulerTest {
         // over it in both directions without pausing.
         val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.TYPE_MEANING,
-                false
+                RecordsBase.RungAvailability.none()
         );
         assertEquals(RecordsBase.LadderRung.WRITE_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.WRITE_KANJI,
-                false
+                RecordsBase.RungAvailability.none()
         );
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, promoted);
 
         // Adjacent moves that never touch SIMILAR_KANJI are unaffected.
         assertEquals(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                BridgeScheduler.demoteRung(RecordsBase.LadderRung.KANJI_MEANING, false)
+                BridgeScheduler.demoteRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.none())
         );
         assertEquals(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                BridgeScheduler.promoteRung(RecordsBase.LadderRung.TYPE_MEANING, false)
+                BridgeScheduler.promoteRung(RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.RungAvailability.none())
         );
     }
 
@@ -489,15 +489,113 @@ class LadderSchedulerTest {
         // (below) and kanji_meaning (above).
         val demoted = BridgeScheduler.demoteRung(
                 RecordsBase.LadderRung.KANJI_MEANING,
-                true
+                RecordsBase.RungAvailability.of(true)
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, demoted);
 
         val promoted = BridgeScheduler.promoteRung(
                 RecordsBase.LadderRung.MEANING_KANJI,
-                true
+                RecordsBase.RungAvailability.of(true)
         );
         assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, promoted);
+    }
+
+    @Test
+    fun kanjiReadingRungSkippedWhenUnavailable() {
+        // hasKanjiReading=false: word_reading demotes across the content-less
+        // kanji_reading rung straight to font_meaning, and font_meaning promotes
+        // straight to word_reading.
+        val none = RecordsBase.RungAvailability.none()
+        assertEquals(
+            RecordsBase.LadderRung.FONT_MEANING,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.WORD_READING, none),
+        )
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            BridgeScheduler.promoteRung(RecordsBase.LadderRung.FONT_MEANING, none),
+        )
+    }
+
+    @Test
+    fun kanjiReadingRungIncludedWhenAvailable() {
+        // hasKanjiReading=true: word_reading demotes into kanji_reading and
+        // font_meaning promotes into it.
+        val withReading = RecordsBase.RungAvailability.of(false, true)
+        assertEquals(
+            RecordsBase.LadderRung.KANJI_READING,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.WORD_READING, withReading),
+        )
+        assertEquals(
+            RecordsBase.LadderRung.KANJI_READING,
+            BridgeScheduler.promoteRung(RecordsBase.LadderRung.FONT_MEANING, withReading),
+        )
+    }
+
+    @Test
+    fun readingKanjiRungSkippedWhenUnavailable() {
+        // hasReadingKanji=false: reading_kanji sits between meaning_kanji and
+        // similar_kanji; movements crossing it skip over it.
+        val none = RecordsBase.RungAvailability.none()
+        assertEquals(
+            RecordsBase.LadderRung.MEANING_KANJI,
+            BridgeScheduler.demoteRung(RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.RungAvailability.of(true)),
+        )
+        // With reading data available, a demotion from similar_kanji lands on it.
+        assertEquals(
+            RecordsBase.LadderRung.READING_KANJI,
+            BridgeScheduler.demoteRung(
+                RecordsBase.LadderRung.SIMILAR_KANJI,
+                RecordsBase.RungAvailability.of(true, false, true),
+            ),
+        )
+    }
+
+    @Test
+    fun demotionChainsAcrossBothConditionalRungsWhenNeitherAvailable() {
+        // Goal 79: a kanji_meaning demotion with neither similar_kanji nor
+        // reading_kanji available crosses BOTH conditional rungs in one move,
+        // landing on meaning_kanji, and records both unavailable reason codes.
+        val scheduler = BridgeScheduler()
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder()
+            .hasSimilarKanji(false)
+            .hasKanjiReading(false)
+            .hasReadingKanji(false)
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+            .withToken("chain")
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(item, failRequest("裂", "chain"), HashSet(), 1_000L).build(),
+        )
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
+        val reasons = traced.trace.transition!!.reasonCodes
+        assertTrue(reasons.contains("similar_kanji_unavailable"))
+        assertTrue(reasons.contains("reading_kanji_unavailable"))
+    }
+
+    @Test
+    fun sentenceReadingIsCeilingOnlyWhenDataAvailable() {
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        // Without sentence data, word_reading is the ceiling: promotion returns
+        // the current rung.
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            ladder.nextRung(RecordsBase.LadderRung.WORD_READING, RecordsBase.RungAvailability.none()),
+        )
+        assertTrue(ladder.isAtCeiling(RecordsBase.LadderRung.WORD_READING, RecordsBase.RungAvailability.none()))
+        // With sentence data, word_reading promotes into sentence_reading, which
+        // is then the ceiling.
+        val withSentence = RecordsBase.RungAvailability.of(false, false, false, true)
+        assertEquals(
+            RecordsBase.LadderRung.SENTENCE_READING,
+            ladder.nextRung(RecordsBase.LadderRung.WORD_READING, withSentence),
+        )
+        assertTrue(ladder.isAtCeiling(RecordsBase.LadderRung.SENTENCE_READING, withSentence))
+        // A demotion from the new ceiling lands back on word_reading.
+        assertEquals(
+            RecordsBase.LadderRung.WORD_READING,
+            ladder.previousRung(RecordsBase.LadderRung.SENTENCE_READING, withSentence),
+        )
     }
 
     // ---- Streak mechanics ----
@@ -912,8 +1010,9 @@ class LadderSchedulerTest {
     fun itemRestingOnSimilarKanjiDemotesPastItWhenAvailabilityFlipsFalse() {
         // A card sitting on SIMILAR_KANJI whose hasSimilarKanji becomes false must move
         // across that rung rather than stall on a rung it can no longer render. In the
-        // Goal 65 order similar_kanji maps down to meaning_kanji, which then demotes to
-        // type_meaning.
+        // Goal 79 order reading_kanji sits directly below similar_kanji (both
+        // conditional), so an unavailable similar_kanji maps UP to kanji_meaning;
+        // one demotion then lands on meaning_kanji.
         val scheduler = BridgeScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
@@ -941,8 +1040,8 @@ class LadderSchedulerTest {
         }
 
         assertEquals(
-            "Demotion crosses the unavailable SIMILAR_KANJI rung (mapped to meaning_kanji) down to type_meaning",
-            RecordsBase.LadderRung.TYPE_MEANING,
+            "Unavailable SIMILAR_KANJI maps up to kanji_meaning; one demotion lands on meaning_kanji",
+            RecordsBase.LadderRung.MEANING_KANJI,
             item.rung,
         )
     }
@@ -1173,7 +1272,7 @@ class LadderSchedulerTest {
         // from meaning_kanji must chain across both to font_meaning.
         var ladder = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
-        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, false);
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, RecordsBase.RungAvailability.none());
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoted);
     }
 

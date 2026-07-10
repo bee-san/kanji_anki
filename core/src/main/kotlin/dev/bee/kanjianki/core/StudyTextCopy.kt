@@ -52,8 +52,34 @@ object StudyTextCopy {
         return session?.item?.kanji ?: ""
     }
 
+    /**
+     * The sentence_reading front (Goal 80): the mined sentence for the card, or
+     * the plain expression / kanji when no sentence example exists.
+     */
+    @JvmStatic
+    fun sentencePrompt(session: RecordsSchedulerModels.StudySession?): String {
+        val example = if (session == null) null else StudyExampleSelector.sentenceReadingExample(session.row)
+        if (example != null && example.sentence.isNotEmpty()) {
+            return example.sentence
+        }
+        return wordPrompt(session)
+    }
+
+    /** The target word shown beneath the sentence on the sentence_reading card. */
+    @JvmStatic
+    fun sentenceReadingWord(session: RecordsSchedulerModels.StudySession?): String {
+        val example = if (session == null) null else StudyExampleSelector.sentenceReadingExample(session.row)
+        if (example != null && example.expression.isNotEmpty()) {
+            return example.expression
+        }
+        return session?.item?.kanji ?: ""
+    }
+
     @JvmStatic
     fun heroQuestion(session: RecordsSchedulerModels.StudySession?): String {
+        if (session != null && StudyTaskTypes.SENTENCE_READING == session.taskType) {
+            return localizedText("How is the word read here?", "この語はどう読む？")
+        }
         if (session != null && StudyTaskTypes.WORD_READING == session.taskType) {
             return localizedText("What is the reading?", "読み方は？")
         }
@@ -153,6 +179,76 @@ object StudyTextCopy {
     ): String {
         val meaning = meaningKanjiChoiceMeaning(dictionaryLookup, card, prompt, 96)
         return studyChoiceQuestion(meaning)
+    }
+
+    @JvmStatic
+    fun kanjiReadingChoiceTitle(): String = localizedText("Choose the reading", "読みを選ぶ")
+
+    @JvmStatic
+    fun kanjiReadingChoiceBody(): String =
+        localizedText("Pick how the kanji is read in this word.", "この単語での漢字の読みを選んでください。")
+
+    @JvmStatic
+    fun kanjiReadingChoiceQuestion(card: RecordsImportModels.KanjiReadingChoiceCard?): String {
+        val kanji = card?.targetKanji ?: ""
+        val word = card?.word ?: ""
+        return if (isJapaneseLocale()) {
+            "「$word」の $kanji の読みは？"
+        } else {
+            "How is $kanji read in $word?"
+        }
+    }
+
+    @JvmStatic
+    fun kanjiReadingChoiceResult(card: RecordsImportModels.KanjiReadingChoiceCard?, correct: Boolean): String {
+        val kanji = card?.targetKanji ?: ""
+        val word = card?.word ?: ""
+        val reading = card?.correctReading ?: ""
+        if (correct) {
+            return if (isJapaneseLocale()) {
+                "正解。$word の $kanji は「$reading」と読みます。"
+            } else {
+                "Correct. $kanji is read $reading in $word."
+            }
+        }
+        return if (isJapaneseLocale()) {
+            "答え：$word の $kanji は「$reading」"
+        } else {
+            "Answer: $kanji is read $reading in $word"
+        }
+    }
+
+    @JvmStatic
+    fun readingKanjiChoiceTitle(): String = localizedText("Choose the kanji", "漢字を選ぶ")
+
+    @JvmStatic
+    fun readingKanjiChoiceBody(): String =
+        localizedText("Pick the kanji read this way here.", "ここでこの読みになる漢字を選んでください。")
+
+    @JvmStatic
+    fun readingKanjiChoiceQuestion(card: RecordsImportModels.ReadingKanjiChoiceCard?): String {
+        val reading = card?.reading ?: ""
+        val word = card?.blankedWord ?: ""
+        val meaning = card?.meaning.orEmpty()
+        val base = if (isJapaneseLocale()) {
+            "「$reading」— $word はどの漢字？"
+        } else {
+            "$reading — which kanji is $word?"
+        }
+        if (meaning.isEmpty()) {
+            return base
+        }
+        return if (isJapaneseLocale()) "$base（$meaning）" else "$base ($meaning)"
+    }
+
+    @JvmStatic
+    fun readingKanjiChoiceResult(card: RecordsImportModels.ReadingKanjiChoiceCard?, correct: Boolean): String {
+        val kanji = card?.targetKanji ?: ""
+        val reading = card?.reading ?: ""
+        if (correct) {
+            return if (isJapaneseLocale()) "正解。$kanji は「$reading」です。" else "Correct. $kanji is read $reading."
+        }
+        return if (isJapaneseLocale()) "答え：$kanji ・ $reading" else "Answer: $kanji · $reading"
     }
 
     @JvmStatic

@@ -1,0 +1,2 @@
+T+00:00 next selected=裂 task=word_reading rung=WORD_READING phase=REVIEW due=T+00:00 reasons=[due_now,review_due,selected_best_candidate]
+T+00:00 answer rating=again task=word_reading rung=WORD_READING->FONT_MEANING phase=REVIEW->RELEARNING due=T+00:10 reasons=[review_again_lapse,real_again_streak_threshold,kanji_reading_unavailable] fsrs=[review:again:0]

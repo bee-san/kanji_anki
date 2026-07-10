@@ -10,17 +10,24 @@ class StudyLadderSettingsTest {
     fun defaultsExposeEditableLadderOrder() {
         val ladder = RecordsBase.StudyLadderSettings.defaults()
 
-        // Goal 65 default order: write_kanji, type_meaning, meaning_kanji,
-        // similar_kanji, kanji_meaning, font_meaning, word_reading.
+        // Goal 80 default order: write_kanji, type_meaning, meaning_kanji,
+        // reading_kanji, similar_kanji, kanji_meaning, font_meaning,
+        // kanji_reading, word_reading, sentence_reading.
         assertEquals(RecordsBase.LadderRung.WRITE_KANJI, ladder.orderedRungs[0])
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, ladder.orderedRungs[1])
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, ladder.orderedRungs[2])
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.orderedRungs[3])
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[4])
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.orderedRungs[5])
-        assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[6])
+        assertEquals(RecordsBase.LadderRung.READING_KANJI, ladder.orderedRungs[3])
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.orderedRungs[4])
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[5])
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.orderedRungs[6])
+        assertEquals(RecordsBase.LadderRung.KANJI_READING, ladder.orderedRungs[7])
+        assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[8])
+        assertEquals(RecordsBase.LadderRung.SENTENCE_READING, ladder.orderedRungs[9])
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.MEANING_KANJI))
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.startingRung(true))
+        assertTrue(ladder.isEnabled(RecordsBase.LadderRung.KANJI_READING))
+        assertTrue(ladder.isEnabled(RecordsBase.LadderRung.READING_KANJI))
+        assertTrue(ladder.isEnabled(RecordsBase.LadderRung.SENTENCE_READING))
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.startingRung(RecordsBase.RungAvailability.of(true)))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.WORD_READING))
     }
 
@@ -33,17 +40,17 @@ class StudyLadderSettingsTest {
 
         // With similar-kanji content, the nearest enabled neighbor below is
         // similar_kanji itself; ties prefer the more-scaffolded lower rung.
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.startingRung(true))
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, true))
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.startingRung(RecordsBase.RungAvailability.of(true)))
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.of(true)))
         // Without similar-kanji content the lower neighbor is invalid, so it
         // maps up to font_meaning.
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, false))
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, ladder.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.none()))
 
         // Disabling similar_kanji too leaves font_meaning as the nearest rung
         // for the has-content case as well.
         val similarDisabled = ladder
             .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, similarDisabled.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, true))
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, similarDisabled.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.of(true)))
     }
 
     @Test
@@ -95,16 +102,31 @@ class StudyLadderSettingsTest {
 
         assertEquals(RecordsBase.LadderRung.TYPE_MEANING, ladder.orderedRungs[2])
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, ladder.orderedRungs[3])
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[4])
+        assertEquals(RecordsBase.LadderRung.READING_KANJI, ladder.orderedRungs[4])
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[5])
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.MEANING_KANJI))
     }
 
     @Test
-    fun storedFullOrderRoundTripsUnchanged() {
-        // A user's stored order (all seven rungs, e.g. the pre-Goal-65 default)
-        // is preserved verbatim; only fresh installs and configs missing rungs
-        // are affected by the default reorder.
+    fun storedFullOrderPreservedModuloNewRungSplice() {
+        // A user's stored order is preserved verbatim except that a rung
+        // postdating it (kanji_reading, Goal 78) is spliced in adjacent to its
+        // default neighbors (before word_reading). Every stored rung keeps its
+        // relative position.
         val storedOrder = "write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
+        val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
+
+        assertEquals(
+            "write_kanji,similar_kanji,type_meaning,meaning_kanji,reading_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading,sentence_reading",
+            ladder.orderText(),
+        )
+    }
+
+    @Test
+    fun storedOrderAlreadyContainingNewRungsIsPreservedVerbatim() {
+        // A config that already lists every rung (incl. reading_kanji and
+        // kanji_reading) is left exactly as stored.
+        val storedOrder = "kanji_reading,reading_kanji,sentence_reading,write_kanji,similar_kanji,type_meaning,meaning_kanji,kanji_meaning,font_meaning,word_reading"
         val ladder = RecordsBase.StudyLadderSettings.fromStored(storedOrder, storedOrder)
 
         assertEquals(storedOrder, ladder.orderText())
@@ -121,17 +143,61 @@ class StudyLadderSettingsTest {
         )
 
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, ladder.orderedRungs[2])
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.orderedRungs[3])
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[4])
+        assertEquals(RecordsBase.LadderRung.READING_KANJI, ladder.orderedRungs[3])
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, ladder.orderedRungs[4])
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.orderedRungs[5])
     }
 
     @Test
     fun canDisableAndMoveRungs() {
         val ladder = RecordsBase.StudyLadderSettings.defaults()
             .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
-            .moveRung(RecordsBase.LadderRung.WORD_READING, -6)
+            .moveRung(RecordsBase.LadderRung.WORD_READING, -8)
 
         assertFalse(ladder.isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI))
         assertEquals(RecordsBase.LadderRung.WORD_READING, ladder.orderedRungs[0])
+    }
+
+    // ---- Goal 75: RungAvailability ----
+
+    @Test
+    fun rungAvailabilityWithoutSimilarReproducesSkipBehavior() {
+        // A RungAvailability carrying hasSimilarKanji=false reproduces the
+        // pre-refactor behavior: movements crossing SIMILAR_KANJI skip it.
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val none = RecordsBase.RungAvailability.none()
+        assertEquals(
+            RecordsBase.LadderRung.MEANING_KANJI,
+            ladder.previousRung(RecordsBase.LadderRung.KANJI_MEANING, none),
+        )
+        // Promotion from MEANING_KANJI skips the unavailable SIMILAR_KANJI and
+        // lands on KANJI_MEANING.
+        assertEquals(
+            RecordsBase.LadderRung.KANJI_MEANING,
+            ladder.nextRung(RecordsBase.LadderRung.MEANING_KANJI, none),
+        )
+    }
+
+    @Test
+    fun rungAvailabilityWithSimilarIncludesConditionalRung() {
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val withSimilar = RecordsBase.RungAvailability.of(true)
+        assertEquals(
+            RecordsBase.LadderRung.SIMILAR_KANJI,
+            ladder.previousRung(RecordsBase.LadderRung.KANJI_MEANING, withSimilar),
+        )
+    }
+
+    @Test
+    fun alwaysAvailableRungsAreAvailableRegardlessOfFlags() {
+        val none = RecordsBase.RungAvailability.none()
+        // Every non-conditional rung is available even with no conditional data.
+        for (rung in RecordsBase.LadderRung.values()) {
+            val expected = RecordsBase.StudyLadderSettings.alwaysAvailable(rung)
+            assertEquals(rung.wireName(), expected, none.isAvailable(rung))
+        }
+        // The conditional SIMILAR_KANJI rung follows its flag.
+        assertFalse(none.isAvailable(RecordsBase.LadderRung.SIMILAR_KANJI))
+        assertTrue(RecordsBase.RungAvailability.of(true).isAvailable(RecordsBase.LadderRung.SIMILAR_KANJI))
     }
 }

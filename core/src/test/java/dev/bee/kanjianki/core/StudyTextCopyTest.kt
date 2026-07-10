@@ -75,6 +75,14 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun heroQuestionUsesSentenceReadingTaskToo() {
+        assertEquals(
+            "How is the word read here?",
+            StudyTextCopy.heroQuestion(session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.SENTENCE_READING)),
+        )
+    }
+
+    @Test
     fun heroQuestionTranslatesToJapaneseLocale() {
         val originalLocale = Locale.getDefault()
         try {
@@ -92,7 +100,119 @@ class StudyTextCopyTest {
                     session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.KANJI_MEANING),
                 ),
             )
+            assertEquals(
+                "この語はどう読む？",
+                StudyTextCopy.heroQuestion(
+                    session(studyItem("語"), row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.SENTENCE_READING),
+                ),
+            )
             assertEquals("この漢字の意味は？", StudyTextCopy.heroQuestion(null))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
+    fun sentencePromptPrefersSentenceReadingExampleThenFallsBackToWordPrompt() {
+        val withSentence = exampleWithSentence("active", "活動語", "有効な文。")
+        val withoutSentence = exampleWithSentence("suspended", "休止語", "")
+        val item = studyItem("語")
+
+        assertEquals(
+            "有効な文。",
+            StudyTextCopy.sentencePrompt(
+                session(item, row("語", "language", "reason", listOf(withoutSentence, withSentence)), "prompt", StudyTaskTypes.SENTENCE_READING),
+            ),
+        )
+        assertEquals(
+            "休止語",
+            StudyTextCopy.sentencePrompt(
+                session(item, row("語", "language", "reason", listOf(withoutSentence)), "prompt", StudyTaskTypes.SENTENCE_READING),
+            ),
+        )
+        assertEquals(
+            "語",
+            StudyTextCopy.sentencePrompt(
+                session(item, row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.SENTENCE_READING),
+            ),
+        )
+        assertEquals("", StudyTextCopy.sentencePrompt(null))
+    }
+
+    @Test
+    fun sentenceReadingWordShowsExpressionThenFallsBackToKanji() {
+        val withSentence = exampleWithSentence("active", "活動語", "有効な文。")
+        val item = studyItem("語")
+
+        assertEquals(
+            "活動語",
+            StudyTextCopy.sentenceReadingWord(
+                session(item, row("語", "language", "reason", listOf(withSentence)), "prompt", StudyTaskTypes.SENTENCE_READING),
+            ),
+        )
+        assertEquals(
+            "語",
+            StudyTextCopy.sentenceReadingWord(
+                session(item, row("語", "language", "reason", emptyList()), "prompt", StudyTaskTypes.SENTENCE_READING),
+            ),
+        )
+        assertEquals("", StudyTextCopy.sentenceReadingWord(null))
+    }
+
+    @Test
+    fun kanjiReadingChoiceCopyPreservesEnglishLabelsAndResultBranches() {
+        val card = RecordsImportModels.KanjiReadingChoiceCard("脱", "脱出", "escape", "だつ", listOf("だつ", "しゅつ"))
+
+        assertEquals("Choose the reading", StudyTextCopy.kanjiReadingChoiceTitle())
+        assertEquals("Pick how the kanji is read in this word.", StudyTextCopy.kanjiReadingChoiceBody())
+        assertEquals("How is 脱 read in 脱出?", StudyTextCopy.kanjiReadingChoiceQuestion(card))
+        assertEquals("Correct. 脱 is read だつ in 脱出.", StudyTextCopy.kanjiReadingChoiceResult(card, true))
+        assertEquals("Answer: 脱 is read だつ in 脱出", StudyTextCopy.kanjiReadingChoiceResult(card, false))
+        assertEquals("How is  read in ?", StudyTextCopy.kanjiReadingChoiceQuestion(null))
+    }
+
+    @Test
+    fun kanjiReadingChoiceCopyTranslatesToJapaneseLocale() {
+        val card = RecordsImportModels.KanjiReadingChoiceCard("脱", "脱出", "escape", "だつ", listOf("だつ", "しゅつ"))
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("読みを選ぶ", StudyTextCopy.kanjiReadingChoiceTitle())
+            assertEquals("この単語での漢字の読みを選んでください。", StudyTextCopy.kanjiReadingChoiceBody())
+            assertEquals("「脱出」の 脱 の読みは？", StudyTextCopy.kanjiReadingChoiceQuestion(card))
+            assertEquals("正解。脱出 の 脱 は「だつ」と読みます。", StudyTextCopy.kanjiReadingChoiceResult(card, true))
+            assertEquals("答え：脱出 の 脱 は「だつ」", StudyTextCopy.kanjiReadingChoiceResult(card, false))
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
+    fun readingKanjiChoiceCopyPreservesEnglishLabelsAndResultBranches() {
+        val card = RecordsImportModels.ReadingKanjiChoiceCard("脱", "だつ", "〇出", "escape", listOf("脱", "出"))
+        val noMeaning = RecordsImportModels.ReadingKanjiChoiceCard("脱", "だつ", "〇出", "", listOf("脱", "出"))
+
+        assertEquals("Choose the kanji", StudyTextCopy.readingKanjiChoiceTitle())
+        assertEquals("Pick the kanji read this way here.", StudyTextCopy.readingKanjiChoiceBody())
+        assertEquals("だつ — which kanji is 〇出? (escape)", StudyTextCopy.readingKanjiChoiceQuestion(card))
+        assertEquals("だつ — which kanji is 〇出?", StudyTextCopy.readingKanjiChoiceQuestion(noMeaning))
+        assertEquals("Correct. 脱 is read だつ.", StudyTextCopy.readingKanjiChoiceResult(card, true))
+        assertEquals("Answer: 脱 · だつ", StudyTextCopy.readingKanjiChoiceResult(card, false))
+    }
+
+    @Test
+    fun readingKanjiChoiceCopyTranslatesToJapaneseLocale() {
+        val card = RecordsImportModels.ReadingKanjiChoiceCard("脱", "だつ", "〇出", "escape", listOf("脱", "出"))
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPANESE)
+
+            assertEquals("漢字を選ぶ", StudyTextCopy.readingKanjiChoiceTitle())
+            assertEquals("ここでこの読みになる漢字を選んでください。", StudyTextCopy.readingKanjiChoiceBody())
+            assertEquals("「だつ」— 〇出 はどの漢字？（escape）", StudyTextCopy.readingKanjiChoiceQuestion(card))
+            assertEquals("正解。脱 は「だつ」です。", StudyTextCopy.readingKanjiChoiceResult(card, true))
+            assertEquals("答え：脱 ・ だつ", StudyTextCopy.readingKanjiChoiceResult(card, false))
         } finally {
             Locale.setDefault(originalLocale)
         }
@@ -375,6 +495,9 @@ class StudyTextCopyTest {
 
     private fun example(sourceType: String, expression: String, meaning: String): RecordsImportModels.Example =
         RecordsImportModels.Example(sourceType, 1L, 2L, expression, "reading", meaning, "sentence", false, 0)
+
+    private fun exampleWithSentence(sourceType: String, expression: String, sentence: String): RecordsImportModels.Example =
+        RecordsImportModels.Example(sourceType, 1L, 2L, expression, "reading", "meaning", sentence, false, 0)
 
     private fun repair(repairKanji: String, wrongSelection: String, promptMeaning: String): RecordsImportModels.SimilarKanjiWritingRepair =
         RecordsImportModels.SimilarKanjiWritingRepair(

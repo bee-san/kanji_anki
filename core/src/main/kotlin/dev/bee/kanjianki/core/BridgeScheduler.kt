@@ -552,6 +552,9 @@ class BridgeScheduler {
         const val TASK_KANJI_MEANING: String = StudyTaskTypes.KANJI_MEANING
         const val TASK_FONT_MEANING: String = StudyTaskTypes.FONT_MEANING
         const val TASK_WORD_READING: String = StudyTaskTypes.WORD_READING
+        const val TASK_KANJI_READING: String = StudyTaskTypes.KANJI_READING
+        const val TASK_READING_KANJI: String = StudyTaskTypes.READING_KANJI
+        const val TASK_SENTENCE_READING: String = StudyTaskTypes.SENTENCE_READING
 
         const val TASK_TYPING_MEANING: String = StudyTaskTypes.TYPING_MEANING
         const val TASK_WRITING_REMEDIATION: String = StudyTaskTypes.WRITING_REMEDIATION
@@ -564,28 +567,28 @@ class BridgeScheduler {
         @JvmStatic
         fun promoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean
-        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, hasSimilarKanji)
+            availability: RecordsBase.RungAvailability
+        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, availability)
 
         @JvmStatic
         fun promoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean,
+            availability: RecordsBase.RungAvailability,
             ladder: RecordsBase.StudyLadderSettings?
-        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, hasSimilarKanji, ladder)
+        ): RecordsBase.LadderRung = StudyLadderRules.promoteRung(current, availability, ladder)
 
         @JvmStatic
         fun demoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean
-        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, hasSimilarKanji)
+            availability: RecordsBase.RungAvailability
+        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, availability)
 
         @JvmStatic
         fun demoteRung(
             current: RecordsBase.LadderRung,
-            hasSimilarKanji: Boolean,
+            availability: RecordsBase.RungAvailability,
             ladder: RecordsBase.StudyLadderSettings?
-        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, hasSimilarKanji, ladder)
+        ): RecordsBase.LadderRung = StudyLadderRules.demoteRung(current, availability, ladder)
 
         @JvmStatic
         fun rungsForItem(item: RecordsStudyModels.StudyItem): List<RecordsBase.LadderRung> {

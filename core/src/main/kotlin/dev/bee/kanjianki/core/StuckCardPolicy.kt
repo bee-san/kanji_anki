@@ -22,7 +22,7 @@ object StuckCardPolicy {
         rung: RecordsBase.LadderRung?,
         phase: RecordsBase.SchedulerPhase?,
         realAgainStreak: Int,
-        hasSimilarKanji: Boolean,
+        availability: RecordsBase.RungAvailability,
         ladder: RecordsBase.StudyLadderSettings?,
         ladderDemotionFailStreak: Int,
     ): Boolean {
@@ -37,7 +37,7 @@ object StuckCardPolicy {
         // The item is on its demotion floor when moving down cannot change the
         // rung for this specific card (respects the per-item similar-kanji
         // availability).
-        if (safeLadder.previousRung(safeRung, hasSimilarKanji) != safeRung) {
+        if (safeLadder.previousRung(safeRung, availability) != safeRung) {
             return false
         }
         val failStreak = maxOf(1, ladderDemotionFailStreak)

@@ -464,6 +464,9 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         values.put(COLUMN_REAL_AGAIN_STREAK, item.realAgainStreak)
         values.put(COLUMN_LAST_REAL_REVIEW_DUE_AT, item.lastRealReviewDueAtMillis)
         values.put(COLUMN_SIMILAR_KANJI_MEMORY, item.similarKanjiMemory.encode())
+        values.put(COLUMN_KANJI_READING_MEMORY, item.kanjiReadingMemory.encode())
+        values.put(COLUMN_READING_KANJI_MEMORY, item.readingKanjiMemory.encode())
+        values.put(COLUMN_SENTENCE_READING_MEMORY, item.sentenceReadingMemory.encode())
         values.put(COLUMN_ACTIVE_TOKEN, item.activeToken)
         values.put(COLUMN_CREATED_AT, item.createdAtMillis)
         db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, values, SQLiteDatabase.CONFLICT_REPLACE)
@@ -499,6 +502,18 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
             string(cursor, COLUMN_SIMILAR_KANJI_MEMORY),
             RecordsStudyModels.TaskMemory.initial(),
         )
+        val kanjiReadingMemory = RecordsStudyModels.TaskMemory.decode(
+            string(cursor, COLUMN_KANJI_READING_MEMORY),
+            RecordsStudyModels.TaskMemory.initial(),
+        )
+        val readingKanjiMemory = RecordsStudyModels.TaskMemory.decode(
+            string(cursor, COLUMN_READING_KANJI_MEMORY),
+            RecordsStudyModels.TaskMemory.initial(),
+        )
+        val sentenceReadingMemory = RecordsStudyModels.TaskMemory.decode(
+            string(cursor, COLUMN_SENTENCE_READING_MEMORY),
+            RecordsStudyModels.TaskMemory.initial(),
+        )
         return RecordsStudyModels.StudyItem(
             string(cursor, COLUMN_KANJI),
             state,
@@ -532,6 +547,12 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
             lastRealReviewDueAtMillis,
             false,
             similarKanjiMemory,
+            false,
+            kanjiReadingMemory,
+            false,
+            readingKanjiMemory,
+            false,
+            sentenceReadingMemory,
         )
     }
 

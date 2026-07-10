@@ -31,31 +31,37 @@ object StudyLadderRules {
     const val STATE_RETIRED: String = "retired"
 
     @JvmStatic
-    fun promoteRung(current: RecordsBase.LadderRung, hasSimilarKanji: Boolean): RecordsBase.LadderRung {
-        return promoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults())
+    fun promoteRung(
+        current: RecordsBase.LadderRung,
+        availability: RecordsBase.RungAvailability,
+    ): RecordsBase.LadderRung {
+        return promoteRung(current, availability, RecordsBase.StudyLadderSettings.defaults())
     }
 
     @JvmStatic
     fun promoteRung(
         current: RecordsBase.LadderRung,
-        hasSimilarKanji: Boolean,
+        availability: RecordsBase.RungAvailability,
         ladder: RecordsBase.StudyLadderSettings?,
     ): RecordsBase.LadderRung {
-        return safeLadder(ladder).nextRung(current, hasSimilarKanji)
-    }
-
-    @JvmStatic
-    fun demoteRung(current: RecordsBase.LadderRung, hasSimilarKanji: Boolean): RecordsBase.LadderRung {
-        return demoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults())
+        return safeLadder(ladder).nextRung(current, availability)
     }
 
     @JvmStatic
     fun demoteRung(
         current: RecordsBase.LadderRung,
-        hasSimilarKanji: Boolean,
+        availability: RecordsBase.RungAvailability,
+    ): RecordsBase.LadderRung {
+        return demoteRung(current, availability, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    @JvmStatic
+    fun demoteRung(
+        current: RecordsBase.LadderRung,
+        availability: RecordsBase.RungAvailability,
         ladder: RecordsBase.StudyLadderSettings?,
     ): RecordsBase.LadderRung {
-        return safeLadder(ladder).previousRung(current, hasSimilarKanji)
+        return safeLadder(ladder).previousRung(current, availability)
     }
 
     @JvmStatic
@@ -70,8 +76,9 @@ object StudyLadderRules {
     ): List<RecordsBase.LadderRung> {
         val out = ArrayList<RecordsBase.LadderRung>()
         val safeLadder = safeLadder(ladder)
+        val availability = item.rungAvailability()
         for (rung in safeLadder.orderedRungs) {
-            if (safeLadder.isValidForItem(rung, item.hasSimilarKanji)) {
+            if (safeLadder.isValidForItem(rung, availability)) {
                 out.add(rung)
             }
         }
@@ -88,7 +95,7 @@ object StudyLadderRules {
         item: RecordsStudyModels.StudyItem,
         ladder: RecordsBase.StudyLadderSettings?,
     ): RecordsStudyModels.StudyItem {
-        val effective = safeLadder(ladder).effectiveRung(item.rung, item.hasSimilarKanji)
+        val effective = safeLadder(ladder).effectiveRung(item.rung, item.rungAvailability())
         return if (effective == item.rung) item else item.withRung(effective)
     }
 

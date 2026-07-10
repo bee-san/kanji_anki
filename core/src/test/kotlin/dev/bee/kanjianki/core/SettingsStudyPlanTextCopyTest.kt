@@ -102,6 +102,39 @@ class SettingsStudyPlanTextCopyTest {
                 RecordsBase.LadderRung.SIMILAR_KANJI,
             ),
         )
+        assertEquals(
+            "Included when the kanji has multiple known readings",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.KANJI_READING, true),
+                RecordsBase.LadderRung.KANJI_READING,
+            ),
+        )
+        assertEquals(
+            "Kanji -> reading",
+            SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.KANJI_READING),
+        )
+        assertEquals(
+            "Reading -> kanji",
+            SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.READING_KANJI),
+        )
+        assertEquals(
+            "Included when other known kanji share a reading",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.READING_KANJI, true),
+                RecordsBase.LadderRung.READING_KANJI,
+            ),
+        )
+        assertEquals(
+            "Sentence reading",
+            SettingsStudyPlanTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SENTENCE_READING),
+        )
+        assertEquals(
+            "Included when a mined sentence is available",
+            SettingsStudyPlanTextCopy.ladderRungSubtitle(
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.SENTENCE_READING, true),
+                RecordsBase.LadderRung.SENTENCE_READING,
+            ),
+        )
     }
 
     @Test

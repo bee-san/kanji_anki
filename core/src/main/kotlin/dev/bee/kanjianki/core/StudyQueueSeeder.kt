@@ -368,7 +368,7 @@ class StudyQueueSeeder {
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
-            safeLadder.startingRung(false),
+            safeLadder.startingRung(RecordsBase.RungAvailability.none()),
             RecordsBase.SchedulerPhase.NEW_LEARNING,
             0,
             0,
@@ -439,7 +439,7 @@ class StudyQueueSeeder {
         if (signatureMeaning(signature) == signatureMeaning(item.answerSignature)) {
             return StudyLadderRules.alignRungToLadder(item.withAnswerSignature(signature), ladder)
         }
-        val fallbackRung = StudyLadderRules.demoteRung(item.rung, item.hasSimilarKanji, ladder)
+        val fallbackRung = StudyLadderRules.demoteRung(item.rung, item.rungAvailability(), ladder)
         return item.copyBuilder()
             .state(StudyLadderRules.STATE_LEARNING)
             .dueAtMillis(nowMillis)
@@ -546,7 +546,7 @@ class StudyQueueSeeder {
             ) {
                 return false
             }
-            if (!request.ladder.isAtCeiling(item.rung, item.hasSimilarKanji)) {
+            if (!request.ladder.isAtCeiling(item.rung, item.rungAvailability())) {
                 return false
             }
             val threshold = max(

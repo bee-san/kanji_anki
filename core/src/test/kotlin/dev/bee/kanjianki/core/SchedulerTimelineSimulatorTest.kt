@@ -225,6 +225,43 @@ class SchedulerTimelineSimulatorTest {
     }
 
     @Test
+    fun kanjiReadingSkippedWithoutContentMatchesGoldenTimeline() {
+        // Goal 78: a word_reading card without reading data demotes across the
+        // content-less kanji_reading rung to font_meaning, recording the skip.
+        val almostDemoting = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, START)
+            .copyBuilder()
+            .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
+            .build()
+        val simulator = SchedulerTimelineSimulator(
+            scheduler = BridgeScheduler(),
+            rows = listOf(row("裂", 20)),
+            startingItems = listOf(almostDemoting),
+            startMillis = START,
+        )
+
+        simulator.nextSession()
+        val answer = simulator.answer("again")
+
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, answer.snapshot!!.rung)
+        assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
+        assertTrue(answer.trace.transition!!.reasonCodes.contains("kanji_reading_unavailable"))
+        assertGolden("kanjiReadingSkippedWithoutContent", simulator.renderText())
+    }
+
+    @Test
+    fun kanjiReadingRungReachedWhenContentAvailable() {
+        // With reading data, a word_reading fail-streak demotion lands on
+        // kanji_reading (no skip), and a subsequent pass over the interval +
+        // min-pass gates promotes back out to word_reading.
+        val availability = RecordsBase.RungAvailability.of(false, true)
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val demoted = ladder.previousRung(RecordsBase.LadderRung.WORD_READING, availability)
+        assertEquals(RecordsBase.LadderRung.KANJI_READING, demoted)
+        val promoted = ladder.nextRung(RecordsBase.LadderRung.KANJI_READING, availability)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, promoted)
+    }
+
+    @Test
     fun relearningBeatsSameFamilyReviewSiblingMatchesGoldenTimeline() {
         val relearning = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)
             .copyBuilder()
