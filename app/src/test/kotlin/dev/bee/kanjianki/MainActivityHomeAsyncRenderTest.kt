@@ -125,6 +125,7 @@ class MainActivityHomeAsyncRenderTest {
                         backgroundTasks.addLast(it)
                     },
                     postToMain = { mainTasks.addLast(it) },
+                    loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
                 ),
             )
 
