@@ -43,15 +43,34 @@ internal class StudySessionTracker {
     }
 
     fun initializeSessionPlan(taskKeys: List<String>?) = synchronized(lock) {
-        if (taskKeys.isNullOrEmpty() || hasPendingPlannedSessionTaskLocked()) {
+        if (taskKeys.isNullOrEmpty()) {
+            return@synchronized
+        }
+        val normalized = ArrayList<String>()
+        for (key in taskKeys) {
+            if (key.isNotEmpty() && !normalized.contains(key)) {
+                normalized.add(key)
+            }
+        }
+        if (normalized.isEmpty()) {
+            return@synchronized
+        }
+        if (hasPendingPlannedSessionTaskLocked() && pendingPlanOverlapsLocked(normalized)) {
             return@synchronized
         }
         plannedSessionTaskKeys.clear()
         completedPlannedSessionTaskKeys.clear()
-        for (key in taskKeys) {
-            if (key.isNotEmpty() && !plannedSessionTaskKeys.contains(key)) {
-                plannedSessionTaskKeys.add(key)
-            }
+        plannedSessionTaskKeys.addAll(normalized)
+        progressTracker.setTargetCount(progressTracker.completedCount() + normalized.size)
+    }
+
+    /**
+     * Keeps a still-valid in-flight order, but lets a sync/settings change replace a
+     * plan whose remaining keys no longer exist in the scheduler's current due set.
+     */
+    private fun pendingPlanOverlapsLocked(currentTaskKeys: List<String>): Boolean {
+        return plannedSessionTaskKeys.any { key ->
+            !completedPlannedSessionTaskKeys.contains(key) && currentTaskKeys.contains(key)
         }
     }
 

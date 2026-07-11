@@ -65,4 +65,24 @@ class StudySessionTrackerTest {
         tracker.resetProgress()
         assertEquals("", tracker.nextPlannedSessionTaskKey())
     }
+
+    @Test
+    fun sessionPlanReplacesPendingKeysThatNoLongerExist() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:done", "kanji_meaning:old"))
+        tracker.markTaskCompleted("session:kanji_meaning:done:token")
+        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "done")
+
+        // A sync or settings change can replace the due queue while Study remains
+        // open. Keeping the stale key would make selection return null even though
+        // the current scheduler plan contains a runnable task. The progress target
+        // must shrink to completed + current pending at the same time.
+        tracker.initializeSessionPlan(listOf("kanji_meaning:new"))
+
+        assertEquals("kanji_meaning:new", tracker.nextPlannedSessionTaskKey())
+        assertEquals(listOf("kanji_meaning:new"), tracker.pendingPlannedSessionTaskKeys())
+        assertEquals(1, tracker.completedCount())
+        assertEquals(2, tracker.targetCount())
+    }
+
 }

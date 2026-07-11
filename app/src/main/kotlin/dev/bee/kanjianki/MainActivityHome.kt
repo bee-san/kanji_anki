@@ -9,11 +9,15 @@ import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RepairedHandoffPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.StudyNowCountPolicy
+import dev.bee.kanjianki.core.StudySessionProgressTracker
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StatsPrecomputeStore
 import dev.bee.kanjianki.data.StudyStatsStore
@@ -24,6 +28,7 @@ import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.sync.SyncSettings
 import java.util.Locale
+import java.util.concurrent.RejectedExecutionException
 
 internal abstract class MainActivityHome : MainActivityBase() {
     // Written on the main thread and read from a background route-load lambda, so it is
@@ -50,8 +55,20 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
             background = maintenance,
-            isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
-            refresh = { generatedAt -> StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt) },
+            // The maintenance executor can still be unwinding when Activity teardown closes
+            // the route store. Give stats work its own helper so an interrupted refresh never
+            // races that close and crashes the process with an already-closed database.
+            isFresh = {
+                LocalStore(applicationContext).use { statsStore ->
+                    StatsCacheStore(statsStore).hasFreshSnapshot()
+                }
+            },
+            refresh = { generatedAt ->
+                LocalStore(applicationContext).use { statsStore ->
+                    StatsPrecomputeStore(statsStore).refresh(generatedAtMillis = generatedAt)
+                }
+            },
+            onError = ::reportStatsPrecomputeError,
         )
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
@@ -134,6 +151,29 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 homeStudyPlanProvider.adaptivePlan(rows, homeItems, now, streak.currentDays, settingsSnapshot)
             }
         }
+        val studyNowCount = homeLoadPhase("study-now-count") {
+            val ladder = studyLadderSettings()
+            val studyItemCount = if (homePlan == null || rows.isEmpty()) {
+                0
+            } else {
+                StudyNowCountPolicy.count(
+                    rows,
+                    homeItems,
+                    settingsSnapshot,
+                    now,
+                    startOfDay(now),
+                    studyAheadMillis(),
+                    homePlan,
+                    ladder,
+                )
+            }
+            val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+                store.dueSimilarWritingRepairs(now).map(StudySessionProgressTracker::similarRepairProgressKey)
+            } else {
+                emptyList()
+            }
+            StudyNowCountPolicy.includingAdditionalTaskKeys(studyItemCount, repairTaskKeys)
+        }
         val entries = homeLoadPhase(
             phase = "queue-entries",
             details = { loaded -> "rows=${loaded.size}" },
@@ -153,8 +193,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
 
         homeLoadPhase("model-assembly") {
-            val studyRemaining = homePlan?.remaining?.coerceAtLeast(0) ?: 0
-            studySessionBadgeCount = studyRemaining
+            studySessionBadgeCount = studyNowCount
             HomeScreenModel(
                 title = HomeTextCopy.appTitle(),
                 subtitle = HomeTextCopy.appSubtitle(),
@@ -183,7 +222,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
                     homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
                 },
-                studyRemainingCount = studyRemaining,
+                studyRemainingCount = studyNowCount,
                 repairedHandoff = repairedHandoff,
             )
         }
@@ -411,6 +450,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
+        studySessionBadgeCount = result.studyReadyCount.coerceAtLeast(0)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, result.adaptiveFocusText))
         if (result.adaptiveSummary.isNotEmpty()) {
@@ -607,9 +647,18 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun scheduleStatsPrecomputeIfStaleAsync() {
-        maintenance.execute {
-            scheduleStatsPrecomputeIfStale()
+        try {
+            maintenance.execute {
+                scheduleStatsPrecomputeIfStale()
+            }
+        } catch (error: RejectedExecutionException) {
+            reportStatsPrecomputeError(error)
         }
+    }
+
+    private fun reportStatsPrecomputeError(error: Throwable) {
+        android.util.Log.e("Kani", "Stats precompute failed", error)
+        AppDebugLog.logError("stats precompute failed", error)
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {

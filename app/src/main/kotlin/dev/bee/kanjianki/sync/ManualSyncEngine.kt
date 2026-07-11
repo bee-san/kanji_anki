@@ -10,13 +10,13 @@ import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.BridgeScheduler
-import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -24,6 +24,8 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SuspendedImportPolicy
+import dev.bee.kanjianki.core.StudyNowCountPolicy
+import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.data.DictionaryStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -248,19 +250,37 @@ internal class ManualSyncEngine {
                 }
             }
             store.updateSyncRemovalMessage(syncId, syncMessage)
-            val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, seeded, finished)
-            val readyCount = if (activeRows.isEmpty()) {
+            val countedAt = clock.nowMillis()
+            // replaceStudyItems can merge a review saved while sync was in flight;
+            // derive the post-sync plan/count from the committed queue, not the stale
+            // pre-merge `seeded` snapshot.
+            val postSyncItems = if (activeRows.isEmpty()) {
+                emptyList()
+            } else {
+                store.studyItemsForKanji(activeRows.map { it.kanji })
+            }
+            val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, postSyncItems, countedAt)
+            val ladder = store.studyLadderSettings()
+            val studyItemCount = if (activeRows.isEmpty()) {
                 0
             } else {
-                FocusQueuePolicy.queuedEntries(
+                StudyNowCountPolicy.countSeeded(
+                    postSyncItems,
                     activeRows,
-                    seeded,
-                    finished,
+                    settings,
+                    countedAt,
                     store.studyAheadMinutes() * 60_000L,
                     postSyncPlan,
-                    store.studyLadderSettings(),
-                ).size
+                    ladder,
+                )
             }
+            val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+                store.dueSimilarWritingRepairs(countedAt)
+                    .map(StudySessionProgressTracker::similarRepairProgressKey)
+            } else {
+                emptyList()
+            }
+            val readyCount = StudyNowCountPolicy.includingAdditionalTaskKeys(studyItemCount, repairTaskKeys)
             AppDebugLog.log(
                 "sync success duration_ms=${clock.nowMillis() - started} rows=${rows.size} " +
                     "suspended_imports=${currentSuspendedImports.size} ready=$readyCount",

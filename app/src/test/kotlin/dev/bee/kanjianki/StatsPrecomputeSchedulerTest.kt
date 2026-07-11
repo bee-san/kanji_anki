@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 
 class StatsPrecomputeSchedulerTest {
     @Test
@@ -57,6 +58,42 @@ class StatsPrecomputeSchedulerTest {
         assertFalse(scheduler.scheduleIfStale())
         now += 1L
         assertTrue(scheduler.scheduleIfStale())
+    }
+
+    @Test
+    fun refreshFailureIsReportedAndReleasesTheRunningClaim() {
+        val executor = QueuedExecutor()
+        val failures = mutableListOf<Throwable>()
+        var now = 1_000L
+        val scheduler = StatsPrecomputeScheduler(
+            background = executor,
+            isFresh = { false },
+            refresh = { throw IllegalStateException("closed database") },
+            onError = failures::add,
+            clock = { now },
+            minIntervalMillis = 100L,
+        )
+
+        assertTrue(scheduler.scheduleIfStale())
+        executor.runNext()
+
+        assertEquals(listOf("closed database"), failures.map { it.message })
+        now += 100L
+        assertTrue(scheduler.scheduleIfStale())
+    }
+
+    @Test
+    fun rejectedDispatchIsReportedAndReleasesTheRunningClaim() {
+        val failures = mutableListOf<Throwable>()
+        val scheduler = StatsPrecomputeScheduler(
+            background = Executor { throw RejectedExecutionException("activity destroyed") },
+            isFresh = { false },
+            refresh = { },
+            onError = failures::add,
+        )
+
+        assertFalse(scheduler.scheduleIfStale())
+        assertEquals(listOf("activity destroyed"), failures.map { it.message })
     }
 
     private class QueuedExecutor : Executor {
