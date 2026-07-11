@@ -570,7 +570,7 @@ OUT
         self.assertLess(retry_probe, second_instrument)
         self.assertGreaterEqual(sum(1 for call in adb_calls if call == "logcat -c"), 2)
 
-    def test_fixture_defaults_to_one_note_for_sanitized_fixture(self):
+    def test_fixture_defaults_to_small_minimum_for_sanitized_fixture(self):
         result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
 
         self.assertEqual(result.returncode, 0, result.stdout)

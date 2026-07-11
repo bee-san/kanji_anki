@@ -1,12 +1,14 @@
 package dev.bee.kanjianki
 
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class StatsPrecomputeScheduler(
     private val background: Executor,
     private val isFresh: () -> Boolean,
     private val refresh: (Long) -> Unit,
+    private val onError: (Throwable) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
     private val minIntervalMillis: Long = DEFAULT_MIN_INTERVAL_MILLIS,
 ) {
@@ -15,23 +17,49 @@ internal class StatsPrecomputeScheduler(
     private var lastScheduledAtMillis: Long = Long.MIN_VALUE
 
     fun scheduleIfStale(): Boolean {
-        if (isFresh()) {
+        if (freshOrUnavailable()) {
             return false
         }
         val now = clock()
         if (!claim(now)) {
             return false
         }
-        background.execute {
-            try {
-                if (!isFresh()) {
-                    refresh(clock())
+        return try {
+            background.execute {
+                try {
+                    if (!freshOrUnavailable()) {
+                        refresh(clock())
+                    }
+                } catch (error: RuntimeException) {
+                    report(error)
+                } finally {
+                    running.set(false)
                 }
-            } finally {
-                running.set(false)
             }
+            true
+        } catch (error: RejectedExecutionException) {
+            running.set(false)
+            report(error)
+            false
         }
-        return true
+    }
+
+    /** A cache-read failure makes this optional precompute unavailable for this attempt. */
+    private fun freshOrUnavailable(): Boolean {
+        return try {
+            isFresh()
+        } catch (error: RuntimeException) {
+            report(error)
+            true
+        }
+    }
+
+    private fun report(error: Throwable) {
+        try {
+            onError(error)
+        } catch (_: RuntimeException) {
+            // Optional analytics maintenance must never crash the app, including its logger.
+        }
     }
 
     private fun claim(now: Long): Boolean {

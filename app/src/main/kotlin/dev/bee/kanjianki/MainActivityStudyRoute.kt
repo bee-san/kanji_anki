@@ -10,7 +10,6 @@ internal fun MainActivityStudy.renderComposeStudyRoute(
     studySessionActive: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    initializeSessionProgressTarget(activeStudyPlan)
     val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
     composeRoute(MainActivityBase.NAV_STUDY, studySessionActive = studySessionActive) {
         Column {

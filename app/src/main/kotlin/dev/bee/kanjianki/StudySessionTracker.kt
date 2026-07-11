@@ -43,16 +43,31 @@ internal class StudySessionTracker {
     }
 
     fun initializeSessionPlan(taskKeys: List<String>?) = synchronized(lock) {
-        if (taskKeys.isNullOrEmpty() || hasPendingPlannedSessionTaskLocked()) {
-            return@synchronized
-        }
-        plannedSessionTaskKeys.clear()
-        completedPlannedSessionTaskKeys.clear()
-        for (key in taskKeys) {
-            if (key.isNotEmpty() && !plannedSessionTaskKeys.contains(key)) {
-                plannedSessionTaskKeys.add(key)
+        val normalized = ArrayList<String>()
+        for (key in taskKeys.orEmpty()) {
+            if (key.isNotEmpty() && !normalized.contains(key)) {
+                normalized.add(key)
             }
         }
+
+        val currentTaskKeys = normalized.toHashSet()
+        val reconciled = ArrayList<String>()
+        for (key in plannedSessionTaskKeys) {
+            if (isCompletedPlannedSessionTaskKeyLocked(key) || currentTaskKeys.contains(key)) {
+                reconciled.add(key)
+            }
+        }
+        for (key in normalized) {
+            if (!isCompletedPlannedSessionTaskKeyLocked(key) && !reconciled.contains(key)) {
+                reconciled.add(key)
+            }
+        }
+
+        plannedSessionTaskKeys.clear()
+        plannedSessionTaskKeys.addAll(reconciled)
+        progressTracker.setTargetCount(
+            progressTracker.completedCount() + pendingPlannedSessionTaskKeysLocked().size,
+        )
     }
 
     fun nextPlannedSessionTaskKey(): String = synchronized(lock) {
@@ -61,7 +76,7 @@ internal class StudySessionTracker {
 
     private fun nextPlannedSessionTaskKeyLocked(): String {
         for (key in plannedSessionTaskKeys) {
-            if (!completedPlannedSessionTaskKeys.contains(key)) {
+            if (!isCompletedPlannedSessionTaskKeyLocked(key)) {
                 return key
             }
         }
@@ -69,13 +84,17 @@ internal class StudySessionTracker {
     }
 
     fun pendingPlannedSessionTaskKeys(): List<String> = synchronized(lock) {
+        pendingPlannedSessionTaskKeysLocked()
+    }
+
+    private fun pendingPlannedSessionTaskKeysLocked(): List<String> {
         val out = ArrayList<String>()
         for (key in plannedSessionTaskKeys) {
-            if (!completedPlannedSessionTaskKeys.contains(key)) {
+            if (!isCompletedPlannedSessionTaskKeyLocked(key)) {
                 out.add(key)
             }
         }
-        out
+        return out
     }
 
     /**
@@ -113,13 +132,26 @@ internal class StudySessionTracker {
         }
     }
 
-    private fun hasPendingPlannedSessionTaskLocked(): Boolean {
-        return nextPlannedSessionTaskKeyLocked().isNotEmpty()
-    }
-
     private fun isLearningRepeatPhase(phase: RecordsBase.SchedulerPhase): Boolean {
         return phase == RecordsBase.SchedulerPhase.NEW_LEARNING ||
             phase == RecordsBase.SchedulerPhase.RELEARNING
+    }
+
+    private fun isCompletedPlannedSessionTaskKeyLocked(key: String): Boolean {
+        return isCompletedPlannedSessionTask(key, key.substringAfter(':', ""))
+    }
+
+    private fun isCompletedPlannedSessionProgressKeyLocked(key: String?): Boolean {
+        if (key == null || !key.startsWith("session:")) {
+            return false
+        }
+        val taskAndKanji = key.substring("session:".length)
+        val taskSeparator = taskAndKanji.indexOf(':')
+        val tokenSeparator = taskAndKanji.indexOf(':', taskSeparator + 1)
+        if (taskSeparator <= 0 || tokenSeparator <= taskSeparator + 1) {
+            return false
+        }
+        return isCompletedPlannedSessionTaskKeyLocked(taskAndKanji.substring(0, tokenSeparator))
     }
 
     private fun isCompletedPlannedSessionTask(key: String, kanji: String): Boolean {
@@ -165,8 +197,10 @@ internal class StudySessionTracker {
         progressTracker.registerTaskShown(key)
     }
 
-    fun markTaskCompleted(key: String?) {
-        progressTracker.markTaskCompleted(key)
+    fun markTaskCompleted(key: String?) = synchronized(lock) {
+        if (!isCompletedPlannedSessionProgressKeyLocked(key)) {
+            progressTracker.markTaskCompleted(key)
+        }
     }
 
     fun hasActiveTask(): Boolean = synchronized(lock) { activeTask != null }

@@ -2189,9 +2189,20 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
                     "at least one study item should carry hasKanjiReading",
                     items.any { it.hasKanjiReading },
                 )
+                val deterministicFixture =
+                    "1" == InstrumentationRegistry.getArguments().getString("kanjiLiveMinimumNotes")
+                val readingKanjiItems = if (deterministicFixture) {
+                    items.filter { it.kanji in setOf("橋", "箸", "端") }
+                } else {
+                    items
+                }
                 assertTrue(
-                    "at least one study item should carry hasReadingKanji",
-                    items.any { it.hasReadingKanji },
+                    if (deterministicFixture) {
+                        "the 橋・箸・端 fixture should produce a study item with hasReadingKanji"
+                    } else {
+                        "at least one real-collection study item should carry hasReadingKanji"
+                    },
+                    readingKanjiItems.any { it.hasReadingKanji },
                 )
                 assertTrue(
                     "at least one study item should carry hasSentenceReading",

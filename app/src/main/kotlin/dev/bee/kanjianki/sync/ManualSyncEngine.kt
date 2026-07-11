@@ -5,18 +5,19 @@ import android.util.Log
 import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.ReadingExposureMediaReader
+import dev.bee.kanjianki.StudyNowCountCoordinator
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.BridgeScheduler
-import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -24,6 +25,8 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SuspendedImportPolicy
+import dev.bee.kanjianki.core.StudyNowCountPolicy
+import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.data.DictionaryStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -61,6 +64,17 @@ internal class ManualSyncEngine {
     internal var widgetRefresher: Runnable = Runnable {
         KaniWidgetUpdater.requestUpdate(context)
     }
+
+    /** Persists the best-effort provider cleanup summary after the sync commit. */
+    internal var removalMessagePersister: (Long, String?) -> Unit = { syncId, message ->
+        store.updateSyncRemovalMessage(syncId, message)
+    }
+
+    /** Re-reads the committed queue so the returned Study count includes mid-sync review merges. */
+    internal var committedStudySummaryProvider:
+        (List<RecordsImportModels.DashboardRow>, Long) -> CommittedStudySummary = { activeRows, countedAt ->
+            committedStudySummary(activeRows, countedAt)
+        }
 
     internal var repairedProposalProvider:
         (RecordsSyncModels.CollectionSnapshot, Int) -> RepairedWriteBackPolicy.Proposal =
@@ -120,6 +134,8 @@ internal class ManualSyncEngine {
 
     private fun runLocked(): SyncResult {
         val started = clock.nowMillis()
+        var committedState: CommittedSyncState? = null
+        var committedMessage: String? = null
         AppDebugLog.log("sync start model=${settings.modelName}")
         try {
             val snapshot = gateway.readCollection(settings, progress)
@@ -186,11 +202,16 @@ internal class ManualSyncEngine {
             store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
             // Study items are committed; promote the pending sync run to success.
             store.markSyncSucceeded(syncId)
+            committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)
             // A sync replaces the whole study queue: cards can land newly overdue or
             // the queue can empty. Re-arm the reminder from fresh state so the alarm
             // timing tracks the new queue instead of a stale pre-sync schedule (D4).
-            reminderRescheduler.run()
-            widgetRefresher.run()
+            runPostCommitSideEffect("Could not re-arm reminders after committed sync") {
+                reminderRescheduler.run()
+            }
+            runPostCommitSideEffect("Could not refresh widget after committed sync") {
+                widgetRefresher.run()
+            }
 
             // Provider tagging runs after all local persistence so a tagging
             // failure cannot strand a committed sync mirror alongside stale
@@ -199,83 +220,96 @@ internal class ManualSyncEngine {
             val removal = try {
                 gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress)
             } catch (error: Exception) {
+                logPostCommitFailure("Could not archive imported notes after committed sync", error)
                 AnkiDroidGateway.RemovalSummary(
                     0,
                     0,
                     0,
-                    "Archive tagging failed and will be retried on the next sync: ${error.message}",
+                    "Archive tagging could not finish and will retry on the next sync.",
                 )
             }
             var syncMessage = removal.message
-            if (repairedWriteBackAuthorized && SyncSettings.tagRepairedCards(store)) {
-                val proposal = try {
-                    repairedProposalProvider(snapshot, settings.matureSupportThreshold)
-                } catch (error: Exception) {
-                    AppDebugLog.logError("Could not prepare repaired-note write-back; retrying next sync", error)
-                    syncMessage = appendSyncMessage(
-                        syncMessage,
-                        "Repaired-note tagging could not be prepared and will retry on the next sync.",
-                    )
-                    null
-                }
-                val confirmedProposal = proposal?.let(::confirmedProposal)
-                if (confirmedProposal != null && !confirmedProposal.isEmpty()) {
-                    val tagging = try {
-                        gateway.tagRepairedNotes(confirmedProposal.noteIdsToTag, progress)
+            committedMessage = syncMessage
+            try {
+                if (repairedWriteBackAuthorized && SyncSettings.tagRepairedCards(store)) {
+                    val proposal = try {
+                        repairedProposalProvider(snapshot, settings.matureSupportThreshold)
                     } catch (error: Exception) {
-                        dev.bee.kanjianki.anki.RepairedTagSummary(
-                            confirmedProposal.noteIdsToTag,
-                            emptySet(),
-                            confirmedProposal.noteIdsToTag,
-                            "Repaired-note tagging failed and will retry on the next sync: ${error.message}",
+                        logPostCommitFailure("Could not prepare repaired-note write-back; retrying next sync", error)
+                        syncMessage = appendSyncMessage(
+                            syncMessage,
+                            "Repaired-note tagging could not be prepared and will retry on the next sync.",
                         )
+                        null
                     }
-                    var stampFailureMessage = ""
-                    try {
-                        repairedWriteBackRecorder(
-                            confirmedProposal,
-                            tagging.taggedNoteIds,
-                            clock.nowMillis(),
-                            syncId,
-                        )
-                    } catch (error: Exception) {
-                        AppDebugLog.logError("Could not stamp repaired-note write-back; retrying next sync", error)
-                        stampFailureMessage =
-                            "Repaired-note confirmation could not be saved and will retry on the next sync."
+                    val confirmedProposal = proposal?.let(::confirmedProposal)
+                    if (confirmedProposal != null && !confirmedProposal.isEmpty()) {
+                        val tagging = try {
+                            gateway.tagRepairedNotes(confirmedProposal.noteIdsToTag, progress)
+                        } catch (error: Exception) {
+                            logPostCommitFailure("Could not tag repaired notes; retrying next sync", error)
+                            dev.bee.kanjianki.anki.RepairedTagSummary(
+                                confirmedProposal.noteIdsToTag,
+                                emptySet(),
+                                confirmedProposal.noteIdsToTag,
+                                "Repaired-note tagging could not finish and will retry on the next sync.",
+                            )
+                        }
+                        var stampFailureMessage = ""
+                        try {
+                            repairedWriteBackRecorder(
+                                confirmedProposal,
+                                tagging.taggedNoteIds,
+                                clock.nowMillis(),
+                                syncId,
+                            )
+                        } catch (error: Exception) {
+                            logPostCommitFailure("Could not stamp repaired-note write-back; retrying next sync", error)
+                            stampFailureMessage =
+                                "Repaired-note confirmation could not be saved and will retry on the next sync."
+                        }
+                        syncMessage = appendSyncMessage(syncMessage, tagging.message)
+                        syncMessage = appendSyncMessage(syncMessage, stampFailureMessage)
                     }
-                    syncMessage = appendSyncMessage(syncMessage, tagging.message)
-                    syncMessage = appendSyncMessage(syncMessage, stampFailureMessage)
                 }
+            } catch (error: Exception) {
+                logPostCommitFailure("Could not finish repaired-note write-back after committed sync", error)
+                syncMessage = appendSyncMessage(
+                    syncMessage,
+                    "Repaired-note tagging could not finish and will retry on the next sync.",
+                )
             }
-            store.updateSyncRemovalMessage(syncId, syncMessage)
-            val postSyncPlan = if (activeRows.isEmpty()) null else adaptivePlan(activeRows, seeded, finished)
-            val readyCount = if (activeRows.isEmpty()) {
-                0
-            } else {
-                FocusQueuePolicy.queuedEntries(
-                    activeRows,
-                    seeded,
-                    finished,
-                    store.studyAheadMinutes() * 60_000L,
-                    postSyncPlan,
-                    store.studyLadderSettings(),
-                ).size
+            committedMessage = syncMessage
+            runPostCommitSideEffect("Could not save provider cleanup summary after committed sync") {
+                removalMessagePersister(syncId, syncMessage)
             }
-            AppDebugLog.log(
-                "sync success duration_ms=${clock.nowMillis() - started} rows=${rows.size} " +
-                    "suspended_imports=${currentSuspendedImports.size} ready=$readyCount",
-            )
+
+            val committedSummary = try {
+                committedStudySummaryProvider(activeRows, clock.nowMillis())
+            } catch (error: Exception) {
+                logPostCommitFailure("Could not build exact Study summary after committed sync", error)
+                CommittedStudySummary(0, plan)
+            }
+            runPostCommitSideEffect("Could not log committed sync completion") {
+                AppDebugLog.log(
+                    "sync success duration_ms=${clock.nowMillis() - started} rows=${rows.size} " +
+                        "suspended_imports=${currentSuspendedImports.size} ready=${committedSummary.readyCount}",
+                )
+            }
             return SyncResult.create(
                 true,
                 false,
                 rows.size,
                 currentSuspendedImports.size,
                 syncMessage,
-                plan.status,
-                readyCount,
-                AdaptiveFocusCopy.adaptiveFocusText(postSyncPlan),
+                committedSummary.focusPlan?.status ?: plan.status,
+                committedSummary.readyCount,
+                AdaptiveFocusCopy.adaptiveFocusText(committedSummary.focusPlan),
             )
         } catch (error: AnkiDroidGateway.SyncFailure) {
+            committedState?.let { committed ->
+                return committedFailureResult(committed, committedMessage, error)
+            }
             Log.e(TAG, "Sync failed (${if (error.permanentFailure) "permanent" else "retryable"}).", error)
             AppDebugLog.logError(
                 "sync failed (${if (error.permanentFailure) "permanent" else "retryable"})",
@@ -291,6 +325,9 @@ internal class ManualSyncEngine {
             )
             return SyncResult.create(false, false, 0, 0, error.message, "")
         } catch (error: Exception) {
+            committedState?.let { committed ->
+                return committedFailureResult(committed, committedMessage, error)
+            }
             // Only Exceptions are treated as recoverable sync failures. Errors
             // (OutOfMemoryError, StackOverflowError, ...) propagate instead of being
             // mislabeled as a retryable_error sync row.
@@ -299,6 +336,89 @@ internal class ManualSyncEngine {
             val finished = clock.nowMillis()
             persistFailedSync(started, finished, "retryable_error", "unexpected", error)
             return SyncResult.create(false, false, 0, 0, error.message, "")
+        }
+    }
+
+    private fun committedFailureResult(
+        committed: CommittedSyncState,
+        message: String?,
+        error: Exception,
+    ): SyncResult {
+        logPostCommitFailure("Post-commit sync follow-up failed; retaining successful sync", error)
+        return SyncResult.create(
+            true,
+            false,
+            committed.dashboardRows,
+            committed.importedSuspendedKanji,
+            message,
+            committed.preCommitPlan.status,
+            0,
+            AdaptiveFocusCopy.adaptiveFocusText(committed.preCommitPlan),
+        )
+    }
+
+    private fun committedStudySummary(
+        activeRows: List<RecordsImportModels.DashboardRow>,
+        countedAt: Long,
+    ): CommittedStudySummary {
+        // replaceStudyItems can merge a review saved while sync was in flight;
+        // derive the post-sync plan/count from the committed queue, not the stale
+        // pre-merge seeded snapshot.
+        val postSyncItems = if (activeRows.isEmpty()) {
+            emptyList()
+        } else {
+            store.studyItemsForKanji(activeRows.map { it.kanji })
+        }
+        val postSyncPlan = if (activeRows.isEmpty()) {
+            null
+        } else {
+            adaptivePlan(activeRows, postSyncItems, countedAt)
+        }
+        val ladder = store.studyLadderSettings()
+        val studyNow = StudyNowCountCoordinator.count(
+            rows = activeRows,
+            currentItems = postSyncItems,
+            settings = settings,
+            nowMillis = countedAt,
+            startOfDayMillis = startOfDay(countedAt),
+            studyAheadMillis = store.studyAheadMinutes() * 60_000L,
+            initialPlan = postSyncPlan,
+            continueAllKanjiSession = false,
+            ladder = ladder,
+            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+            annotator = store::annotateSimilarKanjiAvailability,
+            replanner = { seeded -> adaptivePlan(activeRows, seeded, countedAt) },
+        )
+        val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+            store.dueSimilarWritingRepairs(countedAt)
+                .map(StudySessionProgressTracker::similarRepairProgressKey)
+        } else {
+            emptyList()
+        }
+        return CommittedStudySummary(
+            StudyNowCountPolicy.includingAdditionalTaskKeys(studyNow.studyItemCount, repairTaskKeys),
+            studyNow.effectivePlan,
+        )
+    }
+
+    private fun runPostCommitSideEffect(description: String, action: () -> Unit) {
+        try {
+            action()
+        } catch (error: Exception) {
+            logPostCommitFailure(description, error)
+        }
+    }
+
+    private fun logPostCommitFailure(description: String, error: Exception) {
+        try {
+            Log.e(TAG, description, error)
+        } catch (_: RuntimeException) {
+            // Logging must not pierce the successful-sync commit boundary.
+        }
+        try {
+            AppDebugLog.logError(description, error)
+        } catch (_: RuntimeException) {
+            // The diagnostic executor can reject work during process shutdown.
         }
     }
 
@@ -470,6 +590,17 @@ internal class ManualSyncEngine {
             }
         }
     }
+
+    internal data class CommittedStudySummary(
+        val readyCount: Int,
+        val focusPlan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+    )
+
+    private data class CommittedSyncState(
+        val dashboardRows: Int,
+        val importedSuspendedKanji: Int,
+        val preCommitPlan: RecordsSchedulerModels.AdaptiveLoadPlan,
+    )
 
     companion object {
         private const val TAG = "ManualSyncEngine"
