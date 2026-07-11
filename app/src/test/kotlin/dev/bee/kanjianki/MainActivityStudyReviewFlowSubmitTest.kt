@@ -36,8 +36,20 @@ class MainActivityStudyReviewFlowSubmitTest {
     fun submitReviewSuppressesDuplicateBeforeAndAfterWorkerExecution() {
         withReviewActivity("裂") { activity, store, reviewIo, session ->
             ShadowToast.reset()
-            activity.submitReview(MainActivityBase.RATING_GOOD, false)
-            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertTrue(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    interactionSource = "card",
+                )
+            )
+            assertFalse(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    interactionSource = "action-bar",
+                )
+            )
 
             // The duplicate is rejected at tap time, before it can queue any store
             // work, toast, or replacement Study route.
@@ -56,7 +68,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             // The token stays claimed after success. A late duplicate is also a
             // complete no-op rather than a persisted duplicate that still toasts and
             // reloads Study.
-            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertFalse(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             shadowOf(Looper.getMainLooper()).idle()
 
             assertEquals(0, reviewIo.pendingCount())
@@ -72,17 +84,31 @@ class MainActivityStudyReviewFlowSubmitTest {
             // Simulate a processing-time dependency failure after the task has been
             // accepted and dequeued. The review wrapper must release the in-memory
             // claim because persistence never consumed the token.
+            val swipeFeedback = StudySwipeFeedbackState().apply {
+                update(96f)
+                commit(MainActivityBase.RATING_GOOD)
+            }
+            activity.flashcardSwipeFeedback = swipeFeedback
             clearStore(activity)
-            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertTrue(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    interactionSource = "card",
+                )
+            )
             assertEquals(1, reviewIo.pendingCount())
 
             reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
 
             assertEquals(0, reviewIo.pendingCount())
             assertEquals(0, activity.renderCount())
+            assertFalse(swipeFeedback.committed)
+            assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
 
             activity.store = store
-            activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             assertEquals(1, reviewIo.pendingCount())
 
             reviewIo.runNext()
@@ -90,6 +116,26 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(1, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun enqueueRejectionReturnsFalseSoOptimisticSwipeCanReset() {
+        withReviewActivity("拒") { activity, _, reviewIo, _ ->
+            reviewIo.shutdown()
+            val swipeFeedback = StudySwipeFeedbackState().apply { update(-104f) }
+
+            val accepted = submitReviewWithSwipeFeedback(swipeFeedback, MainActivityBase.RATING_AGAIN) {
+                activity.submitReview(
+                    MainActivityBase.RATING_AGAIN,
+                    false,
+                    interactionSource = "card",
+                )
+            }
+
+            assertFalse(accepted)
+            assertFalse(swipeFeedback.committed)
+            assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
         }
     }
 

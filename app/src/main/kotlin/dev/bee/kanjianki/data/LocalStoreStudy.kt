@@ -293,6 +293,8 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun latestSync(): SyncStatus? = studyStatus().latestSync()
 
+    fun latestSuccessfulSyncFinishedAt(): Long? = studyStatus().latestSuccessfulSyncFinishedAt()
+
     fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean = studyStatus().hasSuccessfulSyncSince(finishedAtMillis)
 
     fun getIntSetting(key: String, fallback: Int): Int = studySettings().getIntSetting(key, fallback)

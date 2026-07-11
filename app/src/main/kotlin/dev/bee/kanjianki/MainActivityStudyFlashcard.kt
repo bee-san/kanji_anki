@@ -107,7 +107,12 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
         )
         activity.flashcardActionBarState = actionBarState
-        return ComposeFlashcardRouteModel(cardModel, actionBarState, swipeFeedback)
+        return ComposeFlashcardRouteModel(
+            cardModel = cardModel,
+            actionBarState = actionBarState,
+            swipeFeedback = swipeFeedback,
+            sessionToken = session.token,
+        )
     }
 
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
@@ -161,7 +166,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
             Runnable { activity.renderDetail(glyph, false, null, Runnable { renderComposeFlashcardRoute { route } }) }
         }
-        StudyCardEnterTransition {
+        StudyCardEnterTransition(cardToken = route.sessionToken) {
             FlashcardCard(
                 model = route.cardModel,
                 modifier = Modifier
@@ -195,6 +200,13 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             undoMessage = undoMessage,
             onUndo = { activity.undoLastRating() },
             swipeFeedback = route.swipeFeedback,
+            onReview = { source, rating ->
+                activity.submitReview(
+                    rating = rating,
+                    override = false,
+                    interactionSource = source,
+                )
+            },
         )
     }
 
@@ -202,5 +214,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
         val swipeFeedback: StudySwipeFeedbackState,
+        val sessionToken: String,
     )
 }

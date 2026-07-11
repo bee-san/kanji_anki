@@ -523,6 +523,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         store.writableDatabase.transaction {
             body()
         }
+        // Individual put calls invalidate eagerly, but another LocalStore can only observe these
+        // values after commit. Publish one final generation after the transaction is visible so
+        // no reader can retain a pre-commit bulk snapshot under the latest generation.
+        store.settingsRepository().invalidate()
     }
 
     private fun markStatsDirtyIfNeeded(key: String) {

@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
 import java.util.Collections
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -46,6 +47,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedKanjiWithReadingKanji: Set<String>? = null
     @Volatile
     private var cachedKanjiWithSentenceReading: Set<String>? = null
+    private val conditionalRungAvailabilityCache = ConditionalRungAvailabilityCache()
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
 
     fun newCardSortPreviewCacheVersion(): Long {
@@ -60,6 +62,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
+        clearConditionalRungAvailabilityCaches()
         clearTimelineCache()
         bumpNewCardSortPreviewCacheVersion()
     }
@@ -90,11 +93,16 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     internal override fun clearSimilarKanjiNeighborsCache() {
+        clearConditionalRungAvailabilityCaches()
+        bumpNewCardSortPreviewCacheVersion()
+    }
+
+    private fun clearConditionalRungAvailabilityCaches() {
         cachedKanjiWithSimilarNeighbors = null
         cachedKanjiWithKanjiReading = null
         cachedKanjiWithReadingKanji = null
         cachedKanjiWithSentenceReading = null
-        bumpNewCardSortPreviewCacheVersion()
+        conditionalRungAvailabilityCache.invalidate()
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
@@ -440,6 +448,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     fun studyItems(): List<RecordsStudyModels.StudyItem> {
         cachedStudyItems?.let { return it }
 
+        val traceEnabled = AppDebugLog.isCapturing()
+        val totalStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
+        val queryStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
         val db = readableDatabase
         val items = ArrayList<RecordsStudyModels.StudyItem>()
         db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, "due_at ASC").use { cursor ->
@@ -447,8 +458,25 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items.add(readStudyItem(cursor))
             }
         }
-        annotateConditionalRungsInPlace(db, items)
+        val requestedKanjiCount = items.asSequence().map { it.kanji }.distinct().count()
+        logStudyItemsPhase(
+            traceEnabled,
+            mode = "all",
+            phase = "query",
+            requestedKanji = requestedKanjiCount,
+            matchedKanji = items.size,
+            startedAtNanos = queryStart,
+        )
+        annotateConditionalRungsInPlace(db, items, traceEnabled, "all")
         cachedStudyItems = items
+        logStudyItemsPhase(
+            traceEnabled,
+            mode = "all",
+            phase = "total",
+            requestedKanji = requestedKanjiCount,
+            matchedKanji = items.size,
+            startedAtNanos = totalStart,
+        )
         return items
     }
 
@@ -464,7 +492,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             return it
         }
 
-        val start = android.os.SystemClock.elapsedRealtime()
+        val traceEnabled = AppDebugLog.isCapturing()
+        val totalStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
+        val queryStart = elapsedRealtimeNanos()
         val db = readableDatabase
         val placeholders = distinctKanji.joinToString(",") { "?" }
         val items = ArrayList<RecordsStudyModels.StudyItem>()
@@ -483,13 +513,29 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
         dev.bee.kanjianki.studyLoadDebug(
             "studyItemsForKanji LOADED size=${items.size} keys=${distinctKanji.size} " +
-                "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
+                "duration_ms=${nanosToMillis(elapsedRealtimeNanos() - queryStart)}"
         )
-        annotateConditionalRungsInPlace(db, items)
+        logStudyItemsPhase(
+            traceEnabled,
+            mode = "for-kanji",
+            phase = "query",
+            requestedKanji = distinctKanji.size,
+            matchedKanji = items.size,
+            startedAtNanos = queryStart,
+        )
+        annotateConditionalRungsInPlace(db, items, traceEnabled, "for-kanji")
         val caches = cachedStudyItemsByKanji ?: ConcurrentHashMap<String, List<RecordsStudyModels.StudyItem>>().also {
             cachedStudyItemsByKanji = it
         }
         caches[cacheKey] = items
+        logStudyItemsPhase(
+            traceEnabled,
+            mode = "for-kanji",
+            phase = "total",
+            requestedKanji = distinctKanji.size,
+            matchedKanji = items.size,
+            startedAtNanos = totalStart,
+        )
         return items
     }
 
@@ -758,13 +804,23 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             return items ?: emptyList()
         }
         val db = readableDatabase
-        val withSimilar = kanjiWithSimilarNeighbors(db)
-        val withKanjiReading = kanjiWithKanjiReading(db)
-        val withReadingKanji = kanjiWithReadingKanji(db)
-        val withSentenceReading = kanjiWithSentenceReading(db)
+        val availability = conditionalRungAvailability(
+            db,
+            items.map { it.kanji },
+            AppDebugLog.isCapturing(),
+            "annotate",
+        )
         val out = ArrayList<RecordsStudyModels.StudyItem>(items.size)
         for (item in items) {
-            out.add(annotateConditionalRungs(item, withSimilar, withKanjiReading, withReadingKanji, withSentenceReading))
+            out.add(
+                annotateConditionalRungs(
+                    item,
+                    availability.similarKanji,
+                    availability.kanjiReading,
+                    availability.readingKanji,
+                    availability.sentenceReading,
+                ),
+            )
         }
         return out
     }
@@ -772,15 +828,138 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private fun annotateConditionalRungsInPlace(
         db: SQLiteDatabase,
         items: MutableList<RecordsStudyModels.StudyItem>,
+        traceEnabled: Boolean,
+        traceMode: String,
     ) {
-        val withSimilar = kanjiWithSimilarNeighbors(db)
-        val withKanjiReading = kanjiWithKanjiReading(db)
-        val withReadingKanji = kanjiWithReadingKanji(db)
-        val withSentenceReading = kanjiWithSentenceReading(db)
+        val availability = conditionalRungAvailability(
+            db,
+            items.map { it.kanji },
+            traceEnabled,
+            traceMode,
+        )
         for (i in items.indices) {
-            items[i] = annotateConditionalRungs(items[i], withSimilar, withKanjiReading, withReadingKanji, withSentenceReading)
+            items[i] = annotateConditionalRungs(
+                items[i],
+                availability.similarKanji,
+                availability.kanjiReading,
+                availability.readingKanji,
+                availability.sentenceReading,
+            )
         }
     }
+
+    private fun conditionalRungAvailability(
+        db: SQLiteDatabase,
+        requestedKanji: Collection<String>,
+        traceEnabled: Boolean,
+        traceMode: String,
+    ): ConditionalRungAvailability {
+        val requested = requestedKanji.filter { it.isNotBlank() }.distinct()
+        val similar = loadConditionalCapability(
+            db,
+            requested,
+            traceEnabled,
+            traceMode,
+            "capability-similar-kanji",
+            ConditionalRungCapability.SIMILAR_KANJI,
+            ConditionalRungAvailabilityQueries::similarKanji,
+        )
+        val kanjiReading = loadConditionalCapability(
+            db,
+            requested,
+            traceEnabled,
+            traceMode,
+            "capability-kanji-reading",
+            ConditionalRungCapability.KANJI_READING,
+            ConditionalRungAvailabilityQueries::kanjiReading,
+        )
+        val readingKanji = loadConditionalCapability(
+            db,
+            requested,
+            traceEnabled,
+            traceMode,
+            "capability-reading-kanji",
+            ConditionalRungCapability.READING_KANJI,
+            ConditionalRungAvailabilityQueries::readingKanji,
+        )
+        val sentenceReading = loadConditionalCapability(
+            db,
+            requested,
+            traceEnabled,
+            traceMode,
+            "capability-sentence-reading",
+            ConditionalRungCapability.SENTENCE_READING,
+            ConditionalRungAvailabilityQueries::sentenceReading,
+        )
+        return ConditionalRungAvailability(similar, kanjiReading, readingKanji, sentenceReading)
+    }
+
+    private fun loadConditionalCapability(
+        db: SQLiteDatabase,
+        requestedKanji: List<String>,
+        traceEnabled: Boolean,
+        traceMode: String,
+        phase: String,
+        capability: ConditionalRungCapability,
+        loader: (SQLiteDatabase, Collection<String>) -> Set<String>,
+    ): Set<String> {
+        val start = if (traceEnabled) elapsedRealtimeNanos() else 0L
+        var queriedKanji = 0
+        val result = conditionalRungAvailabilityCache.load(capability, requestedKanji) { missing ->
+            queriedKanji += missing.size
+            loader(db, missing)
+        }
+        logStudyItemsPhase(
+            traceEnabled,
+            mode = traceMode,
+            phase = phase,
+            requestedKanji = requestedKanji.size,
+            matchedKanji = result.size,
+            queriedKanji = queriedKanji,
+            startedAtNanos = start,
+        )
+        return result
+    }
+
+    private fun logStudyItemsPhase(
+        enabled: Boolean,
+        mode: String,
+        phase: String,
+        requestedKanji: Int,
+        matchedKanji: Int,
+        queriedKanji: Int = requestedKanji,
+        startedAtNanos: Long,
+    ) {
+        if (!enabled) {
+            return
+        }
+        AppDebugLog.log(
+            String.format(
+                Locale.US,
+                "study-items mode=%s phase=%s requested_kanji=%d queried_kanji=%d " +
+                    "matched_kanji=%d duration_ms=%.2f",
+                mode,
+                phase,
+                requestedKanji,
+                queriedKanji,
+                matchedKanji,
+                nanosToMillis(elapsedRealtimeNanos() - startedAtNanos),
+            ),
+        )
+    }
+
+    private fun elapsedRealtimeNanos(): Long {
+        return runCatching { android.os.SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
+    }
+
+    private fun nanosToMillis(nanos: Long): Double = nanos / 1_000_000.0
+
+    private data class ConditionalRungAvailability(
+        val similarKanji: Set<String>,
+        val kanjiReading: Set<String>,
+        val readingKanji: Set<String>,
+        val sentenceReading: Set<String>,
+    )
 
     private fun annotateConditionalRungs(
         item: RecordsStudyModels.StudyItem,

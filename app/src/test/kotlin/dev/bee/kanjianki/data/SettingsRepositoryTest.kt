@@ -55,6 +55,68 @@ class SettingsRepositoryTest {
         assertEquals("", storage.values["null-string"])
     }
 
+    @Test
+    fun bulkStorageLoadsOneSnapshotForPresentAndMissingKeys() {
+        val storage = BulkSettingsStorage("present" to "17")
+        val repository = SettingsRepository(storage)
+
+        assertEquals(17, repository.getInt("present", 0))
+        assertEquals(9, repository.getInt("missing", 9))
+        assertEquals("fallback", repository.getString("also-missing", "fallback"))
+
+        assertEquals(1, storage.getAllCalls)
+        assertEquals(0, storage.getCalls)
+    }
+
+    @Test
+    fun writesInvalidateThisAndOtherRepositorySnapshots() {
+        val storage = BulkSettingsStorage("value" to "old")
+        val first = SettingsRepository(storage)
+        val second = SettingsRepository(storage)
+
+        assertEquals("old", first.getString("value", null))
+        assertEquals(1, storage.getAllCalls)
+
+        second.putString("value", "new")
+
+        assertEquals("new", first.getString("value", null))
+        assertEquals(2, storage.getAllCalls)
+    }
+
+    @Test
+    fun explicitInvalidationPublishesDirectTransactionalWrites() {
+        val storage = BulkSettingsStorage("value" to "before")
+        val repository = SettingsRepository(storage)
+        assertEquals("before", repository.getString("value", null))
+
+        storage.values["value"] = "after"
+        repository.invalidate()
+
+        assertEquals("after", repository.getString("value", null))
+        assertEquals(2, storage.getAllCalls)
+    }
+
+    @Test
+    fun transactionOwnerBypassesSharedSnapshotForReadAfterWriteAndRollback() {
+        val storage = TransactionalBulkSettingsStorage("value" to "committed")
+        val repository = SettingsRepository(storage)
+
+        assertEquals("committed", repository.getString("value", null))
+        assertEquals(1, storage.getAllCalls)
+
+        storage.beginTransaction()
+        repository.putString("value", "uncommitted")
+
+        assertEquals("uncommitted", repository.getString("value", null))
+        assertEquals("transaction reads use the single-key storage view", 1, storage.getCalls)
+        assertEquals("an uncommitted map is never bulk-cached", 1, storage.getAllCalls)
+
+        storage.rollbackTransaction()
+
+        assertEquals("committed", repository.getString("value", null))
+        assertEquals(2, storage.getAllCalls)
+    }
+
     private class FakeSettingsStorage(
         vararg entries: Pair<String, String?>,
     ) : SettingsStorage {
@@ -64,6 +126,68 @@ class SettingsRepositoryTest {
 
         override fun put(key: String?, value: String?) {
             values[key] = value
+        }
+    }
+
+    private class BulkSettingsStorage(
+        vararg entries: Pair<String, String>,
+    ) : SettingsStorage {
+        val values = entries.toMap().toMutableMap()
+        var getCalls = 0
+        var getAllCalls = 0
+
+        override fun get(key: String?): String? {
+            getCalls += 1
+            return values[key]
+        }
+
+        override fun getAll(): Map<String, String> {
+            getAllCalls += 1
+            return LinkedHashMap(values)
+        }
+
+        override fun put(key: String?, value: String?) {
+            if (key != null) {
+                values[key] = value.orEmpty()
+            }
+        }
+    }
+
+    private class TransactionalBulkSettingsStorage(
+        vararg entries: Pair<String, String>,
+    ) : SettingsStorage {
+        private val committedValues = entries.toMap().toMutableMap()
+        private var transactionValues: MutableMap<String, String>? = null
+        var getCalls = 0
+        var getAllCalls = 0
+
+        fun beginTransaction() {
+            check(transactionValues == null)
+            transactionValues = committedValues.toMutableMap()
+        }
+
+        fun rollbackTransaction() {
+            check(transactionValues != null)
+            transactionValues = null
+        }
+
+        override fun isTransactionOwner(): Boolean = transactionValues != null
+
+        override fun get(key: String?): String? {
+            getCalls += 1
+            return (transactionValues ?: committedValues)[key]
+        }
+
+        override fun getAll(): Map<String, String> {
+            getAllCalls += 1
+            return LinkedHashMap(transactionValues ?: committedValues)
+        }
+
+        override fun put(key: String?, value: String?) {
+            if (key == null) {
+                return
+            }
+            (transactionValues ?: committedValues)[key] = value.orEmpty()
         }
     }
 }

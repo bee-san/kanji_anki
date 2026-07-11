@@ -76,6 +76,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
     private fun runTokenReviewWrite(
         session: RecordsSchedulerModels.StudySession,
         source: String,
+        frameRating: String? = null,
         work: (ReviewDiagnostics) -> ReviewWriteDisposition,
     ): Boolean {
         val token = session.token
@@ -86,9 +87,19 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         }
 
         val diagnostics = ReviewDiagnostics(source, tokenId, reviewNowNanos())
-        logReviewEvent("review event=queued source=$source token_id=$tokenId")
         return try {
             activity.io.execute {
+                // This task can only run after execute() accepted it. Starting
+                // correlation here also guarantees a retry/error cannot clear a
+                // marker and then race with the caller publishing it afterward.
+                if (frameRating != null) {
+                    StudyCardFrameDiagnostics.onReviewEnqueued(
+                        token,
+                        source,
+                        frameRating,
+                        diagnostics.submittedAtNanos,
+                    )
+                }
                 val startedAtNanos = reviewNowNanos()
                 val queueWaitMs = reviewElapsedMillis(diagnostics.submittedAtNanos, startedAtNanos)
                 logReviewEvent(
@@ -100,7 +111,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                         withStudyLoadProbe("reviewWrite.total") { work(diagnostics) }
                     }
                     if (disposition == ReviewWriteDisposition.RETRYABLE_DROP) {
-                        submissionGate.release(token)
+                        releaseRetryableSubmission(token, source, tokenId, "retryable-drop")
                     }
                     val finishedAtNanos = reviewNowNanos()
                     logReviewEvent(
@@ -111,18 +122,39 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                             "outcome=${disposition.name.lowercase(Locale.ROOT)}",
                     )
                 } catch (error: Throwable) {
-                    submissionGate.release(token)
+                    releaseRetryableSubmission(token, source, tokenId, "processing-error")
                     logReviewError(source, tokenId, "processing", error)
                     if (error is Error) {
                         throw error
                     }
                 }
             }
+            // Do not attribute frames to a tap that the gate suppressed or the
+            // executor rejected. This runs only after execute() accepted the task.
+            logReviewEvent("review event=queued source=$source token_id=$tokenId")
             true
         } catch (error: RuntimeException) {
             submissionGate.release(token)
             logReviewError(source, tokenId, "enqueue", error)
             false
+        }
+    }
+
+    private fun releaseRetryableSubmission(
+        token: String,
+        source: String,
+        tokenId: String,
+        reason: String,
+    ) {
+        submissionGate.release(token)
+        StudyCardFrameDiagnostics.onReviewFailed(token, reason)
+        logReviewEvent(
+            "review event=ui-reset-requested source=$source token_id=$tokenId reason=$reason",
+        )
+        activity.postToMainIfActive {
+            if (activity.activeSession?.token == token) {
+                activity.flashcardSwipeFeedback?.cancelCommit()
+            }
         }
     }
 
@@ -136,6 +168,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         rating: String,
         override: Boolean,
         ladder: RecordsBase.StudyLadderSettings? = null,
+        interactionSource: String = "review-action",
     ): Boolean {
         val session = activity.activeSession ?: return false
         if (activity.activeSimilarWritingRepair != null) {
@@ -152,7 +185,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             override
         )
         val request = mappedReview.request()
-        return runTokenReviewWrite(session, "submit-review") { diagnostics ->
+        return runTokenReviewWrite(session, interactionSource, frameRating = rating) { diagnostics ->
             performNormalReview(session, request, ladder, diagnostics)
         }
     }

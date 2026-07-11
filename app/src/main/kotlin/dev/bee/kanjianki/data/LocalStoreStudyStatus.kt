@@ -71,6 +71,26 @@ internal class LocalStoreStudyStatus(
         }
     }
 
+    /**
+     * The daily-plan freshness signal is explicitly about a completed successful sync. The
+     * newest sync_runs row may be a later failure, which must not make stale collection evidence
+     * appear current.
+     */
+    fun latestSuccessfulSyncFinishedAt(): Long? {
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_SYNC_RUNS,
+            arrayOf(LocalStoreBase.COLUMN_FINISHED_AT),
+            "${LocalStoreBase.COLUMN_STATUS}=? AND ${LocalStoreBase.COLUMN_FINISHED_AT} IS NOT NULL",
+            arrayOf(LocalStoreBase.STATUS_SUCCESS),
+            null,
+            null,
+            LocalStoreBase.ORDER_ID_DESC,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getLong(0) else null
+        }
+    }
+
     fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean {
         store.readableDatabase.query(
             LocalStoreBase.TABLE_SYNC_RUNS,

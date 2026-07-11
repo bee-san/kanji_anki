@@ -34,6 +34,7 @@ internal fun MainActivityComposeRoute(
     navActions: KaniNavActions? = null,
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
+    contentKey: Any? = null,
     content: @Composable () -> Unit,
 ) {
     MainActivityShellFrame(
@@ -46,6 +47,7 @@ internal fun MainActivityComposeRoute(
             initialScrollY = initialScrollY,
             onScrollY = onScrollY,
             navActions = navActions,
+            contentKey = contentKey,
             content = content
         )
     }
@@ -59,6 +61,7 @@ internal fun MainActivityComposeRouteWithActionBar(
     navActions: KaniNavActions? = null,
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
+    contentKey: Any? = null,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -72,6 +75,7 @@ internal fun MainActivityComposeRouteWithActionBar(
             initialScrollY = initialScrollY,
             onScrollY = onScrollY,
             navActions = navActions,
+            contentKey = contentKey,
             content = content,
             actionBar = actionBar,
         )
@@ -106,6 +110,7 @@ internal fun MainActivityRouteContent(
     onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     imeVisible: Boolean = kaniImeVisible(),
+    contentKey: Any? = null,
     content: @Composable () -> Unit,
 ) {
     MainActivityScrollableRouteColumn(
@@ -114,6 +119,7 @@ internal fun MainActivityRouteContent(
         onScrollY = onScrollY,
         navActions = navActions,
         imeVisible = imeVisible,
+        contentKey = contentKey,
         content = content,
     )
 }
@@ -125,6 +131,7 @@ internal fun MainActivityRouteContentWithActionBar(
     onScrollY: (Int) -> Unit = NoOpRouteScrollY,
     navActions: KaniNavActions? = null,
     imeVisible: Boolean = kaniImeVisible(),
+    contentKey: Any? = null,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -134,6 +141,7 @@ internal fun MainActivityRouteContentWithActionBar(
         onScrollY = onScrollY,
         navActions = navActions,
         imeVisible = imeVisible,
+        contentKey = contentKey,
         content = content,
         footerContent = actionBar,
     )
@@ -146,6 +154,7 @@ private fun MainActivityScrollableRouteColumn(
     onScrollY: (Int) -> Unit,
     navActions: KaniNavActions?,
     imeVisible: Boolean = kaniImeVisible(),
+    contentKey: Any?,
     content: @Composable () -> Unit,
     footerContent: @Composable () -> Unit = {},
 ) {
@@ -156,6 +165,14 @@ private fun MainActivityScrollableRouteColumn(
     }
     key(model.selectedRoute, initialScrollY) {
         val scrollState = rememberScrollState(initial = initialScrollY)
+        // Keep the scroll container/layout node mounted across study cards, but
+        // restore the route's requested position when its body identity changes.
+        // The previous setContent-per-card path implicitly created a fresh state.
+        LaunchedEffect(contentKey, scrollState) {
+            if (scrollState.value != initialScrollY) {
+                scrollState.scrollTo(initialScrollY)
+            }
+        }
         if (shouldTrackRouteScroll(onScrollY)) {
             LaunchedEffect(scrollState, onScrollY) {
                 snapshotFlow { scrollState.value }.collect { onScrollY(it) }
@@ -179,9 +196,15 @@ private fun MainActivityScrollableRouteColumn(
                     .weight(1f)
                     .verticalScroll(scrollState),
             ) {
-                content()
+                // Route-local remember state (typing input, reveal state, card
+                // animations) must not leak into the next imperative render.
+                key(contentKey) {
+                    content()
+                }
             }
-            footerContent()
+            key(contentKey) {
+                footerContent()
+            }
             // The bottom nav is unusable while typing and would sit on top of the
             // keyboard, stealing ~90dp from the already-shrunken content viewport
             // (the kanji prompt was getting pushed off-screen). Hide it whenever

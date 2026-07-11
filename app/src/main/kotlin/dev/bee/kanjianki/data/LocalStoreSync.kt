@@ -131,7 +131,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
         dictionary: DictionaryLookup?,
     ): Long {
         val db = writableDatabase
-        return db.transaction {
+        val syncId = db.transaction {
             val decisionImports = auditImports ?: imports
             val previousRows = rowSnapshots(db)
             val activeIndex = LocalStoreSyncMirrorAdapters.activeCardIndex(snapshot.cards)
@@ -189,11 +189,15 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
             LocalStoreKanjiReadingMaintenance().rebuildKanjiReadingUsage(db, rows, dictionary)
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings)
             StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(db)
-            clearDashboardRowsCache()
-            clearStudyItemsCache()
-            clearKanjiInventoryAllCache()
             syncId
         }
+        // Publish invalidation only after the new content is committed. Clearing inside the write
+        // transaction lets a concurrent WAL reader see the previous snapshot and repopulate a
+        // just-cleared capability cache with stale values.
+        clearDashboardRowsCache()
+        clearStudyItemsCache()
+        clearKanjiInventoryAllCache()
+        return syncId
     }
 
     fun saveImportAudit(

@@ -390,8 +390,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         rating: String,
         override: Boolean,
         ladder: RecordsBase.StudyLadderSettings? = null,
-    ) {
-        writingReview.submitReview(rating, override, ladder)
+        interactionSource: String = "review-action",
+    ): Boolean {
+        return writingReview.submitReview(rating, override, ladder, interactionSource)
     }
 
     fun skipSimilarWritingRepair() {

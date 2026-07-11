@@ -82,6 +82,43 @@ class SyncSettingsBehaviorTest {
     }
 
     @Test
+    fun cachedSettingsSnapshotRefreshesAfterAnotherLocalStoreWrites() {
+        val first = freshStore()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val second = LocalStore(context)
+        try {
+            assertEquals(RecordsSyncModels.Settings.kikuDefaults().newPerDay, SyncSettings.fromStore(first).newPerDay)
+
+            second.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, 37)
+
+            assertEquals(37, SyncSettings.fromStore(first).newPerDay)
+        } finally {
+            second.close()
+            first.close()
+        }
+    }
+
+    @Test
+    fun multiSettingTransactionPublishesCommittedValuesToOtherStoreSnapshot() {
+        val first = freshStore()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val second = LocalStore(context)
+        try {
+            assertFalse(first.reminderSettings().enabled)
+
+            second.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 17, 42))
+
+            val refreshed = first.reminderSettings()
+            assertTrue(refreshed.enabled)
+            assertEquals(17, refreshed.hour)
+            assertEquals(42, refreshed.minute)
+        } finally {
+            second.close()
+            first.close()
+        }
+    }
+
+    @Test
     fun oldDefaultRepairDoesNotEnableBrowserQueryImport() {
         val store = freshStore()
         try {

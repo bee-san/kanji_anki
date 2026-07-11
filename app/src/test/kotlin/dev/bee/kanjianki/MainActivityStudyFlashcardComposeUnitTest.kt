@@ -41,8 +41,69 @@ class MainActivityStudyFlashcardComposeUnitTest {
 
     @Test
     fun nextCardEnterMotionStaysWithinTheFastInteractionBudget() {
-        assertEquals(90, STUDY_CARD_ENTER_FADE_MILLIS)
-        assertEquals(120, STUDY_CARD_ENTER_SLIDE_MILLIS)
+        assertEquals(60, STUDY_CARD_ENTER_FADE_MILLIS)
+        assertEquals(90, STUDY_CARD_ENTER_SLIDE_MILLIS)
+        assertEquals(72, STUDY_CARD_SWIPE_COMMIT_MILLIS)
+    }
+
+    @Test
+    fun acceptedSwipeKeepsItsOffsetAndCommitsAwayFromCentre() {
+        val state = StudySwipeFeedbackState().apply {
+            thresholdPx = 72f
+            update(-128f)
+        }
+
+        state.commit(StudyRatings.AGAIN)
+
+        assertEquals(-128f, state.dragOffsetX)
+        assertTrue(state.committed)
+        assertEquals(StudySwipeReleaseKind.COMMIT_FAIL, state.releaseRequest.kind)
+    }
+
+    @Test
+    fun rejectedSwipeRequestsSpringBackWithoutSnappingImmediately() {
+        val state = StudySwipeFeedbackState().apply { update(38f) }
+
+        state.settleBack()
+
+        assertEquals(38f, state.dragOffsetX)
+        assertFalse(state.committed)
+        assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
+    }
+
+    @Test
+    fun rapidSecondDragCancelsTheOldSettleAnimation() {
+        val state = StudySwipeFeedbackState().apply { update(38f) }
+        state.settleBack()
+
+        assertTrue(state.beginDrag())
+        state.update(-91f)
+
+        assertEquals(-91f, state.dragOffsetX)
+        assertEquals(StudySwipeReleaseKind.IDLE, state.releaseRequest.kind)
+        assertFalse(state.committed)
+    }
+
+    @Test
+    fun rejectedEnqueueReturnsOnlyTheCommitStartedByThatAttempt() {
+        val state = StudySwipeFeedbackState().apply { update(96f) }
+
+        val accepted = submitReviewWithSwipeFeedback(state, StudyRatings.GOOD) { false }
+
+        assertFalse(accepted)
+        assertFalse(state.committed)
+        assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
+    }
+
+    @Test
+    fun suppressedRapidDuplicateDoesNotUndoFirstAcceptedCommit() {
+        val state = StudySwipeFeedbackState().apply { update(96f) }
+        assertTrue(submitReviewWithSwipeFeedback(state, StudyRatings.GOOD) { true })
+
+        assertFalse(submitReviewWithSwipeFeedback(state, StudyRatings.AGAIN) { false })
+
+        assertTrue(state.committed)
+        assertEquals(StudySwipeReleaseKind.COMMIT_PASS, state.releaseRequest.kind)
     }
 
     @Test
@@ -356,6 +417,65 @@ class MainActivityStudyFlashcardComposeUnitTest {
             .performClick()
 
         assertTrue(undoTriggered)
+    }
+
+    @Test
+    fun ratingButtonStartsOutgoingCardMotionBeforeSubmitting() {
+        val swipeFeedback = StudySwipeFeedbackState()
+        var passCount = 0
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = { passCount += 1 },
+                swipeFeedback = swipeFeedback,
+            )
+        }
+
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyReviewButtonCopy.goodLabel()))
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, passCount)
+            assertTrue(swipeFeedback.committed)
+            assertEquals(StudySwipeReleaseKind.COMMIT_PASS, swipeFeedback.releaseRequest.kind)
+        }
+    }
+
+    @Test
+    fun ratingButtonPreservesSourceAndRatingAndResetsWhenGateRejects() {
+        val swipeFeedback = StudySwipeFeedbackState()
+        var submittedSource = ""
+        var submittedRating = ""
+        var fallbackPassCount = 0
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = { fallbackPassCount += 1 },
+                swipeFeedback = swipeFeedback,
+                onReview = { source, rating ->
+                    submittedSource = source
+                    submittedRating = rating
+                    false
+                },
+            )
+        }
+
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyReviewButtonCopy.goodLabel()))
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("button", submittedSource)
+            assertEquals(StudyRatings.GOOD, submittedRating)
+            assertEquals(0, fallbackPassCount)
+            assertFalse(swipeFeedback.committed)
+            assertEquals(StudySwipeReleaseKind.IDLE, swipeFeedback.releaseRequest.kind)
+        }
     }
 
     @Test

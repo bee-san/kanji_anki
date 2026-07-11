@@ -545,7 +545,7 @@ object ReminderScheduler {
         throttleState: LocalStoreBase.ReminderThrottleState,
         nowMillis: Long,
     ): dev.bee.kanjianki.core.DailyReminderDecision {
-        val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSync()?.finishedAt, nowMillis)
+        val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSuccessfulSyncFinishedAt(), nowMillis)
         val nowMinuteOfDay = minuteOfDay(nowMillis)
         val quietLead = ReminderAntiSpamPolicy.quietLeadMinutesUntilStart(
             nowMinuteOfDay,

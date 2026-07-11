@@ -55,7 +55,7 @@ internal object KaniWidgetSnapshotLoader {
                             lastStudyAtMillis = streak.lastStudyAtMillis,
                         ),
                         newProblemKanjiAvailable = eligibleItems.count { it.totalReviews == 0 },
-                        lastSuccessfulSyncAtMillis = store.latestSync()?.finishedAt,
+                        lastSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
                     ),
                 )
                 KaniWidgetSnapshot(
