@@ -738,19 +738,35 @@ ephemeral new item at the starting rung.
 
 ### 8.7 Post-session home counts
 
-The home "to study" count (adaptive plan `remaining`), the Study nav badge
-fallback, and the focus metric all derive from
-`AdaptiveLoadCandidate.isRecoveryDue`. A mid-`learning` card is recovery-due
-only once its step delay has elapsed (`item.dueAtMillis <= now`), not
-unconditionally. This means that immediately after finishing a session, the
-cards just answered `Again` sit in `learning` due 1–10 minutes out and the
-home counts read **0 until those step delays pass**, then reappear as the
-steps come due. The today plan's "N due now"
-(`DailyStudyPlanPolicy.dueNow`) has always been due-time-gated and agrees.
-The learning clause deliberately omits the `totalReviews > 0` guard the
-reviewed-card clause uses: a card abandoned mid-learning with no persisted
-review yet still counts once it is past due. `FocusedStudyPlanPolicy.itemDueForFocus`
-applies the same rule. Pinned by
+The adaptive plan's `remaining` value is a broad daily-focus/admission metric:
+an unstudied focus kanji can remain there even when its persisted review is not
+due. It therefore must not be used as the Home "to study" count. The Home CTA,
+idle Study-nav badge, and post-sync ready count use `StudyNowCountPolicy`, which
+dry-runs the real queue seeder and then counts the distinct task keys the
+session selector can actually serve at the configured study-ahead and current
+focus mode. This keeps missing-card admission, daily/active caps,
+mature-support gates, retired-card reopening, rung alignment, and due-time
+eligibility identical to the Study route. A fresh local day can no longer turn
+four future reviews into "4 to study" followed by an empty Study screen.
+Pinned by `StudyNowCountPolicyTest` and
+`StudySessionBadgeCountUnitTest`.
+
+Within an active run, `StudySessionTracker` reconciles that selector snapshot
+against its ordered pending keys. Tasks removed by sync or settings changes are
+pruned, newly selectable unique tasks are appended, and completed keys remain
+recorded for the life of the run. A learning or relearning repeat can therefore
+be served through the learn-ahead path without increasing the unique-card
+target or resurrecting a stale badge.
+
+The plan's focus metric still uses `AdaptiveLoadCandidate.isRecoveryDue`. A
+mid-`learning` card is recovery-due only once its step delay has elapsed
+(`item.dueAtMillis <= now`), not unconditionally. Immediately after finishing
+a session, cards just answered `Again` sit in `learning` due 1–10 minutes out,
+so the focus metric, exact Study-now count, idle badge, and today plan's "N due
+now" all read **0 until those step delays pass**, then reappear as the steps
+come due. The learning clause deliberately omits the `totalReviews > 0` guard
+the reviewed-card clause uses: a card abandoned mid-learning with no persisted
+review yet still counts once it is past due. Pinned by
 `AdaptiveLoadRecoveryDueTest`, `AdaptiveLoadPlannerTest`, and
 `MainActivityHomePostSessionCountsTest`.
 

@@ -55,8 +55,9 @@ Defaults:
 - System image: `system-images;android-35;google_atd;<host arch>`
 - Work/cache directory: `${TMPDIR:-/tmp}/kanji-ankidroid-fixture`
 - AnkiDroid release: `v2.24.0`
-- Fixture threshold: `KANJI_LIVE_MINIMUM_NOTES=1` because the sanitized Kiku
-  fixture intentionally contains one note/card.
+- Fixture threshold: `KANJI_LIVE_MINIMUM_NOTES=1`. The sanitized Kiku fixture
+  contains four notes/cards: one suspended import plus an active weak
+  `橋・箸・端` homophone trio that exercises `hasReadingKanji` end to end.
 
 Useful overrides:
 

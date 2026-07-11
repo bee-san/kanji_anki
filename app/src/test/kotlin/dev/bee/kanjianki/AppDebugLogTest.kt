@@ -123,6 +123,36 @@ class AppDebugLogTest {
     }
 
     @Test
+    fun settingsSnapshotLogsStorageLoadAndFirstCacheHit() {
+        AppDebugLog.setEnabled(context, true)
+        LocalStore(context).use { store ->
+            store.getIntSetting("snapshot-log-missing", 1)
+            store.getIntSetting("snapshot-log-missing", 1)
+        }
+        AppDebugLog.resetForTests()
+
+        val text = logFile().readText()
+        assertTrue(text.contains("settings snapshot source=storage"))
+        assertTrue(text.contains("settings snapshot source=cache"))
+    }
+
+    @Test
+    fun homeAndStudyPlanPhaseHelpersEmitReleaseSafeTimings() {
+        AppDebugLog.setEnabled(context, true)
+
+        val homeResult = homeLoadPhase("study-items", { value -> "rows=$value" }) { 3 }
+        val planResult = studyPlanPhase("planner-compute") { "ready" }
+        AppDebugLog.resetForTests()
+
+        assertEquals(3, homeResult)
+        assertEquals("ready", planResult)
+        val text = logFile().readText()
+        assertTrue(text.contains("home phase=study-items duration_ms="))
+        assertTrue(text.contains("rows=3"))
+        assertTrue(text.contains("study-plan phase=planner-compute duration_ms="))
+    }
+
+    @Test
     fun hasLogFalseAndShareIntentNullWithoutFile() {
         assertFalse(AppDebugLog.hasLog(context))
         assertNull(AppDebugLog.buildShareIntent(context))

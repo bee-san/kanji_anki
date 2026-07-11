@@ -3,7 +3,10 @@
 package dev.bee.kanjianki
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInHorizontally
@@ -18,11 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +48,9 @@ import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.core.StudyTextCopy
+import kotlinx.coroutines.flow.first
+import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 internal class FlashcardActionBarState(
@@ -62,17 +71,169 @@ class StudySwipeFeedbackState {
     var thresholdPx by mutableFloatStateOf(0f)
     var dragOffsetX by mutableFloatStateOf(0f)
         private set
+    internal var cardWidthPx by mutableFloatStateOf(0f)
+        private set
+    internal var releaseRequest by mutableStateOf(StudySwipeReleaseRequest())
+        private set
+    internal var committed by mutableStateOf(false)
+        private set
+
+    private var nextReleaseSequence = 0L
 
     /** -1..1 fraction of the swipe threshold; positive means pass, negative means fail. */
     val progress: Float
         get() = if (thresholdPx <= 0f) 0f else (dragOffsetX / thresholdPx).coerceIn(-1f, 1f)
 
     fun update(offsetX: Float) {
+        if (committed) {
+            return
+        }
         dragOffsetX = offsetX
     }
 
+    /**
+     * Starts a new finger-owned drag. A new gesture cancels an in-flight
+     * settle-back spring so the old animation cannot fight the new pointer.
+     * A committed review remains locked until its route advances or the review
+     * pipeline explicitly rejects/releases it.
+     */
+    fun beginDrag(): Boolean {
+        if (committed) {
+            return false
+        }
+        if (releaseRequest.kind == StudySwipeReleaseKind.SETTLE_BACK) {
+            dragOffsetX = 0f
+            releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, StudySwipeReleaseKind.IDLE)
+        }
+        return true
+    }
+
+    /** Keep an accepted swipe moving in its rating direction until this card leaves. */
+    fun commit(rating: String): Boolean {
+        if (committed) {
+            return false
+        }
+        val kind = when (rating) {
+            StudyRatings.AGAIN -> StudySwipeReleaseKind.COMMIT_FAIL
+            StudyRatings.GOOD -> StudySwipeReleaseKind.COMMIT_PASS
+            else -> {
+                settleBack()
+                return false
+            }
+        }
+        committed = true
+        releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, kind)
+        return true
+    }
+
+    /** Return a just-committed card when its review was not actually accepted. */
+    fun cancelCommit() {
+        if (!committed) {
+            return
+        }
+        committed = false
+        if (abs(dragOffsetX) < 0.5f) {
+            dragOffsetX = 0f
+            releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, StudySwipeReleaseKind.IDLE)
+        } else {
+            releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, StudySwipeReleaseKind.SETTLE_BACK)
+        }
+    }
+
+    /** Animate an unaccepted swipe back instead of snapping it to the centre. */
+    fun settleBack() {
+        if (committed) {
+            return
+        }
+        if (abs(dragOffsetX) < 0.5f) {
+            dragOffsetX = 0f
+            return
+        }
+        releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, StudySwipeReleaseKind.SETTLE_BACK)
+    }
+
     fun reset() {
+        committed = false
         dragOffsetX = 0f
+        releaseRequest = StudySwipeReleaseRequest(++nextReleaseSequence, StudySwipeReleaseKind.IDLE)
+    }
+
+    internal fun updateCardWidth(widthPx: Float) {
+        cardWidthPx = widthPx.coerceAtLeast(0f)
+    }
+
+    internal fun updateFromReleaseAnimation(sequence: Long, offsetX: Float) {
+        if (releaseRequest.sequence == sequence) {
+            dragOffsetX = offsetX
+        }
+    }
+
+    internal fun finishReleaseAnimation(sequence: Long) {
+        if (releaseRequest.sequence != sequence) {
+            return
+        }
+        if (releaseRequest.kind == StudySwipeReleaseKind.SETTLE_BACK) {
+            dragOffsetX = 0f
+        }
+        releaseRequest = StudySwipeReleaseRequest(sequence, StudySwipeReleaseKind.IDLE)
+    }
+}
+
+internal enum class StudySwipeReleaseKind {
+    IDLE,
+    SETTLE_BACK,
+    COMMIT_FAIL,
+    COMMIT_PASS,
+}
+
+internal data class StudySwipeReleaseRequest(
+    val sequence: Long = 0L,
+    val kind: StudySwipeReleaseKind = StudySwipeReleaseKind.IDLE,
+)
+
+/** Drives only release motion; direct drag updates remain one-to-one with the finger. */
+@Composable
+internal fun StudySwipeReleaseEffect(swipeFeedback: StudySwipeFeedbackState?) {
+    if (swipeFeedback == null) {
+        return
+    }
+    val request = swipeFeedback.releaseRequest
+    val cardWidthPx = swipeFeedback.cardWidthPx
+    LaunchedEffect(swipeFeedback, request.sequence, request.kind, cardWidthPx) {
+        if (request.kind == StudySwipeReleaseKind.IDLE) {
+            return@LaunchedEffect
+        }
+        val animation = Animatable(swipeFeedback.dragOffsetX)
+        when (request.kind) {
+            StudySwipeReleaseKind.SETTLE_BACK -> animation.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessHigh,
+                ),
+            ) {
+                swipeFeedback.updateFromReleaseAnimation(request.sequence, value)
+            }
+
+            StudySwipeReleaseKind.COMMIT_FAIL,
+            StudySwipeReleaseKind.COMMIT_PASS,
+            -> {
+                val direction = if (request.kind == StudySwipeReleaseKind.COMMIT_PASS) 1f else -1f
+                val offscreenDistance = max(
+                    cardWidthPx * STUDY_CARD_SWIPE_OFFSCREEN_WIDTH_MULTIPLIER,
+                    swipeFeedback.thresholdPx * 1.5f,
+                )
+                animation.animateTo(
+                    targetValue = direction * offscreenDistance,
+                    animationSpec = tween(durationMillis = STUDY_CARD_SWIPE_COMMIT_MILLIS),
+                ) {
+                    swipeFeedback.updateFromReleaseAnimation(request.sequence, value)
+                }
+            }
+
+            StudySwipeReleaseKind.IDLE -> Unit
+        }
+        swipeFeedback.finishReleaseAnimation(request.sequence)
     }
 }
 
@@ -81,8 +242,22 @@ class StudySwipeFeedbackState {
  * composition, so a self-starting transition gives a directional slide+fade between cards.
  */
 @Composable
-internal fun StudyCardEnterTransition(content: @Composable () -> Unit) {
+internal fun StudyCardEnterTransition(
+    cardToken: String? = null,
+    content: @Composable () -> Unit,
+) {
     val enterState = remember { MutableTransitionState(false).apply { targetState = true } }
+    LaunchedEffect(cardToken, enterState) {
+        if (cardToken.isNullOrBlank()) {
+            return@LaunchedEffect
+        }
+        withFrameNanos { }
+        // withFrameNanos confirms that Compose scheduled this composition on a
+        // frame; it is not a post-draw signal, so diagnostics name it precisely.
+        StudyCardFrameDiagnostics.onFrameScheduled(cardToken)
+        snapshotFlow { enterState.isIdle && enterState.currentState }.first { it }
+        StudyCardFrameDiagnostics.onTransitionStateComplete(cardToken)
+    }
     AnimatedVisibility(
         visibleState = enterState,
         enter = fadeIn(animationSpec = tween(durationMillis = STUDY_CARD_ENTER_FADE_MILLIS)) +
@@ -94,9 +269,36 @@ internal fun StudyCardEnterTransition(content: @Composable () -> Unit) {
     }
 }
 
-internal const val STUDY_CARD_ENTER_FADE_MILLIS = 90
-internal const val STUDY_CARD_ENTER_SLIDE_MILLIS = 120
+internal const val STUDY_CARD_ENTER_FADE_MILLIS = 60
+internal const val STUDY_CARD_ENTER_SLIDE_MILLIS = 90
+internal const val STUDY_CARD_SWIPE_COMMIT_MILLIS = 72
 private const val STUDY_CARD_ENTER_DISTANCE_DIVISOR = 6
+private const val STUDY_CARD_SWIPE_OFFSCREEN_WIDTH_MULTIPLIER = 1.08f
+
+/**
+ * Couples optimistic card motion to the review gate. Only the commit started by
+ * this exact attempt is rolled back; a rapid duplicate cannot undo the first
+ * already-accepted review's outgoing animation.
+ */
+internal fun submitReviewWithSwipeFeedback(
+    swipeFeedback: StudySwipeFeedbackState?,
+    rating: String,
+    submit: () -> Boolean,
+): Boolean {
+    val committedByThisAttempt = swipeFeedback?.commit(rating) == true
+    return try {
+        val accepted = submit()
+        if (!accepted && committedByThisAttempt) {
+            swipeFeedback?.cancelCommit()
+        }
+        accepted
+    } catch (error: RuntimeException) {
+        if (committedByThisAttempt) {
+            swipeFeedback?.cancelCommit()
+        }
+        throw error
+    }
+}
 
 @Composable
 fun StudyFlashcardActionBar(
@@ -107,7 +309,19 @@ fun StudyFlashcardActionBar(
     undoMessage: String? = null,
     onUndo: (() -> Unit)? = null,
     swipeFeedback: StudySwipeFeedbackState? = null,
+    onReview: ((source: String, rating: String) -> Boolean)? = null,
 ) {
+    val submitReview: (String, String) -> Boolean = { source, rating ->
+        if (onReview != null) {
+            onReview(source, rating)
+        } else {
+            when (rating) {
+                StudyRatings.AGAIN -> onFail()
+                StudyRatings.GOOD -> onPass()
+            }
+            true
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -128,15 +342,26 @@ fun StudyFlashcardActionBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .revealedReviewSwipeGestures(onFail = onFail, onPass = onPass, swipeFeedback = swipeFeedback),
+                    .revealedReviewSwipeGestures(
+                        swipeFeedback = swipeFeedback,
+                        submitReview = submitReview,
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 StudyAgainButton(
-                    onClick = onFail,
+                    onClick = {
+                        submitReviewWithSwipeFeedback(swipeFeedback, StudyRatings.AGAIN) {
+                            submitReview("button", StudyRatings.AGAIN)
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
                 StudyGoodButton(
-                    onClick = onPass,
+                    onClick = {
+                        submitReviewWithSwipeFeedback(swipeFeedback, StudyRatings.GOOD) {
+                            submitReview("button", StudyRatings.GOOD)
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -146,16 +371,16 @@ fun StudyFlashcardActionBar(
 
 @Composable
 private fun Modifier.revealedReviewSwipeGestures(
-    onFail: () -> Unit,
-    onPass: () -> Unit,
     swipeFeedback: StudySwipeFeedbackState? = null,
+    submitReview: (source: String, rating: String) -> Boolean,
 ): Modifier {
     val touchSlop = LocalViewConfiguration.current.touchSlop.roundToInt()
     val minimumSwipeDistance = with(LocalDensity.current) { 72.dp.toPx().roundToInt() }
     swipeFeedback?.thresholdPx = minimumSwipeDistance.toFloat()
-    return pointerInput(onFail, onPass, touchSlop, minimumSwipeDistance, swipeFeedback) {
+    return pointerInput(touchSlop, minimumSwipeDistance, swipeFeedback, submitReview) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val dragAccepted = swipeFeedback?.beginDrag() != false
             val gestureStartedAtNanos = System.nanoTime()
             var endPosition = down.position
             var consumingReviewSwipe = false
@@ -165,7 +390,9 @@ private fun Modifier.revealedReviewSwipeGestures(
                     endPosition = change.position
                     val dx = endPosition.x - down.position.x
                     val dy = endPosition.y - down.position.y
-                    if (!consumingReviewSwipe && kotlin.math.abs(dx) > touchSlop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                    if (dragAccepted && !consumingReviewSwipe &&
+                        kotlin.math.abs(dx) > touchSlop && kotlin.math.abs(dx) > kotlin.math.abs(dy)
+                    ) {
                         consumingReviewSwipe = true
                     }
                     if (consumingReviewSwipe) {
@@ -174,17 +401,19 @@ private fun Modifier.revealedReviewSwipeGestures(
                     }
                 }
             } while (event.changes.any { it.pressed })
-            swipeFeedback?.reset()
-
-            val rating = FlashcardGesturePolicy.release(
-                down.position.x,
-                down.position.y,
-                endPosition.x,
-                endPosition.y,
-                touchSlop,
-                minimumSwipeDistance,
-                true,
-            ).rating
+            val rating = if (dragAccepted) {
+                FlashcardGesturePolicy.release(
+                    down.position.x,
+                    down.position.y,
+                    endPosition.x,
+                    endPosition.y,
+                    touchSlop,
+                    minimumSwipeDistance,
+                    true,
+                ).rating
+            } else {
+                ""
+            }
             if (rating.isNotEmpty()) {
                 val gestureDurationMs = ((System.nanoTime() - gestureStartedAtNanos) / 1_000_000L)
                     .coerceAtLeast(0L)
@@ -193,10 +422,11 @@ private fun Modifier.revealedReviewSwipeGestures(
                     rating = rating,
                     durationMs = gestureDurationMs,
                 )
-            }
-            when (rating) {
-                StudyRatings.AGAIN -> onFail()
-                StudyRatings.GOOD -> onPass()
+                submitReviewWithSwipeFeedback(swipeFeedback, rating) {
+                    submitReview("action-bar", rating)
+                }
+            } else {
+                swipeFeedback?.settleBack()
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.os.SystemClock
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
@@ -8,47 +9,78 @@ import dev.bee.kanjianki.core.FocusedStudyPlanPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyPlanSelectionPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
+import dev.bee.kanjianki.data.StudyStatsStore
 import java.util.Collections
+import java.util.Locale
 
 internal class MainActivityStudyPlanProvider(private val activity: MainActivityBase) {
     fun adaptivePlan(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        return adaptivePlan(
+            rows,
+            items,
+            now,
+            activity.store.studyStreak(now).currentDays,
+            activity.settings(),
+        )
+    }
+
+    /** Home already owns these values; accepting them avoids duplicate aggregate/settings reads. */
+    fun adaptivePlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        streakDays: Int,
+        settings: RecordsSyncModels.Settings,
     ): RecordsSchedulerModels.AdaptiveLoadPlan = withStudyLoadProbe("adaptivePlan") {
-        val reviewStats = withStudyLoadProbe("adaptivePlan.reviewStatsSince") {
-            activity.store.reviewStatsSince(now - MainActivityBase.DAY_MILLIS * 7)
+        val reviewStats = studyPlanPhase("review-stats") {
+            withStudyLoadProbe("adaptivePlan.reviewStatsSince") {
+                activity.store.reviewStatsSince(now - MainActivityBase.DAY_MILLIS * 7)
+            }
         }
-        val streakDays = withStudyLoadProbe("adaptivePlan.studyStreak") {
-            activity.store.studyStreak(now).currentDays
+        val studiedKanji = studyPlanPhase(
+            phase = "studied-kanji",
+            details = { values -> "rows=${values.size}" },
+        ) {
+            withStudyLoadProbe("adaptivePlan.studiedKanjiSince") {
+                activity.store.studiedKanjiSince(activity.startOfDay(now))
+            }
         }
-        val studiedKanji = withStudyLoadProbe("adaptivePlan.studiedKanjiSince") {
-            activity.store.studiedKanjiSince(activity.startOfDay(now))
+        val readingExposure = studyPlanPhase("reading-exposure") {
+            withStudyLoadProbe("adaptivePlan.readingExposureRead") {
+                ReadingExposureMediaReader().read()
+            }
         }
-        val readingExposure = withStudyLoadProbe("adaptivePlan.readingExposureRead") {
-            ReadingExposureMediaReader().read()
-        }
-        withStudyLoadProbe("adaptivePlan.plannerCompute") {
-            AdaptiveLoadPlanner().plan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                    rows,
-                    items,
-                    reviewStats,
-                    streakDays,
-                    studiedKanji,
-                    AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                        activity.store.adaptiveLoadWorkPercent(),
-                        activity.store.adaptiveLoadMode(),
-                        activity.store.adaptiveLoadMaxItems(),
-                    ),
-                    now,
-                )
-                    .settings(activity.settings())
-                    .readingExposure(readingExposure)
-                    .build()
+        val workload = studyPlanPhase("workload-settings") {
+            AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                activity.store.adaptiveLoadWorkPercent(),
+                activity.store.adaptiveLoadMode(),
+                activity.store.adaptiveLoadMaxItems(),
             )
+        }
+        studyPlanPhase("planner-compute") {
+            withStudyLoadProbe("adaptivePlan.plannerCompute") {
+                AdaptiveLoadPlanner().plan(
+                    AdaptiveLoadPlanner.PlanRequest.builder(
+                        rows,
+                        items,
+                        reviewStats,
+                        streakDays,
+                        studiedKanji,
+                        workload,
+                        now,
+                    )
+                        .settings(settings)
+                        .readingExposure(readingExposure)
+                        .build()
+                )
+            }
         }
     }
 
@@ -58,6 +90,17 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         now: Long,
     ): DailyStudyPlan {
         val streak = activity.store.studyStreak(now)
+        return dailyStudyPlan(rows, items, now, streak, activity.store.latestSuccessfulSyncFinishedAt())
+    }
+
+    /** Home already owns streak/sync status; accepting them avoids repeating the same queries. */
+    fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        streak: StudyStatsStore.StudyStreak,
+        lastSuccessfulSyncAtMillis: Long?,
+    ): DailyStudyPlan {
         return DailyStudyPlanPolicy.plan(
             DailyStudyPlanRequest(
                 nowMillis = now,
@@ -71,7 +114,7 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                     lastStudyAtMillis = streak.lastStudyAtMillis,
                 ),
                 newProblemKanjiAvailable = if (rows.isEmpty()) 0 else items.count { it.totalReviews == 0 },
-                lastSuccessfulSyncAtMillis = activity.store.latestSync()?.finishedAt,
+                lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
             ),
         )
     }
@@ -121,4 +164,45 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
             now,
         )
     }
+}
+
+/** Capture-gated release timings for adaptive-plan subphases. */
+internal fun <T> studyPlanPhase(
+    phase: String,
+    details: (T) -> String = { "" },
+    action: () -> T,
+): T {
+    if (!AppDebugLog.isCapturing()) {
+        return action()
+    }
+    val startedAtNanos = studyPlanMonotonicNanos()
+    return try {
+        val result = action()
+        val detail = details(result).trim()
+        AppDebugLog.log(
+            String.format(
+                Locale.US,
+                "study-plan phase=%s duration_ms=%.2f%s",
+                traceToken(phase),
+                (studyPlanMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+                if (detail.isEmpty()) "" else " $detail",
+            ),
+        )
+        result
+    } catch (error: Throwable) {
+        AppDebugLog.logError(
+            String.format(
+                Locale.US,
+                "study-plan phase=%s failed duration_ms=%.2f",
+                traceToken(phase),
+                (studyPlanMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+            ),
+            error,
+        )
+        throw error
+    }
+}
+
+private fun studyPlanMonotonicNanos(): Long {
+    return runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
 }

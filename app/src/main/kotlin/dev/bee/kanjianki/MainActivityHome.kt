@@ -1,18 +1,24 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
 import dev.bee.kanjianki.core.HomeImportOnboardingPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RepairedHandoffPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.StudyNowCountPolicy
+import dev.bee.kanjianki.core.StudySessionProgressTracker
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StatsPrecomputeStore
 import dev.bee.kanjianki.data.StudyStatsStore
@@ -22,6 +28,8 @@ import dev.bee.kanjianki.data.repairedWriteBackPreview
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.sync.SyncSettings
+import java.util.Locale
+import java.util.concurrent.RejectedExecutionException
 
 internal abstract class MainActivityHome : MainActivityBase() {
     // Written on the main thread and read from a background route-load lambda, so it is
@@ -35,6 +43,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     private val focusQueue by lazy { MainActivityHomeFocusQueue(this) }
     private val browseDetail by lazy { MainActivityHomeBrowseDetail(this) }
+    private val homeStudyPlanProvider by lazy { MainActivityStudyPlanProvider(this) }
     private val asyncHomeRouteLoader by lazy {
         AsyncHomeRouteLoader(
             background = io,
@@ -47,8 +56,20 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
             background = maintenance,
-            isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
-            refresh = { generatedAt -> StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt) },
+            // The maintenance executor can still be unwinding when Activity teardown closes
+            // the route store. Give stats work its own helper so an interrupted refresh never
+            // races that close and crashes the process with an already-closed database.
+            isFresh = {
+                LocalStore(applicationContext).use { statsStore ->
+                    StatsCacheStore(statsStore).hasFreshSnapshot()
+                }
+            },
+            refresh = { generatedAt ->
+                LocalStore(applicationContext).use { statsStore ->
+                    StatsPrecomputeStore(statsStore).refresh(generatedAtMillis = generatedAt)
+                }
+            },
+            onError = ::reportStatsPrecomputeError,
         )
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
@@ -82,72 +103,140 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
 
-    private fun buildHomeScreenModel(): HomeScreenModel {
+    private fun buildHomeScreenModel(): HomeScreenModel = homeLoadPhase(
+        phase = "total",
+        details = { model -> "preview_cards=${model.previewCards.size}" },
+    ) {
         val now = System.currentTimeMillis()
-        val sync = store.latestSync()
-        val streak = store.studyStreak(now)
-        val rows = store.activeDashboardRows()
-        val studyItems = if (rows.isEmpty()) emptyList() else store.studyItemsForKanji(rows.map { it.kanji })
-        val deckOverviewRows = if (rows.isEmpty()) {
-            emptyList()
-        } else {
-            HomeDeckOverviewPolicy.from(
-                studyItems = studyItems,
-                dashboardRows = rows,
-                nowMillis = now,
-                locallySuspendedKanji = store.locallySuspendedKanji(),
-            ).rows()
+        val sync = homeLoadPhase("latest-sync") { store.latestSync() }
+        val latestSuccessfulSyncAt = homeLoadPhase("latest-successful-sync") {
+            store.latestSuccessfulSyncFinishedAt()
+        }
+        val streak = homeLoadPhase("study-streak") { store.studyStreak(now) }
+        val settingsSnapshot = homeLoadPhase("settings") { settings() }
+        val rows = homeLoadPhase(
+            phase = "dashboard",
+            details = { loaded -> "rows=${loaded.size}" },
+        ) {
+            store.activeDashboardRows()
+        }
+        val studyItems = homeLoadPhase(
+            phase = "study-items",
+            details = { loaded -> "rows=${loaded.size}" },
+        ) {
+            if (rows.isEmpty()) emptyList() else store.studyItemsForKanji(rows.map { it.kanji })
+        }
+        val deckOverviewRows = homeLoadPhase(
+            phase = "deck-overview",
+            details = { loaded -> "rows=${loaded.size}" },
+        ) {
+            if (rows.isEmpty()) {
+                emptyList()
+            } else {
+                HomeDeckOverviewPolicy.from(
+                    studyItems = studyItems,
+                    dashboardRows = rows,
+                    nowMillis = now,
+                    locallySuspendedKanji = store.locallySuspendedKanji(),
+                ).rows()
+            }
         }
         val homeItems = studyItems
-        val dailyPlan = dailyStudyPlan(rows, homeItems, now)
-        val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
-        val entries = if (rows.isEmpty()) {
-            emptyList()
-        } else {
-            queuedEntries(rows, homeItems, now, homePlan)
+        val dailyPlan = homeLoadPhase("daily-plan") {
+            homeStudyPlanProvider.dailyStudyPlan(rows, homeItems, now, streak, latestSuccessfulSyncAt)
         }
-        val provider = gateway.status()
-        val matureSupportThreshold = settings().matureSupportThreshold
-        val studyRemaining = homePlan?.remaining?.coerceAtLeast(0) ?: 0
-        studySessionBadgeCount = studyRemaining
-
-        return HomeScreenModel(
-            title = HomeTextCopy.appTitle(),
-            subtitle = HomeTextCopy.appSubtitle(),
-            metrics = homeMetricModels(this, sync, provider, streak, homePlan, dailyPlan),
-            todayPlan = homeTodayPlanModel(dailyPlan, this::startFocusedStudy, this::confirmSync),
-            deckOverviewRows = deckOverviewRows,
-            showSyncCta = rows.isEmpty(),
-            syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
-            studyLabel = HomeTextCopy.studyNowLabel(),
-            onSync = this::confirmSync,
-            onStudy = this::startFocusedStudy,
-            actions = homeActionModels(this),
-            focusTitle = HomeTextCopy.focusQueueTitle(),
-            focusActionLabel = if (rows.isEmpty()) null else HomeTextCopy.viewAllLabel(),
-            onFocusAction = if (rows.isEmpty()) null else this::renderFocusQueue,
-            emptyTitle = when {
-                rows.isEmpty() -> HomeTextCopy.noKanjiQueuedTitle()
-                entries.isEmpty() -> HomeTextCopy.activePracticeEmptyTitle()
-                else -> null
-            },
-            emptyBody = when {
-                rows.isEmpty() -> HomeTextCopy.homeNoKanjiQueuedBody()
-                entries.isEmpty() -> HomeTextCopy.activePracticeEmptyBody()
-                else -> null
-            },
-            previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
-                homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
-            },
-            studyRemainingCount = studyRemaining,
-            repairedHandoff = RepairedHandoffPolicy.card(store.pendingRepairedHandoffKanji())?.let { card ->
+        val homePlan = homeLoadPhase("adaptive-plan") {
+            if (rows.isEmpty()) {
+                null
+            } else {
+                homeStudyPlanProvider.adaptivePlan(rows, homeItems, now, streak.currentDays, settingsSnapshot)
+            }
+        }
+        val studyNowCount = homeLoadPhase("study-now-count") {
+            val ladder = studyLadderSettings()
+            val studyItemCount = if (homePlan == null || rows.isEmpty()) {
+                0
+            } else {
+                StudyNowCountCoordinator.count(
+                    StudyNowCountCoordinator.Request(
+                        queue = StudyNowCountCoordinator.QueueInput(rows, homeItems, settingsSnapshot, ladder),
+                        timing = StudyNowCountCoordinator.Timing(now, startOfDay(now), studyAheadMillis()),
+                        mode = StudyNowCountCoordinator.Mode(homePlan, false),
+                        pipeline = StudyNowCountCoordinator.Pipeline(
+                            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+                            annotator = store::annotateSimilarKanjiAvailability,
+                            replanner = { seeded ->
+                                homeStudyPlanProvider.adaptivePlan(
+                                    rows,
+                                    seeded,
+                                    now,
+                                    streak.currentDays,
+                                    settingsSnapshot,
+                                )
+                            },
+                        ),
+                    ),
+                ).studyItemCount
+            }
+            val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+                store.dueSimilarWritingRepairs(now).map(StudySessionProgressTracker::similarRepairProgressKey)
+            } else {
+                emptyList()
+            }
+            StudyNowCountPolicy.includingAdditionalTaskKeys(studyItemCount, repairTaskKeys)
+        }
+        val entries = homeLoadPhase(
+            phase = "queue-entries",
+            details = { loaded -> "rows=${loaded.size}" },
+        ) {
+            if (rows.isEmpty()) emptyList() else queuedEntries(rows, homeItems, now, homePlan)
+        }
+        val provider = homeLoadPhase("provider-status") { gateway.status() }
+        val matureSupportThreshold = settingsSnapshot.matureSupportThreshold
+        val repairedHandoff = homeLoadPhase("repaired-handoff") {
+            RepairedHandoffPolicy.card(store.pendingRepairedHandoffKanji())?.let { card ->
                 HomeRepairedHandoffCardModel(
                     card = card,
                     onCopySearch = { copyRepairedAnkiSearch(card.search) },
                     onDismiss = ::dismissRepairedHandoffCard,
                 )
-            },
-        )
+            }
+        }
+
+        homeLoadPhase("model-assembly") {
+            studySessionBadgeCount = studyNowCount
+            HomeScreenModel(
+                title = HomeTextCopy.appTitle(),
+                subtitle = HomeTextCopy.appSubtitle(),
+                metrics = homeMetricModels(this, sync, provider, streak, homePlan, dailyPlan),
+                todayPlan = homeTodayPlanModel(dailyPlan, this::startFocusedStudy, this::confirmSync),
+                deckOverviewRows = deckOverviewRows,
+                showSyncCta = rows.isEmpty(),
+                syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
+                studyLabel = HomeTextCopy.studyNowLabel(),
+                onSync = this::confirmSync,
+                onStudy = this::startFocusedStudy,
+                actions = homeActionModels(this),
+                focusTitle = HomeTextCopy.focusQueueTitle(),
+                focusActionLabel = if (rows.isEmpty()) null else HomeTextCopy.viewAllLabel(),
+                onFocusAction = if (rows.isEmpty()) null else this::renderFocusQueue,
+                emptyTitle = when {
+                    rows.isEmpty() -> HomeTextCopy.noKanjiQueuedTitle()
+                    entries.isEmpty() -> HomeTextCopy.activePracticeEmptyTitle()
+                    else -> null
+                },
+                emptyBody = when {
+                    rows.isEmpty() -> HomeTextCopy.homeNoKanjiQueuedBody()
+                    entries.isEmpty() -> HomeTextCopy.activePracticeEmptyBody()
+                    else -> null
+                },
+                previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
+                    homeFocusQueueCardModel(this, entry, now, matureSupportThreshold)
+                },
+                studyRemainingCount = studyNowCount,
+                repairedHandoff = repairedHandoff,
+            )
+        }
     }
 
     private fun copyRepairedAnkiSearch(search: String) {
@@ -372,6 +461,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
+        studySessionBadgeCount = result.studyReadyCount.coerceAtLeast(0)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, result.adaptiveFocusText))
         if (result.adaptiveSummary.isNotEmpty()) {
@@ -568,8 +658,25 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun scheduleStatsPrecomputeIfStaleAsync() {
-        maintenance.execute {
-            scheduleStatsPrecomputeIfStale()
+        try {
+            maintenance.execute {
+                scheduleStatsPrecomputeIfStale()
+            }
+        } catch (error: RejectedExecutionException) {
+            reportStatsPrecomputeError(error)
+        }
+    }
+
+    private fun reportStatsPrecomputeError(error: Throwable) {
+        try {
+            android.util.Log.e("Kani", "Stats precompute failed", error)
+        } catch (_: RuntimeException) {
+            // Optional maintenance must stay isolated even if the platform logger fails.
+        }
+        try {
+            AppDebugLog.logError("stats precompute failed", error)
+        } catch (_: RuntimeException) {
+            // The debug-log executor can reject work during process teardown.
         }
     }
 
@@ -580,4 +687,45 @@ internal abstract class MainActivityHome : MainActivityBase() {
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?, customBackAction: Runnable?) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery, customBackAction)
     }
+}
+
+/** Capture-gated release timing for cold Home phases; the disabled path only invokes [action]. */
+internal fun <T> homeLoadPhase(
+    phase: String,
+    details: (T) -> String = { "" },
+    action: () -> T,
+): T {
+    if (!AppDebugLog.isCapturing()) {
+        return action()
+    }
+    val startedAtNanos = homeLoadMonotonicNanos()
+    return try {
+        val result = action()
+        val detail = details(result).trim()
+        AppDebugLog.log(
+            String.format(
+                Locale.US,
+                "home phase=%s duration_ms=%.2f%s",
+                traceToken(phase),
+                (homeLoadMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+                if (detail.isEmpty()) "" else " $detail",
+            ),
+        )
+        result
+    } catch (error: Throwable) {
+        AppDebugLog.logError(
+            String.format(
+                Locale.US,
+                "home phase=%s failed duration_ms=%.2f",
+                traceToken(phase),
+                (homeLoadMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+            ),
+            error,
+        )
+        throw error
+    }
+}
+
+private fun homeLoadMonotonicNanos(): Long {
+    return runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
 }

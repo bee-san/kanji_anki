@@ -1,11 +1,17 @@
 package dev.bee.kanjianki
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -113,5 +119,32 @@ class MainActivityShellImeUnitTest {
         }
 
         composeRule.onNodeWithTag("kani-bottom-nav").assertIsDisplayed()
+    }
+
+    @Test
+    fun contentRevisionResetsRouteLocalStateWithoutReinstallingTheShell() {
+        var contentKey by mutableIntStateOf(1)
+        var createdContentStates = 0
+
+        composeRule.setContent {
+            MainActivityRouteContent(
+                model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_STUDY),
+                navActions = navActions(),
+                imeVisible = false,
+                contentKey = contentKey,
+            ) {
+                val instance = remember { ++createdContentStates }
+                Text("route-instance-$instance")
+            }
+        }
+
+        composeRule.onNodeWithText("route-instance-1").assertIsDisplayed()
+        composeRule.onNodeWithTag("kani-bottom-nav").assertIsDisplayed()
+
+        composeRule.runOnIdle { contentKey += 1 }
+
+        composeRule.onNodeWithText("route-instance-2").assertIsDisplayed()
+        composeRule.onNodeWithTag("kani-bottom-nav").assertIsDisplayed()
+        composeRule.runOnIdle { assertEquals(2, createdContentStates) }
     }
 }

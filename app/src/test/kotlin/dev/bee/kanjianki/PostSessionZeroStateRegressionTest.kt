@@ -31,8 +31,8 @@ import org.robolectric.annotation.Config
  * Drives a complete session against a real [LocalStore] + [BridgeScheduler] +
  * [StudySessionTracker]: seed N focus cards, fail each once, then keep serving
  * the same-session learning repeats (PS1 learn-ahead) through their steps to
- * graduation. At the graduation instant the home-derived counts (adaptive plan
- * `remaining`, today plan `dueNow`, Study badge) all read 0 (PS2). Advancing
+ * graduation. At the graduation instant the timing-derived counts (adaptive plan
+ * `remaining`, today plan `dueNow`, Study badge fallback) all read 0 (PS2). Advancing
  * the clock past the graduated card's FSRS due time makes the counts non-zero
  * again, proving the zero-state is a timing behavior, not a suppressed count.
  */
@@ -198,9 +198,10 @@ class PostSessionZeroStateRegressionTest {
 
     private fun badgeFallback(plan: RecordsSchedulerModels.AdaptiveLoadPlan): Int {
         return studySessionBadgeCount(
+            studySessionActive = false,
             trackerTargetCount = 0,
             trackerCompletedCount = 0,
-            cachedPlanRemaining = plan.remaining.coerceAtLeast(0),
+            cachedStudyNowCount = plan.remaining.coerceAtLeast(0),
         )
     }
 

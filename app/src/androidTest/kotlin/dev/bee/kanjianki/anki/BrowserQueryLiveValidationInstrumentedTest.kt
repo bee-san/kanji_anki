@@ -73,11 +73,12 @@ class BrowserQueryLiveValidationInstrumentedTest {
     }
 
     private fun assertLiveFixtureSnapshot(snapshot: RecordsSyncModels.CollectionSnapshot) {
-        assertEquals(2, snapshot.notes.size)
-        assertEquals(2, snapshot.cards.size)
-        assertTrue(
-            "active query card should be marked by the real Browser query",
-            cardForNote(snapshot, 1700000000002L).browserQueryMatched,
+        assertEquals(4, snapshot.notes.size)
+        assertEquals(4, snapshot.cards.size)
+        assertEquals(
+            "only the tagged bridge card should be marked by the real Browser query",
+            setOf(1700000000002L),
+            snapshot.cards.filter { it.browserQueryMatched }.map { it.noteId }.toSet(),
         )
         assertFalse(
             "suspended card must not match the Browser query",

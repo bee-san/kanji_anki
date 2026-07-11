@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.os.SystemClock
 import android.util.Log
 import dev.bee.kanjianki.core.ReadingExposureModels
 import org.json.JSONArray
@@ -7,6 +8,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import java.util.zip.GZIPInputStream
 
 internal class ReadingExposureMediaReader(
@@ -18,18 +20,30 @@ internal class ReadingExposureMediaReader(
         // multi-megabyte gzip on real collections, so re-reading + gunzipping + JSON-parsing it
         // every time is pure wasted main-thread work. Memoize by file identity (path + mtime +
         // size) so we only re-parse when the media file actually changes.
-        val fingerprint = fingerprint(mediaDirs)
-        synchronized(CACHE_LOCK) {
-            if (cachedFingerprint != null && cachedFingerprint == fingerprint) {
-                cachedIndex?.let { return it }
+        var source = "uncached"
+        return readingExposurePhase(
+            phase = "total",
+            details = { "source=$source" },
+        ) {
+            val fingerprint = readingExposurePhase("fingerprint") { fingerprint(mediaDirs) }
+            val cached = synchronized(CACHE_LOCK) {
+                if (cachedFingerprint != null && cachedFingerprint == fingerprint) {
+                    cachedIndex
+                } else {
+                    null
+                }
             }
+            if (cached != null) {
+                source = "cache"
+                return@readingExposurePhase cached
+            }
+            val index = readingExposurePhase("uncached") { readUncached() }
+            synchronized(CACHE_LOCK) {
+                cachedFingerprint = fingerprint
+                cachedIndex = index
+            }
+            index
         }
-        val index = readUncached()
-        synchronized(CACHE_LOCK) {
-            cachedFingerprint = fingerprint
-            cachedIndex = index
-        }
-        return index
     }
 
     private fun readUncached(): ReadingExposureModels.ExposureIndex {
@@ -80,10 +94,18 @@ internal class ReadingExposureMediaReader(
                 continue
             }
             try {
-                val manifestJson = JSONObject(manifest.readText(Charsets.UTF_8))
+                val manifestJson = readingExposurePhase("manifest-read") {
+                    JSONObject(manifest.readText(Charsets.UTF_8))
+                }
                 val kanjiFile = manifestJson.optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
                 val statsJson = readStatsText(File(dir, kanjiFile))
-                return ReadingExposureModels.ExposureIndex(parseKanjiStats(statsJson))
+                val stats = readingExposurePhase(
+                    phase = "parse",
+                    details = { parsed -> "rows=${parsed.size}" },
+                ) {
+                    parseKanjiStats(statsJson)
+                }
+                return ReadingExposureModels.ExposureIndex(stats)
             } catch (error: IOException) {
                 Log.w(TAG, "Could not read optional reading exposure media.", error)
             } catch (error: RuntimeException) {
@@ -94,12 +116,19 @@ internal class ReadingExposureMediaReader(
     }
 
     private fun readStatsText(file: File): String {
-        if (file.name.endsWith(".gz")) {
-            return GZIPInputStream(file.inputStream()).use { stream ->
-                String(stream.readBytes(), StandardCharsets.UTF_8)
+        val phase = if (file.name.endsWith(".gz")) "gzip-read" else "plain-read"
+        return readingExposurePhase(
+            phase = phase,
+            details = { text -> "source_bytes=${file.length()} decoded_chars=${text.length}" },
+        ) {
+            if (file.name.endsWith(".gz")) {
+                GZIPInputStream(file.inputStream()).use { stream ->
+                    String(stream.readBytes(), StandardCharsets.UTF_8)
+                }
+            } else {
+                file.readText(Charsets.UTF_8)
             }
         }
-        return file.readText(Charsets.UTF_8)
     }
 
     companion object {
@@ -166,4 +195,48 @@ internal class ReadingExposureMediaReader(
         val manifestFile: String,
         val defaultKanjiFile: String,
     )
+}
+
+/** Capture-gated release timings for external-media fingerprint/read/parse work. */
+internal fun <T> readingExposurePhase(
+    phase: String,
+    details: (T) -> String = { "" },
+    action: () -> T,
+): T {
+    if (!AppDebugLog.isCapturing()) {
+        return action()
+    }
+    val startedAtNanos = readingExposureMonotonicNanos()
+    return try {
+        val result = action()
+        val detail = details(result).trim()
+        AppDebugLog.log(
+            String.format(
+                Locale.US,
+                "reading-exposure phase=%s duration_ms=%.2f%s",
+                traceToken(phase),
+                (readingExposureMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+                if (detail.isEmpty()) "" else " $detail",
+            ),
+        )
+        result
+    } catch (error: Throwable) {
+        // Optional-media parser exceptions can embed the source JSON or filesystem path in their
+        // message. The debug log is user-shareable, so record only the phase and exception type;
+        // do not serialize the message or stack on this measured route thread.
+        AppDebugLog.log(
+            String.format(
+                Locale.US,
+                "reading-exposure phase=%s failed duration_ms=%.2f error_type=%s",
+                traceToken(phase),
+                (readingExposureMonotonicNanos() - startedAtNanos) / 1_000_000.0,
+                traceToken(error.javaClass.simpleName),
+            ),
+        )
+        throw error
+    }
+}
+
+private fun readingExposureMonotonicNanos(): Long {
+    return runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
 }

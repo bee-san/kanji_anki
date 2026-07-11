@@ -1,7 +1,11 @@
 package dev.bee.kanjianki
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -177,6 +181,76 @@ class ReadingExposureMediaReaderTest {
 
         val refreshed = ReadingExposureMediaReader(listOf(media)).read()
         assertEquals(77, refreshed.statFor("山")?.totalCount)
+    }
+
+    @Test
+    fun debugLogSeparatesFingerprintReadParseAndCacheHitPhases() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logFile = File(context.filesDir, "kani-debug.log")
+        val media = temporaryFolder.newFolder("logged.media")
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"schemaVersion":1,"kanjiFile":"${ReadingExposureMediaReader.DEFAULT_KANJI_FILE}"}""",
+            Charsets.UTF_8,
+        )
+        gzip(
+            File(media, ReadingExposureMediaReader.DEFAULT_KANJI_FILE),
+            """{"kanji":[{"kanji":"速","totalCount":9,"last7DaysCount":2}]}""",
+        )
+
+        try {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+            AppDebugLog.setEnabled(context, true)
+
+            val reader = ReadingExposureMediaReader(listOf(media))
+            reader.read()
+            reader.read()
+            AppDebugLog.resetForTests()
+
+            val text = logFile.readText()
+            assertTrue(text.contains("reading-exposure phase=fingerprint"))
+            assertTrue(text.contains("reading-exposure phase=manifest-read"))
+            assertTrue(text.contains("reading-exposure phase=gzip-read"))
+            assertTrue(text.contains("reading-exposure phase=parse"))
+            assertTrue(text.contains("reading-exposure phase=total"))
+            assertTrue(text.contains("source=cache"))
+        } finally {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+        }
+    }
+
+    @Test
+    fun debugFailureLogIsBoundedAndOmitsExceptionPayloadAndStack() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logFile = File(context.filesDir, "kani-debug.log")
+        val privatePayload = "private-reading-exposure-payload-" + "x".repeat(100_000)
+
+        try {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+            AppDebugLog.setEnabled(context, true)
+
+            try {
+                readingExposurePhase("parse") {
+                    throw IllegalArgumentException(privatePayload)
+                }
+                fail("phase should rethrow the parser failure")
+            } catch (_: IllegalArgumentException) {
+                // Expected: diagnostics must not change the optional-media failure contract.
+            }
+            AppDebugLog.resetForTests()
+
+            val text = logFile.readText()
+            assertTrue(text.contains("reading-exposure phase=parse failed"))
+            assertTrue(text.contains("error_type=illegalargumentexception"))
+            assertFalse(text.contains("private-reading-exposure-payload"))
+            assertFalse(text.contains("ReadingExposureMediaReaderTest.debugFailureLog"))
+            assertTrue("failure diagnostics stay bounded", text.length < 2_000)
+        } finally {
+            AppDebugLog.resetForTests()
+            logFile.delete()
+        }
     }
 
     private fun gzip(file: File, text: String) {
