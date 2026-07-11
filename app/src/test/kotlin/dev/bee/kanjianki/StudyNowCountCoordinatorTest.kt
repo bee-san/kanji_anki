@@ -83,18 +83,12 @@ class StudyNowCountCoordinatorTest {
         replanner: StudyNowCountCoordinator.SeededPlanProvider,
     ): StudyNowCountCoordinator.Result {
         return StudyNowCountCoordinator.count(
-            rows = rows,
-            currentItems = currentItems,
-            settings = settings,
-            nowMillis = now,
-            startOfDayMillis = now - 12 * 60 * 60_000L,
-            studyAheadMillis = 0L,
-            initialPlan = initialPlan,
-            continueAllKanjiSession = false,
-            ladder = ladder,
-            scheduler = BridgeScheduler(),
-            annotator = { it },
-            replanner = replanner,
+            StudyNowCountCoordinator.Request(
+                queue = StudyNowCountCoordinator.QueueInput(rows, currentItems, settings, ladder),
+                timing = StudyNowCountCoordinator.Timing(now, now - 12 * 60 * 60_000L, 0L),
+                mode = StudyNowCountCoordinator.Mode(initialPlan, false),
+                pipeline = StudyNowCountCoordinator.Pipeline(BridgeScheduler(), { it }, replanner),
+            ),
         )
     }
 

@@ -158,26 +158,24 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 0
             } else {
                 StudyNowCountCoordinator.count(
-                    rows = rows,
-                    currentItems = homeItems,
-                    settings = settingsSnapshot,
-                    nowMillis = now,
-                    startOfDayMillis = startOfDay(now),
-                    studyAheadMillis = studyAheadMillis(),
-                    initialPlan = homePlan,
-                    continueAllKanjiSession = false,
-                    ladder = ladder,
-                    scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
-                    annotator = store::annotateSimilarKanjiAvailability,
-                    replanner = { seeded ->
-                        homeStudyPlanProvider.adaptivePlan(
-                            rows,
-                            seeded,
-                            now,
-                            streak.currentDays,
-                            settingsSnapshot,
-                        )
-                    },
+                    StudyNowCountCoordinator.Request(
+                        queue = StudyNowCountCoordinator.QueueInput(rows, homeItems, settingsSnapshot, ladder),
+                        timing = StudyNowCountCoordinator.Timing(now, startOfDay(now), studyAheadMillis()),
+                        mode = StudyNowCountCoordinator.Mode(homePlan, false),
+                        pipeline = StudyNowCountCoordinator.Pipeline(
+                            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+                            annotator = store::annotateSimilarKanjiAvailability,
+                            replanner = { seeded ->
+                                homeStudyPlanProvider.adaptivePlan(
+                                    rows,
+                                    seeded,
+                                    now,
+                                    streak.currentDays,
+                                    settingsSnapshot,
+                                )
+                            },
+                        ),
+                    ),
                 ).studyItemCount
             }
             val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {

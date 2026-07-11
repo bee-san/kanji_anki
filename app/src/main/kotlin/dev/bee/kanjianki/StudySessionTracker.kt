@@ -43,31 +43,53 @@ internal class StudySessionTracker {
     }
 
     fun initializeSessionPlan(taskKeys: List<String>?) = synchronized(lock) {
-        val normalized = ArrayList<String>()
-        for (key in taskKeys.orEmpty()) {
-            if (key.isNotEmpty() && !normalized.contains(key)) {
-                normalized.add(key)
-            }
-        }
-
-        val currentTaskKeys = normalized.toHashSet()
-        val reconciled = ArrayList<String>()
-        for (key in plannedSessionTaskKeys) {
-            if (isCompletedPlannedSessionTaskKeyLocked(key) || currentTaskKeys.contains(key)) {
-                reconciled.add(key)
-            }
-        }
-        for (key in normalized) {
-            if (!isCompletedPlannedSessionTaskKeyLocked(key) && !reconciled.contains(key)) {
-                reconciled.add(key)
-            }
-        }
-
+        val normalized = normalizeSessionTaskKeys(taskKeys)
+        val reconciled = reconcileSessionTaskKeys(normalized)
         plannedSessionTaskKeys.clear()
         plannedSessionTaskKeys.addAll(reconciled)
         progressTracker.setTargetCount(
             progressTracker.completedCount() + pendingPlannedSessionTaskKeysLocked().size,
         )
+    }
+
+    private fun normalizeSessionTaskKeys(taskKeys: List<String>?): List<String> {
+        val normalized = LinkedHashSet<String>()
+        for (key in taskKeys.orEmpty()) {
+            if (key.isNotEmpty()) {
+                normalized.add(key)
+            }
+        }
+        return normalized.toList()
+    }
+
+    private fun reconcileSessionTaskKeys(normalized: List<String>): List<String> {
+        val currentTaskKeys = normalized.toHashSet()
+        val reconciled = ArrayList<String>()
+        retainCompletedAndCurrentTaskKeys(currentTaskKeys, reconciled)
+        appendNewPendingTaskKeys(normalized, reconciled)
+        return reconciled
+    }
+
+    private fun retainCompletedAndCurrentTaskKeys(
+        currentTaskKeys: Set<String>,
+        reconciled: MutableList<String>,
+    ) {
+        for (key in plannedSessionTaskKeys) {
+            if (isCompletedPlannedSessionTaskKeyLocked(key) || currentTaskKeys.contains(key)) {
+                reconciled.add(key)
+            }
+        }
+    }
+
+    private fun appendNewPendingTaskKeys(
+        normalized: List<String>,
+        reconciled: MutableList<String>,
+    ) {
+        for (key in normalized) {
+            if (!isCompletedPlannedSessionTaskKeyLocked(key) && !reconciled.contains(key)) {
+                reconciled.add(key)
+            }
+        }
     }
 
     fun nextPlannedSessionTaskKey(): String = synchronized(lock) {

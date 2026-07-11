@@ -10,52 +10,78 @@ import dev.bee.kanjianki.core.StudyNowCountPolicy
 
 /** Dry-runs the same seed, annotate, replan, and select pipeline as the Study route. */
 internal object StudyNowCountCoordinator {
-    fun count(
-        rows: List<RecordsImportModels.DashboardRow>,
-        currentItems: List<RecordsStudyModels.StudyItem>,
-        settings: RecordsSyncModels.Settings,
-        nowMillis: Long,
-        startOfDayMillis: Long,
-        studyAheadMillis: Long,
-        initialPlan: RecordsSchedulerModels.AdaptiveLoadPlan?,
-        continueAllKanjiSession: Boolean,
-        ladder: RecordsBase.StudyLadderSettings,
-        scheduler: BridgeScheduler,
-        annotator: QueueAnnotator,
-        replanner: SeededPlanProvider,
-    ): Result {
-        if (initialPlan == null || rows.isEmpty()) {
-            return Result(0, initialPlan)
+    fun count(request: Request): Result {
+        val queue = request.queue
+        val mode = request.mode
+        val timing = request.timing
+        val pipeline = request.pipeline
+        if (mode.initialPlan == null || queue.rows.isEmpty()) {
+            return Result(0, mode.initialPlan)
         }
-        val seeded = scheduler.seedQueue(
-            rows,
-            currentItems,
-            settings,
-            nowMillis,
-            startOfDayMillis,
-            initialPlan,
-            ladder,
+        val seeded = pipeline.scheduler.seedQueue(
+            queue.rows,
+            queue.currentItems,
+            queue.settings,
+            timing.nowMillis,
+            timing.startOfDayMillis,
+            mode.initialPlan,
+            queue.ladder,
         )
-        val annotated = annotator.annotate(seeded)
-        val effectivePlan = if (StudyItemComparators.sameStudyQueue(currentItems, annotated)) {
-            initialPlan
+        val annotated = pipeline.annotator.annotate(seeded)
+        val effectivePlan = if (StudyItemComparators.sameStudyQueue(queue.currentItems, annotated)) {
+            mode.initialPlan
         } else {
-            replanner.planForSeededItems(annotated)
+            pipeline.replanner.planForSeededItems(annotated)
         }
         return Result(
             StudyNowCountPolicy.countSeeded(
-                annotated,
-                rows,
-                settings,
-                nowMillis,
-                studyAheadMillis,
-                effectivePlan,
-                continueAllKanjiSession,
-                ladder,
+                StudyNowCountPolicy.SeededCountRequest(
+                    annotated,
+                    queue.rows,
+                    queue.settings,
+                    StudyNowCountPolicy.SelectionContext(
+                        timing.nowMillis,
+                        timing.studyAheadMillis,
+                        effectivePlan,
+                        mode.continueAllKanjiSession,
+                        queue.ladder,
+                    ),
+                ),
             ),
             effectivePlan,
         )
     }
+
+    data class Request(
+        val queue: QueueInput,
+        val timing: Timing,
+        val mode: Mode,
+        val pipeline: Pipeline,
+    )
+
+    data class QueueInput(
+        val rows: List<RecordsImportModels.DashboardRow>,
+        val currentItems: List<RecordsStudyModels.StudyItem>,
+        val settings: RecordsSyncModels.Settings,
+        val ladder: RecordsBase.StudyLadderSettings,
+    )
+
+    data class Timing(
+        val nowMillis: Long,
+        val startOfDayMillis: Long,
+        val studyAheadMillis: Long,
+    )
+
+    data class Mode(
+        val initialPlan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        val continueAllKanjiSession: Boolean,
+    )
+
+    data class Pipeline(
+        val scheduler: BridgeScheduler,
+        val annotator: QueueAnnotator,
+        val replanner: SeededPlanProvider,
+    )
 
     fun interface QueueAnnotator {
         fun annotate(items: List<RecordsStudyModels.StudyItem>): List<RecordsStudyModels.StudyItem>

@@ -194,15 +194,19 @@ class StudyNowCountPolicyTest {
         continueAllKanjiSession: Boolean = false,
     ): Int {
         return StudyNowCountPolicy.count(
-            rows,
-            items,
-            settings,
-            now,
-            now - 12 * 60 * 60_000L,
-            studyAheadMillis,
-            plan,
-            continueAllKanjiSession,
-            ladder,
+            StudyNowCountPolicy.CountRequest(
+                rows = rows,
+                currentItems = items,
+                settings = settings,
+                startOfDayMillis = now - 12 * 60 * 60_000L,
+                selection = StudyNowCountPolicy.SelectionContext(
+                    nowMillis = now,
+                    studyAheadMillis = studyAheadMillis,
+                    plan = plan,
+                    continueAllKanjiSession = continueAllKanjiSession,
+                    ladder = ladder,
+                ),
+            ),
         )
     }
 

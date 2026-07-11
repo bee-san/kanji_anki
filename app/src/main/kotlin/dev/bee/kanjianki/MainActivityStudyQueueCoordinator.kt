@@ -74,14 +74,18 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         val studyItemCount = withStudyLoadProbe("studyNowCount") {
             StudyNowCountPolicy.countSeeded(
-                seeded,
-                rows,
-                settings,
-                now,
-                studyAheadMillis,
-                seededPlan,
-                study.continueAllKanjiSession,
-                ladder,
+                StudyNowCountPolicy.SeededCountRequest(
+                    seededItems = seeded,
+                    rows = rows,
+                    settings = settings,
+                    selection = StudyNowCountPolicy.SelectionContext(
+                        nowMillis = now,
+                        studyAheadMillis = studyAheadMillis,
+                        plan = seededPlan,
+                        continueAllKanjiSession = study.continueAllKanjiSession,
+                        ladder = ladder,
+                    ),
+                ),
             )
         }
         refreshSessionBadgeCount(studyNowCount(studyItemCount, dueRepairs))
@@ -163,14 +167,18 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val settings = study.settings()
         val scheduler = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
         val generalStudyItemCount = StudyNowCountPolicy.countSeeded(
-            seeded,
-            rows,
-            settings,
-            now,
-            study.studyAheadMillis(),
-            study.activeStudyPlan,
-            study.continueAllKanjiSession,
-            ladder,
+            StudyNowCountPolicy.SeededCountRequest(
+                seededItems = seeded,
+                rows = rows,
+                settings = settings,
+                selection = StudyNowCountPolicy.SelectionContext(
+                    nowMillis = now,
+                    studyAheadMillis = study.studyAheadMillis(),
+                    plan = study.activeStudyPlan,
+                    continueAllKanjiSession = study.continueAllKanjiSession,
+                    ladder = ladder,
+                ),
+            ),
         )
         val dueRepairs = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
             study.store.dueSimilarWritingRepairs(now)

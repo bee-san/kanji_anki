@@ -376,18 +376,20 @@ internal class ManualSyncEngine {
         }
         val ladder = store.studyLadderSettings()
         val studyNow = StudyNowCountCoordinator.count(
-            rows = activeRows,
-            currentItems = postSyncItems,
-            settings = settings,
-            nowMillis = countedAt,
-            startOfDayMillis = startOfDay(countedAt),
-            studyAheadMillis = store.studyAheadMinutes() * 60_000L,
-            initialPlan = postSyncPlan,
-            continueAllKanjiSession = false,
-            ladder = ladder,
-            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
-            annotator = store::annotateSimilarKanjiAvailability,
-            replanner = { seeded -> adaptivePlan(activeRows, seeded, countedAt) },
+            StudyNowCountCoordinator.Request(
+                queue = StudyNowCountCoordinator.QueueInput(activeRows, postSyncItems, settings, ladder),
+                timing = StudyNowCountCoordinator.Timing(
+                    countedAt,
+                    startOfDay(countedAt),
+                    store.studyAheadMinutes() * 60_000L,
+                ),
+                mode = StudyNowCountCoordinator.Mode(postSyncPlan, false),
+                pipeline = StudyNowCountCoordinator.Pipeline(
+                    scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+                    annotator = store::annotateSimilarKanjiAvailability,
+                    replanner = { seeded -> adaptivePlan(activeRows, seeded, countedAt) },
+                ),
+            ),
         )
         val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
             store.dueSimilarWritingRepairs(countedAt)
