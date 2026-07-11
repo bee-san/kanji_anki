@@ -60,7 +60,13 @@ internal object StudyItemComparators {
             current.realAgainStreak == annotated.realAgainStreak &&
             current.lastRealReviewDueAtMillis == annotated.lastRealReviewDueAtMillis &&
             current.hasSimilarKanji == annotated.hasSimilarKanji &&
-            sameTaskMemory(current.similarKanjiMemory, annotated.similarKanjiMemory)
+            sameTaskMemory(current.similarKanjiMemory, annotated.similarKanjiMemory) &&
+            current.hasKanjiReading == annotated.hasKanjiReading &&
+            sameTaskMemory(current.kanjiReadingMemory, annotated.kanjiReadingMemory) &&
+            current.hasReadingKanji == annotated.hasReadingKanji &&
+            sameTaskMemory(current.readingKanjiMemory, annotated.readingKanjiMemory) &&
+            current.hasSentenceReading == annotated.hasSentenceReading &&
+            sameTaskMemory(current.sentenceReadingMemory, annotated.sentenceReadingMemory)
     }
 
     private fun sameTaskMemory(

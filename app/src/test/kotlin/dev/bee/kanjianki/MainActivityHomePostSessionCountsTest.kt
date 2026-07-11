@@ -15,10 +15,10 @@ import org.junit.Test
 /**
  * PS2 regression at the home-derivation layer: right after a session the focus
  * kanji are all in `studiedToday` and their study items sit in `learning` due a
- * few minutes out. The three home-derived counts — the adaptive plan
- * `remaining` (home CTA / focus metric), the Study nav badge fallback, and the
- * today plan `dueNow` — must all read 0 until the learning step delays elapse,
- * then reappear once `now` passes those due times.
+ * few minutes out. The focus metric, Study nav badge fallback, and today plan
+ * `dueNow` must all read 0 until the learning step delays elapse, then reappear
+ * once `now` passes those due times. The Study-now CTA's stricter selector-parity
+ * count is covered by `StudyNowCountPolicyTest`.
  *
  * These exercise the exact core policies `MainActivityStudyPlanProvider` drives
  * (`AdaptiveLoadPlanner`, `DailyStudyPlanPolicy`) plus `studySessionBadgeCount`.
@@ -62,14 +62,15 @@ class MainActivityHomePostSessionCountsTest {
         studiedToday: Set<String>,
         nowMillis: Long,
     ): Int {
-        // Post-session there is no in-flight tracker (target 0), so the badge
-        // falls back to the cached adaptive-plan remaining, exactly as
-        // MainActivityHome caches it.
+        // Post-session there is no active card, so the badge uses its cached count.
+        // In this focused timing fixture that count equals plan.remaining; seeding,
+        // cap, and selector differences are isolated in StudyNowCountPolicyTest.
         val cachedPlanRemaining = plan(rows, items, studiedToday, nowMillis).remaining.coerceAtLeast(0)
         return studySessionBadgeCount(
+            studySessionActive = false,
             trackerTargetCount = 0,
             trackerCompletedCount = 0,
-            cachedPlanRemaining = cachedPlanRemaining,
+            cachedStudyNowCount = cachedPlanRemaining,
         )
     }
 

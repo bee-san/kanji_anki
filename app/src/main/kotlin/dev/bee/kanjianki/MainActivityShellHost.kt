@@ -11,21 +11,29 @@ import java.util.Locale
 
 /**
  * Cards remaining in the user's focus study session, shown on the Study nav badge.
- * While a run is in flight (a target exists and is not yet met) the live session
- * tracker is the source of truth, so the badge decreases with every answered card.
- * Otherwise the latest adaptive-plan `remaining` cached by the background route
- * loads is used. Non-positive results mean "hide the badge".
+ * While a study card has unfinished unique session work, the live tracker is the
+ * source of truth, so the badge decreases with every answered card. Practice-only
+ * learn-ahead repeats do not grow that unique-card count. Otherwise the exact
+ * selectable Study-now count cached by the Home/Study route load is used. Checking
+ * the active card explicitly prevents a stale plan target from surviving on an empty
+ * Study screen. Non-positive results mean "hide the badge".
  */
 internal fun studySessionBadgeCount(
+    studySessionActive: Boolean,
     trackerTargetCount: Int,
     trackerCompletedCount: Int,
-    cachedPlanRemaining: Int,
+    cachedStudyNowCount: Int,
 ): Int {
-    if (trackerTargetCount > 0 && trackerCompletedCount < trackerTargetCount) {
+    if (studySessionActive && trackerTargetCount > 0 && trackerCompletedCount < trackerTargetCount) {
         return trackerTargetCount - trackerCompletedCount
     }
-    return cachedPlanRemaining
+    return cachedStudyNowCount
 }
+
+internal fun shouldStartNewStudyRunFromNavigation(
+    studySessionActive: Boolean,
+    currentRunAtHardCap: Boolean,
+): Boolean = !studySessionActive && currentRunAtHardCap
 
 internal class MainActivityShellHost(
     private val activity: MainActivityBase,
@@ -63,7 +71,7 @@ internal class MainActivityShellHost(
                     model = shellModel(selected, scrollPositionLabel, studySessionActive),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
-                    navActions = navActions(),
+                    navActions = navActions(studySessionActive),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,
                     content = content,
@@ -98,7 +106,7 @@ internal class MainActivityShellHost(
                     model = shellModel(selected, scrollPositionLabel, studySessionActive),
                     initialScrollY = initialScrollY,
                     onScrollY = onScrollY,
-                    navActions = navActions(),
+                    navActions = navActions(studySessionActive),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,
                     content = content,
@@ -117,7 +125,7 @@ internal class MainActivityShellHost(
         return MainActivityShellModel(
             selectedRoute = selected,
             scrollPositionLabel = scrollPositionLabel,
-            studyBadgeCount = studyBadgeCount(),
+            studyBadgeCount = studyBadgeCount(studySessionActive),
             studyCardKeyboardResident = studyCardKeyboardResident(selected),
             studySessionActive = studySessionActive,
         )
@@ -214,19 +222,33 @@ internal class MainActivityShellHost(
             !activity.flashcardAnswerRevealed
     }
 
-    private fun studyBadgeCount(): Int? {
+    private fun studyBadgeCount(studySessionActive: Boolean): Int? {
         val tracker = activity.studySessionTracker
         return studySessionBadgeCount(
+            studySessionActive = studySessionActive,
             trackerTargetCount = tracker.targetCount(),
             trackerCompletedCount = tracker.completedCount(),
-            cachedPlanRemaining = activity.studySessionBadgeCount,
+            cachedStudyNowCount = activity.studySessionBadgeCount,
         ).takeIf { it > 0 }
     }
 
-    private fun navActions(): KaniNavActions {
+    private fun navActions(studySessionActive: Boolean): KaniNavActions {
         return KaniNavActions(
             onHome = { activity.renderHome() },
-            onStudy = { activity.renderStudy() },
+            onStudy = {
+                if (
+                    shouldStartNewStudyRunFromNavigation(
+                        studySessionActive = studySessionActive,
+                        currentRunAtHardCap = activity.studySessionTracker.atHardCap(
+                            activity.continueAllKanjiSession,
+                        ),
+                    )
+                ) {
+                    activity.startFocusedStudy()
+                } else {
+                    activity.renderStudy()
+                }
+            },
             onStats = { activity.renderStats() },
             onSettings = { activity.renderSettings() },
         )

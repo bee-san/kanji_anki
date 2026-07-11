@@ -145,12 +145,13 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardSwipeFeedback: StudySwipeFeedbackState? = null
 
     /**
-     * Cards remaining in the user's current/next focus session (the adaptive plan's
-     * `remaining`), used for the Study badge in the bottom nav and the count on the
-     * home Study-now card. While a study run is in flight the shell prefers the live
-     * session tracker instead of this cached value. Negative means unknown (not yet
-     * computed for this process). Written from background route loads and read on
-     * the main thread, so it is volatile.
+     * Exact selectable tasks in the user's current/next focus session, used for the
+     * Study badge in the bottom nav and the count on the home Study-now card. This is
+     * intentionally narrower than the adaptive plan's daily-focus `remaining` value.
+     * While a study card is active the shell prefers the live session tracker instead
+     * of this cache. Negative means unknown (not yet computed for this process).
+     * Written from background route loads and read on the main thread, so it is
+     * volatile.
      */
     @JvmField
     @Volatile

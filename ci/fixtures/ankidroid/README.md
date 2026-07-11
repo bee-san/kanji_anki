@@ -4,8 +4,10 @@ The GitHub Actions instrumented workflow generates a tiny deterministic Kiku
 `.anki2` collection with `ci/scripts/create_ankidroid_kiku_fixture.py` instead
 of checking in private user data.
 
-The fixture is intentionally small. The live instrumentation suite passes
-`kanjiLiveMinimumNotes=1` in CI. Local release testing against the copied user
-collection must omit that argument so the default 7,000-note threshold remains
-in force. See `docs/local-ankidroid-provider-testing.md` for the local emulator
-wrapper, diagnostics, and real-collection privacy policy.
+The fixture is intentionally small: one suspended `箱` card plus active weak
+`橋・箸・端` cards whose shared `はし` reading exercises the conditional
+reading-to-kanji rung through the real provider. The live instrumentation suite
+passes `kanjiLiveMinimumNotes=1` in CI. Local release testing against the copied
+user collection must omit that argument so the default 7,000-note threshold
+remains in force. See `docs/local-ankidroid-provider-testing.md` for the local
+emulator wrapper, diagnostics, and real-collection privacy policy.
