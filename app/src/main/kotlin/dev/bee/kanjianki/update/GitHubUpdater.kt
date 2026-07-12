@@ -17,6 +17,7 @@ import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.ReleaseVersion
 import dev.bee.kanjianki.updatecore.Sha256Digest
+import dev.bee.kanjianki.updatecore.SigningCertificateInfo
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator
 import dev.bee.kanjianki.updatecore.UpdateCacheFilePolicy
 import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector
@@ -192,8 +193,8 @@ class GitHubUpdater @JvmOverloads constructor(
     }
 
     /**
-     * Verify the downloaded APK is signed by the same certificate(s) as the running
-     * app before committing the install. If the release account/pipeline is
+     * Verify the downloaded APK has a signer set or verified rotation history
+     * compatible with the running app before committing the install. If the release account/pipeline is
      * compromised, both the APK and its .sha256 are attacker-controlled; Android would
      * reject a mismatched signature at commit time, but failing fast here lets callers
      * clear the pending state so a hostile/broken APK is not retried on every onResume.
@@ -291,7 +292,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
         fun inspectApk(apkFile: File): ApkMetadata
 
-        fun installedSigningCertificates(packageName: String): List<ByteArray>
+        fun installedSigningCertificates(packageName: String): SigningCertificateInfo
 
         fun canRequestPackageInstalls(): Boolean
 
@@ -406,7 +407,7 @@ class GitHubUpdater @JvmOverloads constructor(
             return metadataFromPackageInfo(info)
         }
 
-        override fun installedSigningCertificates(packageName: String): List<ByteArray> {
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo {
             return GitHubUpdater.installedSigningCertificates(context.packageManager, packageName)
         }
 
@@ -480,7 +481,7 @@ class GitHubUpdater @JvmOverloads constructor(
         @JvmField val packageName: String,
         @JvmField val versionName: String,
         @JvmField val targetSdkVersion: Int = 0,
-        @JvmField val signingCertificates: List<ByteArray> = emptyList(),
+        @JvmField val signingCertificates: SigningCertificateInfo = SigningCertificateInfo.unavailable(),
     )
 
     private class AndroidPackageInstallerAccess(
@@ -907,30 +908,36 @@ class GitHubUpdater @JvmOverloads constructor(
             return packageManager.getPackageArchiveInfo(apkPath, flags)
         }
 
-        /** Signing certificate bytes for a PackageInfo, across API levels. */
+        /** Signing certificates and their Android-verified relationship, across API levels. */
         @JvmStatic
-        fun signingCertificates(info: PackageInfo?): List<ByteArray> {
+        fun signingCertificates(info: PackageInfo?): SigningCertificateInfo {
             if (info == null) {
-                return emptyList()
+                return SigningCertificateInfo.unavailable()
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val signingInfo = info.signingInfo ?: return emptyList()
-                val signers = if (signingInfo.hasMultipleSigners()) {
-                    signingInfo.apkContentsSigners
+                val signingInfo = info.signingInfo ?: return SigningCertificateInfo.unavailable()
+                return if (signingInfo.hasMultipleSigners()) {
+                    SigningCertificateInfo.currentSigners(
+                        signingInfo.apkContentsSigners?.map { it.toByteArray() },
+                    )
                 } else {
-                    signingInfo.signingCertificateHistory
+                    SigningCertificateInfo.verifiedHistory(
+                        signingInfo.signingCertificateHistory?.map { it.toByteArray() },
+                    )
                 }
-                return signers?.map { it.toByteArray() } ?: emptyList()
             }
             @Suppress("DEPRECATION")
-            return info.signatures?.map { it.toByteArray() } ?: emptyList()
+            return SigningCertificateInfo.currentSigners(info.signatures?.map { it.toByteArray() })
         }
 
-        /** Signing certificate bytes for the currently installed running package. */
+        /** Signing certificates for the currently installed running package. */
         @JvmStatic
-        fun installedSigningCertificates(packageManager: PackageManager?, packageName: String): List<ByteArray> {
+        fun installedSigningCertificates(
+            packageManager: PackageManager?,
+            packageName: String,
+        ): SigningCertificateInfo {
             if (packageManager == null) {
-                return emptyList()
+                return SigningCertificateInfo.unavailable()
             }
             return try {
                 val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -941,7 +948,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 }
                 signingCertificates(packageManager.getPackageInfo(packageName, flags))
             } catch (_: PackageManager.NameNotFoundException) {
-                emptyList()
+                SigningCertificateInfo.unavailable()
             }
         }
 

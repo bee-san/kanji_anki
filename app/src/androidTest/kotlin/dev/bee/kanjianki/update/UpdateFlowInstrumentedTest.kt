@@ -26,6 +26,7 @@ import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.updatecore.SigningCertificateInfo
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -1416,8 +1417,8 @@ class UpdateFlowInstrumentedTest {
         private var checksumText = ""
         private var downloadBytes = ByteArray(0)
         private var signingCert = byteArrayOf(1, 2, 3, 4)
-        private var metadata = GitHubUpdater.ApkMetadata("", "", 0, listOf(byteArrayOf(1, 2, 3, 4)))
-        private var installedCerts: List<ByteArray> = listOf(byteArrayOf(1, 2, 3, 4))
+        private var metadata = GitHubUpdater.ApkMetadata("", "", 0, currentSigners(byteArrayOf(1, 2, 3, 4)))
+        private var installedCerts = currentSigners(byteArrayOf(1, 2, 3, 4))
         private var downloadFailure: IOException? = null
         private var inspectFailure: RuntimeException? = null
         private var canInstall = false
@@ -1444,12 +1445,17 @@ class UpdateFlowInstrumentedTest {
         }
 
         fun metadata(packageName: String, versionName: String): FakeUpdateClient {
-            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, 0, listOf(signingCert))
+            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, 0, currentSigners(signingCert))
             return this
         }
 
         fun metadata(packageName: String, versionName: String, targetSdkVersion: Int): FakeUpdateClient {
-            this.metadata = GitHubUpdater.ApkMetadata(packageName, versionName, targetSdkVersion, listOf(signingCert))
+            this.metadata = GitHubUpdater.ApkMetadata(
+                packageName,
+                versionName,
+                targetSdkVersion,
+                currentSigners(signingCert),
+            )
             return this
         }
 
@@ -1459,7 +1465,7 @@ class UpdateFlowInstrumentedTest {
                 metadata.packageName,
                 metadata.versionName,
                 metadata.targetSdkVersion,
-                listOf(byteArrayOf(9, 9, 9, 9)),
+                currentSigners(byteArrayOf(9, 9, 9, 9)),
             )
             return this
         }
@@ -1500,7 +1506,7 @@ class UpdateFlowInstrumentedTest {
             return metadata
         }
 
-        override fun installedSigningCertificates(packageName: String): List<ByteArray> {
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo {
             return installedCerts
         }
 
@@ -1524,6 +1530,10 @@ class UpdateFlowInstrumentedTest {
             notifications++
             return true
         }
+    }
+
+    private fun currentSigners(vararg certificates: ByteArray): SigningCertificateInfo {
+        return SigningCertificateInfo.currentSigners(certificates.toList())
     }
 
     private inner class NoOpProgressUpdater : ProgressUpdater {

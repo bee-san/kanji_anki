@@ -306,6 +306,48 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
     }
 
     @Test
+fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 7, 25)
+            }
+
+            scenario.recreate()
+            scenario.onActivity { activity ->
+                val restored = requireNotNull(activity.pendingReminderSettings)
+                assertTrue(restored.enabled)
+                assertEquals(7, restored.hour)
+                assertEquals(25, restored.minute)
+                activity.handlePostNotificationPermission(true)
+                assertEquals(7, activity.store.reminderSettings().hour)
+                assertEquals(25, activity.store.reminderSettings().minute)
+                assertNull(activity.pendingReminderSettings)
+            }
+        }
+    }
+
+    @Test
+fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsDenied() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 19, 40)
+            }
+            scenario.recreate()
+            scenario.onActivity { activity ->
+                val restored = requireNotNull(activity.pendingReminderSettings)
+                assertEquals(19, restored.hour)
+                assertEquals(40, restored.minute)
+                activity.handlePostNotificationPermission(false)
+                val denied = activity.store.reminderSettings()
+                assertFalse(denied.enabled)
+                assertEquals(19, denied.hour)
+                assertEquals(40, denied.minute)
+                assertNull(activity.pendingReminderSettings)
+            }
+        }
+    }
+
+    @Test
 fun studySessionHelpersPickExamplesPromptsTitlesAndTaskKinds() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->

@@ -1,5 +1,44 @@
 package dev.bee.kanjianki.updatecore
 
+/**
+ * Certificates extracted from Android package metadata together with the
+ * relationship Android verified between them.
+ *
+ * [Kind.CURRENT_SIGNERS] is an unordered set of certificates that all sign the
+ * package now. [Kind.VERIFIED_HISTORY] is a proof-of-rotation history returned
+ * by Android for a package with a single current signer.
+ */
+class SigningCertificateInfo private constructor(
+    @JvmField val kind: Kind,
+    @JvmField val certificates: List<ByteArray>,
+) {
+    enum class Kind {
+        CURRENT_SIGNERS,
+        VERIFIED_HISTORY,
+    }
+
+    fun isEmpty(): Boolean = certificates.isEmpty()
+
+    companion object {
+        @JvmStatic
+        fun currentSigners(certificates: List<ByteArray>?): SigningCertificateInfo {
+            return SigningCertificateInfo(Kind.CURRENT_SIGNERS, copyCertificates(certificates))
+        }
+
+        @JvmStatic
+        fun verifiedHistory(certificates: List<ByteArray>?): SigningCertificateInfo {
+            return SigningCertificateInfo(Kind.VERIFIED_HISTORY, copyCertificates(certificates))
+        }
+
+        @JvmStatic
+        fun unavailable(): SigningCertificateInfo = currentSigners(emptyList())
+
+        private fun copyCertificates(certificates: List<ByteArray>?): List<ByteArray> {
+            return certificates.orEmpty().map { it.copyOf() }
+        }
+    }
+}
+
 object UpdateArtifactValidator {
     @JvmStatic
     fun validateChecksum(expected: String?, actual: String?): ValidationResult {
@@ -47,29 +86,34 @@ object UpdateArtifactValidator {
     }
 
     /**
-     * Verify that the downloaded APK's signing lineage contains every certificate
-     * trusted by the running app. Certs are passed as their raw signature bytes and
-     * order does not matter.
+     * Verify the downloaded APK's signer identity without treating concurrent
+     * signers as a certificate-rotation lineage.
      *
-     * Requiring the archive lineage to be a superset keeps ordinary and multi-signer
-     * updates fail-closed while allowing Android proof-of-rotation lineages to append
-     * a new signer. A shorter or disjoint archive lineage is rejected; Android's
-     * package installer remains the final cryptographic verifier of the lineage.
+     * Concurrent current signers must match exactly. A forward extension is allowed
+     * only when Android identified both inputs as verified proof-of-rotation
+     * histories. Android's package installer remains the final cryptographic verifier.
      */
     @JvmStatic
     fun validateSigningCertificates(
-        currentCerts: List<ByteArray>?,
-        archiveCerts: List<ByteArray>?,
+        currentSigning: SigningCertificateInfo?,
+        archiveSigning: SigningCertificateInfo?,
     ): ValidationResult {
-        if (currentCerts.isNullOrEmpty()) {
+        if (currentSigning == null || currentSigning.isEmpty()) {
             return ValidationResult.failure("Could not read the running app's signing certificate. Install blocked.")
         }
-        if (archiveCerts.isNullOrEmpty()) {
+        if (archiveSigning == null || archiveSigning.isEmpty()) {
             return ValidationResult.failure("Could not read the update's signing certificate. Install blocked.")
         }
-        val currentSet = currentCerts.mapTo(HashSet()) { it.toHex() }
-        val archiveSet = archiveCerts.mapTo(HashSet()) { it.toHex() }
-        if (!archiveSet.containsAll(currentSet)) {
+        val currentSet = currentSigning.certificates.mapTo(HashSet()) { it.toHex() }
+        val archiveSet = archiveSigning.certificates.mapTo(HashSet()) { it.toHex() }
+        val matches = when {
+            currentSigning.kind == SigningCertificateInfo.Kind.CURRENT_SIGNERS &&
+                archiveSigning.kind == SigningCertificateInfo.Kind.CURRENT_SIGNERS -> archiveSet == currentSet
+            currentSigning.kind == SigningCertificateInfo.Kind.VERIFIED_HISTORY &&
+                archiveSigning.kind == SigningCertificateInfo.Kind.VERIFIED_HISTORY -> archiveSet.containsAll(currentSet)
+            else -> false
+        }
+        if (!matches) {
             return ValidationResult.failure("APK signing certificate does not match the installed app. Install blocked.")
         }
         return ValidationResult.success("APK signing certificate verified.")

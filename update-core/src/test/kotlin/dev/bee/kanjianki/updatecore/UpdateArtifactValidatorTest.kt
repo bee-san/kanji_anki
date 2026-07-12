@@ -135,10 +135,10 @@ class UpdateArtifactValidatorTest {
     }
 
     @Test
-    fun signingCertificateValidationAcceptsIdenticalCerts() {
-        val current = listOf(byteArrayOf(1, 2, 3), byteArrayOf(9, 8, 7))
+    fun signingCertificateValidationAcceptsIdenticalCurrentSignerSets() {
+        val current = currentSigners(byteArrayOf(1, 2, 3), byteArrayOf(9, 8, 7))
         // Same certs in a different order still match (order-insensitive set compare).
-        val archive = listOf(byteArrayOf(9, 8, 7), byteArrayOf(1, 2, 3))
+        val archive = currentSigners(byteArrayOf(9, 8, 7), byteArrayOf(1, 2, 3))
 
         val result = UpdateArtifactValidator.validateSigningCertificates(current, archive)
 
@@ -146,9 +146,20 @@ class UpdateArtifactValidatorTest {
     }
 
     @Test
+    fun signingCertificateValidationRejectsAdditionalCurrentSigner() {
+        val installed = currentSigners(byteArrayOf(1, 2, 3))
+        val archive = currentSigners(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6))
+
+        val result = UpdateArtifactValidator.validateSigningCertificates(installed, archive)
+
+        assertFalse(result.ok())
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message())
+    }
+
+    @Test
     fun signingCertificateValidationAcceptsAnExtendedRotationLineage() {
-        val installedLineage = listOf(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6))
-        val archiveLineage = listOf(
+        val installedLineage = verifiedHistory(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6))
+        val archiveLineage = verifiedHistory(
             byteArrayOf(7, 8, 9),
             byteArrayOf(4, 5, 6),
             byteArrayOf(1, 2, 3),
@@ -162,8 +173,19 @@ class UpdateArtifactValidatorTest {
     @Test
     fun signingCertificateValidationRejectsAShorterArchiveLineage() {
         val result = UpdateArtifactValidator.validateSigningCertificates(
-            listOf(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6)),
-            listOf(byteArrayOf(1, 2, 3)),
+            verifiedHistory(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6)),
+            verifiedHistory(byteArrayOf(1, 2, 3)),
+        )
+
+        assertFalse(result.ok())
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message())
+    }
+
+    @Test
+    fun signingCertificateValidationRejectsSignerSetPresentedAsRotationHistory() {
+        val result = UpdateArtifactValidator.validateSigningCertificates(
+            verifiedHistory(byteArrayOf(1, 2, 3)),
+            currentSigners(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6)),
         )
 
         assertFalse(result.ok())
@@ -173,8 +195,8 @@ class UpdateArtifactValidatorTest {
     @Test
     fun signingCertificateValidationRejectsMismatch() {
         val result = UpdateArtifactValidator.validateSigningCertificates(
-            listOf(byteArrayOf(1, 2, 3)),
-            listOf(byteArrayOf(4, 5, 6)),
+            currentSigners(byteArrayOf(1, 2, 3)),
+            currentSigners(byteArrayOf(4, 5, 6)),
         )
 
         assertFalse(result.ok())
@@ -183,15 +205,29 @@ class UpdateArtifactValidatorTest {
 
     @Test
     fun signingCertificateValidationRejectsMissingCerts() {
-        val missingCurrent = UpdateArtifactValidator.validateSigningCertificates(emptyList(), listOf(byteArrayOf(1)))
+        val missingCurrent = UpdateArtifactValidator.validateSigningCertificates(
+            SigningCertificateInfo.unavailable(),
+            currentSigners(byteArrayOf(1)),
+        )
         assertFalse(missingCurrent.ok())
         assertEquals("Could not read the running app's signing certificate. Install blocked.", missingCurrent.message())
 
-        val missingArchive = UpdateArtifactValidator.validateSigningCertificates(listOf(byteArrayOf(1)), emptyList())
+        val missingArchive = UpdateArtifactValidator.validateSigningCertificates(
+            currentSigners(byteArrayOf(1)),
+            SigningCertificateInfo.unavailable(),
+        )
         assertFalse(missingArchive.ok())
         assertEquals("Could not read the update's signing certificate. Install blocked.", missingArchive.message())
 
         val bothNull = UpdateArtifactValidator.validateSigningCertificates(null, null)
         assertFalse(bothNull.ok())
+    }
+
+    private fun currentSigners(vararg certificates: ByteArray): SigningCertificateInfo {
+        return SigningCertificateInfo.currentSigners(certificates.toList())
+    }
+
+    private fun verifiedHistory(vararg certificates: ByteArray): SigningCertificateInfo {
+        return SigningCertificateInfo.verifiedHistory(certificates.toList())
     }
 }

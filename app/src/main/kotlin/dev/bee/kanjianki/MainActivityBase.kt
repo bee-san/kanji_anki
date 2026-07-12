@@ -276,10 +276,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val startup by lazy { MainActivityStartup(this as MainActivityHome) }
     private val activityLifecycle by lazy { MainActivityLifecycle(this) }
 
-    private lateinit var ankiDatabasePermissionLauncher: ActivityResultLauncher<String>
-    private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var backupExportDocumentLauncher: ActivityResultLauncher<String>
     private lateinit var backupRestoreDocumentLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var ankiDatabasePermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
 
     abstract fun renderHome()
     abstract fun renderUpdate()
@@ -322,7 +322,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingReminderSettings = restorePendingReminderSettings(savedInstanceState)
         // Activity-result launchers must be registered once, before the activity reaches STARTED.
+        // Keep the established SAF launchers first: ComponentActivity's automatic registry keys
+        // are positional, so changing their order can misroute a result restored from older code.
+        backupExportDocumentLauncher = registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/gzip"),
+        ) { uri -> onBackupExportDocumentSelected(uri) }
+        backupRestoreDocumentLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri -> onBackupRestoreDocumentSelected(uri) }
         // Permission callbacks preserve the previous request-code behavior: either AnkiDroid
         // permission result refreshes Home, while notification permission settles the pending
         // reminder settings before returning to the same Settings surface.
@@ -332,16 +341,31 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         postNotificationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission(),
         ) { granted -> handlePostNotificationPermission(granted) }
-        // Settings prepares/validates private files on the IO executor and these SAF callbacks
-        // bridge the system picker result back to that flow.
-        backupExportDocumentLauncher = registerForActivityResult(
-            ActivityResultContracts.CreateDocument("application/gzip"),
-        ) { uri -> onBackupExportDocumentSelected(uri) }
-        backupRestoreDocumentLauncher = registerForActivityResult(
-            ActivityResultContracts.OpenDocument(),
-        ) { uri -> onBackupRestoreDocumentSelected(uri) }
         onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        pendingReminderSettings?.let { pending ->
+            outState.putBundle(
+                STATE_PENDING_REMINDER,
+                Bundle().apply {
+                    putBoolean(STATE_PENDING_REMINDER_ENABLED, pending.enabled)
+                    putInt(STATE_PENDING_REMINDER_HOUR, pending.hour)
+                    putInt(STATE_PENDING_REMINDER_MINUTE, pending.minute)
+                },
+            )
+        }
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun restorePendingReminderSettings(savedInstanceState: Bundle?): LocalStoreBase.ReminderSettings? {
+        val pending = savedInstanceState?.getBundle(STATE_PENDING_REMINDER) ?: return null
+        return LocalStoreBase.ReminderSettings(
+            pending.getBoolean(STATE_PENDING_REMINDER_ENABLED),
+            pending.getInt(STATE_PENDING_REMINDER_HOUR),
+            pending.getInt(STATE_PENDING_REMINDER_MINUTE),
+        )
     }
 
     protected open fun onBackupExportDocumentSelected(uri: Uri?) = Unit
@@ -614,6 +638,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
+        private const val STATE_PENDING_REMINDER = "kani.pending-reminder"
+        private const val STATE_PENDING_REMINDER_ENABLED = "enabled"
+        private const val STATE_PENDING_REMINDER_HOUR = "hour"
+        private const val STATE_PENDING_REMINDER_MINUTE = "minute"
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"
