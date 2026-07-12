@@ -1740,32 +1740,54 @@ fun testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
     }
 
     @Test
-fun testLearningRepeatPassAdvancesSessionProgressHeader() {
-        // In the single-scheduler model, learning step cards show up in the
-        // normal study queue and passing them advances session progress.
-        seedDashboard(Arrays.asList(
-                dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
-                dashboardRow("提", "carry radical gap", "てい", IMPORTED_FROM_SUSPENDED_CARDS)
-        ));
-        LocalStore(context).use { setup ->
-            var now = System.currentTimeMillis()
-            // Create a study item in NEW_LEARNING phase, due in the past.
-            val item = RecordsStudyModels.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
-                .copyBuilder()
-                .answerSignature("拉|拉致|らち|archive example")
-                .rung(RecordsBase.LadderRung.KANJI_MEANING)
-                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
-                .build()
-            setup.saveStudyItem(item)
-        }
+    fun testFailedReviewAddsLearnAheadRepeatToSessionProgress() {
+        seedDashboard();
+        forceStudyItemDue("拉", 0, false);
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickText(scenario, STUDY_NOW);
+            scenario.onActivity { activity ->
+                assertHasText(activity, "0 / 1");
+                assertEquals(0, activity.studySessionTracker.completedCount());
+                assertEquals(1, activity.studySessionTracker.targetCount());
+            }
+
+            clickText(scenario, REVEAL);
+            val failedAtMillis = System.currentTimeMillis();
+            clickText(scenario, "Fail");
+
+            // The default 10-minute relearning step is inside the 20-minute
+            // learn-ahead horizon, so it is immediately visible workload.
+            // Wait from the instrumentation thread so the async route-render
+            // callback is free to run on main. waitForText() also probes
+            // UiAutomator from scenario.onActivity, which can repeatedly occupy
+            // main while this post-answer route is still pending.
+            waitForDeviceText("1 / 2");
+            scenario.onActivity { activity ->
+                assertHasTexts(activity, "1 / 2", "Relearning", REVEAL);
+                assertEquals(1, activity.studySessionTracker.completedCount());
+                assertEquals(2, activity.studySessionTracker.targetCount());
+            }
+            LocalStore(context).use { store ->
+                val repeat = onlyStudyItem(store);
+                assertEquals(RecordsBase.SchedulerPhase.RELEARNING, repeat.phase);
+                assertEquals(0, repeat.learningStep);
+                assertTrue(repeat.dueAtMillis >= failedAtMillis + 9L * 60_000L);
+                assertTrue(repeat.dueAtMillis <= System.currentTimeMillis() + 11L * 60_000L);
+            }
+
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
-
-            // Progress header should advance after passing.
-            scenario.onActivity { activity -> assertHasText(activity, "1 / ") }
+            waitForDeviceText("Today's focus done");
+            waitForDeviceText("2 / 2");
+            scenario.onActivity { activity ->
+                assertEquals(2, activity.studySessionTracker.completedCount());
+                assertEquals(2, activity.studySessionTracker.targetCount());
+            }
+            LocalStore(context).use { store ->
+                assertEquals(2, store.reviewStatsSince(0L).total);
+                assertEquals(RecordsBase.SchedulerPhase.REVIEW, onlyStudyItem(store).phase);
+            }
         }
     }
 
@@ -2791,6 +2813,12 @@ fun findDeviceTextNow(device: UiDevice, text: String): UiObject2? {
         object2 = device.findObjects(By.pkg(pkg).textContains(text.uppercase(Locale.ROOT))).firstOrNull()
     }
     return object2
+}
+
+private fun waitForDeviceText(text: String, timeoutMillis: Long = 5000L) {
+    val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    val object2 = device.wait(Until.findObject(By.pkg(appPackage()).text(text)), timeoutMillis)
+    assertNotNull("Missing device text: $text\nDevice text: ${deviceVisibleText(device)}", object2)
 }
 
 fun appPackage(): String {

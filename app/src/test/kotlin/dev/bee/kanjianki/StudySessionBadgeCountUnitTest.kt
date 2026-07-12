@@ -47,10 +47,10 @@ class StudySessionBadgeCountUnitTest {
     }
 
     @Test
-    fun practiceOnlyRepeatDoesNotGrowCompletedUniqueCardCount() {
-        // Learn-ahead can show another practice step after the sole unique task has
-        // completed. The repeat intentionally stays outside session-card progress.
-        assertEquals(0, badge(active = true, target = 1, completed = 1, cached = 0))
+    fun learnAheadRepeatGrowsTheInFlightRemainingCount() {
+        // Once the sole planned card schedules an in-horizon learning repeat,
+        // the live session has one more visible appearance to complete.
+        assertEquals(1, badge(active = true, target = 2, completed = 1, cached = 0))
     }
 
     @Test

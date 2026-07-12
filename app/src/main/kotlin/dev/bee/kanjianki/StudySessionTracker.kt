@@ -42,13 +42,25 @@ internal class StudySessionTracker {
         completedPlannedSessionTaskKeys.clear()
     }
 
-    fun initializeSessionPlan(taskKeys: List<String>?) = synchronized(lock) {
+    /**
+     * Reconciles the live progress target with the work that can still appear
+     * in this run. [pendingRepeatTaskKeys] contains only the next persisted
+     * learning/relearning occurrence for each same-session card; later steps
+     * are added on a later reconciliation if and when they are scheduled.
+     */
+    fun initializeSessionPlan(
+        taskKeys: List<String>?,
+        pendingRepeatTaskKeys: List<String>? = null,
+    ) = synchronized(lock) {
         val normalized = normalizeSessionTaskKeys(taskKeys)
+        val normalizedRepeats = normalizeSessionTaskKeys(pendingRepeatTaskKeys)
         val reconciled = reconcileSessionTaskKeys(normalized)
         plannedSessionTaskKeys.clear()
         plannedSessionTaskKeys.addAll(reconciled)
         progressTracker.setTargetCount(
-            progressTracker.completedCount() + pendingPlannedSessionTaskKeysLocked().size,
+            progressTracker.completedCount() +
+                pendingPlannedSessionTaskKeysLocked().size +
+                normalizedRepeats.size,
         )
     }
 
@@ -163,19 +175,6 @@ internal class StudySessionTracker {
         return isCompletedPlannedSessionTask(key, key.substringAfter(':', ""))
     }
 
-    private fun isCompletedPlannedSessionProgressKeyLocked(key: String?): Boolean {
-        if (key == null || !key.startsWith("session:")) {
-            return false
-        }
-        val taskAndKanji = key.substring("session:".length)
-        val taskSeparator = taskAndKanji.indexOf(':')
-        val tokenSeparator = taskAndKanji.indexOf(':', taskSeparator + 1)
-        if (taskSeparator <= 0 || tokenSeparator <= taskSeparator + 1) {
-            return false
-        }
-        return isCompletedPlannedSessionTaskKeyLocked(taskAndKanji.substring(0, tokenSeparator))
-    }
-
     private fun isCompletedPlannedSessionTask(key: String, kanji: String): Boolean {
         if (completedPlannedSessionTaskKeys.contains(key)) {
             return true
@@ -220,9 +219,7 @@ internal class StudySessionTracker {
     }
 
     fun markTaskCompleted(key: String?) = synchronized(lock) {
-        if (!isCompletedPlannedSessionProgressKeyLocked(key)) {
-            progressTracker.markTaskCompleted(key)
-        }
+        progressTracker.markTaskCompleted(key)
     }
 
     fun hasActiveTask(): Boolean = synchronized(lock) { activeTask != null }

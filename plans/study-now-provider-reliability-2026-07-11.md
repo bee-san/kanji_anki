@@ -16,8 +16,10 @@ uncommitted documentation changes untouched.
   - Honor focus/all-kanji mode, study-ahead, admission limits, the active cap,
     retired-item reopening, conditional rungs, and writing repairs.
 - Replace session-plan initialization with reconciliation:
-  - Preserve completed unique task keys so learning and relearning repeats
-    never increase the target.
+  - Preserve completed base task keys so repeated reconciliation never
+    resurrects an already-answered planned card.
+  - Count each active run's currently persisted in-horizon learning or
+    relearning occurrence as one additional unit of visible session workload.
   - Prune removed tasks, clear stale pending work on an empty plan, preserve
     surviving order, and append genuinely new tasks.
 - Make the successful-sync commit boundary absolute:

@@ -69,39 +69,53 @@ class StudySessionTrackerTest {
     }
 
     @Test
-    fun completedLearningRepeatDoesNotGrowPendingPlanOrProgress() {
+    fun scheduledLearningRepeatsGrowProgressOnePersistedStepAtATime() {
         val tracker = StudySessionTracker()
-        tracker.initializeSessionPlan(listOf("word_reading:done", "kanji_meaning:stale"))
+        tracker.initializeSessionPlan(listOf("word_reading:done", "kanji_meaning:pending"))
         tracker.markTaskCompleted("session:word_reading:done:initial-token")
         tracker.markPlannedSessionTaskCompleted("word_reading", "done")
 
-        // A lapse may change the rung (and therefore the planned key) for the
-        // same learning/relearning repeat. It remains practice for the already
-        // completed task, rather than becoming a new unit of session progress.
-        tracker.initializeSessionPlan(listOf("kanji_meaning:done", "kanji_meaning:pending"))
-        tracker.markTaskCompleted("session:kanji_meaning:done:repeat-token")
-
-        val repeat = RecordsStudyModels.StudyItem(
-            "done",
-            "learning",
-            1_000L,
-            1.0,
-            2.0,
-            1,
-            0,
-            0,
-            0,
-            "",
-            1_000L,
-        ).copyBuilder()
-            .rung(RecordsBase.LadderRung.KANJI_MEANING)
-            .phase(RecordsBase.SchedulerPhase.RELEARNING)
-            .build()
-
+        // The lapse changed rung, but completion-by-kanji still identifies
+        // this as the original session card's next relearning occurrence.
+        val repeat = learningRepeat("done")
+        val repeatKeys = tracker.dueCompletedLearningRepeatTaskKeys(listOf(repeat), 1_000L)
+        tracker.initializeSessionPlan(
+            listOf("kanji_meaning:done", "kanji_meaning:pending"),
+            repeatKeys,
+        )
         assertEquals(listOf("kanji_meaning:pending"), tracker.pendingPlannedSessionTaskKeys())
-        assertEquals(listOf("kanji_meaning:done"), tracker.dueCompletedLearningRepeatTaskKeys(listOf(repeat), 1_000L))
+        assertEquals(listOf("kanji_meaning:done"), repeatKeys)
         assertEquals(1, tracker.completedCount())
-        assertEquals(2, tracker.targetCount())
+        assertEquals(3, tracker.targetCount())
+
+        // Re-rendering against the same persisted step is idempotent.
+        tracker.initializeSessionPlan(
+            listOf("kanji_meaning:done", "kanji_meaning:pending"),
+            repeatKeys + repeatKeys,
+        )
+        assertEquals(3, tracker.targetCount())
+
+        // Exact session tokens make each answered appearance count once.
+        tracker.markTaskCompleted("session:kanji_meaning:done:first-repeat-token")
+        tracker.markTaskCompleted("session:kanji_meaning:done:first-repeat-token")
+        assertEquals(2, tracker.completedCount())
+
+        // A later learning step grows the target only once it is persisted.
+        tracker.initializeSessionPlan(
+            listOf("kanji_meaning:done", "kanji_meaning:pending"),
+            repeatKeys,
+        )
+        assertEquals(4, tracker.targetCount())
+
+        tracker.markTaskCompleted("session:kanji_meaning:done:second-repeat-token")
+        assertEquals(3, tracker.completedCount())
+
+        // Graduation schedules no further repeat, so it adds no workload.
+        tracker.initializeSessionPlan(
+            listOf("kanji_meaning:done", "kanji_meaning:pending"),
+            emptyList(),
+        )
+        assertEquals(4, tracker.targetCount())
     }
 
     @Test
@@ -154,6 +168,25 @@ class StudySessionTrackerTest {
         )
         assertEquals(1, tracker.completedCount())
         assertEquals(3, tracker.targetCount())
+    }
+
+    private fun learningRepeat(kanji: String): RecordsStudyModels.StudyItem {
+        return RecordsStudyModels.StudyItem(
+            kanji,
+            "learning",
+            1_000L,
+            1.0,
+            2.0,
+            1,
+            0,
+            0,
+            0,
+            "",
+            1_000L,
+        ).copyBuilder()
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .build()
     }
 
 }

@@ -38,6 +38,11 @@ internal object StudySessionActions {
         settings: RecordsSyncModels.Settings,
         ladder: RecordsBase.StudyLadderSettings,
     ): RecordsSchedulerModels.StudySession? {
+        val repeatHorizonMillis = max(studyAheadMillis, StudyLadderRules.LEARN_AHEAD_MILLIS)
+        val aheadRepeatKeys = tracker.dueCompletedLearningRepeatTaskKeys(
+            items,
+            nowMillis + repeatHorizonMillis,
+        )
         tracker.initializeSessionPlan(
             scheduler.randomizedSessionTaskKeys(
                 items,
@@ -48,7 +53,8 @@ internal object StudySessionActions {
                 settings,
                 ladder,
                 null,
-            )
+            ),
+            aheadRepeatKeys,
         )
         // Normal pass at the user's configured study-ahead: same-session
         // learning repeats already due *now* come first (Anki gathers
@@ -76,11 +82,6 @@ internal object StudySessionActions {
         // instead of ending the run and abandoning cards that would otherwise
         // resurface on the home screen minutes later. The widened horizon
         // applies ONLY to these already-completed repeat keys.
-        val repeatHorizonMillis = max(studyAheadMillis, StudyLadderRules.LEARN_AHEAD_MILLIS)
-        val aheadRepeatKeys = tracker.dueCompletedLearningRepeatTaskKeys(
-            items,
-            nowMillis + repeatHorizonMillis,
-        )
         if (aheadRepeatKeys.isEmpty()) {
             return null
         }

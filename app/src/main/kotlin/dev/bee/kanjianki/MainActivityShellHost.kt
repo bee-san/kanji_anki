@@ -11,12 +11,15 @@ import java.util.Locale
 
 /**
  * Cards remaining in the user's focus study session, shown on the Study nav badge.
- * While a study card has unfinished unique session work, the live tracker is the
- * source of truth, so the badge decreases with every answered card. Practice-only
- * learn-ahead repeats do not grow that unique-card count. Otherwise the exact
- * selectable Study-now count cached by the Home/Study route load is used. Checking
- * the active card explicitly prevents a stale plan target from surviving on an empty
- * Study screen. Non-positive results mean "hide the badge".
+ * While a study card has unfinished scheduled session work, the live tracker is the
+ * source of truth, so the badge follows answered card appearances. An in-horizon
+ * learning/relearning repeat grows the target by one; only the persisted next
+ * occurrence counts, and an out-of-horizon repeat does not. "Practice-only" excludes
+ * those answers from real-due ladder promotion/demotion evidence, not from visible
+ * session workload.
+ * Otherwise the exact selectable Study-now count cached by the Home/Study route load
+ * is used. Checking the active card explicitly prevents a stale plan target from
+ * surviving on an empty Study screen. Non-positive results mean "hide the badge".
  */
 internal fun studySessionBadgeCount(
     studySessionActive: Boolean,
