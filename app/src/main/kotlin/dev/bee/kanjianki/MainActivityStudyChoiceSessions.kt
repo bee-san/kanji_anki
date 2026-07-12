@@ -61,6 +61,15 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     private val meaningKanjiChoicePlanner = MeaningKanjiChoicePlanner()
     private val meaningChoiceRandom: Random = SecureRandom()
 
+    /**
+     * Exact repair choices must keep the same ordering while a persisted study
+     * session is restored. This seed is UI state, never a security boundary.
+     */
+    @Suppress("kotlin:S2245")
+    private fun deterministicChoiceRandom(sessionToken: String): Random {
+        return Random(sessionToken.hashCode().toLong())
+    }
+
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
         prepareMeaningKanjiRender(session).invoke()
     }
@@ -227,7 +236,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 canonical,
                 home.store.kanjiReadingUsagesFor(kanji),
                 home.store.kanjiReadingPoolFor(kanji),
-                Random(session.token.hashCode().toLong()),
+                deterministicChoiceRandom(session.token),
             )
         }
         return KanjiReadingChoicePlanner.buildChoiceCard(
@@ -312,7 +321,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 canonical,
                 home.store.kanjiReadingUsagesForReadingKanji(kanji),
                 home.store.readingKanjiCandidatesFor(kanji),
-                Random(session.token.hashCode().toLong()),
+                deterministicChoiceRandom(session.token),
             )
         }
         return ReadingKanjiChoicePlanner.buildChoiceCard(
