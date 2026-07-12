@@ -18,6 +18,23 @@
   </a>
 </p>
 
+Kani cures your Kanji blindness by analysing your Anki, locating your hard kanji, working out why it's hard for you, and creating specialised learning loops to teach you the Kanji in the least amount of time possible.
+
+1. Find kanji that keep causing trouble in your AnkiDroid reviews.
+2. Focus on why they are hard, such as unfamiliar characters, visually similar kanji, unuusal readings
+3. Study them through a small, structured queue instead of another full SRS backlog.
+4. Compare later AnkiDroid evidence so repaired kanji can retire from the queue.
+
+Features:
+* FSRS 5
+* Specially designed to make you spend the least amount of time in app as possible
+* Customised study ladders for each kanji, based on why you fail that kanji
+* Can use your GSM + Subminer data to optimise the algorithm
+
+Think of it as a mix between Full on Wanikani / RTK and vocab with no Kanji study.
+
+If you study vocab with no individual Kanji study but find some Kanji are hard, this app is for you.
+
 Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji — the painful "kanji blindness" loop where similar-looking characters keep tripping you up.
 
 Kani borrows the parts of Anki that make recall durable: saved evidence from your own cards, FSRS-style review timing, and a repeatable review habit. It intentionally differs from Anki by narrowing the surface area to kanji repair. Kani reads AnkiDroid, builds a small local focus queue, and asks you to practice the characters that are causing real misses instead of managing another general-purpose deck.
