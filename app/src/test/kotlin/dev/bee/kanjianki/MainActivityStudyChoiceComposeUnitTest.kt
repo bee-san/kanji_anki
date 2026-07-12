@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -214,7 +218,14 @@ class MainActivityStudyChoiceComposeUnitTest {
         assertEquals("", selected)
         composeRule.onNodeWithText(choiceButtonText("列", KanjiChoiceFeedback.INCORRECT)).assertExists()
         composeRule.onNodeWithText(choiceButtonText("裂", KanjiChoiceFeedback.CORRECT)).assertExists()
-        composeRule.onNodeWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂")).assertExists()
+        composeRule.onNodeWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂"))
+            .assertExists()
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite,
+                ),
+            )
 
         // A second tap on another choice is ignored while the feedback is showing.
         composeRule.onNodeWithTag(similarChoiceTestTag("烈")).performClick()

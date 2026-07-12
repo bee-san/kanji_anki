@@ -38,6 +38,34 @@ object StudyWritingCopy {
     @JvmStatic
     fun undoLabel(): String = localizedText("Undo", "元に戻す")
 
+    /**
+     * Screen-reader copy for the custom handwriting canvas. The requested
+     * kanji is intentionally not included: recall cards keep the answer
+     * hidden until the learner checks their writing.
+     */
+    @JvmStatic
+    fun drawingPadDescription(): String = localizedText(
+        "Handwriting pad. Draw the requested kanji. With TalkBack on, use two fingers or " +
+            "TalkBack's pass-through gesture. Use Erase or Undo to edit, then choose Check.",
+        "手書きパッド。指定された漢字を書いてください。TalkBack使用中は、2本指または" +
+            "TalkBackのパススルージェスチャーを使ってください。修正には「消去」または" +
+            "「元に戻す」を使い、最後に「確認」を選んでください。",
+    )
+
+    @JvmStatic
+    fun drawingPadStrokeState(strokeCount: Int): String {
+        val safeStrokeCount = maxOf(0, strokeCount)
+        return if (isJapaneseLocale()) {
+            if (safeStrokeCount == 0) "まだ線はありません。" else "${safeStrokeCount}画入力済み。"
+        } else {
+            when (safeStrokeCount) {
+                0 -> "No strokes drawn."
+                1 -> "1 stroke drawn."
+                else -> "$safeStrokeCount strokes drawn."
+            }
+        }
+    }
+
     @JvmStatic
     fun replayLabel(): String = localizedText("Replay", "再生")
 

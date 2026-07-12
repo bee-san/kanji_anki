@@ -117,9 +117,14 @@ private fun SimilarChoiceButton(
     modifier: Modifier = Modifier,
 ) {
     val feedbackColor = feedback?.choiceFeedbackColor()
-    val contentColor = if (feedback == null) StudyChoicePlum else StudyChoiceFeedbackContent
+    val targetContainerColor = feedbackColor ?: StudyChoiceButtonFill
+    val contentColor = if (feedback == null) {
+        StudyChoicePlum
+    } else {
+        studyChoiceFeedbackContentColor(targetContainerColor)
+    }
     val containerColor by animateColorAsState(
-        targetValue = feedbackColor ?: StudyChoiceButtonFill,
+        targetValue = targetContainerColor,
         label = "study-choice-fill"
     )
     val borderColor by animateColorAsState(

@@ -18,6 +18,15 @@ class StudyWritingCopyTest {
             )
             assertEquals("Erase", StudyWritingCopy.eraseLabel())
             assertEquals("Undo", StudyWritingCopy.undoLabel())
+            assertEquals(
+                "Handwriting pad. Draw the requested kanji. With TalkBack on, use two fingers or " +
+                    "TalkBack's pass-through gesture. Use Erase or Undo to edit, then choose Check.",
+                StudyWritingCopy.drawingPadDescription(),
+            )
+            assertEquals("No strokes drawn.", StudyWritingCopy.drawingPadStrokeState(0))
+            assertEquals("1 stroke drawn.", StudyWritingCopy.drawingPadStrokeState(1))
+            assertEquals("3 strokes drawn.", StudyWritingCopy.drawingPadStrokeState(3))
+            assertEquals("No strokes drawn.", StudyWritingCopy.drawingPadStrokeState(-1))
             assertEquals("Replay", StudyWritingCopy.replayLabel())
             assertEquals("Mark right anyway", StudyWritingCopy.manualOverrideLabel())
             assertEquals("Continue anyway", StudyWritingCopy.continueAnywayLabel())
@@ -51,6 +60,14 @@ class StudyWritingCopyTest {
             )
             assertEquals("消去", StudyWritingCopy.eraseLabel())
             assertEquals("元に戻す", StudyWritingCopy.undoLabel())
+            assertEquals(
+                "手書きパッド。指定された漢字を書いてください。TalkBack使用中は、2本指または" +
+                    "TalkBackのパススルージェスチャーを使ってください。修正には「消去」または" +
+                    "「元に戻す」を使い、最後に「確認」を選んでください。",
+                StudyWritingCopy.drawingPadDescription(),
+            )
+            assertEquals("まだ線はありません。", StudyWritingCopy.drawingPadStrokeState(0))
+            assertEquals("3画入力済み。", StudyWritingCopy.drawingPadStrokeState(3))
             assertEquals("再生", StudyWritingCopy.replayLabel())
             assertEquals("それでも合格にする", StudyWritingCopy.manualOverrideLabel())
             assertEquals("このまま続行", StudyWritingCopy.continueAnywayLabel())

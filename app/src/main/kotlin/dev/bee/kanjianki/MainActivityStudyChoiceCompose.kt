@@ -35,12 +35,14 @@ internal val StudyChoiceButtonFill: Color @Composable get() = KaniTheme.colors.s
 internal val StudyChoiceBorder: Color @Composable get() = KaniTheme.colors.border
 internal val StudyChoiceCorrectFill: Color @Composable get() = KaniTheme.colors.teal
 internal val StudyChoiceIncorrectFill: Color @Composable get() = KaniTheme.colors.coral
-internal val StudyChoiceFeedbackContent = Color.White
 internal const val SIMILAR_KANJI_DETAILS_TOGGLE_TAG = "similar-kanji-details-toggle"
 private val StudyCardFill: Color @Composable get() = KaniTheme.colors.surface
 private val StudyPanelFill: Color @Composable get() = KaniTheme.colors.panel
 private val StudyPinkDark: Color @Composable get() = KaniTheme.colors.primary
 private val StudyMuted: Color @Composable get() = KaniTheme.colors.muted
+
+internal fun studyChoiceFeedbackContentColor(background: Color): Color =
+    KaniUiTokens.readableTextColor(background)
 
 class MeaningChoiceSessionState(selectedChoice: String? = null) {
     var selectedChoice by mutableStateOf(selectedChoice)

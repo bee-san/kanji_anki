@@ -59,4 +59,20 @@ class MainActivityUiTokensTest {
             }
         }
     }
+
+    @Test
+    fun studyChoiceFeedbackTextMeetsContrastAcrossEveryThemePalette() {
+        KaniThemeChoice.entries.forEach { choice ->
+            listOf(false, true).forEach { systemDark ->
+                val palette = choice.resolvePalette(systemDark)
+                listOf(palette.coral, palette.teal).forEach { background ->
+                    val foreground = studyChoiceFeedbackContentColor(background)
+                    assertTrue(
+                        "$choice choice-feedback contrast was ${contrastRatio(foreground, background)}",
+                        contrastRatio(foreground, background) >= 4.5,
+                    )
+                }
+            }
+        }
+    }
 }
