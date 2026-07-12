@@ -20,7 +20,7 @@ class RecordsValueModelsTest {
     @Test
     fun splitModelConstructorsStayHiddenWhileExposingRecordApi() {
         val probe = SplitProbe()
-        assertTrue(probe is RecordsBase)
+        assertTrue(RecordsBase::class.java.isAssignableFrom(probe.javaClass))
         assertTrue(probe.defaultSuspendedCards())
         assertEquals("Kiku", probe.defaultModelName())
     }
