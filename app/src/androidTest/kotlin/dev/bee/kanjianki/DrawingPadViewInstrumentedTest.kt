@@ -7,9 +7,12 @@ import android.graphics.Color
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.View
 import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.HintLevel
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.InkPoint
@@ -33,6 +36,32 @@ private const val PAD_SIZE = 1000
 
 @RunWith(AndroidJUnit4::class)
 class DrawingPadViewInstrumentedTest {
+    @Test
+    fun drawingPadExposesAnswerSafeAccessibilityStateAsInkChanges() {
+        val pad = laidOutPad()
+        pad.setTarget("裂")
+
+        assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_YES, pad.importantForAccessibility)
+        assertEquals(StudyWritingCopy.drawingPadDescription(), pad.contentDescription)
+        assertEquals(StudyWritingCopy.drawingPadStrokeState(0), ViewCompat.getStateDescription(pad))
+        assertFalse(pad.contentDescription.contains("裂"))
+
+        sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 100f, 100f)
+        sendTouch(pad, 100L, 120L, MotionEvent.ACTION_UP, 300f, 300f)
+        assertEquals(StudyWritingCopy.drawingPadStrokeState(1), ViewCompat.getStateDescription(pad))
+
+        sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 500f, 500f)
+        sendTouch(pad, 200L, 220L, MotionEvent.ACTION_UP, 700f, 700f)
+        assertEquals(StudyWritingCopy.drawingPadStrokeState(2), ViewCompat.getStateDescription(pad))
+
+        assertTrue(pad.undoLastStroke())
+        assertEquals(StudyWritingCopy.drawingPadStrokeState(1), ViewCompat.getStateDescription(pad))
+
+        pad.clear()
+        assertEquals(StudyWritingCopy.drawingPadStrokeState(0), ViewCompat.getStateDescription(pad))
+        assertTrue(pad.contentDescription.isNotEmpty())
+    }
+
     @Test
     fun drawingPadCapturesNoiseFilteredStrokeAndWritingSample() {
         val pad = laidOutPad()

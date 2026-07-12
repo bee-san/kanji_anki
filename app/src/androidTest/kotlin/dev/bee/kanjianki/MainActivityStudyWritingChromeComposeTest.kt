@@ -1,6 +1,10 @@
 package dev.bee.kanjianki
 
 import android.view.View
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -53,7 +57,14 @@ class MainActivityStudyWritingChromeComposeTest {
         }
 
         composeRule.onAllNodesWithText("Trace the first strokes").assertCountEquals(0)
-        composeRule.onNodeWithText("Handwriting checker ready").assertIsDisplayed()
+        composeRule.onNodeWithText("Handwriting checker ready")
+            .assertIsDisplayed()
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite,
+                ),
+            )
     }
 
     @Test
@@ -75,7 +86,14 @@ class MainActivityStudyWritingChromeComposeTest {
         }
         assertEquals("Model unavailable", handle.getText().toString())
         assertEquals(View.VISIBLE, handle.getVisibility())
-        composeRule.onNodeWithText("Model unavailable").assertIsDisplayed()
+        composeRule.onNodeWithText("Model unavailable")
+            .assertIsDisplayed()
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite,
+                ),
+            )
 
         composeRule.runOnIdle {
             handle.hide()

@@ -10,6 +10,8 @@ import android.graphics.Typeface
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.view.ViewCompat
+import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.HintPolicy
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.InkPoint
@@ -52,6 +54,8 @@ class DrawingPadView(context: Context) : View(context) {
     private var nightMode = MainActivityUiSupport.isNightMode(context.resources.configuration)
 
     init {
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        refreshAccessibilityMetadata()
         applyPalette()
         paint.strokeWidth = 12f
         paint.style = Paint.Style.STROKE
@@ -116,6 +120,7 @@ class DrawingPadView(context: Context) : View(context) {
             paths.removeAt(min(last, paths.size - 1))
         }
         clearReplaySnapshot()
+        updateAccessibilityState()
         invalidate()
         return true
     }
@@ -129,11 +134,15 @@ class DrawingPadView(context: Context) : View(context) {
         activePointerId = -1
         blockingCurrentStroke = false
         stopReplay()
+        updateAccessibilityState()
         invalidate()
     }
 
     fun setTarget(target: String?) {
         this.target = Objects.toString(target, "")
+        // Refresh localized accessibility copy when a new card is attached,
+        // without exposing the hidden recall answer itself.
+        refreshAccessibilityMetadata()
     }
 
     fun setInkEditListener(listener: Runnable?) {
@@ -357,6 +366,7 @@ class DrawingPadView(context: Context) : View(context) {
         currentPoints.clear()
         current = null
         activePointerId = -1
+        updateAccessibilityState()
         notifyInkEdited()
         invalidate()
     }
@@ -396,6 +406,15 @@ class DrawingPadView(context: Context) : View(context) {
 
     private fun notifyInkEdited() {
         inkEditListener?.run()
+    }
+
+    private fun refreshAccessibilityMetadata() {
+        contentDescription = StudyWritingCopy.drawingPadDescription()
+        updateAccessibilityState()
+    }
+
+    private fun updateAccessibilityState() {
+        ViewCompat.setStateDescription(this, StudyWritingCopy.drawingPadStrokeState(committedStrokes.size))
     }
 
     private fun notifyStrokeBlocked(decision: StrokeGuideGuard.Decision) {

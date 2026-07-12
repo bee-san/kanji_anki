@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +46,9 @@ internal fun MeaningChoiceResultActionBar(
     ) {
         Text(
             text = status,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier
+                .padding(bottom = 8.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
             color = kaniColor(statusColor),
             fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
