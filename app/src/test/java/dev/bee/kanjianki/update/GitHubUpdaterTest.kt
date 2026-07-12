@@ -8,6 +8,7 @@ import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
+import dev.bee.kanjianki.updatecore.SigningCertificateInfo
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator
 import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector
 import dev.bee.kanjianki.updatecore.UpdateTextPolicy
@@ -20,10 +21,14 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -89,6 +94,18 @@ class GitHubUpdaterTest {
             UpdateTextPolicy.updateCheckFailedMessage("network down"),
             result.message,
         )
+        assertFalse(result.retryable)
+    }
+
+    @Test
+    fun checkDownloadAndInstallMarksTransientNetworkFailureRetryable() {
+        val updater = GitHubUpdater(context, failingTextClient(SocketTimeoutException("timed out")))
+
+        val result = updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertEquals(UpdateTextPolicy.updateCheckFailedMessage("timed out"), result.message)
     }
 
     @Test
@@ -223,6 +240,22 @@ class GitHubUpdaterTest {
     }
 
     @Test
+    fun retryPolicyDistinguishesTransientNetworkAndHttpFailures() {
+        assertTrue(GitHubUpdater.retryableFailure(SocketTimeoutException("timeout")))
+        assertTrue(GitHubUpdater.retryableFailure(ConnectException("refused")))
+        assertTrue(GitHubUpdater.retryableFailure(UnknownHostException("offline")))
+        assertTrue(GitHubUpdater.retryableFailure(SocketException("reset")))
+        assertTrue(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(408))))
+        assertTrue(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(425))))
+        assertTrue(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(429))))
+        assertTrue(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(503))))
+
+        assertFalse(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(404))))
+        assertFalse(GitHubUpdater.retryableFailure(assertThrowsIOException(EmptyErrorResponseConnection(400))))
+        assertFalse(GitHubUpdater.retryableFailure(IOException("disk full")))
+    }
+
+    @Test
     fun getTextReadsLocalServerResponseAndSendsExpectedHeaders() {
         val body = "{\"tag_name\":\"v9.9.9\"}".toByteArray(StandardCharsets.UTF_8)
         OneShotHttpServer.start(body).use { server ->
@@ -249,6 +282,61 @@ class GitHubUpdaterTest {
             assertTrue(server.acceptHeader().contains("application/vnd.github+json"))
             assertTrue(server.userAgentHeader().startsWith("Kani/"))
         }
+    }
+
+    @Test
+    fun getTextRejectsOversizedChecksumAndApiResponsesFromDeclaredLengths() {
+        val oversizedChecksum = ByteArray(64 * 1024 + 1)
+        OneShotHttpServer.start(oversizedChecksum).use { server ->
+            val error = try {
+                GitHubUpdater.getText(server.url("/kani.apk.sha256"))
+                throw AssertionError("Expected oversized checksum response to fail")
+            } catch (caught: IOException) {
+                caught
+            }
+
+            assertEquals(
+                "Update text response is too large (65537 bytes > 65536).",
+                error.message,
+            )
+        }
+
+        val oversizedApi = ByteArray(1024 * 1024 + 1)
+        OneShotHttpServer.start(oversizedApi).use { server ->
+            val error = try {
+                GitHubUpdater.getText(server.url("/latest"))
+                throw AssertionError("Expected oversized API response to fail")
+            } catch (caught: IOException) {
+                caught
+            }
+
+            assertEquals(
+                "Update text response is too large (1048577 bytes > 1048576).",
+                error.message,
+            )
+        }
+    }
+
+    @Test
+    fun boundedTextReaderConsumesAtMostOneBytePastTheLimit() {
+        val stream = object : InputStream() {
+            var bytesRead = 0
+
+            override fun read(): Int {
+                bytesRead += 1
+                return 'x'.code
+            }
+        }
+
+        val error = try {
+            GitHubUpdater.readText(stream, 1_000L)
+            throw AssertionError("Expected an undeclared oversized stream to fail")
+        } catch (caught: IOException) {
+            caught
+        }
+
+        assertEquals("Update text response exceeded the maximum size of 1000 bytes.", error.message)
+        assertEquals(1_001, stream.bytesRead)
     }
 
     @Test
@@ -479,7 +567,7 @@ class GitHubUpdaterTest {
                 error("inspectApk should not be called")
             }
 
-            override fun installedSigningCertificates(packageName: String): List<ByteArray> =
+            override fun installedSigningCertificates(packageName: String): SigningCertificateInfo =
                 error("installedSigningCertificates should not be called")
 
             override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
@@ -510,7 +598,7 @@ class GitHubUpdaterTest {
                 error("inspectApk should not be called")
             }
 
-            override fun installedSigningCertificates(packageName: String): List<ByteArray> =
+            override fun installedSigningCertificates(packageName: String): SigningCertificateInfo =
                 error("installedSigningCertificates should not be called")
 
             override fun canRequestPackageInstalls(): Boolean = error("canRequestPackageInstalls should not be called")
@@ -536,8 +624,13 @@ class GitHubUpdaterTest {
             store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
         }
         val client = ConfigurableClient(
-            metadata = GitHubUpdater.ApkMetadata(context.packageName, "99.99.99", 34, listOf(byteArrayOf(9, 9, 9, 9))),
-            installedCerts = listOf(byteArrayOf(1, 2, 3, 4)),
+            metadata = GitHubUpdater.ApkMetadata(
+                context.packageName,
+                "99.99.99",
+                34,
+                currentSigners(byteArrayOf(9, 9, 9, 9)),
+            ),
+            installedCerts = currentSigners(byteArrayOf(1, 2, 3, 4)),
         )
 
         val result = GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
@@ -557,10 +650,10 @@ class GitHubUpdaterTest {
         LocalStore(context).use { store ->
             store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
         }
-        val certs = listOf(byteArrayOf(1, 2, 3, 4))
+        val cert = byteArrayOf(1, 2, 3, 4)
         val client = ConfigurableClient(
-            metadata = GitHubUpdater.ApkMetadata(context.packageName, "99.99.99", 34, certs),
-            installedCerts = certs,
+            metadata = GitHubUpdater.ApkMetadata(context.packageName, "99.99.99", 34, currentSigners(cert)),
+            installedCerts = currentSigners(cert),
             canInstall = true,
         )
 
@@ -568,6 +661,32 @@ class GitHubUpdaterTest {
 
         assertTrue(result.success)
         assertEquals(1, client.installs)
+    }
+
+    @Test
+    fun cachedInstallRejectsAdditionalConcurrentSigner() {
+        val cached = writeCachedApk("cached-added-signer.apk", "untrusted")
+        LocalStore(context).use { store ->
+            store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.name, "ready to install")
+        }
+        val installed = byteArrayOf(1, 2, 3, 4)
+        val client = ConfigurableClient(
+            metadata = GitHubUpdater.ApkMetadata(
+                context.packageName,
+                "99.99.99",
+                34,
+                currentSigners(installed, byteArrayOf(5, 6, 7, 8)),
+            ),
+            installedCerts = currentSigners(installed),
+            canInstall = true,
+        )
+
+        val result = GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+
+        assertFalse(result.success)
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message)
+        assertFalse(cached.exists())
+        assertEquals(0, client.installs)
     }
 
     @Test
@@ -611,7 +730,7 @@ class GitHubUpdaterTest {
 
     private inner class ConfigurableClient(
         private val metadata: GitHubUpdater.ApkMetadata,
-        private val installedCerts: List<ByteArray>,
+        private val installedCerts: SigningCertificateInfo,
         private val canInstall: Boolean = false,
     ) : GitHubUpdater.UpdateClient {
         var installs = 0
@@ -622,7 +741,7 @@ class GitHubUpdaterTest {
 
         override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata = metadata
 
-        override fun installedSigningCertificates(packageName: String): List<ByteArray> = installedCerts
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo = installedCerts
 
         override fun canRequestPackageInstalls(): Boolean = canInstall
 
@@ -636,6 +755,10 @@ class GitHubUpdaterTest {
         }
 
         override fun showPendingUpdate(version: String, message: String): Boolean = true
+    }
+
+    private fun currentSigners(vararg certificates: ByteArray): SigningCertificateInfo {
+        return SigningCertificateInfo.currentSigners(certificates.toList())
     }
 
     private fun assertThrowsIOException(connection: HttpURLConnection): IOException {

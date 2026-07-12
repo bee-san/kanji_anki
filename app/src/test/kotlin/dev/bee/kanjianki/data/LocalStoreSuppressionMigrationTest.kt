@@ -52,7 +52,7 @@ class LocalStoreSuppressionMigrationTest {
             "INSERT INTO study_items (kanji, state, due_at, stability, difficulty, total_reviews, lapses, " +
                 "learning_step, writing_level, suppressed_by_task_type, suppressed_at, created_at) " +
                 "VALUES (?, 'review', 1000, 1.0, 5.0, 1, 0, 0, 0, ?, ?, 1000)",
-            arrayOf(kanji, suppressedByTaskType, suppressedAt),
+            arrayOf<Any>(kanji, suppressedByTaskType, suppressedAt),
         )
     }
 

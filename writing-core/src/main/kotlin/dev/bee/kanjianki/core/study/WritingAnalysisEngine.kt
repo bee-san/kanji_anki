@@ -6,10 +6,6 @@ class WritingAnalysisEngine private constructor() {
     private data class RecognitionMatch(val recognized: Boolean, val topCandidate: Boolean)
 
     companion object {
-        private const val RATING_AGAIN = "again"
-        private const val RATING_HARD = "hard"
-        private const val RATING_GOOD = "good"
-        private const val RATING_EASY = "easy"
         private const val TARGET_NOT_RECOGNIZED = "I could not read that as the target kanji yet."
         private const val RECOGNITION_ERROR_MESSAGE = "The handwriting checker could not read this attempt. Try once more."
 
@@ -20,7 +16,7 @@ class WritingAnalysisEngine private constructor() {
         fun noInk(hintLevel: HintLevel?, hintsUsed: Int): WritingAnalysis {
             return WritingAnalysis(
                 WritingAnalysis.Status.NO_INK,
-                RATING_AGAIN,
+                StudyRating.AGAIN.code(),
                 false,
                 "Write in the square before checking.",
                 Collections.emptyList(),
@@ -37,7 +33,7 @@ class WritingAnalysisEngine private constructor() {
         fun modelUnavailable(message: String?, hintLevel: HintLevel?, hintsUsed: Int): WritingAnalysis {
             return WritingAnalysis(
                 WritingAnalysis.Status.MODEL_UNAVAILABLE,
-                RATING_AGAIN,
+                StudyRating.AGAIN.code(),
                 false,
                 message,
                 Collections.emptyList(),
@@ -54,7 +50,7 @@ class WritingAnalysisEngine private constructor() {
         fun recognitionError(hintLevel: HintLevel?, hintsUsed: Int): WritingAnalysis {
             return WritingAnalysis(
                 WritingAnalysis.Status.RECOGNITION_ERROR,
-                RATING_AGAIN,
+                StudyRating.AGAIN.code(),
                 false,
                 RECOGNITION_ERROR_MESSAGE,
                 Collections.emptyList(),
@@ -95,7 +91,7 @@ class WritingAnalysisEngine private constructor() {
                 order = order.withDiagnosis(confusionDiagnosis(target, candidates, order.diagnosis))
                 return WritingAnalysis(
                     WritingAnalysis.Status.WRONG,
-                    RATING_AGAIN,
+                    StudyRating.AGAIN.code(),
                     false,
                     TARGET_NOT_RECOGNIZED,
                     candidates,
@@ -107,7 +103,7 @@ class WritingAnalysisEngine private constructor() {
             if (!order.acceptable) {
                 return WritingAnalysis(
                     WritingAnalysis.Status.WRONG,
-                    RATING_AGAIN,
+                    StudyRating.AGAIN.code(),
                     false,
                     order.message,
                     candidates,
@@ -120,7 +116,7 @@ class WritingAnalysisEngine private constructor() {
                 order = order.withDiagnosis(order.diagnosis.plus(StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY, 0))
                 return WritingAnalysis(
                     WritingAnalysis.Status.CLOSE,
-                    RATING_HARD,
+                    StudyRating.HARD.code(),
                     true,
                     "Readable, but the stroke path needs one more careful pass.",
                     candidates,
@@ -132,7 +128,7 @@ class WritingAnalysisEngine private constructor() {
             if (match.topCandidate) {
                 return WritingAnalysis(
                     WritingAnalysis.Status.PASS,
-                    RATING_EASY,
+                    StudyRating.EASY.code(),
                     true,
                     "Clean match.",
                     candidates,
@@ -143,7 +139,7 @@ class WritingAnalysisEngine private constructor() {
             }
             return WritingAnalysis(
                 WritingAnalysis.Status.PASS,
-                RATING_GOOD,
+                StudyRating.GOOD.code(),
                 true,
                 "Matched the kanji. Keep tightening the stroke path.",
                 candidates,
@@ -169,7 +165,7 @@ class WritingAnalysisEngine private constructor() {
                 }
                 return WritingAnalysis(
                     WritingAnalysis.Status.CLOSE,
-                    if (match.topCandidate) RATING_GOOD else RATING_HARD,
+                    if (match.topCandidate) StudyRating.GOOD.code() else StudyRating.HARD.code(),
                     true,
                     message,
                     candidates,
@@ -180,7 +176,7 @@ class WritingAnalysisEngine private constructor() {
             }
             return WritingAnalysis(
                 WritingAnalysis.Status.NO_STROKE_DATA,
-                RATING_AGAIN,
+                StudyRating.AGAIN.code(),
                 false,
                 "${order.message} $TARGET_NOT_RECOGNIZED",
                 candidates,

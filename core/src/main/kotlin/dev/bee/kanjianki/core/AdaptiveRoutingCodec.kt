@@ -104,6 +104,12 @@ object AdaptiveRouteStateCodec {
         }
         val activeCore = CoreSkill.fromWireName(root.string("c")) ?: return null
         val tasks = root.stringList("t").filter { it.isNotBlank() }
+        // Unknown task wires cannot be rendered or progressed safely. Treat
+        // the whole route as malformed so AdaptiveStudyItemPolicy restores
+        // the owning core instead of trapping the item in relearning.
+        if (tasks.any { it !in RecordsBase.StudyLadderSettings.REPAIR_TASK_TYPES }) {
+            return null
+        }
         val rawTaskIndex = root.nonNegativeInt("i")
         val taskIndex = if (tasks.isEmpty()) 0 else rawTaskIndex.coerceAtMost(tasks.lastIndex)
         val recurringFailureWire = root.string("f")

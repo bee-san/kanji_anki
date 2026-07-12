@@ -1,6 +1,9 @@
 package dev.bee.kanjianki.data
 
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StudySchedulerMigrationTest {
@@ -27,5 +30,34 @@ class StudySchedulerMigrationTest {
         assertEquals("DELETE FROM learning_repeats", sql[6])
         assertEquals("DELETE FROM similar_kanji_choice_state", sql[7])
         assertEquals("DELETE FROM similar_kanji_repair_queue", sql[8])
+    }
+
+    @Test
+    fun compatibilityTableRemainsWithoutLegacyQueueApiOrModel() {
+        assertEquals("learning_repeats", LocalStoreBase.TABLE_LEARNING_REPEATS)
+        assertTrue(
+            LocalStoreBase.LEARNING_REPEATS_TABLE_SQL.startsWith(
+                "CREATE TABLE learning_repeats ",
+            ),
+        )
+
+        val removedMethods = setOf(
+            "saveLearningRepeat",
+            "enqueueLearningRepeat",
+            "clearLearningRepeat",
+            "dueLearningRepeats",
+            "readLearningRepeat",
+        )
+        val productionMethods = listOf(
+            LocalStoreStudy::class.java,
+            LocalStoreStudyLog::class.java,
+            LocalStoreHistory::class.java,
+        ).flatMap { type -> type.declaredMethods.map { it.name.substringBefore('$') } }
+        assertTrue(productionMethods.none { it in removedMethods })
+        assertFalse(
+            RecordsSchedulerModels::class.java.declaredClasses.any {
+                it.simpleName == "LearningRepeat"
+            },
+        )
     }
 }

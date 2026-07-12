@@ -278,6 +278,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     private lateinit var backupExportDocumentLauncher: ActivityResultLauncher<String>
     private lateinit var backupRestoreDocumentLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var ankiDatabasePermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
 
     abstract fun renderHome()
     abstract fun renderUpdate()
@@ -320,17 +322,50 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // SAF launchers must be registered once, before the activity reaches STARTED.
-        // Settings prepares/validates private files on the IO executor and these callbacks
-        // bridge the system picker result back to that flow.
+        pendingReminderSettings = restorePendingReminderSettings(savedInstanceState)
+        // Activity-result launchers must be registered once, before the activity reaches STARTED.
+        // Keep the established SAF launchers first: ComponentActivity's automatic registry keys
+        // are positional, so changing their order can misroute a result restored from older code.
         backupExportDocumentLauncher = registerForActivityResult(
             ActivityResultContracts.CreateDocument("application/gzip"),
         ) { uri -> onBackupExportDocumentSelected(uri) }
         backupRestoreDocumentLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocument(),
         ) { uri -> onBackupRestoreDocumentSelected(uri) }
+        // Permission callbacks preserve the previous request-code behavior: either AnkiDroid
+        // permission result refreshes Home, while notification permission settles the pending
+        // reminder settings before returning to the same Settings surface.
+        ankiDatabasePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { handleAnkiPermissionResult() }
+        postNotificationPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted -> handlePostNotificationPermission(granted) }
         onBackPressedDispatcher.addCallback(this, backCallback)
         startup.start()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        pendingReminderSettings?.let { pending ->
+            outState.putBundle(
+                STATE_PENDING_REMINDER,
+                Bundle().apply {
+                    putBoolean(STATE_PENDING_REMINDER_ENABLED, pending.enabled)
+                    putInt(STATE_PENDING_REMINDER_HOUR, pending.hour)
+                    putInt(STATE_PENDING_REMINDER_MINUTE, pending.minute)
+                },
+            )
+        }
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun restorePendingReminderSettings(savedInstanceState: Bundle?): LocalStoreBase.ReminderSettings? {
+        val pending = savedInstanceState?.getBundle(STATE_PENDING_REMINDER) ?: return null
+        return LocalStoreBase.ReminderSettings(
+            pending.getBoolean(STATE_PENDING_REMINDER_ENABLED),
+            pending.getInt(STATE_PENDING_REMINDER_HOUR),
+            pending.getInt(STATE_PENDING_REMINDER_MINUTE),
+        )
     }
 
     protected open fun onBackupExportDocumentSelected(uri: Uri?) = Unit
@@ -398,13 +433,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         permissionHandler.requestAnkiPermissionIfNeeded()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        handlePermissionResult(requestCode, grantResults)
+    fun launchAnkiDatabasePermission(permission: String) {
+        ankiDatabasePermissionLauncher.launch(permission)
     }
 
-    fun handlePermissionResult(requestCode: Int, grantResults: IntArray) {
-        permissionHandler.handlePermissionResult(requestCode, grantResults)
+    fun handleAnkiPermissionResult() {
+        permissionHandler.handleAnkiPermissionResult()
+    }
+
+    fun requestPostNotificationPermission() {
+        postNotificationPermissionLauncher.launch(PERMISSION_POST_NOTIFICATIONS)
     }
 
     fun setFlashcardGestureBounds(left: Float, top: Float, right: Float, bottom: Float) {
@@ -416,8 +454,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         )
     }
 
-    fun handlePostNotificationPermission(grantResults: IntArray) {
-        permissionHandler.handlePostNotificationPermission(grantResults)
+    fun handlePostNotificationPermission(granted: Boolean) {
+        permissionHandler.handlePostNotificationPermission(granted)
     }
 
     fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
@@ -599,8 +637,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
-        const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
+        private const val STATE_PENDING_REMINDER = "kani.pending-reminder"
+        private const val STATE_PENDING_REMINDER_ENABLED = "enabled"
+        private const val STATE_PENDING_REMINDER_HOUR = "hour"
+        private const val STATE_PENDING_REMINDER_MINUTE = "minute"
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"

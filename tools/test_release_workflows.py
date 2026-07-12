@@ -22,25 +22,46 @@ FAKE_PROVIDER_ANDROID_TEST_SOURCE = (
 
 
 class FastCiTaskWiringTest(unittest.TestCase):
+    PYTHON_SUITES = {
+        "testDictionaryAssets": "tools",
+        "testRalphScripts": "scripts/tests",
+        "testCiScripts": "ci/tests",
+    }
+
     def setUp(self) -> None:
         self.gradle = ROOT_BUILD_GRADLE.read_text(encoding="utf-8")
 
-    def test_ci_fast_runs_ci_script_python_tests(self) -> None:
-        self.assertIn('tasks.register<Exec>("testCiScripts")', self.gradle)
-        self.assertIn('"-s", "ci/tests"', self.gradle)
-        self.assertIn('"-p", "test_*.py"', self.gradle)
+    def test_ci_fast_runs_every_deterministic_python_test_suite(self) -> None:
         fast_tasks = self.gradle.split("val fastCiTasks = listOf(", maxsplit=1)[1].split(")", maxsplit=1)[0]
-        self.assertIn('"testDictionaryAssets"', fast_tasks)
-        self.assertIn('"testCiScripts"', fast_tasks)
+        for task, directory in self.PYTHON_SUITES.items():
+            with self.subTest(task=task, directory=directory):
+                task_marker = f'tasks.register<Exec>("{task}") {{'
+                self.assertIn(task_marker, self.gradle)
+                task_block = self.gradle.split(task_marker, maxsplit=1)[1].split("\n}", maxsplit=1)[0]
+                self.assertIn(
+                    f'commandLine("python3", "-m", "unittest", "discover", "-s", "{directory}", "-p", "test_*.py")',
+                    task_block,
+                )
+                self.assertIn(f'"{task}"', fast_tasks)
 
     def test_android_ci_asset_job_matches_local_python_test_surface(self) -> None:
         # CI's Fast confidence gate must run the same Python suites as local ciFast:
-        # tools/, scripts/tests/, AND ci/tests/. The last one was missing, letting the
-        # CI gate silently diverge from local ciFast (which runs it via testCiScripts).
-        ci = (ROOT / ".github/workflows/android-ci.yml").read_text(encoding="utf-8")
-        for directory in ("tools", "scripts/tests", "ci/tests"):
+        # tools/, scripts/tests/, AND ci/tests/. Pin both sides so neither gate
+        # can silently drop a suite while the other remains green.
+        import yaml
+
+        ci = yaml.safe_load((ROOT / ".github/workflows/android-ci.yml").read_text(encoding="utf-8"))
+        asset_test_commands = {
+            step["run"]
+            for step in ci["jobs"]["asset-tests"]["steps"]
+            if "run" in step
+        }
+        for directory in self.PYTHON_SUITES.values():
             with self.subTest(directory=directory):
-                self.assertIn(f"-s {directory} -p 'test_*.py'", ci)
+                self.assertIn(
+                    f"python3 -m unittest discover -s {directory} -p 'test_*.py'",
+                    asset_test_commands,
+                )
 
 
 class AndroidReleaseWorkflowTest(unittest.TestCase):

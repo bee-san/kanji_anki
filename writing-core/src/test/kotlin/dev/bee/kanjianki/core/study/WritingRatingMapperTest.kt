@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core.study
 
+import dev.bee.kanjianki.core.StudyRatings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
@@ -196,6 +197,14 @@ class WritingRatingMapperTest {
         assertEquals(StudyRating.GOOD, StudyRating.fromCode("good"))
         assertEquals(StudyRating.GOOD, StudyRating.EASY.cappedAt(StudyRating.GOOD))
         assertEquals(StudyRating.HARD, StudyRating.HARD.cappedAt(StudyRating.GOOD))
+    }
+
+    @Test
+    fun writingRatingsUseTheCanonicalSchedulerWireNames() {
+        assertEquals(StudyRatings.AGAIN, StudyRating.AGAIN.code())
+        assertEquals(StudyRatings.HARD, StudyRating.HARD.code())
+        assertEquals(StudyRatings.GOOD, StudyRating.GOOD.code())
+        assertEquals(StudyRatings.EASY, StudyRating.EASY.code())
     }
 
     @Test

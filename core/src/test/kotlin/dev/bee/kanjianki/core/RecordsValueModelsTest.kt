@@ -20,7 +20,7 @@ class RecordsValueModelsTest {
     @Test
     fun splitModelConstructorsStayHiddenWhileExposingRecordApi() {
         val probe = SplitProbe()
-        assertTrue(probe is RecordsBase)
+        assertTrue(RecordsBase::class.java.isAssignableFrom(probe.javaClass))
         assertTrue(probe.defaultSuspendedCards())
         assertEquals("Kiku", probe.defaultModelName())
     }
@@ -117,7 +117,7 @@ class RecordsValueModelsTest {
     }
 
     @Test
-    fun taskMemoryLearningRepeatAndReviewStatsCoverFallbacks() {
+    fun taskMemoryAndReviewStatsCoverFallbacks() {
         val fallback = RecordsStudyModels.TaskMemory("fallback", 1L, 2.0, 3.0, 4, 5, 1, "good", 6)
         val emptyState = RecordsStudyModels.TaskMemory("", 1L, 2.0, 3.0, 4, 5, 1, "good", 6)
         assertSame(fallback, RecordsStudyModels.TaskMemory.decode(null, fallback))
@@ -143,14 +143,6 @@ class RecordsValueModelsTest {
         assertEquals(0, legacyNinePart.consecutivePasses)
         assertEquals(3, legacyTenPart.consecutivePasses)
         assertEquals("review", RecordsStudyModels.TaskMemory("review", 1L, 2.0, 3.0, 4, 5, 1, "good", 6).state)
-
-        val repeat = RecordsSchedulerModels.LearningRepeat(null, null, null, "bad", -1, -2L, null, -3L, -4L)
-        assertEquals("", repeat.kanji)
-        assertEquals(RecordsBase.LEARNING_REPEAT_NEW, repeat.repeatType)
-        assertEquals(0, repeat.stepIndex)
-        assertEquals("tok", repeat.withToken("tok", 10L).activeToken)
-        assertEquals(3, repeat.withStep(3, 20L, 30L).stepIndex)
-        assertEquals(RecordsBase.LEARNING_REPEAT_REVIEW, RecordsSchedulerModels.LearningRepeat("裂", "sig", "task", RecordsBase.LEARNING_REPEAT_REVIEW, 1, 2L, TEST_ACTIVE, 3L, 4L).repeatType)
 
         assertEquals(1.0, RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0).retentionProxy(), 0.001)
         assertEquals(0.25, RecordsSchedulerModels.ReviewStats(4, 1, 1, 1, 1, 4, 1).writingFailureRate(), 0.001)

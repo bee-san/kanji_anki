@@ -19,7 +19,6 @@ import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.MotionEvent;
@@ -239,22 +238,25 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 activity.handleLaunchIntent(Intent().putExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE));
                 assertHasText(activity, "Settings");
 
-                activity.handlePermissionResult(7, intArrayOf(PackageManager.PERMISSION_DENIED));
-                assertHasText(activity, "Kani");
-                activity.onRequestPermissionsResult(7, emptyArray<String>(), intArrayOf(PackageManager.PERMISSION_DENIED));
+                activity.handleAnkiPermissionResult();
                 assertHasText(activity, "Kani");
 
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30);
-                activity.handlePostNotificationPermission(intArrayOf(PackageManager.PERMISSION_GRANTED));
+                activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
+                assertNull(activity.pendingReminderSettings);
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 9, 15);
-                activity.handlePostNotificationPermission(intArrayOf(PackageManager.PERMISSION_DENIED));
+                activity.handlePostNotificationPermission(false);
                 assertFalse(activity.store.reminderSettings().enabled);
+                assertEquals(9, activity.store.reminderSettings().hour);
+                assertEquals(15, activity.store.reminderSettings().minute);
+                assertNull(activity.pendingReminderSettings);
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 10, 45);
-                activity.handlePermissionResult(MainActivityBase.REQUEST_POST_NOTIFICATIONS, intArrayOf(PackageManager.PERMISSION_GRANTED));
+                activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
-                activity.handlePermissionResult(999, intArrayOf(PackageManager.PERMISSION_DENIED));
-                assertTrue(activity.store.reminderSettings().enabled);
+                assertEquals(10, activity.store.reminderSettings().hour);
+                assertEquals(45, activity.store.reminderSettings().minute);
+                assertNull(activity.pendingReminderSettings);
 
                 var now = System.currentTimeMillis()
                 var reviewDue = studyItem("復", RecordsBase.LadderRung.KANJI_MEANING, "review", now - 1L)
@@ -299,6 +301,48 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 timing.pause(90L);
                 assertEquals(30L, timing.activeElapsedMillis);
 
+            }
+        }
+    }
+
+    @Test
+fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 7, 25)
+            }
+
+            scenario.recreate()
+            scenario.onActivity { activity ->
+                val restored = requireNotNull(activity.pendingReminderSettings)
+                assertTrue(restored.enabled)
+                assertEquals(7, restored.hour)
+                assertEquals(25, restored.minute)
+                activity.handlePostNotificationPermission(true)
+                assertEquals(7, activity.store.reminderSettings().hour)
+                assertEquals(25, activity.store.reminderSettings().minute)
+                assertNull(activity.pendingReminderSettings)
+            }
+        }
+    }
+
+    @Test
+fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsDenied() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 19, 40)
+            }
+            scenario.recreate()
+            scenario.onActivity { activity ->
+                val restored = requireNotNull(activity.pendingReminderSettings)
+                assertEquals(19, restored.hour)
+                assertEquals(40, restored.minute)
+                activity.handlePostNotificationPermission(false)
+                val denied = activity.store.reminderSettings()
+                assertFalse(denied.enabled)
+                assertEquals(19, denied.hour)
+                assertEquals(40, denied.minute)
+                assertNull(activity.pendingReminderSettings)
             }
         }
     }
@@ -1800,11 +1844,16 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
         assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size)
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
-        assertTrue(activity.queuedEntries(
+        val queuedEntries = activity.queuedEntries(
                 listOf(activeRow),
                 listOf(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)),
                 System.currentTimeMillis()
-        ) != null);
+        )
+        assertEquals(1, queuedEntries.size)
+        val queuedEntry = queuedEntries.single()
+        assertSame(activeRow, queuedEntry.row)
+        assertEquals("裂", queuedEntry.item.kanji)
+        assertEquals(0L, queuedEntry.item.dueAtMillis)
     }
 
 private fun verifySyncResultStudyNow(activity: MainActivity) {

@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.content.pm.PackageManager
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -11,20 +10,15 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
         val status = activity.gateway.status()
         val permission = status.permission
         if (permission != null && !status.permissionGranted) {
-            activity.requestPermissions(arrayOf(permission), 7)
+            activity.launchAnkiDatabasePermission(permission)
         }
     }
 
-    fun handlePermissionResult(requestCode: Int, grantResults: IntArray) {
-        if (requestCode == 7) {
-            activity.renderHome()
-        } else if (requestCode == MainActivityBase.REQUEST_POST_NOTIFICATIONS) {
-            handlePostNotificationPermission(grantResults)
-        }
+    fun handleAnkiPermissionResult() {
+        activity.renderHome()
     }
 
-    fun handlePostNotificationPermission(grantResults: IntArray) {
-        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+    fun handlePostNotificationPermission(granted: Boolean) {
         val pending = activity.pendingReminderSettings
         if (granted) {
             saveGrantedReminderPermission(pending)

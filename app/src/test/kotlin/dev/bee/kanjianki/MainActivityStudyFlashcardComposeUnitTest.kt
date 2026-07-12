@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -123,7 +123,9 @@ class MainActivityStudyFlashcardComposeUnitTest {
         textField.performTextReplacement("prison")
         textField.performImeAction()
 
-        assertTrue(submitCount == 1)
+        composeRule.runOnIdle {
+            assertEquals(1, submitCount)
+        }
     }
 
     @Test

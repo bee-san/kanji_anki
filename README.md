@@ -148,6 +148,8 @@ KANI_SIGNING_KEY_PASSWORD=...
 
 Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that tag name. GitHub Actions builds the signed APK, writes a matching `.sha256`, and publishes both files to the release.
 
+The download, validation, retry, permission, and cache invariants for updates installed from inside Kani are documented in the [in-app update security contract](docs/in-app-update-security.md).
+
 ## Runbook pointers
 
 - Product contract checks: read this README and the centralized strings in `core/src/main/kotlin/dev/bee/kanjianki/core/HomeTextCopy.kt` before changing user-facing copy.

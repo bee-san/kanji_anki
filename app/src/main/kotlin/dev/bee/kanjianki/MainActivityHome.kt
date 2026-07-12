@@ -98,7 +98,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                     scrollPositionLabel = screenshotScrollPositionLabel(),
                 )
                 scheduleStatsPrecomputeIfStaleAsync()
-                maybeShowUpdatePermissionPrompt()
+                maybeShowUpdatePermissionPrompt(model.updatePermissionPrompt)
             },
         )
     }
@@ -202,6 +202,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 )
             }
         }
+        val updatePermissionPrompt = homeLoadPhase("update-permission-prompt") {
+            loadUpdatePermissionPromptSnapshot()
+        }
 
         homeLoadPhase("model-assembly") {
             studySessionBadgeCount = studyNowCount
@@ -235,6 +238,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 },
                 studyRemainingCount = studyNowCount,
                 repairedHandoff = repairedHandoff,
+                updatePermissionPrompt = updatePermissionPrompt,
             )
         }
     }

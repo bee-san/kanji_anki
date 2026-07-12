@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class HomeUpdatePermissionDialogModelTest {
@@ -46,5 +47,40 @@ class HomeUpdatePermissionDialogModelTest {
                 "and it will update itself automatically.",
             model.message,
         )
+    }
+
+    @Test
+    fun promptSnapshotCapturesTheBackgroundDecisionWithoutRenderTimeReads() {
+        val firstPrompt = HomeUpdatePermissionPromptSnapshots.create(
+            autoUpdateEnabled = true,
+            canRequestPackageInstalls = false,
+            hasCompletedUpdateCheck = true,
+            firstPromptShown = false,
+            hasPendingUpdate = false,
+            latestVersion = "",
+            lastPromptedVersion = "",
+        )
+        val pendingUpdate = HomeUpdatePermissionPromptSnapshots.create(
+            autoUpdateEnabled = true,
+            canRequestPackageInstalls = false,
+            hasCompletedUpdateCheck = true,
+            firstPromptShown = true,
+            hasPendingUpdate = true,
+            latestVersion = " v0.5.0 ",
+            lastPromptedVersion = "v0.4.9",
+        )
+        val alreadyGranted = HomeUpdatePermissionPromptSnapshots.create(
+            autoUpdateEnabled = true,
+            canRequestPackageInstalls = true,
+            hasCompletedUpdateCheck = true,
+            firstPromptShown = false,
+            hasPendingUpdate = false,
+            latestVersion = "",
+            lastPromptedVersion = "",
+        )
+
+        assertEquals(HomeUpdatePermissionPromptSnapshot("", null), firstPrompt)
+        assertEquals(HomeUpdatePermissionPromptSnapshot("v0.5.0", "v0.5.0"), pendingUpdate)
+        assertNull(alreadyGranted)
     }
 }

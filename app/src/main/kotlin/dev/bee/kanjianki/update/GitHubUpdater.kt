@@ -17,6 +17,7 @@ import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.ReleaseVersion
 import dev.bee.kanjianki.updatecore.Sha256Digest
+import dev.bee.kanjianki.updatecore.SigningCertificateInfo
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator
 import dev.bee.kanjianki.updatecore.UpdateCacheFilePolicy
 import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector
@@ -29,7 +30,12 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.NoRouteToHostException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
@@ -107,7 +113,10 @@ class GitHubUpdater @JvmOverloads constructor(
         } catch (error: IOException) {
             recordResult(
                 checkedAt,
-                UpdateResult.failed(UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error))),
+                UpdateResult.failed(
+                    UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error)),
+                    retryableFailure(error),
+                ),
                 "",
                 "",
                 "",
@@ -184,8 +193,8 @@ class GitHubUpdater @JvmOverloads constructor(
     }
 
     /**
-     * Verify the downloaded APK is signed by the same certificate(s) as the running
-     * app before committing the install. If the release account/pipeline is
+     * Verify the downloaded APK has a signer set or verified rotation history
+     * compatible with the running app before committing the install. If the release account/pipeline is
      * compromised, both the APK and its .sha256 are attacker-controlled; Android would
      * reject a mismatched signature at commit time, but failing fast here lets callers
      * clear the pending state so a hostile/broken APK is not retried on every onResume.
@@ -266,8 +275,10 @@ class GitHubUpdater @JvmOverloads constructor(
         @JvmField val retryable: Boolean,
     ) {
         companion object {
-            fun failed(message: String?): UpdateResult {
-                return UpdateResult(false, message ?: "", null, false, false)
+            @JvmStatic
+            @JvmOverloads
+            fun failed(message: String?, retryable: Boolean = false): UpdateResult {
+                return UpdateResult(false, message ?: "", null, false, retryable)
             }
         }
     }
@@ -281,7 +292,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
         fun inspectApk(apkFile: File): ApkMetadata
 
-        fun installedSigningCertificates(packageName: String): List<ByteArray>
+        fun installedSigningCertificates(packageName: String): SigningCertificateInfo
 
         fun canRequestPackageInstalls(): Boolean
 
@@ -396,7 +407,7 @@ class GitHubUpdater @JvmOverloads constructor(
             return metadataFromPackageInfo(info)
         }
 
-        override fun installedSigningCertificates(packageName: String): List<ByteArray> {
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo {
             return GitHubUpdater.installedSigningCertificates(context.packageManager, packageName)
         }
 
@@ -470,7 +481,7 @@ class GitHubUpdater @JvmOverloads constructor(
         @JvmField val packageName: String,
         @JvmField val versionName: String,
         @JvmField val targetSdkVersion: Int = 0,
-        @JvmField val signingCertificates: List<ByteArray> = emptyList(),
+        @JvmField val signingCertificates: SigningCertificateInfo = SigningCertificateInfo.unavailable(),
     )
 
     private class AndroidPackageInstallerAccess(
@@ -520,6 +531,9 @@ class GitHubUpdater @JvmOverloads constructor(
         private const val API_BASE = "https://api.github.com/repos/"
         private const val TAG = "KaniUpdate"
         private const val BUFFER_SIZE = 32_768
+        private const val MAX_API_TEXT_BYTES = 1024L * 1024L
+        private const val MAX_CHECKSUM_TEXT_BYTES = 64L * 1024L
+        private const val MAX_ERROR_TEXT_BYTES = 4L * 1024L
 
         /**
          * Hard ceiling on a downloaded update APK. The real APK is a few MB; this
@@ -605,7 +619,9 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         @Throws(IOException::class)
-        fun getText(url: String): String {
+        @JvmOverloads
+        fun getText(url: String, maxBytes: Long = textResponseLimit(url)): String {
+            require(maxBytes > 0L) { "maxBytes must be positive." }
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.setRequestProperty("Accept", "application/vnd.github+json,text/plain,*/*")
             connection.setRequestProperty("User-Agent", "Kani/${BuildConfig.VERSION_NAME}")
@@ -613,7 +629,11 @@ class GitHubUpdater @JvmOverloads constructor(
             connection.readTimeout = 20_000
             return try {
                 requireSuccess(connection, "fetch $url")
-                readText(connection.inputStream)
+                val declared = connection.contentLengthLong
+                if (declared > maxBytes) {
+                    throw IOException("Update text response is too large ($declared bytes > $maxBytes).")
+                }
+                readText(connection.inputStream, maxBytes)
             } finally {
                 connection.disconnect()
             }
@@ -661,23 +681,91 @@ class GitHubUpdater @JvmOverloads constructor(
             var body = ""
             val error = connection.errorStream
             if (error != null) {
-                body = readText(error).replace('\n', ' ').trim()
+                body = readTextPrefix(error, MAX_ERROR_TEXT_BYTES).replace('\n', ' ').trim()
                 if (body.length > 160) {
                     body = body.substring(0, 160)
                 }
             }
             val suffix = if (body.isEmpty()) "" else ": $body"
-            throw IOException("HTTP $status while trying to $action$suffix")
+            throw HttpStatusIOException(status, "HTTP $status while trying to $action$suffix")
         }
 
+        @JvmStatic
+        internal fun retryableFailure(error: IOException): Boolean {
+            var cause: Throwable? = error
+            repeat(8) {
+                when (val current = cause) {
+                    is HttpStatusIOException -> return current.statusCode == 408 ||
+                        current.statusCode == 425 ||
+                        current.statusCode == 429 ||
+                        current.statusCode in 500..599
+                    is SocketTimeoutException,
+                    is ConnectException,
+                    is UnknownHostException,
+                    is NoRouteToHostException,
+                    is SocketException,
+                    -> return true
+                }
+                cause = cause?.cause
+                if (cause == null) {
+                    return false
+                }
+            }
+            return false
+        }
+
+        @JvmStatic
         @Throws(IOException::class)
-        private fun readText(stream: InputStream): String {
-            BufferedInputStream(stream).use { input ->
-                val output = ByteArrayOutputStream()
-                copy(input, output)
+        internal fun readText(stream: InputStream, maxBytes: Long): String {
+            require(maxBytes > 0L) { "maxBytes must be positive." }
+            stream.use { input ->
+                val output = ByteArrayOutputStream(minOf(maxBytes, BUFFER_SIZE.toLong()).toInt())
+                val buffer = ByteArray(BUFFER_SIZE)
+                var total = 0L
+                while (true) {
+                    val remaining = maxBytes - total
+                    val requestBytes = if (remaining >= buffer.size) buffer.size else (remaining + 1L).toInt()
+                    val read = input.read(buffer, 0, requestBytes)
+                    if (read < 0) {
+                        break
+                    }
+                    total += read
+                    if (total > maxBytes) {
+                        throw IOException("Update text response exceeded the maximum size of $maxBytes bytes.")
+                    }
+                    output.write(buffer, 0, read)
+                }
                 return output.toString("UTF-8")
             }
         }
+
+        @Throws(IOException::class)
+        private fun readTextPrefix(stream: InputStream, maxBytes: Long): String {
+            stream.use { input ->
+                val output = ByteArrayOutputStream(minOf(maxBytes, BUFFER_SIZE.toLong()).toInt())
+                val buffer = ByteArray(BUFFER_SIZE)
+                var remaining = maxBytes
+                while (remaining > 0L) {
+                    val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                    if (read < 0) {
+                        break
+                    }
+                    output.write(buffer, 0, read)
+                    remaining -= read
+                }
+                return output.toString("UTF-8")
+            }
+        }
+
+        private fun textResponseLimit(url: String): Long {
+            val path = url.substringBefore('?').lowercase(Locale.ROOT)
+            return if (path.endsWith(".sha256")) MAX_CHECKSUM_TEXT_BYTES else MAX_API_TEXT_BYTES
+        }
+
+        private class HttpStatusIOException(
+            val statusCode: Int,
+            message: String,
+        ) : IOException(message)
 
         @JvmStatic
         @Throws(IOException::class)
@@ -820,30 +908,36 @@ class GitHubUpdater @JvmOverloads constructor(
             return packageManager.getPackageArchiveInfo(apkPath, flags)
         }
 
-        /** Signing certificate bytes for a PackageInfo, across API levels. */
+        /** Signing certificates and their Android-verified relationship, across API levels. */
         @JvmStatic
-        fun signingCertificates(info: PackageInfo?): List<ByteArray> {
+        fun signingCertificates(info: PackageInfo?): SigningCertificateInfo {
             if (info == null) {
-                return emptyList()
+                return SigningCertificateInfo.unavailable()
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val signingInfo = info.signingInfo ?: return emptyList()
-                val signers = if (signingInfo.hasMultipleSigners()) {
-                    signingInfo.apkContentsSigners
+                val signingInfo = info.signingInfo ?: return SigningCertificateInfo.unavailable()
+                return if (signingInfo.hasMultipleSigners()) {
+                    SigningCertificateInfo.currentSigners(
+                        signingInfo.apkContentsSigners?.map { it.toByteArray() },
+                    )
                 } else {
-                    signingInfo.signingCertificateHistory
+                    SigningCertificateInfo.verifiedHistory(
+                        signingInfo.signingCertificateHistory?.map { it.toByteArray() },
+                    )
                 }
-                return signers?.map { it.toByteArray() } ?: emptyList()
             }
             @Suppress("DEPRECATION")
-            return info.signatures?.map { it.toByteArray() } ?: emptyList()
+            return SigningCertificateInfo.currentSigners(info.signatures?.map { it.toByteArray() })
         }
 
-        /** Signing certificate bytes for the currently installed running package. */
+        /** Signing certificates for the currently installed running package. */
         @JvmStatic
-        fun installedSigningCertificates(packageManager: PackageManager?, packageName: String): List<ByteArray> {
+        fun installedSigningCertificates(
+            packageManager: PackageManager?,
+            packageName: String,
+        ): SigningCertificateInfo {
             if (packageManager == null) {
-                return emptyList()
+                return SigningCertificateInfo.unavailable()
             }
             return try {
                 val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -854,7 +948,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 }
                 signingCertificates(packageManager.getPackageInfo(packageName, flags))
             } catch (_: PackageManager.NameNotFoundException) {
-                emptyList()
+                SigningCertificateInfo.unavailable()
             }
         }
 

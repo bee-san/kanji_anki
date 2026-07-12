@@ -16,10 +16,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.theme.KaniThemeChoice
 
 internal val NoOpRouteScrollY: (Int) -> Unit = {}
@@ -94,9 +91,6 @@ private fun MainActivityShellFrame(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("main-activity-shell")
-                .semantics {
-                    contentDescription = StudyTextCopy.shellContentDescription(model.selectedRoute)
-                }
         ) {
             content()
         }
@@ -182,9 +176,6 @@ private fun MainActivityScrollableRouteColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(model.routeTestTag)
-                .semantics {
-                    contentDescription = model.routeContentDescription
-                }
                 .background(backgroundColor)
                 .systemBarsPadding()
                 .imePadding()

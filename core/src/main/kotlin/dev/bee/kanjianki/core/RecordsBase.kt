@@ -157,6 +157,13 @@ abstract class RecordsBase protected constructor() {
         val enabledRungs: List<LadderRung>
 
         /**
+         * Deterministic total fallback derived from the normalized user order.
+         * The constructor invariant guarantees at least one enabled rung whose
+         * availability does not depend on per-item content.
+         */
+        private val alwaysAvailableFallbackRung: LadderRung
+
+        /**
          * Adaptive repair-tool priority is stored separately from the legacy
          * ladder. This lets new repair-only tasks (which have no legacy rung),
          * such as `type_reading`, be inserted without rewriting a user's saved
@@ -186,6 +193,7 @@ abstract class RecordsBase protected constructor() {
                 val defaults = defaults()
                 this.orderedRungs = defaults.orderedRungs
                 this.enabledRungs = defaults.enabledRungs
+                this.alwaysAvailableFallbackRung = defaults.alwaysAvailableFallbackRung
                 this.repairTaskOrder = defaults.repairTaskOrder
                 this.enabledRepairTaskTypes = defaults.enabledRepairTaskTypes
                 return
@@ -195,6 +203,9 @@ abstract class RecordsBase protected constructor() {
             }
             this.orderedRungs = Collections.unmodifiableList(ArrayList(normalizedOrder))
             this.enabledRungs = Collections.unmodifiableList(ArrayList(normalizedEnabled))
+            this.alwaysAvailableFallbackRung = this.orderedRungs.first { candidate ->
+                this.enabledRungs.contains(candidate) && alwaysAvailable(candidate)
+            }
             val defaultRepairOrder = repairOrderFromLegacy(normalizedOrder)
             val normalizedRepairOrder = normalizeRepairOrder(requestedRepairOrder, defaultRepairOrder)
             val defaultEnabledRepairs = enabledRepairsFromLegacy(normalizedEnabled)
@@ -355,7 +366,7 @@ abstract class RecordsBase protected constructor() {
                     return candidate
                 }
             }
-            return LadderRung.KANJI_MEANING
+            return alwaysAvailableFallbackRung
         }
 
         /** True when [current] resolves to the highest enabled rung for the item. */
@@ -389,7 +400,7 @@ abstract class RecordsBase protected constructor() {
                     }
                 }
             }
-            return LadderRung.KANJI_MEANING
+            return alwaysAvailableFallbackRung
         }
 
         fun nextRung(current: LadderRung?, availability: RungAvailability): LadderRung {
@@ -817,7 +828,6 @@ abstract class RecordsBase protected constructor() {
         const val DEFAULT_NEW_CARD_SORT_MODE: String = NEW_CARD_SORT_BALANCED_PRIORITY
         const val DEFAULT_FREQUENCY_RETENTION_ENABLED: Boolean = false
         const val DEFAULT_FREQUENCY_RETENTION_RANGES: String = ""
-        const val LEARNING_REPEAT_NEW: String = "new"
         const val LEARNING_REPEAT_REVIEW: String = "review"
 
         @JvmField
@@ -856,7 +866,6 @@ abstract class RecordsBase protected constructor() {
         const val CONTEXT_TASK_MEMORY: String = "TaskMemory"
         const val CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS: String = "TaskMemory.fromStudyFields"
         const val CONTEXT_STUDY_ITEM: String = "StudyItem"
-        const val CONTEXT_LEARNING_REPEAT: String = "LearningRepeat"
         const val CONTEXT_REVIEW_REQUEST: String = "ReviewRequest"
         const val CONTEXT_ADAPTIVE_LOAD_PLAN: String = "AdaptiveLoadPlan"
 

@@ -7,6 +7,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from tools import generate_dictionary_assets as generator
@@ -79,7 +80,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
 
             generator.write_database(rows, ranks, db_path, "2026-05-09", kanjidic, jiten, metadata)
 
-            with sqlite3.connect(db_path) as db:
+            with closing(sqlite3.connect(db_path)) as db:
                 columns = {row[1] for row in db.execute("PRAGMA table_info(kanji)")}
                 rank_columns = {row[1] for row in db.execute("PRAGMA table_info(jiten_ranks)")}
                 meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
@@ -168,7 +169,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
         if not db_path.exists():
             self.fail("Bundled SQLite dictionary is missing. Run tools/generate_dictionary_assets.py before release validation.")
 
-        with sqlite3.connect(db_path) as db:
+        with closing(sqlite3.connect(db_path)) as db:
             count = db.execute("SELECT COUNT(*) FROM kanji").fetchone()[0]
             jiten_count = db.execute("SELECT COUNT(*) FROM jiten_ranks").fetchone()[0]
             meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))

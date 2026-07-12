@@ -7,7 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -55,7 +55,9 @@ class HomeRecentMistakesComposeTest {
         composeRule.onNodeWithContentDescription("Recent mistakes card, 裂, split, Rated again, From 裂語")
             .assertIsDisplayed()
 
-        assertTrue(clicked)
+        composeRule.runOnIdle {
+            assertTrue(clicked)
+        }
     }
 
     @Test

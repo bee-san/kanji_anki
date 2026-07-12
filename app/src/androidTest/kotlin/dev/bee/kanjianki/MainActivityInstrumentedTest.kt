@@ -2661,8 +2661,7 @@ private fun dismissAnrDialogIfPresent(device: UiDevice): Boolean {
         device.pressBack()
     }
     device.waitForIdle(3000L)
-    // Keep `notResponding` referenced so the lookup is not optimized to a bare wait.
-    return notResponding != null
+    return true
 }
 
 fun clickTextIfPresent(text: String) {

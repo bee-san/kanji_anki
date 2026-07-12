@@ -74,6 +74,27 @@ class AdaptiveRoutingCodecTest {
     }
 
     @Test
+    fun adaptiveRouteRejectsUnknownRepairTaskWires() {
+        assertNull(
+            AdaptiveRouteStateCodec.decode(
+                "{\"v\":1,\"c\":\"recognition\",\"t\":[\"future_repair\"]}",
+            ),
+        )
+        assertNull(
+            AdaptiveRouteStateCodec.decode(
+                "{\"v\":1,\"c\":\"recognition\",\"t\":[\"meaning_kanji\",\"future_repair\"]}",
+            ),
+        )
+
+        assertEquals(
+            emptyList<String>(),
+            AdaptiveRouteStateCodec.decode(
+                "{\"v\":1,\"c\":\"recognition\",\"t\":[\"\"]}",
+            )!!.activeRepairTasks,
+        )
+    }
+
+    @Test
     fun decoderIgnoresUnknownFieldsAndSanitizesInvalidCounters() {
         val decoded = AdaptiveRouteStateCodec.decode(
             "{\"v\":1,\"c\":\"recognition\",\"rr\":-9,\"t\":[\"meaning_kanji\"]," +

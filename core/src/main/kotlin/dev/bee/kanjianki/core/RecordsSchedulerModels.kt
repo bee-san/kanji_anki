@@ -153,43 +153,6 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         }
     }
 
-    class LearningRepeat(
-        kanji: String?,
-        answerSignature: String?,
-        taskType: String?,
-        repeatType: String?,
-        vararg rest: Any?,
-    ) {
-        @JvmField val kanji: String = nullToEmpty(kanji)
-        @JvmField val answerSignature: String = nullToEmpty(answerSignature)
-        @JvmField val taskType: String = nullToEmpty(taskType)
-        @JvmField val repeatType: String
-        @JvmField val stepIndex: Int
-        @JvmField val dueAtMillis: Long
-        @JvmField val activeToken: String
-        @JvmField val createdAtMillis: Long
-        @JvmField val updatedAtMillis: Long
-
-        init {
-            val args = rest.toSchedulerArgsArray()
-            requireArgCount(CONTEXT_LEARNING_REPEAT, args, 5)
-            this.repeatType = if (LEARNING_REPEAT_REVIEW == repeatType) LEARNING_REPEAT_REVIEW else LEARNING_REPEAT_NEW
-            this.stepIndex = intArg(args, 0, CONTEXT_LEARNING_REPEAT).coerceAtLeast(0)
-            this.dueAtMillis = longArg(args, 1, CONTEXT_LEARNING_REPEAT).coerceAtLeast(0L)
-            this.activeToken = nullToEmpty(stringArg(args, 2, CONTEXT_LEARNING_REPEAT))
-            this.createdAtMillis = longArg(args, 3, CONTEXT_LEARNING_REPEAT).coerceAtLeast(0L)
-            this.updatedAtMillis = longArg(args, 4, CONTEXT_LEARNING_REPEAT).coerceAtLeast(0L)
-        }
-
-        fun withToken(token: String?, updatedAtMillis: Long): LearningRepeat {
-            return LearningRepeat(kanji, answerSignature, taskType, repeatType, stepIndex, dueAtMillis, token, createdAtMillis, updatedAtMillis)
-        }
-
-        fun withStep(stepIndex: Int, dueAtMillis: Long, updatedAtMillis: Long): LearningRepeat {
-            return LearningRepeat(kanji, answerSignature, taskType, repeatType, stepIndex, dueAtMillis, "", createdAtMillis, updatedAtMillis)
-        }
-    }
-
     class ReviewRequest(
         kanji: String?,
         token: String?,

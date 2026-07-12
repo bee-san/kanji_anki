@@ -3,6 +3,7 @@
 
 package dev.bee.kanjianki
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -28,15 +29,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.core.net.toUri
 import androidx.compose.ui.semantics.Role
@@ -44,7 +47,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +57,9 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.util.Locale
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val ANKI_DROID_PACKAGE = "com.ichi2.anki"
 private const val ANKI_DROID_FLASHCARDS_AUTHORITY = "com.ichi2.anki.flashcards"
@@ -809,7 +813,8 @@ private fun StudyAnswerUsedInAnkiRow(
     onFeedback: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val actionEnabled = row.tapAction !is StudyAnswerAnkiTapActionModel.Unavailable
     val surfaceModifier = if (actionEnabled) {
         Modifier
@@ -820,10 +825,14 @@ private fun StudyAnswerUsedInAnkiRow(
                 onClick = {
                     onAnkiTapAction?.invoke(row.tapAction)
                     performStudyAnswerAnkiTapAction(
-                        context = context,
-                        clipboardManager = clipboardManager,
                         action = row.tapAction,
-                        onFeedback = onFeedback,
+                        launchAnkiDroid = { action -> launchStudyAnswerAnkiDroid(context, action) },
+                        copyId = { action ->
+                            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                clipboard.copyStudyAnswerAnkiId(action)
+                                onFeedback(action.toastMessage)
+                            }
+                        },
                     )
                 },
             )
@@ -931,15 +940,14 @@ private fun StudyAnswerUsedInAnkiToggle(
     }
 }
 
-private fun performStudyAnswerAnkiTapAction(
-    context: Context,
-    clipboardManager: ClipboardManager,
+internal fun performStudyAnswerAnkiTapAction(
     action: StudyAnswerAnkiTapActionModel,
-    onFeedback: (String) -> Unit = {},
+    launchAnkiDroid: (StudyAnswerAnkiTapActionModel.OpenAnkiDroid) -> Boolean,
+    copyId: (StudyAnswerAnkiTapActionModel.CopyId) -> Unit,
 ) {
     when (action) {
         is StudyAnswerAnkiTapActionModel.OpenAnkiDroid -> {
-            if (!launchStudyAnswerAnkiDroid(context, action)) {
+            if (!launchAnkiDroid(action)) {
                 val fallback = studyAnswerAnkiTapAction(
                     noteId = action.noteId,
                     cardId = action.cardId,
@@ -947,20 +955,24 @@ private fun performStudyAnswerAnkiTapAction(
                 )
                 if (fallback !== StudyAnswerAnkiTapActionModel.Unavailable) {
                     performStudyAnswerAnkiTapAction(
-                        context = context,
-                        clipboardManager = clipboardManager,
                         action = fallback,
-                        onFeedback = onFeedback,
+                        launchAnkiDroid = launchAnkiDroid,
+                        copyId = copyId,
                     )
                 }
             }
         }
-        is StudyAnswerAnkiTapActionModel.CopyId -> {
-            clipboardManager.setText(AnnotatedString(action.value.toString()))
-            onFeedback(action.toastMessage)
-        }
+        is StudyAnswerAnkiTapActionModel.CopyId -> copyId(action)
         StudyAnswerAnkiTapActionModel.Unavailable -> Unit
     }
+}
+
+private suspend fun Clipboard.copyStudyAnswerAnkiId(action: StudyAnswerAnkiTapActionModel.CopyId) {
+    setClipEntry(
+        ClipEntry(
+            ClipData.newPlainText("plain text", action.value.toString()),
+        ),
+    )
 }
 
 private fun launchStudyAnswerAnkiDroid(

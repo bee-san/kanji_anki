@@ -9,4 +9,5 @@ kaniLibrary {
 
 dependencies {
     api(kotlin("stdlib"))
+    implementation(project(":domain"))
 }

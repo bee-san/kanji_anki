@@ -855,7 +855,7 @@ class LocalStoreInstrumentedTest {
                     .put("kanji", "書")
                     .put("answer_signature", "書|書く|かく|write")
                     .put("task_type", "kanji_meaning")
-                    .put("repeat_type", RecordsBase.LEARNING_REPEAT_NEW)
+                    .put("repeat_type", "new")
                     .put("step_index", 1)
                     .put("due_at", 1500L)
                     .put("active_token", "repeat-token")
@@ -1726,7 +1726,7 @@ class LocalStoreInstrumentedTest {
     }
 
     @Test
-    fun testLearningStepSettingsAndRepeatsPersist() {
+    fun testLearningStepSettingsPersist() {
         store.saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings(
                 listOf(2, 15),
                 listOf(20)
@@ -1734,24 +1734,6 @@ class LocalStoreInstrumentedTest {
         val settings = store.learningStepSettings()
         assertEquals(listOf(2, 15), settings.newStepsMinutes);
         assertEquals(listOf(20), settings.reviewStepsMinutes);
-
-        val item = RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
-                .withAnswerSignature("拉|拉麺|らーめん|ramen")
-        store.enqueueLearningRepeat(item, "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 2000L, 1000L);
-        var due = store.dueLearningRepeats(2500L)
-        assertEquals(1, due.size);
-        assertEquals("拉", due.get(0).kanji);
-        assertEquals("kanji_meaning", due.get(0).taskType);
-        assertEquals(0, due.get(0).stepIndex);
-
-        store.saveLearningRepeat(due.get(0).withStep(1, 4000L, 3000L));
-        assertTrue(store.dueLearningRepeats(3500L).isEmpty());
-        due = store.dueLearningRepeats(4500L);
-        assertEquals(1, due.size);
-        assertEquals(1, due.get(0).stepIndex);
-
-        store.clearLearningRepeat(due.get(0));
-        assertTrue(store.dueLearningRepeats(5000L).isEmpty());
     }
 
     @Test
@@ -1820,18 +1802,6 @@ class LocalStoreInstrumentedTest {
         store.setKanjiLocallySuspended(null, true, 1300L);
         store.setKanjiLocallySuspended("", true, 1300L);
         assertTrue(store.locallySuspendedKanji().isEmpty());
-
-        val studyLog = LocalStoreStudyLog(store)
-        studyLog.saveLearningRepeat(null)
-        store.saveLearningRepeat(RecordsSchedulerModels.LearningRepeat("", "", "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
-        store.saveLearningRepeat(RecordsSchedulerModels.LearningRepeat("拉", "", "", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, "", 1000L, 1000L));
-        studyLog.enqueueLearningRepeat(null, "kanji_meaning", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L)
-        val item = RecordsStudyModels.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
-        store.enqueueLearningRepeat(item, "", RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L);
-        studyLog.enqueueLearningRepeat(item, null, RecordsBase.LEARNING_REPEAT_NEW, 0, 1000L, 1000L)
-        studyLog.clearLearningRepeat(null)
-        assertTrue(store.dueLearningRepeats(10_000L).isEmpty());
-        assertEquals(0, count("learning_repeats"));
     }
 
     @Test
