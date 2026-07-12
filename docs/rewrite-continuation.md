@@ -2,6 +2,11 @@
 
 Last updated: 2026-05-23
 
+> Archived rewrite-branch handoff. "Current" and scheduler/settings claims in
+> this file describe the May 2026 rewrite snapshot, not DB31 production
+> behavior. For the live scheduler contract, see
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
+
 ## Branch and PR
 
 - Rewrite branch: `codex-android-architecture-20260518`

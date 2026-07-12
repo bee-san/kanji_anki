@@ -199,11 +199,39 @@ object SettingsStudyPlanTextCopy {
     }
 
     @JvmStatic
-    fun studyLadderTitle(): String = localizedText("Study ladder", "学習ラダー")
+    fun studyLadderTitle(): String = localizedText("Adaptive study", "適応学習")
 
     @JvmStatic
     fun studyLadderBody(): String {
-        return localizedText("Set practice order. Keep one rung on.", "練習順を設定。1段はオンのままにする。")
+        return localizedText(
+            "Recognition and contextual reading are required. Choose optional variants and repair tools.",
+            "認識と文脈での読みは常に確認します。使用する表示方法と修復練習を選びます。",
+        )
+    }
+
+    @JvmStatic
+    fun requiredCoreChecksTitle(): String = localizedText("Required core checks", "必須の中心チェック")
+
+    @JvmStatic
+    fun optionalVariantsTitle(): String = localizedText("Optional variants", "任意の表示方法")
+
+    @JvmStatic
+    fun repairToolsTitle(): String = localizedText("Repair tools · priority order", "修復練習・優先順")
+
+    @JvmStatic
+    fun requiredCoreLabel(): String = localizedText("Required", "必須")
+
+    @JvmStatic
+    fun requiredCoreDescription(label: String): String =
+        localizedText("$label is a required core check", "$label は必須の中心チェックです")
+
+    @JvmStatic
+    fun requiredCoreSubtitle(rung: RecordsBase.LadderRung): String = when (rung) {
+        RecordsBase.LadderRung.WORD_READING -> localizedText(
+            "Contextual reading check; always active",
+            "文脈での読みを確認・常に有効",
+        )
+        else -> localizedText("Recognition check; always active", "認識を確認・常に有効")
     }
 
     @JvmStatic
@@ -235,6 +263,51 @@ object SettingsStudyPlanTextCopy {
             label + if (wasEnabled) "をオフにしました。" else "をオンにしました。"
         } else {
             label + if (wasEnabled) " turned off." else " turned on."
+        }
+    }
+
+    @JvmStatic
+    fun repairTaskLabel(taskType: String): String {
+        if (taskType == StudyTaskTypes.TYPE_READING) {
+            return localizedText("Type the reading", "読みを入力")
+        }
+        val rung = RecordsBase.LadderRung.entries.firstOrNull { it.wireName() == taskType }
+        return if (rung == null) taskType else settingsLadderRungLabel(rung)
+    }
+
+    @JvmStatic
+    fun repairTaskToggleToast(taskType: String, wasEnabled: Boolean): String {
+        val label = repairTaskLabel(taskType)
+        return if (isJapaneseLocale()) {
+            label + if (wasEnabled) "をオフにしました。" else "をオンにしました。"
+        } else {
+            label + if (wasEnabled) " turned off." else " turned on."
+        }
+    }
+
+    @JvmStatic
+    fun repairTaskSubtitle(taskType: String, enabled: Boolean): String {
+        if (!enabled) {
+            return skippedInStudyText()
+        }
+        return when (taskType) {
+            StudyTaskTypes.SIMILAR_KANJI -> localizedText(
+                "Included when similar kanji exist",
+                "似た漢字があるときに含める",
+            )
+            StudyTaskTypes.KANJI_READING -> localizedText(
+                "Included when the kanji has multiple known readings",
+                "漢字に複数の読みがあるときに含める",
+            )
+            StudyTaskTypes.READING_KANJI -> localizedText(
+                "Included when other known kanji share a reading",
+                "他の既知の漢字と読みが重なるときに含める",
+            )
+            StudyTaskTypes.TYPE_READING -> localizedText(
+                "Type the exact reading that was missed",
+                "間違えた読みを正確に入力する",
+            )
+            else -> localizedText("Included in study", "学習に含める")
         }
     }
 

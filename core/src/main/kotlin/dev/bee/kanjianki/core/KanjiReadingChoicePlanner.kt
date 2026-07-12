@@ -56,6 +56,39 @@ object KanjiReadingChoicePlanner {
             return null
         }
         val prompt = selectPromptUsage(safeUsages) ?: return null
+        return buildForPrompt(kanji, prompt, pool, random)
+    }
+
+    /**
+     * Builds a repair card for the exact usage that produced the failed core
+     * check. A missing persisted usage fails closed instead of drifting to a
+     * different word.
+     */
+    @JvmStatic
+    fun buildExactChoiceCard(
+        targetKanji: String?,
+        exactWord: String?,
+        exactReading: String?,
+        usages: List<Usage>?,
+        pool: List<PoolReading>?,
+        random: Random?,
+    ): RecordsImportModels.KanjiReadingChoiceCard? {
+        val kanji = targetKanji?.trim().orEmpty()
+        val word = exactWord?.trim().orEmpty()
+        val reading = exactReading?.trim().orEmpty()
+        if (kanji.isEmpty() || word.isEmpty() || reading.isEmpty()) return null
+        val prompt = usages.orEmpty().firstOrNull {
+            it.word.trim() == word && it.reading.trim() == reading
+        } ?: return null
+        return buildForPrompt(kanji, prompt, pool, random)
+    }
+
+    private fun buildForPrompt(
+        kanji: String,
+        prompt: Usage,
+        pool: List<PoolReading>?,
+        random: Random?,
+    ): RecordsImportModels.KanjiReadingChoiceCard? {
         val correct = prompt.reading.trim()
 
         val distractors = orderedDistractors(correct, pool)

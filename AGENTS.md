@@ -127,8 +127,38 @@ assertFalse(equalsNonPoint);
 
 ## Study Scheduler Notes
 
-The study scheduler is centered on a single ladder state machine, not on side
-queues. Every persisted study item has exactly one current rung and one phase.
+Database v31 activates the integrity-first two-core adaptive scheduler. Read
+`docs/adaptive-two-core-scheduler.md` before changing study behavior. Canonical
+adaptive items have exactly two long-term core memories: recognition anchored
+at `kanji_meaning`, and contextual reading anchored at `word_reading`. Font and
+sentence tasks are deterministic variants sharing those memories; every other
+task is targeted inline repair. `type_reading` is repair-only and has no FSRS
+memory. A real-due core Fail calls FSRS Again once, repair is practice-only, and
+the same core is revalidated within one day. Never create a second scheduler
+queue, re-enable writes to `similar_kanji_repair_queue`, or let a repair attempt
+add lapses/stability changes. Legacy rungs/columns/wires/settings stay stored for
+lazy conversion and downgrade compatibility.
+
+Review persistence is token-first and revision-CAS. Item, review evidence,
+timeline, task timing, choice state/log, and stats dirtiness belong in one
+transaction; only an APPLIED result may advance UI/session state. Sync history
+is successful-run-only. Backups/restores must retain the v31 bounded-stream and
+atomic-publication guarantees.
+
+Settings presents the two core checks as required, font/sentence presentations
+as optional variants, and repair tools as a separate enabled/priority list.
+`study_ladder_order` and `study_ladder_enabled` remain compatibility state;
+adaptive repair ordering and enablement live in `adaptive_repair_order` and
+`adaptive_repair_enabled`. Do not derive adaptive repair priority from the old
+ladder order. Stats cache format 10 is the live analytics contract: it reports
+core progress, inline repair task/cause, revalidation, escalation risk, and
+stuck repair state, with a legacy fallback only for unconverted items.
+
+The ladder/rung and admission material below, through the end of
+`Ingestion And Admission Notes`, describes the legacy v30 scheduler retained
+for lazy conversion and compatibility. It is not the canonical v31 routing
+model. Even during legacy routing, the core scheduler consumes only
+`study_items`: every persisted item has one current rung and one phase.
 
 Default ladder order from most-scaffolded (bottom) to least-scaffolded (top)
 rung:
@@ -379,11 +409,13 @@ the single primary action is labeled `Save hard` and submits `hard`, which
 still counts as a pass for ladder-streak purposes. The user never chooses
 between multiple ratings on `write_kanji`.
 
-The study subsystem must never keep a parallel "main study item plus side
-task queue" model. `learning_repeats`, `similar_kanji_choice_state`, and
-`similar_kanji_repair_queue` are not scheduler queues. The scheduler
-consumes `study_items` only. `similar_kanji_pairs` is retained as the data
-source for `hasSimilarKanji(row)`, not as a queue.
+The study subsystem must never create a parallel "main study item plus side
+task queue" model. `learning_repeats` and `similar_kanji_choice_state` are
+compatibility/content state, not scheduler sources. Existing
+`similar_kanji_repair_queue` rows may still render only so the v31 compatibility
+release can drain them; no production path may enqueue a new row. New repair
+state is inline on the owning `study_items` row. `similar_kanji_pairs` remains
+content for visual-confusion choices, not a queue.
 
 Legacy field mapping used by the DB v16 migration (fresh start):
 
@@ -414,11 +446,14 @@ Home hand-off copies `tag:kani_repaired is:suspended` so the user can review
 and unsuspend the cards in AnkiDroid.
 
 Automatic database backups remain WAL-safe gzip snapshots with the tiered
-7-daily/4-weekly retention policy. Settings > Automation > Backup & restore
-can export a fresh snapshot through Android's document picker and can validate
-and stage a whole-file restore. A staged restore is applied on the next process
-start before ordinary components open the database, after first taking a
-pre-restore safety snapshot and before deleting stale WAL/SHM sidecars.
+7-daily/4-weekly retention policy. A backup is compressed into a same-directory
+`.partial`, fsynced, and atomically published; publication failure must preserve
+the prior final archive. Settings > Automation > Backup & restore can export a
+fresh snapshot through Android's document picker and can validate and stage a
+whole-file restore. Restore decompression is streamed, capped at 512 MiB, and
+requires a 64 MiB free-space reserve. A staged restore is applied on the next
+process start before ordinary components open the database, after first taking
+a pre-restore safety snapshot and before deleting stale WAL/SHM sidecars.
 
 The home-screen widget follows the same `ReminderEligibilityPolicy` filter as
 notifications (D-S6): its due count cannot advertise work that the Study route

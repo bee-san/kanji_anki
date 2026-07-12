@@ -29,6 +29,41 @@ class StudyLadderSettingsTest {
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.SENTENCE_READING))
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, ladder.startingRung(RecordsBase.RungAvailability.of(true)))
         assertTrue(ladder.isEnabled(RecordsBase.LadderRung.WORD_READING))
+        assertTrue(ladder.isRepairTaskEnabled(StudyTaskTypes.TYPE_READING))
+        assertEquals(
+            ladder.repairTaskOrder.indexOf(StudyTaskTypes.KANJI_READING) + 1,
+            ladder.repairTaskOrder.indexOf(StudyTaskTypes.TYPE_READING),
+        )
+    }
+
+    @Test
+    fun legacySettingsGainTypeReadingWithoutRewritingLegacyValues() {
+        val legacyOrder = "write_kanji,type_meaning,meaning_kanji,reading_kanji,similar_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading,sentence_reading"
+        val legacyEnabled = "write_kanji,type_meaning,meaning_kanji,reading_kanji,similar_kanji,kanji_meaning,font_meaning,kanji_reading,word_reading,sentence_reading"
+
+        val ladder = RecordsBase.StudyLadderSettings.fromStored(legacyOrder, legacyEnabled)
+
+        assertEquals(legacyOrder, ladder.orderText())
+        assertEquals(legacyEnabled, ladder.enabledText())
+        assertTrue(ladder.isRepairTaskEnabled(StudyTaskTypes.TYPE_READING))
+        assertTrue(ladder.repairTaskOrder.contains(StudyTaskTypes.TYPE_READING))
+    }
+
+    @Test
+    fun explicitTypeReadingDisableAndRepairMovePreserveLegacyLadder() {
+        val stored = RecordsBase.StudyLadderSettings.defaults()
+        val disabled = RecordsBase.StudyLadderSettings.fromStored(
+            stored.orderText(),
+            stored.enabledText(),
+            stored.repairOrderText(),
+            stored.enabledRepairTaskTypes.filterNot { it == StudyTaskTypes.TYPE_READING }.joinToString(","),
+        )
+        val moved = disabled.moveRepairTask(StudyTaskTypes.TYPE_READING, -1)
+
+        assertFalse(disabled.isRepairTaskEnabled(StudyTaskTypes.TYPE_READING))
+        assertEquals(stored.orderText(), moved.orderText())
+        assertEquals(stored.enabledText(), moved.enabledText())
+        assertTrue(moved.repairTaskOrder.indexOf(StudyTaskTypes.TYPE_READING) < disabled.repairTaskOrder.indexOf(StudyTaskTypes.TYPE_READING))
     }
 
     @Test

@@ -66,7 +66,32 @@ internal object StudyItemComparators {
             current.hasReadingKanji == annotated.hasReadingKanji &&
             sameTaskMemory(current.readingKanjiMemory, annotated.readingKanjiMemory) &&
             current.hasSentenceReading == annotated.hasSentenceReading &&
-            sameTaskMemory(current.sentenceReadingMemory, annotated.sentenceReadingMemory)
+            sameTaskMemory(current.sentenceReadingMemory, annotated.sentenceReadingMemory) &&
+            current.schedulerRevision == annotated.schedulerRevision &&
+            current.routingVersion == annotated.routingVersion &&
+            current.adaptiveRouteStateJson == annotated.adaptiveRouteStateJson
+    }
+
+    /**
+     * Equality of the columns actually stored in study_items, excluding the
+     * CAS revision itself and read-time conditional-rung annotations.
+     */
+    @JvmStatic
+    fun samePersistedState(
+        current: RecordsStudyModels.StudyItem,
+        candidate: RecordsStudyModels.StudyItem,
+    ): Boolean {
+        return sameStudyItem(normalizePersistenceComparison(current), normalizePersistenceComparison(candidate))
+    }
+
+    private fun normalizePersistenceComparison(item: RecordsStudyModels.StudyItem): RecordsStudyModels.StudyItem {
+        return item.copyBuilder()
+            .schedulerRevision(0L)
+            .hasSimilarKanji(false)
+            .hasKanjiReading(false)
+            .hasReadingKanji(false)
+            .hasSentenceReading(false)
+            .build()
     }
 
     private fun sameTaskMemory(

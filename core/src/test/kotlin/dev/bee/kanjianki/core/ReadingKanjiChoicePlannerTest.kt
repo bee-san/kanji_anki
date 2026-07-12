@@ -89,6 +89,30 @@ class ReadingKanjiChoicePlannerTest {
         assertEquals("心〇", card!!.blankedWord)
     }
 
+    @Test
+    fun exactHomophoneRepairKeepsTheFailedWord() {
+        val usages = listOf(
+            usage("学校", "こう", noteId = 1),
+            usage("校正", "こう", noteId = 2),
+        )
+        val card = ReadingKanjiChoicePlanner.buildExactChoiceCard(
+            "校",
+            "校正",
+            "こう",
+            usages,
+            mapOf("こう" to listOf(candidate("高", true), candidate("光", false))),
+            Random(8),
+        )
+
+        assertEquals("〇正", card!!.blankedWord)
+        assertNull(
+            ReadingKanjiChoicePlanner.buildExactChoiceCard(
+                "校", "校庭", "こう", usages,
+                mapOf("こう" to listOf(candidate("高", true), candidate("光", false))), Random(8),
+            ),
+        )
+    }
+
     private fun KanjiReadingChoicePlannerBuild(): RecordsImportModels.ReadingKanjiChoiceCard? =
         ReadingKanjiChoicePlanner.buildChoiceCard(
             "校",

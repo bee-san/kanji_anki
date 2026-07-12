@@ -17,8 +17,8 @@ import java.util.LinkedHashMap
 @Config(sdk = [35])
 class StatsCacheCodecTest {
     @Test
-    fun currentFormatIsNineAfterAllStatsSnapshotExtensions() {
-        assertEquals(9, STATS_CACHE_FORMAT_VERSION)
+    fun currentFormatIsTenAfterAdaptiveHealthExtension() {
+        assertEquals(10, STATS_CACHE_FORMAT_VERSION)
         assertEquals(366, STATS_REVIEW_DAY_SUMMARY_LIMIT)
     }
 

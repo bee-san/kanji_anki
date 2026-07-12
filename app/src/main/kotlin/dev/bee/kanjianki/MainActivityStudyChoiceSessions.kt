@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.KanjiReadingAligner
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
 import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsBase
@@ -58,6 +60,15 @@ private fun formatSimilarKanjiSourceWord(example: RecordsImportModels.Example): 
 internal class MainActivityStudyChoiceSessions(private val home: MainActivityStudy) {
     private val meaningKanjiChoicePlanner = MeaningKanjiChoicePlanner()
     private val meaningChoiceRandom: Random = SecureRandom()
+
+    /**
+     * Exact repair choices must keep the same ordering while a persisted study
+     * session is restored. This seed is UI state, never a security boundary.
+     */
+    @Suppress("kotlin:S2245")
+    private fun deterministicChoiceRandom(sessionToken: String): Random {
+        return Random(sessionToken.hashCode().toLong())
+    }
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
         prepareMeaningKanjiRender(session).invoke()
@@ -187,6 +198,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         reading,
                         correct,
                         RecordsBase.LadderRung.KANJI_READING,
+                        correctAnswer = choiceCard.correctReading,
                     )
                 },
                 MeaningChoiceResultResolver { reading ->
@@ -208,6 +220,25 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         session: RecordsSchedulerModels.StudySession?,
     ): RecordsImportModels.KanjiReadingChoiceCard? {
         val kanji = session?.item?.kanji?.takeIf { it.isNotBlank() } ?: return null
+        val route = AdaptiveStudyItemPolicy.routeState(session.item)
+        val evidence = route?.answerEvidence
+        if (route?.isRepairActive() == true && evidence != null) {
+            val canonical = evidence.correctAnswer.ifBlank {
+                KanjiReadingAligner.alignPlain(
+                    evidence.renderedExpression,
+                    evidence.renderedReading,
+                    home.currentDictionaryLookup(),
+                )?.firstOrNull { it.kanji == kanji }?.canonicalReading.orEmpty()
+            }.ifBlank { return null }
+            return KanjiReadingChoicePlanner.buildExactChoiceCard(
+                kanji,
+                evidence.renderedExpression,
+                canonical,
+                home.store.kanjiReadingUsagesFor(kanji),
+                home.store.kanjiReadingPoolFor(kanji),
+                deterministicChoiceRandom(session.token),
+            )
+        }
         return KanjiReadingChoicePlanner.buildChoiceCard(
             kanji,
             home.store.kanjiReadingUsagesFor(kanji),
@@ -274,6 +305,25 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         session: RecordsSchedulerModels.StudySession?,
     ): RecordsImportModels.ReadingKanjiChoiceCard? {
         val kanji = session?.item?.kanji?.takeIf { it.isNotBlank() } ?: return null
+        val route = AdaptiveStudyItemPolicy.routeState(session.item)
+        val evidence = route?.answerEvidence
+        if (route?.isRepairActive() == true && evidence != null) {
+            val canonical = evidence.correctAnswer.ifBlank {
+                KanjiReadingAligner.alignPlain(
+                    evidence.renderedExpression,
+                    evidence.renderedReading,
+                    home.currentDictionaryLookup(),
+                )?.firstOrNull { it.kanji == kanji }?.canonicalReading.orEmpty()
+            }.ifBlank { return null }
+            return ReadingKanjiChoicePlanner.buildExactChoiceCard(
+                kanji,
+                evidence.renderedExpression,
+                canonical,
+                home.store.kanjiReadingUsagesForReadingKanji(kanji),
+                home.store.readingKanjiCandidatesFor(kanji),
+                deterministicChoiceRandom(session.token),
+            )
+        }
         return ReadingKanjiChoicePlanner.buildChoiceCard(
             kanji,
             home.store.kanjiReadingUsagesForReadingKanji(kanji),
@@ -446,11 +496,18 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val targetKanji = session.item?.kanji ?: ""
         val stored = home.store.dueSimilarChoiceForActiveTarget(targetKanji, now)
         val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
+        val route = AdaptiveStudyItemPolicy.routeState(session.item)
+        val preferredConfusion = if (route?.isRepairActive() == true) {
+            route.answerEvidence?.confusedWith
+        } else {
+            null
+        }
         return SimilarKanjiChoicePlanner.choiceCardForSession(
             stored,
             targetKanji,
             meaning,
-            home.store.similarPairsForKanji(targetKanji)
+            home.store.similarPairsForKanji(targetKanji),
+            preferredConfusion,
         )
     }
 

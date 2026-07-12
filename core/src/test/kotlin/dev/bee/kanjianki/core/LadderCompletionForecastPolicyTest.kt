@@ -16,7 +16,10 @@ class LadderCompletionForecastPolicyTest {
         assertFalse(result.beyondHorizon)
         assertNotNull(result.projectedCompletionMonthMillis)
         assertEquals(0, result.burnDown.last().remainingItems)
-        assertEquals(listOf("all_passes", "anki_retirement_separate"), result.assumptionCopyIds)
+        assertEquals(
+            listOf("all_passes", "adaptive_repairs_and_revalidation", "anki_retirement_separate"),
+            result.assumptionCopyIds,
+        )
     }
 
     @Test fun activeQueueCapProducesVisibleAdmissionWaveAndRunIsDeterministic() {
@@ -84,10 +87,10 @@ class LadderCompletionForecastPolicyTest {
             listOf(RecordsBase.LadderRung.KANJI_MEANING),
         )
         val result = forecast(listOf(row("裂")), ladder = ladder, horizonDays = 60)
-        assertEquals(1_698_796_800_000L, result.projectedCompletionMonthMillis)
+        assertEquals(1_701_388_800_000L, result.projectedCompletionMonthMillis)
         assertEquals(
             listOf(
-                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 1, 0),
+                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 0, 1),
                 LadderCompletionForecastPolicy.MonthPoint(1_701_388_800_000L, 1, 0),
                 LadderCompletionForecastPolicy.MonthPoint(1_704_067_200_000L, 1, 0),
             ),
@@ -95,7 +98,7 @@ class LadderCompletionForecastPolicyTest {
         )
     }
 
-    @Test fun freshlyPromotedCeilingItemRequiresValidationPass() {
+    @Test fun legacyCeilingValidationConvertsAndContinuesThroughContextualCore() {
         val ladder = RecordsBase.StudyLadderSettings(
             listOf(RecordsBase.LadderRung.KANJI_MEANING),
             listOf(RecordsBase.LadderRung.KANJI_MEANING),
@@ -105,11 +108,66 @@ class LadderCompletionForecastPolicyTest {
         val result = LadderCompletionForecastPolicy.forecast(
             listOf(row("裂")), listOf(freshPromotion), settings(1, 1),
             RecordsSchedulerModels.SchedulerParameters.defaults(),
-            RecordsSchedulerModels.LearningStepSettings.defaults(), ladder, START, 30,
+            RecordsSchedulerModels.LearningStepSettings.defaults(), ladder, START, 730,
         )
         assertEquals(1, result.alreadyAtCeiling)
         assertFalse(result.beyondHorizon)
-        assertEquals(1_698_796_800_000L, result.projectedCompletionMonthMillis)
+        assertNotNull(result.projectedCompletionMonthMillis)
+        assertTrue(result.projectedCompletionMonthMillis!! > 1_698_796_800_000L)
+    }
+
+    @Test fun adaptiveContextualCompletionRequiresAnActualContextualReview() {
+        val copiedPromotionMemory = adaptiveContextualItem(
+            "裂",
+            contextualReviews = 0,
+            repairTasks = emptyList(),
+            revalidationPending = false,
+        )
+        val completed = adaptiveContextualItem(
+            "済",
+            contextualReviews = 1,
+            repairTasks = emptyList(),
+            revalidationPending = false,
+        )
+
+        val result = LadderCompletionForecastPolicy.forecast(
+            rows = listOf(row("裂"), row("済")),
+            startingItems = listOf(copiedPromotionMemory, completed),
+            settings = settings(2, 1),
+            parameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
+            learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
+            ladder = RecordsBase.StudyLadderSettings.defaults(),
+            nowMillis = START,
+            horizonDays = 0,
+        )
+
+        assertEquals(2, result.alreadyAtCeiling)
+        assertTrue(result.beyondHorizon)
+        assertEquals(1, result.burnDown.first().completedItems)
+    }
+
+    @Test fun adaptiveRepairAndRevalidationAreSimulatedBeforeCompletion() {
+        val repairing = adaptiveContextualItem(
+            "裂",
+            contextualReviews = 1,
+            repairTasks = listOf(StudyTaskTypes.TYPE_READING),
+            revalidationPending = false,
+        )
+
+        val result = LadderCompletionForecastPolicy.forecast(
+            rows = listOf(row("裂")),
+            startingItems = listOf(repairing),
+            settings = settings(1, 1),
+            parameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
+            learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
+            ladder = RecordsBase.StudyLadderSettings.defaults(),
+            nowMillis = START,
+            horizonDays = 30,
+        )
+
+        assertEquals(1, result.alreadyAtCeiling)
+        assertFalse(result.beyondHorizon)
+        assertEquals(0, result.burnDown.last().remainingItems)
     }
 
     @Test fun horizonAndMonthPointsAreIndependentOfDefaultTimeZone() {
@@ -155,6 +213,49 @@ class LadderCompletionForecastPolicyTest {
             .rung(rung)
             .matureIntervalDays(interval)
             .build()
+
+    private fun adaptiveContextualItem(
+        kanji: String,
+        contextualReviews: Int,
+        repairTasks: List<String>,
+        revalidationPending: Boolean,
+    ): RecordsStudyModels.StudyItem {
+        val memory = RecordsStudyModels.TaskMemory(
+            "review",
+            START + 30 * BridgeScheduler.DAY,
+            8.0,
+            5.0,
+            contextualReviews.coerceAtLeast(1),
+            0,
+            0,
+            "good",
+            30,
+            1,
+            START,
+        )
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = contextualReviews,
+            activeRepairTasks = repairTasks,
+            repairStepMinutes = if (repairTasks.isEmpty()) emptyList() else listOf(10),
+            repairDueAtMillis = if (repairTasks.isEmpty()) 0L else START,
+            coreDueAtMillis = START + 30 * BridgeScheduler.DAY,
+            recurringFailure = if (repairTasks.isEmpty() && !revalidationPending) null else FailureKind.WRONG_READING,
+            recurringFailureCount = if (repairTasks.isEmpty() && !revalidationPending) 0 else 1,
+            revalidationPending = revalidationPending,
+        )
+        val due = if (repairTasks.isEmpty()) START + 30 * BridgeScheduler.DAY else START
+        return reviewItem(kanji, RecordsBase.LadderRung.WORD_READING, 30)
+            .withTaskMemory(StudyTaskTypes.WORD_READING, memory)
+            .copyBuilder()
+            .state("review")
+            .phase(if (repairTasks.isEmpty()) RecordsBase.SchedulerPhase.REVIEW else RecordsBase.SchedulerPhase.RELEARNING)
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .dueAtMillis(due)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .build()
+    }
 
     private companion object { const val START = 1_700_000_000_000L }
 }

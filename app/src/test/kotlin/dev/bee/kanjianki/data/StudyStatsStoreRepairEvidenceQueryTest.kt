@@ -50,6 +50,16 @@ class StudyStatsStoreRepairEvidenceQueryTest {
         insertSnapshot(2L, 900L, "弱", weakness = 70, mature = 0, active = 1, reps = 6)
         insertSnapshot(3L, 4_000L, "弱", weakness = 50, mature = 2, active = 1, reps = 7)
         insertSnapshot(4L, 5_000L, "弱", weakness = 40, mature = 3, active = 1, reps = 8)
+        insertSnapshot(
+            5L,
+            6_000L,
+            "弱",
+            weakness = 99,
+            mature = 0,
+            active = 1,
+            reps = 9,
+            status = LocalStoreBase.STATUS_PENDING,
+        )
 
         val evidence = statsStore.kanjiRepairEvidence()
 
@@ -114,6 +124,8 @@ class StudyStatsStoreRepairEvidenceQueryTest {
         insertTimelineEvent("未", now - 29 * day, "retired", "edge-retire")
         insertTimelineEvent("古", now - 31 * day, "retired", "old-retire")
         insertTimelineEvent("止", now - day, "reopened", "recent-reopen")
+        insertSyncRun(99L, now - day, LocalStoreBase.STATUS_PENDING)
+        insertTimelineEvent("待", now - day, "retired", "pending-retire", syncId = 99L)
 
         assertEquals(2, statsStore.retiredRepairsLast30Days(now))
     }
@@ -128,13 +140,14 @@ class StudyStatsStoreRepairEvidenceQueryTest {
         occurredAt: Long,
         eventType: String,
         dedupeKey: String,
+        syncId: Long? = null,
     ) {
         db.execSQL(
             "INSERT INTO kanji_timeline_events " +
                 "(kanji, occurred_at, event_type, title, detail, source_expression, source_reading, rating, " +
                 "writing_required, writing_passed, manual_override, weakness_score, mature_support_count, sync_id, dedupe_key) " +
-                "VALUES (?, ?, ?, 'title', 'detail', '', '', '', 0, 0, 0, NULL, NULL, NULL, ?)",
-            arrayOf<Any>(kanji, occurredAt, eventType, dedupeKey),
+                "VALUES (?, ?, ?, 'title', 'detail', '', '', '', 0, 0, 0, NULL, NULL, ?, ?)",
+            arrayOf<Any?>(kanji, occurredAt, eventType, syncId, dedupeKey),
         )
     }
 
@@ -146,7 +159,9 @@ class StudyStatsStoreRepairEvidenceQueryTest {
         mature: Int,
         active: Int,
         reps: Int,
+        status: String = LocalStoreBase.STATUS_SUCCESS,
     ) {
+        insertSyncRun(syncId, finishedAt, status)
         db.execSQL(
             "INSERT INTO sync_kanji_snapshots " +
                 "(sync_id, finished_at, kanji, active_cards, suspended_cards, mature_support_count, average_interval_days, " +
@@ -154,6 +169,16 @@ class StudyStatsStoreRepairEvidenceQueryTest {
                 "reason_code, active_example_count, suspended_example_count) " +
                 "VALUES (?, ?, ?, ?, 0, ?, 10.0, 0, ?, NULL, NULL, NULL, ?, '', ?, 0)",
             arrayOf<Any>(syncId, finishedAt, kanji, active, mature, reps, weakness, active),
+        )
+    }
+
+    private fun insertSyncRun(syncId: Long, finishedAt: Long, status: String) {
+        db.execSQL(
+            "INSERT OR IGNORE INTO sync_runs " +
+                "(id, started_at, finished_at, status, active_notes_count, active_cards_count, " +
+                "suspended_cards_archived_count, suspended_kanji_imported_count, deleted_notes_count, deleted_cards_count, " +
+                "error_code, error_message, removal_message) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, NULL, NULL, '')",
+            arrayOf<Any>(syncId, finishedAt - 1L, finishedAt, status),
         )
     }
 

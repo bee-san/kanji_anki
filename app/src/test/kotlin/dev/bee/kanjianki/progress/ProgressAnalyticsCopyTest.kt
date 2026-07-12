@@ -14,6 +14,8 @@ class ProgressAnalyticsCopyTest {
         assertEquals("Accuracy by rung group", snapshot.accuracyRetention.title)
         assertEquals("Ladder rung distribution", snapshot.progressByLevel.title)
         assertEquals("Weakness insights", snapshot.weaknessInsights.title)
+        assertEquals("Current streak", ProgressAnalyticsCopy.currentStreakLabel())
+        assertEquals("Longest streak", ProgressAnalyticsCopy.longestStreakLabel())
         assertEquals("Progress", ProgressAnalyticsCopy.bottomNavLabel("Progress"))
         assertEquals("30 days", ProgressAnalyticsCopy.rangeLabel(AnalyticsRange.THIRTY_DAYS))
     }
@@ -62,6 +64,8 @@ class ProgressAnalyticsCopyTest {
         assertEquals("進捗", ProgressAnalyticsCopy.bottomNavLabel("Progress"))
         assertEquals("30日", ProgressAnalyticsCopy.rangeLabel(AnalyticsRange.THIRTY_DAYS))
         assertEquals("復習合計", ProgressAnalyticsCopy.totalReviewsLabel())
+        assertEquals("現在の連続日数", ProgressAnalyticsCopy.currentStreakLabel())
+        assertEquals("最長の連続日数", ProgressAnalyticsCopy.longestStreakLabel())
         assertEquals("最高14日", ProgressAnalyticsCopy.bestStreakLabel(14))
         assertEquals("/ 100", ProgressAnalyticsCopy.ofTotalLabel(100))
         assertEquals("ミス3回", ProgressAnalyticsCopy.missesLabel(3))

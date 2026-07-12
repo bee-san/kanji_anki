@@ -1190,10 +1190,17 @@ public class BridgeSchedulerTest {
                 item.dueAtMillis
         )
         item = result.item
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, item.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, item.rung)
+        assertEquals(AdaptiveStudyItemPolicy.ROUTING_VERSION, item.routingVersion)
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(item)!!.activeCore)
+        assertEquals(0, item.realPassStreak)
+        // The legacy promotion still landed on font_meaning before lazy
+        // conversion. Its updated memory remains in that compatibility slot
+        // and is copied into the canonical recognition owner.
         assertEquals(item.dueAtMillis, item.fontMeaningMemory.dueAtMillis)
         assertEquals(item.matureIntervalDays, item.fontMeaningMemory.matureIntervalDays)
         assertEquals(item.totalReviews, item.fontMeaningMemory.totalReviews)
+        assertEquals(item.fontMeaningMemory.encode(), item.kanjiMeaningMemory.encode())
     }
 
     @Test
@@ -1232,12 +1239,20 @@ public class BridgeSchedulerTest {
                 dueAt
         )
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, exactBoundary.item.rung)
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(exactBoundary.item)!!.activeCore)
         assertEquals(21, exactBoundary.item.matureIntervalDays)
         assertEquals(dueAt + 21L * BridgeScheduler.DAY, exactBoundary.item.dueAtMillis)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, beyondBoundary.item.rung)
+        assertEquals(0, exactBoundary.item.fontMeaningMemory.totalReviews)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, beyondBoundary.item.rung)
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(beyondBoundary.item)!!.activeCore)
         // The promoted rung's first review is capped at promotionDays / 3 (7 days).
         assertEquals(7, beyondBoundary.item.matureIntervalDays)
         assertEquals(dueAt + 7L * BridgeScheduler.DAY, beyondBoundary.item.dueAtMillis)
+        assertEquals(7, beyondBoundary.item.fontMeaningMemory.matureIntervalDays)
+        assertEquals(
+                beyondBoundary.item.fontMeaningMemory.encode(),
+                beyondBoundary.item.kanjiMeaningMemory.encode()
+        )
     }
 
     @Test

@@ -5,6 +5,14 @@ Kani now records both the before and after scheduler snapshots for each persiste
 - `scheduler_state_before_json`
 - `scheduler_state_after_json`
 
-The app-level undo guard lives in `StudyReviewActions.undoLastAppliedReview`. It only restores the previous `StudyItem` snapshot and deletes the consumed review token when the current item still exactly matches the saved after-review scheduler boundary. That keeps rollback limited to the immediately previous answer and rejects stale undo after another review or scheduler mutation has moved the card forward.
+The production undo boundary lives in `LocalStoreStudy.undoLastAppliedReview`.
+It deletes the review token and review timeline event, restores the previous
+`StudyItem` scheduler snapshot at a new monotonic `scheduler_revision`, and
+marks stats dirty in one transaction. The row update is compare-and-swap on the
+saved after-review revision, so another review, sync mutation, or prior undo
+makes the request stale instead of overwriting newer state. Elapsed task-time
+and objective-choice observations are deliberately preserved.
 
-This is intentionally a backend/test seam, not a full UI entry point yet. A safe UI flow can build on it by loading the latest review row, reconstructing the saved snapshots, calling the guard inside one database transaction, then refreshing the current study card.
+The UI may advance, show success, or refresh the session only after that
+transaction reports success. As with review commits, cache invalidation is an
+after-commit effect.

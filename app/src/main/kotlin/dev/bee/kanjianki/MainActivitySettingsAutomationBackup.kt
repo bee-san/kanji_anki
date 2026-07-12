@@ -83,6 +83,7 @@ internal class MainActivitySettingsAutomationBackup(
             write = {
                 result.set(
                     BackupRestoreValidator.validate(
+                        context = activity,
                         restoreDir = BackupRestoreStager.restoreDir(activity.filesDir),
                         sourceName = sourceName,
                         input = { activity.contentResolver.openInputStream(uri) },

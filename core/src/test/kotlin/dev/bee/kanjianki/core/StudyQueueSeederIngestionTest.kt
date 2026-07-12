@@ -80,6 +80,34 @@ class StudyQueueSeederIngestionTest {
         assertNull("新 blocked: the un-parked ceiling item fills the cap", find(items, "新"))
     }
 
+    @Test
+    fun adaptiveContextualCeilingParksEvenWhenSentenceVariantIsAvailable() {
+        val items = seeder.seedQueue(
+            listOf(suspendedRow("裂"), suspendedRow("新")),
+            listOf(adaptiveContextualItem("裂", revalidationPending = false)),
+            settingsWithQueue(activeQueueCap = 1, newPerDay = 5),
+            2000L,
+            1000L,
+            ladder = RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertTrue("sentence is a variant, so the validated contextual item parks", find(items, "新") != null)
+    }
+
+    @Test
+    fun adaptiveContextualRevalidationStillConsumesTheQueueCap() {
+        val items = seeder.seedQueue(
+            listOf(suspendedRow("裂"), suspendedRow("新")),
+            listOf(adaptiveContextualItem("裂", revalidationPending = true)),
+            settingsWithQueue(activeQueueCap = 1, newPerDay = 5),
+            2000L,
+            1000L,
+            ladder = RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertNull("an unresolved contextual miss must not park", find(items, "新"))
+    }
+
     // ---- Finding 7: preserve earned state on example reshuffle ----
 
     @Test
@@ -201,6 +229,37 @@ class StudyQueueSeederIngestionTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .matureIntervalDays(matureIntervalDays)
             .createdAtMillis(0L)
+            .build()
+    }
+
+    private fun adaptiveContextualItem(
+        kanji: String,
+        revalidationPending: Boolean,
+    ): RecordsStudyModels.StudyItem {
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = 1,
+            revalidationPending = revalidationPending,
+        )
+        val memory = RecordsStudyModels.TaskMemory(
+            StudyLadderRules.STATE_REVIEW,
+            10_000L,
+            80.0,
+            5.0,
+            4,
+            0,
+            0,
+            "good",
+            100,
+            1,
+            1L,
+        )
+        return ceilingItem(kanji, matureIntervalDays = 100)
+            .withTaskMemory(StudyTaskTypes.WORD_READING, memory)
+            .copyBuilder()
+            .hasSentenceReading(true)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
             .build()
     }
 

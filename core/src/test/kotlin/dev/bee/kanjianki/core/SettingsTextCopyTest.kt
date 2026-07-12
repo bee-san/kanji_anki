@@ -434,8 +434,8 @@ class SettingsTextCopyTest {
                         "Word -> reading",
                         "Included in study",
                         "Included when similar kanji exist",
-                        "Study ladder",
-                        "Set practice order. Keep one rung on.",
+                        "Adaptive study",
+                        "Recognition and contextual reading are required. Choose optional variants and repair tools.",
                 ),
                 listOf(
                         SettingsTextCopy.frequencyRangeStatusText(1, 20000),

@@ -156,15 +156,29 @@ abstract class RecordsBase protected constructor() {
         @JvmField
         val enabledRungs: List<LadderRung>
 
+        /**
+         * Adaptive repair-tool priority is stored separately from the legacy
+         * ladder. This lets new repair-only tasks (which have no legacy rung),
+         * such as `type_reading`, be inserted without rewriting a user's saved
+         * ladder order.
+         */
+        @JvmField
+        val repairTaskOrder: List<String>
+
+        @JvmField
+        val enabledRepairTaskTypes: List<String>
+
         constructor(
             orderedRungs: List<LadderRung?>?,
             enabledRungs: List<LadderRung?>?
-        ) : this(orderedRungs, enabledRungs, false)
+        ) : this(orderedRungs, enabledRungs, false, null, null)
 
         private constructor(
             orderedRungs: List<LadderRung?>?,
             enabledRungs: List<LadderRung?>?,
-            fallbackOnInvalid: Boolean
+            fallbackOnInvalid: Boolean,
+            requestedRepairOrder: List<String>?,
+            requestedEnabledRepairTasks: List<String>?,
         ) {
             val normalizedOrder = normalizeOrder(orderedRungs)
             val normalizedEnabled = normalizeEnabled(enabledRungs, normalizedOrder)
@@ -172,6 +186,8 @@ abstract class RecordsBase protected constructor() {
                 val defaults = defaults()
                 this.orderedRungs = defaults.orderedRungs
                 this.enabledRungs = defaults.enabledRungs
+                this.repairTaskOrder = defaults.repairTaskOrder
+                this.enabledRepairTaskTypes = defaults.enabledRepairTaskTypes
                 return
             }
             if (!hasAlwaysAvailableRung(normalizedEnabled)) {
@@ -179,13 +195,28 @@ abstract class RecordsBase protected constructor() {
             }
             this.orderedRungs = Collections.unmodifiableList(ArrayList(normalizedOrder))
             this.enabledRungs = Collections.unmodifiableList(ArrayList(normalizedEnabled))
+            val defaultRepairOrder = repairOrderFromLegacy(normalizedOrder)
+            val normalizedRepairOrder = normalizeRepairOrder(requestedRepairOrder, defaultRepairOrder)
+            val defaultEnabledRepairs = enabledRepairsFromLegacy(normalizedEnabled)
+            val normalizedEnabledRepairs = normalizeEnabledRepairs(
+                requestedEnabledRepairTasks,
+                defaultEnabledRepairs,
+            )
+            this.repairTaskOrder = Collections.unmodifiableList(ArrayList(normalizedRepairOrder))
+            this.enabledRepairTaskTypes = Collections.unmodifiableList(ArrayList(normalizedEnabledRepairs))
         }
 
         fun orderText(): String = joinRungs(orderedRungs)
 
         fun enabledText(): String = joinRungs(enabledRungs)
 
+        fun repairOrderText(): String = repairTaskOrder.joinToString(",")
+
+        fun repairEnabledText(): String = enabledRepairTaskTypes.joinToString(",")
+
         fun isEnabled(rung: LadderRung?): Boolean = enabledRungs.contains(rung)
+
+        fun isRepairTaskEnabled(taskType: String?): Boolean = enabledRepairTaskTypes.contains(taskType)
 
         fun isValidForItem(rung: LadderRung?, availability: RungAvailability): Boolean {
             return isEnabled(rung) && availability.isAvailable(rung)
@@ -206,7 +237,22 @@ abstract class RecordsBase protected constructor() {
                 }
                 nextEnabled.remove(rung)
             }
-            return StudyLadderSettings(orderedRungs, nextEnabled, false)
+            val nextRepairEnabled = ArrayList(enabledRepairTaskTypes)
+            val taskType = rung.wireName()
+            if (REPAIR_TASK_TYPES.contains(taskType)) {
+                if (enabled && !nextRepairEnabled.contains(taskType)) {
+                    nextRepairEnabled.add(taskType)
+                } else if (!enabled) {
+                    nextRepairEnabled.remove(taskType)
+                }
+            }
+            return StudyLadderSettings(
+                orderedRungs,
+                nextEnabled,
+                false,
+                repairTaskOrder,
+                nextRepairEnabled,
+            )
         }
 
         fun moveRung(rung: LadderRung?, delta: Int): StudyLadderSettings {
@@ -224,7 +270,63 @@ abstract class RecordsBase protected constructor() {
             }
             order.removeAt(from)
             order.add(to, rung)
-            return StudyLadderSettings(order, enabledRungs, false)
+            return StudyLadderSettings(
+                order,
+                enabledRungs,
+                false,
+                repairTaskOrder,
+                enabledRepairTaskTypes,
+            )
+        }
+
+        fun withRepairTaskEnabled(taskType: String?, enabled: Boolean): StudyLadderSettings {
+            val normalized = taskType?.trim().orEmpty()
+            if (!REPAIR_TASK_TYPES.contains(normalized)) {
+                return this
+            }
+            val nextEnabled = ArrayList(enabledRepairTaskTypes)
+            if (enabled) {
+                if (!nextEnabled.contains(normalized)) {
+                    nextEnabled.add(normalized)
+                }
+            } else {
+                nextEnabled.remove(normalized)
+            }
+            if (nextEnabled == enabledRepairTaskTypes) {
+                return this
+            }
+            return StudyLadderSettings(
+                orderedRungs,
+                enabledRungs,
+                false,
+                repairTaskOrder,
+                nextEnabled,
+            )
+        }
+
+        fun moveRepairTask(taskType: String?, delta: Int): StudyLadderSettings {
+            val normalized = taskType?.trim().orEmpty()
+            if (delta == 0 || !REPAIR_TASK_TYPES.contains(normalized)) {
+                return this
+            }
+            val order = ArrayList(repairTaskOrder)
+            val from = order.indexOf(normalized)
+            if (from < 0) {
+                return this
+            }
+            val to = max(0, min(order.lastIndex, from + delta))
+            if (to == from) {
+                return this
+            }
+            order.removeAt(from)
+            order.add(to, normalized)
+            return StudyLadderSettings(
+                orderedRungs,
+                enabledRungs,
+                false,
+                order,
+                enabledRepairTaskTypes,
+            )
         }
 
         fun enabledAlwaysAvailableCount(): Int {
@@ -344,14 +446,37 @@ abstract class RecordsBase protected constructor() {
                 ),
             )
 
+            @JvmField
+            val REPAIR_TASK_TYPES: Set<String> = Collections.unmodifiableSet(
+                linkedSetOf(
+                    StudyTaskTypes.WRITE_KANJI,
+                    StudyTaskTypes.TYPE_MEANING,
+                    StudyTaskTypes.MEANING_KANJI,
+                    StudyTaskTypes.READING_KANJI,
+                    StudyTaskTypes.SIMILAR_KANJI,
+                    StudyTaskTypes.KANJI_READING,
+                    StudyTaskTypes.TYPE_READING,
+                ),
+            )
+
             @JvmStatic
             fun defaults(): StudyLadderSettings {
                 val order = defaultsOrder()
-                return StudyLadderSettings(order, defaultsEnabled(), false)
+                return StudyLadderSettings(order, defaultsEnabled(), false, null, null)
             }
 
             @JvmStatic
             fun fromStored(orderValue: String?, enabledValue: String?): StudyLadderSettings {
+                return fromStored(orderValue, enabledValue, null, null)
+            }
+
+            @JvmStatic
+            fun fromStored(
+                orderValue: String?,
+                enabledValue: String?,
+                repairOrderValue: String?,
+                repairEnabledValue: String?,
+            ): StudyLadderSettings {
                 val order = splitRungs(orderValue)
                 val enabled = splitRungs(enabledValue).toMutableList()
                 // D-R4: auto-enable rungs that postdate the stored order. A rung
@@ -366,9 +491,30 @@ abstract class RecordsBase protected constructor() {
                     }
                 }
                 if (order.isEmpty() && enabled.isEmpty()) {
-                    return defaults()
+                    if (repairOrderValue == null && repairEnabledValue == null) {
+                        return defaults()
+                    }
                 }
-                return StudyLadderSettings(order, enabled, true)
+                val repairOrder = splitRepairTasks(repairOrderValue)
+                var repairEnabled = splitRepairTasks(repairEnabledValue)
+                // A separately stored repair order that lacks type_reading was
+                // written before that repair tool existed. Splice and enable it
+                // once. If the order already contains it, an omitted enabled
+                // value is an intentional user choice and is preserved.
+                if (repairOrder != null &&
+                    !repairOrder.contains(StudyTaskTypes.TYPE_READING) &&
+                    repairEnabled != null &&
+                    !repairEnabled.contains(StudyTaskTypes.TYPE_READING)
+                ) {
+                    repairEnabled = repairEnabled + StudyTaskTypes.TYPE_READING
+                }
+                return StudyLadderSettings(
+                    order,
+                    enabled,
+                    true,
+                    repairOrder,
+                    repairEnabled,
+                )
             }
 
             @JvmStatic
@@ -388,6 +534,85 @@ abstract class RecordsBase protected constructor() {
                     }
                 }
                 return out.toList()
+            }
+
+            private fun splitRepairTasks(value: String?): List<String>? {
+                if (value == null) {
+                    return null
+                }
+                val out = ArrayList<String>()
+                for (part in value.trim().split(Regex("[,\\s]+"))) {
+                    if (REPAIR_TASK_TYPES.contains(part) && !out.contains(part)) {
+                        out.add(part)
+                    }
+                }
+                return out
+            }
+
+            private fun repairOrderFromLegacy(order: List<LadderRung>): List<String> {
+                val out = order.map { it.wireName() }
+                    .filter { REPAIR_TASK_TYPES.contains(it) }
+                    .toMutableList()
+                val typeReading = StudyTaskTypes.TYPE_READING
+                if (!out.contains(typeReading)) {
+                    val readingIndex = out.indexOf(StudyTaskTypes.KANJI_READING)
+                    out.add(if (readingIndex >= 0) readingIndex + 1 else out.size, typeReading)
+                }
+                return out
+            }
+
+            private fun enabledRepairsFromLegacy(enabled: List<LadderRung>): List<String> {
+                val out = enabled.map { it.wireName() }
+                    .filter { REPAIR_TASK_TYPES.contains(it) }
+                    .toMutableList()
+                if (!out.contains(StudyTaskTypes.TYPE_READING)) {
+                    out.add(StudyTaskTypes.TYPE_READING)
+                }
+                return out
+            }
+
+            private fun normalizeRepairOrder(
+                requested: List<String>?,
+                defaults: List<String>,
+            ): MutableList<String> {
+                if (requested == null) {
+                    return ArrayList(defaults)
+                }
+                val out = requested.filterTo(ArrayList()) {
+                    REPAIR_TASK_TYPES.contains(it)
+                }
+                for (taskType in defaults) {
+                    if (!out.contains(taskType)) {
+                        insertMissingRepairTask(out, taskType, defaults)
+                    }
+                }
+                return out
+            }
+
+            private fun insertMissingRepairTask(
+                out: MutableList<String>,
+                missing: String,
+                defaults: List<String>,
+            ) {
+                val defaultIndex = defaults.indexOf(missing)
+                val previous = (defaultIndex - 1 downTo 0)
+                    .firstNotNullOfOrNull { index -> out.indexOf(defaults[index]).takeIf { it >= 0 } }
+                val next = (defaultIndex + 1 until defaults.size)
+                    .firstNotNullOfOrNull { index -> out.indexOf(defaults[index]).takeIf { it >= 0 } }
+                when {
+                    previous != null && next != null && previous < next -> out.add(next, missing)
+                    previous != null -> out.add(previous + 1, missing)
+                    next != null -> out.add(next, missing)
+                    else -> out.add(missing)
+                }
+            }
+
+            private fun normalizeEnabledRepairs(
+                requested: List<String>?,
+                defaults: List<String>,
+            ): MutableList<String> {
+                val source = requested ?: defaults
+                return source.filterTo(ArrayList()) { REPAIR_TASK_TYPES.contains(it) }
             }
 
             private fun normalizeOrder(requested: List<LadderRung?>?): MutableList<LadderRung> {

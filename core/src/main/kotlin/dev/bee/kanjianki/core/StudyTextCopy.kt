@@ -45,7 +45,11 @@ object StudyTextCopy {
 
     @JvmStatic
     fun wordPrompt(session: RecordsSchedulerModels.StudySession?): String {
-        val example = if (session == null) null else StudyExampleSelector.wordReadingExample(session.row)
+        val example = when {
+            session == null -> null
+            session.taskType == StudyTaskTypes.TYPE_READING -> StudyExampleSelector.exampleForSession(session)
+            else -> StudyExampleSelector.wordReadingExample(session.row)
+        }
         if (example != null && example.expression.isNotEmpty()) {
             return example.expression
         }
@@ -80,7 +84,9 @@ object StudyTextCopy {
         if (session != null && StudyTaskTypes.SENTENCE_READING == session.taskType) {
             return localizedText("How is the word read here?", "この語はどう読む？")
         }
-        if (session != null && StudyTaskTypes.WORD_READING == session.taskType) {
+        if (session != null &&
+            (StudyTaskTypes.WORD_READING == session.taskType || StudyTaskTypes.TYPE_READING == session.taskType)
+        ) {
             return localizedText("What is the reading?", "読み方は？")
         }
         return localizedText("What does this kanji mean?", "この漢字の意味は？")
@@ -97,6 +103,29 @@ object StudyTextCopy {
         }
         return session.row.primaryMeaning
     }
+
+    @JvmStatic
+    fun collectionReadingForSession(session: RecordsSchedulerModels.StudySession?): String {
+        return StudyExampleSelector.exampleForSession(session)?.reading.orEmpty()
+    }
+
+    @JvmStatic
+    fun readingLabel(): String = localizedText("Reading", "読み")
+
+    @JvmStatic
+    fun recognitionFailureTitle(): String = localizedText("What went wrong?", "どこで困りましたか？")
+
+    @JvmStatic
+    fun recognitionFailureBody(): String = localizedText(
+        "Choose the closest cause so Kani can give one targeted repair.",
+        "最も近い原因を選ぶと、Kaniが適切な修復練習を出します。",
+    )
+
+    @JvmStatic
+    fun recognitionFailureMeaningChoice(): String = localizedText("I didn't know the meaning", "意味が分からなかった")
+
+    @JvmStatic
+    fun recognitionFailureVisualChoice(): String = localizedText("I mixed up the kanji", "漢字を見間違えた")
 
     @JvmStatic
     fun openInBrowseLabel(): String = localizedText("Open in Browse", "Browseで開く")
@@ -481,6 +510,12 @@ object StudyTextCopy {
     fun typingAnswerAcceptedToast(): String {
         return localizedText("Typing answer accepted.", "入力した答えを保存しました。")
     }
+
+    @JvmStatic
+    fun typingReadingIncorrectToast(): String = localizedText(
+        "That reading does not match.",
+        "読みが一致しません。",
+    )
 
     @JvmStatic
     fun studyDoneTitle(): String {

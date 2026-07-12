@@ -1,6 +1,9 @@
 package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabase
+import dev.bee.kanjianki.core.AdaptiveStudyHealthPolicy
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.KaniOutcomePolicy
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LadderHealthPolicy
@@ -120,21 +123,31 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         @JvmField val weakKanjiImproved: WeakKanjiImprovedMetric
         @JvmField val matureSupportGained: MatureSupportGainedMetric
         @JvmField val ladderHealth: LadderHealthMetric
+        @JvmField val adaptiveHealth: AdaptiveHealthMetric
 
         constructor(weakKanjiImproved: WeakKanjiImprovedMetric?, matureSupportGained: MatureSupportGainedMetric?) : this(
             weakKanjiImproved,
             matureSupportGained,
-            LadderHealthMetric.empty()
+            LadderHealthMetric.empty(),
+            AdaptiveHealthMetric.empty(),
         )
 
         constructor(
             weakKanjiImproved: WeakKanjiImprovedMetric?,
             matureSupportGained: MatureSupportGainedMetric?,
             ladderHealth: LadderHealthMetric?,
+        ) : this(weakKanjiImproved, matureSupportGained, ladderHealth, AdaptiveHealthMetric.empty())
+
+        constructor(
+            weakKanjiImproved: WeakKanjiImprovedMetric?,
+            matureSupportGained: MatureSupportGainedMetric?,
+            ladderHealth: LadderHealthMetric?,
+            adaptiveHealth: AdaptiveHealthMetric?,
         ) {
             this.weakKanjiImproved = weakKanjiImproved ?: WeakKanjiImprovedMetric.empty()
             this.matureSupportGained = matureSupportGained ?: MatureSupportGainedMetric.empty()
             this.ladderHealth = ladderHealth ?: LadderHealthMetric.empty()
+            this.adaptiveHealth = adaptiveHealth ?: AdaptiveHealthMetric.empty()
         }
 
         companion object {
@@ -143,8 +156,81 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                 return KaniOutcomeStats(
                     WeakKanjiImprovedMetric.empty(),
                     MatureSupportGainedMetric.empty(),
-                    LadderHealthMetric.empty()
+                    LadderHealthMetric.empty(),
+                    AdaptiveHealthMetric.empty(),
                 )
+            }
+        }
+    }
+
+    class AdaptiveHealthMetric(
+        coreCounts: Map<CoreSkill, Int>?,
+        activeRepairsByTask: Map<String, Int>?,
+        activeRepairsByFailure: Map<FailureKind, Int>?,
+        totalAdaptiveItems: Int,
+        contextualCompleteCount: Int,
+        activeRepairCount: Int,
+        revalidationPendingCount: Int,
+        recentCoreMissCount: Int,
+        escalationRiskCount: Int,
+        stuckRepairCount: Int,
+        malformedStateCount: Int,
+    ) {
+        @JvmField val coreCounts: Map<CoreSkill, Int> = immutableCoreCounts(coreCounts)
+        @JvmField val activeRepairsByTask: Map<String, Int> = immutableStringCounts(activeRepairsByTask)
+        @JvmField val activeRepairsByFailure: Map<FailureKind, Int> = immutableFailureCounts(activeRepairsByFailure)
+        @JvmField val totalAdaptiveItems: Int = totalAdaptiveItems.coerceAtLeast(0)
+        @JvmField val contextualCompleteCount: Int = contextualCompleteCount.coerceAtLeast(0)
+        @JvmField val activeRepairCount: Int = activeRepairCount.coerceAtLeast(0)
+        @JvmField val revalidationPendingCount: Int = revalidationPendingCount.coerceAtLeast(0)
+        @JvmField val recentCoreMissCount: Int = recentCoreMissCount.coerceAtLeast(0)
+        @JvmField val escalationRiskCount: Int = escalationRiskCount.coerceAtLeast(0)
+        @JvmField val stuckRepairCount: Int = stuckRepairCount.coerceAtLeast(0)
+        @JvmField val malformedStateCount: Int = malformedStateCount.coerceAtLeast(0)
+
+        fun countFor(skill: CoreSkill?): Int = coreCounts[skill] ?: 0
+
+        fun repairCountFor(taskType: String?): Int = activeRepairsByTask[taskType] ?: 0
+
+        fun failureCountFor(kind: FailureKind?): Int = activeRepairsByFailure[kind] ?: 0
+
+        companion object {
+            @JvmStatic
+            fun empty(): AdaptiveHealthMetric = fromCore(AdaptiveStudyHealthPolicy.Metric.empty())
+
+            internal fun fromCore(metric: AdaptiveStudyHealthPolicy.Metric): AdaptiveHealthMetric = AdaptiveHealthMetric(
+                metric.coreCounts,
+                metric.activeRepairsByTask,
+                metric.activeRepairsByFailure,
+                metric.totalAdaptiveItems,
+                metric.contextualCompleteCount,
+                metric.activeRepairCount,
+                metric.revalidationPendingCount,
+                metric.recentCoreMissCount,
+                metric.escalationRiskCount,
+                metric.stuckRepairCount,
+                metric.malformedStateCount,
+            )
+
+            private fun immutableCoreCounts(counts: Map<CoreSkill, Int>?): Map<CoreSkill, Int> {
+                val normalized = linkedMapOf<CoreSkill, Int>()
+                CoreSkill.entries.forEach { normalized[it] = (counts?.get(it) ?: 0).coerceAtLeast(0) }
+                return Collections.unmodifiableMap(normalized)
+            }
+
+            private fun immutableFailureCounts(counts: Map<FailureKind, Int>?): Map<FailureKind, Int> {
+                val normalized = linkedMapOf<FailureKind, Int>()
+                FailureKind.entries.forEach { normalized[it] = (counts?.get(it) ?: 0).coerceAtLeast(0) }
+                return Collections.unmodifiableMap(normalized)
+            }
+
+            private fun immutableStringCounts(counts: Map<String, Int>?): Map<String, Int> {
+                val normalized = linkedMapOf<String, Int>()
+                counts.orEmpty().entries
+                    .filter { it.key.isNotBlank() && it.value > 0 }
+                    .sortedBy { it.key }
+                    .forEach { normalized[it.key] = it.value }
+                return Collections.unmodifiableMap(normalized)
             }
         }
     }
@@ -529,6 +615,20 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
         fun hasSimilarKanji(): Boolean = hasSimilarKanji
     }
 
+    class AdaptiveItemEvidence(
+        state: String?,
+        phase: RecordsBase.SchedulerPhase?,
+        routingVersion: Int,
+        adaptiveRouteStateJson: String?,
+        contextualReadingConsecutivePasses: Int,
+    ) {
+        @JvmField val state: String = state.orEmpty()
+        @JvmField val phase: RecordsBase.SchedulerPhase = phase ?: RecordsBase.SchedulerPhase.NEW_LEARNING
+        @JvmField val routingVersion: Int = routingVersion.coerceAtLeast(0)
+        @JvmField val adaptiveRouteStateJson: String = adaptiveRouteStateJson.orEmpty()
+        @JvmField val contextualReadingConsecutivePasses: Int = contextualReadingConsecutivePasses.coerceAtLeast(0)
+    }
+
     companion object {
         private const val RETIRED_STAT_WINDOW_MILLIS: Long = 30L * 24L * 60L * 60L * 1000L
 
@@ -541,6 +641,28 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
             return calculateKaniOutcomeStats(
                 outcomeEvidence,
                 ladderHealth(safeList(ladderItems), RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, realDueReviewsToMove)
+            )
+        }
+
+        @JvmStatic
+        fun calculateKaniOutcomeStats(
+            outcomeEvidence: List<OutcomeEvidence?>?,
+            ladderItems: List<LadderItemEvidence?>?,
+            adaptiveItems: List<AdaptiveItemEvidence?>?,
+            ladderPromotionIntervalDays: Int,
+            ladderDemotionFailStreak: Int,
+        ): KaniOutcomeStats {
+            val legacy = calculateKaniOutcomeStats(
+                outcomeEvidence,
+                ladderItems,
+                ladderPromotionIntervalDays,
+                ladderDemotionFailStreak,
+            )
+            return KaniOutcomeStats(
+                legacy.weakKanjiImproved,
+                legacy.matureSupportGained,
+                legacy.ladderHealth,
+                adaptiveHealth(adaptiveItems, ladderDemotionFailStreak),
             )
         }
 
@@ -594,6 +716,27 @@ class StudyStatsStore private constructor(private val queries: StudyStatsQueries
                 )
             )
         }
+
+        @JvmStatic
+        fun adaptiveHealth(
+            items: List<AdaptiveItemEvidence?>?,
+            escalationThreshold: Int,
+        ): AdaptiveHealthMetric = AdaptiveHealthMetric.fromCore(
+            AdaptiveStudyHealthPolicy.summarize(
+                items.orEmpty().map { item ->
+                    item?.let {
+                        AdaptiveStudyHealthPolicy.ItemEvidence(
+                            it.state,
+                            it.phase,
+                            it.routingVersion,
+                            it.adaptiveRouteStateJson,
+                            it.contextualReadingConsecutivePasses,
+                        )
+                    }
+                },
+                escalationThreshold,
+            ),
+        )
 
         private fun emptyRungDistribution(): Map<RecordsBase.LadderRung, Int> {
             return LadderHealthPolicy.emptyRungDistribution()

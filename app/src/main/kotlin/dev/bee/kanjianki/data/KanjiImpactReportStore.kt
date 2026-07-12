@@ -89,7 +89,17 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
         )
         addKanjiFromCursor(
             candidates,
-            db.query(true, TABLE_SUSPENDED_IMPORTS, arrayOf(COLUMN_KANJI), null, null, null, null, null, null)
+            db.query(
+                true,
+                TABLE_SUSPENDED_IMPORTS,
+                arrayOf(COLUMN_KANJI),
+                "last_seen_sync_id IN (SELECT id FROM $TABLE_SYNC_RUNS WHERE status=?)",
+                arrayOf(STATUS_SUCCESS),
+                null,
+                null,
+                null,
+                null,
+            )
         )
         return candidates
     }
@@ -139,8 +149,10 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
     private fun firstKaniSignalAt(db: SQLiteDatabase, kanji: String): Long {
         var first = minLongQuery(
             db,
-            "SELECT MIN(occurred_at) FROM kanji_timeline_events WHERE kanji=?",
-            arrayOf(kanji)
+            "SELECT MIN(occurred_at) FROM kanji_timeline_events WHERE kanji=? " +
+                "AND (sync_id IS NULL OR sync_id IN " +
+                "(SELECT id FROM sync_runs WHERE status=?))",
+            arrayOf(kanji, STATUS_SUCCESS)
         )
         val firstReview = minLongQuery(
             db,
@@ -154,8 +166,9 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
         )
         val firstSuspendedImport = minLongQuery(
             db,
-            "SELECT MIN(first_imported_at) FROM suspended_imports WHERE kanji=?",
-            arrayOf(kanji)
+            "SELECT MIN(first_imported_at) FROM suspended_imports WHERE kanji=? " +
+                "AND last_seen_sync_id IN (SELECT id FROM sync_runs WHERE status=?)",
+            arrayOf(kanji, STATUS_SUCCESS)
         )
         first = earliestPositive(first, firstReview)
         first = earliestPositive(first, firstStudyItem)
@@ -191,8 +204,9 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
         val cursor = db.query(
             TABLE_SYNC_KANJI_SNAPSHOTS,
             null,
-            "kanji=? AND finished_at>=?",
-            arrayOf(kanji, startedAt.toString()),
+            "kanji=? AND finished_at>=? AND sync_id IN " +
+                "(SELECT id FROM $TABLE_SYNC_RUNS WHERE status=?)",
+            arrayOf(kanji, startedAt.toString(), STATUS_SUCCESS),
             null,
             null,
             "finished_at ASC, sync_id ASC",
@@ -214,8 +228,9 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
         val cursor = db.query(
             TABLE_SYNC_KANJI_SNAPSHOTS,
             null,
-            "kanji=? AND finished_at<=?",
-            arrayOf(kanji, startedAt.toString()),
+            "kanji=? AND finished_at<=? AND sync_id IN " +
+                "(SELECT id FROM $TABLE_SYNC_RUNS WHERE status=?)",
+            arrayOf(kanji, startedAt.toString(), STATUS_SUCCESS),
             null,
             null,
             "finished_at DESC, sync_id DESC",
@@ -233,8 +248,8 @@ internal class KanjiImpactReportStore(private val store: LocalStore) {
         val cursor = db.query(
             TABLE_SYNC_KANJI_SNAPSHOTS,
             null,
-            "kanji=?",
-            arrayOf(kanji),
+            "kanji=? AND sync_id IN (SELECT id FROM $TABLE_SYNC_RUNS WHERE status=?)",
+            arrayOf(kanji, STATUS_SUCCESS),
             null,
             null,
             "sync_id ASC",

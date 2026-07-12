@@ -3,6 +3,8 @@ package dev.bee.kanjianki.data
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,6 +33,7 @@ object StatsCacheCodec {
             .put("weakKanjiImproved", weakKanjiImprovedToJson(safe.weakKanjiImproved))
             .put("matureSupportGained", matureSupportGainedToJson(safe.matureSupportGained))
             .put("ladderHealth", ladderHealthToJson(safe.ladderHealth))
+            .put("adaptiveHealth", adaptiveHealthToJson(safe.adaptiveHealth))
         val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null ||
             studyTaskTimeStats != null || reviewDaySummaries != null || kanjiRepairEvidence != null ||
             taskTypeDaySummaries != null || cumulativeKanjiPracticed != null || wrongPickCounts != null ||
@@ -61,7 +64,8 @@ object StatsCacheCodec {
             StudyStatsStore.KaniOutcomeStats(
                 weakKanjiImprovedFromJson(root.optJSONObject("weakKanjiImproved")),
                 matureSupportGainedFromJson(root.optJSONObject("matureSupportGained")),
-                ladderHealthFromJson(root.optJSONObject("ladderHealth"))
+                ladderHealthFromJson(root.optJSONObject("ladderHealth")),
+                adaptiveHealthFromJson(root.optJSONObject("adaptiveHealth")),
             )
         } catch (_: Exception) {
             StudyStatsStore.KaniOutcomeStats.empty()
@@ -552,6 +556,64 @@ object StatsCacheCodec {
             json.optInt("demotionReadyCount", 0),
             json.optInt("stuckCount", 0)
         )
+    }
+
+    private fun adaptiveHealthToJson(metric: StudyStatsStore.AdaptiveHealthMetric): JSONObject {
+        val coreCounts = JSONObject()
+        metric.coreCounts.forEach { (core, count) -> coreCounts.put(core.wireName(), count) }
+        val taskCounts = JSONObject()
+        metric.activeRepairsByTask.forEach { (task, count) -> taskCounts.put(task, count) }
+        val failureCounts = JSONObject()
+        metric.activeRepairsByFailure.forEach { (failure, count) -> failureCounts.put(failure.wireName(), count) }
+        return JSONObject()
+            .put("coreCounts", coreCounts)
+            .put("activeRepairsByTask", taskCounts)
+            .put("activeRepairsByFailure", failureCounts)
+            .put("totalAdaptiveItems", metric.totalAdaptiveItems)
+            .put("contextualCompleteCount", metric.contextualCompleteCount)
+            .put("activeRepairCount", metric.activeRepairCount)
+            .put("revalidationPendingCount", metric.revalidationPendingCount)
+            .put("recentCoreMissCount", metric.recentCoreMissCount)
+            .put("escalationRiskCount", metric.escalationRiskCount)
+            .put("stuckRepairCount", metric.stuckRepairCount)
+            .put("malformedStateCount", metric.malformedStateCount)
+    }
+
+    private fun adaptiveHealthFromJson(json: JSONObject?): StudyStatsStore.AdaptiveHealthMetric {
+        if (json == null) return StudyStatsStore.AdaptiveHealthMetric.empty()
+        val coreCounts = linkedMapOf<CoreSkill, Int>()
+        val coreJson = json.optJSONObject("coreCounts")
+        CoreSkill.entries.forEach { core -> coreCounts[core] = coreJson?.optInt(core.wireName(), 0) ?: 0 }
+        val taskCounts = stringIntMapFromJson(json.optJSONObject("activeRepairsByTask"))
+        val failureCounts = linkedMapOf<FailureKind, Int>()
+        val failureJson = json.optJSONObject("activeRepairsByFailure")
+        FailureKind.entries.forEach { failure ->
+            failureCounts[failure] = failureJson?.optInt(failure.wireName(), 0) ?: 0
+        }
+        return StudyStatsStore.AdaptiveHealthMetric(
+            coreCounts,
+            taskCounts,
+            failureCounts,
+            json.optInt("totalAdaptiveItems", 0),
+            json.optInt("contextualCompleteCount", 0),
+            json.optInt("activeRepairCount", 0),
+            json.optInt("revalidationPendingCount", 0),
+            json.optInt("recentCoreMissCount", 0),
+            json.optInt("escalationRiskCount", 0),
+            json.optInt("stuckRepairCount", 0),
+            json.optInt("malformedStateCount", 0),
+        )
+    }
+
+    private fun stringIntMapFromJson(json: JSONObject?): Map<String, Int> {
+        if (json == null) return emptyMap()
+        val out = linkedMapOf<String, Int>()
+        val names = json.names() ?: return out
+        for (index in 0 until names.length()) {
+            val key = names.optString(index, "")
+            if (key.isNotBlank()) out[key] = json.optInt(key, 0)
+        }
+        return out
     }
 
     private fun rungCountsFromJson(json: JSONObject?): Map<RecordsBase.LadderRung, Int> {

@@ -12,6 +12,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.EvidenceSource
+import dev.bee.kanjianki.core.FailureKind
+import dev.bee.kanjianki.core.PresentationVariant
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -41,6 +47,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                     )
                     ComposeFlashcardCard(route)
                 }
+                RecognitionFailureCauseDialog(route.failureCauseState, route.onFailureCause)
             },
             actionBar = { ComposeFlashcardActionBar(route) },
         )
@@ -62,6 +69,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.studyAnswerPanel = null
         val swipeFeedback = StudySwipeFeedbackState()
         activity.flashcardSwipeFeedback = swipeFeedback
+        val failureCauseState = RecognitionFailureCauseState()
+        activity.recognitionFailureCauseState = failureCauseState
         val heroPanel = when {
             // sentence_reading (Goal 80): the front is the mined sentence. It is
             // longer than a word, so it renders well below the 116sp kanji hero
@@ -81,10 +90,20 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             else -> FlashcardHeroPanelModel(
                 session.item?.kanji ?: "",
                 KaniUiTokens.StudyFrontHeroTextSizeSp,
-                if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT,
+                if (StudyTaskCopy.isFontRecognitionTask(session)) {
+                    StudyFontVariants.deterministic(
+                        activity,
+                        session.item?.kanji,
+                        session.item?.kanjiMeaningMemory?.totalReviews ?: 0,
+                    )
+                } else {
+                    Typeface.DEFAULT
+                },
             )
         }
-        val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
+        val typingAnswer = if (
+            StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
+        ) {
             typingAnswerField()
         } else {
             null
@@ -98,12 +117,19 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             heroPanel,
             typingAnswer,
             answerPanel,
-            revealState
+            revealState,
+            typingReading = StudyTaskCopy.isTypingReadingTask(session),
         )
         val actionBarState = FlashcardActionBarState(
             false,
             Runnable { revealFlashcardAnswer() },
-            Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
+            Runnable {
+                if (requiresRecognitionFailureCause(session)) {
+                    failureCauseState.show("button")
+                } else {
+                    activity.submitReview(MainActivityBase.RATING_AGAIN, false)
+                }
+            },
             Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
         )
         activity.flashcardActionBarState = actionBarState
@@ -112,6 +138,16 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             actionBarState = actionBarState,
             swipeFeedback = swipeFeedback,
             sessionToken = session.token,
+            failureCauseState = failureCauseState,
+            askRecognitionFailureCause = requiresRecognitionFailureCause(session),
+            onFailureCause = { cause, source ->
+                activity.submitReview(
+                    rating = MainActivityBase.RATING_AGAIN,
+                    override = false,
+                    interactionSource = source,
+                    answerEvidence = recognitionFailureEvidence(session, cause),
+                )
+            },
         )
     }
 
@@ -201,19 +237,48 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             onUndo = { activity.undoLastRating() },
             swipeFeedback = route.swipeFeedback,
             onReview = { source, rating ->
-                activity.submitReview(
-                    rating = rating,
-                    override = false,
-                    interactionSource = source,
-                )
+                if (rating == MainActivityBase.RATING_AGAIN && route.askRecognitionFailureCause) {
+                    route.failureCauseState.show(source)
+                    false
+                } else {
+                    activity.submitReview(
+                        rating = rating,
+                        override = false,
+                        interactionSource = source,
+                    )
+                }
             },
         )
     }
+
+    private fun requiresRecognitionFailureCause(session: RecordsSchedulerModels.StudySession): Boolean {
+        return session.item?.phase == RecordsBase.SchedulerPhase.REVIEW &&
+            (session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.KANJI_MEANING ||
+                session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.FONT_MEANING)
+    }
+
+    private fun recognitionFailureEvidence(
+        session: RecordsSchedulerModels.StudySession,
+        cause: FailureKind,
+    ): AnswerEvidence = AnswerEvidence(
+        coreSkill = CoreSkill.RECOGNITION,
+        failureKind = cause,
+        evidenceSource = EvidenceSource.SELF_REPORT,
+        presentationVariant = if (StudyTaskCopy.isFontRecognitionTask(session)) {
+            PresentationVariant.FONT_GLYPH
+        } else {
+            PresentationVariant.STANDARD_GLYPH
+        },
+        renderedExpression = session.item?.kanji.orEmpty(),
+    )
 
     private data class ComposeFlashcardRouteModel(
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
         val swipeFeedback: StudySwipeFeedbackState,
         val sessionToken: String,
+        val failureCauseState: RecognitionFailureCauseState,
+        val askRecognitionFailureCause: Boolean,
+        val onFailureCause: (FailureKind, String) -> Unit,
     )
 }

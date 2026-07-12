@@ -219,7 +219,11 @@ class StudyQueueSeeder {
     ): RecordsStudyModels.StudyItem {
         val row = seedRowForItem(rowIndex, item)
         val current = if (row == null) {
-            StudyLadderRules.alignRungToLadder(item, request.ladder)
+            if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+                AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+            } else {
+                StudyLadderRules.alignRungToLadder(item, request.ladder)
+            }
         } else {
             alignAnswerSignature(item, row, request.nowMillis, request.ladder)
         }
@@ -331,6 +335,7 @@ class StudyQueueSeeder {
         return item.copyBuilder()
             .state(StudyLadderRules.STATE_RETIRED)
             .activeToken(null)
+            .schedulerRevision(item.schedulerRevision + 1L)
             .build()
     }
 
@@ -368,7 +373,7 @@ class StudyQueueSeeder {
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
             RecordsStudyModels.TaskMemory.initial(),
-            safeLadder.startingRung(RecordsBase.RungAvailability.none()),
+            RecordsBase.LadderRung.KANJI_MEANING,
             RecordsBase.SchedulerPhase.NEW_LEARNING,
             0,
             0,
@@ -384,15 +389,20 @@ class StudyQueueSeeder {
         seed: AdmissionEvidencePolicy.Seed,
         nowMillis: Long,
     ): RecordsStudyModels.StudyItem {
+        val requiredRung = if (seed.isReviewSeed()) {
+            RecordsBase.LadderRung.WORD_READING
+        } else {
+            RecordsBase.LadderRung.KANJI_MEANING
+        }
         val seeded = base.copyBuilder()
             .state(seed.state)
             .stability(seed.stability)
             .difficulty(seed.difficulty)
-            .rung(seed.rung)
+            .rung(requiredRung)
             .phase(seed.phase)
             .matureIntervalDays(seed.matureIntervalDays)
-            .recognitionStage(StudyLadderRules.rungToLegacyStage(seed.rung))
-            .writingRemediationPending(seed.rung == RecordsBase.LadderRung.WRITE_KANJI)
+            .recognitionStage(StudyLadderRules.rungToLegacyStage(requiredRung))
+            .writingRemediationPending(false)
             .build()
         if (!seed.isReviewSeed()) {
             return seeded
@@ -413,7 +423,14 @@ class StudyQueueSeeder {
             "",
             0,
         )
-        return seeded.withTaskMemory(seed.rung.wireName(), seededMemory)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING)
+        return seeded.copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .recognitionStage(StudyLadderRules.rungToLegacyStage(RecordsBase.LadderRung.WORD_READING))
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .build()
+            .withTaskMemory(StudyTaskTypes.WORD_READING, seededMemory)
     }
 
     private fun alignAnswerSignature(
@@ -424,11 +441,11 @@ class StudyQueueSeeder {
     ): RecordsStudyModels.StudyItem {
         val signature = answerSignature(row)
         if (item.answerSignature.isEmpty() || signature == item.answerSignature) {
-            return StudyLadderRules.alignRungToLadder(item.withAnswerSignature(signature), ladder)
+            return alignForRoutingVersion(item.withAnswerSignature(signature), ladder)
         }
         val retired = StudyLadderRules.STATE_RETIRED == item.state
         if (retired) {
-            return StudyLadderRules.alignRungToLadder(item.copyBuilder().answerSignature(signature).build(), ladder)
+            return alignForRoutingVersion(item.copyBuilder().answerSignature(signature).build(), ladder)
         }
         // A suspend/unsuspend flip in Anki can reshuffle which example is the
         // "preferred" one and change expression/reading without the kanji's
@@ -437,9 +454,8 @@ class StudyQueueSeeder {
         // must not be destroyed by a suspension toggle. Reset only when the
         // meaning itself materially changed (effectively a different card).
         if (signatureMeaning(signature) == signatureMeaning(item.answerSignature)) {
-            return StudyLadderRules.alignRungToLadder(item.withAnswerSignature(signature), ladder)
+            return alignForRoutingVersion(item.withAnswerSignature(signature), ladder)
         }
-        val fallbackRung = StudyLadderRules.demoteRung(item.rung, item.rungAvailability(), ladder)
         return item.copyBuilder()
             .state(StudyLadderRules.STATE_LEARNING)
             .dueAtMillis(nowMillis)
@@ -463,12 +479,29 @@ class StudyQueueSeeder {
             .wordReadingMemory(RecordsStudyModels.TaskMemory.initial())
             .writingRemediationMemory(RecordsStudyModels.TaskMemory.initial())
             .similarKanjiMemory(RecordsStudyModels.TaskMemory.initial())
-            .rung(fallbackRung)
+            .kanjiReadingMemory(RecordsStudyModels.TaskMemory.initial())
+            .readingKanjiMemory(RecordsStudyModels.TaskMemory.initial())
+            .sentenceReadingMemory(RecordsStudyModels.TaskMemory.initial())
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
             .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
             .realPassStreak(0)
             .realAgainStreak(0)
             .lastRealReviewDueAtMillis(0L)
+            .routingVersion(1)
+            .adaptiveRouteStateJson("")
+            .schedulerRevision(item.schedulerRevision + 1L)
             .build()
+    }
+
+    private fun alignForRoutingVersion(
+        item: RecordsStudyModels.StudyItem,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): RecordsStudyModels.StudyItem {
+        return if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+            AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+        } else {
+            StudyLadderRules.alignRungToLadder(item, ladder)
+        }
     }
 
     private class SeedQueueLimits(
@@ -546,7 +579,16 @@ class StudyQueueSeeder {
             ) {
                 return false
             }
-            if (!request.ladder.isAtCeiling(item.rung, item.rungAvailability())) {
+            val atValidatedCeiling = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+                // sentence_reading is a presentation variant in routing v2,
+                // not a rung above the contextual core. A validated contextual
+                // item is therefore at the adaptive ceiling even when sentence
+                // data and the legacy sentence bit are both available.
+                AdaptiveStudyItemPolicy.isContextualComplete(item)
+            } else {
+                request.ladder.isAtCeiling(item.rung, item.rungAvailability())
+            }
+            if (!atValidatedCeiling) {
                 return false
             }
             val threshold = max(

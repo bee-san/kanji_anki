@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyTaskTypes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -39,20 +40,69 @@ class MainActivityStudyFlashcardGestureTest {
         )
     }
 
+    @Test
+    fun recognitionFailSwipeAsksForCauseAndDismissDoesNotSubmit() {
+        val token = "flashcard-token-recognition-cause"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        activity.activeSession = RecordsSchedulerModels.StudySession(
+            item = studyItem("認", token, RecordsBase.LadderRung.KANJI_MEANING),
+            row = null,
+            token = token,
+            taskType = StudyTaskTypes.KANJI_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        StudySessionActions.activateStudySession(
+            activity.activeSession!!,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        activity.studyAnswerPanel = LinearLayout(activity)
+        activity.flashcardHeroPanel = LinearLayout(activity)
+        activity.revealFlashcardAnswer()
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+        val causeState = RecognitionFailureCauseState()
+        activity.recognitionFailureCauseState = causeState
+        val beforeReviewCount = reviewLogCount(activity)
+        val downTime = SystemClock.uptimeMillis()
+
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_DOWN, 210f, 520f, downTime, downTime))
+        assertTrue(
+            activity.handleFlashcardGesture(
+                motionEvent(MotionEvent.ACTION_UP, -80f, 520f, downTime, downTime + 120L),
+            ),
+        )
+
+        assertTrue(causeState.visible)
+        assertEquals(0, reviewIo.pendingCount())
+        assertEquals(beforeReviewCount, reviewLogCount(activity))
+
+        causeState.dismiss()
+
+        assertFalse(causeState.visible)
+        assertEquals(0, reviewIo.pendingCount())
+        assertEquals(beforeReviewCount, reviewLogCount(activity))
+    }
+
     private fun assertSwipeAdvancesWhenReleaseLeavesCardBounds(
         tokenSuffix: String,
         releaseX: Float,
         expectedRating: String,
     ) {
         val token = "flashcard-token-$tokenSuffix"
+        val kanji = if (tokenSuffix == "left") "弱" else "強"
         val activity = createActivity()
         val reviewIo = QueueingExecutorService()
         replaceField(activity, "io", reviewIo)
         activity.activeSession = RecordsSchedulerModels.StudySession(
-            item = studyItem("弱", token),
+            item = studyItem(kanji, token, RecordsBase.LadderRung.WORD_READING),
             row = null,
             token = token,
-            taskType = "flashcard",
+            taskType = StudyTaskTypes.WORD_READING,
             writingRequired = false,
             prompt = "",
         )
@@ -151,10 +201,14 @@ class MainActivityStudyFlashcardGestureTest {
         }
     }
 
-    private fun studyItem(kanji: String, token: String): RecordsStudyModels.StudyItem {
+    private fun studyItem(
+        kanji: String,
+        token: String,
+        rung: RecordsBase.LadderRung,
+    ): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "review", 1_000L, 1.0, 2.0, 1, 0, 0, 0, "", 1_000L)
             .copyBuilder()
-            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .rung(rung)
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken(token)
             .build()
@@ -203,5 +257,7 @@ class MainActivityStudyFlashcardGestureTest {
         fun runNext() {
             tasks.removeFirst().run()
         }
+
+        fun pendingCount(): Int = tasks.size
     }
 }

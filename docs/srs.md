@@ -2,10 +2,12 @@
 
 > **Historical design sketch — superseded.** This document describes an early
 > 3-rung ladder plus a persistent mature-sibling suppression layer. The
-> shipped scheduler uses a 10-rung single-item-per-family ladder, and the
+> later DB30 scheduler used a 10-rung single-item-per-family ladder, and the
 > suppression layer was removed because a family can never contain a second
-> item. See `docs/ladder-and-srs-system.md` for the current,
-> code-verified reference.
+> item. The production DB31 scheduler now uses two long-term cores with inline
+> repair; see [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
+> The DB30 ladder remains documented only as a legacy conversion reference in
+> [`ladder-and-srs-system.md`](ladder-and-srs-system.md).
 
 ## Summary
 

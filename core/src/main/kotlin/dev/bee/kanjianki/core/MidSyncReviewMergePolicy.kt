@@ -12,10 +12,11 @@ import dev.bee.kanjianki.core.RecordsStudyModels.StudyItem
  * item carries pre-review scheduler state and would silently overwrite the saved
  * review (the `review_log` row survives, but FSRS memory / rung / streak regress).
  *
- * This policy detects, per study-item family key `(kanji, answerSignature)`, whether
- * the persisted row changed since the baseline was read. If it did, the review that
- * landed mid-sync wins and its persisted state is kept; otherwise the freshly seeded
- * item is used. New seeded families with no persisted counterpart are always kept.
+ * This policy detects, per study-item lineage, whether the persisted row changed
+ * since the baseline was read. A lineage normally has the same `(kanji,
+ * answerSignature)` key, but a same-meaning preferred-example reshuffle may move
+ * the signature during sync. If a review landed, its scheduler state wins while
+ * the seeded signature is adopted; otherwise the freshly seeded item is used.
  */
 object MidSyncReviewMergePolicy {
     /**
@@ -35,20 +36,15 @@ object MidSyncReviewMergePolicy {
         if (persisted.isEmpty()) {
             return seeded
         }
-        val baselineByKey = HashMap<String, StudyItem>(baseline.size * 2)
-        for (item in baseline) {
-            baselineByKey[key(item)] = item
-        }
-        val persistedByKey = HashMap<String, StudyItem>(persisted.size * 2)
-        for (item in persisted) {
-            persistedByKey[key(item)] = item
-        }
         val result = ArrayList<StudyItem>(seeded.size)
         for (item in seeded) {
-            val k = key(item)
-            val current = persistedByKey[k]
-            if (current != null && reviewLandedMidSync(baselineByKey[k], current)) {
-                result.add(current)
+            val baselineItem = StudyItemLineagePolicy.counterpart(item, baseline)
+            val current = baselineItem?.let { StudyItemLineagePolicy.counterpart(it, persisted) }
+            if (current != null && reviewLandedMidSync(baselineItem, current)) {
+                // Preserve the post-review scheduler state, but move it to the
+                // identity selected by this sync. The persistence boundary will
+                // then bump the revision because the key change is material.
+                result.add(current.copyBuilder().answerSignature(item.answerSignature).build())
             } else {
                 result.add(item)
             }
@@ -70,11 +66,8 @@ object MidSyncReviewMergePolicy {
             // baseline entry, so they are handled below.
             return false
         }
-        return current.totalReviews > baseline.totalReviews ||
+        return current.schedulerRevision > baseline.schedulerRevision ||
+            current.totalReviews > baseline.totalReviews ||
             current.lastRealReviewDueAtMillis != baseline.lastRealReviewDueAtMillis
-    }
-
-    private fun key(item: StudyItem): String {
-        return item.kanji + "\u0000" + item.answerSignature
     }
 }

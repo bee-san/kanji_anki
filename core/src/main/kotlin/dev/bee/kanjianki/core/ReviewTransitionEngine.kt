@@ -4,14 +4,17 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) {
-    fun applyReview(application: BridgeScheduler.ReviewApplication): RecordsSchedulerModels.ReviewResult {
+    fun applyReview(application: BridgeScheduler.ReviewApplication): RecordsSchedulerModels.ReviewResult =
+        applyReviewOutcome(application).result
+
+    private fun applyReviewOutcome(application: BridgeScheduler.ReviewApplication): AppliedReviewOutcome {
         val resolvedParameters = application.parameters ?: RecordsSchedulerModels.SchedulerParameters.defaults()
         val resolvedSettings = application.settings ?: RecordsSyncModels.Settings.kikuDefaults()
         val resolvedSteps = application.learningSettings ?: RecordsSchedulerModels.LearningStepSettings.defaults()
         val resolvedLadder = StudyLadderRules.safeLadder(application.ladder)
         val duplicate = duplicateReviewResult(application.item, application.request, application.consumedTokens)
         if (duplicate != null) {
-            return duplicate
+            return AppliedReviewOutcome(duplicate, duplicate.item)
         }
         val context = ReviewContext.from(
             application.item,
@@ -22,6 +25,25 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             resolvedLadder,
             application.nowMillis
         )
+        if (AdaptiveStudyItemPolicy.isAdaptive(application.item)) {
+            val transition = AdaptiveReviewTransitionEngine(fsrsAdapter).apply(
+                application.item,
+                application.request,
+                application.nowMillis,
+                resolvedParameters,
+                resolvedSettings,
+                resolvedSteps,
+                resolvedLadder,
+            )
+            val result = RecordsSchedulerModels.ReviewResult(
+                transition.item,
+                transition.appliedRating,
+                false,
+                "Review applied.",
+            )
+            application.consumedTokens.add(application.request.token)
+            return AppliedReviewOutcome(result, transition.item)
+        }
         val state = ReviewState.from(context)
         // Update the writing level before the ladder transition so the
         // write_kanji promotion gate (Goal 67) can see the current attempt's
@@ -29,33 +51,63 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         // only the write_kanji promotion condition reads writingLevel.
         updateWritingLevel(context, state)
         applyLadderTransition(context, state)
-        val result = RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.")
+        val legacyUpdated = updatedStudyItem(context, state)
+        val result = RecordsSchedulerModels.ReviewResult(
+            AdaptiveStudyItemPolicy.canonicalizeAfterLegacyTransition(legacyUpdated),
+            context.rating,
+            false,
+            "Review applied.",
+        )
         // Consume the idempotency token only after the review has fully applied, so a
         // failure mid-apply leaves the token unconsumed and the retry is not rejected as
         // a duplicate while the item was never updated.
         application.consumedTokens.add(application.request.token)
-        return result
+        return AppliedReviewOutcome(result, legacyUpdated)
     }
 
     fun debugTraceApplyReview(application: BridgeScheduler.ReviewApplication): SchedulerTracedReviewResult {
         val ladder = StudyLadderRules.safeLadder(application.ladder)
-        val beforeRung = ladder.effectiveRung(application.item.rung, application.item.rungAvailability())
+        val adaptiveRepair = AdaptiveStudyItemPolicy.routeState(application.item)?.isRepairActive() == true
+        val beforeRung = if (AdaptiveStudyItemPolicy.isAdaptive(application.item)) {
+            // Routing-v2 cores are mandatory. Disabled legacy rung bits only
+            // control optional variants/compatibility and must not project a
+            // different core anchor into diagnostics.
+            application.item.rung
+        } else {
+            ladder.effectiveRung(application.item.rung, application.item.rungAvailability())
+        }
         val beforePhase = application.item.phase
         val duplicateReason = duplicateReason(application.item, application.request, application.consumedTokens)
-        val result = applyReview(application)
-        val reasonCodes = transitionReasonCodes(application, result, beforeRung, beforePhase, duplicateReason, ladder)
-        val movementReason = movementReason(beforeRung, result.item.rung, result.appliedRating, duplicateReason, ladder)
+        val outcome = applyReviewOutcome(application)
+        val result = outcome.result
+        // A legacy review first completes its historical rung transition, then
+        // lazily canonicalizes the persisted item to a v2 core anchor. Trace
+        // the historical transition item so diagnostics still explain the
+        // threshold/memory decision, while returning the canonical result.
+        val traceResult = RecordsSchedulerModels.ReviewResult(
+            outcome.transitionItem,
+            result.appliedRating,
+            result.duplicate,
+            result.message,
+        )
+        val reasonCodes = transitionReasonCodes(application, traceResult, beforeRung, beforePhase, duplicateReason, ladder)
+        val movementReason = movementReason(beforeRung, traceResult.item.rung, result.appliedRating, duplicateReason, ladder)
         val transition = SchedulerReviewTransitionTrace(
             result.appliedRating,
             beforeRung,
-            result.item.rung,
+            traceResult.item.rung,
             movementReason,
             reasonCodes,
         )
-        val fsrsCalls = fsrsCallTrace(beforePhase, result, duplicateReason)
+        val fsrsCalls = if (adaptiveRepair) emptyList() else fsrsCallTrace(beforePhase, traceResult, duplicateReason)
         val trace = SchedulerDecisionTrace("apply_review", application.nowMillis, null, emptyList(), emptyList(), transition, fsrsCalls)
         return SchedulerTracedReviewResult(result, trace)
     }
+
+    private data class AppliedReviewOutcome(
+        val result: RecordsSchedulerModels.ReviewResult,
+        val transitionItem: RecordsStudyModels.StudyItem,
+    )
 
     private fun duplicateReviewResult(
         item: RecordsStudyModels.StudyItem,

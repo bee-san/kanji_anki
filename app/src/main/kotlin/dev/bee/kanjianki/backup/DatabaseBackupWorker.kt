@@ -11,6 +11,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.GZIPOutputStream
 
 class DatabaseBackupWorker(
@@ -29,6 +31,11 @@ class DatabaseBackupWorker(
     fun interface Snapshotter {
         @Throws(IOException::class)
         fun snapshot(dbFile: File, dest: File)
+    }
+
+    internal fun interface BackupPublisher {
+        @Throws(IOException::class)
+        fun publish(partial: File, destination: File)
     }
 
     interface BackupEnvironment {
@@ -77,6 +84,14 @@ class DatabaseBackupWorker(
             filesDir: File,
             nowMillis: Long,
             snapshotter: Snapshotter,
+        ): Result = backupDatabase(dbFile, filesDir, nowMillis, snapshotter, ::publishAtomically)
+
+        internal fun backupDatabase(
+            dbFile: File,
+            filesDir: File,
+            nowMillis: Long,
+            snapshotter: Snapshotter,
+            publisher: BackupPublisher,
         ): Result {
             if (!dbFile.exists()) {
                 return Result.failure()
@@ -92,16 +107,20 @@ class DatabaseBackupWorker(
             // databases compress ~4-10x, so 31 daily copies of a growing DB become a
             // small tiered set of compressed archives.
             val temp = File(backupDir, dest.name + ".tmp")
+            val partial = File(backupDir, dest.name + ".partial")
+            deleteIncomplete(temp)
+            deleteIncomplete(partial)
 
             try {
                 snapshotter.snapshot(dbFile, temp)
-                gzipFile(temp, dest)
+                gzipFile(temp, partial)
+                publisher.publish(partial, dest)
             } catch (error: IOException) {
-                deleteIncomplete(dest)
+                deleteIncomplete(partial)
                 warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
                 return Result.failure()
             } catch (error: RuntimeException) {
-                deleteIncomplete(dest)
+                deleteIncomplete(partial)
                 warn(DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error))
                 return Result.failure()
             } finally {
@@ -125,6 +144,19 @@ class DatabaseBackupWorker(
                     fileOut.fd.sync()
                 }
             }
+        }
+
+        @Throws(IOException::class)
+        internal fun publishAtomically(partial: File, destination: File) {
+            check(partial.parentFile == destination.parentFile) {
+                "Backup partial and destination must share a directory"
+            }
+            Files.move(
+                partial.toPath(),
+                destination.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
         }
 
         @JvmStatic

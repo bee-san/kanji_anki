@@ -77,6 +77,7 @@ class StatsDashboardCopy private constructor(private val locale: Locale) {
     val reviewsAnalytics: String get() = text("Reviews analytics", "復習分析")
     val accuracyByGroup: String get() = text("Accuracy by rung group", "段階別正答率")
     val ladderDistribution: String get() = text("Ladder rung distribution", "ラダー段階の分布")
+    val coreSkillHealth: String get() = text("Core skill and repair health", "中核スキルと修復の状態")
     val weaknessInsights: String get() = text("Weakness insights", "弱点の分析")
     val practiceForecast: String get() = text("Practice forecast", "練習完了予測")
     val reviewsToday: String get() = text("Reviews today", "今日の復習")
@@ -111,6 +112,7 @@ class StatsDashboardCopy private constructor(private val locale: Locale) {
     val matureSupport: String get() = text("Mature support", "定着した支援")
     val percentWord: String get() = text("percent", "パーセント")
     val keepStreakTip: String get() = text("Keep the streak going with a short review session today.", "今日も短い復習で連続学習を続けましょう。")
+    val streakSafeTip: String get() = text("Today's streak is secure.", "今日の連続記録は達成済みです。")
     val startMomentumTip: String get() = text("Start a short review session today to build momentum.", "今日短く復習して勢いを作りましょう。")
 
     fun group(group: TaskTypeAccuracyPolicy.Group): String = when (group) {
@@ -143,6 +145,38 @@ class StatsDashboardCopy private constructor(private val locale: Locale) {
     fun activeItemsSummary(value: Int): String = text(
         "Ladder rung distribution for ${StatsValueFormatter.integer(value, locale)} active items.",
         "ラダー段階の分布。学習中の項目は${StatsValueFormatter.integer(value, locale)}件です。",
+    )
+
+    fun coreSkill(skill: CoreSkill): String = when (skill) {
+        CoreSkill.RECOGNITION -> text("Recognition core", "認識の中核")
+        CoreSkill.CONTEXTUAL_READING -> text("Contextual reading core", "文脈読みの中核")
+    }
+
+    fun adaptiveStatus(status: String): String = when (status) {
+        "active_repair" -> text("Active repair", "修復中")
+        "revalidation" -> text("Revalidation pending", "再確認待ち")
+        "escalation_risk" -> text("Escalation risk", "追加支援の可能性")
+        "stuck_repair" -> text("Stuck repair", "修復の停滞")
+        "legacy_transition" -> text("Finishing legacy route", "旧ルートの完了中")
+        else -> status
+    }
+
+    fun contextualComplete(value: Int): String = text(
+        "${StatsValueFormatter.integer(value, locale)} contextually validated",
+        "文脈読み確認済み ${StatsValueFormatter.integer(value, locale)}件",
+    )
+
+    fun adaptiveHealthSummary(total: Int, repairs: Int, revalidations: Int, escalationRisks: Int, stuck: Int): String = text(
+        "Core distribution for ${StatsValueFormatter.integer(total, locale)} active study items. " +
+            "${StatsValueFormatter.integer(repairs, locale)} active repairs, " +
+            "${StatsValueFormatter.integer(revalidations, locale)} awaiting revalidation, " +
+            "${StatsValueFormatter.integer(escalationRisks, locale)} escalation risks, " +
+            "${StatsValueFormatter.integer(stuck, locale)} stuck repairs.",
+        "学習中${StatsValueFormatter.integer(total, locale)}件の中核分布。" +
+            "修復中${StatsValueFormatter.integer(repairs, locale)}件、" +
+            "再確認待ち${StatsValueFormatter.integer(revalidations, locale)}件、" +
+            "追加支援の可能性${StatsValueFormatter.integer(escalationRisks, locale)}件、" +
+            "停滞${StatsValueFormatter.integer(stuck, locale)}件です。",
     )
 
     fun reviewSummary(rangeDays: Int, total: String, average: String, correct: String, incorrect: String): String = text(

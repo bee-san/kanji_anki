@@ -30,7 +30,7 @@ class StatsCacheSchemaTest {
 
     @Test
     fun dbVersionIsThirty() {
-        assertEquals(30, LocalStoreSchema.DB_VERSION)
+        assertEquals(31, LocalStoreSchema.DB_VERSION)
     }
 
     @Test

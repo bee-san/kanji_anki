@@ -1,8 +1,13 @@
 # Anki parity gap map
 
+> Historical pre-DB31 gap snapshot. Its ladder, lapse-routing, settings, and
+> "companion repair queue" wording is preserved as review evidence, not current
+> behavior. The live scheduler has two required cores and inline repair; see
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
+
 Status captured from `main` at repo-health loop 01. This map is scoped to Anki scheduling, import, and study behavior parity; it is not a release checklist.
 
-## Current parity anchors
+## Parity anchors at capture time
 
 - Provider sync reads AnkiDroid's flashcard provider, mirrors Kiku / Mining notes, and imports active, suspended, tagged, weak, and browser-query cards.
 - FSRS memory state is imported when AnkiDroid card columns or serialized `data` expose finite `stability`, `difficulty`, and `retrievability` values; explicit `fsrs_*` columns win over legacy columns, and serialized aliases `s`, `d`, `r` are a fallback only when no explicit memory field is present.

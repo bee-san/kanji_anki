@@ -1,7 +1,9 @@
 package dev.bee.kanjianki.backup
 
+import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
+import android.os.storage.StorageManager
 import dev.bee.kanjianki.core.BackupRestorePolicy
 import dev.bee.kanjianki.data.LocalStoreSchema
 import java.io.File
@@ -23,37 +25,103 @@ internal data class BackupRestoreValidation(
 /** Android-side gzip and read-only SQLite validator for user-selected backups. */
 internal object BackupRestoreValidator {
     private val SQLITE_MAGIC = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+    internal const val MAX_DECOMPRESSED_BYTES = 512L * 1024L * 1024L
+    internal const val FREE_SPACE_RESERVE_BYTES = 64L * 1024L * 1024L
+
+    internal fun interface AllocatableSpaceProbe {
+        fun allocatableBytes(directory: File): Long
+    }
 
     @JvmStatic
     fun validate(
+        context: Context,
         restoreDir: File,
         sourceName: String,
         input: () -> InputStream?,
+    ): BackupRestoreValidation = validate(
+        restoreDir,
+        sourceName,
+        input,
+        MAX_DECOMPRESSED_BYTES,
+        FREE_SPACE_RESERVE_BYTES,
+        allocatableSpaceProbe(context),
+    )
+
+    private fun allocatableSpaceProbe(context: Context): AllocatableSpaceProbe {
+        val storageManager = context.getSystemService(StorageManager::class.java)
+        return AllocatableSpaceProbe { directory ->
+            if (storageManager == null) {
+                directory.usableSpace
+            } else {
+                try {
+                    storageManager.getAllocatableBytes(storageManager.getUuidForPath(directory))
+                } catch (_: IOException) {
+                    directory.usableSpace
+                }
+            }
+        }
+    }
+
+    internal fun validate(
+        restoreDir: File,
+        sourceName: String,
+        input: () -> InputStream?,
+        maxDecompressedBytes: Long,
+        freeSpaceReserveBytes: Long,
+        allocatableSpaceProbe: AllocatableSpaceProbe,
     ): BackupRestoreValidation {
+        require(maxDecompressedBytes > 0L) { "maxDecompressedBytes must be positive" }
+        require(freeSpaceReserveBytes >= 0L) { "freeSpaceReserveBytes must not be negative" }
         if ((!restoreDir.exists() && !restoreDir.mkdirs()) || !restoreDir.isDirectory) {
             return rejected(BackupRestorePolicy.CopyId.TRUNCATED_GZIP)
         }
         BackupRestoreStager.cleanupOrphanValidationFiles(restoreDir)
         val temp = File(restoreDir, "restore-${System.nanoTime()}${BackupRestoreStager.VALIDATING_SUFFIX}")
-        val decompressed = try {
+        val decompressionFailure = try {
+            val spaceBudget = SpaceBudget(
+                allocatableSpaceProbe.allocatableBytes(restoreDir),
+                freeSpaceReserveBytes,
+            )
+            spaceBudget.requireWrite(1)
             val source = input() ?: throw IOException("No input stream")
             source.use { rawInput ->
                 GZIPInputStream(rawInput).use { gzip ->
                     FileOutputStream(temp).use { output ->
-                        gzip.copyTo(output)
-                        output.fd.sync()
+                        copyBounded(
+                            gzip,
+                            output,
+                            restoreDir,
+                            maxDecompressedBytes,
+                            spaceBudget,
+                            allocatableSpaceProbe,
+                        )
+                        try {
+                            output.fd.sync()
+                        } catch (error: IOException) {
+                            rethrowIfStorageExhausted(
+                                restoreDir,
+                                freeSpaceReserveBytes,
+                                allocatableSpaceProbe,
+                                bytesNeeded = 1,
+                                original = error,
+                            )
+                        }
                     }
                 }
             }
-            true
+            null
+        } catch (_: BackupTooLargeException) {
+            BackupRestorePolicy.CopyId.BACKUP_TOO_LARGE
+        } catch (_: InsufficientStorageException) {
+            BackupRestorePolicy.CopyId.INSUFFICIENT_STORAGE
         } catch (_: IOException) {
-            false
+            BackupRestorePolicy.CopyId.TRUNCATED_GZIP
         } catch (_: RuntimeException) {
-            false
+            BackupRestorePolicy.CopyId.TRUNCATED_GZIP
         }
-        if (!decompressed) {
+        if (decompressionFailure != null) {
             BackupRestoreStager.deleteBestEffort(temp)
-            return rejected(BackupRestorePolicy.CopyId.TRUNCATED_GZIP)
+            return rejected(decompressionFailure)
         }
 
         val magicPresent = try {
@@ -108,6 +176,77 @@ internal object BackupRestoreValidator {
         return actual.contentEquals(SQLITE_MAGIC)
     }
 
+    private fun copyBounded(
+        input: InputStream,
+        output: FileOutputStream,
+        restoreDir: File,
+        maxDecompressedBytes: Long,
+        spaceBudget: SpaceBudget,
+        allocatableSpaceProbe: AllocatableSpaceProbe,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var totalBytes = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) return
+            if (read == 0) continue
+            if (totalBytes > maxDecompressedBytes - read) {
+                throw BackupTooLargeException()
+            }
+            spaceBudget.requireWrite(read)
+            try {
+                output.write(buffer, 0, read)
+            } catch (error: IOException) {
+                rethrowIfStorageExhausted(
+                    restoreDir,
+                    spaceBudget.reserveBytes,
+                    allocatableSpaceProbe,
+                    bytesNeeded = read,
+                    original = error,
+                )
+            }
+            spaceBudget.recordWrite(read)
+            totalBytes += read
+        }
+    }
+
+    private class SpaceBudget(
+        allocatableBytes: Long,
+        val reserveBytes: Long,
+    ) {
+        private var remainingBytes = allocatableBytes.coerceAtLeast(0L)
+
+        fun requireWrite(bytesToWrite: Int) {
+            if (
+                remainingBytes < reserveBytes ||
+                remainingBytes - reserveBytes < bytesToWrite.toLong()
+            ) {
+                throw InsufficientStorageException()
+            }
+        }
+
+        fun recordWrite(bytesWritten: Int) {
+            remainingBytes = (remainingBytes - bytesWritten.toLong()).coerceAtLeast(0L)
+        }
+    }
+
+    private fun rethrowIfStorageExhausted(
+        restoreDir: File,
+        freeSpaceReserveBytes: Long,
+        allocatableSpaceProbe: AllocatableSpaceProbe,
+        bytesNeeded: Int,
+        original: IOException,
+    ): Nothing {
+        val allocatableBytes = allocatableSpaceProbe.allocatableBytes(restoreDir).coerceAtLeast(0L)
+        if (
+            allocatableBytes < freeSpaceReserveBytes ||
+            allocatableBytes - freeSpaceReserveBytes < bytesNeeded.toLong()
+        ) {
+            throw InsufficientStorageException()
+        }
+        throw original
+    }
+
     private fun scalarInt(db: SQLiteDatabase, sql: String): Int {
         db.rawQuery(sql, null).use { cursor ->
             if (!cursor.moveToFirst()) throw SQLiteException("No scalar row")
@@ -136,4 +275,8 @@ internal object BackupRestoreValidator {
     private fun rejected(copyId: BackupRestorePolicy.CopyId): BackupRestoreValidation {
         return BackupRestoreValidation(BackupRestorePolicy.rejection(copyId))
     }
+
+    private class BackupTooLargeException : IOException()
+
+    private class InsufficientStorageException : IOException()
 }

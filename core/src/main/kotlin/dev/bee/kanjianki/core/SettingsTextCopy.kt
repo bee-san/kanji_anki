@@ -527,6 +527,24 @@ object SettingsTextCopy {
     fun studyLadderBody(): String = SettingsStudyPlanTextCopy.studyLadderBody()
 
     @JvmStatic
+    fun requiredCoreChecksTitle(): String = SettingsStudyPlanTextCopy.requiredCoreChecksTitle()
+
+    @JvmStatic
+    fun optionalVariantsTitle(): String = SettingsStudyPlanTextCopy.optionalVariantsTitle()
+
+    @JvmStatic
+    fun repairToolsTitle(): String = SettingsStudyPlanTextCopy.repairToolsTitle()
+
+    @JvmStatic
+    fun requiredCoreLabel(): String = SettingsStudyPlanTextCopy.requiredCoreLabel()
+
+    @JvmStatic
+    fun requiredCoreDescription(label: String): String = SettingsStudyPlanTextCopy.requiredCoreDescription(label)
+
+    @JvmStatic
+    fun requiredCoreSubtitle(rung: RecordsBase.LadderRung): String = SettingsStudyPlanTextCopy.requiredCoreSubtitle(rung)
+
+    @JvmStatic
     fun ladderToggleLabel(enabled: Boolean): String = SettingsStudyPlanTextCopy.ladderToggleLabel(enabled)
 
     @JvmStatic
@@ -546,6 +564,17 @@ object SettingsTextCopy {
 
     @JvmStatic
     fun ladderRungToggleToast(rung: RecordsBase.LadderRung, wasEnabled: Boolean): String = SettingsStudyPlanTextCopy.ladderRungToggleToast(rung, wasEnabled)
+
+    @JvmStatic
+    fun repairTaskLabel(taskType: String): String = SettingsStudyPlanTextCopy.repairTaskLabel(taskType)
+
+    @JvmStatic
+    fun repairTaskToggleToast(taskType: String, wasEnabled: Boolean): String =
+        SettingsStudyPlanTextCopy.repairTaskToggleToast(taskType, wasEnabled)
+
+    @JvmStatic
+    fun repairTaskSubtitle(taskType: String, enabled: Boolean): String =
+        SettingsStudyPlanTextCopy.repairTaskSubtitle(taskType, enabled)
 
     @JvmStatic
     fun ladderRungSubtitle(ladder: RecordsBase.StudyLadderSettings, rung: RecordsBase.LadderRung): String = SettingsStudyPlanTextCopy.ladderRungSubtitle(ladder, rung)

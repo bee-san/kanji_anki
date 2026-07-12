@@ -2,9 +2,14 @@
 
 Date: 2026-05-15
 
+> The ladder-routing bullets below are a DB30 snapshot. In DB31, only the
+> recognition and contextual-reading core memories call FSRS; variants share
+> those memories and inline repair attempts are practice-only. See
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
+
 Scope: Kani's scheduler uses the in-repo `:fsrs-java` 21-parameter FSRS engine.
 
-Current behavior:
+Behavior at capture time:
 
 - `BridgeScheduler` always routes scheduling through `LatestFsrsAdapter`.
 - `SchedulerParameters.defaults()` starts from local Kani tuning (`targetRetention=0.90`, `againMultiplier=0.45`, `hardMultiplier=1.20`, `goodMultiplier=2.00`, `easyMultiplier=3.10`); app settings persist those values and optional rank-based target-retention ranges rather than importing Anki deck preset FSRS parameters.

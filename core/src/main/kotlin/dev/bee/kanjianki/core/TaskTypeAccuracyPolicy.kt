@@ -35,7 +35,7 @@ object TaskTypeAccuracyPolicy {
     @JvmStatic
     fun groupFor(taskType: String?): Group? = when (taskType?.trim()?.lowercase()) {
         "type_meaning", "typing_meaning", "meaning_kanji", "kanji_meaning", "font_meaning" -> Group.MEANING
-        "kanji_reading", "word_reading", "sentence_reading" -> Group.READING
+        "kanji_reading", "word_reading", "sentence_reading", "type_reading" -> Group.READING
         "write_kanji", "writing_remediation" -> Group.WRITING
         "similar_kanji", "reading_kanji" -> Group.DISCRIMINATION
         else -> null

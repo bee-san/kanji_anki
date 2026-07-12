@@ -1,10 +1,15 @@
 package dev.bee.kanjianki.data
 
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.StudyItemComparators
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyItemLineagePolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 
@@ -83,9 +88,10 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
     /**
      * Persist a sync's mirror + sync_run row in one transaction. [initialStatus]
      * controls the sync_run status: callers that will commit study items in a
-     * separate transaction should pass [STATUS_PENDING] and call [markSyncSucceeded]
-     * only after that second commit, so a crash between the two commits leaves a
-     * `pending` row that `hasSuccessfulSyncSince` ignores (auto-sync retries) instead
+     * separate transaction should pass [STATUS_PENDING] and call
+     * [commitPendingSyncStudyItems] for the queue publication, so a crash before that
+     * atomic commit leaves a `pending` row that `hasSuccessfulSyncSince` ignores
+     * (auto-sync retries) instead
      * of a committed `success` sitting on stale study items.
      */
     fun saveSuccessfulSync(
@@ -163,6 +169,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
                     deletedCards,
                 ),
             )
+            purgeNonSuccessfulSyncTimelineEvents(db)
             val notesById = snapshot.notesById()
             appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing)
             clearSyncMirrorTables(db)
@@ -188,6 +195,10 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
             rebuildSimilarKanjiChoiceStates(db, timing.finishedAt)
             LocalStoreKanjiReadingMaintenance().rebuildKanjiReadingUsage(db, rows, dictionary)
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings)
+            if (initialStatus == STATUS_SUCCESS) {
+                purgeNonSuccessfulSnapshots(db)
+                pruneSupersededSnapshots(db)
+            }
             StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(db)
             syncId
         }
@@ -225,8 +236,91 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
         syncRunRepository().updateSyncRemovalMessage(syncId, message)
     }
 
-    fun markSyncSucceeded(syncId: Long) {
-        syncRunRepository().markSyncSucceeded(syncId)
+    /**
+     * Publish the seeded queue and its pending sync run as one SQLite commit.
+     *
+     * Historical snapshots are written with the pending run in [saveSuccessfulSync]
+     * because they describe that exact provider read. They remain invisible to all
+     * analytics until this transaction changes the run to `success`. Finalization also
+     * removes snapshots orphaned by older interrupted/failed syncs and applies the
+     * heavy-snapshot retention policy using successful runs only.
+     */
+    fun commitPendingSyncStudyItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        syncId: Long,
+        occurredAt: Long,
+        settings: RecordsSyncModels.Settings?,
+        baseline: List<RecordsStudyModels.StudyItem>?,
+    ) {
+        writableDatabase.transaction {
+            val previous = studySnapshots(this)
+            val persisted = readStudyItemsForSyncCommit(this)
+            val merged = if (baseline == null) {
+                items
+            } else {
+                MidSyncReviewMergePolicy.merge(items, baseline, persisted)
+            }
+            val toWrite = versionMaterialSyncChanges(merged, persisted)
+
+            delete(TABLE_STUDY_ITEMS, null, null)
+            for (item in toWrite) {
+                upsertStudyItem(this, item)
+            }
+            appendStudyStateTimelineEvents(this, previous, toWrite, syncId, occurredAt, settings)
+
+            val status = ContentValues().apply { put(COLUMN_STATUS, STATUS_SUCCESS) }
+            val updated = update(
+                TABLE_SYNC_RUNS,
+                status,
+                "id=? AND $COLUMN_STATUS=?",
+                arrayOf(syncId.toString(), STATUS_PENDING),
+            )
+            check(updated == 1) { "Pending sync $syncId could not be finalized" }
+
+            purgeNonSuccessfulSnapshots(this)
+            pruneSupersededSnapshots(this)
+            StatsCacheStore(this@LocalStoreSync as LocalStore).markDirty(this)
+        }
+        clearStudyItemsCache()
+    }
+
+    private fun readStudyItemsForSyncCommit(db: SQLiteDatabase): List<RecordsStudyModels.StudyItem> {
+        val items = ArrayList<RecordsStudyModels.StudyItem>()
+        db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                items.add(readStudyItem(cursor))
+            }
+        }
+        return items
+    }
+
+    private fun purgeNonSuccessfulSyncTimelineEvents(db: SQLiteDatabase) {
+        db.delete(
+            TABLE_KANJI_TIMELINE_EVENTS,
+            "$COLUMN_SYNC_ID IS NOT NULL AND $COLUMN_SYNC_ID NOT IN " +
+                "(SELECT id FROM $TABLE_SYNC_RUNS WHERE $COLUMN_STATUS=?)",
+            arrayOf(STATUS_SUCCESS),
+        )
+    }
+
+    private fun versionMaterialSyncChanges(
+        candidates: List<RecordsStudyModels.StudyItem>,
+        persisted: List<RecordsStudyModels.StudyItem>,
+    ): List<RecordsStudyModels.StudyItem> {
+        return candidates.map { candidate ->
+            val existing = StudyItemLineagePolicy.counterpart(candidate, persisted)
+                ?: return@map candidate
+            if (StudyItemComparators.samePersistedState(existing, candidate)) {
+                if (candidate.schedulerRevision == existing.schedulerRevision) {
+                    candidate
+                } else {
+                    candidate.copyBuilder().schedulerRevision(existing.schedulerRevision).build()
+                }
+            } else {
+                val nextRevision = Math.addExact(existing.schedulerRevision, 1L)
+                candidate.copyBuilder().schedulerRevision(nextRevision).build()
+            }
+        }
     }
 
     private fun countDeletedExisting(db: SQLiteDatabase, table: String, idColumn: String, currentIds: Set<Long>): Int {

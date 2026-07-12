@@ -180,23 +180,68 @@ class SimilarKanjiChoicePlanner {
             targetKanji: String,
             primaryMeaning: String?,
             pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
+        ): RecordsImportModels.SimilarKanjiChoiceCard = choiceCardForSession(
+            stored,
+            targetKanji,
+            primaryMeaning,
+            pairs,
+            null,
+        )
+
+        @JvmStatic
+        fun choiceCardForSession(
+            stored: RecordsImportModels.SimilarKanjiChoiceCard?,
+            targetKanji: String,
+            primaryMeaning: String?,
+            pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
+            preferredConfusion: String?,
         ): RecordsImportModels.SimilarKanjiChoiceCard {
-            if (stored != null) {
-                return stored
+            val base = if (stored != null) {
+                stored
+            } else {
+                // Goal 69 safety net: with the strengthened hasSimilarKanji predicate
+                // (both pair endpoints in the local inventory), a card that reaches
+                // the similar_kanji rung should always have a pre-built choice state,
+                // so this fallback should be unreachable in practice. Warn if it
+                // fires so a divergence between predicate and planner is caught.
+                LOGGER.warning {
+                    "SimilarKanjiChoicePlanner.choiceCardForSession fell back to on-the-fly " +
+                        "choices for '$targetKanji'; expected a pre-built similar-kanji choice state."
+                }
+                val choices = fallbackChoices(targetKanji, pairs)
+                RecordsImportModels.SimilarKanjiChoiceCard(
+                    targetKanji,
+                    primaryMeaning ?: "",
+                    choices,
+                    choiceSignature(choices),
+                )
             }
-            // Goal 69 safety net: with the strengthened hasSimilarKanji predicate
-            // (both pair endpoints in the local inventory), a card that reaches
-            // the similar_kanji rung should always have a pre-built choice state,
-            // so this fallback should be unreachable in practice. Warn if it
-            // fires so a divergence between predicate and planner is caught.
-            LOGGER.warning {
-                "SimilarKanjiChoicePlanner.choiceCardForSession fell back to on-the-fly " +
-                    "choices for '$targetKanji'; expected a pre-built similar-kanji choice state."
+            return withPreferredConfusion(base, preferredConfusion)
+        }
+
+        /** Keeps the captured wrong glyph in the bounded choice set first. */
+        @JvmStatic
+        fun withPreferredConfusion(
+            card: RecordsImportModels.SimilarKanjiChoiceCard,
+            preferredConfusion: String?,
+        ): RecordsImportModels.SimilarKanjiChoiceCard {
+            val confusion = preferredConfusion?.trim().orEmpty()
+            if (confusion.isEmpty() || confusion == card.targetKanji) {
+                return card
             }
-            val choices = fallbackChoices(targetKanji, pairs)
+            val limit = card.choices.size.coerceAtLeast(2).coerceAtMost(FALLBACK_CHOICE_LIMIT)
+            val ordered = LinkedHashSet<String>()
+            ordered.add(card.targetKanji)
+            ordered.add(confusion)
+            for (choice in card.choices) {
+                if (ordered.size >= limit) break
+                val normalized = choice.trim()
+                if (normalized.isNotEmpty()) ordered.add(normalized)
+            }
+            val choices = ordered.toList()
             return RecordsImportModels.SimilarKanjiChoiceCard(
-                targetKanji,
-                primaryMeaning ?: "",
+                card.targetKanji,
+                card.primaryMeaning,
                 choices,
                 choiceSignature(choices),
             )

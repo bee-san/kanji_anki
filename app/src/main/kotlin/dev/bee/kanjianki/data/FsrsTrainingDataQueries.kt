@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.FsrsReplaySample
 import dev.bee.kanjianki.core.FsrsReplaySequence
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -21,7 +22,7 @@ internal class FsrsTrainingDataQueries(
         val groups = linkedMapOf<GroupKey, MutableList<TrainingRow>>()
         db.rawQuery(
             "SELECT kanji, answer_signature, task_type, rating, reviewed_at, " +
-                "memory_before, scheduler_state_before_json FROM review_log " +
+                "memory_before, scheduler_state_before_json, core_skill FROM review_log " +
                 "ORDER BY reviewed_at ASC, id ASC",
             null,
         ).use { cursor ->
@@ -34,10 +35,15 @@ internal class FsrsTrainingDataQueries(
                 val memory = decodedMemory(memoryText) ?: continue
                 val rating = ratingValue(cursor.getString(3)) ?: continue
                 val reviewedAt = cursor.getLong(4)
+                val taskType = when (CoreSkill.fromWireName(cursor.getString(7))) {
+                    CoreSkill.RECOGNITION -> BridgeScheduler.TASK_KANJI_MEANING
+                    CoreSkill.CONTEXTUAL_READING -> BridgeScheduler.TASK_WORD_READING
+                    null -> cursor.getString(2).orEmpty()
+                }
                 val key = GroupKey(
                     cursor.getString(0).orEmpty(),
                     cursor.getString(1).orEmpty(),
-                    cursor.getString(2).orEmpty(),
+                    taskType,
                 )
                 groups.getOrPut(key) { ArrayList() }.add(
                     TrainingRow(memory, reviewedAt, rating),

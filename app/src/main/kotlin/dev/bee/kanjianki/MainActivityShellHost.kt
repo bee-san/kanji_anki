@@ -221,7 +221,8 @@ internal class MainActivityShellHost(
         if (MainActivityBase.NAV_STUDY != selected) {
             return false
         }
-        return dev.bee.kanjianki.core.StudyTaskCopy.isTypingMeaningTask(activity.activeSession) &&
+        return (dev.bee.kanjianki.core.StudyTaskCopy.isTypingMeaningTask(activity.activeSession) ||
+            dev.bee.kanjianki.core.StudyTaskCopy.isTypingReadingTask(activity.activeSession)) &&
             !activity.flashcardAnswerRevealed
     }
 

@@ -2,12 +2,14 @@ package dev.bee.kanjianki
 
 import android.os.SystemClock
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.data.ReviewTaskTiming
 
 /**
  * Session-scoped study progress and the active-task timer. Mutated on the io
@@ -18,7 +20,9 @@ import dev.bee.kanjianki.data.LocalStore
  * delegated [progressTracker] is independently synchronized; the extra lock
  * here guards this class's own fields (activeTask, planned-key sets).
  */
-internal class StudySessionTracker {
+internal class StudySessionTracker(
+    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() },
+) {
     private val lock = Any()
     private var activeTask: ActiveStudyTask? = null
     private val progressTracker = StudySessionProgressTracker()
@@ -151,7 +155,15 @@ internal class StudySessionTracker {
             if (item.dueAtMillis > horizonMillis || !isLearningRepeatPhase(item.phase)) {
                 continue
             }
-            val key = plannedSessionTaskKey(item.rung.wireName(), item.kanji)
+            val taskType = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+                AdaptiveStudyItemPolicy.taskTypeFor(
+                    item,
+                    RecordsBase.StudyLadderSettings.defaults(),
+                )
+            } else {
+                item.rung.wireName()
+            }
+            val key = plannedSessionTaskKey(taskType, item.kanji)
             if (isCompletedPlannedSessionTask(key, item.kanji) && !dueByKey.containsKey(key)) {
                 dueByKey[key] = item.dueAtMillis
             }
@@ -239,7 +251,7 @@ internal class StudySessionTracker {
         }
         activeTask = ActiveStudyTask(key, kanji, taskType, startedAt)
         if (resumeImmediately) {
-            activeTask?.resume(SystemClock.elapsedRealtime())
+            activeTask?.resume(elapsedRealtime())
         }
     }
 
@@ -249,26 +261,74 @@ internal class StudySessionTracker {
         outcome: String?,
         answeredAt: Long,
         countProgress: Boolean,
-    ) = synchronized(lock) {
+    ) {
+        val prepared = prepareActiveTask(key, outcome, answeredAt, countProgress) ?: return
+        val timing = prepared.timing
+        store.recordStudyTaskAnswered(
+            timing.taskKey,
+            timing.kanji,
+            timing.taskType,
+            timing.startedAtMillis,
+            timing.answeredAtMillis,
+            timing.activeElapsedMillis,
+            timing.outcome,
+        )
+        commitPreparedTask(prepared)
+    }
+
+    /**
+     * Freezes the active timer without mutating progress. Review persistence
+     * can include [PreparedTaskCompletion.timing] in its transaction, then call
+     * [commitPreparedTask] only after an APPLIED commit (or [rollbackPreparedTask]
+     * for STALE/failure). No SQLite work is performed while [lock] is held.
+     */
+    fun prepareActiveTask(
+        key: String?,
+        outcome: String?,
+        answeredAt: Long,
+        countProgress: Boolean,
+    ): PreparedTaskCompletion? = synchronized(lock) {
         val task = activeTask
         if (task == null || key == null || key != task.taskKey) {
+            return@synchronized null
+        }
+        task.pause(elapsedRealtime())
+        PreparedTaskCompletion(
+            task,
+            ReviewTaskTiming(
+                taskKey = task.taskKey,
+                kanji = task.kanji,
+                taskType = task.taskType,
+                startedAtMillis = task.startedAtMillis,
+                answeredAtMillis = answeredAt,
+                activeElapsedMillis = task.activeElapsedMillis,
+                outcome = outcome ?: "",
+            ),
+            countProgress,
+        )
+    }
+
+    fun commitPreparedTask(prepared: PreparedTaskCompletion?) = synchronized(lock) {
+        if (prepared == null || activeTask !== prepared.task) {
             return@synchronized
         }
-        task.pause(SystemClock.elapsedRealtime())
-        store.recordStudyTaskAnswered(
-            task.taskKey,
-            task.kanji,
-            task.taskType,
-            task.startedAtMillis,
-            answeredAt,
-            task.activeElapsedMillis,
-            outcome,
-        )
-        if (countProgress) {
-            markTaskCompleted(key)
-            markPlannedSessionTaskCompleted(task.taskType, task.kanji)
+        if (prepared.countProgress) {
+            progressTracker.markTaskCompleted(prepared.task.taskKey)
+            val plannedKey = plannedSessionTaskKey(prepared.task.taskType, prepared.task.kanji)
+            if (plannedKey.isNotEmpty()) {
+                completedPlannedSessionTaskKeys.add(plannedKey)
+            }
         }
         activeTask = null
+    }
+
+    fun rollbackPreparedTask(prepared: PreparedTaskCompletion?) = synchronized(lock) {
+        if (prepared == null || activeTask !== prepared.task) {
+            return@synchronized
+        }
+        // The same card remains visible and retryable after a stale/failed
+        // commit, so continue measuring from the rollback point.
+        prepared.task.resume(elapsedRealtime())
     }
 
     fun recordReviewOutcome(
@@ -285,12 +345,12 @@ internal class StudySessionTracker {
     }
 
     fun pauseActiveTask() = synchronized(lock) {
-        activeTask?.pause(SystemClock.elapsedRealtime())
+        activeTask?.pause(elapsedRealtime())
         Unit
     }
 
     fun resumeActiveTask() = synchronized(lock) {
-        activeTask?.resume(SystemClock.elapsedRealtime())
+        activeTask?.resume(elapsedRealtime())
         Unit
     }
 
@@ -341,6 +401,12 @@ internal class StudySessionTracker {
             )
         }
     }
+
+    class PreparedTaskCompletion internal constructor(
+        internal val task: ActiveStudyTask,
+        @JvmField val timing: ReviewTaskTiming,
+        internal val countProgress: Boolean,
+    )
 
     companion object {
         @JvmStatic

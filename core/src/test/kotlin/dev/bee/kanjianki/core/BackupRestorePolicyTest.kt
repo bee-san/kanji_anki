@@ -37,6 +37,8 @@ class BackupRestorePolicyTest {
 
         val ids = listOf(
             BackupRestorePolicy.CopyId.TRUNCATED_GZIP,
+            BackupRestorePolicy.CopyId.BACKUP_TOO_LARGE,
+            BackupRestorePolicy.CopyId.INSUFFICIENT_STORAGE,
             BackupRestorePolicy.CopyId.BAD_SQLITE_MAGIC,
             BackupRestorePolicy.CopyId.NEWER_DATABASE_VERSION,
             BackupRestorePolicy.CopyId.MISSING_SETTINGS_TABLE,
@@ -44,6 +46,14 @@ class BackupRestorePolicyTest {
             BackupRestorePolicy.CopyId.READY,
         )
         assertEquals(ids.size, ids.toSet().size)
+        assertEquals(
+            "Backup is too large to restore.",
+            BackupRestorePolicy.rejection(BackupRestorePolicy.CopyId.BACKUP_TOO_LARGE).message,
+        )
+        assertEquals(
+            "Not enough free space to restore this backup.",
+            BackupRestorePolicy.rejection(BackupRestorePolicy.CopyId.INSUFFICIENT_STORAGE).message,
+        )
     }
 
     @Test

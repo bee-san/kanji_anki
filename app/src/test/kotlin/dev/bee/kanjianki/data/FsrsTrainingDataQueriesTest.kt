@@ -60,7 +60,42 @@ class FsrsTrainingDataQueriesTest {
         assertEquals(0, FsrsTrainingDataQueries.elapsedDays(1 * DAY, memory))
     }
 
-    private fun insert(token: String, rating: String, reviewedAt: Long, memory: String, schedulerJson: String) {
+    @Test
+    fun adaptivePresentationVariantsShareOneCoreTrainingSequence() {
+        insert(
+            "recognition-standard",
+            "good",
+            5 * DAY,
+            memory(dueDay = 10, intervalDays = 5),
+            "{\"phase\":\"review\"}",
+            taskType = "kanji_meaning",
+            coreSkill = "recognition",
+        )
+        insert(
+            "recognition-font",
+            "hard",
+            6 * DAY,
+            memory(dueDay = 11, intervalDays = 5),
+            "{\"phase\":\"review\"}",
+            taskType = "font_meaning",
+            coreSkill = "recognition",
+        )
+
+        val sequences = FsrsTrainingDataQueries(store.readableDatabase).sequences()
+
+        assertEquals(1, sequences.size)
+        assertEquals(listOf(3, 2), sequences.single().samples.map { it.rating })
+    }
+
+    private fun insert(
+        token: String,
+        rating: String,
+        reviewedAt: Long,
+        memory: String,
+        schedulerJson: String,
+        taskType: String = "latin-task",
+        coreSkill: String = "",
+    ) {
         val values = ContentValues().apply {
             put("kanji", "A")
             put("token", token)
@@ -70,10 +105,11 @@ class FsrsTrainingDataQueriesTest {
             put("manual_override", 0)
             put("reviewed_at", reviewedAt)
             put("review_day_start", 0)
-            put("task_type", "latin-task")
+            put("task_type", taskType)
             put("answer_signature", "latin-signature")
             put("memory_before", memory)
             put("scheduler_state_before_json", schedulerJson)
+            put("core_skill", coreSkill)
         }
         store.writableDatabase.insertOrThrow("review_log", null, values)
     }

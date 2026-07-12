@@ -38,12 +38,7 @@ class StudySessionSelector {
         if (best == null) {
             return null
         }
-        val row = rowByKanji[best.kanji] ?: return null
-        val token = StudyTokenPolicy.studyItem(best.kanji, best.activeToken)
-        val taskType = StudyTaskTypes.forRung(best.rung)
-        val writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI
-        val prompt = row.reasonText
-        return RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt)
+        return sessionForItem(best, rowByKanji, safeLadder)
     }
 
     fun debugTraceNextSession(
@@ -116,7 +111,7 @@ class StudySessionSelector {
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }
             .toMutableList()
         shuffleDuePriorityBuckets(dueItems, randomSeed)
-        return dueItems.map { sessionTaskKeyForItem(it) }
+        return dueItems.map { sessionTaskKeyForItem(it, safeLadder) }
     }
 
     fun nextSessionForTaskKeys(
@@ -133,17 +128,24 @@ class StudySessionSelector {
         for (taskKey in taskKeys) {
             val item = dueItems[taskKey]
             if (item != null) {
-                return sessionForItem(item, rowByKanji(rows))
+                return sessionForItem(item, rowByKanji(rows), StudyLadderRules.safeLadder(ladder))
             }
         }
         return null
     }
 
     fun sessionTaskKeyForItem(item: RecordsStudyModels.StudyItem?): String {
+        return sessionTaskKeyForItem(item, RecordsBase.StudyLadderSettings.defaults())
+    }
+
+    private fun sessionTaskKeyForItem(
+        item: RecordsStudyModels.StudyItem?,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): String {
         if (item == null) {
             return ""
         }
-        return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
+        return AdaptiveStudyItemPolicy.taskTypeFor(item, ladder) + ":" + item.kanji
     }
 
     private fun dueItemByTaskKey(
@@ -162,7 +164,7 @@ class StudySessionSelector {
         for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
             .sortedWith { left, right -> compareDueItems(left, right, rowByKanji, settings) }) {
-            out.putIfAbsent(sessionTaskKeyForItem(item), item)
+            out.putIfAbsent(sessionTaskKeyForItem(item, safeLadder), item)
         }
         return out
     }
@@ -170,12 +172,14 @@ class StudySessionSelector {
     private fun sessionForItem(
         item: RecordsStudyModels.StudyItem,
         rowByKanji: Map<String, RecordsImportModels.DashboardRow>,
+        ladder: RecordsBase.StudyLadderSettings,
     ): RecordsSchedulerModels.StudySession? {
-        val row = rowByKanji[item.kanji] ?: return null
-        val token = StudyTokenPolicy.studyItem(item.kanji, item.activeToken)
-        val taskType = StudyTaskTypes.forRung(item.rung)
-        val writingRequired = item.rung == RecordsBase.LadderRung.WRITE_KANJI
-        return RecordsSchedulerModels.StudySession(item.withToken(token), row, token, taskType, writingRequired, row.reasonText)
+        val routedItem = AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+        val row = rowByKanji[routedItem.kanji] ?: return null
+        val token = StudyTokenPolicy.studyItem(routedItem.kanji, routedItem.activeToken)
+        val taskType = AdaptiveStudyItemPolicy.taskTypeFor(routedItem, ladder)
+        val writingRequired = taskType == StudyTaskTypes.WRITE_KANJI
+        return RecordsSchedulerModels.StudySession(routedItem.withToken(token), row, token, taskType, writingRequired, row.reasonText)
     }
 
     private fun rowByKanji(rows: List<RecordsImportModels.DashboardRow>): Map<String, RecordsImportModels.DashboardRow> {
@@ -255,7 +259,11 @@ class StudySessionSelector {
         }
         val byFamily = HashMap<String, MutableList<RecordsStudyModels.StudyItem>>()
         for (item in items) {
-            val effective = StudyLadderRules.alignRungToLadder(item, safeLadder)
+            val effective = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+                AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+            } else {
+                StudyLadderRules.alignRungToLadder(item, safeLadder)
+            }
             if (isActiveQueueCandidate(effective, currentRows, currentFamilies, allowedKanji)) {
                 addFamilyItem(byFamily, effective)
             }
@@ -313,7 +321,11 @@ class StudySessionSelector {
         }
         val byFamily = HashMap<String, MutableList<RecordsStudyModels.StudyItem>>()
         for (item in items) {
-            val effective = StudyLadderRules.alignRungToLadder(item, ladder)
+            val effective = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+                AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+            } else {
+                StudyLadderRules.alignRungToLadder(item, ladder)
+            }
             if (isActiveQueueCandidate(effective, currentRows, currentFamilies, allowedKanji)) {
                 addFamilyItem(byFamily, effective)
             }
@@ -495,7 +507,7 @@ class StudySessionSelector {
         }
 
         fun taskKeyForSeededShuffle(item: RecordsStudyModels.StudyItem): String {
-            return StudyTaskTypes.forRung(item.rung) + ":" + item.kanji
+            return AdaptiveStudyItemPolicy.taskTypeFor(item, RecordsBase.StudyLadderSettings.defaults()) + ":" + item.kanji
         }
 
         fun rowWeakness(

@@ -1,8 +1,29 @@
 # Scheduler / FSRS Correctness Lab Report
 
-Current version/date: 2026-06-12
+> Historical DB30 lab snapshot. The named goldens, rung transitions, and deep
+> demotion experiments describe the ladder implementation at capture time.
+> They are not the DB31 routing contract; see
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
-This report is a focused snapshot of the scheduler lab in the current worktree. It does not claim full Anki FSRS parity; it records the deterministic trace and timeline behavior that is currently exercised by the tests.
+Snapshot date: 2026-06-12
+
+This report is a focused snapshot of the scheduler lab at that date. It does not claim full Anki FSRS parity; it records the deterministic trace and timeline behavior exercised by the tests in that snapshot.
+
+## DB31 lazy-conversion boundary
+
+The current scheduler contract is defined in
+[`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md): one
+`study_items` row owns two long-term core memories, and variants share their
+core memory. A real-due core Fail calls FSRS Again once; every following repair
+appearance is practice-only inline repair and cannot add another lapse or alter
+memory strength.
+
+The timeline filenames below are retained as compatibility manifests. A DB30
+item finishes an in-progress learning/relearning sequence under its stored
+rules. Its transition back to review converts it to routing version 2 in the
+same commit, preserving the just-exercised memory while retaining all legacy
+columns for downgrade compatibility. The old rung trace before that boundary
+is evidence of lazy conversion, not a second live scheduler or side queue.
 
 ## Source evidence
 - `core/src/test/kotlin/dev/bee/kanjianki/core/SchedulerDecisionTraceTest.kt`
@@ -16,14 +37,18 @@ These are the scenarios covered by the timeline goldens and the parity snapshot.
 
 | Scenario | What it proves | Current note |
 | --- | --- | --- |
-| `newKanjiEntersKanjiMeaning` | a new card enters the kanji meaning rung and is selected deterministically | baseline queue admission / selection trace |
-| `reviewPassPromotesAfterLongFsrsInterval` | a long-interval `good` review promotes the card and records the FSRS interval call | FSRS still drives interval math, not full deck-level Anki behavior |
-| `threeDueReviewAgainsDemote` | repeated `again` answers eventually demote the card after the configured streak threshold | lapse handling remains deterministic and test-only here |
-| `similarKanjiSkippedWithoutContent` | a demoting review still respects the missing similar-kanji content path | the scheduler reports `similar_kanji_unavailable` instead of inventing content |
+| `newKanjiEntersKanjiMeaning` | a new card starts conservative legacy learning at recognition | it converts only after graduation returns it to review |
+| `reviewPassPromotesAfterLongFsrsInterval` | the final legacy review converts to recognition, then the shared font variant uses that core | the historical filename is retained for manifest compatibility |
+| `promotionRequiresSecondRealDuePass` | adaptive recognition needs its own two real-due passes before contextual reading unlocks | conversion cannot reuse a legacy pass to cascade immediately |
+| `threeDueReviewAgainsDemote` | a real-due core failure enters inline repair and later repair answers make no FSRS call | one lapse per failed core check; repair is practice-only |
+| `writeKanjiExitRequiresCleanWrites` | a final legacy writing review preserves its evidence, converts, and yields to recognition-core scheduling | the old writing-rung filename now pins conversion |
+| `similarKanjiSkippedWithoutContent` | an in-progress legacy relearning path remains legacy until it returns to review | lazy conversion does not interrupt an active step sequence |
 | `relearningBeatsSameFamilyReviewSibling` | relearning wins over a same-family review sibling in the same session | same-session same-family hiding is distinct from persistent mature-sibling suppression |
 
-## Current boundary
-- FSRS memory/interval only; Kani still owns queue selection, ladder movement, learning/relearning steps, sibling suppression, and user-facing scheduler wording.
+## Snapshot boundary
+
+- The DB30 experiments below are retained as historical decision evidence, not current ladder routing.
+- DB31 owns queue selection, two-core routing, practice-only inline repair, same-family hiding, and user-facing scheduler wording.
 - Local due dates are kept in Kani; this lab does not rewrite Anki deck schedules.
 
 ## Intentional differences that remain open

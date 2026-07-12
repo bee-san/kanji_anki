@@ -5,7 +5,13 @@ import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.AdaptiveRouteState
+import dev.bee.kanjianki.core.AdaptiveRouteStateCodec
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -67,10 +73,11 @@ class MainActivityStudySimilarKanjiCoverageTest {
             activity.cancelPendingHomeRouteLoads()
             shadowOf(Looper.getMainLooper()).idle()
 
-            val session = similarSession("拉")
+            val session = similarSession("拉", "謎")
             val card = activity.similarChoiceCardForSession(session)
             assertEquals("拉", card.targetKanji)
             assertTrue(card.choices.size >= 2)
+            assertEquals(listOf("拉", "謎"), card.choices.take(2))
 
             activity.renderSession(session)
             shadowOf(Looper.getMainLooper()).idle()
@@ -82,7 +89,7 @@ class MainActivityStudySimilarKanjiCoverageTest {
         }
     }
 
-    private fun similarSession(kanji: String): RecordsSchedulerModels.StudySession {
+    private fun similarSession(kanji: String, confusedWith: String? = null): RecordsSchedulerModels.StudySession {
         val item = RecordsStudyModels.StudyItem(
             kanji,
             "review",
@@ -99,6 +106,27 @@ class MainActivityStudySimilarKanjiCoverageTest {
             .rung(RecordsBase.LadderRung.KANJI_MEANING)
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken("token-$kanji")
+            .let { builder ->
+                if (confusedWith == null) {
+                    builder
+                } else {
+                    builder
+                        .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+                        .adaptiveRouteStateJson(
+                            AdaptiveRouteStateCodec.encode(
+                                AdaptiveRouteState(
+                                    activeCore = CoreSkill.RECOGNITION,
+                                    activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI),
+                                    answerEvidence = AnswerEvidence(
+                                        coreSkill = CoreSkill.RECOGNITION,
+                                        failureKind = FailureKind.VISUAL_CONFUSION,
+                                        confusedWith = confusedWith,
+                                    ),
+                                ),
+                            ),
+                        )
+                }
+            }
             .build()
         val row = dashboardRow(kanji)
         return RecordsSchedulerModels.StudySession(

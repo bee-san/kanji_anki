@@ -113,14 +113,18 @@ internal object StagedRestoreApplier {
         }
         val destination = DatabaseBackupPolicy.backupFile(filesDir, nowMillis)
         val raw = File(backupDir, destination.name + ".pre-restore.tmp")
+        val partial = File(backupDir, destination.name + ".partial")
+        BackupRestoreStager.deleteBestEffort(raw)
+        BackupRestoreStager.deleteBestEffort(partial)
         try {
             snapshotter.snapshot(databaseFile, raw)
-            DatabaseBackupWorker.gzipFile(raw, destination)
+            DatabaseBackupWorker.gzipFile(raw, partial)
+            DatabaseBackupWorker.publishAtomically(partial, destination)
         } catch (error: IOException) {
-            BackupRestoreStager.deleteBestEffort(destination)
+            BackupRestoreStager.deleteBestEffort(partial)
             throw error
         } catch (error: RuntimeException) {
-            BackupRestoreStager.deleteBestEffort(destination)
+            BackupRestoreStager.deleteBestEffort(partial)
             throw error
         } finally {
             BackupRestoreStager.deleteBestEffort(raw)

@@ -162,6 +162,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var typingAnswerState: TypingAnswerState? = null
+    var recognitionFailureCauseState: RecognitionFailureCauseState? = null
 
     @JvmField
     var activeAnalysis: WritingAnalysis? = null

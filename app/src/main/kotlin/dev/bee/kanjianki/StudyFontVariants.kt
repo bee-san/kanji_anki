@@ -2,17 +2,26 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.graphics.Typeface
-import java.util.Random
+import java.security.SecureRandom
 
 internal object StudyFontVariants {
-    // Cosmetic font-variant pick; a plain Random avoids SecureRandom's entropy
-    // blocking risk.
-    @Suppress("java:S2245")
-    private val fontRandom = Random()
+    private val fontRandom = SecureRandom()
 
     @JvmStatic
     fun random(context: Context): Typeface {
         return forVariant(context, fontRandom.nextInt(3))
+    }
+
+    /** Stable across process restarts for the same persisted core-review count. */
+    @JvmStatic
+    fun deterministic(context: Context, kanji: String?, coreReviewCount: Int): Typeface {
+        return forVariant(context, variantIndex(kanji, coreReviewCount))
+    }
+
+    @JvmStatic
+    fun variantIndex(kanji: String?, coreReviewCount: Int): Int {
+        val seed = 31 * kanji.orEmpty().hashCode() + coreReviewCount.coerceAtLeast(0)
+        return Math.floorMod(seed, 3)
     }
 
     @JvmStatic

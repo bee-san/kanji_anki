@@ -211,8 +211,9 @@ class MainActivitySettingsInstrumentedTest {
                 ladderOrder.rungs.firstOrNull { it.label == similarKanjiLabel }?.onToggle?.run()
                 if (ladderOrder.rungs.any { it.label == similarKanjiLabel }) {
                     waitForBackgroundSettingsWrites(activity)
-                    assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI))
+                    assertFalse(activity.studyLadderSettings().isRepairTaskEnabled(RecordsBase.LadderRung.SIMILAR_KANJI.wireName()))
                 }
+                assertTrue(ladderOrder.rungs.any { it.label == SettingsTextCopy.repairTaskLabel("type_reading") })
                 activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6))
                 assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs[0])
 

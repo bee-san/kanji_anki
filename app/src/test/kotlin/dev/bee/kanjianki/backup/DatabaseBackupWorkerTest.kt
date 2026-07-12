@@ -129,6 +129,36 @@ class DatabaseBackupWorkerTest {
     }
 
     @Test
+    fun failedAtomicPublicationPreservesExistingFinalAndCleansPartial() {
+        val db = temp.newFile("kanji_anki_simple.db")
+        write(db, "new database")
+        val filesDir = temp.newFolder("files")
+        val backupDir = File(filesDir, "backups")
+        assertTrue(backupDir.mkdirs())
+        val now = 1_778_832_000_000L
+        val final = File(backupDir, "kanji_anki_simple_${timestamp(now)}.db.gz")
+        val oldBytes = "previous complete backup".toByteArray(StandardCharsets.UTF_8)
+        FileOutputStream(final).use { it.write(oldBytes) }
+
+        val result = DatabaseBackupWorker.backupDatabase(
+            db,
+            filesDir,
+            now,
+            { src, dest -> copyFile(src, dest) },
+            { partial, destination ->
+                assertTrue(partial.name.endsWith(".db.gz.partial"))
+                assertTrue(partial.parentFile == destination.parentFile)
+                throw IOException("atomic move unavailable")
+            },
+        )
+
+        assertFailure(result)
+        assertArrayEquals(oldBytes, final.readBytes())
+        assertFalse(File(backupDir, final.name + ".partial").exists())
+        assertFalse(File(backupDir, final.name + ".tmp").exists())
+    }
+
+    @Test
     fun pruneOldBackupsTieredRetentionKeepsRecentDailyAndWeeklyCompressedFiles() {
         val dir = temp.newFolder("backups")
         // 40 consecutive daily backups spanning early-March to mid-April 2026.

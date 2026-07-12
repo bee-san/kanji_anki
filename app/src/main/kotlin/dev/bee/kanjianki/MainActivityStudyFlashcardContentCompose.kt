@@ -96,7 +96,7 @@ internal fun FlashcardCard(
             if (!model.revealState.isRevealed) {
                 model.typingAnswer?.let { typingAnswerState ->
                     TypingMeaningAnswer(
-                        label = StudyTextCopy.meaningLabel(),
+                        label = if (model.typingReading) StudyTextCopy.readingLabel() else StudyTextCopy.meaningLabel(),
                         state = typingAnswerState,
                         onDone = onTypingDone,
                     )

@@ -29,6 +29,7 @@ object StudyTaskCopy {
 
         StudyTaskTypes.FONT_MEANING -> localizedText("Font -> meaning", "フォント→意味")
         StudyTaskTypes.WORD_READING -> localizedText("Word -> reading", "単語→読み")
+        StudyTaskTypes.TYPE_READING -> localizedText("Type the reading", "読みを入力")
         StudyTaskTypes.KANJI_READING -> localizedText("Kanji -> reading", "漢字→読み")
         StudyTaskTypes.READING_KANJI -> localizedText("Reading -> kanji", "読み→漢字")
         StudyTaskTypes.SENTENCE_READING -> localizedText("Sentence reading", "文で読む")
@@ -52,6 +53,7 @@ object StudyTaskCopy {
         isNewLearningRepeat(session) -> localizedText("Learn", "学習")
         isRelearning(session) -> localizedText("Relearning", "再学習")
         session != null && session.writingRequired -> localizedText("Practice", "練習")
+        isTypingReadingTask(session) -> localizedText("Type", "入力")
         isSentenceReadingTask(session) -> localizedText("Read", "読む")
         isWordReadingTask(session) -> localizedText("Read", "読む")
         isTypingMeaningTask(session) -> localizedText("Type", "入力")
@@ -102,12 +104,17 @@ object StudyTaskCopy {
             (StudyTaskTypes.TYPING_MEANING == session.taskType || StudyTaskTypes.TYPE_MEANING == session.taskType)
 
     @JvmStatic
+    fun isTypingReadingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
+        session != null && StudyTaskTypes.TYPE_READING == session.taskType
+
+    @JvmStatic
     fun isMeaningKanjiTask(session: RecordsSchedulerModels.StudySession?): Boolean =
         session != null && StudyTaskTypes.MEANING_KANJI == session.taskType
 
     @JvmStatic
     fun isWordReadingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
-        session != null && StudyTaskTypes.WORD_READING == session.taskType
+        session != null &&
+            (StudyTaskTypes.WORD_READING == session.taskType || StudyTaskTypes.TYPE_READING == session.taskType)
 
     @JvmStatic
     fun isKanjiReadingTask(session: RecordsSchedulerModels.StudySession?): Boolean =

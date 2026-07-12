@@ -18,6 +18,7 @@ import dev.bee.kanjianki.charts.KaniDonutChartTag
 import dev.bee.kanjianki.charts.KaniHeatmapChartTag
 import dev.bee.kanjianki.charts.KaniHeatmapWeekTag
 import dev.bee.kanjianki.charts.KaniLineChartTag
+import dev.bee.kanjianki.progress.ProgressStreakMetricState
 import dev.bee.kanjianki.progress.progressAnalyticsDemoSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -41,6 +42,13 @@ class StatsRedesignComposeTest {
         composeRule.onNodeWithText("Streak").assertExists()
         composeRule.onNodeWithText("Accuracy").assertExists()
         composeRule.onNodeWithText("Reviews today").assertExists()
+        composeRule.onNodeWithTag(ProgressStreakSummaryTag).assertExists()
+        composeRule.onNodeWithText("Current streak").assertExists()
+        composeRule.onNodeWithText("Longest streak").assertExists()
+        composeRule.onNodeWithText("14 days").assertExists()
+        composeRule.onNodeWithContentDescription(
+            progressAnalyticsStreakSummaryText(state.reviewsAnalytics.currentStreak, state.reviewsAnalytics.tip),
+        ).assertExists()
         composeRule.onNodeWithTag(ProgressForecastCardTag).assertExists()
         composeRule.onNodeWithTag(KaniHeatmapChartTag).assertExists()
         composeRule.onAllNodesWithTag(KaniHeatmapWeekTag).assertCountEquals(state.reviewsAnalytics.heatmap!!.weeks.size)
@@ -65,6 +73,8 @@ class StatsRedesignComposeTest {
                 heatmap = null,
                 reviewsPerDay = sample.reviewsAnalytics.reviewsPerDay.copy(values = emptyList()),
                 rangeData = emptyMap(),
+                currentStreak = ProgressStreakMetricState(0, 0, "0 days"),
+                tip = "Start a short review session today to build momentum.",
             ),
             accuracyRetention = sample.accuracyRetention.copy(
                 accuracyTrend = sample.accuracyRetention.accuracyTrend.copy(series = emptyList()),
@@ -83,6 +93,13 @@ class StatsRedesignComposeTest {
         composeRule.waitForIdle()
 
         composeRule.onAllNodesWithText("Your story starts here 🦀").assertCountEquals(5)
+        composeRule.onAllNodesWithTag(ProgressStreakSummaryTag).assertCountEquals(1)
+        composeRule.onNodeWithText("Current streak").assertExists()
+        composeRule.onNodeWithText("Longest streak").assertExists()
+        composeRule.onAllNodesWithText("0 days", useUnmergedTree = true).assertCountEquals(2)
+        composeRule.onNodeWithContentDescription(
+            progressAnalyticsStreakSummaryText(state.reviewsAnalytics.currentStreak, state.reviewsAnalytics.tip),
+        ).assertExists()
         composeRule.onAllNodesWithTag(KaniLineChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniBarChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniDonutChartTag).assertCountEquals(0)
