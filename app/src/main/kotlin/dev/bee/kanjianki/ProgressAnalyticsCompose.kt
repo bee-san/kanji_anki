@@ -55,6 +55,9 @@ import dev.bee.kanjianki.progress.ProgressStreakMetricState
 import dev.bee.kanjianki.progress.ProgressWeaknessInsightsState
 
 internal const val ProgressOverviewHeroSummaryTag = "progress-overview-hero-summary"
+internal const val ProgressStreakSummaryTag = "progress-streak-summary"
+internal const val ProgressCurrentStreakMetricTag = "progress-current-streak-metric"
+internal const val ProgressLongestStreakMetricTag = "progress-longest-streak-metric"
 internal const val ProgressOverviewMetricsCompactTag = "progress-overview-metrics-compact"
 internal const val ProgressDistributionCardCompactLayoutTag = "progress-distribution-card-compact-layout"
 internal const val ProgressForecastCardTag = "progress-forecast-card"
@@ -74,6 +77,15 @@ internal fun progressAnalyticsOverviewSummaryText(state: ProgressOverviewState):
     "${ProgressAnalyticsCopy.totalReviewsLabel()} ${state.totalReviews.valueLabel} · " +
         "${ProgressAnalyticsCopy.accuracyLabel()} ${state.accuracy.valueLabel} · " +
         "${ProgressAnalyticsCopy.streakLabel()} ${state.currentStreak.valueLabel}"
+
+internal fun progressAnalyticsStreakSummaryText(
+    state: ProgressStreakMetricState,
+    tip: String,
+): String {
+    val copy = StatsDashboardCopy.forLocale()
+    return "${ProgressAnalyticsCopy.currentStreakLabel()} ${state.valueLabel} · " +
+        "${ProgressAnalyticsCopy.longestStreakLabel()} ${copy.days(state.bestDays)}. $tip"
+}
 
 private fun progressAnalyticsIsCompactWidth(maxWidth: Dp): Boolean =
     maxWidth < ProgressAnalyticsCompactWidthBreakpointDp.dp
@@ -225,6 +237,7 @@ private fun ReviewsSection(state: ProgressReviewsAnalyticsState, compact: Boolea
     )
     StatsSection(alternate = true) {
         HomeSectionHeader(state.title, null, null)
+        StreakSummaryCard(state.currentStreak, state.tip)
         ProgressRangeChips(state.availableRanges, selected, onSelect = { selected = it }, compact = compact, scope = "reviews")
         val heatmap = state.heatmap
         val hasHeatmapData = heatmap != null && heatmap.weeks.any { week -> week.cells.any { it.reviews > 0 } }
@@ -251,9 +264,47 @@ private fun ReviewsSection(state: ProgressReviewsAnalyticsState, compact: Boolea
                     copy.bestDay to selectedData.bestDayLabel,
                 )
             )
-            state.currentStreak.detailLabel?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = KaniTheme.colors.muted)
+        }
+    }
+}
+
+@Composable
+private fun StreakSummaryCard(state: ProgressStreakMetricState, tip: String) {
+    val copy = StatsDashboardCopy.forLocale()
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(ProgressStreakSummaryTag)
+            .semantics(mergeDescendants = true) {
+                contentDescription = progressAnalyticsStreakSummaryText(state, tip)
+            },
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HeroMetric(
+                    ProgressAnalyticsCopy.currentStreakLabel(),
+                    state.valueLabel,
+                    Modifier.weight(1f).testTag(ProgressCurrentStreakMetricTag),
+                )
+                HeroMetric(
+                    ProgressAnalyticsCopy.longestStreakLabel(),
+                    copy.days(state.bestDays),
+                    Modifier.weight(1f).testTag(ProgressLongestStreakMetricTag),
+                )
             }
+            Text(
+                tip,
+                style = MaterialTheme.typography.labelSmall,
+                color = KaniTheme.colors.muted,
+            )
         }
     }
 }

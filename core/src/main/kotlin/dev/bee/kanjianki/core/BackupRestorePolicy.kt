@@ -7,6 +7,8 @@ object BackupRestorePolicy {
     enum class CopyId {
         READY,
         TRUNCATED_GZIP,
+        BACKUP_TOO_LARGE,
+        INSUFFICIENT_STORAGE,
         BAD_SQLITE_MAGIC,
         NEWER_DATABASE_VERSION,
         MISSING_SETTINGS_TABLE,
@@ -82,6 +84,14 @@ object BackupRestorePolicy {
             CopyId.TRUNCATED_GZIP, CopyId.QUICK_CHECK_FAILED -> localizedText(
                 "File is corrupted.",
                 "ファイルが破損しています。",
+            )
+            CopyId.BACKUP_TOO_LARGE -> localizedText(
+                "Backup is too large to restore.",
+                "バックアップが大きすぎるため復元できません。",
+            )
+            CopyId.INSUFFICIENT_STORAGE -> localizedText(
+                "Not enough free space to restore this backup.",
+                "このバックアップを復元するための空き容量が不足しています。",
             )
             CopyId.BAD_SQLITE_MAGIC, CopyId.MISSING_SETTINGS_TABLE -> localizedText(
                 "Not a Kani backup.",

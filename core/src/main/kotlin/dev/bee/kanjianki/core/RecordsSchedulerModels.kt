@@ -206,9 +206,17 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         @JvmField val writingClean: Boolean
         @JvmField val manualOverride: Boolean
         @JvmField val hintsUsed: Int
+        @JvmField val coreSkill: String
+        @JvmField val failureCause: String
+        @JvmField val evidenceSource: String
+        @JvmField val selectedAnswer: String
+        @JvmField val correctAnswer: String
+        @JvmField val answerEvidenceJson: String
 
         init {
-            val args = rest.toSchedulerArgsArray()
+            val suppliedArgs = rest.toSchedulerArgsArray()
+            val evidence = suppliedArgs.lastOrNull() as? ReviewEvidence
+            val args = if (evidence == null) suppliedArgs else suppliedArgs.copyOf(suppliedArgs.size - 1)
             requireArgCount(CONTEXT_REVIEW_REQUEST, args, 2, 3, 6)
             if (args.size == 2) {
                 writingClean = writingPassed && ("good" == rating || "easy" == rating)
@@ -224,6 +232,63 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
                 taskType = if (args.size == 3) "" else nullToEmpty(stringArg(args, 3, CONTEXT_REVIEW_REQUEST))
                 answerSignature = if (args.size == 3) "" else nullToEmpty(stringArg(args, 4, CONTEXT_REVIEW_REQUEST))
                 prompt = if (args.size == 3) "" else nullToEmpty(stringArg(args, 5, CONTEXT_REVIEW_REQUEST))
+            }
+            coreSkill = nullToEmpty(evidence?.coreSkill)
+            failureCause = nullToEmpty(evidence?.failureCause)
+            evidenceSource = nullToEmpty(evidence?.evidenceSource)
+            selectedAnswer = nullToEmpty(evidence?.selectedAnswer)
+            correctAnswer = nullToEmpty(evidence?.correctAnswer)
+            answerEvidenceJson = nullToEmpty(evidence?.answerEvidenceJson)
+        }
+
+        /**
+         * Adds v31 answer evidence through one typed value rather than another
+         * positional vararg layout. Existing constructor calls remain valid.
+         */
+        fun withEvidence(evidence: ReviewEvidence?): ReviewRequest {
+            return ReviewRequest(
+                kanji,
+                token,
+                rating,
+                writingRequired,
+                writingPassed,
+                writingClean,
+                manualOverride,
+                hintsUsed,
+                taskType,
+                answerSignature,
+                prompt,
+                evidence ?: ReviewEvidence.empty(),
+            )
+        }
+
+        fun withAnswerEvidence(evidence: AnswerEvidence?): ReviewRequest {
+            if (evidence == null) {
+                return withEvidence(ReviewEvidence.empty())
+            }
+            return withEvidence(
+                ReviewEvidence(
+                    evidence.coreSkill?.wireName(),
+                    evidence.failureKind?.wireName(),
+                    evidence.evidenceSource?.wireName(),
+                    evidence.selectedAnswer,
+                    evidence.correctAnswer,
+                    AnswerEvidenceCodec.encode(evidence),
+                )
+            )
+        }
+
+        class ReviewEvidence(
+            @JvmField val coreSkill: String?,
+            @JvmField val failureCause: String?,
+            @JvmField val evidenceSource: String?,
+            @JvmField val selectedAnswer: String?,
+            @JvmField val correctAnswer: String?,
+            @JvmField val answerEvidenceJson: String?,
+        ) {
+            companion object {
+                @JvmStatic
+                fun empty(): ReviewEvidence = ReviewEvidence("", "", "", "", "", "")
             }
         }
     }

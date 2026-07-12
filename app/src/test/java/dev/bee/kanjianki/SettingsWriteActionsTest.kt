@@ -181,6 +181,36 @@ class SettingsWriteActionsTest {
     }
 
     @Test
+    fun adaptiveSupportPriorityMovesOnlyRepairTools() {
+        val current = RecordsBase.StudyLadderSettings.defaults()
+        val fixedBefore = listOf(
+            current.orderedRungs.indexOf(RecordsBase.LadderRung.KANJI_MEANING),
+            current.orderedRungs.indexOf(RecordsBase.LadderRung.WORD_READING),
+            current.orderedRungs.indexOf(RecordsBase.LadderRung.FONT_MEANING),
+            current.orderedRungs.indexOf(RecordsBase.LadderRung.SENTENCE_READING),
+        )
+
+        val moved = SettingsWriteActions.moveStudySupportPriority(
+            current,
+            RecordsBase.LadderRung.SIMILAR_KANJI,
+            -1,
+        )
+
+        assertEquals(fixedBefore, listOf(
+            moved.orderedRungs.indexOf(RecordsBase.LadderRung.KANJI_MEANING),
+            moved.orderedRungs.indexOf(RecordsBase.LadderRung.WORD_READING),
+            moved.orderedRungs.indexOf(RecordsBase.LadderRung.FONT_MEANING),
+            moved.orderedRungs.indexOf(RecordsBase.LadderRung.SENTENCE_READING),
+        ))
+        assertEquals(current.orderText(), moved.orderText())
+        assertEquals(current.enabledText(), moved.enabledText())
+        assertEquals(
+            current.repairTaskOrder.indexOf(RecordsBase.LadderRung.SIMILAR_KANJI.wireName()) - 1,
+            moved.repairTaskOrder.indexOf(RecordsBase.LadderRung.SIMILAR_KANJI.wireName()),
+        )
+    }
+
+    @Test
     fun benchmarksSnapshotBasedStudyLadderToggleAgainstLegacyProviderPath() {
         val current = RecordsBase.StudyLadderSettings.defaults()
         val rung = RecordsBase.LadderRung.WORD_READING

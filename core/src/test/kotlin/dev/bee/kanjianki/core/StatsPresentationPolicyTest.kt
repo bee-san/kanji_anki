@@ -91,6 +91,7 @@ class StatsPresentationPolicyTest {
             english.matureSupport,
             english.percentWord,
             english.keepStreakTip,
+            english.streakSafeTip,
             english.startMomentumTip,
         )
         val japaneseLabels = listOf(
@@ -133,9 +134,10 @@ class StatsPresentationPolicyTest {
             japanese.matureSupport,
             japanese.percentWord,
             japanese.keepStreakTip,
+            japanese.streakSafeTip,
             japanese.startMomentumTip,
         )
-        assertEquals(40, englishLabels.size)
+        assertEquals(41, englishLabels.size)
         assertEquals(englishLabels.size, japaneseLabels.size)
         assertTrue(englishLabels.all { it.isNotBlank() })
         assertTrue(japaneseLabels.all { it.isNotBlank() })
@@ -157,6 +159,8 @@ class StatsPresentationPolicyTest {
         assertEquals("+4 today", english.todayDelta("4"))
         assertEquals("5 days", english.days(5))
         assertEquals("Best 6 days", english.bestDays(6))
+        assertEquals("Today's streak is secure.", english.streakSafeTip)
+        assertEquals("今日の連続記録は達成済みです。", japanese.streakSafeTip)
         assertEquals("7 active items", english.activeItems(7))
         assertTrue(english.activeItemsSummary(7).contains("7 active items"))
         assertTrue(english.reviewSummary(30, "8", "0.3", "6", "2").contains("8 total reviews"))

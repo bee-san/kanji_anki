@@ -277,6 +277,16 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
         @JvmField
         val sentenceReadingMemory: TaskMemory
 
+        /** Monotonic persisted-state revision used by atomic review commits. */
+        @JvmField
+        val schedulerRevision: Long
+
+        @JvmField
+        val routingVersion: Int
+
+        @JvmField
+        val adaptiveRouteStateJson: String
+
         init {
             val args = StudyItemArgs.from(state, dueAtMillis, stability, difficulty, totalReviews, rest)
             this.kanji = nullToEmpty(kanji)
@@ -321,6 +331,9 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             this.readingKanjiMemory = args.readingKanjiMemory ?: TaskMemory.initial()
             this.hasSentenceReading = args.hasSentenceReading
             this.sentenceReadingMemory = args.sentenceReadingMemory ?: TaskMemory.initial()
+            this.schedulerRevision = args.schedulerRevision.coerceAtLeast(0L)
+            this.routingVersion = args.routingVersion.coerceAtLeast(1)
+            this.adaptiveRouteStateJson = nullToEmpty(args.adaptiveRouteStateJson)
         }
 
         fun withToken(token: String?): StudyItem {
@@ -535,6 +548,9 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             var readingKanjiMemory: TaskMemory? = src.readingKanjiMemory
             var hasSentenceReading: Boolean = src.hasSentenceReading
             var sentenceReadingMemory: TaskMemory? = src.sentenceReadingMemory
+            var schedulerRevision: Long = src.schedulerRevision
+            var routingVersion: Int = src.routingVersion
+            var adaptiveRouteStateJson: String? = src.adaptiveRouteStateJson
             var legacyFieldModified: Boolean = false
             var rungExplicitlySet: Boolean = false
 
@@ -726,8 +742,63 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 return this
             }
 
+            fun schedulerRevision(value: Long): StudyItemBuilder {
+                this.schedulerRevision = value
+                return this
+            }
+
+            fun routingVersion(value: Int): StudyItemBuilder {
+                this.routingVersion = value
+                return this
+            }
+
+            fun adaptiveRouteStateJson(value: String?): StudyItemBuilder {
+                this.adaptiveRouteStateJson = value
+                return this
+            }
+
             fun build(): StudyItem {
                 val effectiveRung = if (legacyFieldModified && !rungExplicitlySet) null else rung
+                // The builder crosses the constructor boundary as one typed
+                // state object. This keeps the many legacy vararg layouts
+                // source-compatible without adding more positional fields.
+                val typedArgs = StudyItemArgs().also { args ->
+                    args.lapses = lapses
+                    args.learningStep = learningStep
+                    args.writingLevel = writingLevel
+                    args.recognitionStage = recognitionStage
+                    args.consecutiveFailedRecognitionDays = consecutiveFailedRecognitionDays
+                    args.lastFailedRecognitionDayMillis = lastFailedRecognitionDayMillis
+                    args.writingRemediationPending = writingRemediationPending
+                    args.suppressedByTaskType = suppressedByTaskType
+                    args.suppressedAtMillis = suppressedAtMillis
+                    args.matureIntervalDays = matureIntervalDays
+                    args.answerSignature = answerSignature
+                    args.activeToken = activeToken
+                    args.createdAtMillis = createdAtMillis
+                    args.typingMeaningMemory = typingMeaningMemory
+                    args.meaningKanjiMemory = meaningKanjiMemory
+                    args.kanjiMeaningMemory = kanjiMeaningMemory
+                    args.fontMeaningMemory = fontMeaningMemory
+                    args.wordReadingMemory = wordReadingMemory
+                    args.writingRemediationMemory = writingRemediationMemory
+                    args.rung = effectiveRung
+                    args.phase = phase
+                    args.realPassStreak = realPassStreak
+                    args.realAgainStreak = realAgainStreak
+                    args.lastRealReviewDueAtMillis = lastRealReviewDueAtMillis
+                    args.hasSimilarKanji = hasSimilarKanji
+                    args.similarKanjiMemory = similarKanjiMemory
+                    args.hasKanjiReading = hasKanjiReading
+                    args.kanjiReadingMemory = kanjiReadingMemory
+                    args.hasReadingKanji = hasReadingKanji
+                    args.readingKanjiMemory = readingKanjiMemory
+                    args.hasSentenceReading = hasSentenceReading
+                    args.sentenceReadingMemory = sentenceReadingMemory
+                    args.schedulerRevision = schedulerRevision
+                    args.routingVersion = routingVersion
+                    args.adaptiveRouteStateJson = adaptiveRouteStateJson
+                }
                 return StudyItem(
                     kanji,
                     state,
@@ -735,38 +806,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     stability,
                     difficulty,
                     totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    typingMeaningMemory,
-                    meaningKanjiMemory,
-                    kanjiMeaningMemory,
-                    fontMeaningMemory,
-                    wordReadingMemory,
-                    writingRemediationMemory,
-                    effectiveRung,
-                    phase,
-                    realPassStreak,
-                    realAgainStreak,
-                    lastRealReviewDueAtMillis,
-                    hasSimilarKanji,
-                    similarKanjiMemory,
-                    hasKanjiReading,
-                    kanjiReadingMemory,
-                    hasReadingKanji,
-                    readingKanjiMemory,
-                    hasSentenceReading,
-                    sentenceReadingMemory,
+                    typedArgs,
                 )
             }
         }
@@ -804,6 +844,9 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
             var readingKanjiMemory: TaskMemory? = null
             var hasSentenceReading: Boolean = false
             var sentenceReadingMemory: TaskMemory? = null
+            var schedulerRevision: Long = 0L
+            var routingVersion: Int = 1
+            var adaptiveRouteStateJson: String? = ""
 
             companion object {
                 fun from(
@@ -815,6 +858,9 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     rest: Array<out Any?>,
                 ): StudyItemArgs {
                     val args = rest.toStudyArgsArray()
+                    if (args.size == 1 && args[0] is StudyItemArgs) {
+                        return args[0] as StudyItemArgs
+                    }
                     requireArgCount(CONTEXT_STUDY_ITEM, args, 5, 9, 13, 17, 18, 19, 25, 26, 27, 28, 29, 30, 31, 32)
                     val result = StudyItemArgs()
                     result.lapses = intArg(args, 0, CONTEXT_STUDY_ITEM)

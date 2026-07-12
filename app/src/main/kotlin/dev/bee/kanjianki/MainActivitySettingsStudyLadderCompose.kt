@@ -67,6 +67,15 @@ fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {
                 fontSize = 15.sp
             )
             model.rungs.forEachIndexed { index, rung ->
+                if (rung.sectionTitle.isNotEmpty()) {
+                    Text(
+                        text = rung.sectionTitle,
+                        color = StudyLadderInk,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = if (index == 0) 4.dp else 12.dp),
+                    )
+                }
                 StudyLadderRungRow(rung)
                 if (index < model.rungs.lastIndex) {
                     Box(
@@ -124,29 +133,31 @@ private fun StudyLadderRungRow(rung: SettingsStudyLadderRungModel) {
             StudyLadderOutlinedButton(
                 label = rung.toggleLabel,
                 description = rung.toggleDescription,
-                enabled = true,
+                enabled = rung.toggleEnabled,
                 modifier = Modifier.weight(1f),
                 traceSection = rung.toggleTraceSection,
                 onClick = { rung.onToggle.run() }
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            StudyLadderOutlinedButton(
-                label = rung.moveUpLabel,
-                description = rung.moveUpDescription,
-                enabled = rung.canMoveUp,
-                modifier = Modifier.weight(1f),
-                traceSection = rung.moveUpTraceSection,
-                onClick = { rung.onMoveUp.run() }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            StudyLadderOutlinedButton(
-                label = rung.moveDownLabel,
-                description = rung.moveDownDescription,
-                enabled = rung.canMoveDown,
-                modifier = Modifier.weight(1f),
-                traceSection = rung.moveDownTraceSection,
-                onClick = { rung.onMoveDown.run() }
-            )
+            if (rung.showPriorityControls) {
+                Spacer(modifier = Modifier.width(8.dp))
+                StudyLadderOutlinedButton(
+                    label = rung.moveUpLabel,
+                    description = rung.moveUpDescription,
+                    enabled = rung.canMoveUp,
+                    modifier = Modifier.weight(1f),
+                    traceSection = rung.moveUpTraceSection,
+                    onClick = { rung.onMoveUp.run() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                StudyLadderOutlinedButton(
+                    label = rung.moveDownLabel,
+                    description = rung.moveDownDescription,
+                    enabled = rung.canMoveDown,
+                    modifier = Modifier.weight(1f),
+                    traceSection = rung.moveDownTraceSection,
+                    onClick = { rung.onMoveDown.run() }
+                )
+            }
         }
     }
 }

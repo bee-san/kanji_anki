@@ -73,6 +73,37 @@ internal object SettingsWriteActions {
         return current.moveRung(rung, delta)
     }
 
+    /**
+     * Reorders only adaptive repair tools. Core checks and presentation variants
+     * keep their fixed roles even though their legacy ladder positions remain
+     * stored for backup and downgrade compatibility.
+     */
+    @JvmStatic
+    fun moveStudySupportPriority(
+        current: RecordsBase.StudyLadderSettings,
+        rung: RecordsBase.LadderRung,
+        delta: Int,
+    ): RecordsBase.StudyLadderSettings {
+        return moveStudySupportPriority(current, rung.wireName(), delta)
+    }
+
+    @JvmStatic
+    fun moveStudySupportPriority(
+        current: RecordsBase.StudyLadderSettings,
+        taskType: String,
+        delta: Int,
+    ): RecordsBase.StudyLadderSettings {
+        return current.moveRepairTask(taskType, delta)
+    }
+
+    @JvmStatic
+    fun toggleStudyRepair(
+        current: RecordsBase.StudyLadderSettings,
+        taskType: String,
+    ): RecordsBase.StudyLadderSettings {
+        return current.withRepairTaskEnabled(taskType, !current.isRepairTaskEnabled(taskType))
+    }
+
     @JvmStatic
     fun saveWorkload(
         request: WorkloadSettingsPolicy.SaveRequest,

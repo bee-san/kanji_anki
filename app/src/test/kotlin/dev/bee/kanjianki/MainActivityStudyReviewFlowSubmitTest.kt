@@ -104,6 +104,7 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertEquals(0, reviewIo.pendingCount())
             assertEquals(0, activity.renderCount())
+            assertEquals(1, activity.retryReloadCount())
             assertFalse(swipeFeedback.committed)
             assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
 
@@ -116,6 +117,91 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(1, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun staleCommitReloadsPersistedRevisionAndNextRatingAppliesOnce() {
+        withReviewActivity("更") { activity, store, reviewIo, session ->
+            ShadowToast.reset()
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            store.saveStudyItem(session.item!!.copyBuilder().schedulerRevision(1L).build())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertFalse(store.hasConsumedToken(session.token))
+            assertEquals(0, activity.renderCount())
+            assertEquals(1, activity.retryReloadCount())
+            assertEquals(1L, activity.activeSession!!.item!!.schedulerRevision)
+            assertEquals(0, ShadowToast.shownToastCount())
+
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(1, activity.renderCount())
+            assertEquals(1, ShadowToast.shownToastCount())
+        }
+    }
+
+    @Test
+    fun preConsumedReviewReconcilesToPersistedStateAndLeavesNextCardAnswerable() {
+        withReviewActivity("済") { activity, store, reviewIo, session ->
+            ShadowToast.reset()
+            val nextToken = "token-after-persistence-duplicate"
+            activity.reloadPersistedSessionOnRender()
+            startTrackedTask(activity, session)
+            persistCompetingReview(store, session, nextToken)
+
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertFalse(activity.studySessionTracker.hasActiveTask())
+            assertEquals(1, activity.renderCount())
+            assertEquals(0, activity.retryReloadCount())
+            assertEquals(nextToken, activity.activeSession!!.token)
+            assertEquals(1, store.consumedTokens().size)
+            assertEquals(0, ShadowToast.shownToastCount())
+
+            // The consumed token remains claimed, but the reloaded persisted
+            // session has its own token and can be answered normally.
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            assertEquals(1, reviewIo.pendingCount())
+            reviewIo.shutdownNow()
+        }
+    }
+
+    @Test
+    fun commitDuplicateDiscardsPreparedTaskAndReconcilesForward() {
+        withReviewActivity("競") { activity, store, reviewIo, session ->
+            ShadowToast.reset()
+            val nextToken = "token-after-commit-duplicate"
+            activity.reloadPersistedSessionOnRender()
+            startTrackedTask(activity, session)
+            installCommitDuplicateTrigger(store, nextToken)
+
+            try {
+                assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+                reviewIo.runNext()
+                shadowOf(Looper.getMainLooper()).idle()
+            } finally {
+                store.writableDatabase.execSQL("DROP TRIGGER IF EXISTS force_review_commit_duplicate")
+            }
+
+            assertFalse(activity.studySessionTracker.hasActiveTask())
+            assertEquals(1, activity.renderCount())
+            assertEquals(0, activity.retryReloadCount())
+            assertEquals(nextToken, activity.activeSession!!.token)
+            assertEquals(1L, activity.activeSession!!.item!!.schedulerRevision)
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(0, ShadowToast.shownToastCount())
+
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            assertEquals(1, reviewIo.pendingCount())
+            reviewIo.shutdownNow()
         }
     }
 
@@ -186,6 +272,7 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             LocalStore(context).use { store ->
                 activity.store = store
+                activity.retryStore = store
                 controller.create().start().resume()
                 activity.cancelPendingHomeRouteLoads()
                 startupIo.shutdownNow()
@@ -216,6 +303,89 @@ class MainActivityStudyReviewFlowSubmitTest {
             store.readableDatabase,
             "SELECT COUNT(*) FROM similar_kanji_review_log WHERE target_kanji = ?",
             arrayOf(targetKanji),
+        )
+    }
+
+    private fun startTrackedTask(
+        activity: TestMainActivity,
+        session: RecordsSchedulerModels.StudySession,
+    ) {
+        val item = session.item!!
+        activity.startActiveStudyTask(
+            activity.sessionTaskKey(session),
+            item.kanji,
+            session.taskType,
+            1_000L,
+        )
+        assertTrue(activity.studySessionTracker.hasActiveTask())
+    }
+
+    private fun persistCompetingReview(
+        store: LocalStore,
+        session: RecordsSchedulerModels.StudySession,
+        nextToken: String,
+    ) {
+        val before = session.item!!
+        val after = before.copyBuilder()
+            .totalReviews(before.totalReviews + 1)
+            .activeToken(nextToken)
+            .build()
+        val request = RecordsSchedulerModels.ReviewRequest(
+            before.kanji,
+            session.token,
+            MainActivityBase.RATING_GOOD,
+            false,
+            true,
+            false,
+            0,
+        )
+        val commit = store.saveReviewOutcome(
+            after,
+            request,
+            MainActivityBase.RATING_GOOD,
+            2_000L,
+            before,
+        )
+        assertTrue(commit.applied())
+    }
+
+    /**
+     * Inserts the competing review inside the production insert statement, after
+     * hasConsumedToken() has returned false but before commitReview() evaluates
+     * the UNIQUE conflict. The trigger also advances the persisted revision and
+     * token, modelling the already-committed state the duplicate path must load.
+     */
+    private fun installCommitDuplicateTrigger(store: LocalStore, nextToken: String) {
+        store.writableDatabase.execSQL(
+            """
+            CREATE TRIGGER force_review_commit_duplicate
+            BEFORE INSERT ON review_log
+            WHEN NEW.token = 'token-裂' AND NEW.rating <> '__external_commit__'
+            BEGIN
+                INSERT INTO review_log (
+                    kanji,
+                    token,
+                    rating,
+                    writing_required,
+                    writing_passed,
+                    manual_override,
+                    reviewed_at
+                ) VALUES (
+                    NEW.kanji,
+                    NEW.token,
+                    '__external_commit__',
+                    NEW.writing_required,
+                    NEW.writing_passed,
+                    NEW.manual_override,
+                    NEW.reviewed_at
+                );
+                UPDATE study_items
+                SET scheduler_revision = scheduler_revision + 1,
+                    active_token = '$nextToken',
+                    total_reviews = total_reviews + 1
+                WHERE kanji = NEW.kanji;
+            END
+            """.trimIndent(),
         )
     }
 
@@ -297,9 +467,38 @@ class MainActivityStudyReviewFlowSubmitTest {
 
     private class TestMainActivity : MainActivity() {
         private var studyRenderCount = 0
+        private var retryReloadCount = 0
+        private var reloadPersistedSessionOnRender = false
+        var retryStore: LocalStore? = null
 
         override fun renderStudy() {
             studyRenderCount += 1
+            if (reloadPersistedSessionOnRender) {
+                refreshActiveSession(activeSession?.item?.kanji)
+            }
+        }
+
+        override fun renderStudyForKanji(kanji: String?) {
+            retryReloadCount += 1
+            refreshActiveSession(kanji)
+        }
+
+        private fun refreshActiveSession(kanji: String?) {
+            val previous = activeSession ?: return
+            val refreshed = retryStore?.studyItems()?.firstOrNull { it.kanji == kanji } ?: return
+            activeSession = RecordsSchedulerModels.StudySession(
+                refreshed,
+                previous.row,
+                refreshed.activeToken,
+                previous.taskType,
+                previous.writingRequired,
+                previous.prompt,
+            )
+            flashcardAnswerRevealed = false
+        }
+
+        fun reloadPersistedSessionOnRender() {
+            reloadPersistedSessionOnRender = true
         }
 
         fun clearRenderCount() {
@@ -309,5 +508,7 @@ class MainActivityStudyReviewFlowSubmitTest {
         fun renderCount(): Int {
             return studyRenderCount
         }
+
+        fun retryReloadCount(): Int = retryReloadCount
     }
 }

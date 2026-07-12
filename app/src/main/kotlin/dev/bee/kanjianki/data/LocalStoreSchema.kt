@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 
 internal object LocalStoreSchema {
     const val DB_NAME: String = "kanji_anki_simple.db"
-    const val DB_VERSION: Int = 30
+    const val DB_VERSION: Int = 31
 
     @JvmStatic
     fun createInitialTables(db: SQLiteDatabase, hooks: LocalStoreMigrationHooks) {

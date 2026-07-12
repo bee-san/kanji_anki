@@ -1,8 +1,17 @@
 # The Kani Study Ladder And SRS System
 
-Status: reference document generated from a deep code review of `main`
-(July 2026, DB version 25). Every statement below was verified against the
-source files cited. This document supersedes the older design sketch in
+> Legacy routing reference through database version 30. Database version 31
+> converts items lazily to the two-core adaptive scheduler documented in
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md). The rung
+> model below remains relevant only while an item finishes legacy
+> learning/relearning or awaits its first post-upgrade review. Except for
+> explicit DB31 callouts, every present-tense behavior, setting, statistic,
+> queue, decision, and code pointer below is a frozen legacy description, not
+> the live adaptive contract.
+
+Status: historical reference generated from a deep code review of `main`
+(July 2026, DB version 25). Statements were verified against the source files
+cited at capture time. This document supersedes the older design sketch in
 `docs/srs.md`, which describes a 3-rung ladder plus a
 sibling-suppression design that was never implemented in that form.
 
@@ -13,10 +22,13 @@ the follow-up change set, and the remaining open design decisions.
 
 ## 1. System Overview
 
-The scheduler is a single ladder state machine layered on top of an FSRS-6
-spaced-repetition engine. Every persisted study item has exactly one current
-**rung** (which study skill is being drilled) and one **phase** (where the
-card is in Anki-style learning/review/relearning semantics).
+Through database version 30, the scheduler was a single ladder state machine
+layered on top of an FSRS-6 spaced-repetition engine. Every persisted study
+item had exactly one current **rung** (which study skill was being drilled) and
+one **phase** (where the card was in Anki-style
+learning/review/relearning semantics). Database version 31 retains these
+fields only for lazy conversion and compatibility; canonical scheduling now
+uses the two-core model linked above.
 
 Module layout:
 
@@ -28,7 +40,7 @@ Module layout:
 | `writing-core` | Handwriting analysis and rating mapping for the writing rung | `WritingAnalysisEngine.kt`, `WritingRatingMapper.kt` |
 | `app` | Android UI, SQLite persistence, sync, settings screens | `MainActivityStudy*.kt`, `data/LocalStore*.kt` |
 
-Data flow for one review:
+Legacy DB30 data flow for one review:
 
 ```
 AnkiDroid sync -> DashboardRows -> StudyQueueSeeder.seedQueue -> study_items
@@ -534,7 +546,7 @@ last review time, including overdue gaps.
 
 ---
 
-## 7. Ladder Movement Rules
+## 7. Legacy Ladder Movement Rules
 
 All movement happens inside the two review-phase branches and is gated by
 `countsAsRealDue` (`:364-370`):
@@ -620,7 +632,7 @@ Consequences:
 - Per-rung memories are therefore *seeded from* other rungs rather than
   strictly independent (deliberate continuity; see open decision D3).
 
-### 7.2 Observability
+### 7.2 Legacy observability
 
 - `LadderHealthPolicy.summarize` (`core/.../LadderHealthPolicy.kt`)
   aggregates rung distribution plus `promotionReady`
@@ -639,9 +651,14 @@ Consequences:
   scheduler-state JSON into `review_log`
   (`LocalStoreStudy.insertReview`, `:120-147`).
 
+DB31 replaces the ladder-health surface with adaptive health in stats cache
+format 10: core progress, repair task/cause, revalidation, escalation risk, and
+stuck repair state. Legacy ladder health is a fallback only while items remain
+unconverted.
+
 ---
 
-## 8. Session Selection And Queueing
+## 8. Legacy Session Selection And Queueing
 
 ### 8.1 Family collapse
 
@@ -794,7 +811,7 @@ session against a real `LocalStore` + `BridgeScheduler` + `StudySessionTracker`.
 
 ---
 
-## 9. Review Application Pipeline
+## 9. Legacy Review Application Pipeline
 
 ### 9.1 UI → request
 
@@ -854,7 +871,7 @@ before-item (`LocalStoreStudy.undoLastAppliedReview`, `:93-106`).
 
 ---
 
-## 10. Persistence Summary
+## 10. Legacy Persistence Summary
 
 DB `kanji_anki_simple.db`, version **25** (`LocalStoreSchema.kt:6-7`).
 
@@ -865,7 +882,7 @@ DB `kanji_anki_simple.db`, version **25** (`LocalStoreSchema.kt:6-7`).
 | `learning_repeats` | Practice-repeat ordering data (not a scheduler queue) |
 | `study_task_log` | Per-answer timing/outcome |
 | `similar_kanji_pairs` | Data source for `hasSimilarKanji` (index pairs + mined confusion pairs; regenerates from the review log on sync) |
-| `similar_kanji_choice_state` / `similar_kanji_repair_queue` / `similar_kanji_review_log` | Choice-card content state, writing repairs, confusion mining (not scheduler queues) |
+| `similar_kanji_choice_state` / `similar_kanji_repair_queue` / `similar_kanji_review_log` | DB30 choice state, side-queue writing repairs, and confusion evidence. DB31 creates no repair-queue rows; it only drains old rows while new repair state stays inline on `study_items`. |
 | `settings` | Key–value store for every knob in section 11 |
 
 **DB v16** (`StudySchedulerMigration.kt`) is the ladder fresh start: it
@@ -887,11 +904,11 @@ values left behind by the removed sibling-suppression layer
 
 ---
 
-## 11. Settings Reference (scheduler-relevant)
+## 11. Legacy Settings Reference (DB30)
 
 | Setting | Key | Default | Consumed by |
 | --- | --- | --- | --- |
-| Ladder order / enabled | `study_ladder_order`, `study_ladder_enabled` | all 7 rungs, order §3 | every scheduler entry point |
+| Ladder order / enabled | `study_ladder_order`, `study_ladder_enabled` | configured legacy rung set | DB30 routing and DB31 downgrade compatibility |
 | Promotion interval | `ladder_promotion_interval_days` | 21 | `applyReviewPass` |
 | Demotion fail streak | `ladder_demotion_fail_streak` | 3 (falls back to `real_due_reviews_to_move`) | `applyReviewAgain` |
 | Target retention | `scheduler_target_retention` | 0.90 | FSRS interval computation |
@@ -905,6 +922,12 @@ values left behind by the removed sibling-suppression layer
 | Mature support threshold | (settings arg) | 2 | retirement/reopening |
 | New-card sort | `new_card_sort_mode` | `frequency` | admission order |
 | Adaptive load | `adaptive_load_*` | auto, 20%, 5 | `AdaptiveLoadPlanner` seeding |
+
+DB31 keeps the two core checks locked on, exposes font/sentence variants, and
+stores repair-tool enablement/priority separately in
+`adaptive_repair_enabled` / `adaptive_repair_order`. The old ladder order does
+not define adaptive routing. See the canonical adaptive document for current
+settings and stats semantics.
 
 ---
 
@@ -922,7 +945,7 @@ values left behind by the removed sibling-suppression layer
 
 ---
 
-## 13. Design Properties Worth Preserving
+## 13. Legacy Design Properties
 
 1. **Single state machine.** No side queues feed the scheduler;
    `learning_repeats`, choice state, and repair queues are content/UX
@@ -956,7 +979,7 @@ values left behind by the removed sibling-suppression layer
 
 ---
 
-## 14. Gaps, Issues, And Improvements
+## 14. Historical Gaps, Issues, And Improvements
 
 The July 2026 review identified the gaps below. Items marked **Fixed**
 were resolved by the follow-up change set on this branch; items marked
@@ -1112,7 +1135,7 @@ were resolved by the follow-up change set on this branch; items marked
   direct unsuspend remains outside this goal unless a future provider contract
   is proven.
 
-### Ladder-completion forecast
+### Legacy ladder-completion forecast
 
 The Stats screen's completion forecast is a deterministic simulation of
 ladder **practice**, not a prediction that a card will retire in Anki. It runs
@@ -1128,7 +1151,7 @@ evidence can establish mature support and retire a repair. The forecast never
 claims that ladder completion changes Anki scheduling state or proves repair
 outcomes (decision D-S4 / Goal 88).
 
-### Non-goals
+### DB30 non-goals superseded by DB31
 
 - **The meaning→reading seam at `word_reading` (Goal 72).** The top rung
   switches the tested dimension from meaning to pronunciation and a reading
@@ -1138,6 +1161,11 @@ outcomes (decision D-S4 / Goal 88).
   reading-focused rung or per-dimension failure tracking is an explicit
   non-goal unless the product direction changes. Documented in §4.7 and the
   AGENTS.md ladder notes.
+
+DB31 deliberately changes that decision: contextual reading is its own
+long-term core, never demotes into recognition, and records per-dimension
+failure causes for inline repair. This legacy non-goal must not be used to
+remove the adaptive contextual-reading core or its failure evidence.
 
 ### Improvement ideas (non-defect)
 

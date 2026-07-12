@@ -76,7 +76,9 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun studyLadderSettings(): RecordsBase.StudyLadderSettings {
         return RecordsBase.StudyLadderSettings.fromStored(
             getStringSetting(KEY_STUDY_LADDER_ORDER, ""),
-            getStringSetting(KEY_STUDY_LADDER_ENABLED, "")
+            getStringSetting(KEY_STUDY_LADDER_ENABLED, ""),
+            store.settingsRepository().getString(KEY_ADAPTIVE_REPAIR_ORDER, null),
+            store.settingsRepository().getString(KEY_ADAPTIVE_REPAIR_ENABLED, null),
         )
     }
 
@@ -85,6 +87,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         inTransaction {
             putStringSetting(KEY_STUDY_LADDER_ORDER, normalized.orderText())
             putStringSetting(KEY_STUDY_LADDER_ENABLED, normalized.enabledText())
+            putStringSetting(KEY_ADAPTIVE_REPAIR_ORDER, normalized.repairOrderText())
+            putStringSetting(KEY_ADAPTIVE_REPAIR_ENABLED, normalized.repairEnabledText())
             markStatsDirty()
         }
     }
@@ -553,6 +557,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         const val TAG = "LocalStoreStudySettings"
         const val KEY_STUDY_LADDER_ORDER = "study_ladder_order"
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
+        const val KEY_ADAPTIVE_REPAIR_ORDER = "adaptive_repair_order"
+        const val KEY_ADAPTIVE_REPAIR_ENABLED = "adaptive_repair_enabled"
         const val KEY_REVIEW_REMINDER_DAY_START = "review_reminder_day_start"
         const val KEY_REVIEW_REMINDER_COUNT = "review_reminder_count"
         const val KEY_REMINDER_LAST_POSTED_AT = "reminder_last_posted_at"

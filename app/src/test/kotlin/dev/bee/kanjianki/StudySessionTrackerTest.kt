@@ -1,10 +1,16 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.AdaptiveRouteState
+import dev.bee.kanjianki.core.AdaptiveRouteStateCodec
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyTaskTypes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -49,6 +55,29 @@ class StudySessionTrackerTest {
         task.resume(40L)
         task.pause(35L)
         assertEquals(15L, task.activeElapsedMillis)
+    }
+
+    @Test
+    fun preparedCompletionChangesProgressOnlyAfterCommitAndCanRollback() {
+        var elapsed = 100L
+        val tracker = StudySessionTracker { elapsed }
+        tracker.setTargetCount(1)
+        tracker.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+
+        val first = tracker.prepareActiveTask("task", "good", 20L, true)
+        assertNotNull(first)
+        assertTrue(tracker.hasActiveTask())
+        assertEquals(0, tracker.completedCount())
+
+        tracker.rollbackPreparedTask(first)
+        assertTrue(tracker.hasActiveTask())
+        assertEquals(0, tracker.completedCount())
+
+        elapsed = 130L
+        val second = tracker.prepareActiveTask("task", "good", 30L, true)
+        tracker.commitPreparedTask(second)
+        assertFalse(tracker.hasActiveTask())
+        assertEquals(1, tracker.completedCount())
     }
 
     @Test
@@ -119,6 +148,21 @@ class StudySessionTrackerTest {
     }
 
     @Test
+    fun adaptiveRepairRepeatUsesTheRoutedRepairTaskKey() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("word_reading:done"))
+        tracker.markTaskCompleted("session:word_reading:done:initial-token")
+        tracker.markPlannedSessionTaskCompleted(StudyTaskTypes.WORD_READING, "done")
+
+        val repeatKeys = tracker.dueCompletedLearningRepeatTaskKeys(
+            listOf(adaptiveRepairRepeat("done")),
+            1_000L,
+        )
+
+        assertEquals(listOf("type_reading:done"), repeatKeys)
+    }
+
+    @Test
     fun emptySessionPlanClearsStalePendingKeys() {
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:first", "kanji_meaning:second"))
@@ -186,6 +230,21 @@ class StudySessionTrackerTest {
         ).copyBuilder()
             .rung(RecordsBase.LadderRung.KANJI_MEANING)
             .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .build()
+    }
+
+    private fun adaptiveRepairRepeat(kanji: String): RecordsStudyModels.StudyItem {
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            activeRepairTasks = listOf(StudyTaskTypes.TYPE_READING),
+            repairStepMinutes = listOf(10),
+            repairDueAtMillis = 1_000L,
+            coreDueAtMillis = 10_000L,
+        )
+        return learningRepeat(kanji).copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
             .build()
     }
 

@@ -31,4 +31,5 @@ internal data class FlashcardCardModel(
     val typingAnswer: TypingAnswerState?,
     val answerPanel: StudyAnswerPanelModel,
     val revealState: FlashcardRevealState,
+    val typingReading: Boolean = false,
 )

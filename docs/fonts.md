@@ -1,7 +1,11 @@
 # Embedded Fonts
 
-Kani randomizes one font variant each time a `font_meaning` study card is
-shown. Font cards now use exactly three bundled Japanese display variants:
+`font_meaning` is an optional recognition presentation in the DB31 adaptive
+scheduler; it shares the recognition core's FSRS memory. Core presentations
+alternate deterministically, and the concrete font is a stable function of the
+kanji plus persisted recognition-review count, so retries and process restarts
+do not silently change the prompt. Font cards use exactly three bundled
+Japanese display variants:
 
 - CineCaption 2.26, bundled from the user's local copy with explicit rights
   holder permission.

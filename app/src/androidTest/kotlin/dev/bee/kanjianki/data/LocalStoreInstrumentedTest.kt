@@ -447,7 +447,7 @@ class LocalStoreInstrumentedTest {
     }
 
     @Test
-    fun testSimilarChoiceStateSelectionRepairQueueAndNormalReviewIsolation() {
+    fun testSimilarChoiceStateSelectionAdaptiveRepairAndNormalReviewIsolation() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val snapshot = RecordsSyncModels.CollectionSnapshot(
                 listOf(
@@ -473,16 +473,7 @@ class LocalStoreInstrumentedTest {
         assertInitialSimilarChoiceDue(pull);
 
         val wrong = store.submitSimilarChoice(pull, "提", 2500L)
-        assertWrongSimilarChoiceCreatesRepair(wrong);
-
-        val targetRepair = requireNotNull(store.nextDueSimilarWritingRepair(2600L)).withToken("repair-target", 2600L)
-        store.saveSimilarWritingRepair(targetRepair);
-        assertTrue(store.finishSimilarWritingRepair(targetRepair.id, "repair-target", true, 2700L));
-        assertEquals(1, store.dueSimilarWritingRepairTaskCount(2800L));
-        val selectedRepair = requireNotNull(store.nextDueSimilarWritingRepair(2800L)).withToken("repair-selected", 2800L)
-        assertEquals("提", selectedRepair.repairKanji);
-        store.saveSimilarWritingRepair(selectedRepair);
-        assertTrue(store.finishSimilarWritingRepair(selectedRepair.id, "repair-selected", true, 2900L));
+        assertWrongSimilarChoiceUsesInlineAdaptiveRepair(wrong);
 
         val retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L)
         assertNotNull(retry);
@@ -515,7 +506,13 @@ class LocalStoreInstrumentedTest {
         val pull = findSimilarChoice("拉")
 
         store.submitSimilarChoice(pull, "提", 2500L);
-        assertEquals(2, count("similar_kanji_repair_queue"));
+        assertEquals(0, count("similar_kanji_repair_queue"));
+        assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2600L));
+
+        // One-release compatibility: sync rebuilds still drain a persisted
+        // repair created by an older app, even though new choices never add one.
+        insertLegacySimilarWritingRepair("拉", "提", "拉|提|謎", "提", "pull", 2500L, 2500L)
+        assertEquals(1, count("similar_kanji_repair_queue"));
         assertNull(store.dueSimilarChoiceForActiveTarget("拉", 2600L));
 
         val reducedSnapshot = RecordsSyncModels.CollectionSnapshot(
@@ -1025,6 +1022,9 @@ class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "real_again_streak"));
         assertTrue(hasColumn("study_items", "last_real_review_due_at"));
         assertTrue(hasColumn("study_items", "similar_kanji_memory"));
+        assertTrue(hasColumn("study_items", "scheduler_revision"));
+        assertTrue(hasColumn("study_items", "routing_version"));
+        assertTrue(hasColumn("study_items", "adaptive_route_state_json"));
     }
 
     private fun assertMigratedPracticeAndReviewColumns() {
@@ -1037,6 +1037,12 @@ class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("review_log", "hints_used"));
         assertTrue(hasColumn("review_log", "memory_before"));
         assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
+        assertTrue(hasColumn("review_log", "core_skill"));
+        assertTrue(hasColumn("review_log", "failure_cause"));
+        assertTrue(hasColumn("review_log", "evidence_source"));
+        assertTrue(hasColumn("review_log", "selected_answer"));
+        assertTrue(hasColumn("review_log", "correct_answer"));
+        assertTrue(hasColumn("review_log", "answer_evidence_json"));
         assertTrue(hasColumn("study_task_log", "task_key"));
         assertTrue(hasColumn("study_task_log", "active_elapsed_ms"));
         assertTrue(hasIndex("review_log", "idx_review_log_reviewed_at"));
@@ -1898,9 +1904,14 @@ class LocalStoreInstrumentedTest {
         assertFalse(wrong.correct);
         assertEquals(listOf("拉", "提"), wrong.repairKanji);
         assertEquals(1, count("similar_kanji_review_log"));
-        assertEquals(2, count("similar_kanji_repair_queue"));
+        assertEquals(0, count("similar_kanji_repair_queue"));
         assertNull(store.nextDueInventorySimilarChoice(setOf("拉"), 1000L));
         assertNull(store.dueSimilarChoiceForActiveTarget("", 1000L));
+
+        // Manually seed a legacy row so the compatibility drain API remains
+        // covered without implying that submitSimilarChoice still enqueues it.
+        insertLegacySimilarWritingRepair("拉", "拉", "拉|提|謎", "提", "pull", 1000L, 1000L)
+        assertEquals(1, count("similar_kanji_repair_queue"));
         assertNull(store.nextDueSimilarWritingRepair(999L));
         store.saveSimilarWritingRepair(null);
         store.saveSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair(0L, "拉", "拉", "拉|提|謎", "提", "pull", "pending", 1000L, "", 0, 1000L, 1000L, 0L));
@@ -2372,17 +2383,42 @@ class LocalStoreInstrumentedTest {
         assertNotEquals("inventory-only cards should skip active targets", "拉", inventoryTarget);
     }
 
-    private fun assertWrongSimilarChoiceCreatesRepair(wrong: RecordsImportModels.SimilarKanjiChoiceResult) {
+    private fun assertWrongSimilarChoiceUsesInlineAdaptiveRepair(wrong: RecordsImportModels.SimilarKanjiChoiceResult) {
         assertFalse(wrong.correct);
         assertEquals(listOf("拉", "提"), wrong.repairKanji);
         assertEquals(0, count("review_log"));
         assertEquals(1, count("similar_kanji_review_log"));
-        assertEquals(2, count("similar_kanji_repair_queue"));
-        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L)!!.repairKanji);
-        assertNull(store.dueSimilarChoiceForActiveTarget("拉", 2500L));
-        assertEquals(2, store.dueSimilarChoiceTaskCount(2500L));
-        assertEquals(2, store.dueSimilarWritingRepairTaskCount(2500L));
-        assertEquals(4, store.dueSimilarStudyTaskCount(2500L));
+        assertEquals(0, count("similar_kanji_repair_queue"));
+        assertNull(store.nextDueSimilarWritingRepair(2500L));
+        assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2500L));
+        assertEquals(3, store.dueSimilarChoiceTaskCount(2500L));
+        assertEquals(0, store.dueSimilarWritingRepairTaskCount(2500L));
+        assertEquals(3, store.dueSimilarStudyTaskCount(2500L));
+    }
+
+    private fun insertLegacySimilarWritingRepair(
+        targetKanji: String,
+        repairKanji: String,
+        choiceSignature: String,
+        wrongSelection: String,
+        promptMeaning: String,
+        dueAtMillis: Long,
+        createdAtMillis: Long,
+    ) {
+        ContentValuesBuilder.insert(store.getWritableDatabase(), "similar_kanji_repair_queue")
+                .put("target_kanji", targetKanji)
+                .put("repair_kanji", repairKanji)
+                .put("choice_signature", choiceSignature)
+                .put("wrong_selection", wrongSelection)
+                .put("prompt_meaning", promptMeaning)
+                .put("status", "pending")
+                .put("due_at", dueAtMillis)
+                .put("active_token", "")
+                .put("attempts", 0)
+                .put("created_at", createdAtMillis)
+                .put("updated_at", createdAtMillis)
+                .put("completed_at", 0L)
+                .commit()
     }
 
     private fun assertSimilarChoiceRetryDue() {

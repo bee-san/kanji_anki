@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecentMistakePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyImpactPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
@@ -218,6 +219,7 @@ internal class StudyStatsQueries(
         return StudyStatsStore.calculateKaniOutcomeStats(
             outcomeEvidence(db()),
             ladderItems(db()),
+            adaptiveItems(db()),
             promotionDays,
             failStreak
         )
@@ -242,7 +244,9 @@ internal class StudyStatsQueries(
 
     fun retiredKanjiCountSince(sinceMillis: Long): Int {
         val cursor = db().rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_KANJI_TIMELINE_EVENTS WHERE event_type=? AND occurred_at>=?",
+            "SELECT COUNT(*) FROM $TABLE_KANJI_TIMELINE_EVENTS WHERE event_type=? AND occurred_at>=? " +
+                "AND (sync_id IS NULL OR sync_id IN " +
+                "(SELECT id FROM sync_runs WHERE status='success'))",
             arrayOf(STATE_RETIRED, sinceMillis.toString())
         )
         cursor.use {
@@ -304,10 +308,10 @@ internal class StudyStatsQueries(
     private fun outcomeEvidence(db: SQLiteDatabase): List<StudyStatsStore.OutcomeEvidence> {
         val cursor = db.rawQuery(
             "SELECT rw.kanji, " +
-                "(SELECT s.weakness_score FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_weakness, " +
-                "(SELECT s.mature_support_count FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_support, " +
-                "(SELECT s.weakness_score FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_weakness, " +
-                "(SELECT s.mature_support_count FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_support " +
+                "(SELECT s.weakness_score FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at AND $SUCCESSFUL_SNAPSHOT_FILTER ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_weakness, " +
+                "(SELECT s.mature_support_count FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at AND $SUCCESSFUL_SNAPSHOT_FILTER ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_support, " +
+                "(SELECT s.weakness_score FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at AND $SUCCESSFUL_SNAPSHOT_FILTER ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_weakness, " +
+                "(SELECT s.mature_support_count FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at AND $SUCCESSFUL_SNAPSHOT_FILTER ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_support " +
                 "FROM (SELECT kanji, MIN(reviewed_at) AS first_reviewed_at, MAX(reviewed_at) AS last_reviewed_at " +
                 "FROM $TABLE_REVIEW_LOG WHERE kanji<>'' GROUP BY kanji) rw",
             null
@@ -363,6 +367,40 @@ internal class StudyStatsQueries(
                         integer(it, LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS),
                         withSimilar.contains(string(it, LocalStoreBase.COLUMN_KANJI))
                     )
+                )
+            }
+        }
+        return out
+    }
+
+    private fun adaptiveItems(db: SQLiteDatabase): List<StudyStatsStore.AdaptiveItemEvidence> {
+        val out = ArrayList<StudyStatsStore.AdaptiveItemEvidence>()
+        db.query(
+            TABLE_STUDY_ITEMS,
+            arrayOf(
+                LocalStoreBase.COLUMN_STATE,
+                LocalStoreBase.COLUMN_PHASE,
+                LocalStoreBase.COLUMN_ROUTING_VERSION,
+                LocalStoreBase.COLUMN_ADAPTIVE_ROUTE_STATE_JSON,
+                LocalStoreBase.COLUMN_WORD_READING_MEMORY,
+            ),
+            "state<>? AND ${LocalStoreBase.COLUMN_ROUTING_VERSION}>=?",
+            arrayOf(STATE_RETIRED, "2"),
+            null,
+            null,
+            null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val wordReadingMemory = RecordsStudyModels.TaskMemory.decode(
+                    string(cursor, LocalStoreBase.COLUMN_WORD_READING_MEMORY),
+                    RecordsStudyModels.TaskMemory.initial(),
+                )
+                out += StudyStatsStore.AdaptiveItemEvidence(
+                    state = string(cursor, LocalStoreBase.COLUMN_STATE),
+                    phase = RecordsBase.SchedulerPhase.fromWireName(string(cursor, LocalStoreBase.COLUMN_PHASE)),
+                    routingVersion = integer(cursor, LocalStoreBase.COLUMN_ROUTING_VERSION),
+                    adaptiveRouteStateJson = string(cursor, LocalStoreBase.COLUMN_ADAPTIVE_ROUTE_STATE_JSON),
+                    contextualReadingConsecutivePasses = wordReadingMemory.consecutivePasses,
                 )
             }
         }
@@ -444,7 +482,8 @@ internal class StudyStatsQueries(
 
     private fun repairEvidenceLastSyncAtMillis(db: SQLiteDatabase, kanji: String): Long {
         val cursor = db.rawQuery(
-            "SELECT COALESCE(MAX(finished_at), 0) FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=?",
+            "SELECT COALESCE(MAX(s.finished_at), 0) FROM $TABLE_SYNC_KANJI_SNAPSHOTS s " +
+                "WHERE s.kanji=? AND $SUCCESSFUL_SNAPSHOT_FILTER",
             arrayOf(kanji)
         )
         cursor.use {
@@ -458,7 +497,8 @@ internal class StudyStatsQueries(
             return 0
         }
         val cursor = db.rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=? AND finished_at>?",
+            "SELECT COUNT(*) FROM $TABLE_SYNC_KANJI_SNAPSHOTS s " +
+                "WHERE s.kanji=? AND s.finished_at>? AND $SUCCESSFUL_SNAPSHOT_FILTER",
             arrayOf(kanji, lastReviewAtMillis.toString())
         )
         cursor.use {
@@ -497,7 +537,8 @@ internal class StudyStatsQueries(
     ): KanjiRepairEvidencePolicy.Snapshot? {
         val cursor = db.rawQuery(
             "SELECT weakness_score, mature_support_count, finished_at, active_example_count, suspended_example_count, reason_code " +
-                "FROM $TABLE_SYNC_KANJI_SNAPSHOTS WHERE kanji=? AND finished_at${comparator}? ORDER BY finished_at DESC, sync_id DESC LIMIT 1",
+                "FROM $TABLE_SYNC_KANJI_SNAPSHOTS s WHERE s.kanji=? AND s.finished_at${comparator}? " +
+                "AND $SUCCESSFUL_SNAPSHOT_FILTER ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1",
             arrayOf(kanji, boundaryMillis.toString())
         )
         cursor.use {
@@ -605,6 +646,8 @@ internal class StudyStatsQueries(
     private companion object {
         const val TABLE_REVIEW_LOG = "review_log"
         const val TABLE_SYNC_KANJI_SNAPSHOTS = "sync_kanji_snapshots"
+        const val SUCCESSFUL_SNAPSHOT_FILTER =
+            "s.sync_id IN (SELECT id FROM sync_runs WHERE status='success')"
         const val TABLE_STUDY_ITEMS = "study_items"
         const val TABLE_KANJI_TIMELINE_EVENTS = "kanji_timeline_events"
         const val COLUMN_KANJI = "kanji"

@@ -37,6 +37,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -1619,7 +1620,7 @@ fun testRevealedRecognitionCardSwipesFromAnswerPanelAdvanceQueueBothDirections()
     }
 
     @Test
-fun testSimilarChoiceMissLogsReviewAndShowsWritingRepairQueue() {
+    fun testSimilarChoiceMissLogsInlineReviewWithoutWritingRepairQueue() {
         seedSimilarChoiceDashboard();
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -1628,13 +1629,11 @@ fun testSimilarChoiceMissLogsReviewAndShowsWritingRepairQueue() {
 
             clickText(scenario, "提");
             scenario.onActivity { activity ->
-                assertHasText(activity, "1 / 3");
-                assertHasText(activity, "Repair");
-                assertHasText(activity, "You picked 提 — write 拉.");
-                assertNoText(activity, "Write to repair");
-                assertNoText(activity, "Repair the shape mix-up");
-                assertNoText(activity, "similar-kanji miss · writing repair · practice-only");
+                assertHasText(activity, "Not quite — the correct kanji is 拉.")
+                assertHasText(activity, "Continue")
             }
+            clickText(scenario, "Continue")
+            waitForText(scenario, REVEAL)
 
             assertSimilarChoiceReviewStored("again");
         }
@@ -3094,9 +3093,14 @@ fun assertSimilarChoiceReviewStored(expectedRating: String) {
             } else {
                 assertEquals(1, stats.good);
             }
-            assertEquals(if ("again" == expectedRating) 2 else 0, countSimilarRepairs(store))
+            assertEquals(0, countSimilarRepairs(store))
             var item = onlyStudyItem(store)
             assertEquals(1, item.similarKanjiMemory.totalReviews);
+            if ("again" == expectedRating) {
+                val route = AdaptiveStudyItemPolicy.routeState(item)
+                assertNotNull(route)
+                assertEquals(AdaptiveStudyItemPolicy.ROUTING_VERSION, item.routingVersion)
+            }
         }
     }
 

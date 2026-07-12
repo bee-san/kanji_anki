@@ -31,4 +31,7 @@ data class SettingsStudyLadderRungModel(
     val onToggle: SettingsStudyLadderAction,
     val onMoveUp: SettingsStudyLadderAction,
     val onMoveDown: SettingsStudyLadderAction,
+    val sectionTitle: String = "",
+    val toggleEnabled: Boolean = true,
+    val showPriorityControls: Boolean = true,
 )

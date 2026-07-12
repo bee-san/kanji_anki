@@ -167,6 +167,28 @@ class SimilarKanjiChoicePlannerTest {
     }
 
     @Test
+    fun adaptiveRepairKeepsCapturedConfusionInBoundedChoiceSet() {
+        val stored = RecordsImportModels.SimilarKanjiChoiceCard(
+            "裂",
+            "split",
+            listOf("裂", "列", "烈", "劣"),
+            "stored-signature",
+        )
+
+        val card = SimilarKanjiChoicePlanner.choiceCardForSession(
+            stored,
+            "裂",
+            "split",
+            emptyList(),
+            "例",
+        )
+
+        assertEquals(listOf("裂", "例", "列", "烈"), card.choices)
+        assertEquals("例\t列\t烈\t裂", card.choiceSignature)
+        assertEquals(4, card.choices.size)
+    }
+
+    @Test
     fun choiceCardForSessionBuildsFallbackCardFromPairsAndMeaning() {
         val card = SimilarKanjiChoicePlanner.choiceCardForSession(
             null,

@@ -59,8 +59,38 @@ object ReadingKanjiChoicePlanner {
         // Prefer a usage whose reading actually has a >= 2-other-kanji pool AND
         // is weak evidence; deterministic on ties.
         val prompt = selectPrompt(kanji, safeUsages, safeCandidates) ?: return null
+        return buildForPrompt(kanji, prompt, safeCandidates, random)
+    }
+
+    /** Exact-focus counterpart used by inline homophone repair. */
+    @JvmStatic
+    fun buildExactChoiceCard(
+        targetKanji: String?,
+        exactWord: String?,
+        exactSharedReading: String?,
+        usages: List<TargetUsage>?,
+        candidatesByReading: Map<String, List<Candidate>>?,
+        random: Random?,
+    ): RecordsImportModels.ReadingKanjiChoiceCard? {
+        val kanji = targetKanji?.trim().orEmpty()
+        val word = exactWord?.trim().orEmpty()
+        val reading = exactSharedReading?.trim().orEmpty()
+        if (kanji.isEmpty() || word.isEmpty() || reading.isEmpty()) return null
+        val candidates = candidatesByReading.orEmpty()
+        val prompt = usages.orEmpty().firstOrNull {
+            it.word.trim() == word && it.reading.trim() == reading
+        } ?: return null
+        return buildForPrompt(kanji, prompt, candidates, random)
+    }
+
+    private fun buildForPrompt(
+        kanji: String,
+        prompt: TargetUsage,
+        candidatesByReading: Map<String, List<Candidate>>,
+        random: Random?,
+    ): RecordsImportModels.ReadingKanjiChoiceCard? {
         val reading = prompt.reading.trim()
-        val distractors = orderedDistractors(kanji, safeCandidates[reading])
+        val distractors = orderedDistractors(kanji, candidatesByReading[reading])
         if (distractors.size < MIN_CHOICE_COUNT - 1) {
             return null
         }

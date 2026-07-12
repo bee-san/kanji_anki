@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -159,8 +160,11 @@ class LadderSchedulerTest {
 
         val promoting = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, promoting.item.rung);
-        assertEquals("Streak resets on promotion", 0, promoting.item.realPassStreak);
+        assertCanonicalizedLegacyTransition(
+            promoting.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -173,10 +177,12 @@ class LadderSchedulerTest {
         val result = applyQualifyingPasses(
                 scheduler, item, 2, RecordsSyncModels.Settings.kikuDefaults(), ladder);
 
-        assertEquals(RecordsBase.LadderRung.WORD_READING, result.item.rung);
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.WORD_READING,
+            CoreSkill.CONTEXTUAL_READING,
+        )
         assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
-        assertEquals(0, result.item.realPassStreak);
-        assertEquals(0, result.item.realAgainStreak);
     }
 
     @Test
@@ -191,8 +197,12 @@ class LadderSchedulerTest {
                     1000L
             );
 
-            assertEquals(RecordsBase.LadderRung.KANJI_MEANING, result.item.rung);
-            assertEquals(1, result.item.realPassStreak);
+            assertCanonicalizedLegacyTransition(
+                result.item,
+                RecordsBase.LadderRung.KANJI_MEANING,
+                CoreSkill.RECOGNITION,
+            )
+            assertEquals(1, result.item.kanjiMeaningMemory.consecutivePasses)
         }
     }
 
@@ -200,25 +210,22 @@ class LadderSchedulerTest {
     fun hardGoodAndEasyUseFsrsIntervalPromotionRule() {
         for (rating in arrayOf("hard", "good", "easy")) {
             val scheduler = schedulerWithReviewIntervalDays(22);
-            var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
-            val consumed = HashSet<String>();
-            var result: RecordsSchedulerModels.ReviewResult? = null
-            // Two qualifying real-due passes clear the default min-pass gate.
-            for (i in 0 until 2) {
-                val due = i.toLong() * 100L * BridgeScheduler.DAY
-                item = item.copyBuilder().dueAtMillis(due)
-                        .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
-                result = scheduler.applyReview(
-                        item.withToken(rating + i),
-                        RecordsSchedulerModels.ReviewRequest("裂", rating + i, rating, false, false, false, 0),
-                        consumed,
-                        due + 1000L
-                );
-                item = result.item
-            }
+            val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder()
+                .realPassStreak(1)
+                .build()
+            val result = scheduler.applyReview(
+                item.withToken(rating),
+                RecordsSchedulerModels.ReviewRequest("裂", rating, rating, false, false, false, 0),
+                HashSet<String>(),
+                1000L,
+            )
 
-            assertEquals("Rating " + rating + " should promote by interval",
-                    RecordsBase.LadderRung.FONT_MEANING, result!!.item.rung);
+            assertCanonicalizedLegacyTransition(
+                result.item,
+                RecordsBase.LadderRung.FONT_MEANING,
+                CoreSkill.RECOGNITION,
+            )
         }
     }
 
@@ -603,24 +610,32 @@ class LadderSchedulerTest {
     @Test
     fun realAgainResetsPassStreakAndViceVersa() {
         val scheduler = BridgeScheduler();
-        val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        val passInput = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder()
+            .realAgainStreak(1)
+            .build()
+        val pass = scheduler.applyReview(
+            passInput.withToken("p1"), passRequest("裂", "p1"), HashSet<String>(), 1000L,
+        )
+        assertEquals(1, pass.item.kanjiMeaningMemory.consecutivePasses)
+        assertCanonicalizedLegacyTransition(
+            pass.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
 
-        val pass1 = scheduler.applyReview(
-                item.withToken("p1"), passRequest("裂", "p1"), consumed, 1000L);
-        assertEquals(1, pass1.item.realPassStreak);
-        assertEquals(0, pass1.item.realAgainStreak);
-
-        val forFail = pass1.item.copyBuilder()
-                .dueAtMillis(pass1.item.dueAtMillis)
-                .phase(RecordsBase.SchedulerPhase.REVIEW)
-                .state("review")
-                .build();
-        val failTime = pass1.item.dueAtMillis + 1000L;
+        val failInput = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder()
+            .realPassStreak(1)
+            .build()
         val fail = scheduler.applyReview(
-                forFail.withToken("f1"), failRequest("裂", "f1"), consumed, failTime);
-        assertEquals("Fail in review resets pass streak", 0, fail.item.realPassStreak);
-        assertEquals(1, fail.item.realAgainStreak);
+            failInput.withToken("f1"), failRequest("裂", "f1"), HashSet<String>(), 1000L,
+        )
+        assertEquals("Fail resets the legacy task pass streak", 0, fail.item.kanjiMeaningMemory.consecutivePasses)
+        assertFalse(AdaptiveStudyItemPolicy.isAdaptive(fail.item))
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, fail.item.phase)
+        assertEquals(0, fail.item.realPassStreak)
+        assertEquals(1, fail.item.realAgainStreak)
     }
 
     @Test
@@ -647,8 +662,12 @@ class LadderSchedulerTest {
 
         assertEquals("Relearning pass does not bump real pass streak",
                 0, practicePass.item.realPassStreak);
-        assertEquals("Relearning pass does not reset real again streak",
-                againStreak, practicePass.item.realAgainStreak);
+        assertTrue("The legacy lapse supplied real-due fail evidence", againStreak > 0)
+        assertCanonicalizedLegacyTransition(
+            practicePass.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     // ---- Rung-to-task-type wiring ----
@@ -716,17 +735,26 @@ class LadderSchedulerTest {
         // First review: counts (nowMillis > dueAt, first time this due slot is seen)
         val r1 = scheduler.applyReview(
                 item.withToken("s1"), passRequest("裂", "s1"), consumed, 1000L);
-        assertEquals(1, r1.item.realPassStreak);
+        assertEquals(1, r1.item.kanjiMeaningMemory.consecutivePasses);
 
         // Second review on the same item without it becoming due again:
         // The dueAtMillis has now been updated to a far-future value by the scheduler.
         // If we manually set dueAtMillis back to the original 500 (simulating same slot),
         // the lastRealReviewDueAtMillis will already be 500, so it should be a no-op for streak.
-        val sameSlot = r1.item.copyBuilder().dueAtMillis(500L).build();
+        val sameSlot = item.copyBuilder()
+            .dueAtMillis(500L)
+            .lastRealReviewDueAtMillis(500L)
+            .realPassStreak(1)
+            .build()
         val r2 = scheduler.applyReview(
                 sameSlot.withToken("s2"), passRequest("裂", "s2"), consumed, 1001L);
         // Streak should not advance further because same due slot
-        assertEquals(1, r2.item.realPassStreak);
+        assertEquals(1, r2.item.kanjiMeaningMemory.consecutivePasses);
+        assertCanonicalizedLegacyTransition(
+            r2.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -741,8 +769,12 @@ class LadderSchedulerTest {
                 consumed,
                 1000L
         );
-        assertEquals("Hard should count as pass", 1, result.item.realPassStreak);
-        assertEquals(0, result.item.realAgainStreak);
+        assertEquals("Hard should count as pass", 1, result.item.kanjiMeaningMemory.consecutivePasses);
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -757,8 +789,12 @@ class LadderSchedulerTest {
                 consumed,
                 1000L
         );
-        assertEquals("Easy should count as pass", 1, result.item.realPassStreak);
-        assertEquals(0, result.item.realAgainStreak);
+        assertEquals("Easy should count as pass", 1, result.item.kanjiMeaningMemory.consecutivePasses);
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1116,54 +1152,58 @@ class LadderSchedulerTest {
         return RecordsSchedulerModels.ReviewRequest(kanji, token, "again", false, false, false, 0);
     }
 
+    private fun assertCanonicalizedLegacyTransition(
+        item: RecordsStudyModels.StudyItem,
+        legacyTargetRung: RecordsBase.LadderRung,
+        core: CoreSkill,
+    ) {
+        assertTrue(AdaptiveStudyItemPolicy.isAdaptive(item))
+        assertEquals(core, AdaptiveStudyItemPolicy.routeState(item)!!.activeCore)
+        assertEquals(AdaptiveCorePolicy.memoryOwnerRung(core), item.rung)
+        assertEquals(0, item.realPassStreak)
+        assertEquals(0, item.realAgainStreak)
+        val legacyMemory = item.memoryForRung(legacyTargetRung)
+        assertEquals(item.dueAtMillis, legacyMemory.dueAtMillis)
+        assertEquals(item.matureIntervalDays, legacyMemory.matureIntervalDays)
+        assertEquals(item.totalReviews, legacyMemory.totalReviews)
+        assertEquals(
+            legacyMemory.encode(),
+            AdaptiveStudyItemPolicy.coreMemory(item, core).encode(),
+        )
+    }
+
     // ---- Mixed pass/fail streak-breaking tests ----
 
     @Test
     fun mixedPassFailSequenceResetsStreakAndPromotesOnlyByInterval() {
-        val scheduler = schedulerWithReviewIntervalDays(10);
-        val consumed = HashSet<String>();
-        var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
-        var now = 1000L
+        val primedPass = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder().realPassStreak(1).build()
+        val belowThreshold = schedulerWithReviewIntervalDays(10).applyReview(
+            primedPass.withToken("below"), passRequest("裂", "below"), HashSet<String>(), 1000L,
+        )
+        assertCanonicalizedLegacyTransition(
+            belowThreshold.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
+        assertEquals(2, belowThreshold.item.kanjiMeaningMemory.consecutivePasses)
 
-        for (i in 0 until 2) {
-            val r = scheduler.applyReview(
-                    item.withToken("p" + i), passRequest("裂", "p" + i), consumed, now);
-            item = r.item;
-            now = item.dueAtMillis;
-            item = item.copyBuilder().dueAtMillis(now).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
-        }
-        assertEquals("Pass streak is 2 before fail", 2, item.realPassStreak);
-        assertEquals("Still on KANJI_MEANING", RecordsBase.LadderRung.KANJI_MEANING, item.rung);
+        val failInput = primedPass.copyBuilder().realPassStreak(2).build()
+        val failed = schedulerWithReviewIntervalDays(10).applyReview(
+            failInput.withToken("fail"), failRequest("裂", "fail"), HashSet<String>(), 1000L,
+        )
+        assertFalse(AdaptiveStudyItemPolicy.isAdaptive(failed.item))
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, failed.item.phase)
+        assertEquals(0, failed.item.kanjiMeaningMemory.consecutivePasses)
 
-        val failResult = scheduler.applyReview(
-                item.withToken("f0"), failRequest("裂", "f0"), consumed, now);
-        item = failResult.item;
-        assertEquals("Pass streak reset to 0 after fail", 0, item.realPassStreak);
-        assertEquals("Again streak is 1", 1, item.realAgainStreak);
-        assertEquals("Still on KANJI_MEANING after single fail", RecordsBase.LadderRung.KANJI_MEANING, item.rung);
-
-        now = Math.max(item.dueAtMillis, now + 86_400_000L);
-        item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
-        for (i in 0 until 2) {
-            val r = scheduler.applyReview(
-                    item.withToken("q" + i), passRequest("裂", "q" + i), consumed, now);
-            item = r.item;
-            now = item.dueAtMillis;
-            item = item.copyBuilder().dueAtMillis(now).phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
-        }
-        assertEquals("Below-threshold FSRS intervals do not promote",
-                RecordsBase.LadderRung.KANJI_MEANING, item.rung);
-
-        val matureScheduler = schedulerWithReviewIntervalDays(22);
-        val promoteResult = scheduler.applyReview(
-                item.withToken("q2"), passRequest("裂", "q2"), consumed, now);
-        assertEquals("Still below threshold with the original scheduler",
-                RecordsBase.LadderRung.KANJI_MEANING, promoteResult.item.rung);
-
-        val intervalPromote = matureScheduler.applyReview(
-                item.withToken("mature"), passRequest("裂", "mature"), consumed, now);
-        assertEquals("Promoted to FONT_MEANING once FSRS interval crosses threshold",
-                RecordsBase.LadderRung.FONT_MEANING, intervalPromote.item.rung);
+        val promoted = schedulerWithReviewIntervalDays(22).applyReview(
+            primedPass.withToken("mature"), passRequest("裂", "mature"), HashSet<String>(), 1000L,
+        )
+        assertCanonicalizedLegacyTransition(
+            promoted.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1181,15 +1221,15 @@ class LadderSchedulerTest {
         assertEquals("A real-due pass must not touch the legacy last-failed-day mirror",
                 5000L, passResult.item.lastFailedRecognitionDayMillis);
 
-        var failItem = passResult.item;
-        val failDue = failItem.dueAtMillis
-        val failNow = Math.max(failDue + 60_000L, now + 86_400_000L);
-        failItem = failItem.copyBuilder().dueAtMillis(failNow - 60_000L)
+        val failNow = now + 10L * BridgeScheduler.DAY
+        val failItem = item.copyBuilder().dueAtMillis(failNow - 60_000L)
             .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build();
         val failResult = scheduler.applyReview(
-                failItem.withToken("fail"), failRequest("裂", "fail"), consumed, failNow);
+                failItem.withToken("fail"), failRequest("裂", "fail"), HashSet<String>(), failNow);
         assertEquals("A real-due fail updates the last-failed-day to the fail's due slot",
                 failItem.dueAtMillis, failResult.item.lastFailedRecognitionDayMillis);
+        assertFalse(AdaptiveStudyItemPolicy.isAdaptive(failResult.item))
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, failResult.item.phase)
     }
 
     @Test
@@ -1215,8 +1255,11 @@ class LadderSchedulerTest {
 
         val result = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals("Strictly more than 21 days promotes",
-                RecordsBase.LadderRung.FONT_MEANING, result.item.rung);
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     // ---- hasSimilarKanji=true promotion via full applyReview path ----
@@ -1231,8 +1274,11 @@ class LadderSchedulerTest {
 
         val result = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals("Promoted to SIMILAR_KANJI when hasSimilarKanji is true",
-                RecordsBase.LadderRung.SIMILAR_KANJI, result.item.rung);
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.SIMILAR_KANJI,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1287,12 +1333,18 @@ class LadderSchedulerTest {
         val twentyNineDayThreshold = settingsWithLadderThresholds(29, 3);
 
         val held = applyQualifyingPasses(scheduler, item, 2, thirtyDayThreshold);
-        assertEquals("Exactly the custom threshold does not promote",
-                RecordsBase.LadderRung.KANJI_MEANING, held.item.rung);
+        assertCanonicalizedLegacyTransition(
+            held.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
 
         val promoted = applyQualifyingPasses(scheduler, item, 2, twentyNineDayThreshold);
-        assertEquals("Strictly above the custom threshold promotes",
-                RecordsBase.LadderRung.FONT_MEANING, promoted.item.rung);
+        assertCanonicalizedLegacyTransition(
+            promoted.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1325,10 +1377,10 @@ class LadderSchedulerTest {
     }
 
     /**
-     * Apply [passes] consecutive qualifying real-due passes to [startItem],
-     * each on a fresh past due slot so every pass counts as real-due evidence.
-     * Used by promotion tests now that a single qualifying pass no longer
-     * promotes under the default `ladderPromotionMinPasses` gate (Goal 63).
+     * Apply one legacy transition with [passes] worth of real-due evidence.
+     * Earlier evidence is primed on the legacy movement streak because the
+     * production result converts immediately to routing v2 and deliberately
+     * resets movement streaks after preserving the exercised task memory.
      */
     private fun applyQualifyingPasses(
             scheduler: BridgeScheduler,
@@ -1337,22 +1389,18 @@ class LadderSchedulerTest {
             settings: RecordsSyncModels.Settings? = null,
             ladder: RecordsBase.StudyLadderSettings? = null
     ): RecordsSchedulerModels.ReviewResult {
-        val consumed = HashSet<String>()
-        var item = startItem
-        var result: RecordsSchedulerModels.ReviewResult? = null
-        for (i in 0 until passes) {
-            val due = i.toLong() * 100L * BridgeScheduler.DAY
-            item = item.copyBuilder()
-                    .dueAtMillis(due)
-                    .phase(RecordsBase.SchedulerPhase.REVIEW)
-                    .state("review")
-                    .build()
-            result = scheduler.applyReview(
-                    item.withToken("qp" + i), passRequest("裂", "qp" + i), consumed, due + 1000L,
-                    null, settings, ladder)
-            item = result.item
-        }
-        return result!!
+        require(passes > 0)
+        val due = (passes - 1L) * 100L * BridgeScheduler.DAY
+        val item = startItem.copyBuilder()
+            .dueAtMillis(due)
+            .realPassStreak(passes - 1)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .state("review")
+            .build()
+        return scheduler.applyReview(
+            item.withToken("qp"), passRequest("裂", "qp"), HashSet<String>(), due + 1000L,
+            null, settings, ladder,
+        )
     }
 
     // ---- Goal 63: minimum real-due passes before promotion ----
@@ -1364,10 +1412,13 @@ class LadderSchedulerTest {
 
         val first = applyQualifyingPasses(scheduler, item, 1);
 
-        assertEquals("A single qualifying pass does not promote at the default min-pass gate",
-                RecordsBase.LadderRung.KANJI_MEANING, first.item.rung);
-        assertEquals("Pass streak reaches 1 on the first qualifying pass",
-                1, first.item.realPassStreak);
+        assertCanonicalizedLegacyTransition(
+            first.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
+        assertEquals("Legacy task memory records the qualifying pass",
+            1, first.item.kanjiMeaningMemory.consecutivePasses);
     }
 
     @Test
@@ -1377,9 +1428,11 @@ class LadderSchedulerTest {
 
         val second = applyQualifyingPasses(scheduler, item, 2);
 
-        assertEquals("The second qualifying pass promotes",
-                RecordsBase.LadderRung.FONT_MEANING, second.item.rung);
-        assertEquals("Streak resets on promotion", 0, second.item.realPassStreak);
+        assertCanonicalizedLegacyTransition(
+            second.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1400,8 +1453,11 @@ class LadderSchedulerTest {
 
         val first = applyQualifyingPasses(scheduler, item, 1, legacy);
 
-        assertEquals("With ladderPromotionMinPasses=1 a single qualifying pass promotes",
-                RecordsBase.LadderRung.FONT_MEANING, first.item.rung);
+        assertCanonicalizedLegacyTransition(
+            first.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     @Test
@@ -1415,9 +1471,12 @@ class LadderSchedulerTest {
 
         val first = applyQualifyingPasses(scheduler, demoted, 1);
 
-        assertEquals("First post-demotion pass does not re-promote",
-                RecordsBase.LadderRung.KANJI_MEANING, first.item.rung);
-        assertEquals(1, first.item.realPassStreak);
+        assertCanonicalizedLegacyTransition(
+            first.item,
+            RecordsBase.LadderRung.KANJI_MEANING,
+            CoreSkill.RECOGNITION,
+        )
+        assertEquals(1, first.item.kanjiMeaningMemory.consecutivePasses);
     }
 
     // ---- Goal 70: demotion first-review cap with empty relearning steps ----
@@ -1445,8 +1504,11 @@ class LadderSchedulerTest {
                 item.withToken("d"), failRequest("裂", "d"), consumed, now,
                 null, RecordsSyncModels.Settings.kikuDefaults(), emptyRelearningSteps())
 
-        assertEquals("Third real-due again demotes the rung",
-                RecordsBase.LadderRung.MEANING_KANJI, result.item.rung)
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.MEANING_KANJI,
+            CoreSkill.RECOGNITION,
+        )
         assertTrue("Demoted rung's first review is capped to <= now + 1 day",
                 result.item.dueAtMillis <= now + BridgeScheduler.DAY)
     }
@@ -1498,22 +1560,19 @@ class LadderSchedulerTest {
     @Test
     fun closePassChainDoesNotPromoteOutOfWriteKanjiWithoutCleanWrites() {
         val scheduler = schedulerWithReviewIntervalDays(22);
-        val consumed = HashSet<String>();
         // Start with writingLevel 1 and a primed pass streak; a CLOSE pass keeps
         // the level below 2 even though the interval and min-pass gates are met.
-        var item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
-        var now = 1000L
-        var result: RecordsSchedulerModels.ReviewResult? = null
-        for (i in 0 until 3) {
-            item = item.copyBuilder().dueAtMillis(now - 60_000L)
-                    .phase(RecordsBase.SchedulerPhase.REVIEW).state("review").build()
-            result = scheduler.applyReview(
-                    item.withToken("c" + i), closeWriteRequest("c" + i), consumed, now)
-            item = result.item
-            now = Math.max(item.dueAtMillis, now + 100L * 86_400_000L)
-        }
-        assertEquals("A chain of messy CLOSE passes never promotes off write_kanji",
-                RecordsBase.LadderRung.WRITE_KANJI, result!!.item.rung)
+        val item = writeKanjiCard(writingLevel = 1, realPassStreak = 1)
+        val result = scheduler.applyReview(
+            item.withToken("c"), closeWriteRequest("c"), HashSet<String>(), 1000L,
+        )
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.WRITE_KANJI,
+            CoreSkill.RECOGNITION,
+        )
+        assertEquals("Blocked legacy promotion never populated type_meaning memory",
+            0, result.item.typingMeaningMemory.totalReviews)
         assertTrue("writingLevel stays below the promotion floor",
                 result.item.writingLevel < 2)
     }
@@ -1528,8 +1587,11 @@ class LadderSchedulerTest {
         val result = scheduler.applyReview(
                 item.withToken("clean"), cleanWriteRequest("clean"), consumed, 1000L)
 
-        assertEquals("Clean hint-free writing promotes off write_kanji",
-                RecordsBase.LadderRung.TYPE_MEANING, result.item.rung)
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.TYPE_MEANING,
+            CoreSkill.RECOGNITION,
+        )
         assertTrue("writingLevel reached the promotion floor",
                 result.item.writingLevel >= 2)
     }
@@ -1543,8 +1605,11 @@ class LadderSchedulerTest {
 
         val result = applyQualifyingPasses(scheduler, item, 2)
 
-        assertEquals("writingLevel is irrelevant off the write_kanji rung",
-                RecordsBase.LadderRung.FONT_MEANING, result.item.rung)
+        assertCanonicalizedLegacyTransition(
+            result.item,
+            RecordsBase.LadderRung.FONT_MEANING,
+            CoreSkill.RECOGNITION,
+        )
     }
 
     // ---- Goal 65: default reorder reaches similar_kanji in one demotion step ----
@@ -1600,6 +1665,7 @@ class LadderSchedulerTest {
         val now = 200L * BridgeScheduler.DAY
         val rungs = HashSet<RecordsBase.LadderRung>()
         val dueDates = HashSet<Long>()
+        val promotedLegacyIntervals = HashSet<Int>()
         for (retention in doubleArrayOf(0.80, 0.90, 0.95)) {
             // High stability so the 0.90-equivalent interval clears the 21-day
             // promotion threshold; primed streak so a single pass can promote.
@@ -1617,10 +1683,17 @@ class LadderSchedulerTest {
                     RecordsSchedulerModels.SchedulerParameters(retention))
             rungs.add(result.item.rung)
             dueDates.add(result.item.dueAtMillis)
+            promotedLegacyIntervals.add(result.item.fontMeaningMemory.matureIntervalDays)
+            assertCanonicalizedLegacyTransition(
+                result.item,
+                RecordsBase.LadderRung.FONT_MEANING,
+                CoreSkill.RECOGNITION,
+            )
         }
         assertEquals("All retentions promote to the same rung", 1, rungs.size)
-        assertEquals("Promotion lands on FONT_MEANING at every retention",
-                RecordsBase.LadderRung.FONT_MEANING, rungs.first())
+        assertEquals("Lazy conversion anchors every promoted recognition item",
+                RecordsBase.LadderRung.KANJI_MEANING, rungs.first())
+        assertEquals(setOf(7), promotedLegacyIntervals)
         // The capped promotion due (7 days) is retention-independent too, so
         // due dates coincide; the un-promoted path would differ, so this also
         // guards that all three actually promoted.

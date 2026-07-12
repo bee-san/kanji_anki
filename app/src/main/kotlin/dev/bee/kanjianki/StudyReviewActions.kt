@@ -2,6 +2,12 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.data.ReviewChoiceLog
+import dev.bee.kanjianki.data.ReviewCommitCommand
+import dev.bee.kanjianki.data.ReviewCommitDisposition
+import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTaskTiming
+import dev.bee.kanjianki.data.SimilarChoiceCommit
 
 internal object StudyReviewActions {
     @JvmStatic
@@ -13,15 +19,55 @@ internal object StudyReviewActions {
         writer: ReviewWriter,
         recorder: ReviewOutcomeRecorder,
         marker: StudyRunMarker,
-    ) {
+    ): ReviewCommitResult = saveAppliedReview(
+        request,
+        result,
+        beforeReview,
+        reviewedAt,
+        writer,
+        recorder,
+        marker,
+        null,
+        null,
+        null,
+    )
+
+    @JvmStatic
+    fun saveAppliedReview(
+        request: RecordsSchedulerModels.ReviewRequest,
+        result: RecordsSchedulerModels.ReviewResult,
+        beforeReview: RecordsStudyModels.StudyItem,
+        reviewedAt: Long,
+        writer: ReviewWriter,
+        recorder: ReviewOutcomeRecorder,
+        marker: StudyRunMarker,
+        taskTiming: ReviewTaskTiming?,
+        choiceLog: ReviewChoiceLog?,
+        similarChoice: SimilarChoiceCommit?,
+    ): ReviewCommitResult {
         // One transaction for the item + review-log row: process death between
         // them would advance scheduling with no review_log row (lost review;
         // token wrongly retryable while the item already advanced).
-        writer.saveReviewOutcome(item = result.item, request = request, appliedRating = result.appliedRating, reviewedAt = reviewedAt, beforeReview = beforeReview)
-        recorder.recordReviewOutcome(request.kanji, result.appliedRating, beforeReview, result.item)
+        val commit = writer.commitReview(
+            ReviewCommitCommand(
+                afterReview = result.item,
+                request = request,
+                appliedRating = result.appliedRating,
+                reviewedAtMillis = reviewedAt,
+                beforeReview = beforeReview,
+                taskTiming = taskTiming,
+                choiceLog = choiceLog,
+                similarChoice = similarChoice,
+            )
+        )
+        if (commit.disposition != ReviewCommitDisposition.APPLIED || commit.item == null) {
+            return commit
+        }
+        recorder.recordReviewOutcome(request.kanji, result.appliedRating, beforeReview, commit.item)
         if (MainActivityBase.RATING_AGAIN != result.appliedRating) {
             marker.markStudyRunPassed(request.kanji)
         }
+        return commit
     }
 
     @JvmStatic
@@ -71,7 +117,10 @@ internal object StudyReviewActions {
             currentItem.realPassStreak == afterReview.realPassStreak &&
             currentItem.realAgainStreak == afterReview.realAgainStreak &&
             currentItem.lastRealReviewDueAtMillis == afterReview.lastRealReviewDueAtMillis &&
-            currentItem.activeToken == afterReview.activeToken
+            currentItem.activeToken == afterReview.activeToken &&
+            currentItem.schedulerRevision == afterReview.schedulerRevision &&
+            currentItem.routingVersion == afterReview.routingVersion &&
+            currentItem.adaptiveRouteStateJson == afterReview.adaptiveRouteStateJson
     }
 
     class AppliedReviewSnapshot(
@@ -86,13 +135,7 @@ internal object StudyReviewActions {
          * writes must land in one transaction so a crash cannot advance the
          * item without recording the review.
          */
-        fun saveReviewOutcome(
-            item: RecordsStudyModels.StudyItem,
-            request: RecordsSchedulerModels.ReviewRequest,
-            appliedRating: String?,
-            reviewedAt: Long,
-            beforeReview: RecordsStudyModels.StudyItem,
-        )
+        fun commitReview(command: ReviewCommitCommand): ReviewCommitResult
     }
 
     fun interface ReviewOutcomeRecorder {

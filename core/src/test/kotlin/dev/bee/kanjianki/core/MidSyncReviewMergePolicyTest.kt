@@ -12,11 +12,13 @@ class MidSyncReviewMergePolicyTest {
         lastRealReviewDueAt: Long,
         answerSignature: String = "",
         dueAt: Long = 0L,
+        schedulerRevision: Long = 0L,
     ): StudyItem {
         return StudyItem(kanji, "review", dueAt, 1.0, 5.0, totalReviews, 0, 0, 0, null, 0L)
             .copyBuilder()
             .answerSignature(answerSignature)
             .lastRealReviewDueAtMillis(lastRealReviewDueAt)
+            .schedulerRevision(schedulerRevision)
             .build()
     }
 
@@ -114,5 +116,66 @@ class MidSyncReviewMergePolicyTest {
         // Only family "a" is seeded; it did not change, so seeded state wins.
         assertEquals(1, merged.size)
         assertEquals(3L, merged[0].dueAtMillis)
+    }
+
+    @Test
+    fun sameMeaningSignatureReshuffleKeepsMidSyncReviewAndAdoptsNewIdentity() {
+        val oldSignature = "痛|痛む|いたむ|pain"
+        val newSignature = "痛|苦痛|くつう|pain"
+        val baseline = listOf(
+            item(
+                "痛",
+                totalReviews = 3,
+                lastRealReviewDueAt = 100L,
+                answerSignature = oldSignature,
+                schedulerRevision = 7L,
+            ),
+        )
+        val persisted = listOf(
+            item(
+                "痛",
+                totalReviews = 4,
+                lastRealReviewDueAt = 5_000L,
+                answerSignature = oldSignature,
+                dueAt = 7_000L,
+                schedulerRevision = 8L,
+            ),
+        )
+        val seeded = listOf(
+            item(
+                "痛",
+                totalReviews = 3,
+                lastRealReviewDueAt = 100L,
+                answerSignature = newSignature,
+                dueAt = 200L,
+                schedulerRevision = 7L,
+            ),
+        )
+
+        val merged = MidSyncReviewMergePolicy.merge(seeded, baseline, persisted).single()
+
+        assertEquals(newSignature, merged.answerSignature)
+        assertEquals(4, merged.totalReviews)
+        assertEquals(7_000L, merged.dueAtMillis)
+        assertEquals(8L, merged.schedulerRevision)
+    }
+
+    @Test
+    fun meaningChangeDoesNotClaimReviewFromOldFamily() {
+        val baseline = listOf(
+            item("痛", 3, 100L, answerSignature = "痛|痛む|いたむ|pain", schedulerRevision = 7L),
+        )
+        val persisted = listOf(
+            item("痛", 4, 5_000L, answerSignature = "痛|痛む|いたむ|pain", schedulerRevision = 8L),
+        )
+        val seeded = listOf(
+            item("痛", 0, 0L, answerSignature = "痛|傷む|いたむ|be damaged", dueAt = 200L, schedulerRevision = 8L),
+        )
+
+        val merged = MidSyncReviewMergePolicy.merge(seeded, baseline, persisted).single()
+
+        assertEquals("痛|傷む|いたむ|be damaged", merged.answerSignature)
+        assertEquals(0, merged.totalReviews)
+        assertEquals(200L, merged.dueAtMillis)
     }
 }

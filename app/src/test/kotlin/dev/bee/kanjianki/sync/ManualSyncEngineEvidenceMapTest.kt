@@ -100,6 +100,13 @@ class ManualSyncEngineEvidenceMapTest {
 
     private fun insertSnapshot(syncId: Long, finishedAt: Long, kanji: String, weakness: Int, mature: Int) {
         db.execSQL(
+            "INSERT OR IGNORE INTO sync_runs " +
+                "(id, started_at, finished_at, status, active_notes_count, active_cards_count, " +
+                "suspended_cards_archived_count, suspended_kanji_imported_count, deleted_notes_count, deleted_cards_count, " +
+                "error_code, error_message, removal_message) VALUES (?, ?, ?, 'success', 0, 0, 0, 0, 0, 0, NULL, NULL, '')",
+            arrayOf<Any>(syncId, finishedAt - 1L, finishedAt),
+        )
+        db.execSQL(
             "INSERT INTO sync_kanji_snapshots " +
                 "(sync_id, finished_at, kanji, active_cards, suspended_cards, mature_support_count, average_interval_days, " +
                 "total_lapses, total_reps, fsrs_stability_avg, fsrs_difficulty_avg, fsrs_retrievability_avg, weakness_score, " +

@@ -66,7 +66,9 @@ class SchedulerDecisionTraceTest {
         )
 
         assertFalse(traced.result.duplicate)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, traced.result.item.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.result.item.rung)
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(traced.result.item)!!.activeCore)
+        assertEquals(7, traced.result.item.fontMeaningMemory.matureIntervalDays)
         assertEquals("apply_review", traced.trace.operation)
         assertEquals("good", traced.trace.transition!!.rating)
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.beforeRung)
@@ -140,9 +142,37 @@ class SchedulerDecisionTraceTest {
             BridgeScheduler.ReviewApplication.builder(item, passRequest("裂", "similar-not-crossed"), HashSet(), 1_000L).build()
         )
 
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.result.item.rung)
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(traced.result.item)!!.activeCore)
+        assertTrue(traced.result.item.meaningKanjiMemory.totalReviews > 0)
         assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
         assertFalse(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+    }
+
+    @Test
+    fun adaptiveTraceKeepsMandatoryCoreAnchorWhenLegacyBitIsDisabled() {
+        val scheduler = schedulerWithReviewIntervalDays(10)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION, recognitionReviewCount = 1)
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
+            .copyBuilder()
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .activeToken("adaptive")
+            .build()
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+            .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false)
+
+        val traced = scheduler.debugTraceApplyReview(
+            BridgeScheduler.ReviewApplication.builder(
+                item,
+                passRequest("裂", "adaptive"),
+                HashSet(),
+                1_000L,
+            ).ladder(ladder).build(),
+        )
+
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.beforeRung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.afterRung)
     }
 
     @Test

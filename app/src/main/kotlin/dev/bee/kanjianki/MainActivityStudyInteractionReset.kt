@@ -48,6 +48,7 @@ internal object MainActivityStudyInteractionReset {
             activity.flashcardTouchTracking = false
         }
         activity.typingAnswerState = null
+        activity.recognitionFailureCauseState = null
         activity.hintsUsed = 0
         activity.setHintState(hintState)
     }

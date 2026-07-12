@@ -21,6 +21,8 @@ object ProgressAnalyticsCopy {
     fun totalReviewsLabel(): String = localizedText("Total reviews", "復習合計")
     fun accuracyLabel(): String = localizedText("Accuracy", "正答率")
     fun streakLabel(): String = localizedText("Streak", "連続日数")
+    fun currentStreakLabel(): String = localizedText("Current streak", "現在の連続日数")
+    fun longestStreakLabel(): String = localizedText("Longest streak", "最長の連続日数")
     fun bestStreakLabel(days: Int): String = localizedText("Best $days days", "最高${days}日")
     fun kanjiLearnedLabel(): String = localizedText("Kanji practiced", "練習した漢字")
     fun focusSessionsLabel(): String = localizedText("Tasks answered", "回答した課題")

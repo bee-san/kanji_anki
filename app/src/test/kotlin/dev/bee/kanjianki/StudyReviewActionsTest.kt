@@ -2,6 +2,8 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.data.ReviewCommitCommand
+import dev.bee.kanjianki.data.ReviewCommitResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -43,7 +45,8 @@ class StudyReviewActionsTest {
         assertEquals("語", recorder.kanji)
         assertEquals(MainActivityBase.RATING_GOOD, recorder.appliedRating)
         assertSame(before, recorder.beforeReview)
-        assertSame(after, recorder.afterReview)
+        assertEquals(after.totalReviews, recorder.afterReview?.totalReviews)
+        assertEquals(1L, recorder.afterReview?.schedulerRevision)
         assertEquals("語", passedKanji.get())
     }
 
@@ -72,6 +75,29 @@ class StudyReviewActionsTest {
 
         assertEquals(listOf("saveOutcome", "recordOutcome"), events)
         assertNull(passedKanji.get())
+    }
+
+    @Test
+    fun duplicateCommitDoesNotMutateProgressOrPassMarker() {
+        val before = item("語", 1)
+        val after = item("語", 2)
+        val events = mutableListOf<String>()
+
+        val commit = StudyReviewActions.saveAppliedReview(
+            request("語", MainActivityBase.RATING_GOOD),
+            RecordsSchedulerModels.ReviewResult(after, MainActivityBase.RATING_GOOD, false, "ok"),
+            before,
+            123L,
+            StudyReviewActions.ReviewWriter {
+                events.add("saveOutcome")
+                ReviewCommitResult.duplicate()
+            },
+            StudyReviewActions.ReviewOutcomeRecorder { _, _, _, _ -> events.add("recordOutcome") },
+            StudyReviewActions.StudyRunMarker { events.add("markPassed") },
+        )
+
+        assertEquals(listOf("saveOutcome"), events)
+        assertEquals(dev.bee.kanjianki.data.ReviewCommitDisposition.DUPLICATE, commit.disposition)
     }
 
     @Test
@@ -136,19 +162,14 @@ class StudyReviewActionsTest {
         var reviewedAt: Long = 0L
         var beforeReview: RecordsStudyModels.StudyItem? = null
 
-        override fun saveReviewOutcome(
-            item: RecordsStudyModels.StudyItem,
-            request: RecordsSchedulerModels.ReviewRequest,
-            appliedRating: String?,
-            reviewedAt: Long,
-            beforeReview: RecordsStudyModels.StudyItem,
-        ) {
+        override fun commitReview(command: ReviewCommitCommand): ReviewCommitResult {
             events.add("saveOutcome")
-            savedItem = item
-            savedRequest = request
-            savedRating = appliedRating
-            this.reviewedAt = reviewedAt
-            this.beforeReview = beforeReview
+            savedItem = command.afterReview
+            savedRequest = command.request
+            savedRating = command.appliedRating
+            this.reviewedAt = command.reviewedAtMillis
+            this.beforeReview = command.beforeReview
+            return ReviewCommitResult.applied(command.persistedItem())
         }
     }
 

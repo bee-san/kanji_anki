@@ -1,5 +1,10 @@
 # Kotlin + Compose Rewrite Exit Goal
 
+> Archived rewrite exit checklist. Its "Current State" and study-ladder wording
+> describe the May 2026 rewrite branch, not the DB31 production scheduler. See
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md) for the
+> live routing, settings, analytics, and integrity contract.
+
 This branch is done only when the items below are complete, reviewed, committed,
 pushed, and verified. Do not keep adding unrelated helper extractions once an
 item is satisfied.

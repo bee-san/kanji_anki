@@ -19,6 +19,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyEight(db, oldVersion, targetVersion, hooks)
         upgradeThroughTwentyNine(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirty(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirtyOne(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -252,6 +253,43 @@ internal object LocalStoreMigrations {
             // Keep cold dashboard reads bounded: one ordering index for the 120 headers,
             // then one ordered index lookup capped at eight examples for each selected kanji.
             hooks.createDashboardIndexes(db)
+        }
+    }
+
+    private fun upgradeThroughThirtyOne(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 31)) {
+            // Additive integrity/adaptive-routing metadata. Existing scheduler
+            // columns and wire values stay intact so v30 backups and downgrade
+            // tooling can continue to read the legacy state.
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_STUDY_ITEMS,
+                LocalStoreBase.COLUMN_SCHEDULER_REVISION,
+                LocalStoreBase.SQL_INTEGER_NOT_NULL_DEFAULT_ZERO,
+            )
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_STUDY_ITEMS,
+                LocalStoreBase.COLUMN_ROUTING_VERSION,
+                LocalStoreBase.SQL_INTEGER_NOT_NULL_DEFAULT_ONE,
+            )
+            hooks.addNullableColumn(
+                db,
+                LocalStoreBase.TABLE_STUDY_ITEMS,
+                LocalStoreBase.COLUMN_ADAPTIVE_ROUTE_STATE_JSON,
+                LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY,
+            )
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_CORE_SKILL, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_FAILURE_CAUSE, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_EVIDENCE_SOURCE, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_SELECTED_ANSWER, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_CORRECT_ANSWER, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_ANSWER_EVIDENCE_JSON, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
         }
     }
 

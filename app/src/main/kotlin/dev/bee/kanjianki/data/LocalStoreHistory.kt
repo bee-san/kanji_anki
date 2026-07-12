@@ -413,6 +413,10 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         historicalSyncStore.pruneSupersededSnapshots(db)
     }
 
+    fun purgeNonSuccessfulSnapshots(db: SQLiteDatabase) {
+        historicalSyncStore.purgeNonSuccessfulSnapshots(db)
+    }
+
     fun insertHistoricalKanjiAggregates(
         db: SQLiteDatabase,
         syncId: Long,
@@ -434,6 +438,10 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     fun upsertStudyItem(db: SQLiteDatabase, item: RecordsStudyModels.StudyItem) {
+        db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, studyItemValues(item), SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun studyItemValues(item: RecordsStudyModels.StudyItem): ContentValues {
         val values = ContentValues()
         values.put(COLUMN_KANJI, item.kanji)
         values.put(COLUMN_STATE, item.state)
@@ -467,9 +475,12 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         values.put(COLUMN_KANJI_READING_MEMORY, item.kanjiReadingMemory.encode())
         values.put(COLUMN_READING_KANJI_MEMORY, item.readingKanjiMemory.encode())
         values.put(COLUMN_SENTENCE_READING_MEMORY, item.sentenceReadingMemory.encode())
+        values.put(COLUMN_SCHEDULER_REVISION, item.schedulerRevision)
+        values.put(COLUMN_ROUTING_VERSION, item.routingVersion)
+        values.put(COLUMN_ADAPTIVE_ROUTE_STATE_JSON, item.adaptiveRouteStateJson)
         values.put(COLUMN_ACTIVE_TOKEN, item.activeToken)
         values.put(COLUMN_CREATED_AT, item.createdAtMillis)
-        db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        return values
     }
 
     fun readStudyItem(cursor: Cursor): RecordsStudyModels.StudyItem {
@@ -553,7 +564,11 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
             readingKanjiMemory,
             false,
             sentenceReadingMemory,
-        )
+        ).copyBuilder()
+            .schedulerRevision(longValue(cursor, COLUMN_SCHEDULER_REVISION))
+            .routingVersion(integer(cursor, COLUMN_ROUTING_VERSION))
+            .adaptiveRouteStateJson(string(cursor, COLUMN_ADAPTIVE_ROUTE_STATE_JSON))
+            .build()
     }
 
     fun readLearningRepeat(cursor: Cursor): RecordsSchedulerModels.LearningRepeat {

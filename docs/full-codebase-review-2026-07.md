@@ -1,5 +1,13 @@
 # Full Codebase + UI Review (July 2026)
 
+> Historical findings snapshot. Status labels below describe the accompanying
+> review change set, not the current repository. DB31 supersedes the ladder
+> findings and resolves new-repair side-queue routing by storing repair inline;
+> `similar_kanji_repair_queue` is now drain-only. It also adds revision-CAS
+> review persistence, adaptive settings/stats, successful-run-only sync
+> history, and bounded atomic backup/restore behavior. See
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
+
 Six parallel deep reviews were run against the whole repository: ladder state
 machine, FSRS integration, AnkiDroid provider sync, DB migrations/persistence,
 architecture drift, and a complete UI review. This document records every

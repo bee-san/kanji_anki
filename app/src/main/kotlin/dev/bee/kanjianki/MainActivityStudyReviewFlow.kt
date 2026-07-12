@@ -4,14 +4,27 @@ import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.EvidenceSource
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.KanjiReadingAligner
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy
+import dev.bee.kanjianki.core.StudyExampleSelector
+import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.core.PresentationVariant
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.ReviewChoiceLog
+import dev.bee.kanjianki.data.ReviewCommitDisposition
+import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.SimilarChoiceCommit
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -154,6 +167,16 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.postToMainIfActive {
             if (activity.activeSession?.token == token) {
                 activity.flashcardSwipeFeedback?.cancelCommit()
+                // The persisted row may have advanced independently (STALE),
+                // and typing submission marks the visible card revealed before
+                // its async write starts. Reloading the same kanji resets all
+                // interaction state and picks up the current persisted revision;
+                // no review progression, toast, or undo snapshot is produced by
+                // this retry path.
+                val kanji = activity.activeSession?.item?.kanji.orEmpty()
+                if (kanji.isNotBlank()) {
+                    activity.renderStudyForKanji(kanji)
+                }
             }
         }
     }
@@ -169,6 +192,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         override: Boolean,
         ladder: RecordsBase.StudyLadderSettings? = null,
         interactionSource: String = "review-action",
+        answerEvidence: AnswerEvidence? = null,
     ): Boolean {
         val session = activity.activeSession ?: return false
         if (activity.activeSimilarWritingRepair != null) {
@@ -184,10 +208,83 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             rating,
             override
         )
-        val request = mappedReview.request()
+        val effectiveEvidence = answerEvidence ?: inferredAnswerEvidence(session, mappedReview.ratingCode())
+        val request = if (effectiveEvidence == null) {
+            mappedReview.request()
+        } else {
+            mappedReview.request().withAnswerEvidence(effectiveEvidence)
+        }
         return runTokenReviewWrite(session, interactionSource, frameRating = rating) { diagnostics ->
             performNormalReview(session, request, ladder, diagnostics)
         }
+    }
+
+    private fun inferredAnswerEvidence(
+        session: RecordsSchedulerModels.StudySession,
+        rating: String,
+    ): AnswerEvidence? {
+        val failed = StudyRatings.AGAIN == StudyRatings.normalize(rating)
+        val example = StudyExampleSelector.exampleForSession(session)
+        val alignedReading = example?.let {
+            KanjiReadingAligner.alignPlain(
+                it.expression,
+                it.reading,
+                activity.currentDictionaryLookup(),
+            )?.firstOrNull { pair -> pair.kanji == session.item?.kanji }?.canonicalReading
+        }.orEmpty()
+        val common = when (session.taskType) {
+            StudyTaskTypes.KANJI_MEANING -> AnswerEvidence(
+                coreSkill = CoreSkill.RECOGNITION,
+                failureKind = if (failed) FailureKind.UNKNOWN else null,
+                evidenceSource = EvidenceSource.INFERRED,
+                presentationVariant = PresentationVariant.STANDARD_GLYPH,
+                renderedExpression = session.item?.kanji.orEmpty(),
+            )
+            StudyTaskTypes.FONT_MEANING -> AnswerEvidence(
+                coreSkill = CoreSkill.RECOGNITION,
+                failureKind = if (failed) FailureKind.UNKNOWN else null,
+                evidenceSource = EvidenceSource.INFERRED,
+                presentationVariant = PresentationVariant.FONT_GLYPH,
+                renderedExpression = session.item?.kanji.orEmpty(),
+            )
+            StudyTaskTypes.WORD_READING -> AnswerEvidence(
+                coreSkill = CoreSkill.CONTEXTUAL_READING,
+                failureKind = if (failed) FailureKind.WRONG_READING else null,
+                evidenceSource = EvidenceSource.INFERRED,
+                presentationVariant = PresentationVariant.PLAIN_WORD,
+                renderedExpression = example?.expression.orEmpty(),
+                renderedReading = example?.reading.orEmpty(),
+                correctAnswer = alignedReading,
+            )
+            StudyTaskTypes.SENTENCE_READING -> AnswerEvidence(
+                coreSkill = CoreSkill.CONTEXTUAL_READING,
+                failureKind = if (failed) FailureKind.WRONG_READING else null,
+                evidenceSource = EvidenceSource.INFERRED,
+                presentationVariant = PresentationVariant.SENTENCE_CONTEXT,
+                renderedExpression = example?.expression.orEmpty(),
+                renderedReading = example?.reading.orEmpty(),
+                correctAnswer = alignedReading,
+            )
+            StudyTaskTypes.TYPE_MEANING, StudyTaskTypes.TYPING_MEANING -> AnswerEvidence(
+                coreSkill = CoreSkill.RECOGNITION,
+                failureKind = if (failed) FailureKind.MEANING_UNKNOWN else null,
+                evidenceSource = EvidenceSource.OBJECTIVE_CHOICE,
+                selectedAnswer = activity.typingAnswerState?.text?.toString().orEmpty(),
+                correctAnswer = StudyTextCopy.collectionMeaningForSession(session),
+                renderedExpression = session.item?.kanji.orEmpty(),
+            )
+            else -> null
+        }
+        if (common != null) return common
+        if (!session.writingRequired) return null
+        return AnswerEvidence(
+            coreSkill = CoreSkill.RECOGNITION,
+            failureKind = if (failed) FailureKind.WRITING_SHAPE else null,
+            evidenceSource = EvidenceSource.WRITING_EVALUATOR,
+            selectedAnswer = activity.activeAnalysis?.status?.name.orEmpty(),
+            correctAnswer = session.item?.kanji.orEmpty(),
+            renderedExpression = session.item?.kanji.orEmpty(),
+        )
     }
 
     fun submitSimilarWritingRepair(rating: String) {
@@ -247,32 +344,72 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         selectedChoice: String,
         correct: Boolean,
         rung: RecordsBase.LadderRung,
+        correctAnswer: String = targetKanji,
     ): Boolean {
         val session = activity.activeSession ?: return false
         val writingOutcome = StudyReviewWritingOutcome.from(activity.activeAnalysis)
         val hintsUsed = activity.hintsUsed
         val now = System.currentTimeMillis()
         val rating = if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN
+        val coreSkill = when (rung) {
+            RecordsBase.LadderRung.KANJI_READING,
+            RecordsBase.LadderRung.READING_KANJI,
+            RecordsBase.LadderRung.WORD_READING,
+            RecordsBase.LadderRung.SENTENCE_READING -> CoreSkill.CONTEXTUAL_READING
+            else -> CoreSkill.RECOGNITION
+        }
+        val failureKind = if (correct) {
+            null
+        } else {
+            when (rung) {
+                RecordsBase.LadderRung.KANJI_READING -> FailureKind.WRONG_READING
+                RecordsBase.LadderRung.READING_KANJI -> FailureKind.HOMOPHONE_CONFUSION
+                else -> FailureKind.MEANING_UNKNOWN
+            }
+        }
+        val presentation = if (coreSkill == CoreSkill.CONTEXTUAL_READING) {
+            PresentationVariant.PLAIN_WORD
+        } else {
+            PresentationVariant.STANDARD_GLYPH
+        }
         val request = StudyReviewRequestPolicy.from(
             session,
             writingOutcome,
             hintsUsed,
             rating,
             false,
-        ).request()
+        ).request().withAnswerEvidence(
+            AnswerEvidence(
+                coreSkill = coreSkill,
+                failureKind = failureKind,
+                evidenceSource = EvidenceSource.OBJECTIVE_CHOICE,
+                presentationVariant = presentation,
+                selectedAnswer = selectedChoice,
+                correctAnswer = correctAnswer,
+            )
+        )
         return runTokenReviewWrite(session, "choice-answer") { diagnostics ->
             if (!activity.isActiveToken(session.token)) {
                 return@runTokenReviewWrite ReviewWriteDisposition.RETRYABLE_DROP
             }
-            activity.store.recordChoiceReviewLog(
-                targetKanji,
-                choiceSignature,
-                selectedChoice,
-                correct,
-                rung.wireName(),
-                now,
+            performNormalReview(
+                session,
+                request,
+                null,
+                diagnostics,
+                if (rung == RecordsBase.LadderRung.MEANING_KANJI) {
+                    ReviewChoiceLog(
+                        targetKanji,
+                        choiceSignature,
+                        selectedChoice,
+                        correct,
+                        rung.wireName(),
+                        now,
+                    )
+                } else {
+                    null
+                },
             )
-            performNormalReview(session, request, null, diagnostics)
         }
     }
 
@@ -288,12 +425,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 return@runTokenReviewWrite ReviewWriteDisposition.RETRYABLE_DROP
             }
             val ladder = activity.studyLadderSettings()
-            val result = activity.store.submitSimilarChoice(
-                card,
-                selectedKanji,
-                now,
-                ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
-            )
+            val result = activity.store.evaluateSimilarChoice(card, selectedKanji)
             val rating = if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN
             val mappedReview = StudyReviewRequestPolicy.from(
                 session,
@@ -302,7 +434,24 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 rating,
                 false
             )
-            performNormalReview(session, mappedReview.request(), ladder, diagnostics)
+            val request = mappedReview.request().withAnswerEvidence(
+                AnswerEvidence(
+                    coreSkill = CoreSkill.RECOGNITION,
+                    failureKind = if (result.correct) null else FailureKind.VISUAL_CONFUSION,
+                    evidenceSource = EvidenceSource.OBJECTIVE_CHOICE,
+                    presentationVariant = PresentationVariant.STANDARD_GLYPH,
+                    selectedAnswer = selectedKanji,
+                    correctAnswer = card.targetKanji,
+                    confusedWith = if (result.correct) "" else selectedKanji,
+                )
+            )
+            performNormalReview(
+                session,
+                request,
+                ladder,
+                diagnostics,
+                similarChoice = SimilarChoiceCommit(card, selectedKanji, now),
+            )
         }
     }
 
@@ -317,6 +466,8 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         request: RecordsSchedulerModels.ReviewRequest,
         ladder: RecordsBase.StudyLadderSettings?,
         diagnostics: ReviewDiagnostics,
+        choiceLog: ReviewChoiceLog? = null,
+        similarChoice: SimilarChoiceCommit? = null,
     ): ReviewWriteDisposition {
         val current = activity.activeSession
         if (current == null || current.token != session.token) {
@@ -335,11 +486,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         // mid-apply rolled both back, so its token is retryable, and the engine only
         // ever tests membership of request.token.
         if (activity.store.hasConsumedToken(request.token)) {
-            logReviewEvent(
-                "review event=duplicate-suppressed source=${diagnostics.source} " +
-                    "token_id=${diagnostics.tokenId} phase=persistence",
-            )
-            return ReviewWriteDisposition.HANDLED
+            return reconcilePersistedDuplicate(diagnostics, "persistence")
         }
         val consumed = HashSet<String>()
         val now = System.currentTimeMillis()
@@ -367,8 +514,39 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             return ReviewWriteDisposition.HANDLED
         }
 
-        activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)
-        saveAppliedReview(session, request, result, now, diagnostics)
+        val preparedTask = activity.studySessionTracker.prepareActiveTask(
+            activity.sessionTaskKey(session),
+            result.appliedRating,
+            now,
+            true,
+        )
+        val commit = try {
+            saveAppliedReview(
+                session,
+                request,
+                result,
+                now,
+                diagnostics,
+                preparedTask?.timing,
+                choiceLog,
+                similarChoice,
+            )
+        } catch (error: Throwable) {
+            activity.studySessionTracker.rollbackPreparedTask(preparedTask)
+            throw error
+        }
+        if (commit.disposition != ReviewCommitDisposition.APPLIED) {
+            if (commit.disposition == ReviewCommitDisposition.DUPLICATE) {
+                return reconcilePersistedDuplicate(diagnostics, "commit")
+            }
+            activity.studySessionTracker.rollbackPreparedTask(preparedTask)
+            logReviewEvent(
+                "review event=stale-suppressed source=${diagnostics.source} " +
+                    "token_id=${diagnostics.tokenId} phase=commit",
+            )
+            return ReviewWriteDisposition.RETRYABLE_DROP
+        }
+        activity.studySessionTracker.commitPreparedTask(preparedTask)
         val streak: StudyStatsStore.StudyStreak = activity.store.studyStreak(now)
         showToast(HomeTextCopy.reviewToast(false, result.appliedRating, streak.currentDays))
         activity.renderStudy()
@@ -377,6 +555,27 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 "tap_to_request_ms=${formatReviewMillis(reviewElapsedMillis(diagnostics.submittedAtNanos, reviewNowNanos()))}",
         )
         activity.requestReminderRearm("review")
+        return ReviewWriteDisposition.HANDLED
+    }
+
+    /**
+     * A persisted duplicate is already complete, even when this activity still
+     * shows the session that submitted it. Drop that stale task instead of
+     * resuming its timer, invalidate any study-item snapshot read before the
+     * competing commit, and let the normal Study route select from the
+     * committed scheduler state.
+     */
+    private fun reconcilePersistedDuplicate(
+        diagnostics: ReviewDiagnostics,
+        phase: String,
+    ): ReviewWriteDisposition {
+        activity.studySessionTracker.abandonActiveTask()
+        activity.store.clearStudyItemsCache()
+        logReviewEvent(
+            "review event=duplicate-reconciled source=${diagnostics.source} " +
+                "token_id=${diagnostics.tokenId} phase=$phase",
+        )
+        activity.renderStudy()
         return ReviewWriteDisposition.HANDLED
     }
 
@@ -419,17 +618,20 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         result: RecordsSchedulerModels.ReviewResult,
         now: Long,
         diagnostics: ReviewDiagnostics,
-    ) {
-        val item = session.item ?: return
-        StudyReviewActions.saveAppliedReview(
+        taskTiming: dev.bee.kanjianki.data.ReviewTaskTiming?,
+        choiceLog: ReviewChoiceLog?,
+        similarChoice: SimilarChoiceCommit?,
+    ): ReviewCommitResult {
+        val item = session.item ?: return ReviewCommitResult.stale()
+        val commit = StudyReviewActions.saveAppliedReview(
             request,
             result,
             item,
             now,
-            StudyReviewActions.ReviewWriter { savedItem, savedRequest, appliedRating, reviewedAt, before ->
+            StudyReviewActions.ReviewWriter { command ->
                 val startedAtNanos = reviewNowNanos()
                 try {
-                    activity.store.saveReviewOutcome(savedItem, savedRequest, appliedRating, reviewedAt, before)
+                    activity.store.commitReview(command)
                 } finally {
                     logReviewEvent(
                         "review event=persist-finished source=${diagnostics.source} token_id=${diagnostics.tokenId} " +
@@ -438,13 +640,19 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 }
             },
             activity.studySessionTracker::recordReviewOutcome,
-            activity::markStudyRunPassed
+            activity::markStudyRunPassed,
+            taskTiming,
+            choiceLog,
+            similarChoice,
         )
-        activity.studyUndoState.capture(
-            StudyReviewActions.AppliedReviewSnapshot(request.token, item, result.item),
-            result.appliedRating,
-            now,
-        )
+        if (commit.disposition == ReviewCommitDisposition.APPLIED && commit.item != null) {
+            activity.studyUndoState.capture(
+                StudyReviewActions.AppliedReviewSnapshot(request.token, item, commit.item),
+                result.appliedRating,
+                now,
+            )
+        }
+        return commit
     }
 
     private fun logReviewError(source: String, tokenId: String, phase: String, error: Throwable) {

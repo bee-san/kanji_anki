@@ -162,8 +162,8 @@ internal class ManualSyncEngine {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
             // Record the sync run as pending in transaction #1. It is flipped to
-            // success only after study items commit in replaceStudyItems below, so a
-            // crash between the two transactions leaves a pending row that
+            // success in the same transaction that publishes the study items below,
+            // so a crash between the two transactions leaves a pending row that
             // hasSuccessfulSyncSince ignores (auto-sync retries) instead of a committed
             // success sitting on stale study items.
             val syncId = store.saveSuccessfulSync(
@@ -196,12 +196,10 @@ internal class ManualSyncEngine {
                 evidenceStatusByKanji,
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
-            // Pass the pre-seed baseline so replaceStudyItems can preserve any review
+            // Pass the pre-seed baseline so the atomic queue commit can preserve any review
             // the user saved between the studyItemsForKanji read above and this write
             // (auto-sync can run while the app is foregrounded and studyable).
-            store.replaceStudyItems(seeded, syncId, finished, settings, currentItems)
-            // Study items are committed; promote the pending sync run to success.
-            store.markSyncSucceeded(syncId)
+            store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
             committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)
             // A sync replaces the whole study queue: cards can land newly overdue or
             // the queue can empty. Re-arm the reminder from fresh state so the alarm
@@ -361,7 +359,7 @@ internal class ManualSyncEngine {
         activeRows: List<RecordsImportModels.DashboardRow>,
         countedAt: Long,
     ): CommittedStudySummary {
-        // replaceStudyItems can merge a review saved while sync was in flight;
+        // The atomic queue commit can merge a review saved while sync was in flight;
         // derive the post-sync plan/count from the committed queue, not the stale
         // pre-merge seeded snapshot.
         val postSyncItems = if (activeRows.isEmpty()) {

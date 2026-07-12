@@ -60,6 +60,9 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals("0 active items", snapshot.progressByLevel.overallLearned.valueLabel)
         assertEquals(0, snapshot.progressByLevel.overallLearned.percent)
         assertEquals(5, snapshot.overview.kanjiLearned.value)
+        assertEquals(2, snapshot.overview.currentStreak.currentDays)
+        assertEquals(5, snapshot.overview.currentStreak.bestDays)
+        assertEquals("2 days", snapshot.overview.currentStreak.valueLabel)
 
         val reviews = snapshot.reviewsAnalytics
         assertEquals(4, reviews.totalReviews.value)
@@ -68,6 +71,10 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertEquals(listOf(1, 1, 1, 0, 0, 0, 1), reviews.reviewsPerDay.values)
         assertEquals(1, reviews.reviewsPerDay.values.last())
         assertTrue(reviews.accessibilitySummary.contains("4 total reviews"))
+        assertEquals(2, reviews.currentStreak.currentDays)
+        assertEquals(5, reviews.currentStreak.bestDays)
+        assertEquals("Best 5 days", reviews.currentStreak.detailLabel)
+        assertEquals("Today's streak is secure.", reviews.tip)
 
         assertEquals(listOf("Meaning", "Reading", "Writing", "Discrimination"), snapshot.overview.cardTypeBreakdown.segments.map { it.label })
         assertEquals(listOf(3, 1, 2, 2), snapshot.overview.cardTypeBreakdown.segments.map { it.value })
@@ -110,7 +117,44 @@ class ProgressAnalyticsLiveDataSourceTest {
         assertTrue(snapshot.weaknessInsights.weaknessRows.isEmpty())
     }
 
-    private fun writeFreshStatsSnapshot(now: Long, reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>) {
+    @Test
+    fun streakTipDistinguishesSafeActiveAndNotStartedStates() {
+        val now = System.currentTimeMillis()
+        val reviewDays = cachedReviewDaySummaries(now)
+        writeFreshStatsSnapshot(
+            now,
+            reviewDays,
+            StudyStatsStore.StudyStreak(3, 8, false, 0, now - 86_400_000L),
+        )
+
+        assertEquals(
+            "Keep the streak going with a short review session today.",
+            progressAnalyticsSnapshot(localStore!!, now).reviewsAnalytics.tip,
+        )
+
+        writeFreshStatsSnapshot(
+            now,
+            reviewDays,
+            StudyStatsStore.StudyStreak(0, 8, false, 0, now - 172_800_000L),
+        )
+
+        assertEquals(
+            "Start a short review session today to build momentum.",
+            progressAnalyticsSnapshot(localStore!!, now).reviewsAnalytics.tip,
+        )
+    }
+
+    private fun writeFreshStatsSnapshot(
+        now: Long,
+        reviewDaySummaries: List<StatsCacheStore.ReviewDaySummarySnapshot>,
+        studyStreak: StudyStatsStore.StudyStreak = StudyStatsStore.StudyStreak(
+            currentDays = 2,
+            bestDays = 5,
+            studiedToday = true,
+            reviewsToday = 1,
+            lastStudyAtMillis = now,
+        ),
+    ) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
             db,
@@ -153,13 +197,7 @@ class ProgressAnalyticsLiveDataSourceTest {
                     StudyStatsStore.RecentMistake("痛", "hard", now - 1_000L),
                     StudyStatsStore.RecentMistake("弱", "again", now - 3_000L),
                 ),
-                studyStreak = StudyStatsStore.StudyStreak(
-                    currentDays = 2,
-                    bestDays = 5,
-                    studiedToday = true,
-                    reviewsToday = 1,
-                    lastStudyAtMillis = now,
-                ),
+                studyStreak = studyStreak,
                 studyTaskTimeStats = StudyStatsStore.StudyTaskTimeStats(
                     todayMillis = 180_000L,
                     lastSevenDaysMillis = 720_000L,

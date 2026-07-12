@@ -70,6 +70,31 @@ class KanjiReadingChoicePlannerTest {
     }
 
     @Test
+    fun exactRepairKeepsTheFailedUsageInsteadOfChoosingTheWeakestOtherWord() {
+        val usages = listOf(
+            usage("音楽", "おん", noteId = 1, mature = false, lapses = 20),
+            usage("本音", "ね", noteId = 2, mature = true, lapses = 0),
+        )
+
+        val card = KanjiReadingChoicePlanner.buildExactChoiceCard(
+            "音",
+            "本音",
+            "ね",
+            usages,
+            listOf(pool("ね", true, true), pool("おん", true, false)),
+            Random(4),
+        )
+
+        assertEquals("本音", card!!.word)
+        assertEquals("ね", card.correctReading)
+        assertNull(
+            KanjiReadingChoicePlanner.buildExactChoiceCard(
+                "音", "音色", "ね", usages, listOf(pool("ね", true, true), pool("おん", true, false)), Random(4),
+            ),
+        )
+    }
+
+    @Test
     fun distractorOrderMatureAttestedBeforeDictionaryOnly() {
         // With MAX_CHOICE_COUNT=4 and many candidates, mature-attested and
         // attested come before dictionary-only. Build a 4-choice card and check

@@ -87,4 +87,25 @@ class LocalStoreReplaceStudyItemsDiffTest {
 
         assertEquals(0, store.studyItems().size)
     }
+
+    @Test
+    fun sameMeaningSignatureMoveAdvancesRevision() {
+        val original = item("痛", totalReviews = 3, dueAt = 100L).copyBuilder()
+            .answerSignature("痛|痛む|いたむ|pain")
+            .schedulerRevision(7L)
+            .build()
+        store.replaceStudyItems(listOf(original))
+
+        store.replaceStudyItems(
+            listOf(
+                original.copyBuilder()
+                    .answerSignature("痛|苦痛|くつう|pain")
+                    .build(),
+            ),
+        )
+
+        val persisted = store.studyItems().single()
+        assertEquals("痛|苦痛|くつう|pain", persisted.answerSignature)
+        assertEquals(8L, persisted.schedulerRevision)
+    }
 }

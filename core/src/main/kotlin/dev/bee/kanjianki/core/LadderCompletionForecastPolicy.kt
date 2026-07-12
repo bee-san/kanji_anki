@@ -5,8 +5,9 @@ import java.util.TimeZone
 
 /**
  * Runs the production seeder and review engine forward under an all-Good
- * assumption. This forecasts ladder practice only; Anki-side retirement is a
- * separate evidence decision.
+ * assumption. Routing-v2 items finish only after a contextual-core pass; any
+ * active repair and its revalidation are simulated first. Legacy items retain
+ * the historical ladder-ceiling fallback.
  */
 object LadderCompletionForecastPolicy {
     data class MonthPoint(
@@ -58,10 +59,7 @@ object LadderCompletionForecastPolicy {
             completionAt.putIfAbsent(kanji, completedAtMillis)
             remainingTargets.remove(kanji)
         }
-        startingItems.filter {
-            it.state == StudyLadderRules.STATE_RETIRED || parked(it, settings, ladder) ||
-                (atCeiling(it, ladder) && it.phase == RecordsBase.SchedulerPhase.REVIEW && it.realPassStreak > 0)
-        }
+        startingItems.filter { it.state == StudyLadderRules.STATE_RETIRED || parked(it, settings, ladder) || completed(it, ladder) }
             .forEach { recordCompletion(it.kanji, nowMillis) }
 
         simulator.seedQueue()
@@ -94,17 +92,15 @@ object LadderCompletionForecastPolicy {
                 simulator.advanceTo(simulatedNow)
                 continue
             }
-            val answer = if (selected.rung == RecordsBase.LadderRung.WRITE_KANJI) {
+            val answer = if (selected.taskType == StudyTaskTypes.WRITE_KANJI) {
                 simulator.answerWriting("good", passed = true, clean = true, hintsUsed = 0)
             } else {
                 simulator.answer("good")
             }
             val after = answer.snapshot
             if (after != null) {
-                val item = simulator.currentItems().firstOrNull {
-                    it.kanji == after.kanji && it.rung == after.rung && it.dueAtMillis == after.dueAtMillis
-                }
-                if (item != null && atCeiling(item, ladder) && item.phase == RecordsBase.SchedulerPhase.REVIEW && item.realPassStreak > 0) {
+                val item = simulator.currentItems().firstOrNull { it.kanji == after.kanji }
+                if (item != null && completed(item, ladder)) {
                     recordCompletion(item.kanji, simulatedNow)
                 }
             }
@@ -123,20 +119,41 @@ object LadderCompletionForecastPolicy {
             alreadyAtCeiling = initialCeiling,
             alreadyParked = initialParked,
             alreadyRetired = initialRetired,
-            assumptionCopyIds = listOf("all_passes", "anki_retirement_separate"),
+            assumptionCopyIds = listOf("all_passes", "adaptive_repairs_and_revalidation", "anki_retirement_separate"),
         )
     }
 
+    private fun completed(
+        item: RecordsStudyModels.StudyItem,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): Boolean = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+        AdaptiveStudyItemPolicy.isContextualComplete(item)
+    } else {
+        atCeiling(item, ladder) && item.phase == RecordsBase.SchedulerPhase.REVIEW && item.realPassStreak > 0
+    }
+
     private fun atCeiling(item: RecordsStudyModels.StudyItem, ladder: RecordsBase.StudyLadderSettings): Boolean =
-        ladder.isAtCeiling(item.rung, item.rungAvailability())
+        if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+            AdaptiveStudyItemPolicy.routeState(item)?.activeCore == CoreSkill.CONTEXTUAL_READING
+        } else {
+            ladder.isAtCeiling(item.rung, item.rungAvailability())
+        }
 
     private fun parked(
         item: RecordsStudyModels.StudyItem,
         settings: RecordsSyncModels.Settings,
         ladder: RecordsBase.StudyLadderSettings,
-    ): Boolean = item.state != StudyLadderRules.STATE_RETIRED &&
-        item.phase == RecordsBase.SchedulerPhase.REVIEW && atCeiling(item, ladder) &&
-        item.matureIntervalDays > settings.ladderPromotionIntervalDays * RecordsBase.CEILING_PARK_INTERVAL_MULTIPLIER
+    ): Boolean {
+        if (item.state == StudyLadderRules.STATE_RETIRED) return false
+        val adaptive = AdaptiveStudyItemPolicy.isAdaptive(item)
+        if (adaptive && !AdaptiveStudyItemPolicy.isContextualComplete(item)) return false
+        if (!adaptive && (item.phase != RecordsBase.SchedulerPhase.REVIEW || !atCeiling(item, ladder))) return false
+        val intervalDays = if (adaptive) AdaptiveStudyItemPolicy.coreMemory(
+            item,
+            CoreSkill.CONTEXTUAL_READING,
+        ).matureIntervalDays else item.matureIntervalDays
+        return intervalDays > settings.ladderPromotionIntervalDays * RecordsBase.CEILING_PARK_INTERVAL_MULTIPLIER
+    }
 
     private fun monthPoints(start: Long, horizon: Long, total: Int, completions: List<Long>): List<MonthPoint> {
         val points = ArrayList<MonthPoint>()

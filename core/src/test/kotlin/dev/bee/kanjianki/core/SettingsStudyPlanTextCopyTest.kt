@@ -68,8 +68,15 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel())
         assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel())
         assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
-        assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle())
-        assertEquals("Set practice order. Keep one rung on.", SettingsStudyPlanTextCopy.studyLadderBody())
+        assertEquals("Adaptive study", SettingsStudyPlanTextCopy.studyLadderTitle())
+        assertEquals(
+            "Recognition and contextual reading are required. Choose optional variants and repair tools.",
+            SettingsStudyPlanTextCopy.studyLadderBody(),
+        )
+        assertEquals("Required core checks", SettingsStudyPlanTextCopy.requiredCoreChecksTitle())
+        assertEquals("Optional variants", SettingsStudyPlanTextCopy.optionalVariantsTitle())
+        assertEquals("Repair tools · priority order", SettingsStudyPlanTextCopy.repairToolsTitle())
+        assertEquals("Required", SettingsStudyPlanTextCopy.requiredCoreLabel())
         assertEquals("Leave one rung always on.", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false))
@@ -204,8 +211,11 @@ class SettingsStudyPlanTextCopyTest {
             assertEquals("例の範囲を使う", SettingsStudyPlanTextCopy.useExampleRangesLabel())
             assertEquals("保持率を保存", SettingsStudyPlanTextCopy.saveRetentionLabel())
             assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95))
-            assertEquals("学習ラダー", SettingsStudyPlanTextCopy.studyLadderTitle())
-            assertEquals("練習順を設定。1段はオンのままにする。", SettingsStudyPlanTextCopy.studyLadderBody())
+            assertEquals("適応学習", SettingsStudyPlanTextCopy.studyLadderTitle())
+            assertEquals(
+                "認識と文脈での読みは常に確認します。使用する表示方法と修復練習を選びます。",
+                SettingsStudyPlanTextCopy.studyLadderBody(),
+            )
             assertEquals("常に1段はオンにしてください。", SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast())
             assertEquals("オン", SettingsStudyPlanTextCopy.ladderToggleLabel(true))
             assertEquals("オフ", SettingsStudyPlanTextCopy.ladderToggleLabel(false))

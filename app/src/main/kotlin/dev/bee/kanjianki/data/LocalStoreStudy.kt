@@ -3,16 +3,21 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteConstraintException
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.AdaptiveCorePolicy
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyItemLineagePolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
+import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import dev.bee.kanjianki.StudyReviewActions
 import dev.bee.kanjianki.StudyItemComparators
 import dev.bee.kanjianki.theme.KaniThemeChoice
@@ -54,12 +59,13 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         var writes = 0
         writableDatabase.transaction {
             val previous = if (syncId == null) emptyMap() else studySnapshots(this)
-            val toWrite = if (baseline == null) {
+            val persisted = readAllStudyItems(this)
+            val merged = if (baseline == null) {
                 items
             } else {
-                val persisted = readAllStudyItems(this)
                 MidSyncReviewMergePolicy.merge(items, baseline, persisted)
             }
+            val toWrite = versionMaterialStudyChanges(merged, persisted)
             writes = if (syncId == null && baseline == null) {
                 // Per-review queue refresh: after every answered card the seeder
                 // usually changes exactly one row, so write only the diff instead of
@@ -76,12 +82,27 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
                 appendStudyStateTimelineEvents(this, previous, toWrite, syncId, occurredAt, settings)
             }
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
-            clearStudyItemsCache()
         }
+        clearStudyItemsCache()
         dev.bee.kanjianki.studyLoadDebug(
             "replaceStudyItems WROTE count=${items.size} writes=$writes " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
+    }
+
+    private fun versionMaterialStudyChanges(
+        candidates: List<RecordsStudyModels.StudyItem>,
+        persisted: List<RecordsStudyModels.StudyItem>,
+    ): List<RecordsStudyModels.StudyItem> {
+        return candidates.map { candidate ->
+            val existing = StudyItemLineagePolicy.counterpart(candidate, persisted)
+                ?: return@map candidate
+            when {
+                StudyItemComparators.samePersistedState(existing, candidate) ->
+                    candidate.copyBuilder().schedulerRevision(existing.schedulerRevision).build()
+                else -> candidate.copyBuilder().schedulerRevision(existing.schedulerRevision + 1L).build()
+            }
+        }
     }
 
     /**
@@ -142,10 +163,36 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
+        var wrote = false
         writableDatabase.transaction {
-            upsertStudyItem(this, item)
-            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            val current = readStudyItemForFamily(this, item.kanji, item.answerSignature)
+            if (current == null || item.schedulerRevision >= current.schedulerRevision) {
+                upsertStudyItem(this, item)
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+                wrote = true
+            }
+        }
+        if (wrote) {
             clearStudyItemsCache()
+        }
+    }
+
+    private fun readStudyItemForFamily(
+        db: SQLiteDatabase,
+        kanji: String,
+        answerSignature: String,
+    ): RecordsStudyModels.StudyItem? {
+        db.query(
+            TABLE_STUDY_ITEMS,
+            null,
+            "$COLUMN_KANJI=? AND $COLUMN_ANSWER_SIGNATURE=?",
+            arrayOf(kanji, answerSignature),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) readStudyItem(cursor) else null
         }
     }
 
@@ -162,17 +209,84 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         appliedRating: String?,
         reviewedAt: Long,
         beforeReview: RecordsStudyModels.StudyItem,
-    ) {
-        writableDatabase.transaction {
-            upsertStudyItem(this, item)
-            val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, item)
-            if (inserted != -1L) {
-                appendReviewTimelineEvent(this, request, appliedRating, reviewedAt, "review:" + request.token)
+    ): ReviewCommitResult {
+        return commitReview(
+            ReviewCommitCommand(
+                afterReview = item,
+                request = request,
+                appliedRating = appliedRating,
+                reviewedAtMillis = reviewedAt,
+                beforeReview = beforeReview,
+            )
+        )
+    }
+
+    /**
+     * Token-first, revision-CAS review persistence. A token conflict is a true
+     * idempotent duplicate only when that exact token exists. Every other
+     * ignored insert is surfaced as a constraint failure instead of silently
+     * advancing scheduler state without a review row.
+     */
+    fun commitReview(command: ReviewCommitCommand): ReviewCommitResult {
+        val persistedItem = command.persistedItem()
+        val result = try {
+            writableDatabase.transaction {
+                val inserted = insertReview(
+                    this,
+                    command.request,
+                    command.appliedRating,
+                    command.reviewedAtMillis,
+                    command.beforeReview,
+                    persistedItem,
+                )
+                if (inserted == -1L) {
+                    if (reviewTokenExists(this, command.request.token)) {
+                        return@transaction ReviewCommitResult.duplicate()
+                    }
+                    throw SQLiteConstraintException("review_log rejected a non-duplicate review")
+                }
+
+                val updated = update(
+                    TABLE_STUDY_ITEMS,
+                    studyItemValues(persistedItem),
+                    "$COLUMN_KANJI=? AND $COLUMN_ANSWER_SIGNATURE=? AND $COLUMN_SCHEDULER_REVISION=?",
+                    arrayOf(
+                        command.beforeReview.kanji,
+                        command.beforeReview.answerSignature,
+                        command.expectedRevision.toString(),
+                    ),
+                )
+                if (updated != 1) {
+                    throw StaleReviewCommitException()
+                }
+
+                applyReviewSideEffects(this, command)
+                appendReviewTimelineEvent(
+                    this,
+                    command.request,
+                    command.appliedRating,
+                    command.reviewedAtMillis,
+                    "review:" + command.request.token,
+                )
+                command.taskTiming?.let { insertReviewTaskTiming(this, it) }
+                command.choiceLog?.let { insertReviewChoiceLog(this, it) }
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+                ReviewCommitResult.applied(persistedItem)
             }
-            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+        } catch (_: StaleReviewCommitException) {
+            ReviewCommitResult.stale()
+        }
+        if (result.applied()) {
+            // Cache invalidation is an after-commit effect. Readers can never
+            // repopulate from an uncommitted state and keep it after rollback.
             clearStudyItemsCache()
         }
+        return result
     }
+
+    /** Subclasses can fold legacy evidence/state updates into the review transaction. */
+    @Suppress("UNUSED_PARAMETER")
+    internal open fun applyReviewSideEffects(db: SQLiteDatabase, command: ReviewCommitCommand) = Unit
 
     fun saveReview(request: RecordsSchedulerModels.ReviewRequest, appliedRating: String?, reviewedAt: Long) {
         saveReview(request, appliedRating, reviewedAt, null, null)
@@ -195,18 +309,39 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     fun undoLastAppliedReview(snapshot: StudyReviewActions.AppliedReviewSnapshot): Boolean {
-        return writableDatabase.transaction {
-            val deleted = delete(TABLE_REVIEW_LOG, "$COLUMN_TOKEN = ?", arrayOf(snapshot.token))
-            if (deleted <= 0) {
-                false
-            } else {
+        val restored = snapshot.beforeReview.copyBuilder()
+            .schedulerRevision(snapshot.afterReview.schedulerRevision + 1L)
+            .build()
+        val undone = try {
+            writableDatabase.transaction {
+                val deleted = delete(TABLE_REVIEW_LOG, "$COLUMN_TOKEN = ?", arrayOf(snapshot.token))
+                if (deleted <= 0) {
+                    return@transaction false
+                }
+                val updated = update(
+                    TABLE_STUDY_ITEMS,
+                    studyItemValues(restored),
+                    "$COLUMN_KANJI=? AND $COLUMN_ANSWER_SIGNATURE=? AND $COLUMN_SCHEDULER_REVISION=?",
+                    arrayOf(
+                        snapshot.afterReview.kanji,
+                        snapshot.afterReview.answerSignature,
+                        snapshot.afterReview.schedulerRevision.toString(),
+                    ),
+                )
+                if (updated != 1) {
+                    throw StaleReviewCommitException()
+                }
                 delete(TABLE_KANJI_TIMELINE_EVENTS, "$COLUMN_DEDUPE_KEY = ?", arrayOf("review:${snapshot.token}"))
-                upsertStudyItem(this, snapshot.beforeReview)
                 StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
-                clearStudyItemsCache()
                 true
             }
+        } catch (_: StaleReviewCommitException) {
+            false
         }
+        if (undone) {
+            clearStudyItemsCache()
+        }
+        return undone
     }
 
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
@@ -247,14 +382,85 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         values.put("memory_after", taskMemoryText(afterReview, request.taskType))
         values.put("scheduler_state_before_json", studyItemSchedulerJson(beforeReview))
         values.put("scheduler_state_after_json", studyItemSchedulerJson(afterReview))
+        values.put(COLUMN_CORE_SKILL, request.coreSkill)
+        values.put(COLUMN_FAILURE_CAUSE, request.failureCause)
+        values.put(COLUMN_EVIDENCE_SOURCE, request.evidenceSource)
+        values.put(COLUMN_SELECTED_ANSWER, request.selectedAnswer)
+        values.put(COLUMN_CORRECT_ANSWER, request.correctAnswer)
+        values.put(COLUMN_ANSWER_EVIDENCE_JSON, request.answerEvidenceJson)
         return db.insertWithOnConflict(TABLE_REVIEW_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    private fun reviewTokenExists(db: SQLiteDatabase, token: String): Boolean {
+        db.query(
+            TABLE_REVIEW_LOG,
+            arrayOf(COLUMN_TOKEN),
+            "$COLUMN_TOKEN=?",
+            arrayOf(token),
+            null,
+            null,
+            null,
+            "1",
+        ).use { return it.moveToFirst() }
+    }
+
+    private fun insertReviewTaskTiming(db: SQLiteDatabase, timing: ReviewTaskTiming) {
+        val values = ContentValues()
+        values.put("task_key", timing.taskKey)
+        values.put(COLUMN_KANJI, timing.kanji)
+        values.put(COLUMN_TASK_TYPE, timing.taskType)
+        values.put(COLUMN_STARTED_AT, timing.startedAtMillis.coerceAtLeast(0L))
+        values.put("answered_at", timing.answeredAtMillis.coerceAtLeast(0L))
+        values.put(
+            "active_elapsed_ms",
+            StudyTaskTimingPolicy.boundedElapsed(timing.activeElapsedMillis, MAX_STUDY_TASK_ELAPSED_MS),
+        )
+        values.put("outcome", timing.outcome)
+        val inserted = db.insertWithOnConflict(
+            TABLE_STUDY_TASK_LOG,
+            null,
+            values,
+            SQLiteDatabase.CONFLICT_IGNORE,
+        )
+        if (inserted == -1L && !studyTaskKeyExists(db, timing.taskKey)) {
+            throw SQLiteConstraintException("study_task_log rejected a non-duplicate task")
+        }
+    }
+
+    private fun studyTaskKeyExists(db: SQLiteDatabase, taskKey: String): Boolean {
+        db.query(
+            TABLE_STUDY_TASK_LOG,
+            arrayOf("task_key"),
+            "task_key=?",
+            arrayOf(taskKey),
+            null,
+            null,
+            null,
+            "1",
+        ).use { return it.moveToFirst() }
+    }
+
+    private fun insertReviewChoiceLog(db: SQLiteDatabase, choice: ReviewChoiceLog) {
+        val values = ContentValues()
+        values.put(COLUMN_TARGET_KANJI, choice.targetKanji)
+        values.put(COLUMN_CHOICE_SIGNATURE, choice.choiceSignature)
+        values.put("selected_kanji", choice.selectedAnswer)
+        values.put("correct", if (choice.correct) 1 else 0)
+        values.put(COLUMN_REVIEWED_AT, choice.reviewedAtMillis)
+        values.put(COLUMN_RUNG, choice.rung)
+        db.insertOrThrow(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, values)
     }
 
     fun taskMemoryText(item: RecordsStudyModels.StudyItem?, taskType: String?): String {
         if (item == null || taskType.isNullOrEmpty()) {
             return ""
         }
-        return item.memoryForTaskType(taskType).encode()
+        val ownerTask = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+            AdaptiveCorePolicy.coreForTaskType(taskType)?.let(AdaptiveCorePolicy::memoryOwnerTaskType) ?: taskType
+        } else {
+            taskType
+        }
+        return item.memoryForTaskType(ownerTask).encode()
     }
 
     fun studyItemSchedulerJson(item: RecordsStudyModels.StudyItem?): String {
@@ -283,6 +489,9 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             ",\"real_pass_streak\":" + item.realPassStreak +
             ",\"real_again_streak\":" + item.realAgainStreak +
             ",\"last_real_review_due_at\":" + item.lastRealReviewDueAtMillis +
+            ",\"scheduler_revision\":" + item.schedulerRevision +
+            ",\"routing_version\":" + item.routingVersion +
+            ",\"adaptive_route_state_json\":" + TextUtil.jsonQuote(item.adaptiveRouteStateJson) +
             ",\"active_token\":" + TextUtil.jsonQuote(item.activeToken) +
             "}"
     }

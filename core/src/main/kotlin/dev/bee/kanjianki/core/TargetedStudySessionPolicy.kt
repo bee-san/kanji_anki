@@ -12,13 +12,19 @@ internal class TargetedStudySessionPolicy {
         }
         val item = targetedStudyItem(seededItems, row.kanji, nowMillis, ladder)
         val token = StudyTokenPolicy.studyItem(item.kanji, item.activeToken)
-        val effectiveItem = StudyLadderRules.alignRungToLadder(item, ladder).withToken(token)
+        val safeLadder = StudyLadderRules.safeLadder(ladder)
+        val effectiveItem = if (AdaptiveStudyItemPolicy.isAdaptive(item)) {
+            AdaptiveStudyItemPolicy.recoverMalformedRouteState(item)
+        } else {
+            StudyLadderRules.alignRungToLadder(item, safeLadder)
+        }.withToken(token)
+        val taskType = AdaptiveStudyItemPolicy.taskTypeFor(effectiveItem, safeLadder)
         return RecordsSchedulerModels.StudySession(
             effectiveItem,
             row,
             token,
-            StudyTaskTypes.forRung(effectiveItem.rung),
-            effectiveItem.rung == RecordsBase.LadderRung.WRITE_KANJI,
+            taskType,
+            taskType == StudyTaskTypes.WRITE_KANJI,
             promptFor(row),
         )
     }
@@ -38,7 +44,6 @@ internal class TargetedStudySessionPolicy {
         nowMillis: Long,
         ladder: RecordsBase.StudyLadderSettings?,
     ): RecordsStudyModels.StudyItem {
-        val safeLadder = StudyLadderRules.safeLadder(ladder)
         return RecordsStudyModels.StudyItem(
             kanji,
             StudyLadderRules.STATE_NEW,
@@ -55,7 +60,7 @@ internal class TargetedStudySessionPolicy {
             false,
             null,
             nowMillis,
-        ).withRung(safeLadder.startingRung(RecordsBase.RungAvailability.none()))
+        ).withRung(RecordsBase.LadderRung.KANJI_MEANING)
     }
 
     private fun promptFor(row: RecordsImportModels.DashboardRow): String {

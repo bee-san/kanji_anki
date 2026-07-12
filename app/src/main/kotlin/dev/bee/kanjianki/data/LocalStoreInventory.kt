@@ -49,6 +49,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     private var cachedKanjiWithSentenceReading: Set<String>? = null
     private val conditionalRungAvailabilityCache = ConditionalRungAvailabilityCache()
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
+    @Volatile
+    private var observedStudyItemsCacheEpoch: Long = STUDY_ITEMS_CACHE_EPOCH.get()
 
     fun newCardSortPreviewCacheVersion(): Long {
         return newCardSortPreviewCacheVersion.get()
@@ -76,10 +78,29 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     internal override fun clearStudyItemsCache() {
+        observedStudyItemsCacheEpoch = STUDY_ITEMS_CACHE_EPOCH.incrementAndGet()
+        clearLocalStudyItemsCache()
+    }
+
+    private fun clearLocalStudyItemsCache() {
         cachedStudyItems = null
         cachedStudyItemsByKanji = null
         clearTimelineCache()
         bumpNewCardSortPreviewCacheVersion()
+    }
+
+    private fun ensureStudyItemsCacheFresh() {
+        val currentEpoch = STUDY_ITEMS_CACHE_EPOCH.get()
+        if (observedStudyItemsCacheEpoch == currentEpoch) {
+            return
+        }
+        synchronized(this) {
+            val latestEpoch = STUDY_ITEMS_CACHE_EPOCH.get()
+            if (observedStudyItemsCacheEpoch != latestEpoch) {
+                clearLocalStudyItemsCache()
+                observedStudyItemsCacheEpoch = latestEpoch
+            }
+        }
     }
 
     internal override fun clearKanjiInventoryAllCache() {
@@ -411,6 +432,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun timelineForKanji(kanji: String): RecordsStudyModels.KanjiRecoveryTimeline {
+        ensureStudyItemsCacheFresh()
         if (kanji.isNotBlank()) {
             cachedTimelinesByKanji?.get(kanji)?.let { return it }
         }
@@ -423,8 +445,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         db.query(
             TABLE_KANJI_TIMELINE_EVENTS,
             null,
-            WHERE_KANJI,
-            arrayOf(kanji),
+            "$WHERE_KANJI AND ($COLUMN_SYNC_ID IS NULL OR $COLUMN_SYNC_ID IN " +
+                "(SELECT id FROM $TABLE_SYNC_RUNS WHERE $COLUMN_STATUS=?))",
+            arrayOf(kanji, STATUS_SUCCESS),
             null,
             null,
             "occurred_at DESC, id DESC",
@@ -446,6 +469,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun studyItems(): List<RecordsStudyModels.StudyItem> {
+        ensureStudyItemsCacheFresh()
         cachedStudyItems?.let { return it }
 
         val traceEnabled = AppDebugLog.isCapturing()
@@ -481,6 +505,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
+        ensureStudyItemsCacheFresh()
         val distinctKanji = kanji.filter { !it.isNullOrBlank() }.distinct().sorted()
         if (distinctKanji.isEmpty()) {
             return emptyList()
@@ -1025,5 +1050,10 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             out.add(imported.build())
         }
         return out
+    }
+
+    private companion object {
+        /** Shared by every LocalStore helper in this process. */
+        val STUDY_ITEMS_CACHE_EPOCH = AtomicLong(0L)
     }
 }

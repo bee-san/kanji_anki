@@ -36,8 +36,18 @@ class ProgressAnalyticsCompactLayoutTest {
         composeRule.waitForIdle()
 
         composeRule.onAllNodesWithTag(ProgressOverviewHeroSummaryTag).assertCountEquals(1)
+        composeRule.onAllNodesWithTag(ProgressStreakSummaryTag).assertCountEquals(1)
         composeRule.onAllNodesWithTag(ProgressOverviewMetricsCompactTag).assertCountEquals(1)
         composeRule.onAllNodesWithTag(ProgressDistributionCardCompactLayoutTag).assertCountEquals(2)
+        val currentBounds = composeRule.onNodeWithTag(
+            ProgressCurrentStreakMetricTag,
+            useUnmergedTree = true,
+        ).fetchSemanticsNode().boundsInRoot
+        val longestBounds = composeRule.onNodeWithTag(
+            ProgressLongestStreakMetricTag,
+            useUnmergedTree = true,
+        ).fetchSemanticsNode().boundsInRoot
+        assertEquals(currentBounds.top, longestBounds.top, 0.5f)
     }
 
     @Test

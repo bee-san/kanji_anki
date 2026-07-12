@@ -220,9 +220,16 @@ class SchedulerTimelineSimulator(
         val transition = event.trace.transition
         val rating = transition?.rating ?: ""
         val reasons = transition?.reasonCodes ?: emptyList()
+        val transitionRung = transition?.afterRung ?: after.rung
+        val canonicalAnchor = if (transitionRung != after.rung) {
+            " canonical=${after.rung.name}"
+        } else {
+            ""
+        }
         return listOf(
             "${offsetText(event.offsetMillis)} answer rating=$rating task=${before.taskType} " +
-                "rung=${before.rung.name}->${after.rung.name} phase=${before.phase.name}->${after.phase.name} " +
+                "rung=${before.rung.name}->${transitionRung.name}$canonicalAnchor " +
+                "phase=${before.phase.name}->${after.phase.name} " +
                 "due=${absoluteOffsetText(after.dueAtMillis)} reasons=${reasonText(reasons)} " +
                 "fsrs=${fsrsText(event.trace.fsrsCalls)}"
         )
@@ -231,7 +238,7 @@ class SchedulerTimelineSimulator(
     private fun snapshot(item: RecordsStudyModels.StudyItem): SchedulerTimelineSnapshot {
         return SchedulerTimelineSnapshot(
             item.kanji,
-            StudyTaskTypes.forRung(item.rung),
+            AdaptiveStudyItemPolicy.taskTypeFor(item, ladder),
             item.rung,
             item.phase,
             item.state,
@@ -247,7 +254,7 @@ class SchedulerTimelineSimulator(
     private fun traceCandidate(item: RecordsStudyModels.StudyItem, reasons: List<String>): SchedulerDecisionTraceCandidate {
         return SchedulerDecisionTraceCandidate(
             item.kanji,
-            StudyTaskTypes.forRung(item.rung),
+            AdaptiveStudyItemPolicy.taskTypeFor(item, ladder),
             item.rung,
             item.phase,
             item.dueAtMillis,

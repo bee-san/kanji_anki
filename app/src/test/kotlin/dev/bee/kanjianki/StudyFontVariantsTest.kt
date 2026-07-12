@@ -5,6 +5,7 @@ import android.content.res.Resources
 import android.graphics.Typeface
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -15,6 +16,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class StudyFontVariantsTest {
+    @Test
+    fun deterministicVariantUsesKanjiAndPersistedCoreReviewCount() {
+        val first = StudyFontVariants.variantIndex("脱", 7)
+
+        assertEquals(first, StudyFontVariants.variantIndex("脱", 7))
+        assertEquals(Math.floorMod(31 * "脱".hashCode() + 7, 3), first)
+    }
+
     @Test
     fun fontVariantsLoadStudyFonts() {
         val context = ApplicationProvider.getApplicationContext<Context>()

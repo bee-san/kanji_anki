@@ -1,8 +1,14 @@
 # Anki manual parity checklist for Kani
 
-Scope: current Kani study/sync flows versus Anki manual behavior for learning/relearning, bury/suspend, leeches, deck options, FSRS, browser/search, stats, import, and sync.
+> Historical pre-DB31 parity review. Phrases such as "Current Kani" below mean
+> the repository snapshot inspected for this checklist; they are not the live
+> scheduler contract. Database version 31 replaces ladder routing and side-task
+> repair with the two-core inline model in
+> [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
-Current Kani snapshot used for this review:
+Scope at capture time: Kani study/sync flows versus Anki manual behavior for learning/relearning, bury/suspend, leeches, deck options, FSRS, browser/search, stats, import, and sync.
+
+Kani snapshot used for this review:
 
 - Scheduler facade: `core/src/main/kotlin/dev/bee/kanjianki/core/BridgeScheduler.kt`
 - Review transitions: `core/src/main/kotlin/dev/bee/kanjianki/core/ReviewTransitionEngine.kt`

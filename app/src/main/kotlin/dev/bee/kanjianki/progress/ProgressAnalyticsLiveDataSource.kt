@@ -2,6 +2,7 @@ package dev.bee.kanjianki.progress
 
 import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.ConfusionInsightPolicy
+import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.ForecastTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -96,7 +97,15 @@ internal fun progressAnalyticsSnapshot(
     val cumulative = snapshot.cumulativeKanjiPracticed
     val cumulativeChart = cumulativeChart(cumulative, copy)
     val practicedDelta = cumulativeSevenDayDelta(cumulative, nowMillis)
-    val rungRows = ladderRows(outcome.ladderHealth, copy)
+    val adaptiveHealth = outcome.adaptiveHealth
+    val usesAdaptiveHealth = adaptiveHealth.totalAdaptiveItems > 0
+    val adaptiveProgressTotal = maxOf(adaptiveHealth.totalAdaptiveItems, outcome.ladderHealth.totalActiveItems)
+    val legacyTransitionCount = (adaptiveProgressTotal - adaptiveHealth.totalAdaptiveItems).coerceAtLeast(0)
+    val progressRows = if (usesAdaptiveHealth) {
+        adaptiveRows(adaptiveHealth, adaptiveProgressTotal, legacyTransitionCount, copy)
+    } else {
+        ladderRows(outcome.ladderHealth, copy)
+    }
     val range7 = reviewRangeData.getValue(AnalyticsRange.SEVEN_DAYS)
     val inventory = snapshot.confusionMeanings.map { (kanji, meaning) ->
         RecordsImportModels.KanjiInventoryItem(kanji, meaning, "", "", 0, 0, false, 0L)
@@ -163,7 +172,11 @@ internal fun progressAnalyticsSnapshot(
             incorrect = range7.incorrect,
             bestDayLabel = range7.bestDayLabel,
             currentStreak = ProgressStreakMetricState(streak.currentDays, streak.bestDays, copy.days(streak.currentDays), copy.bestDays(streak.bestDays)),
-            tip = if (streak.currentDays > 0) copy.keepStreakTip else copy.startMomentumTip,
+            tip = when {
+                streak.studiedToday -> copy.streakSafeTip
+                streak.currentDays > 0 -> copy.keepStreakTip
+                else -> copy.startMomentumTip
+            },
             accessibilitySummary = range7.accessibilitySummary,
             rangeData = reviewRangeData,
             heatmap = heatmap,
@@ -181,16 +194,42 @@ internal fun progressAnalyticsSnapshot(
             rangeData = accuracyRangeData,
         ),
         progressByLevel = ProgressByLevelState(
-            title = copy.ladderDistribution,
-            selectedFilterLabel = "",
+            title = if (usesAdaptiveHealth) copy.coreSkillHealth else copy.ladderDistribution,
+            selectedFilterLabel = if (usesAdaptiveHealth) {
+                copy.adaptiveHealthSummary(
+                    adaptiveProgressTotal,
+                    adaptiveHealth.activeRepairCount,
+                    adaptiveHealth.revalidationPendingCount,
+                    adaptiveHealth.escalationRiskCount,
+                    adaptiveHealth.stuckRepairCount,
+                )
+            } else "",
             overallLearned = ProgressFractionMetricState(
-                outcome.ladderHealth.rungCounts.values.sum(),
-                outcome.ladderHealth.totalActiveItems,
-                percent(outcome.ladderHealth.rungCounts.values.sum(), outcome.ladderHealth.totalActiveItems),
-                copy.activeItems(outcome.ladderHealth.totalActiveItems),
-                copy.activeItemsSummary(outcome.ladderHealth.totalActiveItems),
+                if (usesAdaptiveHealth) adaptiveHealth.contextualCompleteCount else outcome.ladderHealth.rungCounts.values.sum(),
+                if (usesAdaptiveHealth) adaptiveProgressTotal else outcome.ladderHealth.totalActiveItems,
+                if (usesAdaptiveHealth) {
+                    percent(adaptiveHealth.contextualCompleteCount, adaptiveProgressTotal)
+                } else {
+                    percent(outcome.ladderHealth.rungCounts.values.sum(), outcome.ladderHealth.totalActiveItems)
+                },
+                if (usesAdaptiveHealth) {
+                    copy.contextualComplete(adaptiveHealth.contextualCompleteCount)
+                } else {
+                    copy.activeItems(outcome.ladderHealth.totalActiveItems)
+                },
+                if (usesAdaptiveHealth) {
+                    copy.adaptiveHealthSummary(
+                        adaptiveProgressTotal,
+                        adaptiveHealth.activeRepairCount,
+                        adaptiveHealth.revalidationPendingCount,
+                        adaptiveHealth.escalationRiskCount,
+                        adaptiveHealth.stuckRepairCount,
+                    )
+                } else {
+                    copy.activeItemsSummary(outcome.ladderHealth.totalActiveItems)
+                },
             ),
-            levelRows = rungRows,
+            levelRows = progressRows,
             cumulativeProgress = cumulativeChart,
         ),
         weaknessInsights = ProgressWeaknessInsightsState(
@@ -340,6 +379,38 @@ private fun ladderRows(metric: StudyStatsStore.LadderHealthMetric, copy: StatsDa
     return metric.rungCounts.entries.sortedBy { it.key.ordinal }.map { (rung, count) ->
         ProgressLevelRowState(copy.rung(rung.wireName()), count, total, percent(count, total))
     }
+}
+
+private fun adaptiveRows(
+    metric: StudyStatsStore.AdaptiveHealthMetric,
+    total: Int,
+    legacyTransitionCount: Int,
+    copy: StatsDashboardCopy,
+): List<ProgressLevelRowState> {
+    val rows = mutableListOf(
+        ProgressLevelRowState(
+            copy.coreSkill(CoreSkill.RECOGNITION),
+            metric.countFor(CoreSkill.RECOGNITION),
+            total,
+            percent(metric.countFor(CoreSkill.RECOGNITION), total),
+        ),
+        ProgressLevelRowState(
+            copy.coreSkill(CoreSkill.CONTEXTUAL_READING),
+            metric.countFor(CoreSkill.CONTEXTUAL_READING),
+            total,
+            percent(metric.countFor(CoreSkill.CONTEXTUAL_READING), total),
+        ),
+    )
+    listOf(
+        "active_repair" to metric.activeRepairCount,
+        "revalidation" to metric.revalidationPendingCount,
+        "escalation_risk" to metric.escalationRiskCount,
+        "stuck_repair" to metric.stuckRepairCount,
+        "legacy_transition" to legacyTransitionCount,
+    ).filter { it.second > 0 }.forEach { (status, count) ->
+        rows += ProgressLevelRowState(copy.adaptiveStatus(status), count, total, percent(count, total))
+    }
+    return rows
 }
 
 private fun cumulativeSevenDayDelta(points: List<StatsCacheStore.CumulativeKanjiSnapshot>, nowMillis: Long): Int {

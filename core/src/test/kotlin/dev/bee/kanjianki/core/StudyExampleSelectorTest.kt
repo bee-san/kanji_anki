@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -37,8 +38,47 @@ class StudyExampleSelectorTest {
         val row = row(active, suspended)
 
         assertSame(suspended, StudyExampleSelector.exampleForSession(session(StudyTaskTypes.WORD_READING, row)))
+        assertSame(suspended, StudyExampleSelector.exampleForSession(session(StudyTaskTypes.TYPE_READING, row)))
         assertSame(active, StudyExampleSelector.exampleForSession(session(StudyTaskTypes.KANJI_MEANING, row)))
         assertNull(StudyExampleSelector.exampleForSession(null))
+    }
+
+    @Test
+    fun typeReadingUsesPersistedFailedExpressionAndFullReading() {
+        val generic = exampleWith("suspended", "一般", sentence = "一般の文。", reading = "いっぱん")
+        val row = row(generic)
+        val base = session(StudyTaskTypes.TYPE_READING, row)
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            activeRepairTasks = listOf(StudyTaskTypes.TYPE_READING),
+            answerEvidence = AnswerEvidence(
+                coreSkill = CoreSkill.CONTEXTUAL_READING,
+                failureKind = FailureKind.WRONG_READING,
+                renderedExpression = "脱出する",
+                renderedReading = "だっしゅつする",
+            ),
+        )
+        val item = base.item!!.copyBuilder()
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .build()
+        val exactSession = RecordsSchedulerModels.StudySession(
+            item,
+            row,
+            base.token,
+            StudyTaskTypes.TYPE_READING,
+            false,
+            base.prompt,
+        )
+
+        val selected = StudyExampleSelector.exampleForSession(exactSession)
+
+        assertEquals("脱出する", selected?.expression)
+        assertEquals("だっしゅつする", selected?.reading)
+        assertEquals("", selected?.meaning)
+        assertEquals("", selected?.sentence)
+        assertEquals("脱出する", StudyTextCopy.wordPrompt(exactSession))
+        assertEquals("だっしゅつする", StudyTextCopy.collectionReadingForSession(exactSession))
     }
 
     @Test

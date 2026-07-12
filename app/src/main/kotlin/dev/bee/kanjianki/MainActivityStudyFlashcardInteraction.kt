@@ -6,9 +6,17 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Toast
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.EvidenceSource
+import dev.bee.kanjianki.core.FailureKind
+import dev.bee.kanjianki.core.PresentationVariant
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StudyTaskCopy
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TypingAnswerMatcher
+import dev.bee.kanjianki.core.TypedReadingPolicy
 
 internal class MainActivityStudyFlashcardInteraction(private val activity: MainActivityStudy) {
     fun buildFlashcardActionBar(revealed: Boolean) {
@@ -28,6 +36,31 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         }
         activity.flashcardAnswerRevealed = true
         val session = activity.activeSession
+        if (session != null && StudyTaskCopy.isTypingReadingTask(session)) {
+            val typed = activity.typingAnswerState?.text?.toString().orEmpty()
+            val expected = StudyTextCopy.collectionReadingForSession(session)
+            val matched = TypedReadingPolicy.matches(typed, expected)
+            Toast.makeText(
+                activity,
+                if (matched) StudyTextCopy.typingAnswerAcceptedToast() else StudyTextCopy.typingReadingIncorrectToast(),
+                Toast.LENGTH_SHORT,
+            ).show()
+            activity.submitReview(
+                if (matched) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
+                false,
+                answerEvidence = AnswerEvidence(
+                    coreSkill = CoreSkill.CONTEXTUAL_READING,
+                    failureKind = if (matched) null else FailureKind.WRONG_READING,
+                    evidenceSource = EvidenceSource.OBJECTIVE_CHOICE,
+                    presentationVariant = PresentationVariant.PLAIN_WORD,
+                    selectedAnswer = typed,
+                    correctAnswer = expected,
+                    renderedExpression = StudyTextCopy.wordPrompt(session),
+                    renderedReading = expected,
+                ),
+            )
+            return
+        }
         if (session != null &&
             StudyTaskCopy.isTypingMeaningTask(session) &&
             TypingAnswerMatcher.matches(
@@ -71,7 +104,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 val typingAnswerState = activity.typingAnswerState
-                if (StudyTaskCopy.isTypingMeaningTask(session) &&
+                if ((StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)) &&
                     typingAnswerState != null &&
                     typingAnswerState.containsWindowPoint(event.x, event.y)
                 ) {
@@ -114,6 +147,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
     }
 
     fun handleFlashcardRelease(event: MotionEvent): Boolean {
+        val session = activity.activeSession
         val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
         val decision = FlashcardGesturePolicy.release(
             activity.flashcardTouchStartX,
@@ -137,12 +171,20 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     rating = decision.rating,
                     durationMs = (event.eventTime - event.downTime).coerceAtLeast(0L),
                 )
-                submitReviewWithSwipeFeedback(activity.flashcardSwipeFeedback, decision.rating) {
-                    activity.submitReview(
-                        rating = decision.rating,
-                        override = false,
-                        interactionSource = "card",
-                    )
+                if (decision.rating == MainActivityBase.RATING_AGAIN &&
+                    session != null &&
+                    requiresRecognitionFailureCause(session)
+                ) {
+                    activity.flashcardSwipeFeedback?.settleBack()
+                    activity.recognitionFailureCauseState?.show("card")
+                } else {
+                    submitReviewWithSwipeFeedback(activity.flashcardSwipeFeedback, decision.rating) {
+                        activity.submitReview(
+                            rating = decision.rating,
+                            override = false,
+                            interactionSource = "card",
+                        )
+                    }
                 }
                 true
             }
@@ -168,6 +210,11 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
     private fun isTouchInsideFlashcard(event: MotionEvent): Boolean {
         val bounds = activity.flashcardGestureBounds ?: return false
         return bounds.contains(event.rawX.toInt(), event.rawY.toInt())
+    }
+
+    private fun requiresRecognitionFailureCause(session: dev.bee.kanjianki.core.RecordsSchedulerModels.StudySession): Boolean {
+        return session.item?.phase == RecordsBase.SchedulerPhase.REVIEW &&
+            (session.taskType == StudyTaskTypes.KANJI_MEANING || session.taskType == StudyTaskTypes.FONT_MEANING)
     }
 }
 

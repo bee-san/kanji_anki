@@ -9,6 +9,9 @@ The app keeps periodic local backups of its SQLite database
 - Each backup is a gzip-compressed, transactionally consistent snapshot produced
   with `VACUUM INTO` (falling back to a WAL-checkpoint + file copy on older
   SQLite). Filenames look like `kanji_anki_simple_YYYYMMDD_HHmmss.db.gz`.
+- Compression writes and fsyncs a same-directory `.partial` file before an
+  atomic replace publishes the final name. If compression or publication
+  fails, the partial is removed and any prior final archive is preserved.
 - Compression typically shrinks a SQLite DB ~4-10x.
 
 ## Retention
@@ -51,6 +54,9 @@ AnkiDroid sync is running.
 Kani validates a selected file before offering the confirmation. Validation is
 fail-closed and requires all of the following:
 
+- gzip decompression is streamed rather than buffered, produces at most
+  512 MiB, and leaves a 64 MiB free-space reserve; oversize and insufficient
+  space are reported separately;
 - the file is readable gzip data whose decompressed bytes start with the
   16-byte `SQLite format 3\0` header;
 - the SQLite database opens read-only and `PRAGMA quick_check` returns `ok`;

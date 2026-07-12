@@ -236,6 +236,7 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         submitted: RecordsImportModels.SimilarKanjiChoiceCard?,
         selectedKanji: String?,
         nowMillis: Long,
+        @Suppress("UNUSED_PARAMETER")
         enqueueRepairs: Boolean,
     ): RecordsImportModels.SimilarKanjiChoiceResult {
         if (submitted == null) {
@@ -243,44 +244,84 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         }
         var result: RecordsImportModels.SimilarKanjiChoiceResult? = null
         writableDatabase.transaction {
-            var card = similarChoiceCard(this, submitted.targetKanji, submitted.choiceSignature)
-            if (card == null) {
-                card = submitted
-            }
-            val planner = SimilarKanjiChoicePlanner()
-            val evaluated = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji))
-            val reviewUpdate = SimilarKanjiChoiceReviewPolicy.reviewUpdate(card, evaluated, nowMillis)
-
-            val values = ContentValues()
-            values.put(COLUMN_LAST_REVIEWED_AT, reviewUpdate.lastReviewedAtMillis())
-            values.put(COLUMN_PASSED_AT, reviewUpdate.passedAtMillis())
-            reviewUpdate.dueAtMillis()?.let { values.put(COLUMN_DUE_AT, it) }
-            reviewUpdate.correctCount()?.let { values.put(COLUMN_CORRECT_COUNT, it) }
-            reviewUpdate.wrongCount()?.let { values.put(COLUMN_WRONG_COUNT, it) }
-            update(
-                TABLE_SIMILAR_KANJI_CHOICE_STATE,
-                values,
-                WHERE_SIMILAR_CHOICE,
-                arrayOf(card.targetKanji, card.choiceSignature)
+            result = applySimilarChoice(
+                this,
+                submitted,
+                selectedKanji,
+                nowMillis,
+                requirePersistedState = false,
             )
-
-            val log = ContentValues()
-            log.put(COLUMN_TARGET_KANJI, card.targetKanji)
-            log.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature)
-            log.put("selected_kanji", evaluated.selectedKanji)
-            log.put("correct", if (evaluated.correct) 1 else 0)
-            log.put(COLUMN_REVIEWED_AT, nowMillis)
-            log.put(COLUMN_RUNG, RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
-            insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
-
-            if (!evaluated.correct && enqueueRepairs) {
-                for (repairKanji in evaluated.repairKanji) {
-                    enqueueSimilarWritingRepair(this, card, repairKanji, evaluated.selectedKanji, nowMillis)
-                }
-            }
-            result = evaluated
         }
         return result ?: RecordsImportModels.SimilarKanjiChoiceResult(null, selectedKanji, false, emptyList())
+    }
+
+    /** Pure tap-time evaluation; persistence happens only inside commitReview. */
+    fun evaluateSimilarChoice(
+        submitted: RecordsImportModels.SimilarKanjiChoiceCard?,
+        selectedKanji: String?,
+    ): RecordsImportModels.SimilarKanjiChoiceResult {
+        if (submitted == null) {
+            return RecordsImportModels.SimilarKanjiChoiceResult(null, selectedKanji, false, emptyList())
+        }
+        return SimilarKanjiChoicePlanner().evaluateSelection(submitted, normalizeSingleKanji(selectedKanji))
+    }
+
+    internal override fun applyReviewSideEffects(db: SQLiteDatabase, command: ReviewCommitCommand) {
+        super.applyReviewSideEffects(db, command)
+        val choice = command.similarChoice ?: return
+        applySimilarChoice(
+            db,
+            choice.submitted,
+            choice.selectedAnswer,
+            choice.reviewedAtMillis,
+            requirePersistedState = true,
+        )
+    }
+
+    private fun applySimilarChoice(
+        db: SQLiteDatabase,
+        submitted: RecordsImportModels.SimilarKanjiChoiceCard,
+        selectedKanji: String?,
+        nowMillis: Long,
+        requirePersistedState: Boolean,
+    ): RecordsImportModels.SimilarKanjiChoiceResult {
+        val stored = similarChoiceCard(db, submitted.targetKanji, submitted.choiceSignature)
+        if (requirePersistedState && stored == null) {
+            throw StaleReviewCommitException()
+        }
+        val card = stored ?: submitted
+        val evaluated = SimilarKanjiChoicePlanner().evaluateSelection(card, normalizeSingleKanji(selectedKanji))
+        val reviewUpdate = SimilarKanjiChoiceReviewPolicy.reviewUpdate(card, evaluated, nowMillis)
+
+        val values = ContentValues()
+        values.put(COLUMN_LAST_REVIEWED_AT, reviewUpdate.lastReviewedAtMillis())
+        values.put(COLUMN_PASSED_AT, reviewUpdate.passedAtMillis())
+        reviewUpdate.dueAtMillis()?.let { values.put(COLUMN_DUE_AT, it) }
+        reviewUpdate.correctCount()?.let { values.put(COLUMN_CORRECT_COUNT, it) }
+        reviewUpdate.wrongCount()?.let { values.put(COLUMN_WRONG_COUNT, it) }
+        val updatedRows = db.update(
+            TABLE_SIMILAR_KANJI_CHOICE_STATE,
+            values,
+            WHERE_SIMILAR_CHOICE,
+            arrayOf(card.targetKanji, card.choiceSignature),
+        )
+        if (requirePersistedState && updatedRows != 1) {
+            throw StaleReviewCommitException()
+        }
+
+        val log = ContentValues()
+        log.put(COLUMN_TARGET_KANJI, card.targetKanji)
+        log.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature)
+        log.put("selected_kanji", evaluated.selectedKanji)
+        log.put("correct", if (evaluated.correct) 1 else 0)
+        log.put(COLUMN_REVIEWED_AT, nowMillis)
+        log.put(COLUMN_RUNG, RecordsBase.LadderRung.SIMILAR_KANJI.wireName())
+        db.insertOrThrow(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log)
+
+        // Adaptive routing persists the exact confused glyph on the owning
+        // study_items row. Keep draining existing legacy repairs for one
+        // compatibility release, but never create another side-queue row.
+        return evaluated
     }
 
     fun nextDueSimilarWritingRepair(nowMillis: Long): RecordsImportModels.SimilarKanjiWritingRepair? {

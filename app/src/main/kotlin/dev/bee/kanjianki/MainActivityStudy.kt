@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.AnswerEvidence
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -357,6 +358,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         selectedChoice: String,
         correct: Boolean,
         rung: RecordsBase.LadderRung,
+        correctAnswer: String = targetKanji,
     ) {
         writingReview.submitLoggedChoiceReview(
             targetKanji,
@@ -364,6 +366,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             selectedChoice,
             correct,
             rung,
+            correctAnswer,
         )
     }
 
@@ -391,8 +394,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         override: Boolean,
         ladder: RecordsBase.StudyLadderSettings? = null,
         interactionSource: String = "review-action",
+        answerEvidence: AnswerEvidence? = null,
     ): Boolean {
-        return writingReview.submitReview(rating, override, ladder, interactionSource)
+        return writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
     }
 
     fun skipSimilarWritingRepair() {

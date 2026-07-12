@@ -107,6 +107,35 @@ class StagedRestoreApplierTest {
         assertFalse(restoreDir.exists())
     }
 
+    @Test
+    fun failedSafetySnapshotPreservesExistingCompletedBackup() {
+        val fixture = fixture("safety-failure")
+        val existing = DatabaseBackupPolicy.backupFile(fixture.filesDir, NOW)
+        existing.parentFile!!.mkdirs()
+        val previousBytes = "previous completed archive".toByteArray()
+        existing.writeBytes(previousBytes)
+
+        try {
+            StagedRestoreApplier.applyOrThrow(
+                fixture.filesDir,
+                fixture.database,
+                NOW,
+                snapshotter = { _, destination ->
+                    destination.writeText("incomplete raw snapshot")
+                    throw IOException("snapshot failed")
+                },
+            )
+            throw AssertionError("failed safety snapshot must abort restore")
+        } catch (_: IOException) {
+            // Expected.
+        }
+
+        assertArrayEquals(previousBytes, existing.readBytes())
+        assertArrayEquals(fixture.originalBytes, fixture.database.readBytes())
+        assertTrue(BackupRestoreStager.stagedFile(fixture.filesDir).isFile)
+        assertFalse(File(existing.parentFile, existing.name + ".partial").exists())
+    }
+
     private fun fixture(name: String): Fixture {
         val root = temp.newFolder(name)
         val filesDir = File(root, "files").apply { assertTrue(mkdirs()) }

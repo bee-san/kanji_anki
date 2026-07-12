@@ -100,7 +100,6 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
 
         overlayDashboardRows(aggregates, rows)
         insertHistoricalKanjiAggregates(db, syncId, timing.finishedAt, aggregates)
-        pruneSupersededSnapshots(db)
     }
 
     /**
@@ -110,7 +109,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
      * (`sync_kanji_snapshots`) is intentionally retained long-term and untouched here.
      */
     fun pruneSupersededSnapshots(db: SQLiteDatabase) {
-        val existing = snapshotCardSyncIds(db)
+        val existing = successfulSnapshotCardSyncIds(db)
         val toPrune = SyncSnapshotRetentionPolicy.snapshotSyncIdsToPrune(existing)
         for (syncId in toPrune) {
             val args = arrayOf(syncId.toString())
@@ -119,18 +118,31 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    private fun snapshotCardSyncIds(db: SQLiteDatabase): List<Long> {
+    /**
+     * Delete historical rows that were never published by a successful sync. Pending
+     * rows can be left behind when the process dies between the mirror commit and the
+     * study-queue commit; they must never become analytics evidence later.
+     */
+    fun purgeNonSuccessfulSnapshots(db: SQLiteDatabase) {
+        val successfulSync =
+            "SELECT id FROM ${LocalStoreBase.TABLE_SYNC_RUNS} " +
+                "WHERE ${LocalStoreBase.COLUMN_STATUS}=?"
+        val selection = "${LocalStoreBase.COLUMN_SYNC_ID} NOT IN ($successfulSync)"
+        val args = arrayOf(LocalStoreBase.STATUS_SUCCESS)
+        db.delete(LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS, selection, args)
+        db.delete(LocalStoreBase.TABLE_SYNC_NOTE_SNAPSHOTS, selection, args)
+        db.delete(LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS, selection, args)
+    }
+
+    private fun successfulSnapshotCardSyncIds(db: SQLiteDatabase): List<Long> {
         val syncIds = ArrayList<Long>()
-        db.query(
-            true,
-            LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS,
-            arrayOf(LocalStoreBase.COLUMN_SYNC_ID),
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+        db.rawQuery(
+            "SELECT DISTINCT snapshots.${LocalStoreBase.COLUMN_SYNC_ID} " +
+                "FROM ${LocalStoreBase.TABLE_SYNC_CARD_SNAPSHOTS} snapshots " +
+                "JOIN ${LocalStoreBase.TABLE_SYNC_RUNS} runs " +
+                "ON runs.id=snapshots.${LocalStoreBase.COLUMN_SYNC_ID} " +
+                "WHERE runs.${LocalStoreBase.COLUMN_STATUS}=?",
+            arrayOf(LocalStoreBase.STATUS_SUCCESS),
         ).use {
             while (it.moveToNext()) {
                 syncIds.add(LocalStoreBase.longValue(it, LocalStoreBase.COLUMN_SYNC_ID))
@@ -140,7 +152,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
     }
 
     fun backfillLatestHistoricalSync(db: SQLiteDatabase) {
-        if (tableHasRows(db, LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS)) {
+        if (hasSuccessfulHistoricalRows(db)) {
             return
         }
         val sync = latestSuccessfulSyncRun(db) ?: return
@@ -391,8 +403,14 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    private fun tableHasRows(db: SQLiteDatabase, table: String): Boolean {
-        db.rawQuery("SELECT 1 FROM $table LIMIT 1", null).use {
+    private fun hasSuccessfulHistoricalRows(db: SQLiteDatabase): Boolean {
+        db.rawQuery(
+            "SELECT 1 FROM ${LocalStoreBase.TABLE_SYNC_KANJI_SNAPSHOTS} snapshots " +
+                "JOIN ${LocalStoreBase.TABLE_SYNC_RUNS} runs " +
+                "ON runs.id=snapshots.${LocalStoreBase.COLUMN_SYNC_ID} " +
+                "WHERE runs.${LocalStoreBase.COLUMN_STATUS}=? LIMIT 1",
+            arrayOf(LocalStoreBase.STATUS_SUCCESS),
+        ).use {
             return it.moveToFirst()
         }
     }

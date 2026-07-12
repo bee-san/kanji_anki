@@ -12,6 +12,8 @@ object StudyTaskTypes {
     const val KANJI_MEANING: String = "kanji_meaning"
     const val FONT_MEANING: String = "font_meaning"
     const val WORD_READING: String = "word_reading"
+    /** Exact full-word kana entry used only as targeted reading repair. */
+    const val TYPE_READING: String = "type_reading"
     const val KANJI_READING: String = "kanji_reading"
     const val READING_KANJI: String = "reading_kanji"
     const val SENTENCE_READING: String = "sentence_reading"
