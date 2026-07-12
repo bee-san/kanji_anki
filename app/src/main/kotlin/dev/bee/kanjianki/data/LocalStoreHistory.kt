@@ -571,20 +571,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
             .build()
     }
 
-    fun readLearningRepeat(cursor: Cursor): RecordsSchedulerModels.LearningRepeat {
-        return RecordsSchedulerModels.LearningRepeat(
-            string(cursor, COLUMN_KANJI),
-            string(cursor, COLUMN_ANSWER_SIGNATURE),
-            string(cursor, COLUMN_TASK_TYPE),
-            string(cursor, "repeat_type"),
-            integer(cursor, "step_index"),
-            longValue(cursor, COLUMN_DUE_AT),
-            string(cursor, COLUMN_ACTIVE_TOKEN),
-            longValue(cursor, COLUMN_CREATED_AT),
-            longValue(cursor, COLUMN_UPDATED_AT),
-        )
-    }
-
     fun taskMemoryFallback(
         memoryStage: Int,
         recognitionStage: Int,

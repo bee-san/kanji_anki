@@ -146,6 +146,31 @@ class UpdateArtifactValidatorTest {
     }
 
     @Test
+    fun signingCertificateValidationAcceptsAnExtendedRotationLineage() {
+        val installedLineage = listOf(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6))
+        val archiveLineage = listOf(
+            byteArrayOf(7, 8, 9),
+            byteArrayOf(4, 5, 6),
+            byteArrayOf(1, 2, 3),
+        )
+
+        val result = UpdateArtifactValidator.validateSigningCertificates(installedLineage, archiveLineage)
+
+        assertTrue(result.ok())
+    }
+
+    @Test
+    fun signingCertificateValidationRejectsAShorterArchiveLineage() {
+        val result = UpdateArtifactValidator.validateSigningCertificates(
+            listOf(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6)),
+            listOf(byteArrayOf(1, 2, 3)),
+        )
+
+        assertFalse(result.ok())
+        assertEquals("APK signing certificate does not match the installed app. Install blocked.", result.message())
+    }
+
+    @Test
     fun signingCertificateValidationRejectsMismatch() {
         val result = UpdateArtifactValidator.validateSigningCertificates(
             listOf(byteArrayOf(1, 2, 3)),

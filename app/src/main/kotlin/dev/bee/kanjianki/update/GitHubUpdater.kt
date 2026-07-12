@@ -29,7 +29,12 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.NoRouteToHostException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
@@ -107,7 +112,10 @@ class GitHubUpdater @JvmOverloads constructor(
         } catch (error: IOException) {
             recordResult(
                 checkedAt,
-                UpdateResult.failed(UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error))),
+                UpdateResult.failed(
+                    UpdateTextPolicy.updateCheckFailedMessage(readableMessage(error)),
+                    retryableFailure(error),
+                ),
                 "",
                 "",
                 "",
@@ -266,8 +274,10 @@ class GitHubUpdater @JvmOverloads constructor(
         @JvmField val retryable: Boolean,
     ) {
         companion object {
-            fun failed(message: String?): UpdateResult {
-                return UpdateResult(false, message ?: "", null, false, false)
+            @JvmStatic
+            @JvmOverloads
+            fun failed(message: String?, retryable: Boolean = false): UpdateResult {
+                return UpdateResult(false, message ?: "", null, false, retryable)
             }
         }
     }
@@ -520,6 +530,9 @@ class GitHubUpdater @JvmOverloads constructor(
         private const val API_BASE = "https://api.github.com/repos/"
         private const val TAG = "KaniUpdate"
         private const val BUFFER_SIZE = 32_768
+        private const val MAX_API_TEXT_BYTES = 1024L * 1024L
+        private const val MAX_CHECKSUM_TEXT_BYTES = 64L * 1024L
+        private const val MAX_ERROR_TEXT_BYTES = 4L * 1024L
 
         /**
          * Hard ceiling on a downloaded update APK. The real APK is a few MB; this
@@ -605,7 +618,9 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         @Throws(IOException::class)
-        fun getText(url: String): String {
+        @JvmOverloads
+        fun getText(url: String, maxBytes: Long = textResponseLimit(url)): String {
+            require(maxBytes > 0L) { "maxBytes must be positive." }
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.setRequestProperty("Accept", "application/vnd.github+json,text/plain,*/*")
             connection.setRequestProperty("User-Agent", "Kani/${BuildConfig.VERSION_NAME}")
@@ -613,7 +628,11 @@ class GitHubUpdater @JvmOverloads constructor(
             connection.readTimeout = 20_000
             return try {
                 requireSuccess(connection, "fetch $url")
-                readText(connection.inputStream)
+                val declared = connection.contentLengthLong
+                if (declared > maxBytes) {
+                    throw IOException("Update text response is too large ($declared bytes > $maxBytes).")
+                }
+                readText(connection.inputStream, maxBytes)
             } finally {
                 connection.disconnect()
             }
@@ -661,23 +680,91 @@ class GitHubUpdater @JvmOverloads constructor(
             var body = ""
             val error = connection.errorStream
             if (error != null) {
-                body = readText(error).replace('\n', ' ').trim()
+                body = readTextPrefix(error, MAX_ERROR_TEXT_BYTES).replace('\n', ' ').trim()
                 if (body.length > 160) {
                     body = body.substring(0, 160)
                 }
             }
             val suffix = if (body.isEmpty()) "" else ": $body"
-            throw IOException("HTTP $status while trying to $action$suffix")
+            throw HttpStatusIOException(status, "HTTP $status while trying to $action$suffix")
         }
 
+        @JvmStatic
+        internal fun retryableFailure(error: IOException): Boolean {
+            var cause: Throwable? = error
+            repeat(8) {
+                when (val current = cause) {
+                    is HttpStatusIOException -> return current.statusCode == 408 ||
+                        current.statusCode == 425 ||
+                        current.statusCode == 429 ||
+                        current.statusCode in 500..599
+                    is SocketTimeoutException,
+                    is ConnectException,
+                    is UnknownHostException,
+                    is NoRouteToHostException,
+                    is SocketException,
+                    -> return true
+                }
+                cause = cause?.cause
+                if (cause == null) {
+                    return false
+                }
+            }
+            return false
+        }
+
+        @JvmStatic
         @Throws(IOException::class)
-        private fun readText(stream: InputStream): String {
-            BufferedInputStream(stream).use { input ->
-                val output = ByteArrayOutputStream()
-                copy(input, output)
+        internal fun readText(stream: InputStream, maxBytes: Long): String {
+            require(maxBytes > 0L) { "maxBytes must be positive." }
+            stream.use { input ->
+                val output = ByteArrayOutputStream(minOf(maxBytes, BUFFER_SIZE.toLong()).toInt())
+                val buffer = ByteArray(BUFFER_SIZE)
+                var total = 0L
+                while (true) {
+                    val remaining = maxBytes - total
+                    val requestBytes = if (remaining >= buffer.size) buffer.size else (remaining + 1L).toInt()
+                    val read = input.read(buffer, 0, requestBytes)
+                    if (read < 0) {
+                        break
+                    }
+                    total += read
+                    if (total > maxBytes) {
+                        throw IOException("Update text response exceeded the maximum size of $maxBytes bytes.")
+                    }
+                    output.write(buffer, 0, read)
+                }
                 return output.toString("UTF-8")
             }
         }
+
+        @Throws(IOException::class)
+        private fun readTextPrefix(stream: InputStream, maxBytes: Long): String {
+            stream.use { input ->
+                val output = ByteArrayOutputStream(minOf(maxBytes, BUFFER_SIZE.toLong()).toInt())
+                val buffer = ByteArray(BUFFER_SIZE)
+                var remaining = maxBytes
+                while (remaining > 0L) {
+                    val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                    if (read < 0) {
+                        break
+                    }
+                    output.write(buffer, 0, read)
+                    remaining -= read
+                }
+                return output.toString("UTF-8")
+            }
+        }
+
+        private fun textResponseLimit(url: String): Long {
+            val path = url.substringBefore('?').lowercase(Locale.ROOT)
+            return if (path.endsWith(".sha256")) MAX_CHECKSUM_TEXT_BYTES else MAX_API_TEXT_BYTES
+        }
+
+        private class HttpStatusIOException(
+            val statusCode: Int,
+            message: String,
+        ) : IOException(message)
 
         @JvmStatic
         @Throws(IOException::class)

@@ -21,4 +21,6 @@ data class HomeScreenModel(
     /** Cards remaining in the current/next focus study session. */
     val studyRemainingCount: Int = 0,
     val repairedHandoff: HomeRepairedHandoffCardModel? = null,
+    /** Preloaded off the main thread; route rendering must not read update settings. */
+    val updatePermissionPrompt: HomeUpdatePermissionPromptSnapshot? = null,
 )

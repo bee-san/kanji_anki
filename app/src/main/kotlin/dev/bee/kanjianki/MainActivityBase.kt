@@ -276,6 +276,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val startup by lazy { MainActivityStartup(this as MainActivityHome) }
     private val activityLifecycle by lazy { MainActivityLifecycle(this) }
 
+    private lateinit var ankiDatabasePermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var backupExportDocumentLauncher: ActivityResultLauncher<String>
     private lateinit var backupRestoreDocumentLauncher: ActivityResultLauncher<Array<String>>
 
@@ -320,8 +322,17 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // SAF launchers must be registered once, before the activity reaches STARTED.
-        // Settings prepares/validates private files on the IO executor and these callbacks
+        // Activity-result launchers must be registered once, before the activity reaches STARTED.
+        // Permission callbacks preserve the previous request-code behavior: either AnkiDroid
+        // permission result refreshes Home, while notification permission settles the pending
+        // reminder settings before returning to the same Settings surface.
+        ankiDatabasePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { handleAnkiPermissionResult() }
+        postNotificationPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted -> handlePostNotificationPermission(granted) }
+        // Settings prepares/validates private files on the IO executor and these SAF callbacks
         // bridge the system picker result back to that flow.
         backupExportDocumentLauncher = registerForActivityResult(
             ActivityResultContracts.CreateDocument("application/gzip"),
@@ -398,13 +409,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         permissionHandler.requestAnkiPermissionIfNeeded()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        handlePermissionResult(requestCode, grantResults)
+    fun launchAnkiDatabasePermission(permission: String) {
+        ankiDatabasePermissionLauncher.launch(permission)
     }
 
-    fun handlePermissionResult(requestCode: Int, grantResults: IntArray) {
-        permissionHandler.handlePermissionResult(requestCode, grantResults)
+    fun handleAnkiPermissionResult() {
+        permissionHandler.handleAnkiPermissionResult()
+    }
+
+    fun requestPostNotificationPermission() {
+        postNotificationPermissionLauncher.launch(PERMISSION_POST_NOTIFICATIONS)
     }
 
     fun setFlashcardGestureBounds(left: Float, top: Float, right: Float, bottom: Float) {
@@ -416,8 +430,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         )
     }
 
-    fun handlePostNotificationPermission(grantResults: IntArray) {
-        permissionHandler.handlePostNotificationPermission(grantResults)
+    fun handlePostNotificationPermission(granted: Boolean) {
+        permissionHandler.handlePostNotificationPermission(granted)
     }
 
     fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
@@ -599,7 +613,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
-        const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"

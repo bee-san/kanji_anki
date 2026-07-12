@@ -2,6 +2,8 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.data.LocalStore
 import java.io.File
@@ -168,7 +170,10 @@ class AppDebugLogTest {
         assertNotNull("share intent built once log exists", intent)
         assertEquals(Intent.ACTION_SEND, intent?.action)
         assertEquals("text/plain", intent?.type)
-        assertNotNull(intent?.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM))
+        val stream = intent?.let {
+            IntentCompat.getParcelableExtra(it, Intent.EXTRA_STREAM, Uri::class.java)
+        }
+        assertNotNull(stream)
         assertTrue(
             "grants read permission",
             (intent?.flags ?: 0) and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0,

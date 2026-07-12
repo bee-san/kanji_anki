@@ -105,10 +105,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         ReminderScheduler.ensureNotificationChannel(activity)
         if (!activity.hasRuntimeNotificationPermissionForReminder()) {
             activity.pendingReminderSettings = reminder
-            activity.requestPermissions(
-                arrayOf(MainActivityBase.PERMISSION_POST_NOTIFICATIONS),
-                MainActivityBase.REQUEST_POST_NOTIFICATIONS
-            )
+            activity.requestPostNotificationPermission()
             return
         }
         val allowed = activity.notificationsAllowedForReminders()

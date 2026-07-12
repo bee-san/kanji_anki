@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 
 class StudyLadderSettingsTest {
     @Test
@@ -86,6 +87,44 @@ class StudyLadderSettingsTest {
         val similarDisabled = ladder
             .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, similarDisabled.effectiveRung(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.RungAvailability.of(true)))
+    }
+
+    @Test
+    fun allNormalizedSettingsResolveToEnabledAvailableRungsInStoredOrder() {
+        val rungs = RecordsBase.LadderRung.entries.toList()
+        val requestedOrder = rungs.reversed()
+        val currents: List<RecordsBase.LadderRung?> = listOf(null) + rungs
+
+        for (enabledMask in 0 until (1 shl rungs.size)) {
+            val requestedEnabled = rungs.filterIndexed { index, _ ->
+                enabledMask and (1 shl index) != 0
+            }
+            val ladder = RecordsBase.StudyLadderSettings(requestedOrder, requestedEnabled)
+            assertEquals(requestedOrder, ladder.orderedRungs)
+
+            for (availabilityMask in 0 until 16) {
+                val availability = RecordsBase.RungAvailability.of(
+                    availabilityMask and 1 != 0,
+                    availabilityMask and 2 != 0,
+                    availabilityMask and 4 != 0,
+                    availabilityMask and 8 != 0,
+                )
+                val expectedHighest = ladder.orderedRungs.last {
+                    ladder.isValidForItem(it, availability)
+                }
+                assertEquals(expectedHighest, ladder.highestRung(availability))
+
+                for (current in currents) {
+                    val expected = expectedEffectiveRung(ladder, current, availability)
+                    val effective = ladder.effectiveRung(current, availability)
+
+                    assertEquals(expected, effective)
+                    assertTrue(ladder.isValidForItem(effective, availability))
+                    assertTrue(ladder.isValidForItem(ladder.nextRung(current, availability), availability))
+                    assertTrue(ladder.isValidForItem(ladder.previousRung(current, availability), availability))
+                }
+            }
+        }
     }
 
     @Test
@@ -234,5 +273,25 @@ class StudyLadderSettingsTest {
         // The conditional SIMILAR_KANJI rung follows its flag.
         assertFalse(none.isAvailable(RecordsBase.LadderRung.SIMILAR_KANJI))
         assertTrue(RecordsBase.RungAvailability.of(true).isAvailable(RecordsBase.LadderRung.SIMILAR_KANJI))
+    }
+
+    private fun expectedEffectiveRung(
+        ladder: RecordsBase.StudyLadderSettings,
+        current: RecordsBase.LadderRung?,
+        availability: RecordsBase.RungAvailability,
+    ): RecordsBase.LadderRung {
+        val safeCurrent = current ?: RecordsBase.LadderRung.startingRung()
+        if (ladder.isValidForItem(safeCurrent, availability)) {
+            return safeCurrent
+        }
+        val start = ladder.orderedRungs.indexOf(safeCurrent)
+        return ladder.orderedRungs.withIndex()
+            .filter { ladder.isValidForItem(it.value, availability) }
+            .minWith(
+                compareBy<IndexedValue<RecordsBase.LadderRung>>(
+                    { abs(it.index - start) },
+                    { it.index },
+                ),
+            ).value
     }
 }

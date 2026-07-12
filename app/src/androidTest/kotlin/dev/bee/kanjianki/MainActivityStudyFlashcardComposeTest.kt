@@ -1,5 +1,8 @@
 package dev.bee.kanjianki
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
@@ -452,9 +455,12 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun usedInAnkiRowTapReturnsCopyFallbackAction() {
+    fun usedInAnkiRowTapCopiesIdShowsFeedbackAndReturnsFallbackAction() {
         val examples = sampleUsedInAnkiExamples()
         var tappedAction: StudyAnswerAnkiTapActionModel? = null
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("test", "before"))
 
         setStudyAnswerPanelContent(
             model = sampleStudyAnswerPanelModel(
@@ -472,12 +478,19 @@ class MainActivityStudyFlashcardComposeTest {
             .performScrollTo()
             .performClick()
         composeRule.onNodeWithTag(studyAnswerUsedInAnkiRowTestTag(0)).performClick()
+        composeRule.waitForIdle()
 
         assertNotNull(tappedAction)
         when (val action = tappedAction) {
             is StudyAnswerAnkiTapActionModel.CopyId -> assertEquals(101L, action.value)
             else -> throw AssertionError("Expected CopyId, got $action")
         }
+        var copiedText: String? = null
+        composeRule.runOnIdle {
+            copiedText = clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()
+        }
+        assertEquals("101", copiedText)
+        composeRule.onNodeWithText(StudyTextCopy.studyAnswerAnkiNoteIdCopiedMessage()).assertIsDisplayed()
     }
 
     @Test

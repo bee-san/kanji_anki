@@ -47,12 +47,14 @@ object UpdateArtifactValidator {
     }
 
     /**
-     * Verify that the downloaded APK is signed by the same certificate(s) as the
-     * running app. Certs are passed as their raw signature bytes; order does not
-     * matter. A mismatch means the release pipeline (or its signing key) is not the
-     * one that produced the installed app, so the install must be blocked even though
-     * Android would also reject it at commit time — failing fast avoids keeping a
-     * hostile APK cached.
+     * Verify that the downloaded APK's signing lineage contains every certificate
+     * trusted by the running app. Certs are passed as their raw signature bytes and
+     * order does not matter.
+     *
+     * Requiring the archive lineage to be a superset keeps ordinary and multi-signer
+     * updates fail-closed while allowing Android proof-of-rotation lineages to append
+     * a new signer. A shorter or disjoint archive lineage is rejected; Android's
+     * package installer remains the final cryptographic verifier of the lineage.
      */
     @JvmStatic
     fun validateSigningCertificates(
@@ -67,7 +69,7 @@ object UpdateArtifactValidator {
         }
         val currentSet = currentCerts.mapTo(HashSet()) { it.toHex() }
         val archiveSet = archiveCerts.mapTo(HashSet()) { it.toHex() }
-        if (currentSet != archiveSet) {
+        if (!archiveSet.containsAll(currentSet)) {
             return ValidationResult.failure("APK signing certificate does not match the installed app. Install blocked.")
         }
         return ValidationResult.success("APK signing certificate verified.")

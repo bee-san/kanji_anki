@@ -9,10 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import org.junit.Rule
@@ -33,9 +34,9 @@ class MainActivityShellComposeTest {
         }
 
         composeRule.onNodeWithTag("main-activity-shell")
-            .assert(hasContentDescription("Kani shell ${MainActivityBase.NAV_STATS_ROUTE}"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         composeRule.onNodeWithTag("main-route-${MainActivityBase.NAV_STATS_ROUTE}")
-            .assert(hasContentDescription("Kani route ${MainActivityBase.NAV_STATS_ROUTE}"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         composeRule.onNodeWithText("Compose stats content").assertIsDisplayed()
     }
 

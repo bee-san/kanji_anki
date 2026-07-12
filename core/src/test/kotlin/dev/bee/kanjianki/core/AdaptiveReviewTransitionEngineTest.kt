@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -301,6 +302,40 @@ class AdaptiveReviewTransitionEngineTest {
 
         assertEquals(8L, recovered.schedulerRevision)
         assertEquals(CoreSkill.CONTEXTUAL_READING, AdaptiveStudyItemPolicy.routeState(recovered)!!.activeCore)
+    }
+
+    @Test
+    fun unknownPersistedRepairRecoversToUnchangedCoreMemory() {
+        val coreMemory = memory(totalReviews = 7, dueAt = NOW + 3 * StudyLadderRules.DAY)
+        val malformed = baseItem(RecordsBase.LadderRung.WORD_READING)
+            .withTaskMemory(StudyTaskTypes.WORD_READING, coreMemory)
+            .copyBuilder()
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .state(StudyLadderRules.STATE_LEARNING)
+            .dueAtMillis(NOW + 10 * 60_000L)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(
+                "{\"v\":1,\"c\":\"contextual_reading\",\"t\":[\"future_repair\"]," +
+                    "\"d\":${NOW + 10 * 60_000L},\"o\":${coreMemory.dueAtMillis}}",
+            )
+            .schedulerRevision(8L)
+            .activeToken("stale-repair-token")
+            .build()
+
+        assertNull(AdaptiveStudyItemPolicy.routeState(malformed))
+
+        val recovered = AdaptiveStudyItemPolicy.recoverMalformedRouteState(malformed)
+        val route = AdaptiveStudyItemPolicy.routeState(recovered)!!
+
+        assertEquals(8L, recovered.schedulerRevision)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, recovered.phase)
+        assertEquals(StudyLadderRules.STATE_REVIEW, recovered.state)
+        assertEquals(coreMemory.encode(), recovered.wordReadingMemory.encode())
+        assertEquals(coreMemory.dueAtMillis, recovered.dueAtMillis)
+        assertEquals(CoreSkill.CONTEXTUAL_READING, route.activeCore)
+        assertFalse(route.isRepairActive())
+        assertEquals(StudyTaskTypes.WORD_READING, AdaptiveStudyItemPolicy.taskTypeFor(recovered, ladder))
+        assertNull(recovered.activeToken)
     }
 
     private fun adaptiveItem(

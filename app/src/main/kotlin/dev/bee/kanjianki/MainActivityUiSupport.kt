@@ -5,6 +5,8 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.graphics.toArgb
 import dev.bee.kanjianki.theme.KaniSystemBars
@@ -24,8 +26,10 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
 
     fun styleSystemBars(systemBars: KaniSystemBars) {
         val backgroundArgb = systemBars.backgroundColor.toArgb()
-        window.statusBarColor = backgroundArgb
-        window.navigationBarColor = backgroundArgb
+        enableEdgeToEdge(
+            statusBarStyle = systemBarStyle(backgroundArgb, systemBars.appearanceLightStatusBars),
+            navigationBarStyle = systemBarStyle(backgroundArgb, systemBars.appearanceLightNavigationBars),
+        )
         window.decorView.setBackgroundColor(backgroundArgb)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.isAppearanceLightStatusBars = systemBars.appearanceLightStatusBars
@@ -126,6 +130,14 @@ internal abstract class MainActivityUiSupport : ComponentActivity() {
     }
 
     companion object {
+        private fun systemBarStyle(backgroundArgb: Int, appearanceLight: Boolean): SystemBarStyle {
+            return if (appearanceLight) {
+                SystemBarStyle.light(backgroundArgb, backgroundArgb)
+            } else {
+                SystemBarStyle.dark(backgroundArgb)
+            }
+        }
+
         fun isNightMode(configuration: android.content.res.Configuration): Boolean {
             val mask = configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
             return mask == android.content.res.Configuration.UI_MODE_NIGHT_YES

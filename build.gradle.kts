@@ -116,6 +116,12 @@ tasks.register<Exec>("testDictionaryAssets") {
     commandLine("python3", "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py")
 }
 
+tasks.register<Exec>("testRalphScripts") {
+    group = "verification"
+    description = "Runs deterministic Python tests for Ralph loop and screenshot scripts."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_*.py")
+}
+
 tasks.register<Exec>("testCiScripts") {
     group = "verification"
     description = "Runs deterministic Python tests for CI scripts and live-fixture helpers."
@@ -151,6 +157,7 @@ val fastCiTasks = listOf(
     ":app:compileDebugAndroidTestJavaWithJavac",
     ":app:lintDebug",
     "testDictionaryAssets",
+    "testRalphScripts",
     "testCiScripts",
 )
 

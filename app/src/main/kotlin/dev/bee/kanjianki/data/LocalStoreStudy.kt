@@ -723,29 +723,6 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         studySettings().saveLearningStepSettings(settings)
     }
 
-    fun saveLearningRepeat(repeat: RecordsSchedulerModels.LearningRepeat) {
-        studyLog().saveLearningRepeat(repeat)
-    }
-
-    fun enqueueLearningRepeat(
-        item: RecordsStudyModels.StudyItem,
-        taskType: String,
-        repeatType: String,
-        stepIndex: Int,
-        dueAtMillis: Long,
-        nowMillis: Long,
-    ) {
-        studyLog().enqueueLearningRepeat(item, taskType, repeatType, stepIndex, dueAtMillis, nowMillis)
-    }
-
-    fun clearLearningRepeat(repeat: RecordsSchedulerModels.LearningRepeat) {
-        studyLog().clearLearningRepeat(repeat)
-    }
-
-    fun dueLearningRepeats(nowMillis: Long): List<RecordsSchedulerModels.LearningRepeat> {
-        return studyLog().dueLearningRepeats(nowMillis)
-    }
-
     fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
         return StudyStatsStore(this as LocalStore).reviewStatsSince(sinceMillis)
     }
