@@ -92,7 +92,7 @@ class StudySessionActionsTest {
     fun plannedStudySessionRequeuesDueLearningRepeatBeforeRemainingPlan() {
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
-        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
+        completePlanned(tracker, "kanji_meaning", "裂", "initial-token")
         val dueRepeat = item("裂")
             .copyBuilder()
             .state("learning")
@@ -121,6 +121,8 @@ class StudySessionActionsTest {
         val nonNullSession = session!!
         assertEquals("裂", nonNullSession.item!!.kanji)
         assertEquals("kanji_meaning", nonNullSession.taskType)
+        assertEquals(1, tracker.completedCount())
+        assertEquals(3, tracker.targetCount())
     }
 
     @Test
@@ -206,7 +208,7 @@ class StudySessionActionsTest {
         // served before a same-session repeat that is only due a few minutes out.
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
-        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
+        completePlanned(tracker, "kanji_meaning", "裂", "initial-token")
         val futureRepeat = item("裂")
             .copyBuilder()
             .state("learning")
@@ -236,6 +238,26 @@ class StudySessionActionsTest {
         val nonNullSession = session!!
         assertEquals("謎", nonNullSession.item!!.kanji)
         assertEquals("word_reading", nonNullSession.taskType)
+        // The future repeat is already real session workload even though the
+        // due normal card keeps its queue priority. Re-rendering must not add it
+        // a second time.
+        assertEquals(1, tracker.completedCount())
+        assertEquals(3, tracker.targetCount())
+
+        val rerendered = StudySessionActions.plannedStudySession(
+            BridgeScheduler(),
+            tracker,
+            listOf(futureRepeat, dueNowReview),
+            listOf(row("裂"), row("謎")),
+            2_000L,
+            0L,
+            null,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+        assertNotNull(rerendered)
+        assertEquals("謎", rerendered!!.item!!.kanji)
+        assertEquals(3, tracker.targetCount())
     }
 
     @Test
@@ -245,7 +267,7 @@ class StudySessionActionsTest {
         // early; the remaining plan is served instead.
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:裂", "word_reading:謎"))
-        tracker.markPlannedSessionTaskCompleted("kanji_meaning", "裂")
+        completePlanned(tracker, "kanji_meaning", "裂", "initial-token")
         val farFutureRepeat = item("裂")
             .copyBuilder()
             .state("learning")
@@ -274,6 +296,20 @@ class StudySessionActionsTest {
         val nonNullSession = session!!
         assertEquals("謎", nonNullSession.item!!.kanji)
         assertEquals("word_reading", nonNullSession.taskType)
+        assertEquals(1, tracker.completedCount())
+        assertEquals("out-of-horizon repeat is not session workload", 2, tracker.targetCount())
+    }
+
+    private fun completePlanned(
+        tracker: StudySessionTracker,
+        taskType: String,
+        kanji: String,
+        token: String,
+    ) {
+        val key = "session:$taskType:$kanji:$token"
+        tracker.registerTaskShown(key)
+        tracker.markTaskCompleted(key)
+        tracker.markPlannedSessionTaskCompleted(taskType, kanji)
     }
 
     private fun item(kanji: String): RecordsStudyModels.StudyItem {

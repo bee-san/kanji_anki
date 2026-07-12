@@ -82,6 +82,7 @@ class PostSessionZeroStateRegressionTest {
         var now = startNow
         var guard = 0
         var answeredAtLeastOnce = false
+        val progressBeforeAnswers = mutableListOf<Pair<Int, Int>>()
         while (guard++ < 200) {
             val items = store.studyItemsForKanji(kanji)
             if (doneReached(tracker, items, now)) {
@@ -98,6 +99,8 @@ class PostSessionZeroStateRegressionTest {
                 settings,
                 ladder,
             ) ?: break
+
+            progressBeforeAnswers += tracker.completedCount() to tracker.targetCount()
 
             // Fail the very first answer (drops the card into learning), then
             // pass every subsequent repeat until it graduates.
@@ -117,6 +120,13 @@ class PostSessionZeroStateRegressionTest {
 
         // The run finished: hard cap reached and no same-session repeat pending.
         val graduatedItems = store.studyItemsForKanji(kanji)
+        assertEquals(
+            "each persisted next step grows the bar once",
+            listOf(0 to 1, 1 to 2, 2 to 3),
+            progressBeforeAnswers,
+        )
+        assertEquals("graduation completes the last target without adding another", 3, tracker.completedCount())
+        assertEquals("graduation adds no hypothetical step", 3, tracker.targetCount())
         assertTrue("hard cap reached", tracker.atHardCap(false))
         assertTrue(
             "no same-session learning repeat pending",

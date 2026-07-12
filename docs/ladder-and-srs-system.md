@@ -507,8 +507,10 @@ to defaults). Step delays are wall-clock minutes
 `fsrsAdapter.initialReview(...)` and schedules the FSRS interval; the item
 enters `review` phase, step 0, state `review`.
 
-These learning/relearning repeats are practice-only: none of the code paths
-above touch `realPassStreak`, `realAgainStreak`, or the rung.
+These learning/relearning repeats are practice-only for real-due ladder
+evidence: none of the code paths above touch `realPassStreak`,
+`realAgainStreak`, or the rung. They are still real visible work in the active
+session and count as answered occurrences in its progress display.
 
 ### 6.3 `review` transitions
 
@@ -682,12 +684,23 @@ matching Anki) in the future instead of rendering the done screen
 widened horizon `max(studyAheadMillis, LEARN_AHEAD_MILLIS)`). The widened
 horizon applies ONLY to same-session completed repeats; ordinary queue
 building keeps the user's configured `study_ahead_minutes`, so a fresh
-not-in-session learning card due in 5 minutes is not pulled forward. A
-re-served repeat keeps its session task key, so completing it again does not
-re-increment `completedCount` or the hard cap — repeats stay practice-only.
-A learning step longer than the horizon legitimately leaves the session with
-a pending learning card; PS2 (section 8.7) keeps the home counts at 0 until
-it is due. Pinned by `StudySessionLearnAheadTest` and `StudySessionActionsTest`.
+not-in-session learning card due in 5 minutes is not pulled forward.
+
+The active-session progress target represents scheduled card appearances, not
+unique kanji. As soon as an answer schedules a same-session learning or
+relearning occurrence inside the effective learn-ahead horizon, that next
+occurrence is added to the visible workload (for example, `0 / 1` becomes
+`1 / 2` after a due-review `Fail` schedules the default 10-minute relearning
+step). Only the currently persisted next occurrence is counted; hypothetical
+later steps are added one at a time if an answer actually schedules them.
+Completing a repeat increments `completedCount` using its distinct session
+token. "Practice-only" means excluded from real-due ladder promotion/demotion
+evidence, not excluded from session progress or its hard cap. A learning step
+longer than the effective horizon is not added and legitimately leaves the
+session with a pending learning card; PS2 (section 8.7) keeps the home counts
+at 0 until it is due. Pinned by `StudySessionLearnAheadTest`,
+`StudySessionActionsTest`, and
+`MainActivityInstrumentedTest.testFailedReviewAddsLearnAheadRepeatToSessionProgress`.
 
 ### 8.4 Queue seeding lifecycle (`StudyQueueSeeder`)
 
@@ -754,9 +767,12 @@ Pinned by `StudyNowCountPolicyTest` and
 Within an active run, `StudySessionTracker` reconciles that selector snapshot
 against its ordered pending keys. Tasks removed by sync or settings changes are
 pruned, newly selectable unique tasks are appended, and completed keys remain
-recorded for the life of the run. A learning or relearning repeat can therefore
-be served through the learn-ahead path without increasing the unique-card
-target or resurrecting a stale badge.
+recorded for the life of the run. It separately reconciles the active run's
+in-horizon learning/relearning occurrences: each persisted next repeat adds one
+pending appearance to the target, and its token-distinct completion advances
+the numerator. Re-rendering the same occurrence is idempotent, and a later step
+does not count until the preceding answer schedules it. Out-of-horizon repeats
+do not grow the active target or resurrect a stale badge.
 
 The plan's focus metric still uses `AdaptiveLoadCandidate.isRecoveryDue`. A
 mid-`learning` card is recovery-due only once its step delay has elapsed

@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
@@ -65,9 +66,70 @@ class StudySessionLearnAheadTest {
     }
 
     @Test
-    fun reServingARepeatDoesNotChangeCompletedCountOrHardCap() {
-        // A re-served repeat keeps the same session task key (token preserved),
-        // so completing it again must not bump completedCount or the hard cap.
+    fun repeatStepsGrowProgressOneOccurrenceAtATimeAndGraduationAddsNothing() {
+        val tracker = StudySessionTracker()
+        val initial = baseItem("裂")
+            .copyBuilder()
+            .state("new")
+            .totalReviews(0)
+            .dueAtMillis(now)
+            .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+            .activeToken("initial-token")
+            .build()
+
+        val initialSession = plannedSession(tracker, initial)
+        assertNotNull(initialSession)
+        assertProgress(tracker, completed = 0, target = 1)
+        completeSession(tracker, initialSession!!)
+
+        // Failing the initial appearance persists only the next learning step.
+        // Reconciliation immediately grows 1 / 1 to 1 / 2, including while
+        // the step is merely being served early by learn-ahead.
+        val firstRepeat = learningRepeat("裂", dueAt = now + minute)
+            .copyBuilder()
+            .learningStep(0)
+            .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+            .activeToken("repeat-token-1")
+            .build()
+        val firstRepeatSession = plannedSession(tracker, firstRepeat)
+        assertNotNull(firstRepeatSession)
+        val nonNullFirstRepeatSession = firstRepeatSession!!
+        assertProgress(tracker, completed = 1, target = 2)
+
+        // Rendering the same pending occurrence again is idempotent.
+        val rerenderedFirstRepeat = plannedSession(tracker, firstRepeat)
+        assertNotNull(rerenderedFirstRepeat)
+        assertEquals(nonNullFirstRepeatSession.token, rerenderedFirstRepeat!!.token)
+        assertProgress(tracker, completed = 1, target = 2)
+
+        completeSession(tracker, nonNullFirstRepeatSession)
+
+        // Passing the first step schedules exactly one further occurrence. It
+        // increments the numerator and grows the target only for that next step.
+        val secondRepeat = learningRepeat("裂", dueAt = now + 10 * minute)
+            .copyBuilder()
+            .learningStep(1)
+            .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
+            .activeToken("repeat-token-2")
+            .build()
+        val secondRepeatSession = plannedSession(tracker, secondRepeat)
+        assertNotNull(secondRepeatSession)
+        assertProgress(tracker, completed = 2, target = 3)
+        completeSession(tracker, secondRepeatSession!!)
+
+        // Graduation leaves no persisted learning occurrence, so it adds no
+        // fourth unit of work. Reconciliation remains idempotent at 3 / 3.
+        val graduated = graduatedReview("裂")
+        assertEquals(null, plannedSession(tracker, graduated))
+        assertProgress(tracker, completed = 3, target = 3)
+        assertEquals(null, plannedSession(tracker, graduated))
+        assertProgress(tracker, completed = 3, target = 3)
+    }
+
+    @Test
+    fun completingTheSameRepeatTokenTwiceIsIdempotent() {
+        // Exact session tokens still protect against a duplicate submission of
+        // one appearance, while a later step receives a distinct token.
         val tracker = StudySessionTracker()
         val key = "session:kanji_meaning:裂:token-裂"
         tracker.registerTaskShown(key)
@@ -141,6 +203,7 @@ class StudySessionLearnAheadTest {
 
         // Nothing due now and no same-session repeat: no session.
         assertEquals(null, session)
+        assertProgress(tracker, completed = 0, target = 0)
     }
 
     private fun completePlanned(tracker: StudySessionTracker, taskType: String, kanji: String) {
@@ -148,6 +211,36 @@ class StudySessionLearnAheadTest {
         tracker.registerTaskShown(sessionKey)
         tracker.markTaskCompleted(sessionKey)
         tracker.markPlannedSessionTaskCompleted(taskType, kanji)
+    }
+
+    private fun completeSession(
+        tracker: StudySessionTracker,
+        session: RecordsSchedulerModels.StudySession,
+    ) {
+        val key = StudySessionTracker.sessionTaskKey(session)
+        tracker.registerTaskShown(key)
+        tracker.markTaskCompleted(key)
+        tracker.markPlannedSessionTaskCompleted(session.taskType, session.item!!.kanji)
+    }
+
+    private fun plannedSession(
+        tracker: StudySessionTracker,
+        item: RecordsStudyModels.StudyItem,
+    ) = StudySessionActions.plannedStudySession(
+        BridgeScheduler(),
+        tracker,
+        listOf(item),
+        listOf(row(item.kanji)),
+        now,
+        0L,
+        null,
+        RecordsSyncModels.Settings.kikuDefaults(),
+        RecordsBase.StudyLadderSettings.defaults(),
+    )
+
+    private fun assertProgress(tracker: StudySessionTracker, completed: Int, target: Int) {
+        assertEquals("completed", completed, tracker.completedCount())
+        assertEquals("target", target, tracker.targetCount())
     }
 
     private fun learningRepeat(kanji: String, dueAt: Long): RecordsStudyModels.StudyItem {
