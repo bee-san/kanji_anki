@@ -15,7 +15,12 @@ class KaniApplication : Application(), Configuration.Provider {
         // A validated restore is swapped in before any receiver, worker, activity, or
         // diagnostic toggle can open LocalStore. The applier is idempotent, so an
         // interrupted swap resumes safely on the next process start.
-        applyPendingRestoreAtStartup()
+        val restoreResult = applyPendingRestoreAtStartup()
+        check(restoreAllowsStartup(restoreResult)) {
+            // The database replacement committed, but stale WAL/SHM cleanup did not.
+            // Stop before any initializer or Android component can open SQLite.
+            "Restore cleanup must finish before Kani can start"
+        }
         // Debug-only: mirror study-load timing probes to a shareable file under
         // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
         StudyLoadDebugLog.init(this)
@@ -33,4 +38,11 @@ class KaniApplication : Application(), Configuration.Provider {
      */
     internal fun applyPendingRestoreAtStartup(): StagedRestoreApplier.Result =
         StagedRestoreApplier.apply(this)
+
+    internal companion object {
+        @JvmStatic
+        fun restoreAllowsStartup(result: StagedRestoreApplier.Result): Boolean {
+            return result != StagedRestoreApplier.Result.BLOCK_STARTUP
+        }
+    }
 }

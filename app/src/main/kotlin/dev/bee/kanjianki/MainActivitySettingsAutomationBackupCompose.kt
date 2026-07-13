@@ -43,8 +43,22 @@ fun SettingsBackupPanel(model: SettingsBackupPanelModel) {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(text = model.archiveCountLine, color = KaniUiTokens.Muted, fontSize = 15.sp)
-            KaniPrimaryButton(label = model.exportLabel) { model.onExport.run() }
-            KaniOutlinedButton(label = model.restoreLabel) { model.onRestore.run() }
+            model.availabilityMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = KaniUiTokens.Ink,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            KaniPrimaryButton(
+                label = model.exportLabel,
+                enabled = model.actionsEnabled,
+            ) { model.onExport.run() }
+            KaniOutlinedButton(
+                label = model.restoreLabel,
+                enabled = model.actionsEnabled,
+            ) { model.onRestore.run() }
         }
     }
 }

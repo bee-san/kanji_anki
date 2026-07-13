@@ -1118,8 +1118,12 @@ were resolved by the follow-up change set on this branch; items marked
   rung. Anki evidence still owns retirement; the forecast never predicts it.
 - **D-S5 — Restore by staged whole-file replacement.** A selected backup is
   validated fail-closed, staged privately, and swapped at the next process
-  start after a safety snapshot. Row merging and in-process replacement are
-  rejected because open-helper quiescence cannot be proven.
+  start after a safety snapshot on API 30+. Row merging, in-process
+  replacement, unsafe API 26–29 snapshots, and non-atomic move fallbacks are
+  rejected because open-helper quiescence and crash-safe publication cannot be
+  proven. Versioned ready marker-only post-replacement cleanup blocks ordinary
+  startup until stale WAL/SHM sidecars are gone; ambiguous legacy marker state
+  is preserved for manual recovery.
 - **D-S6 — Widget and reminders share eligibility.** Widget due counts pass
   through `ReminderEligibilityPolicy`, preserving the invariant that a tap on
   advertised work cannot open an empty Study route.

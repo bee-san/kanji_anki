@@ -60,9 +60,11 @@ Suggested batch order:
 The 2026-07-03 pass and #494-#507 landed correctly in these areas; this pass
 re-verified them at `438a3ccf`:
 
-- WAL mode enabled once (`LocalStoreBase.kt:27`); backups via `VACUUM INTO`
-  with checkpoint+copy fallback, gzip+fsync, tiered pruning
-  (`LocalStore.kt:31-77`, `DatabaseBackupWorker.kt:54-58`).
+- WAL mode enabled once (`LocalStoreBase.kt:27`). Correction (2026-07-13):
+  the checkpoint+copy fallback listed in this historical verification was not
+  WAL-safe and has been removed. API 30+ uses `VACUUM INTO`, gzip+fsync, and
+  tiered pruning; API 26–29 cancels/disables snapshot operations and preserves
+  existing data/archives.
 - Historical snapshot pruning fires on every append (`HistoricalSyncStore.kt:103-120`).
 - Sync run committed as `pending`, flipped to `success` only after study items
   commit; `hasSuccessfulSyncSince` filters `status=success`

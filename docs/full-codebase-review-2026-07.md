@@ -5,7 +5,9 @@
 > findings and resolves new-repair side-queue routing by storing repair inline;
 > `similar_kanji_repair_queue` is now drain-only. It also adds revision-CAS
 > review persistence, adaptive settings/stats, successful-run-only sync
-> history, and bounded atomic backup/restore behavior. See
+> history. Later work added bounded backup/restore, and the 2026-07-13 safety
+> audit removed its unsafe API 26–29 checkpoint-copy and non-atomic move
+> fallbacks. See
 > [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
 Six parallel deep reviews were run against the whole repository: ladder state
@@ -74,7 +76,7 @@ persistence.
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
-| 4.1 | major | Daily backup copies the live DB file with no lock/quiescence and never copies WAL sidecars; a failed checkpoint only warns; torn backups possible, and no restore path exists. | **DEFERRED**: needs SQLite online-backup API or copy-under-read-transaction design. |
+| 4.1 | major | Daily backup copies the live DB file with no lock/quiescence and never copies WAL sidecars; a failed checkpoint only warns; torn backups possible, and no restore path exists. | **FIXED LATER**: API 30+ now uses `VACUUM INTO` only; API 26–29 cancels/disables live backup and restore rather than copying the main file. Restore publication is strict-atomic with no ordinary move fallback. |
 | 4.2 | minor | No `onDowngrade` override: installing an older APK over a newer DB hard-crashes on open. | **DEFERRED**: needs an explicit downgrade policy decision. |
 | 4.3 | minor | `addNullableColumn` idempotence depended on parsing the "duplicate column" error-message substring; long-jump upgrades (<7 → 25) rely on it. | **FIXED**: checks `PRAGMA table_info` first; message parse kept as a secondary guard. |
 | 4.4 | minor | Corrupted/blank `study_ladder_enabled` silently re-enables all rungs. | **DEFERRED**: only reachable via corruption; consider defaults-fallback + logging. |

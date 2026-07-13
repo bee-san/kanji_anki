@@ -86,6 +86,35 @@ class BackupExportOperationsTest {
         assertTrue(File(temp.root, "backup-export").listFiles().isNullOrEmpty())
     }
 
+    @Test
+    fun snapshotterThatProducesNoDatabaseFailsWithoutPreparedExport() {
+        val db = temp.newFile("db-empty-snapshot")
+        db.writeText("source")
+
+        val preparation = BackupExportOperations.prepare(temp.root, db, 2L) { _, _ -> }
+
+        assertTrue(preparation is BackupExportPreparation.Failed)
+        assertTrue(File(temp.root, "backup-export").listFiles().isNullOrEmpty())
+    }
+
+    @Test
+    fun nonRemovableStaleScratchAbortsBeforeSnapshot() {
+        val db = temp.newFile("db-stale-scratch")
+        db.writeText("source")
+        val exportDir = File(temp.root, "backup-export").apply { assertTrue(mkdirs()) }
+        val stubborn = File(exportDir, "stubborn").apply { assertTrue(mkdirs()) }
+        File(stubborn, "child").writeText("orphan")
+        var snapshotCalled = false
+
+        val preparation = BackupExportOperations.prepare(temp.root, db, 3L) { _, _ ->
+            snapshotCalled = true
+        }
+
+        assertTrue(preparation is BackupExportPreparation.Failed)
+        assertFalse(snapshotCalled)
+        assertTrue(File(stubborn, "child").isFile)
+    }
+
     private fun formatExpectedSize(bytes: Long): String {
         return when {
             bytes < 1_024L -> "$bytes B"

@@ -126,6 +126,7 @@ internal fun KaniPrimaryButton(
     modifier: Modifier = Modifier,
     minHeightDp: Int = 56,
     textSizeSp: Int = 17,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     KaniActionButton(
@@ -134,6 +135,7 @@ internal fun KaniPrimaryButton(
         modifier = modifier,
         minHeightDp = minHeightDp,
         textSizeSp = textSizeSp,
+        enabled = enabled,
         onClick = onClick
     )
 }
@@ -144,6 +146,7 @@ internal fun KaniOutlinedButton(
     modifier: Modifier = Modifier,
     minHeightDp: Int = 50,
     textSizeSp: Int = 16,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     KaniActionButton(
@@ -152,6 +155,7 @@ internal fun KaniOutlinedButton(
         modifier = modifier,
         minHeightDp = minHeightDp,
         textSizeSp = textSizeSp,
+        enabled = enabled,
         onClick = onClick
     )
 }
@@ -163,6 +167,7 @@ private fun KaniActionButton(
     modifier: Modifier,
     minHeightDp: Int,
     textSizeSp: Int,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val sizedModifier = modifier
@@ -171,6 +176,7 @@ private fun KaniActionButton(
     if (primary) {
         Button(
             onClick = { withButtonTrace(label) { onClick() } },
+            enabled = enabled,
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             colors = ButtonDefaults.buttonColors(
@@ -183,6 +189,7 @@ private fun KaniActionButton(
     } else {
         OutlinedButton(
             onClick = { withButtonTrace(label) { onClick() } },
+            enabled = enabled,
             modifier = sizedModifier,
             shape = KaniUiTokens.ButtonShape,
             border = BorderStroke(1.dp, KaniUiTokens.ButtonBorder),

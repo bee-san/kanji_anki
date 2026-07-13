@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
+import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
 import dev.bee.kanjianki.backup.BackupExportOperations
 import dev.bee.kanjianki.backup.BackupExportPreparation
 import dev.bee.kanjianki.backup.BackupRestoreStager
@@ -47,6 +49,7 @@ class BackupAndRestoreInstrumentedTest {
     }
 
     @Test
+    @SdkSuppress(minSdkVersion = 30)
     fun panelRendersAndExportProducesStandaloneSqliteGzip() {
         val panel = SettingsBackupPanelModel(
             title = "Backup & restore",
@@ -80,8 +83,8 @@ class BackupAndRestoreInstrumentedTest {
             store.writableDatabase.execSQL(
                 "INSERT OR REPLACE INTO settings(key, value, updated_at) VALUES ('export_probe', 'yes', 1)",
             )
-            BackupExportOperations.prepare(context.cacheDir, dbFile, 1_778_832_000_000L) { source, destination ->
-                store.snapshotInto(source, destination)
+            BackupExportOperations.prepare(context.cacheDir, dbFile, 1_778_832_000_000L) { _, destination ->
+                store.snapshotInto(destination)
             }
         }
         assertTrue(preparation is BackupExportPreparation.Ready)
@@ -107,6 +110,7 @@ class BackupAndRestoreInstrumentedTest {
     }
 
     @Test
+    @SdkSuppress(minSdkVersion = 30)
     fun applicationStartupHookAppliesStagedOlderFixtureBeforeActivityOpen() {
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "fixture.db")
@@ -118,7 +122,7 @@ class BackupAndRestoreInstrumentedTest {
             store.writableDatabase.execSQL(
                 "INSERT OR REPLACE INTO settings(key, value, updated_at) VALUES ('restore_probe', 'visible', 1)",
             )
-            store.snapshotInto(liveDatabase, fixture)
+            store.snapshotInto(fixture)
         }
         SQLiteDatabase.openDatabase(fixture.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.execSQL("PRAGMA user_version = 28")
@@ -128,7 +132,7 @@ class BackupAndRestoreInstrumentedTest {
             BackupRestoreStager.stage(
                 ValidatedBackup(fixture, "known-fixture.db.gz"),
                 context.filesDir,
-                1_778_832_000_000L,
+                Build.VERSION.SDK_INT,
             ),
         )
         val application = context.applicationContext as KaniApplication

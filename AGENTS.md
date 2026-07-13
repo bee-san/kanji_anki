@@ -445,15 +445,27 @@ Successful repaired-note writes stamp `suspended_archive.restored_at`, and the
 Home hand-off copies `tag:kani_repaired is:suspended` so the user can review
 and unsuspend the cards in AnkiDroid.
 
-Automatic database backups remain WAL-safe gzip snapshots with the tiered
-7-daily/4-weekly retention policy. A backup is compressed into a same-directory
-`.partial`, fsynced, and atomically published; publication failure must preserve
-the prior final archive. Settings > Automation > Backup & restore can export a
-fresh snapshot through Android's document picker and can validate and stage a
-whole-file restore. Restore decompression is streamed, capped at 512 MiB, and
-requires a 64 MiB free-space reserve. A staged restore is applied on the next
-process start before ordinary components open the database, after first taking
-a pre-restore safety snapshot and before deleting stale WAL/SHM sidecars.
+On API 30+, automatic database backups are WAL-safe `VACUUM INTO` gzip
+snapshots with the tiered 7-daily/4-weekly retention policy. A backup is
+compressed into a same-directory `.partial`, fsynced, and strictly atomically
+published; any snapshot/publication failure must preserve the prior final
+archive. Stock API 26–29 cannot provide this live-snapshot contract, so Kani
+cancels automatic backup work and disables fresh export/new restore there while
+preserving the current database and all existing archives. Never restore the
+removed checkpoint/main-file-copy fallback.
+
+Settings > Automation > Backup & restore can export a fresh snapshot through
+Android's document picker and can validate and atomically stage a whole-file
+restore on API 30+. Restore decompression is streamed, capped at 512 MiB, and
+requires a 64 MiB free-space reserve. Startup first makes the staged file and a
+pre-restore safety snapshot durable, then publishes a versioned `SAFETY_READY`
+marker before strict `ATOMIC_MOVE` replacement. It fsyncs both rename-parent
+directories, deletes stale WAL/SHM sidecars, fsyncs the database directory, and
+only then deletes the marker and fsyncs the restore directory. There is no
+non-atomic replacement fallback. Any marker-bearing failure blocks
+database-capable startup. Only versioned ready marker-only state may perform
+cleanup; ambiguous legacy marker-only state preserves the live database and
+sidecars for manual recovery.
 
 The home-screen widget follows the same `ReminderEligibilityPolicy` filter as
 notifications (D-S6): its due count cannot advertise work that the Study route

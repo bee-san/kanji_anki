@@ -1,9 +1,11 @@
 package dev.bee.kanjianki.backup
 
 import android.content.Context
+import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
+import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import java.util.concurrent.TimeUnit
 
 object DatabaseBackupScheduler {
@@ -12,6 +14,14 @@ object DatabaseBackupScheduler {
     @JvmStatic
     fun schedule(context: Context?) {
         val appContext = context!!.applicationContext
+        schedule(Build.VERSION.SDK_INT, WorkManagerBackend(appContext))
+    }
+
+    internal fun schedule(apiLevel: Int, backend: SchedulerBackend) {
+        if (!DatabaseBackupAvailabilityPolicy.forAndroidApi(apiLevel).operationsAllowed) {
+            backend.cancelUniqueWork(UNIQUE_WORK_NAME)
+            return
+        }
         val request = PeriodicWorkRequest.Builder(
             DatabaseBackupWorker::class.java,
             1,
@@ -19,7 +29,7 @@ object DatabaseBackupScheduler {
             6,
             TimeUnit.HOURS,
         ).build()
-        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+        backend.enqueueUniquePeriodicWork(
             UNIQUE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
@@ -28,22 +38,32 @@ object DatabaseBackupScheduler {
 
     @JvmStatic
     fun cancel(context: Context?) {
-        cancel(context) { appContext ->
-            WorkCanceller { workName ->
-                WorkManager.getInstance(appContext).cancelUniqueWork(workName)
-            }
-        }
+        WorkManagerBackend(context!!.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 
-    internal fun cancel(context: Context?, factory: WorkCancellerFactory) {
-        factory.create(context!!.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
-    }
+    internal interface SchedulerBackend {
+        fun enqueueUniquePeriodicWork(
+            uniqueWorkName: String,
+            policy: ExistingPeriodicWorkPolicy,
+            request: PeriodicWorkRequest,
+        )
 
-    internal fun interface WorkCancellerFactory {
-        fun create(appContext: Context): WorkCanceller
-    }
-
-    internal fun interface WorkCanceller {
         fun cancelUniqueWork(workName: String)
+    }
+
+    private class WorkManagerBackend(context: Context) : SchedulerBackend {
+        private val workManager = WorkManager.getInstance(context.applicationContext)
+
+        override fun enqueueUniquePeriodicWork(
+            uniqueWorkName: String,
+            policy: ExistingPeriodicWorkPolicy,
+            request: PeriodicWorkRequest,
+        ) {
+            workManager.enqueueUniquePeriodicWork(uniqueWorkName, policy, request)
+        }
+
+        override fun cancelUniqueWork(workName: String) {
+            workManager.cancelUniqueWork(workName)
+        }
     }
 }

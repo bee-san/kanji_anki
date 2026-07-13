@@ -175,9 +175,11 @@ Study reseeding uses a capped dashboard view, so it preserves out-of-scope
 kanji rows unchanged and leaves retirement decisions to the full sync path.
 
 Restore decompression is streamed with a 512 MiB output limit and a 64 MiB free
-space reserve, with distinct too-large and insufficient-space errors. Backups
-gzip and fsync a same-directory `.partial`, then publish with an atomic replace;
-a failed publication never deletes the prior final archive.
+space reserve, with distinct too-large and insufficient-space errors. On Android
+11+, backups gzip and fsync a same-directory `.partial`, then publish with an
+atomic replace; a failed publication never deletes the prior final archive.
+Android 8–10 fail closed and preserve the current database and existing archives
+because their stock SQLite cannot create the required WAL-safe live snapshot.
 
 ## Required gates
 

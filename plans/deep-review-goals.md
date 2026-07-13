@@ -71,20 +71,24 @@ without fixing the backup, backups can be torn/stale (copy ignores `-wal`/`-shm`
 **Goal:** Do these together:
 - Enable WAL in `LocalStoreBase` init
   (`app/src/main/kotlin/dev/bee/kanjianki/data/LocalStoreBase.kt:17-22`).
-- Replace the backup's checkpoint+file-copy with `VACUUM INTO ?` through the existing
-  helper connection (API 27+/SQLite 3.27, minSdk is 26 — guard or use a copy-under-
-  exclusive-transaction fallback for API 26). Remove the second raw `SQLiteDatabase`
-  connection the worker opens (`DatabaseBackupWorker.kt:163-168`).
+- Replace the backup's checkpoint+file-copy with `VACUUM INTO ?` through the
+  existing helper connection. Correction (2026-07-13): stock API 26–29 ships
+  SQLite older than 3.27; support begins conservatively at API 30. Those legacy
+  APIs must fail closed, not use an exclusive-transaction/main-file-copy
+  fallback. Remove the second raw `SQLiteDatabase` connection the worker opens
+  (`DatabaseBackupWorker.kt:163-168`).
 - Consider `yieldIfContendedSafely` in the historical-snapshot insert loop.
 - Add/adjust instrumentation tests for backup integrity (open the backup copy and run
   an integrity check / row count).
 
-**Done when:** WAL is on, backups are produced via VACUUM INTO (or safe fallback),
-backup instrumented tests pass, `ciFast` green.
+**Done when:** WAL is on, API 30+ backups are produced only via `VACUUM INTO`,
+API 26–29 preserves current data and archives without creating a snapshot,
+backup tests pass, and `ciFast` is green.
 
 ### Goal 3: Reduce backup storage footprint
 
-**Problem:** 31 daily full-file DB copies (`core` `DatabaseBackupPolicy.MAX_BACKUPS = 31`)
+**Historical problem:** 31 daily full-file DB copies (`core`
+`DatabaseBackupPolicy.MAX_BACKUPS = 31` in the old implementation)
 of a growing database. Combined with Goal 1's growth this dominates app storage. There
 is also no in-app restore path, so most copies are dead weight.
 
