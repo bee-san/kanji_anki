@@ -113,6 +113,7 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
 
             assertTrue(store.hasConsumedToken(session.token))
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
