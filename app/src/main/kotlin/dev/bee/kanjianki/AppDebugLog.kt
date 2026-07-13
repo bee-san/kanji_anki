@@ -2,10 +2,8 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
-import androidx.core.content.FileProvider
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import java.io.File
@@ -28,10 +26,10 @@ import java.util.concurrent.atomic.AtomicInteger
  * callers only capture timestamps; formatting and file I/O run on a dedicated daemon writer
  * thread, never on the thread being observed.
  *
- * The log lives in the app's internal (app-private) files dir so it is not world-readable; it is
- * handed to the Android share sheet through the `.debuglog` FileProvider. The file survives
- * process restarts and toggling the switch off, so a captured problem can still be shared later.
- * It is trimmed to its tail when it grows past [MAX_BYTES].
+ * The log lives in the app's internal (app-private) files dir so it is not world-readable. Sharing
+ * copies a snapshot into a dedicated FileProvider-backed cache directory; the provider cannot
+ * address the live files directory. The log survives process restarts and toggling the switch off,
+ * so a captured problem can still be shared later. It is trimmed to its tail past [MAX_BYTES].
  */
 internal object AppDebugLog {
     private const val LOG_FILE_NAME = "kani-debug.log"
@@ -137,23 +135,20 @@ internal object AppDebugLog {
     }
 
     /**
-     * Builds a share-sheet [Intent] for the debug log via the `.debuglog` FileProvider, or null
-     * when there is nothing to share. Works while the toggle is off so a captured problem can be
-     * shared after recording stops. Callers wrap it in [Intent.createChooser] and start it.
+     * Queues a share-sheet snapshot behind pending log writes, then invokes [onPrepared] on the
+     * writer thread. Snapshot copying never blocks the UI and includes every write accepted before
+     * this call. Works while capture is off so a recorded problem can be shared after it stops.
      */
-    fun buildShareIntent(context: Context): Intent? {
-        val file = resolveLogFile(context)
-        if (!file.isFile || file.length() == 0L) {
-            return null
-        }
-        val uri: Uri = runCatching {
-            FileProvider.getUriForFile(context, "${context.packageName}.debuglog", file)
-        }.getOrNull() ?: return null
-        return Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Kani debug log")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    fun prepareShareIntent(context: Context, onPrepared: (Intent?) -> Unit) {
+        val appContext = context.applicationContext
+        writer.execute {
+            val file = resolveLogFile(appContext)
+            val intent = if (!file.isFile || file.length() == 0L) {
+                null
+            } else {
+                DebugLogShare.buildIntent(appContext, file, "Kani debug log")
+            }
+            runCatching { onPrepared(intent) }
         }
     }
 
@@ -187,17 +182,12 @@ internal object AppDebugLog {
 
     /** Keeps the newest [TRIM_KEEP_BYTES] once the file passes [MAX_BYTES], on line boundaries. */
     private fun trimIfOversized(file: File) {
-        if (file.length() <= MAX_BYTES) {
-            return
-        }
-        val text = file.readText(Charsets.UTF_8)
-        var start = text.length - TRIM_KEEP_BYTES
-        if (start < 0) {
-            start = 0
-        }
-        val boundary = text.indexOf('\n', start)
-        val tail = if (boundary in start until text.length - 1) text.substring(boundary + 1) else text.substring(start)
-        file.writeText("==== older debug log entries trimmed ====\n$tail", Charsets.UTF_8)
+        trimUtf8LogTailIfOversized(
+            file,
+            maxBytes = MAX_BYTES,
+            keepBytes = TRIM_KEEP_BYTES,
+            marker = "==== older debug log entries trimmed ====",
+        )
     }
 
     private fun appStartLine(): String {
