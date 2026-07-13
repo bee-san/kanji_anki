@@ -295,6 +295,12 @@ private fun SimilarChoiceResultBar(
     val correctChoice = model.gridModel.correctChoice ?: return
     val correct = selectedChoice == correctChoice
     Column(modifier = Modifier.padding(top = 12.dp)) {
+        model.mnemonic?.let { mnemonic ->
+            StudyAnswerMnemonic(
+                model = mnemonic,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
         MeaningChoiceResultActionBar(
             status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.similarKanjiWrongChoiceResult(correctChoice),
             statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,

@@ -48,8 +48,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         StudyPendingAnswerStore(getSharedPreferences(PENDING_ANSWER_PREFERENCES, Context.MODE_PRIVATE))
     }
 
-    fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return learningPanelModel(this, session)
+    fun learningPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ): StudyAnswerPanelModel {
+        return learningPanelModel(this, session, mnemonic)
     }
 
     fun firstExample(row: RecordsImportModels.DashboardRow?): RecordsImportModels.Example? {
@@ -155,23 +158,31 @@ internal abstract class MainActivityStudy : MainActivityStats() {
      * asset on the UI thread.
      */
     fun prepareSessionRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+        val mnemonic = prepareStudyAnswerMnemonic(session)
         return when (StudySessionRoute.destination(session)) {
             StudySessionRoute.Destination.WRITING -> {
                 warmStrokeGuides()
                 warmSessionDictionaryEntry(session)
-                val render: () -> Unit = { writingSession.renderComposeWritingSession(session) }
+                val render: () -> Unit = { writingSession.renderComposeWritingSession(session, mnemonic) }
                 render
             }
-            StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session)
-            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session)
-            StudySessionRoute.Destination.KANJI_READING -> choiceSessions.prepareKanjiReadingRender(session)
-            StudySessionRoute.Destination.READING_KANJI -> choiceSessions.prepareReadingKanjiRender(session)
+            StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session, mnemonic)
+            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session, mnemonic)
+            StudySessionRoute.Destination.KANJI_READING -> choiceSessions.prepareKanjiReadingRender(session, mnemonic)
+            StudySessionRoute.Destination.READING_KANJI -> choiceSessions.prepareReadingKanjiRender(session, mnemonic)
             StudySessionRoute.Destination.FLASHCARD -> {
                 warmSessionDictionaryEntry(session)
-                val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session) }
+                val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session, mnemonic) }
                 render
             }
         }
+    }
+
+    /** Load the current local note while the session render is being prepared on IO. */
+    internal fun prepareStudyAnswerMnemonic(
+        session: RecordsSchedulerModels.StudySession,
+    ): StudyAnswerMnemonicModel? {
+        return studyAnswerMnemonicModel(store.kanjiMnemonicNote(session.item?.kanji))
     }
 
     /**
@@ -202,12 +213,18 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return choiceSessions.buildSimilarKanjiChoices(targetKanji)
     }
 
-    fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        flashcardUi.renderComposeFlashcardSession(session)
+    fun renderComposeFlashcardSession(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ) {
+        flashcardUi.renderComposeFlashcardSession(session, mnemonic)
     }
 
-    fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
-        writingSession.renderComposeWritingSession(session)
+    fun renderComposeWritingSession(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ) {
+        writingSession.renderComposeWritingSession(session, mnemonic)
     }
 
     fun randomFontVariantTypeface(): Typeface {
@@ -286,12 +303,18 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return flashcardUi.fontResource(fontRes, fallback)
     }
 
-    fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return flashcardUi.flashcardAnswerPanelModel(session)
+    fun flashcardAnswerPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ): StudyAnswerPanelModel {
+        return flashcardUi.flashcardAnswerPanelModel(session, mnemonic)
     }
 
-    fun meaningChoiceAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return flashcardUi.meaningChoiceAnswerPanelModel(session)
+    fun meaningChoiceAnswerPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ): StudyAnswerPanelModel {
+        return flashcardUi.meaningChoiceAnswerPanelModel(session, mnemonic)
     }
 
     override fun currentDictionaryLookup(): DictionaryLookup {

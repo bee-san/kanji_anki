@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -326,6 +327,10 @@ class MainActivityStudyChoiceComposeUnitTest {
         var selected = ""
         var continued = 0
         val feedback = StudyAnswerFeedbackState("token-裂")
+        val mnemonic = StudyAnswerMnemonicModel(
+            label = "My mnemonic",
+            note = "A shell\nsplits open.",
+        )
         val model = similarChoiceModelWithCorrectChoice(
             correctChoice = "裂",
             feedback = feedback,
@@ -337,7 +342,7 @@ class MainActivityStudyChoiceComposeUnitTest {
             onContinue = {
                 if (feedback.tryContinue()) continued += 1
             },
-        )
+        ).copy(mnemonic = mnemonic)
 
         composeRule.setContent {
             // Tall viewport so the post-answer Continue bar is within tappable bounds.
@@ -354,8 +359,15 @@ class MainActivityStudyChoiceComposeUnitTest {
             }
         }
 
+        composeRule.onAllNodesWithTag(STUDY_ANSWER_MNEMONIC_TEST_TAG).assertCountEquals(0)
+        composeRule.onAllNodesWithText(mnemonic.label).assertCountEquals(0)
+        composeRule.onAllNodesWithText(mnemonic.note).assertCountEquals(0)
+
         composeRule.onNodeWithTag(similarChoiceTestTag("列")).performClick()
         assertEquals("列", selected)
+        composeRule.onNodeWithTag(STUDY_ANSWER_MNEMONIC_TEST_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText(mnemonic.label).assertExists()
+        composeRule.onNodeWithText(mnemonic.note).assertExists()
         composeRule.onNodeWithText(choiceButtonText("列", KanjiChoiceFeedback.INCORRECT)).assertExists()
         composeRule.onNodeWithText(choiceButtonText("裂", KanjiChoiceFeedback.CORRECT)).assertExists()
         composeRule.onNodeWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂"))

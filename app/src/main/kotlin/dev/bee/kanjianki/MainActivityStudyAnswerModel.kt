@@ -8,6 +8,12 @@ internal data class StudyAnswerPanelModel(
     val helperText: String?,
     val stateKey: String = "",
     val kanjiDetails: StudyAnswerKanjiDetailsModel? = null,
+    val mnemonic: StudyAnswerMnemonicModel? = null,
+)
+
+data class StudyAnswerMnemonicModel(
+    val label: String,
+    val note: String,
 )
 
 data class StudyAnswerLineModel(

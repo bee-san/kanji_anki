@@ -77,7 +77,10 @@ private val StudyAnswerPillFill: androidx.compose.ui.graphics.Color @Composable 
 
 private val TEST_TAG_SANITIZE_REGEX = Regex("[^a-z0-9]+")
 
-internal fun studyAnswerPanelStateKey(session: RecordsSchedulerModels.StudySession): String {
+internal fun studyAnswerPanelStateKey(
+    session: RecordsSchedulerModels.StudySession,
+    mnemonicNote: String = "",
+): String {
     return listOf(
         session.token,
         session.taskType,
@@ -87,6 +90,7 @@ internal fun studyAnswerPanelStateKey(session: RecordsSchedulerModels.StudySessi
         session.row?.primaryMeaning.orEmpty(),
         session.row?.reading.orEmpty(),
         session.row?.browserSearch.orEmpty(),
+        mnemonicNote,
     ).joinToString("|")
 }
 
@@ -100,6 +104,7 @@ internal fun studyAnswerPanelStateKey(model: StudyAnswerPanelModel): String {
         model.glyphSizeSp.toString(),
         model.helperText.orEmpty(),
         model.kanjiDetails?.kanji.orEmpty(),
+        model.mnemonic?.note.orEmpty(),
         model.lines.joinToString(separator = "¦") { it.text },
     ).joinToString("|")
 }
