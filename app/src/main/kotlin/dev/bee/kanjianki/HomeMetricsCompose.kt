@@ -140,6 +140,7 @@ fun HomeMetricCard(
         modifier = modifier.fillMaxWidth().heightIn(min = 118.dp).testTag(homeMetricCardTestTag(model.label)),
         onClick = model.onClick?.let { action -> { withButtonTrace("Home metric ${model.label}") { action() } } },
         contentDescriptionPrefix = HomeTextCopy.homeMetricCardDescription(),
+        compactValue = true,
     )
 }
 

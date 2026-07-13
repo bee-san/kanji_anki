@@ -242,6 +242,21 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun meaningKanjiChoiceQuestionRemovesTrailingJapaneseExampleFromEnglishMeaning() {
+        val card = RecordsImportModels.MeaningKanjiChoiceCard(
+            "脱",
+            "Escape getting away (from) getting out (of) 爺ちゃんはやっとのことで 脱出 した",
+            "だつ",
+            listOf("号", "脱", "別", "協"),
+        )
+
+        assertEquals(
+            "Which kanji means Escape getting away (from) getting out (of)?",
+            StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback"),
+        )
+    }
+
+    @Test
     fun meaningKanjiChoiceCopyTranslatesToJapaneseLocale() {
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "静",
