@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.ForecastTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.ReviewHeatmapPolicy
 import dev.bee.kanjianki.core.StatsValueFormatter
@@ -40,12 +41,14 @@ internal fun progressAnalyticsSnapshot(
     },
     nowMillis = nowMillis,
     scheduleRefresh = scheduleRefresh,
+    ladderSettings = store.studyLadderSettings(),
 )
 
 internal fun progressAnalyticsSnapshot(
     source: ProgressAnalyticsStatsSource,
     nowMillis: Long = System.currentTimeMillis(),
     scheduleRefresh: (() -> Unit)? = null,
+    ladderSettings: RecordsBase.StudyLadderSettings,
 ): ProgressAnalyticsState {
     val fresh = source.cachedStatsSnapshotOrNull()
     val latest = if (fresh == null) source.latestStatsSnapshotOrNull() else null
@@ -104,7 +107,7 @@ internal fun progressAnalyticsSnapshot(
     val progressRows = if (usesAdaptiveHealth) {
         adaptiveRows(adaptiveHealth, adaptiveProgressTotal, legacyTransitionCount, copy)
     } else {
-        ladderRows(outcome.ladderHealth, copy)
+        ladderRows(outcome.ladderHealth, ladderSettings, copy)
     }
     val range7 = reviewRangeData.getValue(AnalyticsRange.SEVEN_DAYS)
     val inventory = snapshot.confusionMeanings.map { (kanji, meaning) ->
@@ -374,9 +377,14 @@ private fun distributionSummary(
     copy: StatsDashboardCopy,
 ): String = "$title. " + segments.joinToString { "${it.label} ${it.value}, ${it.percent} ${copy.percentWord}" }
 
-private fun ladderRows(metric: StudyStatsStore.LadderHealthMetric, copy: StatsDashboardCopy): List<ProgressLevelRowState> {
+private fun ladderRows(
+    metric: StudyStatsStore.LadderHealthMetric,
+    ladderSettings: RecordsBase.StudyLadderSettings,
+    copy: StatsDashboardCopy,
+): List<ProgressLevelRowState> {
     val total = metric.rungCounts.values.sum()
-    return metric.rungCounts.entries.sortedBy { it.key.ordinal }.map { (rung, count) ->
+    return ladderSettings.orderedRungs.map { rung ->
+        val count = metric.countFor(rung)
         ProgressLevelRowState(copy.rung(rung.wireName()), count, total, percent(count, total))
     }
 }

@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.StatsDashboardCopy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
@@ -90,6 +92,53 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
+    fun legacyLadderRowsFollowStoredCustomOrder() {
+        val now = System.currentTimeMillis()
+        val defaults = RecordsBase.StudyLadderSettings.defaults()
+        val configured = RecordsBase.StudyLadderSettings(
+            defaults.orderedRungs.reversed(),
+            defaults.enabledRungs,
+        )
+        val rungCounts = configured.orderedRungs.mapIndexed { index, rung -> rung to index + 1 }.toMap()
+        val ladderHealth = StudyStatsStore.LadderHealthMetric(
+            rungCounts,
+            rungCounts.values.sum(),
+            3,
+            0,
+            0,
+            0,
+        )
+        writeFreshStatsSnapshot(
+            now,
+            cachedReviewDaySummaries(now),
+            outcomeStats = StudyStatsStore.KaniOutcomeStats(
+                StudyStatsStore.WeakKanjiImprovedMetric.empty(),
+                StudyStatsStore.MatureSupportGainedMetric.empty(),
+                ladderHealth,
+            ),
+        )
+        localStore!!.saveStudyLadderSettings(configured)
+        var refreshesScheduled = 0
+
+        val rows = progressAnalyticsSnapshot(
+            localStore!!,
+            now,
+            scheduleRefresh = { refreshesScheduled += 1 },
+        ).progressByLevel.levelRows
+        val copy = StatsDashboardCopy.forLocale()
+
+        assertEquals(1, refreshesScheduled)
+        assertEquals(
+            configured.orderedRungs.map { copy.rung(it.wireName()) },
+            rows.map { it.level },
+        )
+        assertEquals(
+            configured.orderedRungs.map { ladderHealth.countFor(it) },
+            rows.map { it.learned },
+        )
+    }
+
+    @Test
     fun legacyLatestSnapshotRecomputesSynchronouslyInsteadOfRenderingMissingExtras() {
         val now = System.currentTimeMillis()
         val source = CountingProgressStatsSource(
@@ -105,7 +154,11 @@ class ProgressAnalyticsLiveDataSourceTest {
             ),
         )
 
-        val snapshot = progressAnalyticsSnapshot(source, nowMillis = now)
+        val snapshot = progressAnalyticsSnapshot(
+            source,
+            nowMillis = now,
+            ladderSettings = RecordsBase.StudyLadderSettings.defaults(),
+        )
 
         assertEquals(1, source.cachedReads)
         assertEquals(1, source.latestReads)
@@ -154,12 +207,13 @@ class ProgressAnalyticsLiveDataSourceTest {
             reviewsToday = 1,
             lastStudyAtMillis = now,
         ),
+        outcomeStats: StudyStatsStore.KaniOutcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
     ) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
             db,
             StatsCacheStore.Snapshot(
-                outcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
+                outcomeStats = outcomeStats,
                 impactReport = KanjiImpactAnalyzer.Report(
                     3,
                     1,

@@ -5,7 +5,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
-import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 import dev.bee.kanjianki.progress.progressAnalyticsSampleSnapshot
@@ -47,12 +46,6 @@ internal abstract class MainActivityStats : MainActivityGames() {
 
     fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {
         return KanjiImpactAnalyzer.notHelpingRows(report)
-    }
-
-    fun ladderDistributionRows(metric: StudyStatsStore.LadderHealthMetric): List<String> {
-        return RecordsBase.LadderRung.values().map { rung ->
-            StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung))
-        }
     }
 
     fun weaknessImprovementExamples(metric: StudyStatsStore.WeakKanjiImprovedMetric): List<String> {
