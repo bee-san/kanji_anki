@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-/** Event-driven refresh; deliberately no periodic widget worker. */
+/** Immediate event-driven refresh; provider metadata supplies an hourly fallback. */
 internal object KaniWidgetUpdater {
     private val updateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
