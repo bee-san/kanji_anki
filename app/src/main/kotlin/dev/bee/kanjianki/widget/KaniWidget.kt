@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -38,15 +39,15 @@ internal class KaniWidget(
             KaniWidgetSnapshotLoader.load(context)
         }
         provideContent {
-            KaniWidgetContent(context, snapshot)
+            KaniWidgetContent(snapshot)
         }
     }
 }
 
 @Composable
-private fun KaniWidgetContent(context: Context, snapshot: KaniWidgetSnapshot) {
+private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
     val copy = widgetCopy(snapshot)
-    val launchAction = actionStartActivity(kaniWidgetLaunchIntent(context, snapshot))
+    val launchAction = actionStartActivity(kaniWidgetLaunchIntent(LocalContext.current, snapshot))
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
