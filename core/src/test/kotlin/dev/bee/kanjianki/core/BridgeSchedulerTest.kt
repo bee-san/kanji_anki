@@ -1092,6 +1092,43 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public fun reviewTransitionPrefersExactLastReviewTimeOverRoundedIntervalInference() {
+        var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(4L * BridgeScheduler.DAY)
+        var scheduler: BridgeScheduler = BridgeScheduler(adapter)
+        var now: Long = 40L * BridgeScheduler.DAY
+        var exactLastReview: Long = now - 7L * BridgeScheduler.DAY - BridgeScheduler.DAY / 2L
+        var taskMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
+                "review",
+                now,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                9,
+                0,
+                0L,
+                exactLastReview
+        )
+        var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, now)
+                .copyBuilder()
+                .kanjiMeaningMemory(taskMemory)
+                .activeToken("exact-last-review")
+                .build()
+
+        var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
+                item,
+                RecordsSchedulerModels.ReviewRequest("裂", "exact-last-review", "good", false, false, false, 0),
+                HashSet(),
+                now
+        )
+
+        assertEquals(7, adapter.elapsedDays)
+        assertEquals(now, result.item.kanjiMeaningMemory.lastReviewedAtMillis)
+    }
+
+    @Test
     public fun relearningGraduationPreservesPostLapseStability() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var dueAt: Long = 30L * BridgeScheduler.DAY

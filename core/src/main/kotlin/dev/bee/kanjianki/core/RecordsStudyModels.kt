@@ -48,19 +48,31 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
         @JvmField
         val lastPassedDueAtMillis: Long
 
+        /**
+         * Exact wall-clock time of the review that produced this memory.
+         *
+         * Older encodings do not contain this field; callers deliberately
+         * fall back to the legacy due-minus-interval reconstruction for those
+         * rows until the next committed review writes an exact timestamp.
+         */
+        @JvmField
+        val lastReviewedAtMillis: Long
+
         init {
-            requireArgCount(CONTEXT_TASK_MEMORY, rest.toStudyArgsArray(), 3, 5)
+            val args = rest.toStudyArgsArray()
+            requireArgCount(CONTEXT_TASK_MEMORY, args, 3, 5, 6)
             this.state = if (state.isNullOrEmpty()) "new" else state
             this.dueAtMillis = dueAtMillis.coerceAtLeast(0L)
             this.stability = stability
             this.difficulty = difficulty
             this.totalReviews = totalReviews.coerceAtLeast(0)
             this.lapses = lapses.coerceAtLeast(0)
-            this.learningStep = intArg(rest.toStudyArgsArray(), 0, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.lastRating = nullToEmpty(stringArg(rest.toStudyArgsArray(), 1, CONTEXT_TASK_MEMORY))
-            this.matureIntervalDays = intArg(rest.toStudyArgsArray(), 2, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.consecutivePasses = if (rest.size == 3) 0 else intArg(rest.toStudyArgsArray(), 3, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.lastPassedDueAtMillis = if (rest.size == 3) 0L else longArg(rest.toStudyArgsArray(), 4, CONTEXT_TASK_MEMORY).coerceAtLeast(0L)
+            this.learningStep = intArg(args, 0, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
+            this.lastRating = nullToEmpty(stringArg(args, 1, CONTEXT_TASK_MEMORY))
+            this.matureIntervalDays = intArg(args, 2, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
+            this.consecutivePasses = if (args.size == 3) 0 else intArg(args, 3, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
+            this.lastPassedDueAtMillis = if (args.size == 3) 0L else longArg(args, 4, CONTEXT_TASK_MEMORY).coerceAtLeast(0L)
+            this.lastReviewedAtMillis = if (args.size < 6) 0L else longArg(args, 5, CONTEXT_TASK_MEMORY).coerceAtLeast(0L)
         }
 
         fun withDueAtMillis(dueAtMillis: Long): TaskMemory {
@@ -76,6 +88,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 matureIntervalDays,
                 consecutivePasses,
                 lastPassedDueAtMillis,
+                lastReviewedAtMillis,
             )
         }
 
@@ -90,7 +103,8 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 lastRating + "\t" +
                 matureIntervalDays + "\t" +
                 consecutivePasses + "\t" +
-                lastPassedDueAtMillis
+                lastPassedDueAtMillis + "\t" +
+                lastReviewedAtMillis
         }
 
         companion object {
@@ -146,6 +160,7 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                         parts[8].toInt(),
                         if (parts.size > 9) parts[9].toInt() else 0,
                         if (parts.size > 10) parts[10].toLong() else 0L,
+                        if (parts.size > 11) parts[11].toLong() else 0L,
                     )
                 } catch (_: RuntimeException) {
                     safeFallback
