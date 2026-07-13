@@ -25,6 +25,7 @@ import dev.bee.kanjianki.data.ReviewChoiceLog
 import dev.bee.kanjianki.data.ReviewCommitDisposition
 import dev.bee.kanjianki.data.ReviewCommitResult
 import dev.bee.kanjianki.data.SimilarChoiceCommit
+import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -63,6 +64,12 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
     )
 
     private val submissionGate = ReviewSubmissionGate()
+
+    /** Refreshes installed widgets only after a review-side mutation is durably persisted. */
+    @JvmField
+    internal var widgetRefresher: Runnable = Runnable {
+        KaniWidgetUpdater.requestUpdate(activity)
+    }
 
     /**
      * Runs a review write pipeline on the background io executor. Answering a card
@@ -304,6 +311,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 activity.studySessionTracker::recordRepairOutcome,
                 activity::markStudyTaskCompleted
             )
+            if (completion.saved) {
+                refreshWidgetAfterPersistedReviewMutation()
+            }
             showToast(StudyTextCopy.similarWritingRepairSavedToast(completion.passed))
             activity.markStudyAnswerApplied(activity.studyAnswerFeedbackState?.sessionToken.orEmpty())
             activity.requestReminderRearm("review")
@@ -318,13 +328,16 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 return@runReviewWrite
             }
             activity.completeActiveRepairStudyTask(activity.similarRepairStudyTaskKey(repair), REPAIR_OUTCOME_SKIP, now)
-            StudyRepairActions.skipSimilarWritingRepair(
+            val completion = StudyRepairActions.skipSimilarWritingRepair(
                 repair,
                 now,
                 activity.store::skipSimilarWritingRepair,
                 activity.studySessionTracker::recordRepairOutcome,
                 activity::markStudyTaskCompleted,
             )
+            if (completion.saved) {
+                refreshWidgetAfterPersistedReviewMutation()
+            }
             showToast(StudyTextCopy.similarWritingRepairSkippedToast())
             activity.activeSimilarWritingRepair = null
             activity.renderStudy()
@@ -546,6 +559,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             )
             return ReviewWriteDisposition.RETRYABLE_DROP
         }
+        refreshWidgetAfterPersistedReviewMutation()
         activity.studySessionTracker.commitPreparedTask(preparedTask)
         val streak: StudyStatsStore.StudyStreak = activity.store.studyStreak(now)
         showToast(HomeTextCopy.reviewToast(false, result.appliedRating, streak.currentDays))
@@ -598,6 +612,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 activity.renderStudy()
                 return@runReviewWrite
             }
+            refreshWidgetAfterPersistedReviewMutation()
             // Undo deletes the persisted review token and restores the pre-review
             // item, including that token. Make the restored card genuinely
             // answerable again instead of letting the activity-lifetime gate treat
@@ -653,6 +668,14 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             )
         }
         return commit
+    }
+
+    private fun refreshWidgetAfterPersistedReviewMutation() {
+        try {
+            widgetRefresher.run()
+        } catch (error: Exception) {
+            AppDebugLog.logError("widget refresh request failed after persisted review mutation", error)
+        }
     }
 
     private fun logReviewError(source: String, tokenId: String, phase: String, error: Throwable) {
