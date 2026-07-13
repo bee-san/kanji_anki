@@ -4,6 +4,7 @@ import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
 import java.io.File
+import java.io.FileDescriptor
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption
@@ -14,11 +15,48 @@ internal fun interface DirectorySynchronizer {
     fun sync(directory: File)
 }
 
+internal interface AndroidDirectoryOperations {
+    @Throws(IOException::class)
+    fun open(directory: File): FileDescriptor
+
+    @Throws(IOException::class)
+    fun isDirectory(descriptor: FileDescriptor): Boolean
+
+    @Throws(IOException::class)
+    fun sync(descriptor: FileDescriptor)
+
+    @Throws(IOException::class)
+    fun close(descriptor: FileDescriptor)
+}
+
+internal class AndroidDirectorySynchronizer(
+    private val operations: AndroidDirectoryOperations = SystemAndroidDirectoryOperations,
+) : DirectorySynchronizer {
+    override fun sync(directory: File) {
+        val descriptor = operations.open(directory)
+        DirectoryHandle(descriptor, operations).use { handle ->
+            if (!operations.isDirectory(handle.descriptor)) {
+                throw IOException("Directory sync target is not a directory")
+            }
+            operations.sync(handle.descriptor)
+        }
+    }
+
+    private class DirectoryHandle(
+        val descriptor: FileDescriptor,
+        private val operations: AndroidDirectoryOperations,
+    ) : AutoCloseable {
+        override fun close() = operations.close(descriptor)
+    }
+}
+
 internal object SystemDirectorySynchronizer : DirectorySynchronizer {
+    private val androidSynchronizer = AndroidDirectorySynchronizer()
+
     override fun sync(directory: File) {
         if (!directory.isDirectory) throw IOException("Directory sync target is not a directory")
         if (System.getProperty("java.runtime.name") == "Android Runtime") {
-            syncAndroidDirectory(directory)
+            androidSynchronizer.sync(directory)
         } else {
             // Local JVM/Robolectric tests cannot call android.system.Os. FileChannel is
             // used only off-device; production always takes the Android branch above.
@@ -27,37 +65,29 @@ internal object SystemDirectorySynchronizer : DirectorySynchronizer {
             }
         }
     }
+}
 
-    private fun syncAndroidDirectory(directory: File) {
-        val descriptor = errnoAsIo("open directory") {
+private object SystemAndroidDirectoryOperations : AndroidDirectoryOperations {
+    override fun open(directory: File): FileDescriptor {
+        return errnoAsIo("open directory") {
             Os.open(
                 directory.absolutePath,
                 OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW,
                 0,
             )
         }
-        var primaryFailure: Throwable? = null
-        try {
-            val stat = errnoAsIo("inspect directory") { Os.fstat(descriptor) }
-            if (!OsConstants.S_ISDIR(stat.st_mode)) {
-                throw IOException("Directory sync target is not a directory")
-            }
-            errnoAsIo("sync directory") { Os.fsync(descriptor) }
-        } catch (error: Throwable) {
-            primaryFailure = error
-            throw error
-        } finally {
-            try {
-                Os.close(descriptor)
-            } catch (error: ErrnoException) {
-                val closeFailure = IOException("Unable to close directory sync handle", error)
-                if (primaryFailure != null) {
-                    primaryFailure.addSuppressed(closeFailure)
-                } else {
-                    throw closeFailure
-                }
-            }
-        }
+    }
+
+    override fun isDirectory(descriptor: FileDescriptor): Boolean {
+        return errnoAsIo("inspect directory") { OsConstants.S_ISDIR(Os.fstat(descriptor).st_mode) }
+    }
+
+    override fun sync(descriptor: FileDescriptor) {
+        errnoAsIo("sync directory") { Os.fsync(descriptor) }
+    }
+
+    override fun close(descriptor: FileDescriptor) {
+        errnoAsIo("close directory sync handle") { Os.close(descriptor) }
     }
 
     private inline fun <T> errnoAsIo(action: String, operation: () -> T): T {

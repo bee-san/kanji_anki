@@ -56,7 +56,7 @@ internal object StagedRestoreApplier {
                 filesDir = appContext.filesDir,
                 databaseFile = appContext.getDatabasePath(DatabaseBackupPolicy.DB_NAME),
                 nowMillis = System.currentTimeMillis(),
-                snapshotter = DatabaseBackupWorker.Snapshotter { dbFile, destination ->
+                snapshotter = DatabaseBackupWorker.Snapshotter { _, destination ->
                     LocalStore(appContext).use { store -> store.snapshotInto(destination) }
                 },
                 operations = Operations(apiLevel = Build.VERSION.SDK_INT),
@@ -108,23 +108,13 @@ internal object StagedRestoreApplier {
         // A marker without a staged file means the atomic database move completed before a
         // crash. Finish only the idempotent sidecar/marker cleanup.
         if (!staged.exists()) {
-            val markerState = BackupRestoreStager.markerState(marker)
-            if (markerState != BackupRestoreStager.MarkerState.SAFETY_READY) {
-                // Legacy markers predate durable ordering and were written before the
-                // replacement. Marker-only legacy state cannot prove which database won.
-                throw IOException("Restore marker is invalid")
-            }
-            if (!databaseFile.isFile) {
-                throw IOException("Restored database is missing after replacement")
-            }
-            deleteSidecars(databaseFile, operations.requiredFileDeleter)
-            operations.directorySynchronizer.sync(requireParent(databaseFile))
-            stepHook.after(Step.SIDECARS_DELETED)
-            operations.requiredFileDeleter.delete(marker)
-            operations.directorySynchronizer.sync(restoreDir)
-            stepHook.after(Step.MARKER_DELETED)
-            deleteEmptyRestoreDir(restoreDir)
-            return Result.APPLIED
+            return finishMarkerOnlyRestore(
+                restoreDir,
+                databaseFile,
+                marker,
+                operations,
+                stepHook,
+            )
         }
 
         val markerState = BackupRestoreStager.markerState(marker)
@@ -175,6 +165,31 @@ internal object StagedRestoreApplier {
         operations.directorySynchronizer.sync(requireParent(databaseFile))
         stepHook.after(Step.SIDECARS_DELETED)
 
+        operations.requiredFileDeleter.delete(marker)
+        operations.directorySynchronizer.sync(restoreDir)
+        stepHook.after(Step.MARKER_DELETED)
+        deleteEmptyRestoreDir(restoreDir)
+        return Result.APPLIED
+    }
+
+    @Throws(IOException::class)
+    private fun finishMarkerOnlyRestore(
+        restoreDir: File,
+        databaseFile: File,
+        marker: File,
+        operations: Operations,
+        stepHook: StepHook,
+    ): Result {
+        if (BackupRestoreStager.markerState(marker) != BackupRestoreStager.MarkerState.SAFETY_READY) {
+            // Legacy markers were written before replacement and cannot prove which DB won.
+            throw IOException("Restore marker is invalid")
+        }
+        if (!databaseFile.isFile) {
+            throw IOException("Restored database is missing after replacement")
+        }
+        deleteSidecars(databaseFile, operations.requiredFileDeleter)
+        operations.directorySynchronizer.sync(requireParent(databaseFile))
+        stepHook.after(Step.SIDECARS_DELETED)
         operations.requiredFileDeleter.delete(marker)
         operations.directorySynchronizer.sync(restoreDir)
         stepHook.after(Step.MARKER_DELETED)
