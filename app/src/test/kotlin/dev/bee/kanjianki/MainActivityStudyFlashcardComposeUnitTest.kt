@@ -1,18 +1,22 @@
 package dev.bee.kanjianki
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
@@ -142,6 +146,10 @@ class MainActivityStudyFlashcardComposeUnitTest {
     @Test
     fun revealedFlashcardCardShowsAnswerOnlyAfterReveal() {
         val revealState = FlashcardRevealState(false)
+        val mnemonic = StudyAnswerMnemonicModel(
+            label = "My mnemonic",
+            note = "A prison gate\nlocks the meaning in.",
+        )
 
         composeRule.setContent {
             FlashcardCard(
@@ -169,6 +177,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                             )
                         ),
                         helperText = null,
+                        mnemonic = mnemonic,
                     ),
                     revealState = revealState,
                 )
@@ -176,6 +185,9 @@ class MainActivityStudyFlashcardComposeUnitTest {
         }
 
         composeRule.onAllNodesWithText("split").assertCountEquals(0)
+        composeRule.onAllNodesWithText(mnemonic.label).assertCountEquals(0)
+        composeRule.onAllNodesWithText(mnemonic.note).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(STUDY_ANSWER_MNEMONIC_TEST_TAG).assertCountEquals(0)
         val heroCenterBeforeReveal = composeRule.onNodeWithText("獄").fetchSemanticsNode().boundsInRoot.center
 
         composeRule.runOnIdle {
@@ -184,6 +196,10 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("split").assertExists()
+        composeRule.onNodeWithTag(STUDY_ANSWER_MNEMONIC_TEST_TAG).assertExists()
+        composeRule.onNodeWithText(mnemonic.label)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Heading, Unit))
+        composeRule.onNodeWithText(mnemonic.note).assertExists()
         composeRule.onAllNodesWithText("What does it mean?").assertCountEquals(0)
         composeRule.onAllNodesWithText("獄").assertCountEquals(1)
         composeRule.onAllNodesWithText("Answer").assertCountEquals(0)

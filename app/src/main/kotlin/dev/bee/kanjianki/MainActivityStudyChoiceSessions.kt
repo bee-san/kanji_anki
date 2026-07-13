@@ -80,7 +80,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        prepareMeaningKanjiRender(session).invoke()
+        prepareMeaningKanjiRender(session, home.prepareStudyAnswerMnemonic(session)).invoke()
     }
 
     /**
@@ -90,17 +90,20 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
      * This keeps the cold-boot study path from scanning the full kanji inventory and
      * blocking on the dictionary install on the UI thread.
      */
-    fun prepareMeaningKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+    fun prepareMeaningKanjiRender(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): () -> Unit {
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
             home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(true)
-                home.renderComposeFlashcardSession(session)
+                home.renderComposeFlashcardSession(session, mnemonic)
             }
         }
 
-        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session, mnemonic)
         val question = StudyTextCopy.meaningKanjiChoiceQuestion(home.currentDictionaryLookup(), choiceCard, session.prompt)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
         // Precompute both result texts here on the background executor: the result
@@ -171,7 +174,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderKanjiReadingSession(session: RecordsSchedulerModels.StudySession) {
-        prepareKanjiReadingRender(session).invoke()
+        prepareKanjiReadingRender(session, home.prepareStudyAnswerMnemonic(session)).invoke()
     }
 
     /**
@@ -180,17 +183,20 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
      * two choices can be built it falls back to a plain flashcard, matching the
      * meaning_kanji fallback pattern.
      */
-    fun prepareKanjiReadingRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+    fun prepareKanjiReadingRender(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): () -> Unit {
         val choiceCard = kanjiReadingChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < KanjiReadingChoicePlanner.MIN_CHOICE_COUNT) {
             home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(true)
-                home.renderComposeFlashcardSession(session)
+                home.renderComposeFlashcardSession(session, mnemonic)
             }
         }
 
-        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session, mnemonic)
         val question = StudyTextCopy.kanjiReadingChoiceQuestion(choiceCard)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
         val resultCorrectText = StudyTextCopy.kanjiReadingChoiceResult(choiceCard, true)
@@ -270,17 +276,20 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
      * fewer than three choices can be built (a 2-option homophone card is a coin
      * flip).
      */
-    fun prepareReadingKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+    fun prepareReadingKanjiRender(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): () -> Unit {
         val choiceCard = readingKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < ReadingKanjiChoicePlanner.MIN_CHOICE_COUNT) {
             home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(true)
-                home.renderComposeFlashcardSession(session)
+                home.renderComposeFlashcardSession(session, mnemonic)
             }
         }
 
-        val answerPanel = home.meaningChoiceAnswerPanelModel(session)
+        val answerPanel = home.meaningChoiceAnswerPanelModel(session, mnemonic)
         val question = StudyTextCopy.readingKanjiChoiceQuestion(choiceCard)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
         val resultCorrectText = StudyTextCopy.readingKanjiChoiceResult(choiceCard, true)
@@ -369,7 +378,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderSimilarKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        prepareSimilarKanjiRender(session).invoke()
+        prepareSimilarKanjiRender(session, home.prepareStudyAnswerMnemonic(session)).invoke()
     }
 
     /**
@@ -377,14 +386,17 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
      * state, similar pairs, kanji inventory scan) and dictionary lookups run here;
      * the returned thunk only assembles compose models and renders on main.
      */
-    fun prepareSimilarKanjiRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+    fun prepareSimilarKanjiRender(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): () -> Unit {
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
         if (choices.size < 2) {
             home.warmSessionDictionaryEntry(session)
             return {
                 resetChoiceSession(false)
-                home.renderComposeFlashcardSession(session)
+                home.renderComposeFlashcardSession(session, mnemonic)
             }
         }
         choices.shuffle()
@@ -412,6 +424,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     correctChoice = choiceCard.targetKanji,
                 ),
                 explanationLines,
+                mnemonic = mnemonic,
                 feedbackState = feedback,
                 onContinue = Runnable { home.continueAfterStudyAnswer() },
             )

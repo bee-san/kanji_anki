@@ -20,6 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,9 +38,23 @@ private val StudyAnswerMuted: Color @Composable get() = KaniTheme.colors.muted
 private val StudyAnswerPanelFill: Color @Composable get() = KaniTheme.colors.panel
 private val StudyAnswerBorder: Color @Composable get() = KaniTheme.colors.border
 
+internal const val STUDY_ANSWER_MNEMONIC_TEST_TAG = "study-answer-mnemonic"
+
+internal fun studyAnswerMnemonicModel(note: String?): StudyAnswerMnemonicModel? {
+    val normalized = note?.trim().orEmpty()
+    if (normalized.isEmpty()) {
+        return null
+    }
+    return StudyAnswerMnemonicModel(
+        label = StudyTextCopy.studyMnemonicLabel(),
+        note = normalized,
+    )
+}
+
 internal fun flashcardAnswerPanelModel(
     activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
+    session: RecordsSchedulerModels.StudySession,
+    mnemonic: StudyAnswerMnemonicModel? = null,
 ): StudyAnswerPanelModel {
     return answerPanelModel(
         activity,
@@ -45,12 +62,14 @@ internal fun flashcardAnswerPanelModel(
         StudyTextCopy.answerLabel(),
         KaniUiTokens.StudyHeroTextSizeSp,
         null,
+        mnemonic,
     )
 }
 
 internal fun meaningChoiceAnswerPanelModel(
     activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
+    session: RecordsSchedulerModels.StudySession,
+    mnemonic: StudyAnswerMnemonicModel? = null,
 ): StudyAnswerPanelModel {
     return answerPanelModel(
         activity,
@@ -58,6 +77,7 @@ internal fun meaningChoiceAnswerPanelModel(
         StudyTextCopy.answerLabel(),
         KaniUiTokens.StudyHeroTextSizeSp,
         null,
+        mnemonic,
     ) { example ->
         StudyCuePolicy.meaningChoiceAnswerLines(
             activity.currentDictionaryLookup(),
@@ -69,7 +89,8 @@ internal fun meaningChoiceAnswerPanelModel(
 
 internal fun learningPanelModel(
     activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
+    session: RecordsSchedulerModels.StudySession,
+    mnemonic: StudyAnswerMnemonicModel? = null,
 ): StudyAnswerPanelModel {
     return answerPanelModel(
         activity,
@@ -77,6 +98,7 @@ internal fun learningPanelModel(
         StudyTextCopy.referenceLabel(),
         KaniUiTokens.StudyHeroTextSizeSp,
         StudyTextCopy.writingReferenceHelper(),
+        mnemonic,
     )
 }
 
@@ -86,6 +108,7 @@ private fun answerPanelModel(
     title: String,
     glyphSizeSp: Int,
     helperText: String?,
+    mnemonic: StudyAnswerMnemonicModel?,
     answerLines: ((RecordsImportModels.Example?) -> List<String>)? = null,
 ): StudyAnswerPanelModel {
     val lines = if (session.row != null) {
@@ -128,8 +151,9 @@ private fun answerPanelModel(
         glyphSizeSp = glyphSizeSp,
         lines = lines,
         helperText = helperText,
-        stateKey = studyAnswerPanelStateKey(session),
+        stateKey = studyAnswerPanelStateKey(session, mnemonic?.note.orEmpty()),
         kanjiDetails = studyAnswerKanjiDetailsModel(activity, session),
+        mnemonic = mnemonic,
     )
 }
 
@@ -185,6 +209,10 @@ internal fun StudyAnswerPanel(
                     style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp)
                 )
             }
+            model.mnemonic?.let { mnemonic ->
+                Spacer(modifier = Modifier.height(12.dp))
+                StudyAnswerMnemonic(mnemonic)
+            }
             model.kanjiDetails?.let { details ->
                 Spacer(modifier = Modifier.height(12.dp))
                 StudyAnswerKanjiDetailsStack(
@@ -223,11 +251,47 @@ internal fun StudyFlashcardAnswerContent(
                 style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
             )
         }
+        model.mnemonic?.let { mnemonic ->
+            StudyAnswerMnemonic(mnemonic)
+        }
         model.kanjiDetails?.let { details ->
             StudyAnswerKanjiDetailsStack(
                 details = details,
                 panelStateKey = studyAnswerPanelStateKey(model),
                 onBrowseAction = onBrowseAction,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun StudyAnswerMnemonic(
+    model: StudyAnswerMnemonicModel,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(STUDY_ANSWER_MNEMONIC_TEST_TAG),
+        shape = KaniUiTokens.StudyShapeSmall,
+        color = KaniTheme.colors.panelSoft,
+        border = BorderStroke(1.dp, StudyAnswerBorder),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = model.label,
+                color = StudyAnswerPlum,
+                style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = model.note,
+                color = StudyAnswerMuted,
+                style = studyAnswerTextStyle(KaniUiTokens.StudyBodyTextSizeSp),
             )
         }
     }

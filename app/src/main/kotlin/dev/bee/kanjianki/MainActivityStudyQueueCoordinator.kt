@@ -312,12 +312,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 MainActivityBase.TASK_REPAIR_WRITING,
                 now,
             )
-            // Warm the stroke-guide asset and the repair kanji's dictionary entry
-            // on this background thread so the writing pad render never parses or
-            // queries them on main.
-            study.warmStrokeGuides()
-            study.warmSessionDictionaryEntry(session)
-            return { study.renderComposeWritingSession(session) }
+            // Use the same background preparation as every other session so the
+            // current local mnemonic is loaded alongside dictionary/stroke assets.
+            return study.prepareSessionRender(session)
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
             // PS1 learn-ahead: do not declare the run done while this session's own
