@@ -52,7 +52,10 @@ class MainActivityStudyChoiceComposeUnitTest {
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
                 balanceLastRow = false,
-                onChoice = KanjiChoiceHandler { selected = it },
+                onChoice = KanjiChoiceHandler {
+                    selected = it
+                    true
+                },
             ),
             explanationLines = listOf(
                 SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列", true),
@@ -112,7 +115,7 @@ class MainActivityStudyChoiceComposeUnitTest {
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
                 balanceLastRow = false,
-                onChoice = KanjiChoiceHandler { },
+                onChoice = KanjiChoiceHandler { true },
             ),
             explanationLines = listOf(
                 SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列", true),
@@ -171,7 +174,10 @@ class MainActivityStudyChoiceComposeUnitTest {
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
                 balanceLastRow = false,
-                onChoice = KanjiChoiceHandler { selected = it },
+                onChoice = KanjiChoiceHandler {
+                    selected = it
+                    true
+                },
             ),
             explanationLines = listOf(
                 SimilarKanjiExplanationLineModel("Shape hint", "Look at the lower component.", true),
@@ -205,6 +211,7 @@ class MainActivityStudyChoiceComposeUnitTest {
             onChoice = KanjiChoiceHandler { glyph ->
                 feedback.begin(if (glyph == "森") StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT)
                 graded = glyph
+                true
             },
             resultResolver = MeaningChoiceResultResolver { glyph ->
                 val correct = glyph == "森"
@@ -239,6 +246,82 @@ class MainActivityStudyChoiceComposeUnitTest {
     }
 
     @Test
+    fun rejectedMeaningChoiceSubmissionDoesNotFreezeTheCard() {
+        var submissions = 0
+        val feedback = StudyAnswerFeedbackState("token-rejected-meaning")
+        val model = MeaningChoiceSessionModel(
+            modeLabel = "Choose",
+            question = "Which kanji means forest?",
+            choices = listOf("森", "林"),
+            answerPanel = StudyAnswerPanelModel("Answer", "森", 76, emptyList(), null),
+            onChoice = KanjiChoiceHandler {
+                submissions += 1
+                false
+            },
+            resultResolver = MeaningChoiceResultResolver {
+                MeaningChoiceResultModel(
+                    StudyTextCopy.answerCorrectFeedback(),
+                    MainActivityBase.TEAL,
+                    StudyActionTone.PASS,
+                    correctChoice = "森",
+                    selectedChoiceCorrect = true,
+                )
+            },
+            feedbackState = feedback,
+        )
+
+        composeRule.setContent { MeaningChoiceSessionCard(model = model) }
+
+        composeRule.onNodeWithTag(similarChoiceTestTag("森")).performClick()
+        composeRule.onNodeWithTag(similarChoiceTestTag("林")).performClick()
+
+        assertEquals(2, submissions)
+        composeRule.onAllNodesWithText(StudyTextCopy.answerCorrectFeedback()).assertCountEquals(0)
+    }
+
+    @Test
+    fun rejectedSimilarChoiceSubmissionDoesNotFreezeTheGrid() {
+        var submissions = 0
+        val feedback = StudyAnswerFeedbackState("token-rejected-similar")
+        val model = similarChoiceModelWithCorrectChoice(
+            correctChoice = "裂",
+            feedback = feedback,
+            onChoice = {
+                submissions += 1
+                false
+            },
+            onContinue = {},
+        )
+
+        composeRule.setContent {
+            SimilarChoiceSessionCard(
+                model = model,
+                showInlineChoices = true,
+                detailsExpandedByDefault = false,
+            )
+        }
+
+        composeRule.onNodeWithTag(similarChoiceTestTag("列")).performClick()
+        composeRule.onNodeWithTag(similarChoiceTestTag("烈")).performClick()
+
+        assertEquals(2, submissions)
+        composeRule.onAllNodesWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂"))
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun restoredAppliedChoiceSeedsSelectedChoiceForContinue() {
+        val feedback = StudyAnswerFeedbackState("restored-choice-token")
+        assertTrue(feedback.begin(StudyAnswerOutcome.INCORRECT, selectedAnswer = "列"))
+        assertTrue(feedback.markApplied("restored-choice-token"))
+
+        val state = meaningChoiceSessionStateForFeedback(feedback)
+
+        assertEquals("列", state.selectedChoice)
+        assertTrue(state.answered)
+    }
+
+    @Test
     fun wrongSimilarChoiceGradesOnceAndWaitsForExplicitContinue() {
         var selected = ""
         var continued = 0
@@ -249,6 +332,7 @@ class MainActivityStudyChoiceComposeUnitTest {
             onChoice = {
                 feedback.begin(StudyAnswerOutcome.INCORRECT)
                 selected = it
+                true
             },
             onContinue = {
                 if (feedback.tryContinue()) continued += 1
@@ -308,6 +392,7 @@ class MainActivityStudyChoiceComposeUnitTest {
             onChoice = {
                 feedback.begin(StudyAnswerOutcome.CORRECT)
                 selected = it
+                true
             },
             onContinue = {
                 if (feedback.tryContinue()) continued += 1
@@ -351,7 +436,7 @@ class MainActivityStudyChoiceComposeUnitTest {
     private fun similarChoiceModelWithCorrectChoice(
         correctChoice: String,
         feedback: StudyAnswerFeedbackState,
-        onChoice: (String) -> Unit,
+        onChoice: (String) -> Boolean,
         onContinue: () -> Unit,
     ): SimilarChoiceSessionModel {
         return SimilarChoiceSessionModel(

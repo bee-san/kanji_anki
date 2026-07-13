@@ -35,6 +35,15 @@ internal fun similarKanjiExplanationSourceWords(session: RecordsSchedulerModels.
     return ArrayList(out)
 }
 
+internal fun meaningChoiceSessionStateForFeedback(
+    feedback: StudyAnswerFeedbackState,
+): MeaningChoiceSessionState {
+    val selectedChoice = feedback.selectedAnswer.takeIf {
+        feedback.feedbackVisible && it.isNotBlank()
+    }
+    return MeaningChoiceSessionState(selectedChoice)
+}
+
 private fun formatSimilarKanjiSourceWord(example: RecordsImportModels.Example): String {
     val expression = example.expression.trim()
     if (expression.isEmpty()) {
@@ -133,7 +142,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 feedbackState = feedback,
                 onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
-            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+            renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
     }
 
@@ -220,7 +229,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 feedbackState = feedback,
                 onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
-            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+            renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
     }
 
@@ -309,7 +318,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 feedbackState = feedback,
                 onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
-            renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
+            renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
     }
 

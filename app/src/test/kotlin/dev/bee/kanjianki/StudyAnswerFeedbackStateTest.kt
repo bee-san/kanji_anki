@@ -36,4 +36,21 @@ class StudyAnswerFeedbackStateTest {
         assertFalse(state.feedbackVisible)
         assertTrue(state.begin(StudyAnswerOutcome.CORRECT))
     }
+
+    @Test
+    fun appliedAnswerSnapshotRestoresFeedbackAndSelectedAnswer() {
+        val state = StudyAnswerFeedbackState("token-裂")
+        assertTrue(state.begin(StudyAnswerOutcome.INCORRECT, selectedAnswer = "列"))
+        assertTrue(state.markApplied("token-裂"))
+
+        val restored = StudyAnswerFeedbackState.restore(state.snapshot())
+
+        assertEquals("token-裂", restored.sessionToken)
+        assertEquals(StudyAnswerOutcome.INCORRECT, restored.outcome)
+        assertEquals("列", restored.selectedAnswer)
+        assertTrue(restored.feedbackVisible)
+        assertTrue(restored.continueEnabled)
+        assertTrue(restored.tryContinue())
+        assertFalse(restored.tryContinue())
+    }
 }

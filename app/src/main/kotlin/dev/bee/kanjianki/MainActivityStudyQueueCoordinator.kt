@@ -12,6 +12,21 @@ import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
     fun renderStudy() {
+        val feedback = study.studyAnswerFeedbackState
+        val active = study.activeSession
+        val feedbackPhase = feedback?.snapshot()?.phase
+        if (active != null &&
+            feedback?.sessionToken == active.token &&
+            (feedbackPhase == StudyAnswerFeedbackPhase.SUBMITTING || feedbackPhase == StudyAnswerFeedbackPhase.APPLIED)
+        ) {
+            study.loadRouteAsync(
+                showLoading = { study.renderStudyLoading(true) },
+                load = { study.prepareSessionRender(active) },
+                render = { it() },
+                traceName = "study-pending-answer-route",
+            )
+            return
+        }
         // Load the Study route through the same async pattern as Home/Settings: all the
         // LocalStore reads/writes and scheduler work run on the background executor, and
         // only the returned render thunk runs on the main thread.
@@ -29,6 +44,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
      * renders the resulting screen when invoked on the main thread.
      */
     private fun computeStudyRender(): () -> Unit {
+        computePendingAnswerRender()?.let { return it }
         val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
         val now = System.currentTimeMillis()
         val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
@@ -125,6 +141,39 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         )
         // Prepare the session render (choice cards, dictionary, stroke guides) here on
         // the background executor; only the returned render thunk touches the UI.
+        return study.prepareSessionRender(session)
+    }
+
+    private fun computePendingAnswerRender(): (() -> Unit)? {
+        val saved = study.pendingStudyAnswerSnapshot() ?: return null
+        val savedPhase = saved.feedback.phase
+        val applied = when (savedPhase) {
+            StudyAnswerFeedbackPhase.APPLIED -> true
+            StudyAnswerFeedbackPhase.SUBMITTING -> study.store.hasConsumedToken(saved.feedback.sessionToken)
+            StudyAnswerFeedbackPhase.UNANSWERED,
+            StudyAnswerFeedbackPhase.CONTINUED -> false
+        }
+        if (!applied) {
+            study.clearPendingStudyAnswer()
+            return null
+        }
+        val rows = study.store.activeDashboardRows()
+        val row = rows.firstOrNull { it.kanji == saved.kanji }
+        val item = study.store.studyItemsForKanji(listOf(saved.kanji))
+            .firstOrNull { it.kanji == saved.kanji }
+        if (item == null) {
+            study.clearPendingStudyAnswer()
+            return null
+        }
+        val appliedSnapshot = if (savedPhase == StudyAnswerFeedbackPhase.APPLIED) {
+            saved
+        } else {
+            saved.copy(feedback = saved.feedback.copy(phase = StudyAnswerFeedbackPhase.APPLIED))
+        }
+        val session = appliedSnapshot.restoreSession(item, row)
+        study.activeSession = session
+        study.activeSimilarWritingRepair = null
+        study.restorePendingStudyAnswer(appliedSnapshot)
         return study.prepareSessionRender(session)
     }
 

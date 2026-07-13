@@ -37,7 +37,7 @@ class SimilarChoiceRouteScreenshotTest {
             gridModel = SimilarChoiceGridModel(
                 choices = listOf("裂", "列", "烈"),
                 balanceLastRow = false,
-                onChoice = KanjiChoiceHandler { },
+                onChoice = KanjiChoiceHandler { true },
             ),
             explanationLines = listOf(
                 SimilarKanjiExplanationLineModel("Compare shapes", "裂 vs 列", true),

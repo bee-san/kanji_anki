@@ -63,8 +63,11 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {
         resetFlashcardInteractionState()
-        activity.prepareStudyAnswerFeedback(session.token)
-        val revealState = FlashcardRevealState(false)
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        val answered = feedback.snapshot().phase == StudyAnswerFeedbackPhase.SUBMITTING ||
+            feedback.snapshot().phase == StudyAnswerFeedbackPhase.APPLIED
+        activity.flashcardAnswerRevealed = answered
+        val revealState = FlashcardRevealState(answered)
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
@@ -105,7 +108,9 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val typingAnswer = if (
             StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
         ) {
-            typingAnswerField()
+            TypingAnswerState(if (answered) feedback.selectedAnswer else "").also {
+                activity.typingAnswerState = it
+            }
         } else {
             null
         }
@@ -122,7 +127,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             typingReading = StudyTaskCopy.isTypingReadingTask(session),
         )
         val actionBarState = FlashcardActionBarState(
-            false,
+            answered,
             Runnable { revealFlashcardAnswer() },
             Runnable {
                 if (requiresRecognitionFailureCause(session)) {

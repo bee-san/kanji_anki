@@ -82,7 +82,8 @@ internal fun rememberSimilarChoiceSessionState(model: SimilarChoiceSessionModel)
         model.question,
         model.gridModel.choices,
         model.gridModel.correctChoice,
-    ) { SimilarChoiceSessionState() }
+        model.feedbackState?.selectedAnswer,
+    ) { SimilarChoiceSessionState(model.feedbackState?.selectedAnswer?.takeIf { it.isNotBlank() }) }
 }
 
 @Composable
@@ -92,7 +93,8 @@ internal fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel)
         model.choices,
         model.answerPanel.glyph,
         model.answerPanel.lines,
-    ) { MeaningChoiceSessionState() }
+        model.feedbackState?.selectedAnswer,
+    ) { MeaningChoiceSessionState(model.feedbackState?.selectedAnswer?.takeIf { it.isNotBlank() }) }
 }
 
 @Composable
@@ -198,9 +200,8 @@ internal fun MeaningChoiceSessionCard(
             model = model,
             answered = answered,
             onAnswered = { glyph ->
-                if (!answered) {
+                if (!answered && model.onChoice.onChoice(glyph)) {
                     state.select(glyph)
-                    model.onChoice.onChoice(glyph)
                 }
             },
             selectedChoice = selectedChoice,

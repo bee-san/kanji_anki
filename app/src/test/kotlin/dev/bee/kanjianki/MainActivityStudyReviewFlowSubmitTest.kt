@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.Context
 import android.content.Intent
 import android.database.DatabaseUtils
 import android.os.Looper
@@ -10,9 +11,11 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.LocalStore
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -32,6 +35,16 @@ import java.util.concurrent.TimeUnit
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MainActivityStudyReviewFlowSubmitTest {
+    @Before
+    fun clearPendingAnswerBeforeTest() {
+        clearPendingAnswerPreferences()
+    }
+
+    @After
+    fun clearPendingAnswerAfterTest() {
+        clearPendingAnswerPreferences()
+    }
+
     @Test
     fun correctReviewAppliesOnceButDoesNotAdvanceUntilContinue() {
         withReviewActivity("裂") { activity, store, reviewIo, session ->
@@ -145,7 +158,9 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(0, activity.renderCount())
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertEquals(session.token, activity.pendingStudyAnswerSnapshot()?.feedback?.sessionToken)
             assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(null, activity.pendingStudyAnswerSnapshot())
             assertEquals(1, activity.renderCount())
         }
     }
@@ -254,7 +269,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             reviewIo.shutdown()
             val swipeFeedback = StudySwipeFeedbackState().apply { update(-104f) }
 
-            val accepted = submitReviewWithSwipeFeedback(swipeFeedback, MainActivityBase.RATING_AGAIN) {
+            val accepted = submitReviewWithSwipeFeedback(swipeFeedback) {
                 activity.submitReview(
                     MainActivityBase.RATING_AGAIN,
                     false,
@@ -466,6 +481,14 @@ class MainActivityStudyReviewFlowSubmitTest {
         val field = MainActivityBase::class.java.getDeclaredField("store")
         field.isAccessible = true
         field.set(activity, null)
+    }
+
+    private fun clearPendingAnswerPreferences() {
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
     }
 
     private class QueueingExecutorService : AbstractExecutorService() {

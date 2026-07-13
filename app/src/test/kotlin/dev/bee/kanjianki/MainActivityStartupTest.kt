@@ -74,6 +74,41 @@ class MainActivityStartupTest {
     }
 
     @Test
+    fun normalLaunchReturnsToPendingAnsweredStudyCard() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        StudyPendingAnswerStore(preferences).save(
+            StudyPendingAnswerSnapshot(
+                feedback = StudyAnswerFeedbackSnapshot(
+                    sessionToken = "startup-pending-token",
+                    phase = StudyAnswerFeedbackPhase.APPLIED,
+                    outcome = StudyAnswerOutcome.INCORRECT,
+                    selectedAnswer = "wrong",
+                ),
+                kanji = "弱",
+                taskType = "typing_meaning",
+                writingRequired = false,
+                prompt = "",
+            ),
+        )
+        try {
+            val controller = Robolectric.buildActivity(
+                PendingAnswerStartupActivity::class.java,
+                Intent(context, PendingAnswerStartupActivity::class.java),
+            )
+            val activity = controller.get()
+
+            controller.create().start().resume()
+
+            assertEquals(1, activity.renderStudyCalls)
+            assertEquals(0, activity.renderHomeCalls)
+        } finally {
+            preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
     fun androidXStartupProviderIsRemovedFromMergedManifest() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val startupAuthority = context.packageName + ".androidx-startup"
@@ -185,6 +220,19 @@ class MainActivityStartupTest {
 
         override fun renderHome() {
             renderHomeCalls += 1
+        }
+    }
+
+    private class PendingAnswerStartupActivity : MainActivity() {
+        var renderHomeCalls = 0
+        var renderStudyCalls = 0
+
+        override fun renderHome() {
+            renderHomeCalls += 1
+        }
+
+        override fun renderStudy() {
+            renderStudyCalls += 1
         }
     }
 

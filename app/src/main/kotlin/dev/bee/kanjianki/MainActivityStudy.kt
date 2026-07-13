@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.Context
 import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
@@ -43,6 +44,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val writingSession by lazy { MainActivityStudyWritingSession(this) }
     private val dictionaryLookupProvider by lazy { MainActivityDictionaryLookupProvider(this) }
     private val studyQueueCoordinator by lazy { MainActivityStudyQueueCoordinator(this) }
+    private val pendingAnswerStore by lazy {
+        StudyPendingAnswerStore(getSharedPreferences(PENDING_ANSWER_PREFERENCES, Context.MODE_PRIVATE))
+    }
 
     fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
         return learningPanelModel(this, session)
@@ -349,7 +353,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String): Boolean {
-        return submitWithAnswerFeedback(selectedKanji == card.targetKanji) {
+        return submitWithAnswerFeedback(selectedKanji == card.targetKanji, selectedKanji) {
             writingReview.submitSimilarKanjiChoice(card, selectedKanji)
         }
     }
@@ -362,7 +366,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         rung: RecordsBase.LadderRung,
         correctAnswer: String = targetKanji,
     ): Boolean {
-        return submitWithAnswerFeedback(correct) {
+        return submitWithAnswerFeedback(correct, selectedChoice) {
             writingReview.submitLoggedChoiceReview(
                 targetKanji,
                 choiceSignature,
@@ -400,39 +404,59 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         interactionSource: String = "review-action",
         answerEvidence: AnswerEvidence? = null,
     ): Boolean {
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN) {
+        val selectedAnswer = answerEvidence?.selectedAnswer
+            ?.takeIf { it.isNotBlank() }
+            ?: typingAnswerState?.text?.toString()?.takeIf { it.isNotBlank() }
+            ?: rating
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer) {
             writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
         }
     }
 
-    private fun submitWithAnswerFeedback(correct: Boolean, submit: () -> Boolean): Boolean {
+    private fun submitWithAnswerFeedback(
+        correct: Boolean,
+        selectedAnswer: String,
+        submit: () -> Boolean,
+    ): Boolean {
         val token = activeSession?.token ?: return false
         val state = studyAnswerFeedbackState
             ?.takeIf { it.sessionToken == token }
             ?: StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
         val outcome = if (correct) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT
-        if (!state.begin(outcome)) {
+        if (!state.begin(outcome, selectedAnswer)) {
             return false
         }
+        persistPendingStudyAnswer(state)
         val accepted = submit()
         if (!accepted) {
             state.resetForRetry(token)
+            pendingAnswerStore.clear()
         }
         return accepted
     }
 
     fun prepareStudyAnswerFeedback(token: String): StudyAnswerFeedbackState {
-        return StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
+        studyAnswerFeedbackState?.takeIf { it.sessionToken == token }?.let { return it }
+        val restored = pendingAnswerStore.read()
+            ?.takeIf { it.feedback.sessionToken == token }
+            ?.feedback
+            ?.let(StudyAnswerFeedbackState::restore)
+        return (restored ?: StudyAnswerFeedbackState(token)).also { studyAnswerFeedbackState = it }
     }
 
     fun markStudyAnswerApplied(token: String) {
         postToMainIfActive {
-            studyAnswerFeedbackState?.markApplied(token)
+            val state = studyAnswerFeedbackState
+            if (state?.markApplied(token) == true) {
+                persistPendingStudyAnswer(state)
+            }
         }
     }
 
     fun resetStudyAnswerForRetry(token: String) {
-        studyAnswerFeedbackState?.resetForRetry(token)
+        if (studyAnswerFeedbackState?.resetForRetry(token) == true) {
+            pendingAnswerStore.clear()
+        }
     }
 
     fun continueAfterStudyAnswer(): Boolean {
@@ -440,6 +464,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         if (!state.tryContinue()) {
             return false
         }
+        pendingAnswerStore.clear()
         if (activeSimilarWritingRepair != null) {
             activeSimilarWritingRepair = null
         }
@@ -448,10 +473,34 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun submitSimilarWritingRepair(rating: String): Boolean {
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN) {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating) {
             writingReview.submitSimilarWritingRepair(rating)
             true
         }
+    }
+
+    fun pendingStudyAnswerSnapshot(): StudyPendingAnswerSnapshot? = pendingAnswerStore.read()
+
+    fun restorePendingStudyAnswer(snapshot: StudyPendingAnswerSnapshot) {
+        studyAnswerFeedbackState = StudyAnswerFeedbackState.restore(snapshot.feedback)
+    }
+
+    fun clearPendingStudyAnswer() {
+        pendingAnswerStore.clear()
+    }
+
+    private fun persistPendingStudyAnswer(state: StudyAnswerFeedbackState) {
+        val session = activeSession ?: return
+        val kanji = session.item?.kanji?.takeIf { it.isNotBlank() } ?: return
+        pendingAnswerStore.save(
+            StudyPendingAnswerSnapshot(
+                feedback = state.snapshot(),
+                kanji = kanji,
+                taskType = session.taskType,
+                writingRequired = session.writingRequired,
+                prompt = session.prompt,
+            ),
+        )
     }
 
     fun skipSimilarWritingRepair() {
@@ -520,6 +569,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun setStudyStatus(value: String, color: Int) {
         writingUi.setStudyStatus(value, color)
+    }
+
+    private companion object {
+        const val PENDING_ANSWER_PREFERENCES = "pending_study_answer"
     }
 
     fun setResultStatus(value: String, color: Int) {
