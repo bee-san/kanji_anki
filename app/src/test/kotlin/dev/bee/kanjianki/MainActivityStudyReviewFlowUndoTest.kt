@@ -33,6 +33,7 @@ class MainActivityStudyReviewFlowUndoTest {
         val undoIo = QueueingExecutorService()
         val maintenanceIo = QueueingExecutorService()
         var refreshCalls = 0
+        var widgetRefreshCalls = 0
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         try {
             val intent = Intent(context, TestMainActivity::class.java)
@@ -72,6 +73,7 @@ class MainActivityStudyReviewFlowUndoTest {
                 startupMaintenance.shutdownNow()
                 replaceField(activity, "io", undoIo)
                 replaceField(activity, "maintenance", maintenanceIo)
+                installWidgetRefreshRecorder(activity) { widgetRefreshCalls += 1 }
                 activity.clearRenderedKanji()
                 clearStatsCache(store)
 
@@ -91,6 +93,7 @@ class MainActivityStudyReviewFlowUndoTest {
                 // holds exactly the precompute work -- keeping the heavy recompute off the
                 // route-load path.
                 assertEquals("裂", activity.renderedKanji())
+                assertEquals(1, widgetRefreshCalls)
                 assertEquals(0, undoIo.pendingCount())
                 assertEquals(1, maintenanceIo.pendingCount())
                 assertNull(activity.store.cachedStatsSnapshotOrNull())
@@ -140,6 +143,13 @@ class MainActivityStudyReviewFlowUndoTest {
         val field = MainActivityHome::class.java.getDeclaredField("$propertyName\$delegate")
         field.isAccessible = true
         field.set(activity, lazyOf(value))
+    }
+
+    private fun installWidgetRefreshRecorder(activity: MainActivity, onRefresh: () -> Unit) {
+        val field = MainActivityStudy::class.java.getDeclaredField("writingReview\$delegate")
+        field.isAccessible = true
+        val reviewFlow = (field.get(activity) as Lazy<*>).value as MainActivityStudyReviewFlow
+        reviewFlow.widgetRefresher = Runnable { onRefresh() }
     }
 
     private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {
