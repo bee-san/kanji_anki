@@ -70,6 +70,10 @@ internal class LocalStoreMigrationHooks(
         store.createKanjiInventoryTables(db)
     }
 
+    fun createKanjiMnemonicNotesTable(db: SQLiteDatabase) {
+        store.createKanjiMnemonicNotesTable(db)
+    }
+
     fun createSimilarKanjiTables(db: SQLiteDatabase) {
         store.createSimilarKanjiTables(db)
     }

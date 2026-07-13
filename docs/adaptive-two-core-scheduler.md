@@ -2,6 +2,9 @@
 
 Status: production design for database version 31 (July 2026).
 
+> Database version 32 adds only local per-kanji mnemonic-note storage; the
+> version 31 scheduler contract below is unchanged.
+
 This document supersedes the long-term routing model in
 `ladder-and-srs-system.md`. The old ten-rung behavior remains readable and
 executable during lazy conversion, but new canonical items have two mandatory

@@ -110,6 +110,7 @@ Other product areas:
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
 - Kani keeps its own local FSRS-style queue and never rewrites Anki's deck schedule.
 - `Study now` is the single study entry point.
+- Per-kanji mnemonic notes created in Browse stay local, are not imported from AnkiDroid fields, and are included in Kani's database backups.
 - Releases are signed, tagged as `vMAJOR.MINOR.PATCH`, and published with an APK plus SHA-256 checksum.
 - Kani keeps local database backups under the app-private `backups/` directory, retaining the newest 31 snapshots and excluding app files, databases, and preferences from Android cloud backup or device transfer.
 - Backup diagnostics are sanitized: logs name the backup action and exception type only, not database paths, backup paths, note contents, or raw exception messages.

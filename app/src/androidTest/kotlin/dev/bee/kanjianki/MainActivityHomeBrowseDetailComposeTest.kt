@@ -4,16 +4,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -282,6 +284,38 @@ class MainActivityHomeBrowseDetailComposeTest {
     }
 
     @Test
+    fun mnemonicEditorIsAccessibleAndSavesNormalizedMultilineTextOrBlankDeletion() {
+        val savedNotes = mutableListOf<String>()
+        val stuckHelper = HomeTextCopy.stuckChipHint()
+
+        composeRule.setContent {
+            BrowseMnemonicNoteEditor(
+                BrowseMnemonicNoteModel(
+                    title = "My mnemonic",
+                    fieldLabel = "Mnemonic note",
+                    helper = stuckHelper,
+                    initialNote = "shell\nstory",
+                    saveLabel = "Save mnemonic",
+                    onSave = savedNotes::add,
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT).assertTextContains("shell\nstory")
+        composeRule.onAllNodesWithContentDescription("Mnemonic note").assertCountEquals(1)
+        composeRule.onAllNodesWithText(stuckHelper).assertCountEquals(1)
+
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT)
+            .performTextReplacement("  splits open\n  like a shell  ")
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).assertIsEnabled().performClick()
+        assertEquals("splits open\n  like a shell", savedNotes.last())
+
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT).performTextReplacement(" \n\t ")
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).performClick()
+        assertEquals("", savedNotes.last())
+    }
+
+    @Test
     fun rendersFullDetailScreenAndMissingState() {
         var homeClicked = false
         var reviewClicked = false
@@ -311,6 +345,14 @@ class MainActivityHomeBrowseDetailComposeTest {
                             lines = listOf("1 source · 1 example"),
                             color = 0xFFC9F5F7.toInt(),
                             style = BrowseDetailPanelStyle.CARD
+                        ),
+                        mnemonicNote = BrowseMnemonicNoteModel(
+                            title = "My mnemonic",
+                            fieldLabel = "Mnemonic note",
+                            helper = "Write a story that helps this kanji stick.",
+                            initialNote = "A shell splits open.",
+                            saveLabel = "Save mnemonic",
+                            onSave = {},
                         ),
                         actions = BrowseDetailActionsModel(
                             reviewLabel = "Review now",
@@ -354,6 +396,8 @@ class MainActivityHomeBrowseDetailComposeTest {
 
         composeRule.onAllNodesWithText("裂").assertCountEquals(1)
         composeRule.onAllNodesWithText("Local records").assertCountEquals(1)
+        composeRule.onAllNodesWithText("My mnemonic").assertCountEquals(1)
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT).assertTextContains("A shell splits open.")
         composeRule.onAllNodesWithText("Recovery timeline").assertCountEquals(1)
         composeRule.onAllNodesWithText("Examples").assertCountEquals(1)
         composeRule.onAllNodesWithText("裂語  レツゴ").assertCountEquals(1)
