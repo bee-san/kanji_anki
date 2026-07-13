@@ -26,6 +26,26 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class MainActivityStartupTest {
     @Test
+    fun launcherShortcutActionsUseOnlyAllowlistedDestinations() {
+        assertEquals(
+            LauncherShortcutDestination.STUDY,
+            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_STUDY),
+        )
+        assertEquals(
+            LauncherShortcutDestination.BROWSE,
+            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_BROWSE),
+        )
+        assertEquals(
+            LauncherShortcutDestination.GAMES,
+            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_GAMES),
+        )
+        assertNull(launcherShortcutDestination(null))
+        assertNull(launcherShortcutDestination(Intent.ACTION_MAIN))
+        assertNull(launcherShortcutDestination(Intent.ACTION_VIEW))
+        assertNull(launcherShortcutDestination("dev.bee.kanjianki.action.OPEN_SETTINGS"))
+    }
+
+    @Test
     fun startQueuesBackgroundStartupTasksInsteadOfRunningThemInline() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
