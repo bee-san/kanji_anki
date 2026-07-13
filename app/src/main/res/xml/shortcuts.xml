@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="study"
+        android:enabled="true"
+        android:icon="@drawable/ic_study_24"
+        android:shortcutShortLabel="@string/shortcut_study_short_label"
+        android:shortcutLongLabel="@string/shortcut_study_long_label">
+        <intent
+            android:action="dev.bee.kanjianki.action.OPEN_STUDY"
+            android:targetPackage="dev.bee.kanjianki"
+            android:targetClass="dev.bee.kanjianki.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="browse"
+        android:enabled="true"
+        android:icon="@drawable/ic_book_24"
+        android:shortcutShortLabel="@string/shortcut_browse_short_label"
+        android:shortcutLongLabel="@string/shortcut_browse_long_label">
+        <intent
+            android:action="dev.bee.kanjianki.action.OPEN_BROWSE"
+            android:targetPackage="dev.bee.kanjianki"
+            android:targetClass="dev.bee.kanjianki.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="games"
+        android:enabled="true"
+        android:icon="@drawable/ic_game_24"
+        android:shortcutShortLabel="@string/shortcut_games_short_label"
+        android:shortcutLongLabel="@string/shortcut_games_long_label">
+        <intent
+            android:action="dev.bee.kanjianki.action.OPEN_GAMES"
+            android:targetPackage="dev.bee.kanjianki"
+            android:targetClass="dev.bee.kanjianki.MainActivity" />
+    </shortcut>
+</shortcuts>
