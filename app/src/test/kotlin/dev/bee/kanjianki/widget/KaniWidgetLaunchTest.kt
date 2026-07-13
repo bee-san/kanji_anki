@@ -1,0 +1,46 @@
+package dev.bee.kanjianki.widget
+
+import android.content.Context
+import android.content.Intent
+import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.MainActivity
+import dev.bee.kanjianki.MainActivityBase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class KaniWidgetLaunchTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+
+    @Test
+    fun dueWidgetReusesExistingTaskAndOpensStudy() {
+        val intent = kaniWidgetLaunchIntent(
+            context,
+            KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 3),
+        )
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+    }
+
+    @Test
+    fun idleWidgetReusesExistingTaskWithoutForcingStudy() {
+        val intent = kaniWidgetLaunchIntent(
+            context,
+            KaniWidgetSnapshot(KaniWidgetState.NOTHING_DUE),
+        )
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+    }
+}
