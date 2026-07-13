@@ -159,6 +159,47 @@ class MainActivityStudyRouteInitializationTest {
         }
     }
 
+    @Test
+    fun processRestartRestoresPendingAnsweredRepairWithoutCanonicalStudyItem() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        StudyPendingAnswerStore(preferences).save(
+            StudyPendingAnswerSnapshot(
+                feedback = StudyAnswerFeedbackSnapshot(
+                    sessionToken = "repair-process-restart-token",
+                    phase = StudyAnswerFeedbackPhase.APPLIED,
+                    outcome = StudyAnswerOutcome.INCORRECT,
+                    selectedAnswer = StudyRatings.AGAIN,
+                ),
+                kanji = "修",
+                taskType = MainActivityBase.TASK_REPAIR_WRITING,
+                writingRequired = true,
+                prompt = "Write the similar kanji 修",
+            ),
+        )
+        val ioTasks = QueueingExecutorService()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val restoredActivity = controller.get()
+        replaceField(restoredActivity, "io", ioTasks)
+
+        try {
+            controller.create().start().resume()
+            ioTasks.runAll()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals("repair-process-restart-token", restoredActivity.activeSession?.token)
+            assertEquals(MainActivityBase.TASK_REPAIR_WRITING, restoredActivity.activeSession?.taskType)
+            assertTrue(restoredActivity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(restoredActivity.writingAnswerPanelState?.visible == true)
+        } finally {
+            preferences.edit().clear().commit()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun createActivity(): MainActivity {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         return try {
