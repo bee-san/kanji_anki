@@ -59,6 +59,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     renderedReading = expected,
                 ),
             )
+            showFlashcardAnswerSurface()
             return
         }
         if (session != null &&
@@ -72,8 +73,13 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         ) {
             Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show()
             activity.submitReview(MainActivityBase.RATING_GOOD, false)
+            showFlashcardAnswerSurface()
             return
         }
+        showFlashcardAnswerSurface()
+    }
+
+    private fun showFlashcardAnswerSurface() {
         val revealState = activity.flashcardRevealState
         if (revealState != null) {
             revealState.reveal()
@@ -97,6 +103,10 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
 
     fun handleFlashcardGesture(event: MotionEvent): Boolean {
         val session = activity.activeSession
+        if (activity.studyAnswerFeedbackState?.feedbackVisible == true) {
+            activity.flashcardTouchTracking = false
+            return false
+        }
         if (session == null || session.writingRequired || activity.flashcardGestureBounds == null) {
             activity.flashcardTouchTracking = false
             return false

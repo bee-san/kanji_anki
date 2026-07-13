@@ -28,7 +28,8 @@ internal fun MeaningChoiceResultActionBar(
         status = result.status,
         statusColor = result.statusColor,
         actionTone = result.actionTone,
-        onNext = { model.onChoice.onChoice(selectedChoice) },
+        continueEnabled = model.feedbackState?.continueEnabled ?: true,
+        onNext = { model.onContinue.run() },
     )
 }
 
@@ -37,6 +38,7 @@ internal fun MeaningChoiceResultActionBar(
     status: String,
     statusColor: Int,
     actionTone: StudyActionTone,
+    continueEnabled: Boolean = true,
     onNext: () -> Unit,
 ) {
     Column(
@@ -60,6 +62,7 @@ internal fun MeaningChoiceResultActionBar(
             onClick = onNext,
             modifier = Modifier
                 .fillMaxWidth(),
+            enabled = continueEnabled,
             tone = actionTone,
         )
     }

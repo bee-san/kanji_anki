@@ -63,6 +63,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {
         resetFlashcardInteractionState()
+        activity.prepareStudyAnswerFeedback(session.token)
         val revealState = FlashcardRevealState(false)
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
@@ -248,6 +249,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                     )
                 }
             },
+            feedbackState = activity.studyAnswerFeedbackState,
+            onContinue = { activity.continueAfterStudyAnswer() },
         )
     }
 

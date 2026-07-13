@@ -49,10 +49,10 @@ fun SimilarChoiceGrid(model: SimilarChoiceGridModel, state: SimilarChoiceSession
         onChoice = { glyph ->
             when {
                 correctChoice == null || state == null -> model.onChoice.onChoice(glyph)
-                // A correct pick advances immediately; a wrong pick pauses with
-                // red/green feedback until the user taps Continue.
-                glyph == correctChoice -> model.onChoice.onChoice(glyph)
-                else -> state.select(glyph)
+                else -> {
+                    state.select(glyph)
+                    model.onChoice.onChoice(glyph)
+                }
             }
         },
         feedbackForChoice = { glyph -> feedbackForSimilarChoice(glyph, selectedChoice, correctChoice) },

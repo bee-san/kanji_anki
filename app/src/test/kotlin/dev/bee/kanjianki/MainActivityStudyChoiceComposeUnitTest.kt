@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -192,9 +193,67 @@ class MainActivityStudyChoiceComposeUnitTest {
     }
 
     @Test
-    fun wrongSimilarChoicePausesWithFeedbackAndSubmitsOnContinue() {
+    fun meaningChoiceGradesOnTapAndWaitsForContinue() {
+        var graded = ""
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-森")
+        val model = MeaningChoiceSessionModel(
+            modeLabel = "Choose",
+            question = "Which kanji means forest?",
+            choices = listOf("森", "林"),
+            answerPanel = StudyAnswerPanelModel("Answer", "森", 76, emptyList(), null),
+            onChoice = KanjiChoiceHandler { glyph ->
+                feedback.begin(if (glyph == "森") StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT)
+                graded = glyph
+            },
+            resultResolver = MeaningChoiceResultResolver { glyph ->
+                val correct = glyph == "森"
+                MeaningChoiceResultModel(
+                    status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
+                    statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                    actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
+                    correctChoice = "森",
+                    selectedChoiceCorrect = correct,
+                )
+            },
+            feedbackState = feedback,
+            onContinue = Runnable { continued += 1 },
+        )
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(model = model)
+        }
+
+        composeRule.onNodeWithTag(similarChoiceTestTag("森")).performClick()
+        assertEquals("森", graded)
+        composeRule.onNodeWithText(StudyTextCopy.answerCorrectFeedback()).assertExists()
+        composeRule.mainClock.advanceTimeBy(5_000L)
+        assertEquals(0, continued)
+
+        assertTrue(feedback.markApplied("token-森"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .assertIsEnabled()
+        model.onContinue.run()
+        assertEquals(1, continued)
+    }
+
+    @Test
+    fun wrongSimilarChoiceGradesOnceAndWaitsForExplicitContinue() {
         var selected = ""
-        val model = similarChoiceModelWithCorrectChoice(correctChoice = "裂") { selected = it }
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-裂")
+        val model = similarChoiceModelWithCorrectChoice(
+            correctChoice = "裂",
+            feedback = feedback,
+            onChoice = {
+                feedback.begin(StudyAnswerOutcome.INCORRECT)
+                selected = it
+            },
+            onContinue = {
+                if (feedback.tryContinue()) continued += 1
+            },
+        )
 
         composeRule.setContent {
             // Tall viewport so the post-answer Continue bar is within tappable bounds.
@@ -211,11 +270,8 @@ class MainActivityStudyChoiceComposeUnitTest {
             }
         }
 
-        // Tap a wrong choice: nothing is submitted yet, the pressed choice shows the
-        // incorrect (red) mark, the correct choice shows the correct (green) mark,
-        // and a Continue action appears.
         composeRule.onNodeWithTag(similarChoiceTestTag("列")).performClick()
-        assertEquals("", selected)
+        assertEquals("列", selected)
         composeRule.onNodeWithText(choiceButtonText("列", KanjiChoiceFeedback.INCORRECT)).assertExists()
         composeRule.onNodeWithText(choiceButtonText("裂", KanjiChoiceFeedback.CORRECT)).assertExists()
         composeRule.onNodeWithText(StudyTextCopy.similarKanjiWrongChoiceResult("裂"))
@@ -227,22 +283,36 @@ class MainActivityStudyChoiceComposeUnitTest {
                 ),
             )
 
-        // A second tap on another choice is ignored while the feedback is showing.
+        // Inputs stay frozen, and even a long wait never advances this card.
         composeRule.onNodeWithTag(similarChoiceTestTag("烈")).performClick()
-        assertEquals("", selected)
+        composeRule.mainClock.advanceTimeBy(5_000L)
+        assertEquals("列", selected)
+        assertEquals(0, continued)
 
-        // Continue submits the originally selected (wrong) glyph. The bar renders
-        // below the small Robolectric window, so invoke the click action directly
-        // instead of injecting a touch that would land outside the window.
+        feedback.markApplied("token-裂")
         composeRule.onNodeWithText(StudyTextCopy.continueLabel())
             .performSemanticsAction(SemanticsActions.OnClick)
-        assertEquals("列", selected)
+        assertEquals(1, continued)
+        model.onContinue.run()
+        assertEquals(1, continued)
     }
 
     @Test
-    fun correctSimilarChoiceSubmitsImmediatelyWithoutContinueStep() {
+    fun correctSimilarChoiceAlsoWaitsForExplicitContinue() {
         var selected = ""
-        val model = similarChoiceModelWithCorrectChoice(correctChoice = "裂") { selected = it }
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-裂")
+        val model = similarChoiceModelWithCorrectChoice(
+            correctChoice = "裂",
+            feedback = feedback,
+            onChoice = {
+                feedback.begin(StudyAnswerOutcome.CORRECT)
+                selected = it
+            },
+            onContinue = {
+                if (feedback.tryContinue()) continued += 1
+            },
+        )
 
         composeRule.setContent {
             SimilarChoiceSessionCard(
@@ -255,7 +325,15 @@ class MainActivityStudyChoiceComposeUnitTest {
         composeRule.onNodeWithTag(similarChoiceTestTag("裂")).performClick()
 
         assertEquals("裂", selected)
-        composeRule.onAllNodesWithText(StudyTextCopy.continueLabel()).assertCountEquals(0)
+        composeRule.onNodeWithText(choiceButtonText("裂", KanjiChoiceFeedback.CORRECT)).assertExists()
+        composeRule.onNodeWithText(StudyTextCopy.answerCorrectFeedback()).assertExists()
+        composeRule.mainClock.advanceTimeBy(5_000L)
+        assertEquals(0, continued)
+
+        feedback.markApplied("token-裂")
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel())
+            .performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(1, continued)
     }
 
     @Test
@@ -272,7 +350,9 @@ class MainActivityStudyChoiceComposeUnitTest {
 
     private fun similarChoiceModelWithCorrectChoice(
         correctChoice: String,
+        feedback: StudyAnswerFeedbackState,
         onChoice: (String) -> Unit,
+        onContinue: () -> Unit,
     ): SimilarChoiceSessionModel {
         return SimilarChoiceSessionModel(
             modeLabel = "Recognise",
@@ -286,6 +366,8 @@ class MainActivityStudyChoiceComposeUnitTest {
             explanationLines = listOf(
                 SimilarKanjiExplanationLineModel("Shape hint", "Look at the lower component.", true),
             ),
+            feedbackState = feedback,
+            onContinue = Runnable { onContinue() },
         )
     }
 

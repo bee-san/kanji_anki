@@ -59,9 +59,8 @@ class MeaningChoiceSessionState(selectedChoice: String? = null) {
 }
 
 /**
- * Selection state for the similar-kanji grid. Only a wrong pick is recorded
- * here: it freezes the grid with red/green feedback until the user taps
- * Continue. Correct picks submit immediately and never set state.
+ * Selection state for the similar-kanji grid. Every graded pick is recorded so
+ * the grid stays frozen with red/green feedback until explicit Continue.
  */
 class SimilarChoiceSessionState(selectedChoice: String? = null) {
     var selectedChoice by mutableStateOf(selectedChoice)
@@ -201,9 +200,7 @@ internal fun MeaningChoiceSessionCard(
             onAnswered = { glyph ->
                 if (!answered) {
                     state.select(glyph)
-                    if (model.resultResolver == null) {
-                        model.onChoice.onChoice(glyph)
-                    }
+                    model.onChoice.onChoice(glyph)
                 }
             },
             selectedChoice = selectedChoice,
@@ -278,30 +275,31 @@ private fun SimilarChoiceInsetPanel(
             }
             if (showChoices) {
                 SimilarChoiceGrid(model.gridModel, state)
-                SimilarChoiceWrongAnswerBar(model, state)
+                SimilarChoiceResultBar(model, state)
             }
         }
     }
 }
 
 /**
- * After a wrong pick the grid freezes with red/green feedback and this bar
- * appears: it names the correct kanji and waits for an explicit Continue tap
- * before submitting the (failing) answer, instead of instantly advancing.
+ * Every graded pick freezes the grid with feedback. Grading happens on the
+ * answer tap; this control only advances after persistence reports APPLIED.
  */
 @Composable
-private fun SimilarChoiceWrongAnswerBar(
+private fun SimilarChoiceResultBar(
     model: SimilarChoiceSessionModel,
     state: SimilarChoiceSessionState,
 ) {
     val selectedChoice = state.selectedChoice ?: return
     val correctChoice = model.gridModel.correctChoice ?: return
+    val correct = selectedChoice == correctChoice
     Column(modifier = Modifier.padding(top = 12.dp)) {
         MeaningChoiceResultActionBar(
-            status = StudyTextCopy.similarKanjiWrongChoiceResult(correctChoice),
-            statusColor = MainActivityBase.CORAL,
-            actionTone = StudyActionTone.FAIL,
-            onNext = { model.gridModel.onChoice.onChoice(selectedChoice) },
+            status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.similarKanjiWrongChoiceResult(correctChoice),
+            statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+            actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
+            continueEnabled = model.feedbackState?.continueEnabled ?: true,
+            onNext = { model.onContinue.run() },
         )
     }
 }

@@ -100,6 +100,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var activeSession: RecordsSchedulerModels.StudySession? = null
 
     @JvmField
+    var studyAnswerFeedbackState: StudyAnswerFeedbackState? = null
+
+    @JvmField
     var activeSimilarWritingRepair: RecordsImportModels.SimilarKanjiWritingRepair? = null
 
     @JvmField

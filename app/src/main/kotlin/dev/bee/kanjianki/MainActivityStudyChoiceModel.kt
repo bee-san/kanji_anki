@@ -134,6 +134,8 @@ data class SimilarChoiceSessionModel(
     val question: String,
     val gridModel: SimilarChoiceGridModel,
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
+    val feedbackState: StudyAnswerFeedbackState? = null,
+    val onContinue: Runnable = Runnable {},
 )
 
 internal data class SimilarKanjiDifferenceChoiceModel(
@@ -161,4 +163,6 @@ internal data class MeaningChoiceSessionModel(
     val answerPanel: StudyAnswerPanelModel,
     val onChoice: KanjiChoiceHandler,
     val resultResolver: MeaningChoiceResultResolver? = null,
+    val feedbackState: StudyAnswerFeedbackState? = null,
+    val onContinue: Runnable = Runnable {},
 )

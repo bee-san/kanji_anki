@@ -348,8 +348,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingCheck.checkWriting()
     }
 
-    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
-        writingReview.submitSimilarKanjiChoice(card, selectedKanji)
+    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String): Boolean {
+        return submitWithAnswerFeedback(selectedKanji == card.targetKanji) {
+            writingReview.submitSimilarKanjiChoice(card, selectedKanji)
+        }
     }
 
     fun submitLoggedChoiceReview(
@@ -359,15 +361,17 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         correct: Boolean,
         rung: RecordsBase.LadderRung,
         correctAnswer: String = targetKanji,
-    ) {
-        writingReview.submitLoggedChoiceReview(
-            targetKanji,
-            choiceSignature,
-            selectedChoice,
-            correct,
-            rung,
-            correctAnswer,
-        )
+    ): Boolean {
+        return submitWithAnswerFeedback(correct) {
+            writingReview.submitLoggedChoiceReview(
+                targetKanji,
+                choiceSignature,
+                selectedChoice,
+                correct,
+                rung,
+                correctAnswer,
+            )
+        }
     }
 
     fun showNoInkWhenNeeded(): Boolean {
@@ -396,7 +400,58 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         interactionSource: String = "review-action",
         answerEvidence: AnswerEvidence? = null,
     ): Boolean {
-        return writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN) {
+            writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
+        }
+    }
+
+    private fun submitWithAnswerFeedback(correct: Boolean, submit: () -> Boolean): Boolean {
+        val token = activeSession?.token ?: return false
+        val state = studyAnswerFeedbackState
+            ?.takeIf { it.sessionToken == token }
+            ?: StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
+        val outcome = if (correct) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT
+        if (!state.begin(outcome)) {
+            return false
+        }
+        val accepted = submit()
+        if (!accepted) {
+            state.resetForRetry(token)
+        }
+        return accepted
+    }
+
+    fun prepareStudyAnswerFeedback(token: String): StudyAnswerFeedbackState {
+        return StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
+    }
+
+    fun markStudyAnswerApplied(token: String) {
+        postToMainIfActive {
+            studyAnswerFeedbackState?.markApplied(token)
+        }
+    }
+
+    fun resetStudyAnswerForRetry(token: String) {
+        studyAnswerFeedbackState?.resetForRetry(token)
+    }
+
+    fun continueAfterStudyAnswer(): Boolean {
+        val state = studyAnswerFeedbackState ?: return false
+        if (!state.tryContinue()) {
+            return false
+        }
+        if (activeSimilarWritingRepair != null) {
+            activeSimilarWritingRepair = null
+        }
+        renderStudy()
+        return true
+    }
+
+    fun submitSimilarWritingRepair(rating: String): Boolean {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN) {
+            writingReview.submitSimilarWritingRepair(rating)
+            true
+        }
     }
 
     fun skipSimilarWritingRepair() {

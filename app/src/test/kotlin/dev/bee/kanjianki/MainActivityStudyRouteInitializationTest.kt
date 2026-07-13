@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTaskTypes
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +31,7 @@ class MainActivityStudyRouteInitializationTest {
 
         assertNotNull(activity.flashcardRevealState)
         assertNotNull(activity.flashcardActionBarState)
+        assertEquals(session.token, activity.studyAnswerFeedbackState?.sessionToken)
     }
 
     @Test
@@ -42,6 +44,7 @@ class MainActivityStudyRouteInitializationTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertNotNull(activity.writingAnswerPanelState)
+        assertEquals(session.token, activity.studyAnswerFeedbackState?.sessionToken)
     }
 
     private fun createActivity(): MainActivity {

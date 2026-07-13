@@ -68,9 +68,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
      * Runs a review write pipeline on the background io executor. Answering a card
      * used to run every store read/write (FSRS apply, review-log insert, streak read,
      * reminder rescheduling) synchronously inside the Pass/Fail click handler on the
-     * main thread. Only the toast has to run on main; renderStudy() and
-     * renderStudyForKanji() are safe to call from the background thread because they
-     * only bump the async loader generation and queue the next route load.
+     * main thread. Compose-observable feedback is marshalled back to main; route
+     * reloads from retry/undo paths only bump the async loader generation and queue
+     * a replacement route load.
      *
      * Ordering: the io executor is single-threaded, so queued writes run in tap order.
      * Session-token idempotency is enforced before this helper by [submissionGate].
@@ -167,6 +167,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.postToMainIfActive {
             if (activity.activeSession?.token == token) {
                 activity.flashcardSwipeFeedback?.cancelCommit()
+                activity.resetStudyAnswerForRetry(token)
                 // The persisted row may have advanced independently (STALE),
                 // and typing submission marks the visible card revealed before
                 // its async write starts. Reloading the same kanji resets all
@@ -304,8 +305,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 activity::markStudyTaskCompleted
             )
             showToast(StudyTextCopy.similarWritingRepairSavedToast(completion.passed))
-            activity.activeSimilarWritingRepair = null
-            activity.renderStudy()
+            activity.markStudyAnswerApplied(activity.studyAnswerFeedbackState?.sessionToken.orEmpty())
             activity.requestReminderRearm("review")
         }
     }
@@ -549,10 +549,10 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         activity.studySessionTracker.commitPreparedTask(preparedTask)
         val streak: StudyStatsStore.StudyStreak = activity.store.studyStreak(now)
         showToast(HomeTextCopy.reviewToast(false, result.appliedRating, streak.currentDays))
-        activity.renderStudy()
+        activity.markStudyAnswerApplied(session.token)
         logReviewEvent(
-            "review event=next-route-requested source=${diagnostics.source} token_id=${diagnostics.tokenId} " +
-                "tap_to_request_ms=${formatReviewMillis(reviewElapsedMillis(diagnostics.submittedAtNanos, reviewNowNanos()))}",
+            "review event=feedback-ready source=${diagnostics.source} token_id=${diagnostics.tokenId} " +
+                "tap_to_feedback_ms=${formatReviewMillis(reviewElapsedMillis(diagnostics.submittedAtNanos, reviewNowNanos()))}",
         )
         activity.requestReminderRearm("review")
         return ReviewWriteDisposition.HANDLED
@@ -575,7 +575,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             "review event=duplicate-reconciled source=${diagnostics.source} " +
                 "token_id=${diagnostics.tokenId} phase=$phase",
         )
-        activity.renderStudy()
+        activity.markStudyAnswerApplied(activity.activeSession?.token.orEmpty())
         return ReviewWriteDisposition.HANDLED
     }
 
