@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -17,11 +18,9 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.action.actionStartActivity
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.unit.ColorProvider
 import dev.bee.kanjianki.MainActivity
@@ -39,19 +38,15 @@ internal class KaniWidget(
             KaniWidgetSnapshotLoader.load(context)
         }
         provideContent {
-            KaniWidgetContent(snapshot)
+            KaniWidgetContent(context, snapshot)
         }
     }
 }
 
 @Composable
-private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
+private fun KaniWidgetContent(context: Context, snapshot: KaniWidgetSnapshot) {
     val copy = widgetCopy(snapshot)
-    val launchAction = if (snapshot.state == KaniWidgetState.DUE_NOW) {
-        actionStartActivity<MainActivity>(actionParametersOf(OpenStudyKey to true))
-    } else {
-        actionStartActivity<MainActivity>()
-    }
+    val launchAction = actionStartActivity(kaniWidgetLaunchIntent(context, snapshot))
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -97,7 +92,18 @@ private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
     }
 }
 
-private val OpenStudyKey = ActionParameters.Key<Boolean>(MainActivityBase.EXTRA_OPEN_STUDY)
+/**
+ * Reuse the visible Kani task when the widget is tapped. Without these flags,
+ * every tap starts another MainActivity and Back can reveal a stale duplicate
+ * screen underneath it instead of returning to the previous app.
+ */
+internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapshot): Intent =
+    Intent(context, MainActivity::class.java).apply {
+        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (snapshot.state == KaniWidgetState.DUE_NOW) {
+            putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+        }
+    }
 
 private data class WidgetCopy(
     val title: String,
