@@ -17,9 +17,10 @@ import java.util.UUID
 /**
  * Creates narrowly scoped, immutable snapshots for the two user-shareable diagnostic logs.
  *
- * The live logs stay in internal files storage. Only an allow-listed regular file whose parent is
- * exactly [Context.getFilesDir] can be copied into the FileProvider-backed cache directory. Each
- * share receives a fresh URI, so an earlier recipient can never observe a later log snapshot.
+ * The live logs stay in internal files storage. Only an allow-listed regular file that resolves to
+ * a direct child of [Context.getFilesDir] can be copied into the FileProvider-backed cache
+ * directory. Each share receives a fresh URI, so an earlier recipient can never observe a later
+ * log snapshot.
  */
 internal object DebugLogShare {
     private const val SHARE_DIRECTORY_NAME = "debug-log-share"
@@ -37,11 +38,12 @@ internal object DebugLogShare {
         val prefix = allowedLogPrefixes[sourceFile.name] ?: return null
         val filesDirectory = runCatching { appContext.filesDir.canonicalFile }.getOrNull() ?: return null
         val expectedSource = File(filesDirectory, sourceFile.name)
+        val canonicalSource = runCatching { sourceFile.canonicalFile }.getOrNull() ?: return null
         if (
-            sourceFile.absoluteFile != expectedSource.absoluteFile ||
+            canonicalSource != expectedSource ||
             Files.isSymbolicLink(sourceFile.toPath()) ||
-            !Files.isRegularFile(sourceFile.toPath(), NOFOLLOW_LINKS) ||
-            sourceFile.length() == 0L
+            !Files.isRegularFile(canonicalSource.toPath(), NOFOLLOW_LINKS) ||
+            canonicalSource.length() == 0L
         ) {
             return null
         }
@@ -52,7 +54,7 @@ internal object DebugLogShare {
         }.getOrNull() ?: return null
         val snapshot = shareDirectory.resolve("$prefix-${UUID.randomUUID()}.log")
         try {
-            Files.copy(sourceFile.toPath(), temporary, REPLACE_EXISTING)
+            Files.copy(canonicalSource.toPath(), temporary, REPLACE_EXISTING)
             if (Files.size(temporary) == 0L || !moveSnapshotIntoPlace(temporary, snapshot)) {
                 return null
             }
