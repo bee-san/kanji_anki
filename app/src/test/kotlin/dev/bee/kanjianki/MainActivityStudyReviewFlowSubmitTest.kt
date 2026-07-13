@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.LocalStore
@@ -300,6 +301,36 @@ class MainActivityStudyReviewFlowSubmitTest {
         }
     }
 
+    @Test
+    fun similarWritingRepairRatingUsesFeedbackGateAndExplicitContinue() {
+        withReviewActivity("未") { activity, _, reviewIo, session ->
+            activity.activeSimilarWritingRepair = similarWritingRepair(session.token)
+
+            assertTrue(activity.submitSimilarWritingRepair(MainActivityBase.RATING_AGAIN))
+            assertFalse(activity.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD))
+
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertEquals(StudyAnswerOutcome.INCORRECT, feedback.outcome)
+            assertTrue(feedback.feedbackVisible)
+            assertFalse(feedback.continueEnabled)
+            assertEquals(1, reviewIo.pendingCount())
+            assertEquals(0, activity.renderCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertTrue(feedback.continueEnabled)
+            assertEquals(session.token, activity.activeSession!!.token)
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.activeSimilarWritingRepair != null)
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertFalse(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+            assertTrue(activity.activeSimilarWritingRepair == null)
+        }
+    }
+
     private fun withReviewActivity(
         kanji: String,
         test: (TestMainActivity, LocalStore, QueueingExecutorService, RecordsSchedulerModels.StudySession) -> Unit,
@@ -454,6 +485,24 @@ class MainActivityStudyReviewFlowSubmitTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken("token-$kanji")
             .build()
+    }
+
+    private fun similarWritingRepair(activeToken: String): RecordsImportModels.SimilarKanjiWritingRepair {
+        return RecordsImportModels.SimilarKanjiWritingRepair(
+            42L,
+            "末",
+            "未",
+            "末|未",
+            "末",
+            "not yet",
+            "pending",
+            1_000L,
+            activeToken,
+            0,
+            900L,
+            901L,
+            0L,
+        )
     }
 
     private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {

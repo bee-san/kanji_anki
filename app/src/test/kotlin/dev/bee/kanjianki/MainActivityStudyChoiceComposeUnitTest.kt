@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -236,6 +237,62 @@ class MainActivityStudyChoiceComposeUnitTest {
             .assertIsEnabled()
         model.onContinue.run()
         assertEquals(1, continued)
+    }
+
+    @Test
+    fun meaningChoiceResultNextActionContinuesSelectionWithoutRegrading() {
+        var selected = ""
+        var selectionCount = 0
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-裂")
+        val model = MeaningChoiceSessionModel(
+            modeLabel = "Choose",
+            question = "Which kanji means split?",
+            choices = listOf("裂", "列", "烈", "劣"),
+            answerPanel = StudyAnswerPanelModel("Answer", "裂", 76, emptyList(), null),
+            onChoice = KanjiChoiceHandler { glyph ->
+                feedback.begin(StudyAnswerOutcome.INCORRECT)
+                selected = glyph
+                selectionCount += 1
+            },
+            resultResolver = MeaningChoiceResultResolver { glyph ->
+                MeaningChoiceResultModel(
+                    status = "Selected: $glyph",
+                    statusColor = MainActivityBase.CORAL,
+                    actionTone = StudyActionTone.FAIL,
+                    correctChoice = "裂",
+                    selectedChoiceCorrect = false,
+                )
+            },
+            feedbackState = feedback,
+            onContinue = Runnable { continued += 1 },
+        )
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(model = model)
+        }
+
+        composeRule.onNodeWithText("列").performClick()
+
+        composeRule.onNodeWithText("Selected: 列").assertExists()
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂")).assertIsNotEnabled()
+        composeRule.onNodeWithTag(similarChoiceTestTag("烈")).assertIsNotEnabled()
+        composeRule.runOnIdle {
+            assertEquals("列", selected)
+            assertEquals(1, selectionCount)
+            assertEquals(0, continued)
+        }
+
+        assertTrue(feedback.markApplied("token-裂"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .performSemanticsAction(SemanticsActions.OnClick)
+
+        composeRule.runOnIdle {
+            assertEquals("列", selected)
+            assertEquals(1, selectionCount)
+            assertEquals(1, continued)
+        }
     }
 
     @Test

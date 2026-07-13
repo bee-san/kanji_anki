@@ -187,8 +187,11 @@ onChoice = KanjiChoiceHandler { selected = it }
     }
 
     @Test
-    fun meaningChoiceResultNextActionRecordsSelectedAnswer() {
+    fun meaningChoiceResultNextActionContinuesSelectionWithoutRegrading() {
         var selected = ""
+        var selectionCount = 0
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-裂")
 
         composeRule.setContent {
             MeaningChoiceSessionCard(
@@ -197,7 +200,11 @@ onChoice = KanjiChoiceHandler { selected = it }
                     choices = listOf("裂", "列", "烈", "劣"),
                     answerGlyph = "裂",
                     answerDetail = "Answer detail",
-                    onChoice = { selected = it },
+                    feedback = feedback,
+                    onChoice = {
+                        selected = it
+                        selectionCount += 1
+                    },
                     resultResolver = MeaningChoiceResultResolver { glyph ->
                         MeaningChoiceResultModel(
                             status = "Selected: $glyph",
@@ -205,6 +212,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                             actionTone = StudyActionTone.PASS,
                         )
                     },
+                    onContinue = { continued += 1 },
                 )
             )
         }
@@ -214,12 +222,22 @@ onChoice = KanjiChoiceHandler { selected = it }
         composeRule.onNodeWithText("Selected: 列").assertIsDisplayed()
         composeRule.onNodeWithTag(similarChoiceTestTag("裂")).assertIsNotEnabled()
         composeRule.onNodeWithTag(similarChoiceTestTag("烈")).assertIsNotEnabled()
-        composeRule.runOnIdle { assertEquals("", selected) }
+        composeRule.runOnIdle {
+            assertEquals("列", selected)
+            assertEquals(1, selectionCount)
+            assertEquals(0, continued)
+        }
 
-        composeRule.onAllNodesWithText("Next").assertCountEquals(0)
-        composeRule.onNodeWithText(StudyTextCopy.continueLabel()).performClick()
+        feedback.markApplied("token-裂")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(StudyTextCopy.continueLabel())
+            .performClick()
 
-        assertEquals("列", selected)
+        composeRule.runOnIdle {
+            assertEquals("列", selected)
+            assertEquals(1, selectionCount)
+            assertEquals(1, continued)
+        }
     }
 
     @Test
@@ -498,8 +516,10 @@ onChoice = KanjiChoiceHandler { selected = it }
             choices: List<String>,
             answerGlyph: String,
             answerDetail: String,
+            feedback: StudyAnswerFeedbackState? = null,
             onChoice: (String) -> Unit,
             resultResolver: MeaningChoiceResultResolver? = null,
+            onContinue: () -> Unit = {},
         ): MeaningChoiceSessionModel {
             return MeaningChoiceSessionModel(
                 modeLabel = "Recall",
@@ -521,6 +541,8 @@ onChoice = KanjiChoiceHandler { selected = it }
                 ),
                 onChoice = KanjiChoiceHandler { onChoice(it) },
                 resultResolver = resultResolver,
+                feedbackState = feedback,
+                onContinue = Runnable { onContinue() },
             )
         }
     }

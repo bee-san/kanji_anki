@@ -443,7 +443,7 @@ private fun MeaningChoiceInsetPanel(
                         status = result.status,
                         statusColor = result.statusColor,
                         actionTone = result.actionTone,
-                        onNext = { model.onChoice.onChoice(selectedChoice ?: return@MeaningChoiceResultActionBar) },
+                        onNext = { model.onContinue.run() },
                     )
                 }
             }

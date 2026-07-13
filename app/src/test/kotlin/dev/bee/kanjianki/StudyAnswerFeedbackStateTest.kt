@@ -36,4 +36,22 @@ class StudyAnswerFeedbackStateTest {
         assertFalse(state.feedbackVisible)
         assertTrue(state.begin(StudyAnswerOutcome.CORRECT))
     }
+
+    @Test
+    fun sharedFeedbackGateRejectsDuplicateModeEventsAndDuplicateCommitCallbacks() {
+        val state = StudyAnswerFeedbackState("token-書")
+
+        assertTrue(state.begin(StudyAnswerOutcome.INCORRECT))
+        assertFalse(state.begin(StudyAnswerOutcome.CORRECT))
+        assertEquals(StudyAnswerOutcome.INCORRECT, state.outcome)
+
+        assertTrue(state.markApplied("token-書"))
+        assertFalse(state.markApplied("token-書"))
+        assertTrue(state.continueEnabled)
+
+        assertTrue(state.tryContinue())
+        assertFalse(state.begin(StudyAnswerOutcome.CORRECT))
+        assertFalse(state.markApplied("token-書"))
+        assertFalse(state.tryContinue())
+    }
 }
