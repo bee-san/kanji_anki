@@ -377,6 +377,24 @@ class ComposeScreenModelsTest {
     }
 
     @Test
+    fun browseMnemonicNoteModelKeepsMultilineTextAndSaveAction() {
+        var saved = ""
+        val model = BrowseMnemonicNoteModel(
+            title = "My mnemonic",
+            fieldLabel = "Mnemonic note",
+            helper = "Write a story.",
+            initialNote = "shell\nstory",
+            saveLabel = "Save mnemonic",
+            onSave = { saved = it },
+        )
+
+        assertEquals("shell\nstory", model.initialNote)
+        model.onSave("new\nstory")
+        assertEquals("new\nstory", saved)
+        assertEquals(model, model.copy())
+    }
+
+    @Test
     fun syncResultModelKeepsPrimaryAndSecondaryActions() {
         val coral = 0xFFFF4C76.toInt()
         val teal = 0xFF00AEB5.toInt()

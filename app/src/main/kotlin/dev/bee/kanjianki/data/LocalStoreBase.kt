@@ -110,6 +110,10 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreTableCreator.createKanjiInventoryTables(db)
     }
 
+    fun createKanjiMnemonicNotesTable(db: SQLiteDatabase) {
+        LocalStoreTableCreator.createKanjiMnemonicNotesTable(db)
+    }
+
     fun createSimilarKanjiTables(db: SQLiteDatabase) {
         LocalStoreTableCreator.createSimilarKanjiTables(db)
     }
@@ -501,6 +505,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val TABLE_LEARNING_REPEATS: String = "learning_repeats"
         const val TABLE_REVIEW_LOG: String = "review_log"
         const val TABLE_KANJI_INVENTORY: String = "kanji_inventory"
+        const val TABLE_KANJI_MNEMONIC_NOTES: String = "kanji_mnemonic_notes"
         const val TABLE_LOCAL_KANJI_SUSPENSIONS: String = "local_kanji_suspensions"
         const val TABLE_SIMILAR_KANJI_PAIRS: String = "similar_kanji_pairs"
         const val TABLE_SIMILAR_KANJI_CHOICE_STATE: String = "similar_kanji_choice_state"

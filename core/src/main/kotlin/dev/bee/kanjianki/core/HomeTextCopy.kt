@@ -452,6 +452,33 @@ object HomeTextCopy {
     )
 
     @JvmStatic
+    fun mnemonicNoteTitle(): String = localizedText("My mnemonic", "自分の覚え方")
+
+    @JvmStatic
+    fun mnemonicNoteFieldLabel(): String = localizedText("Mnemonic note", "覚え方メモ")
+
+    @JvmStatic
+    fun mnemonicNoteHelper(stuck: Boolean): String {
+        return if (stuck) {
+            stuckChipHint()
+        } else {
+            localizedText(
+                "Write a story, image, or association that helps this kanji stick.",
+                "この漢字を思い出すための物語、イメージ、関連付けを書きましょう。",
+            )
+        }
+    }
+
+    @JvmStatic
+    fun saveMnemonicNoteLabel(): String = localizedText("Save mnemonic", "覚え方を保存")
+
+    @JvmStatic
+    fun mnemonicNoteSavedToast(): String = localizedText("Mnemonic saved.", "覚え方メモを保存しました。")
+
+    @JvmStatic
+    fun mnemonicNoteClearedToast(): String = localizedText("Mnemonic cleared.", "覚え方メモを削除しました。")
+
+    @JvmStatic
     fun relearningChipLabel(): String = localizedText("relearning", "再学習")
 
     @JvmStatic
