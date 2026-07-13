@@ -93,6 +93,33 @@ class LocalStoreActiveDashboardRowsByKanjiCacheTest {
         )
     }
 
+    @Test
+    fun localSuspensionsDoNotConsumeTheActiveDashboardRowLimit() {
+        val allRows = dashboardRows(121)
+        store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList(),
+            allRows,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1_000L,
+            2_000L,
+            null,
+        )
+        val initiallyLoaded = store.activeDashboardRows()
+        val suspendedKanji = initiallyLoaded.first().kanji
+        val initiallyOmittedKanji = (
+            allRows.map { it.kanji }.toSet() -
+                initiallyLoaded.map { it.kanji }.toSet()
+        ).single()
+
+        store.setKanjiLocallySuspended(suspendedKanji, true, 3_000L)
+        val activeRows = store.activeDashboardRows()
+
+        assertEquals(120, activeRows.size)
+        assertTrue(activeRows.none { it.kanji == suspendedKanji })
+        assertTrue(activeRows.any { it.kanji == initiallyOmittedKanji })
+    }
+
     private fun dashboardRows(count: Int): List<RecordsImportModels.DashboardRow> {
         return List(count) { index ->
             RecordsImportModels.DashboardRow(
