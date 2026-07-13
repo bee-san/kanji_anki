@@ -137,6 +137,9 @@ object StudyTextCopy {
     fun referenceLabel(): String = localizedText("Reference", "お手本")
 
     @JvmStatic
+    fun studyMnemonicLabel(): String = localizedText("My mnemonic", "自分の覚え方")
+
+    @JvmStatic
     fun writingReferenceHelper(): String = localizedText(
         "Trace it below, then check.",
         "下になぞってから確認してください。",

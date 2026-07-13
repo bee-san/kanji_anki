@@ -1539,12 +1539,17 @@ class ComposeScreenModelsTest {
             sizeSp = 15,
             bold = true,
         )
+        val mnemonic = StudyAnswerMnemonicModel(
+            label = "My mnemonic",
+            note = "A crab pinches the meaning in place.",
+        )
         val model = StudyAnswerPanelModel(
             title = "Answer",
             glyph = "蟹",
             glyphSizeSp = 76,
             lines = listOf(reading, meaning),
             helperText = "Trace it below, then check.",
+            mnemonic = mnemonic,
         )
 
         assertEquals("Answer", model.title)
@@ -1552,6 +1557,7 @@ class ComposeScreenModelsTest {
         assertEquals(76, model.glyphSizeSp)
         assertEquals(listOf(reading, meaning), model.lines)
         assertEquals("Trace it below, then check.", model.helperText)
+        assertSame(mnemonic, model.mnemonic)
         assertEquals("Reading: かに", reading.text)
         assertEquals(MainActivityUiSupport.CORAL, reading.color)
         assertEquals(17, reading.sizeSp)
@@ -1561,7 +1567,17 @@ class ComposeScreenModelsTest {
         assertEquals(15, meaning.sizeSp)
         assertEquals(true, meaning.bold)
         assertEquals(model, model.copy())
+        assertEquals(mnemonic, mnemonic.copy())
         assertEquals(reading, reading.copy())
+    }
+
+    @Test
+    fun studyAnswerMnemonicModelDropsBlankNotesAndPreservesMultilineCopy() {
+        val model = studyAnswerMnemonicModel("  first image\n  second image  ")
+
+        assertEquals("first image\n  second image", model?.note)
+        assertEquals(null, studyAnswerMnemonicModel(null))
+        assertEquals(null, studyAnswerMnemonicModel(" \n\t "))
     }
 
     @Test

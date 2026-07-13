@@ -121,6 +121,7 @@ class MainActivityStudyRouteInitializationTest {
         )
         val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
+        activity.store.saveKanjiMnemonicNote(session.item!!.kanji, "old memory", 1_000L)
         activity.store.saveStudyItem(session.item!!.copyBuilder().activeToken("").build())
         StudyPendingAnswerStore(preferences).save(
             StudyPendingAnswerSnapshot(
@@ -135,6 +136,13 @@ class MainActivityStudyRouteInitializationTest {
                 writingRequired = session.writingRequired,
                 prompt = session.prompt,
             ),
+        )
+        val encodedSnapshot = preferences.getString("snapshot", "").orEmpty()
+        assertTrue(!encodedSnapshot.contains("old memory"))
+        activity.store.saveKanjiMnemonicNote(
+            session.item!!.kanji,
+            "current memory\nfrom local storage",
+            2_000L,
         )
         val ioTasks = QueueingExecutorService()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
@@ -153,6 +161,7 @@ class MainActivityStudyRouteInitializationTest {
             assertTrue(restoredActivity.flashcardRevealState?.isRevealed == true)
             assertEquals("strong", restoredActivity.typingAnswerState?.text?.toString())
         } finally {
+            activity.store.saveKanjiMnemonicNote(session.item!!.kanji, "", 3_000L)
             preferences.edit().clear().commit()
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
             controller.pause().stop().destroy()

@@ -24,8 +24,11 @@ import dev.bee.kanjianki.core.StudyTextCopy
 internal class MainActivityStudyFlashcard(private val activity: MainActivityStudy) {
     private val interaction = MainActivityStudyFlashcardInteraction(activity)
 
-    fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        renderComposeFlashcardRoute { composeFlashcardRouteModel(session) }
+    fun renderComposeFlashcardSession(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ) {
+        renderComposeFlashcardRoute { composeFlashcardRouteModel(session, mnemonic) }
     }
 
     private fun renderComposeFlashcardRoute(routeProvider: () -> ComposeFlashcardRouteModel) {
@@ -61,7 +64,10 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         MainActivityStudyInteractionReset.resetFlashcard(activity)
     }
 
-    private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {
+    private fun composeFlashcardRouteModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): ComposeFlashcardRouteModel {
         resetFlashcardInteractionState()
         val feedback = activity.prepareStudyAnswerFeedback(session.token)
         val answered = feedback.snapshot().phase == StudyAnswerFeedbackPhase.SUBMITTING ||
@@ -114,7 +120,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         } else {
             null
         }
-        val answerPanel = flashcardAnswerPanelModel(session)
+        val answerPanel = flashcardAnswerPanelModel(session, mnemonic)
         val cardModel = FlashcardCardModel(
             FlashcardPromptHeaderModel(
                 StudyTaskCopy.studyModeLabel(session),
@@ -157,12 +163,18 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         )
     }
 
-    fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return flashcardAnswerPanelModel(activity, session)
+    fun flashcardAnswerPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ): StudyAnswerPanelModel {
+        return flashcardAnswerPanelModel(activity, session, mnemonic)
     }
 
-    fun meaningChoiceAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return meaningChoiceAnswerPanelModel(activity, session)
+    fun meaningChoiceAnswerPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ): StudyAnswerPanelModel {
+        return meaningChoiceAnswerPanelModel(activity, session, mnemonic)
     }
 
     fun typingAnswerField(): TypingAnswerState {
