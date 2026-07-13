@@ -270,6 +270,50 @@ class AdaptiveReviewTransitionEngineTest {
     }
 
     @Test
+    fun revalidationUsesExactCoreReviewTimeWhenItsIntervalRoundsUp() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION), hasSimilarKanji = true),
+            request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION),
+            NOW,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        assertEquals(NOW, failed.kanjiMeaningMemory.lastReviewedAtMillis)
+
+        val repairAt = NOW + 2 * StudyLadderRules.DAY + StudyLadderRules.DAY / 2
+        val delayedRepair = failed.copyBuilder().dueAtMillis(repairAt).activeToken("repair-token").build()
+        val revalidation = AdaptiveReviewTransitionEngine(adapter).apply(
+            delayedRepair,
+            request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+            repairAt,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        val revalidationAt = repairAt + StudyLadderRules.DAY
+        assertEquals(revalidationAt, revalidation.dueAtMillis)
+        assertEquals(4, revalidation.kanjiMeaningMemory.matureIntervalDays)
+        assertEquals(NOW, revalidation.kanjiMeaningMemory.lastReviewedAtMillis)
+
+        val reviewed = AdaptiveReviewTransitionEngine(adapter).apply(
+            revalidation.copyBuilder().activeToken("revalidate-token").build(),
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            revalidationAt,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+
+        assertEquals(3, adapter.elapsedDays)
+        assertEquals(revalidationAt, reviewed.kanjiMeaningMemory.lastReviewedAtMillis)
+    }
+
+    @Test
     fun disabledTypeReadingIsNotSelectedAsReadingRepairFallback() {
         val disabled = ladder.withRepairTaskEnabled(StudyTaskTypes.TYPE_READING, false)
         val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING))
@@ -407,6 +451,7 @@ class AdaptiveReviewTransitionEngineTest {
         private val promotionDays: Int,
     ) : KaniFsrsAdapter {
         var reviewCalls = 0
+        var elapsedDays = -1
 
         override fun initialReview(
             rating: String?,
@@ -424,6 +469,7 @@ class AdaptiveReviewTransitionEngineTest {
             targetRetention: Double,
         ): KaniFsrsReviewResult {
             reviewCalls++
+            this.elapsedDays = elapsedDays
             return KaniFsrsReviewResult(
                 stability + 1.0,
                 difficulty,

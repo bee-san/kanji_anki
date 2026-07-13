@@ -106,7 +106,8 @@ internal class FsrsTrainingDataQueries(
         @JvmStatic
         fun elapsedDays(reviewedAtMillis: Long, memory: RecordsStudyModels.TaskMemory): Int {
             val previousIntervalMillis = memory.matureIntervalDays.toLong().coerceAtLeast(0L) * DAY_MILLIS
-            val lastReviewAtMillis = (memory.dueAtMillis - previousIntervalMillis).coerceAtLeast(0L)
+            val lastReviewAtMillis = memory.lastReviewedAtMillis.takeIf { it > 0L }
+                ?: (memory.dueAtMillis - previousIntervalMillis).coerceAtLeast(0L)
             val elapsedMillis = (reviewedAtMillis - lastReviewAtMillis).coerceAtLeast(0L)
             return (elapsedMillis / DAY_MILLIS).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         }

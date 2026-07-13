@@ -619,7 +619,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             context.rating,
             state.scheduledIntervalDays,
             taskMemoryConsecutivePasses(context, state),
-            taskMemoryLastPassedDueAt(context, state)
+            taskMemoryLastPassedDueAt(context, state),
+            context.nowMillis,
         )
         val base = context.item.copyBuilder()
             .state(state.schedulerState)
@@ -677,7 +678,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
 
         private fun elapsedReviewDays(): Int {
             val previousIntervalMillis = max(0L, previousTaskMemory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
-            val lastReviewAtMillis = max(0L, previousTaskMemory.dueAtMillis - previousIntervalMillis)
+            val lastReviewAtMillis = previousTaskMemory.lastReviewedAtMillis.takeIf { it > 0L }
+                ?: max(0L, previousTaskMemory.dueAtMillis - previousIntervalMillis)
             val elapsedMillis = max(0L, nowMillis - lastReviewAtMillis)
             return min(Int.MAX_VALUE.toLong(), elapsedMillis / StudyLadderRules.DAY).toInt()
         }

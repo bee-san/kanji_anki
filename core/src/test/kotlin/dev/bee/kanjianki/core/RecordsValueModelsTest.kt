@@ -135,13 +135,22 @@ class RecordsValueModelsTest {
         assertEquals("", decoded.lastRating)
         assertEquals(0, decoded.consecutivePasses)
         assertEquals(0L, decoded.lastPassedDueAtMillis)
+        assertEquals(0L, decoded.lastReviewedAtMillis)
         val promoted = fallback.withDueAtMillis(10L)
         assertEquals(10L, promoted.dueAtMillis)
         assertEquals(fallback.consecutivePasses, promoted.consecutivePasses)
+        assertEquals(0L, promoted.lastReviewedAtMillis)
         val legacyNinePart = RecordsStudyModels.TaskMemory.decode("review\t9\t1.2\t4.3\t5\t1\t2\thard\t7", null)
         val legacyTenPart = RecordsStudyModels.TaskMemory.decode("review\t9\t1.2\t4.3\t5\t1\t2\thard\t7\t3", null)
         assertEquals(0, legacyNinePart.consecutivePasses)
         assertEquals(3, legacyTenPart.consecutivePasses)
+        assertEquals(0L, legacyTenPart.lastReviewedAtMillis)
+        val exactReviewTime = RecordsStudyModels.TaskMemory(
+            "review", 9L, 1.2, 4.3, 5, 1, 2, "hard", 7, 3, 8L, 4L,
+        )
+        val exactDecoded = RecordsStudyModels.TaskMemory.decode(exactReviewTime.encode(), null)
+        assertEquals(4L, exactDecoded.lastReviewedAtMillis)
+        assertEquals(4L, exactDecoded.withDueAtMillis(12L).lastReviewedAtMillis)
         assertEquals("review", RecordsStudyModels.TaskMemory("review", 1L, 2.0, 3.0, 4, 5, 1, "good", 6).state)
 
         assertEquals(1.0, RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0).retentionProxy(), 0.001)

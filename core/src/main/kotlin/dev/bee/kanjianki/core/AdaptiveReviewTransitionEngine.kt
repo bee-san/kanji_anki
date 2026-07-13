@@ -80,6 +80,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 result.intervalDays(),
                 0,
                 0L,
+                nowMillis,
             )
             val recurrence = AdaptiveRepairPolicy.recordFailure(
                 AdaptiveRepairPolicy.FailureRecurrence(route.recurringFailure, route.recurringFailureCount),
@@ -146,6 +147,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             result.intervalDays(),
             passStreak,
             if (realDue) item.dueAtMillis else beforeMemory.lastPassedDueAtMillis,
+            nowMillis,
         )
         var nextCore = core
         var nextPassStreak = passStreak
@@ -374,7 +376,8 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
 
     private fun elapsedReviewDays(memory: RecordsStudyModels.TaskMemory, nowMillis: Long): Int {
         val previousIntervalMillis = max(0L, memory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
-        val lastReviewAt = max(0L, memory.dueAtMillis - previousIntervalMillis)
+        val lastReviewAt = memory.lastReviewedAtMillis.takeIf { it > 0L }
+            ?: max(0L, memory.dueAtMillis - previousIntervalMillis)
         return min(Int.MAX_VALUE.toLong(), max(0L, nowMillis - lastReviewAt) / StudyLadderRules.DAY).toInt()
     }
 
@@ -423,6 +426,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         intervalDays,
         consecutivePasses,
         lastPassedDueAtMillis,
+        lastReviewedAtMillis,
     )
 
     private fun scheduledIntervalDays(nowMillis: Long, dueAtMillis: Long): Int {
@@ -435,8 +439,9 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         dueAtMillis: Long,
     ): Int {
         val priorIntervalMillis = max(0L, memory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
-        val inferredLastReviewAt = max(0L, memory.dueAtMillis - priorIntervalMillis)
-        return scheduledIntervalDays(inferredLastReviewAt, dueAtMillis)
+        val lastReviewAt = memory.lastReviewedAtMillis.takeIf { it > 0L }
+            ?: max(0L, memory.dueAtMillis - priorIntervalMillis)
+        return scheduledIntervalDays(lastReviewAt, dueAtMillis)
     }
 
     private fun stepDelay(minutes: Int): Long = StudyLadderRules.stepDelayMillis(minutes.coerceAtLeast(1))

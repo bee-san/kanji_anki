@@ -58,6 +58,12 @@ class FsrsTrainingDataQueriesTest {
         )
         assertEquals(4, FsrsTrainingDataQueries.elapsedDays(9 * DAY, memory))
         assertEquals(0, FsrsTrainingDataQueries.elapsedDays(1 * DAY, memory))
+
+        val exactMemory = RecordsStudyModels.TaskMemory(
+            "review", 12 * DAY, 4.0, 5.0, 3, 0,
+            0, "good", 7, 0, 0L, 3 * DAY,
+        )
+        assertEquals(6, FsrsTrainingDataQueries.elapsedDays(9 * DAY, exactMemory))
     }
 
     @Test
