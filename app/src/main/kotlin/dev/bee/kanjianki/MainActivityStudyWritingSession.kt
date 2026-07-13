@@ -48,6 +48,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
 
     private fun composeWritingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
         resetWritingInteractionState(session)
+        home.prepareStudyAnswerFeedback(session.token)
         val route = writingRouteModel(session)
         route.actionBarState = home.buildComposeWritingActionBarState()
         return route
@@ -172,7 +173,19 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         val undoMessage = home.studyUndoState.undoMessageOrNull()
         Column {
             StudyUndoSlot(undoMessage = undoMessage, onUndo = home::undoLastRating)
-            WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
+            val feedback = home.studyAnswerFeedbackState
+            if (feedback?.feedbackVisible == true) {
+                val correct = feedback.outcome == StudyAnswerOutcome.CORRECT
+                MeaningChoiceResultActionBar(
+                    status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
+                    statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                    actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
+                    continueEnabled = feedback.continueEnabled,
+                    onNext = { home.continueAfterStudyAnswer() },
+                )
+            } else {
+                WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 

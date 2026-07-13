@@ -103,6 +103,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         return {
             resetChoiceSession(true)
+            val feedback = home.prepareStudyAnswerFeedback(session.token)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
                 question,
@@ -128,6 +129,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         selectedChoiceCorrect = correct,
                     )
                 },
+            ).copy(
+                feedbackState = feedback,
+                onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
             renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
         }
@@ -185,6 +189,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         return {
             resetChoiceSession(true)
+            val feedback = home.prepareStudyAnswerFeedback(session.token)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
                 question,
@@ -211,6 +216,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         selectedChoiceCorrect = correct,
                     )
                 },
+            ).copy(
+                feedbackState = feedback,
+                onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
             renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
         }
@@ -271,6 +279,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         return {
             resetChoiceSession(true)
+            val feedback = home.prepareStudyAnswerFeedback(session.token)
             val model = MeaningChoiceSessionModel(
                 modeLabel,
                 question,
@@ -296,6 +305,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         selectedChoiceCorrect = correct,
                     )
                 },
+            ).copy(
+                feedbackState = feedback,
+                onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
             renderMeaningChoiceRoute(model, MeaningChoiceSessionState())
         }
@@ -380,6 +392,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         return {
             resetChoiceSession(false)
+            val feedback = home.prepareStudyAnswerFeedback(session.token)
             val model = SimilarChoiceSessionModel(
                 modeLabel,
                 StudyTextCopy.studyChoiceQuestion(meaning),
@@ -390,6 +403,8 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     correctChoice = choiceCard.targetKanji,
                 ),
                 explanationLines,
+                feedbackState = feedback,
+                onContinue = Runnable { home.continueAfterStudyAnswer() },
             )
             lateinit var differenceModel: SimilarKanjiDifferenceModel
             differenceModel = similarKanjiDifferenceModel(

@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class MainActivityStudyReviewFlowSubmitTest {
     @Test
-    fun submitReviewSuppressesDuplicateBeforeAndAfterWorkerExecution() {
+    fun correctReviewAppliesOnceButDoesNotAdvanceUntilContinue() {
         withReviewActivity("裂") { activity, store, reviewIo, session ->
             ShadowToast.reset()
             assertTrue(
@@ -51,8 +51,10 @@ class MainActivityStudyReviewFlowSubmitTest {
                 )
             )
 
-            // The duplicate is rejected at tap time, before it can queue any store
-            // work, toast, or replacement Study route.
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertEquals(StudyAnswerOutcome.CORRECT, feedback.outcome)
+            assertTrue(feedback.feedbackVisible)
+            assertFalse(feedback.continueEnabled)
             assertFalse(store.hasConsumedToken(session.token))
             assertEquals(1, reviewIo.pendingCount())
             assertEquals(0, activity.renderCount())
@@ -62,19 +64,44 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(1, store.consumedTokens().size)
-            assertEquals(1, activity.renderCount())
+            assertEquals(0, activity.renderCount())
+            assertEquals(session.token, activity.activeSession!!.token)
+            assertTrue(feedback.continueEnabled)
             assertEquals(1, ShadowToast.shownToastCount())
 
-            // The token stays claimed after success. A late duplicate is also a
-            // complete no-op rather than a persisted duplicate that still toasts and
-            // reloads Study.
-            assertFalse(activity.submitReview(MainActivityBase.RATING_GOOD, false))
-            shadowOf(Looper.getMainLooper()).idle()
+            // Advancing time cannot replace the answered card. Only Continue may
+            // request the next route, and repeated taps remain one-shot.
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertFalse(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
 
+            assertFalse(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             assertEquals(0, reviewIo.pendingCount())
             assertEquals(1, store.consumedTokens().size)
             assertEquals(1, activity.renderCount())
             assertEquals(1, ShadowToast.shownToastCount())
+        }
+    }
+
+    @Test
+    fun wrongReviewAlsoPersistsFeedbackUntilContinue() {
+        withReviewActivity("誤") { activity, store, reviewIo, session ->
+            assertTrue(activity.submitReview(MainActivityBase.RATING_AGAIN, false))
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertEquals(StudyAnswerOutcome.INCORRECT, feedback.outcome)
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertTrue(feedback.continueEnabled)
+            assertEquals(session.token, activity.activeSession!!.token)
+            assertEquals(0, activity.renderCount())
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
         }
     }
 
@@ -116,6 +143,9 @@ class MainActivityStudyReviewFlowSubmitTest {
             shadowOf(Looper.getMainLooper()).idle()
 
             assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }
     }
@@ -141,6 +171,9 @@ class MainActivityStudyReviewFlowSubmitTest {
             shadowOf(Looper.getMainLooper()).idle()
 
             assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
             assertEquals(1, ShadowToast.shownToastCount())
         }
@@ -160,11 +193,16 @@ class MainActivityStudyReviewFlowSubmitTest {
             shadowOf(Looper.getMainLooper()).idle()
 
             assertFalse(activity.studySessionTracker.hasActiveTask())
-            assertEquals(1, activity.renderCount())
+            assertEquals(0, activity.renderCount())
             assertEquals(0, activity.retryReloadCount())
-            assertEquals(nextToken, activity.activeSession!!.token)
+            assertEquals(session.token, activity.activeSession!!.token)
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertEquals(1, store.consumedTokens().size)
             assertEquals(0, ShadowToast.shownToastCount())
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+            assertEquals(nextToken, activity.activeSession!!.token)
 
             // The consumed token remains claimed, but the reloaded persisted
             // session has its own token and can be answered normally.
@@ -192,12 +230,17 @@ class MainActivityStudyReviewFlowSubmitTest {
             }
 
             assertFalse(activity.studySessionTracker.hasActiveTask())
-            assertEquals(1, activity.renderCount())
+            assertEquals(0, activity.renderCount())
             assertEquals(0, activity.retryReloadCount())
-            assertEquals(nextToken, activity.activeSession!!.token)
-            assertEquals(1L, activity.activeSession!!.item!!.schedulerRevision)
+            assertEquals(session.token, activity.activeSession!!.token)
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(0, ShadowToast.shownToastCount())
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+            assertEquals(nextToken, activity.activeSession!!.token)
+            assertEquals(1L, activity.activeSession!!.item!!.schedulerRevision)
 
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             assertEquals(1, reviewIo.pendingCount())
@@ -250,6 +293,9 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(1L, choiceLogCount(store, "拉"))
             assertEquals(1, store.consumedTokens().size)
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }
     }

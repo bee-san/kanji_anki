@@ -276,28 +276,17 @@ private const val STUDY_CARD_ENTER_DISTANCE_DIVISOR = 6
 private const val STUDY_CARD_SWIPE_OFFSCREEN_WIDTH_MULTIPLIER = 1.08f
 
 /**
- * Couples optimistic card motion to the review gate. Only the commit started by
- * this exact attempt is rolled back; a rapid duplicate cannot undo the first
- * already-accepted review's outgoing animation.
+ * Couples card drag feedback to the review gate without dismissing the card.
+ * Every accepted or rejected attempt settles back to centre so the learner can
+ * read the persistent result before choosing Continue.
  */
 internal fun submitReviewWithSwipeFeedback(
     swipeFeedback: StudySwipeFeedbackState?,
-    rating: String,
+    _rating: String,
     submit: () -> Boolean,
 ): Boolean {
-    val committedByThisAttempt = swipeFeedback?.commit(rating) == true
-    return try {
-        val accepted = submit()
-        if (!accepted && committedByThisAttempt) {
-            swipeFeedback?.cancelCommit()
-        }
-        accepted
-    } catch (error: RuntimeException) {
-        if (committedByThisAttempt) {
-            swipeFeedback?.cancelCommit()
-        }
-        throw error
-    }
+    swipeFeedback?.settleBack()
+    return submit()
 }
 
 @Composable
@@ -310,6 +299,8 @@ fun StudyFlashcardActionBar(
     onUndo: (() -> Unit)? = null,
     swipeFeedback: StudySwipeFeedbackState? = null,
     onReview: ((source: String, rating: String) -> Boolean)? = null,
+    feedbackState: StudyAnswerFeedbackState? = null,
+    onContinue: () -> Unit = {},
 ) {
     val submitReview: (String, String) -> Boolean = { source, rating ->
         if (onReview != null) {
@@ -331,7 +322,16 @@ fun StudyFlashcardActionBar(
         if (revealed || undoMessage != null) {
             StudyUndoSlot(undoMessage = undoMessage, onUndo = onUndo)
         }
-        if (!revealed) {
+        if (feedbackState?.feedbackVisible == true) {
+            val correct = feedbackState.outcome == StudyAnswerOutcome.CORRECT
+            MeaningChoiceResultActionBar(
+                status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
+                statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
+                continueEnabled = feedbackState.continueEnabled,
+                onNext = onContinue,
+            )
+        } else if (!revealed) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally

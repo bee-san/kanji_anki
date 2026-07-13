@@ -72,10 +72,9 @@ data class SimilarChoiceGridModel(
     val balanceLastRow: Boolean,
     val onChoice: KanjiChoiceHandler,
     /**
-     * When set, a wrong pick shows red/green feedback and waits for an explicit
-     * continue tap before [onChoice] fires; a correct pick still advances
-     * immediately. When null (legacy callers/tests), every tap fires [onChoice]
-     * immediately with no feedback pause.
+     * When set, every pick shows red/green feedback and freezes the grid after
+     * [onChoice] grades it. Navigation remains a separate explicit Continue action.
+     * When null (legacy callers/tests), taps fire [onChoice] without feedback state.
      */
     val correctChoice: String? = null,
 )
@@ -134,6 +133,8 @@ data class SimilarChoiceSessionModel(
     val question: String,
     val gridModel: SimilarChoiceGridModel,
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
+    val feedbackState: StudyAnswerFeedbackState? = null,
+    val onContinue: Runnable = Runnable {},
 )
 
 internal data class SimilarKanjiDifferenceChoiceModel(
@@ -161,4 +162,6 @@ internal data class MeaningChoiceSessionModel(
     val answerPanel: StudyAnswerPanelModel,
     val onChoice: KanjiChoiceHandler,
     val resultResolver: MeaningChoiceResultResolver? = null,
+    val feedbackState: StudyAnswerFeedbackState? = null,
+    val onContinue: Runnable = Runnable {},
 )

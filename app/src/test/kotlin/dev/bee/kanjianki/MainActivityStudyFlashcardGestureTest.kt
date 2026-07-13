@@ -1,12 +1,14 @@
 package dev.bee.kanjianki
 
 import android.content.Context
+import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.widget.LinearLayout
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyRatings
@@ -18,6 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
@@ -27,17 +30,66 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class MainActivityStudyFlashcardGestureTest {
     @Test
-    fun swipesFromRevealedAnswerPanelAdvanceEvenWhenReleaseLeavesCardBounds() {
-        assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+    fun swipesFromRevealedAnswerPanelGradeEvenWhenReleaseLeavesCardBounds() {
+        assertSwipeGradesWhenReleaseLeavesCardBounds(
             tokenSuffix = "left",
             releaseX = -80f,
             expectedRating = StudyRatings.AGAIN,
         )
-        assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+        assertSwipeGradesWhenReleaseLeavesCardBounds(
             tokenSuffix = "right",
             releaseX = 480f,
             expectedRating = StudyRatings.GOOD,
         )
+    }
+
+    @Test
+    fun correctTypedMeaningRevealsAnswerAndKeepsCardUntilContinue() {
+        val token = "typing-meaning-token"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("弱", token, RecordsBase.LadderRung.TYPE_MEANING),
+            row = RecordsImportModels.DashboardRow(
+                "弱", null, "weak", "よわい", "弱", 1, "reason", "Needs practice", 1, 0, 0,
+                emptyList<RecordsImportModels.Example>(),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.TYPING_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        StudySessionActions.activateStudySession(
+            session,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        val revealState = FlashcardRevealState(false)
+        activity.flashcardRevealState = revealState
+        activity.typingAnswerState = TypingAnswerState("weak")
+        activity.prepareStudyAnswerFeedback(token)
+
+        activity.revealFlashcardAnswer()
+
+        assertTrue(revealState.isRevealed)
+        assertEquals(StudyAnswerOutcome.CORRECT, activity.studyAnswerFeedbackState?.outcome)
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+        val downTime = SystemClock.uptimeMillis()
+        assertFalse(
+            activity.handleFlashcardGesture(
+                motionEvent(MotionEvent.ACTION_DOWN, 210f, 520f, downTime, downTime),
+            ),
+        )
+        assertFalse(activity.flashcardTouchTracking)
+        assertEquals(1, reviewIo.pendingCount())
+        reviewIo.runNext()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+        assertEquals(token, activity.activeSession?.token)
     }
 
     @Test
@@ -88,7 +140,7 @@ class MainActivityStudyFlashcardGestureTest {
         assertEquals(beforeReviewCount, reviewLogCount(activity))
     }
 
-    private fun assertSwipeAdvancesWhenReleaseLeavesCardBounds(
+    private fun assertSwipeGradesWhenReleaseLeavesCardBounds(
         tokenSuffix: String,
         releaseX: Float,
         expectedRating: String,

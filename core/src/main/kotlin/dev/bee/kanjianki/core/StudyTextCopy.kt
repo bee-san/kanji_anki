@@ -394,6 +394,12 @@ object StudyTextCopy {
     }
 
     @JvmStatic
+    fun answerCorrectFeedback(): String = localizedText("Correct.", "正解です。")
+
+    @JvmStatic
+    fun answerIncorrectFeedback(): String = localizedText("Incorrect.", "不正解です。")
+
+    @JvmStatic
     fun continueLabel(): String = localizedText("Continue", "次へ")
 
     @JvmStatic

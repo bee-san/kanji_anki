@@ -34,6 +34,8 @@ class StudyTextCopyLocaleLabelsTest {
         assertEquals("Hide details", StudyTextCopy.similarKanjiHideDetailsLabel())
         assertEquals("Correct answer", StudyTextCopy.choiceCorrectStateDescription())
         assertEquals("Incorrect answer", StudyTextCopy.choiceIncorrectStateDescription())
+        assertEquals("Correct.", StudyTextCopy.answerCorrectFeedback())
+        assertEquals("Incorrect.", StudyTextCopy.answerIncorrectFeedback())
         assertEquals("Continue", StudyTextCopy.continueLabel())
         assertEquals(
             "Not quite — the correct kanji is 裂.",
@@ -71,6 +73,8 @@ class StudyTextCopyLocaleLabelsTest {
             assertEquals("詳細を隠す", StudyTextCopy.similarKanjiHideDetailsLabel())
             assertEquals("正解", StudyTextCopy.choiceCorrectStateDescription())
             assertEquals("不正解", StudyTextCopy.choiceIncorrectStateDescription())
+            assertEquals("正解です。", StudyTextCopy.answerCorrectFeedback())
+            assertEquals("不正解です。", StudyTextCopy.answerIncorrectFeedback())
             assertEquals("次へ", StudyTextCopy.continueLabel())
             assertEquals("不正解。正解は 裂 です。", StudyTextCopy.similarKanjiWrongChoiceResult("裂"))
             assertEquals("合格を保存しました", StudyTextCopy.reviewUndoMessage(StudyRatings.GOOD))

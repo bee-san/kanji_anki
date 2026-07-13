@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -96,14 +98,16 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
-    fun suppressedRapidDuplicateDoesNotUndoFirstAcceptedCommit() {
+    fun acceptedReviewSettlesCardBackForPersistentFeedback() {
         val state = StudySwipeFeedbackState().apply { update(96f) }
+
         assertTrue(submitReviewWithSwipeFeedback(state, StudyRatings.GOOD) { true })
 
+        assertFalse(state.committed)
+        assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
         assertFalse(submitReviewWithSwipeFeedback(state, StudyRatings.AGAIN) { false })
-
-        assertTrue(state.committed)
-        assertEquals(StudySwipeReleaseKind.COMMIT_PASS, state.releaseRequest.kind)
+        assertFalse(state.committed)
+        assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
     }
 
     @Test
@@ -422,7 +426,42 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
-    fun ratingButtonStartsOutgoingCardMotionBeforeSubmitting() {
+    fun gradedFlashcardShowsPersistentFeedbackAndContinueInsteadOfRatingActions() {
+        var continued = 0
+        val feedback = StudyAnswerFeedbackState("token-獄").apply {
+            begin(StudyAnswerOutcome.CORRECT)
+        }
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                feedbackState = feedback,
+                onContinue = {
+                    if (feedback.tryContinue()) continued += 1
+                },
+            )
+        }
+
+        composeRule.onAllNodesWithText(StudyReviewButtonCopy.againLabel()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyReviewButtonCopy.goodLabel()).assertCountEquals(0)
+        composeRule.onNodeWithText(StudyTextCopy.answerCorrectFeedback()).assertIsDisplayed()
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .assertIsNotEnabled()
+        composeRule.mainClock.advanceTimeBy(5_000L)
+        assertEquals(0, continued)
+
+        feedback.markApplied("token-獄")
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .assertIsEnabled()
+            .performClick()
+        assertEquals(1, continued)
+    }
+
+    @Test
+    fun ratingButtonKeepsCardCenteredWhileSubmittingFeedback() {
         val swipeFeedback = StudySwipeFeedbackState()
         var passCount = 0
 
@@ -441,8 +480,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
 
         composeRule.runOnIdle {
             assertEquals(1, passCount)
-            assertTrue(swipeFeedback.committed)
-            assertEquals(StudySwipeReleaseKind.COMMIT_PASS, swipeFeedback.releaseRequest.kind)
+            assertFalse(swipeFeedback.committed)
+            assertEquals(StudySwipeReleaseKind.IDLE, swipeFeedback.releaseRequest.kind)
         }
     }
 

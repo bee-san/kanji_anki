@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
@@ -112,6 +114,38 @@ class MainActivityStudyFlashcardComposeTest {
 
         assertTrue(failed)
         assertTrue(passed)
+    }
+
+    @Test
+    fun gradedFlashcardRequiresExplicitContinueOnDevice() {
+        var continued = false
+        val feedback = StudyAnswerFeedbackState("instrumented-token").apply {
+            begin(StudyAnswerOutcome.INCORRECT)
+        }
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                feedbackState = feedback,
+                onContinue = { continued = true },
+            )
+        }
+
+        composeRule.onNodeWithText(StudyTextCopy.answerIncorrectFeedback()).assertIsDisplayed()
+        composeRule.onAllNodesWithText(StudyReviewButtonCopy.againLabel()).assertCountEquals(0)
+        composeRule.onAllNodesWithText(StudyReviewButtonCopy.goodLabel()).assertCountEquals(0)
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .assertIsNotEnabled()
+
+        composeRule.runOnIdle { feedback.markApplied("instrumented-token") }
+        composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+            .assertIsEnabled()
+            .performClick()
+
+        assertTrue(continued)
     }
 
     @Test
