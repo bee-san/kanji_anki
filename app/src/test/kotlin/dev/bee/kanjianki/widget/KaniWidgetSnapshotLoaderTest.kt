@@ -65,6 +65,23 @@ class KaniWidgetSnapshotLoaderTest {
         assertEquals(expectedDueCount, snapshot.dueCount)
     }
 
+    @Test
+    fun futureReviewBecomesDueWhenClockReachesDueTime() {
+        val dueAt = NOW + 60_000L
+        LocalStore(context).use { store ->
+            store.saveRows(store.writableDatabase, listOf(dashboardRow("岩")), NOW)
+            store.saveStudyItem(studyItem("岩", dueAt))
+        }
+
+        val beforeDue = KaniWidgetSnapshotLoader.load(context, dueAt - 1L)
+        val atDue = KaniWidgetSnapshotLoader.load(context, dueAt)
+
+        assertEquals(KaniWidgetState.NOTHING_DUE, beforeDue.state)
+        assertEquals(0, beforeDue.dueCount)
+        assertEquals(KaniWidgetState.DUE_NOW, atDue.state)
+        assertEquals(1, atDue.dueCount)
+    }
+
     private fun dashboardRow(kanji: String) = RecordsImportModels.DashboardRow(
         kanji,
         100,
