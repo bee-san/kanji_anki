@@ -2,8 +2,12 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -72,24 +76,55 @@ class StudyLoadDebugLogTest {
     @Test
     fun buildShareIntentNullWhenFileMissing() {
         deleteLogFileStably()
-        assertNull(StudyLoadDebugLog.buildShareIntent(context))
+        assertNull(awaitShareIntent())
     }
 
     @Test
     fun buildShareIntentReturnsSendIntentWhenLogPresent() {
         StudyLoadDebugLog.init(context)
         StudyLoadDebugLog.log("stage=renderStudy.total duration_ms=42")
-        awaitFileContaining("renderStudy.total")
 
-        val intent = StudyLoadDebugLog.buildShareIntent(context)
+        val intent = awaitShareIntent()
         assertNotNull("share intent built once log exists", intent)
         assertEquals(Intent.ACTION_SEND, intent?.action)
         assertEquals("text/plain", intent?.type)
-        assertNotNull(intent?.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM))
+        val stream = intent?.let {
+            IntentCompat.getParcelableExtra(it, Intent.EXTRA_STREAM, Uri::class.java)
+        }
+        assertNotNull(stream)
         assertTrue(
             "grants read permission",
             (intent?.flags ?: 0) and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0,
         )
+        val sharedText = stream?.let {
+            context.contentResolver.openInputStream(it)?.bufferedReader()?.use { reader -> reader.readText() }
+        }
+        assertTrue("queued line is present in the snapshot", sharedText?.contains("renderStudy.total") == true)
+    }
+
+    @Test
+    fun runtimeSizeCapKeepsNewestStudyLogTail() {
+        StudyLoadDebugLog.init(context)
+        assertNotNull(awaitShareIntent())
+        logFile().writeText("覚え方\n".repeat(120_000), Charsets.UTF_8)
+
+        StudyLoadDebugLog.log("newest-line-after-cap")
+
+        val text = awaitFileContaining("==== older study-debug entries trimmed ====")
+        assertTrue(text.startsWith("==== older study-debug entries trimmed ===="))
+        assertTrue(text.contains("newest-line-after-cap"))
+        assertTrue(logFile().length() < 600_000L)
+    }
+
+    private fun awaitShareIntent(): Intent? {
+        val ready = CountDownLatch(1)
+        var intent: Intent? = null
+        StudyLoadDebugLog.prepareShareIntent(context) { prepared ->
+            intent = prepared
+            ready.countDown()
+        }
+        assertTrue("share callback completed", ready.await(5, TimeUnit.SECONDS))
+        return intent
     }
 
     /** Removes the log file and keeps it gone against the shared background writer. */

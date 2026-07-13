@@ -2,9 +2,7 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.SystemClock
-import androidx.core.content.FileProvider
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -16,9 +14,9 @@ import java.util.concurrent.Executors
  *
  * The [studyLoadDebug]/[withStudyLoadProbe] helpers already write to logcat, but capturing logcat
  * off a physical device is fiddly. This mirrors the same lines into a plain-text file in the app's
- * internal (app-private) files dir, which is handed to the share sheet through the `.debuglog`
- * FileProvider by the Settings "Share debug log" action. Internal storage is used deliberately so
- * the log is not world-readable via external storage.
+ * internal (app-private) files dir. The Settings "Share debug log" action copies a snapshot into a
+ * dedicated FileProvider-backed cache directory; the provider cannot address the live files dir.
+ * Internal storage is used deliberately so the log is not world-readable via external storage.
  *
  * Writes happen on a single background thread so logging never adds main-thread work to the very
  * path we are measuring. No-ops entirely in release builds.
@@ -26,6 +24,7 @@ import java.util.concurrent.Executors
 internal object StudyLoadDebugLog {
     private const val LOG_FILE_NAME = "kani-study-debug.log"
     private const val MAX_BYTES = 1_000_000L
+    private const val TRIM_KEEP_BYTES = 500_000
 
     private val writer = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "kani-study-debug-log").apply { isDaemon = true }
@@ -68,6 +67,16 @@ internal object StudyLoadDebugLog {
 
     private fun appendLine(file: File, line: String) {
         file.appendText(line + "\n", Charsets.UTF_8)
+        trimIfOversized(file)
+    }
+
+    private fun trimIfOversized(file: File) {
+        trimUtf8LogTailIfOversized(
+            file,
+            maxBytes = MAX_BYTES,
+            keepBytes = TRIM_KEEP_BYTES,
+            marker = "==== older study-debug entries trimmed ====",
+        )
     }
 
     /** True when a non-empty debug log exists and can be shared. */
@@ -80,25 +89,24 @@ internal object StudyLoadDebugLog {
     }
 
     /**
-     * Builds a share-sheet [Intent] for the debug log via the debug-only FileProvider, or null if
-     * there is nothing to share. Callers wrap it in [Intent.createChooser] and start it.
+     * Queues a share-sheet snapshot behind pending log writes, then invokes [onPrepared] on the
+     * writer thread. Snapshot copying never blocks the UI and includes every write accepted before
+     * this call.
      */
-    fun buildShareIntent(context: Context): Intent? {
+    fun prepareShareIntent(context: Context, onPrepared: (Intent?) -> Unit) {
         if (!BuildConfig.DEBUG) {
-            return null
+            onPrepared(null)
+            return
         }
-        val file = resolveLogFile(context)
-        if (!file.isFile || file.length() == 0L) {
-            return null
-        }
-        val uri: Uri = runCatching {
-            FileProvider.getUriForFile(context, "${context.packageName}.debuglog", file)
-        }.getOrNull() ?: return null
-        return Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Kani study debug log")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val appContext = context.applicationContext
+        writer.execute {
+            val file = resolveLogFile(appContext)
+            val intent = if (!file.isFile || file.length() == 0L) {
+                null
+            } else {
+                DebugLogShare.buildIntent(appContext, file, "Kani study debug log")
+            }
+            runCatching { onPrepared(intent) }
         }
     }
 
