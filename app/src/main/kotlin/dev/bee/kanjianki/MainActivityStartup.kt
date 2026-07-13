@@ -90,12 +90,20 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             return
         }
         activity.screenshotThemeChoiceOverride = null
-        if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false)) {
-            activity.renderStudy()
-        } else if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
-            activity.renderUpdate()
-        } else {
-            activity.renderHome()
+        when {
+            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true -> {
+                activity.renderStudy()
+            }
+
+            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true -> {
+                activity.renderUpdate()
+            }
+
+            (activity as? MainActivityStudy)?.pendingStudyAnswerSnapshot() != null -> {
+                activity.renderStudy()
+            }
+
+            else -> activity.renderHome()
         }
     }
 

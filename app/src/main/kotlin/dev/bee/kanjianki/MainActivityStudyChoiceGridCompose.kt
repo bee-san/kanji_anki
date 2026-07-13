@@ -50,8 +50,9 @@ fun SimilarChoiceGrid(model: SimilarChoiceGridModel, state: SimilarChoiceSession
             when {
                 correctChoice == null || state == null -> model.onChoice.onChoice(glyph)
                 else -> {
-                    state.select(glyph)
-                    model.onChoice.onChoice(glyph)
+                    if (model.onChoice.onChoice(glyph)) {
+                        state.select(glyph)
+                    }
                 }
             }
         },

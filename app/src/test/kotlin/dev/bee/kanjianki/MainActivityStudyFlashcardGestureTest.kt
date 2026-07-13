@@ -13,9 +13,11 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -29,6 +31,16 @@ import java.util.concurrent.TimeUnit
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MainActivityStudyFlashcardGestureTest {
+    @Before
+    fun clearPendingAnswerBeforeTest() {
+        clearPendingAnswerPreferences()
+    }
+
+    @After
+    fun clearPendingAnswerAfterTest() {
+        clearPendingAnswerPreferences()
+    }
+
     @Test
     fun swipesFromRevealedAnswerPanelGradeEvenWhenReleaseLeavesCardBounds() {
         assertSwipeGradesWhenReleaseLeavesCardBounds(
@@ -88,6 +100,49 @@ class MainActivityStudyFlashcardGestureTest {
         assertEquals(1, reviewIo.pendingCount())
         reviewIo.runNext()
         shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+        assertEquals(token, activity.activeSession?.token)
+    }
+
+    @Test
+    fun wrongTypedMeaningGradesIncorrectAndKeepsCardUntilContinue() {
+        val token = "typing-meaning-wrong-token"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("弱", token, RecordsBase.LadderRung.TYPE_MEANING),
+            row = RecordsImportModels.DashboardRow(
+                "弱", null, "weak", "よわい", "弱", 1, "reason", "Needs practice", 1, 0, 0,
+                emptyList<RecordsImportModels.Example>(),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.TYPING_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        StudySessionActions.activateStudySession(
+            session,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        val revealState = FlashcardRevealState(false)
+        activity.flashcardRevealState = revealState
+        activity.typingAnswerState = TypingAnswerState("strong")
+        activity.prepareStudyAnswerFeedback(token)
+
+        activity.revealFlashcardAnswer()
+
+        assertTrue(revealState.isRevealed)
+        assertEquals(StudyAnswerOutcome.INCORRECT, activity.studyAnswerFeedbackState?.outcome)
+        assertEquals(1, reviewIo.pendingCount())
+        reviewIo.runNext()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(StudyRatings.AGAIN, reviewRating(activity, token))
         assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
         assertEquals(token, activity.activeSession?.token)
     }
@@ -165,6 +220,7 @@ class MainActivityStudyFlashcardGestureTest {
             activity::registerStudyTaskShown,
             activity::startActiveStudyTask,
         )
+        activity.prepareStudyAnswerFeedback(token)
         activity.studyAnswerPanel = LinearLayout(activity)
         activity.flashcardHeroPanel = LinearLayout(activity)
         activity.revealFlashcardAnswer()
@@ -204,14 +260,26 @@ class MainActivityStudyFlashcardGestureTest {
         // gesture handler itself never touches the database.
         assertEquals(beforeReviewCount, reviewLogCount(activity))
         reviewIo.runNext()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(beforeReviewCount + 1, reviewLogCount(activity))
         assertEquals(expectedRating, reviewRating(activity, token))
+        clearPendingAnswerPreferences()
+    }
+
+    private fun clearPendingAnswerPreferences() {
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
     }
 
     private fun createActivity(): MainActivity {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         return try {
-            Robolectric.buildActivity(MainActivity::class.java).create().start().resume().get()
+            Robolectric.buildActivity(MainActivity::class.java).create().start().resume().get().also {
+                it.cancelPendingHomeRouteLoads()
+            }
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }

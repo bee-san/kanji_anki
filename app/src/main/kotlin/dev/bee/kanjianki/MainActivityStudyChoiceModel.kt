@@ -6,7 +6,7 @@ import java.util.Locale
 private const val JAPANESE_LANGUAGE = "ja"
 
 fun interface KanjiChoiceHandler {
-    fun onChoice(glyph: String)
+    fun onChoice(glyph: String): Boolean
 }
 
 fun interface MeaningChoiceResultResolver {

@@ -46,8 +46,11 @@ class MainActivityStudyChoiceComposeTest {
                 model = SimilarChoiceGridModel(
                     choices = listOf("裂", "列", "烈"),
                     balanceLastRow = false,
-onChoice = KanjiChoiceHandler { selected = it }
-                )
+                    onChoice = KanjiChoiceHandler {
+                        selected = it
+                        true
+                    },
+                ),
             )
         }
 
@@ -78,7 +81,10 @@ onChoice = KanjiChoiceHandler { selected = it }
                     gridModel = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = false,
-                        onChoice = KanjiChoiceHandler { selected = it }
+                        onChoice = KanjiChoiceHandler {
+                            selected = it
+                            true
+                        }
                     ),
                     explanationLines = explanationLines,
                 )
@@ -123,7 +129,10 @@ onChoice = KanjiChoiceHandler { selected = it }
                         ),
                         helperText = null
                     ),
-                    onChoice = KanjiChoiceHandler { selected = it }
+                    onChoice = KanjiChoiceHandler {
+                        selected = it
+                        true
+                    },
                 )
             )
         }
@@ -461,7 +470,7 @@ onChoice = KanjiChoiceHandler { selected = it }
                     model = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = false,
-                        onChoice = KanjiChoiceHandler { }
+                        onChoice = KanjiChoiceHandler { true }
                     )
                 )
             }
@@ -519,7 +528,10 @@ onChoice = KanjiChoiceHandler { selected = it }
                     ),
                     helperText = null,
                 ),
-                onChoice = KanjiChoiceHandler { onChoice(it) },
+                onChoice = KanjiChoiceHandler {
+                    onChoice(it)
+                    true
+                },
                 resultResolver = resultResolver,
             )
         }

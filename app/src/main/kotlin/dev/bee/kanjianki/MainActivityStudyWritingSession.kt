@@ -56,7 +56,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
 
     private fun writingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
         val targetKanji = session.item?.kanji ?: ""
-        val answerPanelState = WritingAnswerPanelState(false)
+        val answerPanelState = WritingAnswerPanelState(home.studyAnswerFeedbackState?.feedbackVisible == true)
         home.writingAnswerPanelState = answerPanelState
         home.studyAnswerPanel = null
         val answerPanel = home.learningPanelModel(session)

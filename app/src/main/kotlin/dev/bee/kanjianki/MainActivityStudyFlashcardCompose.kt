@@ -282,11 +282,27 @@ private const val STUDY_CARD_SWIPE_OFFSCREEN_WIDTH_MULTIPLIER = 1.08f
  */
 internal fun submitReviewWithSwipeFeedback(
     swipeFeedback: StudySwipeFeedbackState?,
-    _rating: String,
     submit: () -> Boolean,
 ): Boolean {
     swipeFeedback?.settleBack()
     return submit()
+}
+
+private fun submitFlashcardReview(
+    onReview: ((source: String, rating: String) -> Boolean)?,
+    onFail: () -> Unit,
+    onPass: () -> Unit,
+    source: String,
+    rating: String,
+): Boolean {
+    if (onReview != null) {
+        return onReview(source, rating)
+    }
+    when (rating) {
+        StudyRatings.AGAIN -> onFail()
+        StudyRatings.GOOD -> onPass()
+    }
+    return true
 }
 
 @Composable
@@ -303,15 +319,7 @@ fun StudyFlashcardActionBar(
     onContinue: () -> Unit = {},
 ) {
     val submitReview: (String, String) -> Boolean = { source, rating ->
-        if (onReview != null) {
-            onReview(source, rating)
-        } else {
-            when (rating) {
-                StudyRatings.AGAIN -> onFail()
-                StudyRatings.GOOD -> onPass()
-            }
-            true
-        }
+        submitFlashcardReview(onReview, onFail, onPass, source, rating)
     }
     Column(
         modifier = Modifier
@@ -323,14 +331,7 @@ fun StudyFlashcardActionBar(
             StudyUndoSlot(undoMessage = undoMessage, onUndo = onUndo)
         }
         if (feedbackState?.feedbackVisible == true) {
-            val correct = feedbackState.outcome == StudyAnswerOutcome.CORRECT
-            MeaningChoiceResultActionBar(
-                status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
-                statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
-                continueEnabled = feedbackState.continueEnabled,
-                onNext = onContinue,
-            )
+            StudyFlashcardFeedbackActions(feedbackState, onContinue)
         } else if (!revealed) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -339,33 +340,56 @@ fun StudyFlashcardActionBar(
                 StudyRevealButton(onReveal = onReveal)
             }
         } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .revealedReviewSwipeGestures(
-                        swipeFeedback = swipeFeedback,
-                        submitReview = submitReview,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                StudyAgainButton(
-                    onClick = {
-                        submitReviewWithSwipeFeedback(swipeFeedback, StudyRatings.AGAIN) {
-                            submitReview("button", StudyRatings.AGAIN)
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                StudyGoodButton(
-                    onClick = {
-                        submitReviewWithSwipeFeedback(swipeFeedback, StudyRatings.GOOD) {
-                            submitReview("button", StudyRatings.GOOD)
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            StudyFlashcardReviewActions(swipeFeedback, submitReview)
         }
+    }
+}
+
+@Composable
+private fun StudyFlashcardFeedbackActions(
+    feedbackState: StudyAnswerFeedbackState,
+    onContinue: () -> Unit,
+) {
+    val correct = feedbackState.outcome == StudyAnswerOutcome.CORRECT
+    MeaningChoiceResultActionBar(
+        status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
+        statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+        actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
+        continueEnabled = feedbackState.continueEnabled,
+        onNext = onContinue,
+    )
+}
+
+@Composable
+private fun StudyFlashcardReviewActions(
+    swipeFeedback: StudySwipeFeedbackState?,
+    submitReview: (source: String, rating: String) -> Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .revealedReviewSwipeGestures(
+                swipeFeedback = swipeFeedback,
+                submitReview = submitReview,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        StudyAgainButton(
+            onClick = {
+                submitReviewWithSwipeFeedback(swipeFeedback) {
+                    submitReview("button", StudyRatings.AGAIN)
+                }
+            },
+            modifier = Modifier.weight(1f)
+        )
+        StudyGoodButton(
+            onClick = {
+                submitReviewWithSwipeFeedback(swipeFeedback) {
+                    submitReview("button", StudyRatings.GOOD)
+                }
+            },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -422,7 +446,7 @@ private fun Modifier.revealedReviewSwipeGestures(
                     rating = rating,
                     durationMs = gestureDurationMs,
                 )
-                submitReviewWithSwipeFeedback(swipeFeedback, rating) {
+                submitReviewWithSwipeFeedback(swipeFeedback) {
                     submitReview("action-bar", rating)
                 }
             } else {

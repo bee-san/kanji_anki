@@ -7,15 +7,21 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.util.ArrayDeque
+import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -45,6 +51,112 @@ class MainActivityStudyRouteInitializationTest {
 
         assertNotNull(activity.writingAnswerPanelState)
         assertEquals(session.token, activity.studyAnswerFeedbackState?.sessionToken)
+    }
+
+    @Test
+    fun answeredFlashcardRouteRestoresAppliedFeedbackAndTypedAnswer() {
+        val activity = createActivity()
+        val baseSession = flashcardSession()
+        val session = RecordsSchedulerModels.StudySession(
+            baseSession.item,
+            baseSession.row,
+            baseSession.token,
+            StudyTaskTypes.TYPING_MEANING,
+            baseSession.writingRequired,
+            baseSession.prompt,
+        )
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.INCORRECT, selectedAnswer = "strong"))
+        assertTrue(feedback.markApplied(session.token))
+
+        activity.composeRoute(selected = MainActivityBase.NAV_HOME_ROUTE, content = {})
+        activity.renderComposeFlashcardSession(session)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertSame(feedback, activity.studyAnswerFeedbackState)
+        assertTrue(activity.flashcardRevealState?.isRevealed == true)
+        assertEquals("strong", activity.typingAnswerState?.text?.toString())
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+    }
+
+    @Test
+    fun answeredWritingRouteRestoresAppliedFeedbackAfterActivityStateRecreation() {
+        val activity = createActivity()
+        val session = writingSession()
+        val snapshot = StudyPendingAnswerSnapshot(
+            feedback = StudyAnswerFeedbackSnapshot(
+                sessionToken = session.token,
+                phase = StudyAnswerFeedbackPhase.APPLIED,
+                outcome = StudyAnswerOutcome.CORRECT,
+                selectedAnswer = StudyRatings.GOOD,
+            ),
+            kanji = session.item?.kanji.orEmpty(),
+            taskType = session.taskType,
+            writingRequired = session.writingRequired,
+            prompt = session.prompt,
+        )
+        activity.activeSession = session
+        activity.restorePendingStudyAnswer(snapshot)
+
+        activity.renderComposeWritingSession(session)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertTrue(activity.writingAnswerPanelState?.visible == true)
+        assertEquals(StudyAnswerOutcome.CORRECT, activity.studyAnswerFeedbackState?.outcome)
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+    }
+
+    @Test
+    fun processRestartRouteRestoresPendingAnsweredFlashcardBeforeSelectingNextItem() {
+        val activity = createActivity()
+        val baseSession = flashcardSession()
+        val session = RecordsSchedulerModels.StudySession(
+            baseSession.item,
+            baseSession.row,
+            "process-restart-token",
+            StudyTaskTypes.TYPING_MEANING,
+            baseSession.writingRequired,
+            baseSession.prompt,
+        )
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        activity.store.saveStudyItem(session.item!!.copyBuilder().activeToken("").build())
+        StudyPendingAnswerStore(preferences).save(
+            StudyPendingAnswerSnapshot(
+                feedback = StudyAnswerFeedbackSnapshot(
+                    sessionToken = session.token,
+                    phase = StudyAnswerFeedbackPhase.APPLIED,
+                    outcome = StudyAnswerOutcome.INCORRECT,
+                    selectedAnswer = "strong",
+                ),
+                kanji = session.item!!.kanji,
+                taskType = session.taskType,
+                writingRequired = session.writingRequired,
+                prompt = session.prompt,
+            ),
+        )
+        val ioTasks = QueueingExecutorService()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val restoredActivity = controller.get()
+        replaceField(restoredActivity, "io", ioTasks)
+
+        try {
+            controller.create().start().resume()
+            ioTasks.runAll()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals(session.token, restoredActivity.activeSession?.token)
+            assertEquals(session.token, restoredActivity.studyAnswerFeedbackState?.sessionToken)
+            assertTrue(restoredActivity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(restoredActivity.flashcardRevealState?.isRevealed == true)
+            assertEquals("strong", restoredActivity.typingAnswerState?.text?.toString())
+        } finally {
+            preferences.edit().clear().commit()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            controller.pause().stop().destroy()
+        }
     }
 
     private fun createActivity(): MainActivity {
@@ -97,5 +209,44 @@ class MainActivityStudyRouteInitializationTest {
             ApplicationProvider.getApplicationContext<Context>(),
             emptyList<Any>(),
         ) as AnkiDroidGateway
+    }
+
+    private fun replaceField(activity: MainActivity, propertyName: String, value: Any) {
+        val field = MainActivityBase::class.java.getDeclaredField(propertyName)
+        field.isAccessible = true
+        field.set(activity, value)
+    }
+
+    private class QueueingExecutorService : AbstractExecutorService() {
+        private val tasks = ArrayDeque<Runnable>()
+        private var shutdown = false
+
+        override fun shutdown() {
+            shutdown = true
+        }
+
+        override fun shutdownNow(): MutableList<Runnable> {
+            shutdown = true
+            val remaining = tasks.toMutableList()
+            tasks.clear()
+            return remaining
+        }
+
+        override fun isShutdown(): Boolean = shutdown
+
+        override fun isTerminated(): Boolean = shutdown && tasks.isEmpty()
+
+        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = isTerminated
+
+        override fun execute(command: Runnable) {
+            check(!shutdown)
+            tasks.addLast(command)
+        }
+
+        fun runAll() {
+            while (tasks.isNotEmpty()) {
+                tasks.removeFirst().run()
+            }
+        }
     }
 }

@@ -120,13 +120,15 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
     }
 
     fun updateHintAndAnswerVisibility(presentation: WritingActionPresentation) {
+        val answerVisible = presentation.answerPanelVisible ||
+            activity.studyAnswerFeedbackState?.feedbackVisible == true
         val answerPanelState = activity.writingAnswerPanelState
         if (answerPanelState != null) {
-            answerPanelState.updateVisible(presentation.answerPanelVisible)
+            answerPanelState.updateVisible(answerVisible)
         } else {
             val answerPanel = activity.studyAnswerPanel
             if (answerPanel != null) {
-                answerPanel.visibility = if (presentation.answerPanelVisible) View.VISIBLE else View.GONE
+                answerPanel.visibility = if (answerVisible) View.VISIBLE else View.GONE
             }
         }
     }

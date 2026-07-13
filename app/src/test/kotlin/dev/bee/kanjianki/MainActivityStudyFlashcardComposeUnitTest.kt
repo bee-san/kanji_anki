@@ -90,7 +90,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
     fun rejectedEnqueueReturnsOnlyTheCommitStartedByThatAttempt() {
         val state = StudySwipeFeedbackState().apply { update(96f) }
 
-        val accepted = submitReviewWithSwipeFeedback(state, StudyRatings.GOOD) { false }
+        val accepted = submitReviewWithSwipeFeedback(state) { false }
 
         assertFalse(accepted)
         assertFalse(state.committed)
@@ -101,11 +101,11 @@ class MainActivityStudyFlashcardComposeUnitTest {
     fun acceptedReviewSettlesCardBackForPersistentFeedback() {
         val state = StudySwipeFeedbackState().apply { update(96f) }
 
-        assertTrue(submitReviewWithSwipeFeedback(state, StudyRatings.GOOD) { true })
+        assertTrue(submitReviewWithSwipeFeedback(state) { true })
 
         assertFalse(state.committed)
         assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
-        assertFalse(submitReviewWithSwipeFeedback(state, StudyRatings.AGAIN) { false })
+        assertFalse(submitReviewWithSwipeFeedback(state) { false })
         assertFalse(state.committed)
         assertEquals(StudySwipeReleaseKind.SETTLE_BACK, state.releaseRequest.kind)
     }

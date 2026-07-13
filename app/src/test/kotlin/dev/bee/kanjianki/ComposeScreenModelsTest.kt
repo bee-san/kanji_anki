@@ -1549,7 +1549,10 @@ class ComposeScreenModelsTest {
     @Test
     fun studyChoiceModelsKeepEssentialSessionTextAndChoiceCallbacks() {
         val calls = mutableListOf<String>()
-        val handler = KanjiChoiceHandler { calls += it }
+        val handler = KanjiChoiceHandler {
+            calls += it
+            true
+        }
         val grid = SimilarChoiceGridModel(
             choices = listOf("裂", "列", "烈"),
             balanceLastRow = true,
