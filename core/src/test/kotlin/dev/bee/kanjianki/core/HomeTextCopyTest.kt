@@ -381,6 +381,21 @@ class HomeTextCopyTest {
         assertEquals("1 local source · 2 examples", HomeTextCopy.browseInventorySummary(1, 2))
         assertEquals("3 local sources · 1 example", HomeTextCopy.browseInventorySummary(3, 1))
         assertEquals("SUSPENDED", HomeTextCopy.suspendedChipLabel())
+        assertEquals("STUCK", HomeTextCopy.stuckChipLabel())
+        assertEquals(
+            "This kanji keeps failing at the most-supported rung. Try a mnemonic or a mental story to make it stick.",
+            HomeTextCopy.stuckChipHint(),
+        )
+        assertEquals("My mnemonic", HomeTextCopy.mnemonicNoteTitle())
+        assertEquals("Mnemonic note", HomeTextCopy.mnemonicNoteFieldLabel())
+        assertEquals(
+            "Write a story, image, or association that helps this kanji stick.",
+            HomeTextCopy.mnemonicNoteHelper(false),
+        )
+        assertEquals(HomeTextCopy.stuckChipHint(), HomeTextCopy.mnemonicNoteHelper(true))
+        assertEquals("Save mnemonic", HomeTextCopy.saveMnemonicNoteLabel())
+        assertEquals("Mnemonic saved.", HomeTextCopy.mnemonicNoteSavedToast())
+        assertEquals("Mnemonic cleared.", HomeTextCopy.mnemonicNoteClearedToast())
         assertEquals("relearning", HomeTextCopy.relearningChipLabel())
         assertEquals("Back to Browse", HomeTextCopy.backToBrowseKanjiLabel())
         assertThrows(NullPointerException::class.java) { HomeTextCopy.browseItemMeaning(null) }
@@ -416,6 +431,21 @@ class HomeTextCopyTest {
             assertEquals("ローカルソース1件 · 例文2件", HomeTextCopy.browseInventorySummary(1, 2))
             assertEquals("ローカルソース3件 · 例文1件", HomeTextCopy.browseInventorySummary(3, 1))
             assertEquals("停止中", HomeTextCopy.suspendedChipLabel())
+            assertEquals("停滞", HomeTextCopy.stuckChipLabel())
+            assertEquals(
+                "この漢字は最も支援の多いラングでも失敗し続けています。語呂合わせやイメージで覚えてみましょう。",
+                HomeTextCopy.stuckChipHint(),
+            )
+            assertEquals("自分の覚え方", HomeTextCopy.mnemonicNoteTitle())
+            assertEquals("覚え方メモ", HomeTextCopy.mnemonicNoteFieldLabel())
+            assertEquals(
+                "この漢字を思い出すための物語、イメージ、関連付けを書きましょう。",
+                HomeTextCopy.mnemonicNoteHelper(false),
+            )
+            assertEquals(HomeTextCopy.stuckChipHint(), HomeTextCopy.mnemonicNoteHelper(true))
+            assertEquals("覚え方を保存", HomeTextCopy.saveMnemonicNoteLabel())
+            assertEquals("覚え方メモを保存しました。", HomeTextCopy.mnemonicNoteSavedToast())
+            assertEquals("覚え方メモを削除しました。", HomeTextCopy.mnemonicNoteClearedToast())
             assertEquals("再学習", HomeTextCopy.relearningChipLabel())
             assertEquals("閲覧に戻る", HomeTextCopy.backToBrowseKanjiLabel())
             assertEquals("", HomeTextCopy.detailReasonTitle())

@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,10 +24,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+internal object BrowseMnemonicNoteTestTags {
+    const val INPUT = "browse-mnemonic-note-input"
+    const val SAVE = "browse-mnemonic-note-save"
+}
 
 @Composable
 internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
@@ -42,6 +51,7 @@ internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
         model.localInventory?.let { localInventory ->
             BrowseDetailInfoPanel(localInventory)
         }
+        BrowseMnemonicNoteEditor(model.mnemonicNote)
         BrowseDetailActions(model.actions)
         Box(modifier = Modifier.padding(top = 12.dp)) {
             RecoveryTimelinePanels(model.timeline)
@@ -56,6 +66,53 @@ internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
             )
             model.examples.forEach { example ->
                 BrowseExampleCard(example)
+            }
+        }
+    }
+}
+
+@Composable
+fun BrowseMnemonicNoteEditor(model: BrowseMnemonicNoteModel) {
+    var note by remember(model.initialNote) { mutableStateOf(model.initialNote) }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 7.dp),
+        shape = BrowseCardShape,
+        color = BrowseWhite,
+        border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = model.title,
+                color = BrowseInk,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BrowseMnemonicNoteTestTags.INPUT)
+                    .semantics { contentDescription = model.fieldLabel },
+                label = { Text(model.fieldLabel) },
+                supportingText = { Text(model.helper) },
+                minLines = 3,
+                maxLines = 8,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = BrowseInk),
+            )
+            KaniPrimaryButton(
+                label = model.saveLabel,
+                modifier = Modifier.testTag(BrowseMnemonicNoteTestTags.SAVE),
+                minHeightDp = 48,
+            ) {
+                val normalized = note.trim()
+                note = normalized
+                model.onSave(normalized)
             }
         }
     }

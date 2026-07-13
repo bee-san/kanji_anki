@@ -90,6 +90,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             return
         }
         activity.screenshotThemeChoiceOverride = null
+        val shortcutDestination = launcherShortcutDestination(intent?.action)
         when {
             intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true -> {
                 activity.renderStudy()
@@ -99,11 +100,33 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 activity.renderUpdate()
             }
 
+            shortcutDestination != null -> renderLauncherShortcut(shortcutDestination)
+
             (activity as? MainActivityStudy)?.pendingStudyAnswerSnapshot() != null -> {
                 activity.renderStudy()
             }
 
             else -> activity.renderHome()
+        }
+    }
+
+    private fun renderLauncherShortcut(destination: LauncherShortcutDestination) {
+        when (destination) {
+            LauncherShortcutDestination.STUDY -> activity.renderStudy()
+            LauncherShortcutDestination.BROWSE -> {
+                if (activity is MainActivityHome) {
+                    activity.renderBrowseKanji("")
+                } else {
+                    activity.renderHome()
+                }
+            }
+            LauncherShortcutDestination.GAMES -> {
+                if (activity is MainActivityHome) {
+                    activity.renderGames()
+                } else {
+                    activity.renderHome()
+                }
+            }
         }
     }
 
@@ -172,5 +195,20 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
                 intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
         }
+    }
+}
+
+internal enum class LauncherShortcutDestination {
+    STUDY,
+    BROWSE,
+    GAMES,
+}
+
+internal fun launcherShortcutDestination(action: String?): LauncherShortcutDestination? {
+    return when (action) {
+        MainActivityBase.ACTION_OPEN_STUDY -> LauncherShortcutDestination.STUDY
+        MainActivityBase.ACTION_OPEN_BROWSE -> LauncherShortcutDestination.BROWSE
+        MainActivityBase.ACTION_OPEN_GAMES -> LauncherShortcutDestination.GAMES
+        else -> null
     }
 }

@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 
 internal object LocalStoreSchema {
     const val DB_NAME: String = "kanji_anki_simple.db"
-    const val DB_VERSION: Int = 31
+    const val DB_VERSION: Int = 32
 
     @JvmStatic
     fun createInitialTables(db: SQLiteDatabase, hooks: LocalStoreMigrationHooks) {
@@ -19,6 +19,7 @@ internal object LocalStoreSchema {
         db.execSQL(LocalStoreBase.SQL_CREATE_TABLE_IF_NEEDED + LocalStoreBase.TABLE_KANJI_EXAMPLES + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)")
         hooks.createImportAuditTables(db)
         hooks.createKanjiInventoryTables(db)
+        hooks.createKanjiMnemonicNotesTable(db)
         hooks.createSimilarKanjiTables(db)
         hooks.createSimilarKanjiPracticeTables(db)
         hooks.createKanjiReadingTables(db)

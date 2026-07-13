@@ -60,7 +60,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 val timeline = home.store.timelineForKanji(kanji)
                 val row = timeline.currentRow
                 val inventory = timeline.inventoryItem
-                val isMissing = inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()
+                val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
+                val mnemonicNote = home.store.kanjiMnemonicNote(displayKanji)
+                val isMissing = inventory == null &&
+                    row == null &&
+                    timeline.currentStudyItem == null &&
+                    timeline.events.isEmpty() &&
+                    mnemonicNote.isEmpty()
                 val missingModel = if (isMissing) {
                     BrowseDetailMissingModel(
                         if (customBackAction != null) StudyTextCopy.backToStudyLabel() else HomeTextCopy.homeLabel(),
@@ -78,7 +84,8 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                         timeline,
                         row,
                         inventory,
-                        HomeTextCopy.detailDisplayKanji(kanji, row, inventory),
+                        displayKanji,
+                        mnemonicNote,
                         fromBrowse,
                         requestedQuery,
                         inventory != null && inventory.suspended,
@@ -112,16 +119,19 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         row: RecordsImportModels.DashboardRow?,
         inventory: RecordsImportModels.KanjiInventoryItem?,
         displayKanji: String,
+        mnemonicNote: String,
         fromBrowse: Boolean,
         browseQuery: String?,
         suspended: Boolean,
         customBackAction: Runnable? = null,
     ): BrowseDetailScreenModel {
+        val stuck = isStuck(timeline.currentStudyItem, suspended)
         return BrowseDetailScreenModel(
             detailHeroModel(displayKanji, fromBrowse, browseQuery ?: "", customBackAction),
             detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
             detailReasonPanelModel(row, inventory),
             inventory?.let(::localInventoryPanelModel),
+            mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
             detailActionsModel(row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended),
             recoveryTimelineModel(timeline),
             HomeTextCopy.examplesTitle(),
@@ -164,19 +174,52 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         }
         // Goal 68: surface a "stuck" chip when a card keeps failing at its
         // demotion floor, suggesting the learner try a mnemonic.
-        if (!suspended && studyItem != null && StuckCardPolicy.isStuck(
-                studyItem.state,
-                studyItem.rung,
-                studyItem.phase,
-                studyItem.realAgainStreak,
-                studyItem.rungAvailability(),
-                null,
-                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
-            )
-        ) {
+        if (isStuck(studyItem, suspended)) {
             stateBadges.add(BrowseStateBadgeModel(HomeTextCopy.stuckChipLabel(), MainActivityBase.CORAL))
         }
         return BrowseDetailIdentityModel(title, reading, stateBadges)
+    }
+
+    private fun isStuck(studyItem: RecordsStudyModels.StudyItem?, suspended: Boolean): Boolean {
+        return !suspended && studyItem != null && StuckCardPolicy.isStuck(
+            studyItem.state,
+            studyItem.rung,
+            studyItem.phase,
+            studyItem.realAgainStreak,
+            studyItem.rungAvailability(),
+            null,
+            RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK,
+        )
+    }
+
+    fun mnemonicNoteModel(
+        displayKanji: String,
+        initialNote: String,
+        stuck: Boolean,
+    ): BrowseMnemonicNoteModel {
+        return BrowseMnemonicNoteModel(
+            title = HomeTextCopy.mnemonicNoteTitle(),
+            fieldLabel = HomeTextCopy.mnemonicNoteFieldLabel(),
+            helper = HomeTextCopy.mnemonicNoteHelper(stuck),
+            initialNote = initialNote,
+            saveLabel = HomeTextCopy.saveMnemonicNoteLabel(),
+            onSave = { note -> saveMnemonicNote(displayKanji, note) },
+        )
+    }
+
+    private fun saveMnemonicNote(displayKanji: String, note: String) {
+        val normalizedNote = note.trim()
+        home.io.execute {
+            home.store.saveKanjiMnemonicNote(displayKanji, normalizedNote, System.currentTimeMillis())
+            home.postToMainIfActive {
+                val message = if (normalizedNote.isEmpty()) {
+                    HomeTextCopy.mnemonicNoteClearedToast()
+                } else {
+                    HomeTextCopy.mnemonicNoteSavedToast()
+                }
+                Toast.makeText(home, message, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     fun detailReasonPanelModel(

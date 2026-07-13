@@ -9,6 +9,14 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 internal class LocalStore(context: Context?) : LocalStoreSync(context) {
+    private val mnemonicNotes = LocalStoreMnemonicNotes(this)
+
+    fun kanjiMnemonicNote(kanji: String?): String = mnemonicNotes.read(kanji)
+
+    fun saveKanjiMnemonicNote(kanji: String?, note: String?, updatedAtMillis: Long) {
+        mnemonicNotes.save(kanji, note, updatedAtMillis)
+    }
+
     private fun warn(message: String) {
         try {
             Log.w("LocalStore", message)
