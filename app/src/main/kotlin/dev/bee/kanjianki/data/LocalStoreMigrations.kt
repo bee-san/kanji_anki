@@ -20,6 +20,7 @@ internal object LocalStoreMigrations {
         upgradeThroughTwentyNine(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirty(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyOne(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirtyTwo(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -290,6 +291,19 @@ internal object LocalStoreMigrations {
             hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_SELECTED_ANSWER, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
             hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_CORRECT_ANSWER, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
             hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, LocalStoreBase.COLUMN_ANSWER_EVIDENCE_JSON, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY)
+        }
+    }
+
+    private fun upgradeThroughThirtyTwo(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 32)) {
+            // User-authored mnemonic notes live outside the sync mirror and
+            // inventory tables so a routine inventory rebuild cannot erase them.
+            hooks.createKanjiMnemonicNotesTable(db)
         }
     }
 

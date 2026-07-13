@@ -39,11 +39,21 @@ data class BrowseDetailActionsModel(
     val onSuspend: Runnable,
 )
 
+data class BrowseMnemonicNoteModel(
+    val title: String,
+    val fieldLabel: String,
+    val helper: String,
+    val initialNote: String,
+    val saveLabel: String,
+    val onSave: (String) -> Unit,
+)
+
 internal data class BrowseDetailScreenModel(
     val hero: BrowseDetailHeroModel,
     val identity: BrowseDetailIdentityModel,
     val reason: BrowseDetailPanelModel,
     val localInventory: BrowseDetailPanelModel?,
+    val mnemonicNote: BrowseMnemonicNoteModel,
     val actions: BrowseDetailActionsModel,
     val timeline: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel,
     val examplesTitle: String,

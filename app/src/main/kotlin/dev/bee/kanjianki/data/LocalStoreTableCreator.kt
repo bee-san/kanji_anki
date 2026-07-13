@@ -83,6 +83,15 @@ internal object LocalStoreTableCreator {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_kanji_inventory_search ON kanji_inventory(search_text)")
     }
 
+    fun createKanjiMnemonicNotesTable(db: SQLiteDatabase) {
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_KANJI_MNEMONIC_NOTES,
+            "kanji TEXT PRIMARY KEY",
+            "note TEXT NOT NULL",
+            "updated_at INTEGER NOT NULL",
+        )
+    }
+
     fun createSimilarKanjiTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS,
