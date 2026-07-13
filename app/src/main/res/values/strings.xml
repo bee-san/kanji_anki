@@ -3,4 +3,10 @@
     <string name="copied_anki_search">Copied</string>
     <string name="kani_widget_description">Due reviews and study streak</string>
     <string name="kani_widget_loading">Loading Kani…</string>
+    <string name="shortcut_study_short_label">Study</string>
+    <string name="shortcut_study_long_label">Study now</string>
+    <string name="shortcut_browse_short_label">Browse</string>
+    <string name="shortcut_browse_long_label">Browse kanji</string>
+    <string name="shortcut_games_short_label">Games</string>
+    <string name="shortcut_games_long_label">Play kanji games</string>
 </resources>
