@@ -632,6 +632,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     ) : FocusQueuePolicy.QueueEntry(row, item)
 
     companion object {
+        const val ACTION_OPEN_STUDY = "dev.bee.kanjianki.action.OPEN_STUDY"
+        const val ACTION_OPEN_BROWSE = "dev.bee.kanjianki.action.OPEN_BROWSE"
+        const val ACTION_OPEN_GAMES = "dev.bee.kanjianki.action.OPEN_GAMES"
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_OPEN_STUDY = "dev.bee.kanjianki.extra.OPEN_STUDY"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"

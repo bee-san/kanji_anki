@@ -3,4 +3,10 @@
     <string name="copied_anki_search">コピーしました</string>
     <string name="kani_widget_description">復習期限と連続学習日数</string>
     <string name="kani_widget_loading">カニを読み込み中…</string>
+    <string name="shortcut_study_short_label">学習</string>
+    <string name="shortcut_study_long_label">今すぐ学習</string>
+    <string name="shortcut_browse_short_label">閲覧</string>
+    <string name="shortcut_browse_long_label">漢字を閲覧</string>
+    <string name="shortcut_games_short_label">ゲーム</string>
+    <string name="shortcut_games_long_label">漢字ゲームで遊ぶ</string>
 </resources>
