@@ -12,7 +12,9 @@ class StudyCueFormatter private constructor() {
         private val NUMBERED_PREFIX_PATTERN: Pattern = Pattern.compile("^\\d+\\.\\s*")
         private val GODAN_PATTERN: Pattern = Pattern.compile("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+")
         private val ADJECTIVE_VERB_PATTERN: Pattern = Pattern.compile("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+")
-        private val TRAILING_JAPANESE_EXAMPLE_PATTERN: Pattern = Pattern.compile("(?i)(?<=[a-z])\\s+[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}].*$")
+        private val TRAILING_JAPANESE_EXAMPLE_PATTERN: Pattern = Pattern.compile(
+            "(?i)([a-z][\\p{Punct}]*)\\s+[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}].*$",
+        )
         private val LEADING_METADATA_SEPARATOR_PATTERN: Pattern = Pattern.compile("\\s+")
         private val NON_ALPHA_NUMERIC_PATTERN: Pattern = Pattern.compile("[^a-z0-9-]")
         private val MULTI_WHITESPACE_PATTERN: Pattern = Pattern.compile("\\s+")
@@ -159,7 +161,7 @@ class StudyCueFormatter private constructor() {
             value = GODAN_PATTERN.matcher(value).replaceAll("")
             value = ADJECTIVE_VERB_PATTERN.matcher(value).replaceAll("")
             value = stripLeadingMetadataWords(value)
-            value = TRAILING_JAPANESE_EXAMPLE_PATTERN.matcher(value).replaceAll("")
+            value = TRAILING_JAPANESE_EXAMPLE_PATTERN.matcher(value).replaceAll("\$1")
             return cleanInline(value)
         }
 

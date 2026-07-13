@@ -80,6 +80,14 @@ class StudyCueFormatterTest {
             StudyCueFormatter.cleanFallbackMeaning("(★,) noun burden load responsibility 彼 は、 両 親 の 負担 になった?", "", 96),
         )
         assertEquals(
+            "Escape getting away (from) getting out (of)",
+            StudyCueFormatter.cleanFallbackMeaning(
+                "Escape getting away (from) getting out (of) 爺ちゃんはやっとのことで 脱出 した",
+                "",
+                96,
+            ),
+        )
+        assertEquals(
             "Dumbfounded overcome with surprise in blank amazement",
             StudyCueFormatter.cleanFallbackMeaning("Taru to-adverb dumbfounded overcome with surprise in blank amazement", "", 96),
         )
