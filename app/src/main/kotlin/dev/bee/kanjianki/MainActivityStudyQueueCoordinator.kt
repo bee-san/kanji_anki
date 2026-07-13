@@ -159,8 +159,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         val rows = study.store.activeDashboardRows()
         val row = rows.firstOrNull { it.kanji == saved.kanji }
-        val item = study.store.studyItemsForKanji(listOf(saved.kanji))
-            .firstOrNull { it.kanji == saved.kanji }
+        val item = pendingAnswerItem(saved)
         if (item == null) {
             study.clearPendingStudyAnswer()
             return null
@@ -175,6 +174,21 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         study.restorePendingStudyAnswer(appliedSnapshot)
         return study.prepareSessionRender(session)
+    }
+
+    private fun pendingAnswerItem(saved: StudyPendingAnswerSnapshot): RecordsStudyModels.StudyItem? {
+        study.store.studyItemsForKanji(listOf(saved.kanji))
+            .firstOrNull { it.kanji == saved.kanji }
+            ?.let { return it }
+        if (saved.taskType != MainActivityBase.TASK_REPAIR_WRITING) {
+            return null
+        }
+        return BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+            .newTargetedStudyItem(
+                saved.kanji,
+                System.currentTimeMillis(),
+                study.studyLadderSettings(),
+            )
     }
 
     fun renderStudyForKanji(kanji: String?) {
