@@ -34,16 +34,19 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
     }
 
     private fun shareDebugLog() {
-        val intent = StudyLoadDebugLog.buildShareIntent(activity)
-        if (intent == null) {
-            Toast.makeText(
-                activity,
-                "No debug log yet — open Study first, then try again.",
-                Toast.LENGTH_LONG,
-            ).show()
-            return
+        StudyLoadDebugLog.prepareShareIntent(activity) { intent ->
+            activity.postToMainIfActive {
+                if (intent == null) {
+                    Toast.makeText(
+                        activity,
+                        "No debug log yet — open Study first, then try again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    return@postToMainIfActive
+                }
+                activity.startActivity(Intent.createChooser(intent, "Share debug log"))
+            }
         }
-        activity.startActivity(Intent.createChooser(intent, "Share debug log"))
     }
 
     fun dataSourcesModel(): SettingsReferenceDataModel {

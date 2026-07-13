@@ -46,11 +46,16 @@ internal class MainActivitySettingsAutomationDebugLog(private val activity: Main
     }
 
     private fun shareDebugLog() {
-        val intent = AppDebugLog.buildShareIntent(activity)
-        if (intent == null) {
-            Toast.makeText(activity, SettingsTextCopy.debugLogEmptyToast(), Toast.LENGTH_LONG).show()
-            return
+        AppDebugLog.prepareShareIntent(activity) { intent ->
+            activity.postToMainIfActive {
+                if (intent == null) {
+                    Toast.makeText(activity, SettingsTextCopy.debugLogEmptyToast(), Toast.LENGTH_LONG).show()
+                    return@postToMainIfActive
+                }
+                activity.startActivity(
+                    Intent.createChooser(intent, SettingsTextCopy.shareDebugLogChooserTitle())
+                )
+            }
         }
-        activity.startActivity(Intent.createChooser(intent, SettingsTextCopy.shareDebugLogChooserTitle()))
     }
 }

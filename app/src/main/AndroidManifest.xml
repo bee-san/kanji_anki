@@ -53,9 +53,8 @@
             android:authorities="${applicationId}.androidx-startup"
             tools:node="remove" />
         <!--
-            FileProvider so the Settings "Share debug log" actions can hand log files from the
-            internal files dir to the Android share sheet: AppDebugLog's kani-debug.log in all
-            builds, plus StudyLoadDebugLog's kani-study-debug.log in debug builds.
+            FileProvider so the Settings "Share debug log" actions can hand narrowly scoped cache
+            snapshots to the Android share sheet. The live internal files directory is not exposed.
         -->
         <provider
             android:name="androidx.core.content.FileProvider"

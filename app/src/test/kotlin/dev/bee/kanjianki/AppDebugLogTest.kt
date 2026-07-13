@@ -7,6 +7,8 @@ import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.data.LocalStore
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -110,7 +112,7 @@ class AppDebugLogTest {
         assertTrue(text.contains("captured while on"))
         assertFalse(logFile().readText().contains("dropped while off"))
         assertTrue("log stays shareable while off", AppDebugLog.hasLog(context))
-        assertNotNull(AppDebugLog.buildShareIntent(context))
+        assertNotNull(awaitShareIntent())
     }
 
     @Test
@@ -122,6 +124,20 @@ class AppDebugLogTest {
         assertTrue(text.contains("java.lang.IllegalStateException"))
         assertTrue(text.contains("boom"))
         assertTrue("stack trace included", text.contains("at "))
+    }
+
+    @Test
+    fun runtimeSizeCapKeepsUtf8SafeNewestTail() {
+        AppDebugLog.setEnabled(context, true)
+        assertNotNull(awaitShareIntent())
+        logFile().writeText("診断\n".repeat(310_000), Charsets.UTF_8)
+
+        AppDebugLog.log("newest-line-after-cap")
+
+        val text = awaitFileContaining("==== older debug log entries trimmed ====")
+        assertTrue(text.startsWith("==== older debug log entries trimmed ===="))
+        assertTrue(text.contains("newest-line-after-cap"))
+        assertTrue(logFile().length() < 1_100_000L)
     }
 
     @Test
@@ -157,16 +173,15 @@ class AppDebugLogTest {
     @Test
     fun hasLogFalseAndShareIntentNullWithoutFile() {
         assertFalse(AppDebugLog.hasLog(context))
-        assertNull(AppDebugLog.buildShareIntent(context))
+        assertNull(awaitShareIntent())
     }
 
     @Test
     fun buildShareIntentReturnsSendIntentWhenLogPresent() {
         AppDebugLog.setEnabled(context, true)
         AppDebugLog.log("something worth sharing")
-        awaitFileContaining("something worth sharing")
 
-        val intent = AppDebugLog.buildShareIntent(context)
+        val intent = awaitShareIntent()
         assertNotNull("share intent built once log exists", intent)
         assertEquals(Intent.ACTION_SEND, intent?.action)
         assertEquals("text/plain", intent?.type)
@@ -178,6 +193,21 @@ class AppDebugLogTest {
             "grants read permission",
             (intent?.flags ?: 0) and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0,
         )
+        val sharedText = stream?.let {
+            context.contentResolver.openInputStream(it)?.bufferedReader()?.use { reader -> reader.readText() }
+        }
+        assertTrue("queued line is present in the snapshot", sharedText?.contains("something worth sharing") == true)
+    }
+
+    private fun awaitShareIntent(): Intent? {
+        val ready = CountDownLatch(1)
+        var intent: Intent? = null
+        AppDebugLog.prepareShareIntent(context) { prepared ->
+            intent = prepared
+            ready.countDown()
+        }
+        assertTrue("share callback completed", ready.await(5, TimeUnit.SECONDS))
+        return intent
     }
 
     /**

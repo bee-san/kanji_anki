@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!--
-        Internal filesDir root, where AppDebugLog writes kani-debug.log (all builds) and
-        StudyLoadDebugLog writes kani-study-debug.log (debug builds only).
-    -->
-    <files-path
+    <!-- Only snapshots of allow-listed diagnostic logs are copied into this cache directory. -->
+    <cache-path
         name="debug-logs"
-        path="." />
+        path="debug-log-share/" />
 </paths>
