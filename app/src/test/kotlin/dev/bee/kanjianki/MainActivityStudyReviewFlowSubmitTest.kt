@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.database.DatabaseUtils
@@ -8,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.LocalStore
@@ -48,6 +50,8 @@ class MainActivityStudyReviewFlowSubmitTest {
     @Test
     fun correctReviewAppliesOnceButDoesNotAdvanceUntilContinue() {
         withReviewActivity("裂") { activity, store, reviewIo, session ->
+            var widgetRefreshes = 0
+            installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
             ShadowToast.reset()
             assertTrue(
                 activity.submitReview(
@@ -81,6 +85,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(session.token, activity.activeSession!!.token)
             assertTrue(feedback.continueEnabled)
             assertEquals(1, ShadowToast.shownToastCount())
+            assertEquals(1, widgetRefreshes)
 
             // Advancing time cannot replace the answered card. Only Continue may
             // request the next route, and repeated taps remain one-shot.
@@ -95,6 +100,23 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(1, store.consumedTokens().size)
             assertEquals(1, activity.renderCount())
             assertEquals(1, ShadowToast.shownToastCount())
+            assertEquals(1, widgetRefreshes)
+        }
+    }
+
+    @Test
+    fun widgetRefreshFailureDoesNotRollBackCommittedReview() {
+        withReviewActivity("守") { activity, store, reviewIo, session ->
+            installWidgetRefreshRecorder(activity) {
+                throw IllegalStateException("widget host unavailable")
+            }
+
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            reviewIo.runNext()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertEquals(0, activity.retryReloadCount())
         }
     }
 
@@ -121,6 +143,8 @@ class MainActivityStudyReviewFlowSubmitTest {
     @Test
     fun failedReviewProcessingReleasesTokenForRetry() {
         withReviewActivity("衡") { activity, store, reviewIo, session ->
+            var widgetRefreshes = 0
+            installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
             // Simulate a processing-time dependency failure after the task has been
             // accepted and dequeued. The review wrapper must release the in-memory
             // claim because persistence never consumed the token.
@@ -147,6 +171,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(1, activity.retryReloadCount())
             assertFalse(swipeFeedback.committed)
             assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
+            assertEquals(0, widgetRefreshes)
 
             activity.store = store
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
@@ -159,6 +184,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(0, activity.renderCount())
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertEquals(session.token, activity.pendingStudyAnswerSnapshot()?.feedback?.sessionToken)
+            assertEquals(1, widgetRefreshes)
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(null, activity.pendingStudyAnswerSnapshot())
             assertEquals(1, activity.renderCount())
@@ -168,6 +194,8 @@ class MainActivityStudyReviewFlowSubmitTest {
     @Test
     fun staleCommitReloadsPersistedRevisionAndNextRatingAppliesOnce() {
         withReviewActivity("更") { activity, store, reviewIo, session ->
+            var widgetRefreshes = 0
+            installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
             ShadowToast.reset()
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             store.saveStudyItem(session.item!!.copyBuilder().schedulerRevision(1L).build())
@@ -180,6 +208,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(1, activity.retryReloadCount())
             assertEquals(1L, activity.activeSession!!.item!!.schedulerRevision)
             assertEquals(0, ShadowToast.shownToastCount())
+            assertEquals(0, widgetRefreshes)
 
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             reviewIo.runNext()
@@ -188,6 +217,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(0, activity.renderCount())
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertEquals(1, widgetRefreshes)
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
             assertEquals(1, ShadowToast.shownToastCount())
@@ -197,6 +227,8 @@ class MainActivityStudyReviewFlowSubmitTest {
     @Test
     fun preConsumedReviewReconcilesToPersistedStateAndLeavesNextCardAnswerable() {
         withReviewActivity("済") { activity, store, reviewIo, session ->
+            var widgetRefreshes = 0
+            installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
             ShadowToast.reset()
             val nextToken = "token-after-persistence-duplicate"
             activity.reloadPersistedSessionOnRender()
@@ -214,6 +246,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertEquals(1, store.consumedTokens().size)
             assertEquals(0, ShadowToast.shownToastCount())
+            assertEquals(0, widgetRefreshes)
 
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
@@ -230,6 +263,8 @@ class MainActivityStudyReviewFlowSubmitTest {
     @Test
     fun commitDuplicateDiscardsPreparedTaskAndReconcilesForward() {
         withReviewActivity("競") { activity, store, reviewIo, session ->
+            var widgetRefreshes = 0
+            installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
             ShadowToast.reset()
             val nextToken = "token-after-commit-duplicate"
             activity.reloadPersistedSessionOnRender()
@@ -251,6 +286,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertTrue(store.hasConsumedToken(session.token))
             assertEquals(0, ShadowToast.shownToastCount())
+            assertEquals(0, widgetRefreshes)
 
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
@@ -260,6 +296,44 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             assertEquals(1, reviewIo.pendingCount())
             reviewIo.shutdownNow()
+        }
+    }
+
+    @Test
+    fun persistedRepairCompletionAndSkipEachRefreshWidget() {
+        withReviewActivity("修") { activity, store, reviewIo, _ ->
+            var widgetRefreshes = 0
+            val reviewFlow = installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
+
+            activity.activeSimilarWritingRepair = persistRepair(store, "complete-refresh-token")
+            reviewFlow.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD)
+            reviewIo.runNext()
+
+            assertEquals(1, widgetRefreshes)
+
+            activity.activeSimilarWritingRepair = persistRepair(store, "skip-refresh-token")
+            reviewFlow.skipSimilarWritingRepair()
+            reviewIo.runNext()
+
+            assertEquals(2, widgetRefreshes)
+        }
+    }
+
+    @Test
+    fun rejectedRepairCompletionAndSkipDoNotRefreshWidget() {
+        withReviewActivity("拒") { activity, _, reviewIo, _ ->
+            var widgetRefreshes = 0
+            val reviewFlow = installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
+
+            activity.activeSimilarWritingRepair = repair(Long.MAX_VALUE - 1L, "missing-complete-token")
+            reviewFlow.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD)
+            reviewIo.runNext()
+
+            activity.activeSimilarWritingRepair = repair(Long.MAX_VALUE, "missing-skip-token")
+            reviewFlow.skipSimilarWritingRepair()
+            reviewIo.runNext()
+
+            assertEquals(0, widgetRefreshes)
         }
     }
 
@@ -364,6 +438,55 @@ class MainActivityStudyReviewFlowSubmitTest {
             store.readableDatabase,
             "SELECT COUNT(*) FROM similar_kanji_review_log WHERE target_kanji = ?",
             arrayOf(targetKanji),
+        )
+    }
+
+    private fun installWidgetRefreshRecorder(
+        activity: TestMainActivity,
+        onRefresh: () -> Unit,
+    ): MainActivityStudyReviewFlow {
+        val field = MainActivityStudy::class.java.getDeclaredField("writingReview\$delegate")
+        field.isAccessible = true
+        val reviewFlow = (field.get(activity) as Lazy<*>).value as MainActivityStudyReviewFlow
+        reviewFlow.widgetRefresher = Runnable { onRefresh() }
+        return reviewFlow
+    }
+
+    private fun persistRepair(store: LocalStore, token: String): RecordsImportModels.SimilarKanjiWritingRepair {
+        val draft = repair(0L, token)
+        val values = ContentValues().apply {
+            put("target_kanji", draft.targetKanji)
+            put("repair_kanji", draft.repairKanji)
+            put("choice_signature", draft.choiceSignature)
+            put("wrong_selection", draft.wrongSelection)
+            put("prompt_meaning", draft.promptMeaning)
+            put("status", draft.status)
+            put("due_at", draft.dueAtMillis)
+            put("active_token", draft.activeToken)
+            put("attempts", draft.attempts)
+            put("created_at", draft.createdAtMillis)
+            put("updated_at", draft.updatedAtMillis)
+            put("completed_at", draft.completedAtMillis)
+        }
+        val id = store.writableDatabase.insertOrThrow("similar_kanji_repair_queue", null, values)
+        return repair(id, token)
+    }
+
+    private fun repair(id: Long, token: String): RecordsImportModels.SimilarKanjiWritingRepair {
+        return RecordsImportModels.SimilarKanjiWritingRepair(
+            id,
+            "末",
+            "未",
+            "widget-refresh-$token",
+            "末",
+            "not yet",
+            "pending",
+            0L,
+            token,
+            0,
+            1_000L,
+            1_000L,
+            0L,
         )
     }
 
