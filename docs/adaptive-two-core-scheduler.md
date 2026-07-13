@@ -167,7 +167,12 @@ one transaction. Historical snapshots, timelines, baselines, analytics, and
 retention only consume successful runs. Pending/failed rows are inert and are
 purged so an interrupted run cannot poison stable dedupe keys. Material sync
 changes increment `scheduler_revision`; a mid-sync review with the newer
-revision wins.
+revision wins. Sync reconciliation seeds from the complete durable study-item
+set: kanji absent from the provider/analyzer result are explicitly retired
+with their scheduler memories intact instead of being physically deleted. The
+commit boundary retains any kanji a narrowed caller still omits. Foreground
+Study reseeding uses a capped dashboard view, so it preserves out-of-scope
+kanji rows unchanged and leaves retirement decisions to the full sync path.
 
 Restore decompression is streamed with a 512 MiB output limit and a 64 MiB free
 space reserve, with distinct too-large and insufficient-space errors. Backups

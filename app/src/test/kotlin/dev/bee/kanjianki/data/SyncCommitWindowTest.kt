@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import org.junit.Assert.assertEquals
@@ -106,6 +107,70 @@ class SyncCommitWindowTest {
         val persisted = store.studyItemsForKanji(listOf("痛"))
         assertEquals(1, persisted.size)
         assertEquals(1_000L, persisted.single().dueAtMillis)
+    }
+
+    @Test
+    fun emptySnapshotPublicationRetainsDormantSchedulerAndReviewHistory() {
+        val original = studyItem("痛", 1_000L).copyBuilder()
+            .totalReviews(3)
+            .schedulerRevision(7L)
+            .build()
+        store.replaceStudyItems(listOf(original))
+        store.saveReview(
+            RecordsSchedulerModels.ReviewRequest("痛", "retained-review", "good", false, false, false, 0),
+            "good",
+            1_500L,
+        )
+        val syncId = pendingSync(2_000L, 3_000L)
+
+        store.commitPendingSyncStudyItems(
+            emptyList(),
+            syncId,
+            3_000L,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            emptyList(),
+        )
+
+        val retained = store.studyItems().single()
+        assertEquals("痛", retained.kanji)
+        assertEquals(3, retained.totalReviews)
+        assertEquals(7L, retained.schedulerRevision)
+        assertEquals(listOf("retained-review"), reviewTokens())
+        assertTrue(store.hasSuccessfulSyncSince(3_000L))
+    }
+
+    @Test
+    fun narrowedCommitPublicationUpdatesPresentKanjiAndRetainsOmittedKanji() {
+        val present = studyItem("痛", 1_000L).copyBuilder().schedulerRevision(4L).build()
+        val omitted = studyItem("裂", 2_000L).copyBuilder()
+            .totalReviews(5)
+            .schedulerRevision(9L)
+            .build()
+        store.replaceStudyItems(listOf(present, omitted))
+        store.saveReview(
+            RecordsSchedulerModels.ReviewRequest("裂", "omitted-review", "good", false, false, false, 0),
+            "good",
+            2_500L,
+        )
+        val syncId = pendingSync(3_000L, 4_000L)
+        val reseededPresent = present.copyBuilder().dueAtMillis(5_000L).build()
+
+        store.commitPendingSyncStudyItems(
+            listOf(reseededPresent),
+            syncId,
+            4_000L,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            listOf(present),
+        )
+
+        val persisted = store.studyItems().associateBy { it.kanji }
+        assertEquals(setOf("痛", "裂"), persisted.keys)
+        assertEquals(5_000L, persisted.getValue("痛").dueAtMillis)
+        assertEquals(5L, persisted.getValue("痛").schedulerRevision)
+        assertEquals(2_000L, persisted.getValue("裂").dueAtMillis)
+        assertEquals(5, persisted.getValue("裂").totalReviews)
+        assertEquals(9L, persisted.getValue("裂").schedulerRevision)
+        assertEquals(listOf("omitted-review"), reviewTokens())
     }
 
     @Test
@@ -321,5 +386,21 @@ class SyncCommitWindowTest {
                 "dedupe_key) VALUES ('痛', 1, 'first_seen', '', '', '', '', '', 0, 0, 0, NULL, NULL, ?, ?)",
             arrayOf<Any>(syncId, dedupeKey),
         )
+    }
+
+    private fun reviewTokens(): List<String> {
+        val tokens = mutableListOf<String>()
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_TOKEN),
+            null,
+            null,
+            null,
+            null,
+            "${LocalStoreBase.COLUMN_TOKEN} ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) tokens.add(cursor.getString(0))
+        }
+        return tokens
     }
 }

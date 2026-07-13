@@ -55,6 +55,149 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
+    fun emptyProviderSnapshotRetiresSchedulerStateWithoutDeletingIt() {
+        val now = 1_725_000_000_000L
+        val row = repairRow("痛")
+        val memory = RecordsStudyModels.TaskMemory(
+            StudyLadderRules.STATE_REVIEW,
+            now + 86_400_000L,
+            12.5,
+            6.25,
+            8,
+            2,
+            0,
+            "good",
+            30,
+            4,
+            now - 86_400_000L,
+            now - 1_000L,
+        )
+        val original = reviewItem(row, now + 86_400_000L, 3, now - 86_400_000L)
+            .copyBuilder()
+            .wordReadingMemory(memory)
+            .realPassStreak(4)
+            .schedulerRevision(7L)
+            .build()
+        store.replaceStudyItems(listOf(original))
+        store.saveReview(
+            RecordsSchedulerModels.ReviewRequest("痛", "surviving-review", "good", false, false, false, 0),
+            "good",
+            now - 1_000L,
+        )
+        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults()).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        val retired = store.studyItems().single()
+        assertEquals("痛", retired.kanji)
+        assertEquals(StudyLadderRules.STATE_RETIRED, retired.state)
+        assertEquals(original.totalReviews, retired.totalReviews)
+        assertEquals(original.stability, retired.stability, 0.0)
+        assertEquals(original.rung, retired.rung)
+        assertEquals(original.realPassStreak, retired.realPassStreak)
+        assertEquals(memory.encode(), retired.wordReadingMemory.encode())
+        assertTrue(store.hasConsumedToken("surviving-review"))
+    }
+
+    @Test
+    fun nonEmptyProviderSnapshotRetiresOmittedItemWithoutDeletingSchedulerOrHistory() {
+        val now = 1_725_000_000_000L
+        val representedMemory = RecordsStudyModels.TaskMemory(
+            StudyLadderRules.STATE_REVIEW,
+            now + 86_400_000L,
+            12.5,
+            6.25,
+            8,
+            2,
+            0,
+            "good",
+            30,
+            4,
+            now - 86_400_000L,
+            now - 1_000L,
+        )
+        val omittedMemory = RecordsStudyModels.TaskMemory(
+            StudyLadderRules.STATE_REVIEW,
+            now + 172_800_000L,
+            18.0,
+            5.75,
+            11,
+            3,
+            0,
+            "hard",
+            45,
+            2,
+            now - 172_800_000L,
+            now - 2_000L,
+        )
+        val represented = reviewItem(repairRow("痛"), now + 86_400_000L, 8, now - 86_400_000L)
+            .copyBuilder()
+            .wordReadingMemory(representedMemory)
+            .realPassStreak(4)
+            .schedulerRevision(7L)
+            .build()
+        val omitted = reviewItem(repairRow("謎"), now + 172_800_000L, 11, now - 172_800_000L)
+            .copyBuilder()
+            .wordReadingMemory(omittedMemory)
+            .realPassStreak(2)
+            .schedulerRevision(12L)
+            .build()
+        store.replaceStudyItems(listOf(represented, omitted))
+        store.saveReview(
+            RecordsSchedulerModels.ReviewRequest("痛", "represented-review", "good", false, false, false, 0),
+            "good",
+            now - 1_000L,
+        )
+        store.saveReview(
+            RecordsSchedulerModels.ReviewRequest("謎", "omitted-review", "hard", false, false, false, 0),
+            "hard",
+            now - 2_000L,
+        )
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("痛")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(1, result.dashboardRows)
+        assertEquals(1, result.importedSuspendedKanji)
+        val committed = store.studyItems().associateBy { it.kanji }
+        assertEquals(setOf("痛", "謎"), committed.keys)
+
+        val retained = committed.getValue("痛")
+        assertEquals(StudyLadderRules.STATE_REVIEW, retained.state)
+        assertEquals(represented.totalReviews, retained.totalReviews)
+        assertEquals(represented.stability, retained.stability, 0.0)
+        assertEquals(represented.rung, retained.rung)
+        assertEquals(represented.realPassStreak, retained.realPassStreak)
+        assertEquals(representedMemory.encode(), retained.wordReadingMemory.encode())
+
+        val retired = committed.getValue("謎")
+        assertEquals(StudyLadderRules.STATE_RETIRED, retired.state)
+        assertEquals(omitted.totalReviews, retired.totalReviews)
+        assertEquals(omitted.stability, retired.stability, 0.0)
+        assertEquals(omitted.rung, retired.rung)
+        assertEquals(omitted.realPassStreak, retired.realPassStreak)
+        assertEquals(omittedMemory.encode(), retired.wordReadingMemory.encode())
+        assertEquals(omitted.schedulerRevision + 1L, retired.schedulerRevision)
+        assertTrue(store.hasConsumedToken("represented-review"))
+        assertTrue(store.hasConsumedToken("omitted-review"))
+    }
+
+    @Test
     fun failedSyncDoesNotRearmReminder() {
         val engine = ManualSyncEngine(
             context,
@@ -259,6 +402,48 @@ class ManualSyncEngineReminderRescheduleTest {
             false,
             RecordsStudyModels.TaskMemory.initial(),
         )
+    }
+
+    private fun suspendedSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val fields = linkedMapOf(
+            settings.expressionField to kanji,
+            settings.readingField to "reading-$kanji",
+            settings.meaningField to "meaning-$kanji",
+            settings.sentenceField to "$kanji sentence",
+            settings.frequencyField to "9999",
+            settings.frequencySortField to "9999",
+        )
+        return RecordsSyncModels.CollectionSnapshot(
+            listOf(RecordsSyncModels.Note(1L, settings.modelName, fields, emptyList())),
+            listOf(
+                RecordsSyncModels.Card(
+                    10L,
+                    1L,
+                    0,
+                    "例文マイニング",
+                    -1,
+                    3,
+                    0,
+                    0,
+                    3,
+                    0,
+                    true,
+                ),
+            ),
+        )
+    }
+
+    private class SnapshotGateway(
+        private val snapshot: RecordsSyncModels.CollectionSnapshot,
+    ) : CollectionGateway {
+        override fun readCollection(settings: RecordsSyncModels.Settings): RecordsSyncModels.CollectionSnapshot = snapshot
+
+        override fun removeArchivedSuspendedCards(
+            snapshot: RecordsSyncModels.CollectionSnapshot,
+        ): AnkiDroidGateway.RemovalSummary {
+            return AnkiDroidGateway.RemovalSummary(0, 0, 0, "")
+        }
     }
 
     private class EmptyGateway : CollectionGateway {

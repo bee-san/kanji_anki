@@ -182,8 +182,14 @@ internal class ManualSyncEngine {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
-            val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
-            val plan = adaptivePlan(activeRows, currentItems, finished)
+            // Seeding is a durable reconciliation, so it must see every persisted family.
+            // Restricting this input to the current provider/analyzer rows made an empty,
+            // partial, filtered, or locally-suspended snapshot physically delete omitted
+            // scheduler state at publication. Planning remains scoped to active rows.
+            val currentItems = store.studyItems()
+            val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
+            val activeItems = currentItems.filter { it.kanji in activeKanji }
+            val plan = adaptivePlan(activeRows, activeItems, finished)
             val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows)
             var seeded = scheduler.seedQueue(
                 activeRows,
@@ -197,7 +203,7 @@ internal class ManualSyncEngine {
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
             // Pass the pre-seed baseline so the atomic queue commit can preserve any review
-            // the user saved between the studyItemsForKanji read above and this write
+            // the user saved between the studyItems read above and this write
             // (auto-sync can run while the app is foregrounded and studyable).
             store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
             committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)

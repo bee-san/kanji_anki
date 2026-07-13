@@ -109,6 +109,16 @@ re-verified them at `438a3ccf`:
 
 ### Goal 39: Stop sync from hard-deleting study items whose kanji left the analyzer rows
 
+> **FIXED (2026-07-13):** Sync now seeds from all durable study items while
+> keeping planning scoped to active rows, so absent kanji rows pass through the
+> seeder's explicit retirement path with FSRS/task memories intact. Atomic sync
+> publication also retains any kanji omitted by a narrowed caller. Foreground
+> Study reseeding preserves kanji rows outside its capped dashboard input rather
+> than treating that UI cap as authoritative deletion/retirement evidence.
+> Focused core, commit-window, full-engine Robolectric, and foreground queue
+> regressions cover empty and subset inputs. `review_log` was never deleted by
+> this path; its survival is now pinned as an invariant.
+
 **Problem:** `ManualSyncEngine.runLocked`
 (`app/src/main/kotlin/dev/bee/kanjianki/sync/ManualSyncEngine.kt:131`) reads
 only `store.studyItemsForKanji(activeRows.map { it.kanji })`. Any persisted

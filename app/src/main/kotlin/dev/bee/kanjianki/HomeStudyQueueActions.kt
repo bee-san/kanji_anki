@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -12,34 +13,37 @@ internal object HomeStudyQueueActions {
         request: StudyQueueRequest,
         currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        val current = currentItems ?: request.reader.studyItems()
+        val planItems = currentItems ?: request.reader.studyItems()
         if (!request.persist) {
-            return current
+            return planItems
         }
         val effectivePlan = request.plan ?: request.planProvider.adaptivePlan(
             request.rows,
-            current,
+            planItems,
             request.nowMillis,
         )
         val seeded = request.seeder.seedQueue(
             request.rows,
-            current,
+            planItems,
             request.settingsProvider.settings(),
             request.nowMillis,
             request.dayStartProvider.startOfDay(request.nowMillis),
             effectivePlan,
             request.ladderProvider.studyLadderSettings(),
         )
-        val annotated = request.writer.annotateSimilarKanjiAvailability(seeded)
-        val persisted = if (currentItems == null) {
-            current
-        } else {
-            request.reader.studyItems()
+        val annotatedSeeded = request.writer.annotateSimilarKanjiAvailability(seeded)
+        // Study callers supply the active-row subset, and activeDashboardRows is a
+        // deliberately capped UI read. Preserve durable families outside that scope;
+        // only the full sync/analyzer reconciliation may explicitly retire them.
+        val persisted = if (currentItems == null) planItems else request.reader.studyItems()
+        val retained = DurableStudyItemRetentionPolicy.retainUnseeded(annotatedSeeded, persisted)
+        if (!StudyItemComparators.sameStudyItemsIgnoringOrder(persisted, retained)) {
+            // Pass the exact pre-seed baseline, even though it is scoped. The
+            // transaction re-reads the full durable state, merges reviews that
+            // landed after this seed input was read, and retains out-of-cap rows.
+            request.writer.replaceStudyItems(annotatedSeeded, planItems)
         }
-        if (!StudyItemComparators.sameStudyQueue(persisted, annotated)) {
-            request.writer.replaceStudyItems(annotated)
-        }
-        return annotated
+        return annotatedSeeded
     }
 
     @JvmRecord
@@ -96,6 +100,9 @@ internal object HomeStudyQueueActions {
     interface StudyItemsWriter {
         fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>): List<RecordsStudyModels.StudyItem>
 
-        fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>)
+        fun replaceStudyItems(
+            items: List<RecordsStudyModels.StudyItem>,
+            baseline: List<RecordsStudyModels.StudyItem>,
+        )
     }
 }

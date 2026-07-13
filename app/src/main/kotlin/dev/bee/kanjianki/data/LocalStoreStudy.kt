@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.AdaptiveCorePolicy
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -43,10 +44,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     /**
-     * Replace all study items. When [baseline] (the study items the caller read before
-     * computing [items]) is provided, re-read the currently persisted items inside the
-     * write transaction and keep any item whose review evidence advanced since the
-     * baseline read, so a review saved between the read and this write is not lost.
+     * Reconcile study items. Without [baseline], [items] is an authoritative full
+     * replacement. With a possibly scoped [baseline], re-read durable state inside the
+     * transaction, keep review evidence that advanced since that seed input was read,
+     * and retain persisted kanji outside the candidate scope.
      */
     fun replaceStudyItems(
         items: List<RecordsStudyModels.StudyItem>,
@@ -65,7 +66,15 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             } else {
                 MidSyncReviewMergePolicy.merge(items, baseline, persisted)
             }
-            val toWrite = versionMaterialStudyChanges(merged, persisted)
+            val retained = if (baseline == null) {
+                merged
+            } else {
+                // A baseline-aware scoped refresh is not deletion authority. Merge
+                // reviews first, then retain persisted kanji absent from the candidate
+                // so transaction-local additions and out-of-cap rows both survive.
+                DurableStudyItemRetentionPolicy.retainUnseeded(merged, persisted)
+            }
+            val toWrite = versionMaterialStudyChanges(retained, persisted)
             writes = if (syncId == null && baseline == null) {
                 // Per-review queue refresh: after every answered card the seeder
                 // usually changes exactly one row, so write only the diff instead of
