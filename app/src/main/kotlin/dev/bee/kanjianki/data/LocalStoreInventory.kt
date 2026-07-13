@@ -132,6 +132,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             return it
         }
 
+        val rows = loadDashboardRows(excludeLocallySuspended = false)
+        cachedDashboardRows = rows
+        return rows
+    }
+
+    private fun loadDashboardRows(excludeLocallySuspended: Boolean): List<RecordsImportModels.DashboardRow> {
         val loadStart = android.os.SystemClock.elapsedRealtime()
         val db = readableDatabase
         // First read the capped row headers, then issue bounded ordered index seeks for their
@@ -155,12 +161,16 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         db.query(
             TABLE_DASHBOARD_ROWS,
             null,
-            null,
+            if (excludeLocallySuspended) {
+                "$COLUMN_KANJI NOT IN (SELECT $COLUMN_KANJI FROM $TABLE_LOCAL_KANJI_SUSPENSIONS)"
+            } else {
+                null
+            },
             null,
             null,
             null,
             "weakness_score DESC, suspended_example_count DESC, kanji ASC",
-            "120",
+            DASHBOARD_ROW_LIMIT,
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 headers.add(
@@ -213,7 +223,6 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 ),
             )
         }
-        cachedDashboardRows = rows
         val assembleDuration = android.os.SystemClock.elapsedRealtime() - assembleStart
         val totalDuration = android.os.SystemClock.elapsedRealtime() - loadStart
         logDashboardPhase(
@@ -241,14 +250,12 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
             cachedActiveDashboardRows = rows
             return rows
         }
-        val out = ArrayList<RecordsImportModels.DashboardRow>()
-        for (row in dashboardRows()) {
-            if (!suspended.contains(row.kanji)) {
-                out.add(row)
-            }
-        }
-        cachedActiveDashboardRows = out
-        return out
+        // Apply local suspensions before the row cap. Filtering the already-capped dashboard
+        // snapshot let suspended kanji consume slots and hid valid lower-ranked candidates
+        // from Home and study planning.
+        val rows = loadDashboardRows(excludeLocallySuspended = true)
+        cachedActiveDashboardRows = rows
+        return rows
     }
 
     fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
@@ -1053,6 +1060,8 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
     }
 
     private companion object {
+        const val DASHBOARD_ROW_LIMIT = "120"
+
         /** Shared by every LocalStore helper in this process. */
         val STUDY_ITEMS_CACHE_EPOCH = AtomicLong(0L)
     }
