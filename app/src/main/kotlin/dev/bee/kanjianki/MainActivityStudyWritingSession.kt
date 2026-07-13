@@ -16,8 +16,11 @@ import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
-    fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
-        renderComposeWritingRoute { composeWritingRouteModel(session) }
+    fun renderComposeWritingSession(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel? = null,
+    ) {
+        renderComposeWritingRoute { composeWritingRouteModel(session, mnemonic) }
     }
 
     private fun renderComposeWritingRoute(routeProvider: () -> WritingSessionRouteModel) {
@@ -46,20 +49,26 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         home.refreshWritingModelStatus()
     }
 
-    private fun composeWritingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
+    private fun composeWritingRouteModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): WritingSessionRouteModel {
         resetWritingInteractionState(session)
         home.prepareStudyAnswerFeedback(session.token)
-        val route = writingRouteModel(session)
+        val route = writingRouteModel(session, mnemonic)
         route.actionBarState = home.buildComposeWritingActionBarState()
         return route
     }
 
-    private fun writingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
+    private fun writingRouteModel(
+        session: RecordsSchedulerModels.StudySession,
+        mnemonic: StudyAnswerMnemonicModel?,
+    ): WritingSessionRouteModel {
         val targetKanji = session.item?.kanji ?: ""
         val answerPanelState = WritingAnswerPanelState(home.studyAnswerFeedbackState?.feedbackVisible == true)
         home.writingAnswerPanelState = answerPanelState
         home.studyAnswerPanel = null
-        val answerPanel = home.learningPanelModel(session)
+        val answerPanel = home.learningPanelModel(session, mnemonic)
 
         val guide = home.strokeGuide(targetKanji)
         val status = WritingStatusState()

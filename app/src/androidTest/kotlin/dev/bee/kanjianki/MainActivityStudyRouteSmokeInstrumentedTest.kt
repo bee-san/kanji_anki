@@ -17,7 +17,9 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import java.io.StringReader
 import org.junit.After
@@ -36,6 +38,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase("kanji_anki_simple.db")
+        pendingAnswerPreferences().edit().clear().commit()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.study_route_no_anki")
         )
@@ -56,7 +59,45 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         MainActivityRuntimeOverrides.setInstallPermission(null)
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
+        pendingAnswerPreferences().edit().clear().commit()
         context.deleteDatabase("kanji_anki_simple.db")
+    }
+
+    @Test
+    fun pendingAnswerRestartRendersLatestLocalMnemonic() {
+        val row = row("裂", "split", "レツ")
+        val session = session(
+            row,
+            "mnemonic-restart-smoke",
+            BridgeScheduler.TASK_KANJI_MEANING,
+            false,
+        )
+        LocalStore(context).use { store ->
+            store.saveStudyItem(requireNotNull(session.item).copyBuilder().activeToken("").build())
+            store.saveKanjiMnemonicNote("裂", "old restart story", 1_000L)
+        }
+        StudyPendingAnswerStore(pendingAnswerPreferences()).save(
+            StudyPendingAnswerSnapshot(
+                feedback = StudyAnswerFeedbackSnapshot(
+                    sessionToken = session.token,
+                    phase = StudyAnswerFeedbackPhase.APPLIED,
+                    outcome = StudyAnswerOutcome.CORRECT,
+                    selectedAnswer = StudyRatings.GOOD,
+                ),
+                kanji = "裂",
+                taskType = session.taskType,
+                writingRequired = session.writingRequired,
+                prompt = session.prompt,
+            ),
+        )
+        LocalStore(context).use { store ->
+            store.saveKanjiMnemonicNote("裂", "current restart story\nfrom local storage", 2_000L)
+        }
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            assertVisibleAfterScroll(StudyTextCopy.studyMnemonicLabel())
+            assertVisibleAfterScroll("current restart story")
+        }
     }
 
     @Test
@@ -375,6 +416,9 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         }
         return null
     }
+
+    private fun pendingAnswerPreferences() =
+        context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
 
     private companion object {
         private const val TEXT_WAIT_TIMEOUT_MS = 8_000L

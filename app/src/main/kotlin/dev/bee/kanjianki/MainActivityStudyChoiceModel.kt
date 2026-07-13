@@ -135,6 +135,7 @@ data class SimilarChoiceSessionModel(
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
     val feedbackState: StudyAnswerFeedbackState? = null,
     val onContinue: Runnable = Runnable {},
+    val mnemonic: StudyAnswerMnemonicModel? = null,
 )
 
 internal data class SimilarKanjiDifferenceChoiceModel(
