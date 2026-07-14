@@ -521,6 +521,15 @@ object HomeTextCopy {
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
+    fun howKaniWorksLinkBody(): String = localizedText(
+        "Learn how Kani's two-core model, repair tasks, and promotion system work together.",
+        "Kaniの2コアモデル、修復タスク、昇格システムがどのように連携するかを学びます。"
+    )
+
+    @JvmStatic
+    fun howKaniWorksLinkAction(): String = localizedText("Open", "開く")
+
+    @JvmStatic
     fun reminderStudyNowAction(): String = localizedText("Study now", "今すぐ学習")
 
     @JvmStatic

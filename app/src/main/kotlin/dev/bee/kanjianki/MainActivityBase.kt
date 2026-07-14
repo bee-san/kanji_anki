@@ -684,6 +684,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val NAV_SETTINGS_DISPLAY_DATA_ROUTE = "settings/display-data"
         const val NAV_SETTINGS_UPDATE_ROUTE = "settings/automation/update"
         const val NAV_SETTINGS_LICENSES_ROUTE = "settings/display-data/licenses"
+        const val NAV_SETTINGS_HOW_IT_WORKS_ROUTE = "settings/display-data/how-kani-works"
 
         @JvmStatic
         fun isSettingsRoute(route: String): Boolean {
