@@ -1,0 +1,10 @@
+HSPLdev/bee/kanjianki/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLdev/bee/kanjianki/MainActivityBase;-><init>()V
+HSPLdev/bee/kanjianki/KaniApplication;->onCreate()V
+HSPLdev/bee/kanjianki/MainActivityShellHost;-><init>(Ldev/bee/kanjianki/MainActivityBase;)V
+Ldev/bee/kanjianki/MainActivity;
+Ldev/bee/kanjianki/MainActivityBase;
+Ldev/bee/kanjianki/KaniApplication;
+Ldev/bee/kanjianki/MainActivityShellHost;
+Ldev/bee/kanjianki/KaniTheme;
+Ldev/bee/kanjianki/KaniThemeKt;

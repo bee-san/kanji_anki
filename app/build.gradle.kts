@@ -193,6 +193,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material3.wsc)
     implementation(libs.compose.ui)
+    implementation(libs.androidx.profileinstaller)
     implementation(project(":update-core"))
     implementation(project(":writing-core"))
     implementation(libs.androidx.work.runtime)
