@@ -3,24 +3,26 @@ package dev.bee.kanjianki.sync
 import android.app.job.JobParameters
 import android.app.job.JobService
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class AutoSyncJobService : JobService {
     private lateinit var executor: JobExecutor
     private lateinit var shutdown: Shutdown
     private lateinit var autoSyncTask: AutoSyncTask
-
-    @Volatile
-    private var stopped = false
+    private val activeRuns = ConcurrentHashMap<Int, JobRun>()
 
     constructor() {
         val io = Executors.newSingleThreadExecutor()
         executor = JobExecutor { job -> io.execute(job) }
         shutdown = Shutdown { io.shutdownNow() }
-        autoSyncTask = AutoSyncTask { params -> runAutoSync(params) }
+        autoSyncTask = AutoSyncTask { run -> runAutoSync(run) }
     }
 
     constructor(
@@ -34,30 +36,70 @@ class AutoSyncJobService : JobService {
     }
 
     override fun onStartJob(params: JobParameters?): Boolean {
+        val run = JobRun(params)
         return startJob(
-            RunningMarker { stopped = false },
+            RunningMarker {
+                activeRuns.put(run.key, run)?.markStopped()
+            },
             executor,
-            Runnable { autoSyncTask.run(params) },
+            Runnable {
+                var taskReturned = false
+                try {
+                    autoSyncTask.run(run)
+                    taskReturned = true
+                } finally {
+                    // Keep a throwing task registered until JobScheduler calls
+                    // onStopJob (or the process dies), so the platform can retry it.
+                    if (taskReturned && !run.hasPendingCompletion()) {
+                        activeRuns.remove(run.key, run)
+                    }
+                }
+            },
         )
     }
 
     override fun onStopJob(params: JobParameters?): Boolean {
-        // Signal cooperative cancellation; the in-flight run observes `stopped`, aborts
-        // at the next safe point, and calls jobFinished(needsReschedule=stopped) itself.
-        // Returning true asks the system to reschedule the stopped job.
-        stopped = true
-        return stopJob()
+        val run = activeRuns[jobKey(params?.jobId)]?.takeIf { it.matches(params) }
+            ?: return stopJob(false)
+        // If durable replacement/retry work already finished scheduling, that work
+        // owns continuation. Otherwise JobScheduler must retry the interrupted job.
+        return stopJob(run.markStoppedAndShouldReschedule())
     }
 
     override fun onDestroy() {
+        activeRuns.values.forEach(JobRun::markStopped)
         destroyJob(shutdown)
         super.onDestroy()
     }
 
-    private fun runAutoSync(params: JobParameters?) {
-        // Pass a live supplier (not the captured value) so the sync sees a mid-run stop
-        // and the reschedule flag is evaluated against the stopped state at completion.
-        runAutoSync(this, params, SyncCancellation { stopped }, jobFinisherFactory.create(this))
+    private fun runAutoSync(run: JobRun) {
+        val platformFinisher = jobFinisherFactory.create(this)
+        val lifecycleSafeFinisher = JobFinisher { params, needsReschedule ->
+            run.markCompletionPending(needsReschedule)
+            val posted = Handler(Looper.getMainLooper()).post {
+                try {
+                    // onStopJob and this callback both run on the service main
+                    // thread, so this is the final race-free lifecycle decision.
+                    if (!run.isStopped()) {
+                        platformFinisher.jobFinished(params, needsReschedule)
+                    }
+                } finally {
+                    run.markCompletionDelivered()
+                    activeRuns.remove(run.key, run)
+                }
+            }
+            if (!posted) {
+                run.markCompletionDelivered()
+                activeRuns.remove(run.key, run)
+            }
+        }
+        runAutoSync(
+            this,
+            run.params,
+            SyncCancellation { run.isStopped() },
+            run,
+            lifecycleSafeFinisher,
+        )
     }
 
     fun interface SettingsReader {
@@ -69,7 +111,17 @@ class AutoSyncJobService : JobService {
     }
 
     fun interface Scheduler {
-        fun schedule(context: Context?, settings: LocalStoreBase.AutoSyncSettings)
+        fun schedule(
+            context: Context?,
+            settings: LocalStoreBase.AutoSyncSettings,
+            currentJobId: Int?,
+        ): Boolean
+    }
+
+    interface RetryScheduler {
+        fun schedule(context: Context?)
+
+        fun cancel(context: Context?)
     }
 
     fun interface JobFinisher {
@@ -89,11 +141,75 @@ class AutoSyncJobService : JobService {
     }
 
     fun interface AutoSyncTask {
-        fun run(params: JobParameters?)
+        fun run(run: JobRun)
     }
 
     fun interface JobFinisherFactory {
         fun create(service: AutoSyncJobService): JobFinisher
+    }
+
+    fun interface CompletionGate {
+        /** Starts [completion] only if JobScheduler has not already stopped this run. */
+        fun complete(completion: Runnable): Boolean
+    }
+
+    class JobRun(@JvmField val params: JobParameters?) : CompletionGate {
+        @JvmField
+        val jobId: Int? = params?.jobId
+
+        internal val key: Int = jobKey(jobId)
+
+        private val lifecycleLock = Any()
+        private var stopped = false
+        private var completionStarted = false
+        private var completionPrepared = false
+        private var completionPending = false
+        private var completionRequiresReschedule = false
+
+        fun markStopped() {
+            markStoppedAndShouldReschedule()
+        }
+
+        fun markStoppedAndShouldReschedule(): Boolean {
+            synchronized(lifecycleLock) {
+                stopped = true
+                return !completionPrepared || completionRequiresReschedule
+            }
+        }
+
+        fun isStopped(): Boolean = synchronized(lifecycleLock) { stopped }
+
+        fun matches(other: JobParameters?): Boolean = jobIdsMatch(jobId, other?.jobId)
+
+        fun markCompletionPending(needsReschedule: Boolean) {
+            synchronized(lifecycleLock) {
+                completionPending = true
+                completionRequiresReschedule = needsReschedule
+            }
+        }
+
+        fun markCompletionDelivered() {
+            synchronized(lifecycleLock) {
+                completionPending = false
+                completionRequiresReschedule = false
+            }
+        }
+
+        fun hasPendingCompletion(): Boolean = synchronized(lifecycleLock) { completionPending }
+
+        override fun complete(completion: Runnable): Boolean {
+            synchronized(lifecycleLock) {
+                if (stopped || completionStarted) {
+                    return false
+                }
+                completionStarted = true
+            }
+            completion.run()
+            synchronized(lifecycleLock) {
+                completionPrepared = true
+            }
+            return true
+        }
     }
 
     companion object {
@@ -103,27 +219,65 @@ class AutoSyncJobService : JobService {
         }
 
         @JvmStatic
+        internal fun jobIdsMatch(expected: Int?, actual: Int?): Boolean = expected == actual
+
+        @JvmStatic
+        internal fun jobKey(jobId: Int?): Int = jobId ?: Int.MIN_VALUE
+
+        @JvmStatic
         fun runAutoSync(
             context: Context,
             params: JobParameters?,
             cancellation: SyncCancellation,
             finisher: JobFinisher,
         ) {
+            runAutoSync(
+                context,
+                params,
+                cancellation,
+                CompletionGate { completion ->
+                    if (cancellation.isStopped()) {
+                        false
+                    } else {
+                        completion.run()
+                        true
+                    }
+                },
+                finisher,
+            )
+        }
+
+        private fun runAutoSync(
+            context: Context,
+            params: JobParameters?,
+            cancellation: SyncCancellation,
+            completionGate: CompletionGate,
+            finisher: JobFinisher,
+        ) {
             val store = LocalStore(context)
+            var result: AutoSyncRunner.Result? = null
             try {
-                AutoSyncRunner(context, store, AnkiDroidGateway(context, cancellation)).run()
+                result = AutoSyncRunner(context, store, AnkiDroidGateway(context, cancellation)).run()
             } finally {
-                // Evaluate stopped at completion time so a job stopped mid-sync requests
-                // a reschedule with the fresh state, not the pre-sync value.
                 finishJob(
                     context,
                     params,
-                    cancellation.isStopped(),
+                    result?.retryable == true,
+                    completionGate,
                     SettingsReader { store.autoSyncSettings() },
                     StoreCloser { store.close() },
-                    Scheduler { appContext, settings ->
-                        appContext ?: return@Scheduler
-                        AutoSyncScheduler.schedule(appContext, store, settings)
+                    Scheduler { appContext, settings, currentJobId ->
+                        appContext ?: return@Scheduler false
+                        AutoSyncScheduler.scheduleNext(appContext, store, settings, currentJobId)
+                    },
+                    object : RetryScheduler {
+                        override fun schedule(context: Context?) {
+                            context?.let(AutoSyncRetryScheduler::scheduleAndAwait)
+                        }
+
+                        override fun cancel(context: Context?) {
+                            context?.let(AutoSyncRetryScheduler::cancelAndAwait)
+                        }
                     },
                     finisher,
                 )
@@ -138,8 +292,8 @@ class AutoSyncJobService : JobService {
         }
 
         @JvmStatic
-        fun stopJob(): Boolean {
-            return true
+        fun stopJob(shouldReschedule: Boolean): Boolean {
+            return shouldReschedule
         }
 
         @JvmStatic
@@ -151,20 +305,55 @@ class AutoSyncJobService : JobService {
         fun finishJob(
             context: Context?,
             params: JobParameters?,
-            stopped: Boolean,
+            retryable: Boolean,
+            completionGate: CompletionGate,
             settingsReader: SettingsReader,
             storeCloser: StoreCloser,
             scheduler: Scheduler,
+            retryScheduler: RetryScheduler,
             finisher: JobFinisher,
         ) {
-            try {
-                val settings = settingsReader.autoSyncSettings()
-                if (settings.enabled) {
-                    scheduler.schedule(context, settings)
+            val completed = completionGate.complete {
+                var needsReschedule = false
+                try {
+                    val settings = settingsReader.autoSyncSettings()
+                    if (settings.enabled) {
+                        // Use the alternate ID so persisting tomorrow's job does not
+                        // stop the currently executing JobScheduler entry.
+                        needsReschedule = !scheduler.schedule(context, settings, params?.jobId)
+                    }
+                    if (settings.enabled && retryable) {
+                        retryScheduler.schedule(context)
+                    } else {
+                        retryScheduler.cancel(context)
+                    }
+                } catch (error: Exception) {
+                    needsReschedule = true
+                    warn("Could not persist automatic sync continuation.", error)
                 }
-            } finally {
+                try {
+                    storeCloser.close()
+                } catch (error: Exception) {
+                    needsReschedule = true
+                    warn("Could not close the automatic sync store.", error)
+                }
+                // WorkManager persistence is confirmed before releasing the
+                // current job's component lifetime. If continuation setup failed
+                // or timed out, ask JobScheduler for prompt recovery instead.
+                finisher.jobFinished(params, needsReschedule)
+            }
+            if (!completed) {
+                // onStopJob returning true owns the interrupted-run reschedule and
+                // JobService explicitly forbids a subsequent jobFinished call.
                 storeCloser.close()
-                finisher.jobFinished(params, stopped)
+            }
+        }
+
+        private fun warn(message: String, error: Throwable) {
+            try {
+                Log.w("AutoSyncJobService", message, error)
+            } catch (_: RuntimeException) {
+                // Android Log is unavailable in local JVM tests.
             }
         }
     }

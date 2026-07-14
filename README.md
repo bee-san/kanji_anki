@@ -94,13 +94,13 @@ Other product areas:
 
 - Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
 - Jiten kanji frequency ranks are bundled offline for filtering.
-- Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync.
+- Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync and gives explicitly transient failures three bounded follow-up attempts.
 - Releases are signed and published with APK and SHA-256 checksum artifacts.
 
 ## Product Contract
 
 - Manual sync reads AnkiDroid's exported flashcard provider.
-- Daily auto sync starts after the first successful manual sync and uses the same provider sync path.
+- Daily auto sync starts after the first successful manual sync, uses the same provider sync path, and follows the documented [bounded retry and JobService lifecycle contract](docs/auto-sync-reliability.md).
 - The expected note type is `Kiku`, with the `Mining` card template.
 - Required fields are `Expression`, `ExpressionReading`, `MainDefinition`, `Sentence`, `Frequency`, and `FreqSort`.
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.

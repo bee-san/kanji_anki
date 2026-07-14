@@ -62,6 +62,7 @@ class AutoSyncRunnerInstrumentedTest {
         ).run()
 
         assertFalse(result.ran)
+        assertFalse(result.retryable)
         assertEquals("Daily sync is off.", result.message)
         assertEquals(0, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
@@ -85,6 +86,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertTrue(result.ran)
         assertTrue(result.success)
+        assertFalse(result.retryable)
         val sync = store.latestSync()!!
         assertEquals("success", sync.status)
         assertEquals(now, sync.finishedAt)
@@ -120,6 +122,7 @@ class AutoSyncRunnerInstrumentedTest {
         ).run()
 
         assertFalse(result.ran)
+        assertFalse(result.retryable)
         assertEquals("AnkiDroid already synced today.", result.message)
         assertEquals(0, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
@@ -143,6 +146,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertTrue(result.ran)
         assertFalse(result.success)
+        assertFalse(result.retryable)
         val auto = store.autoSyncSettings()
         assertEquals(now, auto.lastAttemptAt)
         assertEquals(0L, auto.lastSuccessAt)
@@ -166,6 +170,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertTrue(result.ran)
         assertFalse(result.success)
+        assertTrue(result.retryable)
         assertEquals("AnkiDroid returned no configured note cursor.", result.message)
         val auto = store.autoSyncSettings()
         assertEquals(now, auto.lastAttemptAt)
@@ -215,6 +220,7 @@ class AutoSyncRunnerInstrumentedTest {
 
         assertFalse(result.ran)
         assertFalse(result.success)
+        assertTrue(result.retryable)
         assertEquals("Sync already running.", result.message)
         val auto = store.autoSyncSettings()
         assertEquals(0L, auto.lastAttemptAt)

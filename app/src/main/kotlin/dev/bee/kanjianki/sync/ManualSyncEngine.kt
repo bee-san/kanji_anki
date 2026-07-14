@@ -123,7 +123,7 @@ internal class ManualSyncEngine {
 
     fun run(): SyncResult {
         if (!RUNNING.compareAndSet(false, true)) {
-            return SyncResult.skipped("Sync already running.")
+            return SyncResult.skipped("Sync already running.", retryable = true)
         }
         try {
             return runLocked()
@@ -327,7 +327,15 @@ internal class ManualSyncEngine {
                 if (error.permanentFailure) "permanent" else "retryable",
                 error,
             )
-            return SyncResult.create(false, false, 0, 0, error.message, "")
+            return SyncResult.create(
+                false,
+                false,
+                0,
+                0,
+                error.message,
+                "",
+                retryable = !error.permanentFailure,
+            )
         } catch (error: Exception) {
             committedState?.let { committed ->
                 return committedFailureResult(committed, committedMessage, error)
@@ -565,6 +573,14 @@ internal class ManualSyncEngine {
         @JvmField
         var adaptiveFocusText: String = ""
 
+        /**
+         * True only when another automatic attempt can reasonably succeed without
+         * user intervention. Unexpected runtime failures stay terminal even though
+         * their historical sync-run row retains the legacy `retryable_error` label.
+         */
+        @JvmField
+        var retryable: Boolean = false
+
         companion object {
             @JvmStatic
             internal fun create(
@@ -576,6 +592,7 @@ internal class ManualSyncEngine {
                 adaptiveSummary: String?,
                 studyReadyCount: Int = 0,
                 adaptiveFocusText: String = "",
+                retryable: Boolean = false,
             ): SyncResult {
                 return SyncResult(
                     success,
@@ -587,12 +604,15 @@ internal class ManualSyncEngine {
                 ).apply {
                     this.studyReadyCount = studyReadyCount
                     this.adaptiveFocusText = adaptiveFocusText
+                    this.retryable = retryable
                 }
             }
 
             @JvmStatic
-            internal fun skipped(message: String): SyncResult {
-                return SyncResult(false, true, 0, 0, message, "")
+            internal fun skipped(message: String, retryable: Boolean = false): SyncResult {
+                return SyncResult(false, true, 0, 0, message, "").apply {
+                    this.retryable = retryable
+                }
             }
         }
     }

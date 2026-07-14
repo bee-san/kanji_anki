@@ -57,30 +57,49 @@ internal class AutoSyncRunner @JvmOverloads constructor(
             return Result.success(sync.message ?: "")
         }
         if (sync.skipped) {
-            return Result.skipped(sync.message ?: "")
+            return if (sync.retryable) {
+                Result.deferred(sync.message ?: "")
+            } else {
+                Result.skipped(sync.message ?: "")
+            }
         }
-        return Result.failed(sync.message ?: "")
+        return if (sync.retryable) {
+            Result.retryableFailure(sync.message ?: "")
+        } else {
+            Result.failed(sync.message ?: "")
+        }
     }
 
     class Result private constructor(
         @JvmField val ran: Boolean,
         @JvmField val success: Boolean,
         @JvmField val message: String,
+        @JvmField val retryable: Boolean,
     ) {
         companion object {
             @JvmStatic
             fun success(message: String): Result {
-                return Result(true, true, message)
+                return Result(true, true, message, false)
             }
 
             @JvmStatic
             fun failed(message: String): Result {
-                return Result(true, false, message)
+                return Result(true, false, message, false)
+            }
+
+            @JvmStatic
+            fun retryableFailure(message: String): Result {
+                return Result(true, false, message, true)
+            }
+
+            @JvmStatic
+            fun deferred(message: String): Result {
+                return Result(false, false, message, true)
             }
 
             @JvmStatic
             fun skipped(message: String): Result {
-                return Result(false, false, message)
+                return Result(false, false, message, false)
             }
         }
     }

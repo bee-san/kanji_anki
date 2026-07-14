@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.data.LocalStore
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -34,15 +35,15 @@ class AutoSyncJobServiceInstrumentedTest {
         val service = AutoSyncJobService(
             AutoSyncJobService.JobExecutor { job -> job.run() },
             AutoSyncJobService.Shutdown { shutdown.set(true) },
-            AutoSyncJobService.AutoSyncTask { params ->
-                assertNull(params)
+            AutoSyncJobService.AutoSyncTask { run ->
+                assertNull(run.params)
                 executed.set(true)
             },
         )
 
         assertTrue(service.onStartJob(null))
         assertTrue(executed.get())
-        assertTrue(service.onStopJob(null))
+        assertFalse(service.onStopJob(null))
         service.onDestroy()
         assertTrue(shutdown.get())
 
@@ -50,14 +51,16 @@ class AutoSyncJobServiceInstrumentedTest {
             null,
             null,
             true,
+            AutoSyncJobService.JobRun(null).apply { markStopped() },
             AutoSyncJobService.SettingsReader {
                 dev.bee.kanjianki.data.LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
             },
             AutoSyncJobService.StoreCloser { },
-            AutoSyncJobService.Scheduler { _, _ -> },
+            AutoSyncJobService.Scheduler { _, _, _ -> true },
+            noOpRetryScheduler(),
             AutoSyncJobService.JobFinisher { _, needsReschedule -> stoppedValue.set(needsReschedule) },
         )
-        assertTrue(stoppedValue.get() == true)
+        assertNull(stoppedValue.get())
     }
 
     @Test
@@ -82,13 +85,13 @@ class AutoSyncJobServiceInstrumentedTest {
     }
 
     @Test
-    fun runAutoSyncReschedulesWhenStoppedMidRun() {
+    fun runAutoSyncDoesNotFinishAfterBeingStopped() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase(DATABASE_NAME)
         val stoppedValue = AtomicReference<Boolean?>(null)
         try {
-            // Cancellation that is already stopped at completion time; the reschedule
-            // flag must reflect the stopped state rather than a captured pre-run value.
+            // onStopJob's true return value owns rescheduling, so a stopped run must
+            // not invoke jobFinished at all.
             AutoSyncJobService.runAutoSync(
                 context,
                 null,
@@ -98,7 +101,7 @@ class AutoSyncJobServiceInstrumentedTest {
             context.deleteDatabase(DATABASE_NAME)
         }
 
-        assertTrue(stoppedValue.get() == true)
+        assertNull(stoppedValue.get())
     }
 
     @Test
@@ -144,10 +147,11 @@ class AutoSyncJobServiceInstrumentedTest {
         try {
             val method: Method = AutoSyncJobService::class.java.getDeclaredMethod(
                 "runAutoSync",
-                android.app.job.JobParameters::class.java,
+                AutoSyncJobService.JobRun::class.java,
             )
             method.isAccessible = true
-            method.invoke(service, *arrayOfNulls<Any?>(1))
+            method.invoke(service, AutoSyncJobService.JobRun(null))
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         } finally {
             replaceJobFinisherFactory(originalFactory)
             service.onDestroy()
@@ -167,14 +171,15 @@ class AutoSyncJobServiceInstrumentedTest {
         val service = AutoSyncJobService()
         attachBaseContext(service, context)
         replaceField(service, "executor", AutoSyncJobService.JobExecutor { job -> job.run() })
+        val originalFactory = replaceJobFinisherFactory {
+            AutoSyncJobService.JobFinisher { _, _ -> }
+        }
 
         try {
             service.onStartJob(null)
-        } catch (error: RuntimeException) {
-            // Framework JobService can reject null JobParameters after the real
-            // sync path has reached jobFinished; this test owns the bound task path.
-            assertTrue(stackContains(error, "android.app.job.JobService", "jobFinished"))
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         } finally {
+            replaceJobFinisherFactory(originalFactory)
             service.onDestroy()
             context.deleteDatabase(DATABASE_NAME)
         }
@@ -203,12 +208,12 @@ class AutoSyncJobServiceInstrumentedTest {
         return previous
     }
 
-    private fun stackContains(error: Throwable, className: String, methodName: String): Boolean {
-        for (element in error.stackTrace) {
-            if (className == element.className && methodName == element.methodName) {
-                return true
-            }
+    private fun noOpRetryScheduler(): AutoSyncJobService.RetryScheduler {
+        return object : AutoSyncJobService.RetryScheduler {
+            override fun schedule(context: Context?) = Unit
+
+            override fun cancel(context: Context?) = Unit
         }
-        return false
     }
+
 }

@@ -9,6 +9,38 @@ import java.util.Calendar
 
 class AutoSyncSchedulerTest {
     @Test
+    fun retryWorkIsCancelledOnlyWhenDailySyncCannotNeedIt() {
+        assertTrue(AutoSyncScheduler.shouldCancelRetry(null, false))
+        assertTrue(AutoSyncScheduler.shouldCancelRetry(settings(false, 8, 30), false))
+        assertTrue(AutoSyncScheduler.shouldCancelRetry(settings(true, 8, 30), true))
+        assertFalse(AutoSyncScheduler.shouldCancelRetry(settings(true, 8, 30), false))
+    }
+
+    @Test
+    fun nextDailyJobAlternatesAwayFromTheExecutingId() {
+        assertEquals(
+            AutoSyncScheduler.SECONDARY_JOB_ID,
+            AutoSyncScheduler.nextJobId(AutoSyncScheduler.PRIMARY_JOB_ID),
+        )
+        assertEquals(
+            AutoSyncScheduler.PRIMARY_JOB_ID,
+            AutoSyncScheduler.nextJobId(AutoSyncScheduler.SECONDARY_JOB_ID),
+        )
+        assertEquals(AutoSyncScheduler.PRIMARY_JOB_ID, AutoSyncScheduler.nextJobId(null))
+    }
+
+    @Test
+    fun existingDailyJobIsKeptWhenCurrentOrAlreadyDue() {
+        val now = 10_000L
+
+        assertTrue(AutoSyncScheduler.shouldKeepExistingJob(20_000L, 20_000L, now, false))
+        assertTrue(AutoSyncScheduler.shouldKeepExistingJob(9_000L, 30_000L, now, false))
+        assertFalse(AutoSyncScheduler.shouldKeepExistingJob(0L, 30_000L, now, false))
+        assertFalse(AutoSyncScheduler.shouldKeepExistingJob(20_000L, 30_000L, now, false))
+        assertFalse(AutoSyncScheduler.shouldKeepExistingJob(9_000L, 30_000L, now, true))
+    }
+
+    @Test
     fun scheduleWithStateCancelsAndClearsWhenDisabledOrMissing() {
         val recorder = Recorder()
         val backend = Backend()
@@ -32,8 +64,15 @@ class AutoSyncSchedulerTest {
         val recorder = Recorder()
         val backend = Backend()
 
-        AutoSyncScheduler.scheduleWithState(settings(true, 8, 30), now, false, recorder, backend)
+        val scheduled = AutoSyncScheduler.scheduleWithState(
+            settings(true, 8, 30),
+            now,
+            false,
+            recorder,
+            backend,
+        )
 
+        assertTrue(scheduled)
         assertTrue(backend.scheduleCalled)
         assertEquals(nowAt(8, 30), recorder.nextRunAt)
         assertEquals(45L * 60L * 1000L, backend.minimumLatencyMillis)
@@ -57,15 +96,29 @@ class AutoSyncSchedulerTest {
         val backend = Backend()
         backend.scheduleResult = false
 
-        AutoSyncScheduler.scheduleWithState(settings(true, 8, 30), nowAt(7, 45), false, recorder, backend)
+        val rejected = AutoSyncScheduler.scheduleWithState(
+            settings(true, 8, 30),
+            nowAt(7, 45),
+            false,
+            recorder,
+            backend,
+        )
+        assertFalse(rejected)
         assertEquals(0L, recorder.nextRunAt)
 
         backend.scheduleResult = true
         backend.throwOnSchedule = true
         recorder.nextRunAt = 123L
 
-        AutoSyncScheduler.scheduleWithState(settings(true, 8, 30), nowAt(7, 45), false, recorder, backend)
+        val failed = AutoSyncScheduler.scheduleWithState(
+            settings(true, 8, 30),
+            nowAt(7, 45),
+            false,
+            recorder,
+            backend,
+        )
 
+        assertFalse(failed)
         assertEquals(0L, recorder.nextRunAt)
     }
 

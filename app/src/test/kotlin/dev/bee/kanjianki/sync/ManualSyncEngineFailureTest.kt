@@ -62,6 +62,7 @@ class ManualSyncEngineFailureTest {
         val result = engine(ThrowingGateway(AnkiDroidGateway.SyncFailure.permanent("bad config"))).run()
 
         assertFalse(result.success)
+        assertFalse(result.retryable)
         assertEquals("config_error" to "permanent", latestSyncRun())
     }
 
@@ -70,6 +71,7 @@ class ManualSyncEngineFailureTest {
         val result = engine(ThrowingGateway(AnkiDroidGateway.SyncFailure.retryable("try later"))).run()
 
         assertFalse(result.success)
+        assertTrue(result.retryable)
         assertEquals("retryable_error" to "retryable", latestSyncRun())
     }
 
@@ -78,6 +80,7 @@ class ManualSyncEngineFailureTest {
         val result = engine(ThrowingGateway(IllegalStateException("boom"))).run()
 
         assertFalse(result.success)
+        assertFalse(result.retryable)
         assertEquals("retryable_error" to "unexpected", latestSyncRun())
     }
 

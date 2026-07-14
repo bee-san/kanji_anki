@@ -58,17 +58,30 @@ class SyncSettingsCoverageTest {
         val success = autoSyncResult("success", "Sync complete.")
         assertTrue(success.ran)
         assertTrue(success.success)
+        assertFalse(success.retryable)
         assertEquals("Sync complete.", success.message)
 
         val failed = autoSyncResult("failed", "Provider missing.")
         assertTrue(failed.ran)
         assertFalse(failed.success)
+        assertFalse(failed.retryable)
         assertEquals("Provider missing.", failed.message)
 
         val skipped = autoSyncResult("skipped", "Daily sync is off.")
         assertFalse(skipped.ran)
         assertFalse(skipped.success)
+        assertFalse(skipped.retryable)
         assertEquals("Daily sync is off.", skipped.message)
+
+        val retryable = autoSyncResult("retryableFailure", "Provider locked.")
+        assertTrue(retryable.ran)
+        assertFalse(retryable.success)
+        assertTrue(retryable.retryable)
+
+        val deferred = autoSyncResult("deferred", "Sync already running.")
+        assertFalse(deferred.ran)
+        assertFalse(deferred.success)
+        assertTrue(deferred.retryable)
     }
 
     @Test
