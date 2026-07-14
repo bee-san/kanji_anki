@@ -158,6 +158,57 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         }
     }
 
+    override fun searchKanji(query: String?, limit: Int): List<KanjiEntry> {
+        val normalized = normalize(query).lowercase(java.util.Locale.ROOT).trim()
+        if (normalized.isEmpty()) return emptyList()
+        val boundedLimit = limit.coerceIn(1, 300)
+        return try {
+            val results = ArrayList<KanjiEntry>()
+            val db = readableDatabase()
+            if (normalized.length == 1) {
+                val exact = queryKanji(normalized)
+                if (exact != null) results.add(exact)
+            }
+            val likePattern = "%$normalized%"
+            db.rawQuery(
+                """SELECT * FROM kanji
+                   WHERE meanings LIKE ? OR on_readings LIKE ? OR kun_readings LIKE ? OR literal = ?
+                   ORDER BY
+                     CASE WHEN literal = ? THEN 0 ELSE 1 END,
+                     CASE WHEN jiten_rank IS NOT NULL THEN jiten_rank ELSE 99999 END,
+                     literal
+                   LIMIT ?""",
+                arrayOf(likePattern, likePattern, likePattern, normalized, normalized, boundedLimit.toString())
+            ).use { cursor ->
+                val seen = HashSet<String>()
+                results.forEach { seen.add(it.literal) }
+                while (cursor.moveToNext() && results.size < boundedLimit) {
+                    val entry = KanjiEntry(
+                        KanjiEntryFields(
+                            string(cursor, COLUMN_LITERAL),
+                            splitList(string(cursor, "meanings")),
+                            splitList(string(cursor, "on_readings")),
+                            splitList(string(cursor, "kun_readings")),
+                            splitList(string(cursor, "nanori_readings")),
+                            integer(cursor, "stroke_count"),
+                            integer(cursor, "grade"),
+                            integer(cursor, "radical"),
+                            integer(cursor, "kanjidic_frequency"),
+                            nullableInteger(cursor, "jiten_rank")
+                        )
+                    )
+                    if (seen.add(entry.literal)) {
+                        results.add(entry)
+                    }
+                }
+            }
+            results
+        } catch (_: SQLiteException) {
+            invalidateConnection()
+            emptyList()
+        }
+    }
+
     private fun readableDatabase(): SQLiteDatabase {
         readDatabase?.let { if (it.isOpen) return it }
         synchronized(connectionLock) {

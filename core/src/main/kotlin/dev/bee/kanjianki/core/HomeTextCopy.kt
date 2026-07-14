@@ -521,6 +521,30 @@ object HomeTextCopy {
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
+    fun browseAllKanjiScopeLabel(): String = localizedText("All kanji", "全漢字")
+
+    @JvmStatic
+    fun browseInYourDeckMarker(): String = localizedText("In your deck", "デッキに登録済み")
+
+    @JvmStatic
+    fun browseNotInDeckLine(): String = localizedText("This kanji is not in your deck.", "この漢字はデッキに登録されていません。")
+
+    @JvmStatic
+    fun browseDictionaryPanelTitle(): String = localizedText("Dictionary", "辞書")
+
+    @JvmStatic
+    fun localizedStrokeCount(count: Int): String = localizedText("Strokes: $count", "画数: $count")
+
+    @JvmStatic
+    fun localizedGrade(grade: Int): String = localizedText("Grade: $grade", "学年: $grade")
+
+    @JvmStatic
+    fun localizedJitenRank(rank: Int?): String {
+        if (rank == null) return ""
+        return localizedText("Jiten rank: $rank", "字典ランク: $rank")
+    }
+
+    @JvmStatic
     fun confusedWithTitle(): String = localizedText("Confused with", "混同しやすい漢字")
 
     @JvmStatic

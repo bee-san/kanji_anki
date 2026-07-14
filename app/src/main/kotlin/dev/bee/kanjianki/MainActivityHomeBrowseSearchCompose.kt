@@ -91,6 +91,7 @@ internal fun browseScreenModel(
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>,
     onlySimilarKanji: Boolean = false,
+    allKanjiScope: Boolean = false,
 ): BrowseScreenModel {
     val screenData = buildBrowseScreenData(items) { item ->
         browseKanjiRowModel(activity, query, onlySimilarKanji, item)
@@ -100,8 +101,10 @@ internal fun browseScreenModel(
         resultHeading = HomeTextCopy.browseResultHeading(screenData.rows.size),
         rows = screenData.rows,
         similarFilterActive = onlySimilarKanji,
+        allKanjiScope = allKanjiScope,
         studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(screenData.studiedCount, screenData.rows.size),
         onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
+        onToggleAllKanjiScope = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, true) },
         onSelectAllStudied = {
             activity.store.setKanjiLocallySuspendedForKanji(screenData.kanjiList, false, System.currentTimeMillis())
             activity.renderBrowseKanji(query, onlySimilarKanji)
@@ -112,6 +115,49 @@ internal fun browseScreenModel(
         },
         onHome = activity::renderHome,
         onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji) }
+    )
+}
+
+internal fun allKanjiBrowseScreenModel(
+    activity: MainActivityHome,
+    query: String,
+): BrowseScreenModel {
+    val dictionary = activity.warmDictionaryLookup()
+    val entries = dictionary.searchKanji(query, 300)
+    val inventoryKanji = activity.store.searchKanjiInventory("", false).map { it.kanji }.toSet()
+    val rows = entries.map { entry ->
+        BrowseKanjiRowModel(
+            kanji = entry.literal,
+            meaning = if (entry.meanings.isEmpty()) "" else entry.meanings[0],
+            readings = entry.firstReading(),
+            summary = if (inventoryKanji.contains(entry.literal)) HomeTextCopy.browseInYourDeckMarker() else "",
+            contentDescription = browseKanjiRowDescription(
+                kanji = entry.literal,
+                meaning = if (entry.meanings.isEmpty()) "" else entry.meanings[0],
+                readings = entry.firstReading(),
+                summary = "",
+                studied = false,
+                suspended = false,
+            ),
+            suspended = false,
+            studied = false,
+            onClick = {
+                if (inventoryKanji.contains(entry.literal)) {
+                    activity.renderDetail(entry.literal, true, query)
+                } else {
+                    activity.renderReadOnlyDetail(entry.literal, query)
+                }
+            }
+        )
+    }
+    return BrowseScreenModel(
+        initialQuery = query,
+        resultHeading = HomeTextCopy.browseResultHeading(rows.size),
+        rows = rows,
+        allKanjiScope = true,
+        onToggleAllKanjiScope = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, false) },
+        onHome = activity::renderHome,
+        onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, true) }
     )
 }
 
@@ -211,12 +257,34 @@ fun BrowseScreen(model: BrowseScreenModel) {
     }
 }
 
+internal fun browseAllKanjiScopeTestTag(): String = "browse-all-kanji-scope"
+
 @Composable
 private fun BrowseStudyControls(model: BrowseScreenModel, query: String) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        OutlinedButton(
+            onClick = { model.onToggleAllKanjiScope(query) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .testTag(browseAllKanjiScopeTestTag()),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (model.allKanjiScope) BrowseTeal else BrowseWhite,
+                contentColor = if (model.allKanjiScope) BrowseWhite else BrowseTeal,
+            ),
+            border = BorderStroke(1.dp, BrowseTeal),
+        ) {
+            Text(
+                text = HomeTextCopy.browseAllKanjiScopeLabel(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        if (!model.allKanjiScope) {
         OutlinedButton(
             onClick = { model.onToggleSimilarFilter(query) },
             modifier = Modifier
@@ -236,44 +304,47 @@ private fun BrowseStudyControls(model: BrowseScreenModel, query: String) {
                 fontWeight = FontWeight.Bold
             )
         }
-        Text(
-            text = model.studySelectionSummary,
-            color = BrowseMuted,
-            fontSize = 14.sp
-        )
-        Row(modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(
-                onClick = model.onSelectAllStudied,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .testTag(browseSelectAllStudiedTestTag()),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, BrowseTeal),
-            ) {
-                Text(
-                    text = HomeTextCopy.browseSelectAllStudiedLabel(),
-                    color = BrowseTeal,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = model.onDeselectAllStudied,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .testTag(browseDeselectAllStudiedTestTag()),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, BrowseCoral),
-            ) {
-                Text(
-                    text = HomeTextCopy.browseDeselectAllStudiedLabel(),
-                    color = BrowseCoral,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
+        }
+        if (!model.allKanjiScope) {
+            Text(
+                text = model.studySelectionSummary,
+                color = BrowseMuted,
+                fontSize = 14.sp
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = model.onSelectAllStudied,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .testTag(browseSelectAllStudiedTestTag()),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, BrowseTeal),
+                ) {
+                    Text(
+                        text = HomeTextCopy.browseSelectAllStudiedLabel(),
+                        color = BrowseTeal,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = model.onDeselectAllStudied,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .testTag(browseDeselectAllStudiedTestTag()),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, BrowseCoral),
+                ) {
+                    Text(
+                        text = HomeTextCopy.browseDeselectAllStudiedLabel(),
+                        color = BrowseCoral,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
