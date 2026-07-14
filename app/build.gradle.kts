@@ -120,6 +120,14 @@ jacoco {
 }
 
 tasks.withType<Test>().configureEach {
+    // Robolectric unit tests memory-map the android-all resource bundle (FileMap)
+    // per sandbox. The app suite is large (1000+ tests) and runs in a single
+    // forked worker, so those mapped resources accumulate across the run and can
+    // exhaust the default worker heap on CI runners
+    // (java.lang.OutOfMemoryError at FileMap). Give the worker an explicit heap
+    // and periodically restart it so the mapped memory is reclaimed mid-run.
+    maxHeapSize = "2g"
+    forkEvery = 100L
     extensions.configure<JacocoTaskExtension>("jacoco") {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")
