@@ -111,16 +111,18 @@ class AutoSyncJobServiceTest {
             null,
             true,
             AutoSyncJobService.JobRun(null),
-            {
-                events += "settings"
-                LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L)
-            },
-            { events += "close" },
-            { _, _, _ ->
-                events += "daily"
-                true
-            },
-            retryScheduler(events),
+            AutoSyncJobService.CompletionActions(
+                {
+                    events += "settings"
+                    LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L)
+                },
+                { events += "close" },
+                { _, _, _ ->
+                    events += "daily"
+                    true
+                },
+                retryScheduler(events),
+            ),
             { _, needsReschedule ->
                 assertFalse(needsReschedule)
                 events += "finish"
@@ -140,13 +142,15 @@ class AutoSyncJobServiceTest {
             null,
             true,
             stoppedRun,
-            { throw AssertionError("stopped jobs must not read settings") },
-            { events += "close" },
-            { _, _, _ ->
-                events += "daily"
-                true
-            },
-            retryScheduler(events),
+            AutoSyncJobService.CompletionActions(
+                { throw AssertionError("stopped jobs must not read settings") },
+                { events += "close" },
+                { _, _, _ ->
+                    events += "daily"
+                    true
+                },
+                retryScheduler(events),
+            ),
             { _, _ -> events += "finish" },
         )
 
@@ -161,13 +165,15 @@ class AutoSyncJobServiceTest {
             null,
             false,
             AutoSyncJobService.JobRun(null),
-            { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
-            { terminalEvents += "close" },
-            { _, _, _ ->
-                terminalEvents += "daily"
-                true
-            },
-            retryScheduler(terminalEvents),
+            AutoSyncJobService.CompletionActions(
+                { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
+                { terminalEvents += "close" },
+                { _, _, _ ->
+                    terminalEvents += "daily"
+                    true
+                },
+                retryScheduler(terminalEvents),
+            ),
             { _, _ -> terminalEvents += "finish" },
         )
         assertEquals(listOf("daily", "cancel-retry", "close", "finish"), terminalEvents)
@@ -178,13 +184,15 @@ class AutoSyncJobServiceTest {
             null,
             true,
             AutoSyncJobService.JobRun(null),
-            { LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L) },
-            { disabledEvents += "close" },
-            { _, _, _ ->
-                disabledEvents += "daily"
-                true
-            },
-            retryScheduler(disabledEvents),
+            AutoSyncJobService.CompletionActions(
+                { LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L) },
+                { disabledEvents += "close" },
+                { _, _, _ ->
+                    disabledEvents += "daily"
+                    true
+                },
+                retryScheduler(disabledEvents),
+            ),
             { _, _ -> disabledEvents += "finish" },
         )
         assertEquals(listOf("cancel-retry", "close", "finish"), disabledEvents)
@@ -200,22 +208,24 @@ class AutoSyncJobServiceTest {
             null,
             true,
             AutoSyncJobService.JobRun(null),
-            { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
-            { events += "close" },
-            { _, _, _ ->
-                events += "daily"
-                true
-            },
-            object : AutoSyncJobService.RetryScheduler {
-                override fun schedule(context: android.content.Context?) {
-                    events += "retry"
-                    throw retryFailure
-                }
+            AutoSyncJobService.CompletionActions(
+                { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
+                { events += "close" },
+                { _, _, _ ->
+                    events += "daily"
+                    true
+                },
+                object : AutoSyncJobService.RetryScheduler {
+                    override fun schedule(context: android.content.Context?) {
+                        events += "retry"
+                        throw retryFailure
+                    }
 
-                override fun cancel(context: android.content.Context?) {
-                    events += "cancel-retry"
-                }
-            },
+                    override fun cancel(context: android.content.Context?) {
+                        events += "cancel-retry"
+                    }
+                },
+            ),
             { _, needsReschedule -> events += "finish-$needsReschedule" },
         )
 
@@ -231,13 +241,15 @@ class AutoSyncJobServiceTest {
             null,
             false,
             AutoSyncJobService.JobRun(null),
-            { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
-            { events += "close" },
-            { _, _, _ ->
-                events += "daily-rejected"
-                false
-            },
-            retryScheduler(events),
+            AutoSyncJobService.CompletionActions(
+                { LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L) },
+                { events += "close" },
+                { _, _, _ ->
+                    events += "daily-rejected"
+                    false
+                },
+                retryScheduler(events),
+            ),
             { _, needsReschedule -> events += "finish-$needsReschedule" },
         )
 

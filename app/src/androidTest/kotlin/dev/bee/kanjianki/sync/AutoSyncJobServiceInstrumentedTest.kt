@@ -52,12 +52,14 @@ class AutoSyncJobServiceInstrumentedTest {
             null,
             true,
             AutoSyncJobService.JobRun(null).apply { markStopped() },
-            AutoSyncJobService.SettingsReader {
-                dev.bee.kanjianki.data.LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
-            },
-            AutoSyncJobService.StoreCloser { },
-            AutoSyncJobService.Scheduler { _, _, _ -> true },
-            noOpRetryScheduler(),
+            AutoSyncJobService.CompletionActions(
+                AutoSyncJobService.SettingsReader {
+                    dev.bee.kanjianki.data.LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L)
+                },
+                AutoSyncJobService.StoreCloser { },
+                AutoSyncJobService.Scheduler { _, _, _ -> true },
+                noOpRetryScheduler(),
+            ),
             AutoSyncJobService.JobFinisher { _, needsReschedule -> stoppedValue.set(needsReschedule) },
         )
         assertNull(stoppedValue.get())

@@ -93,7 +93,7 @@ internal object AutoSyncRetryScheduler {
 
         private fun Operation.pendingOperation(): PendingOperation = PendingOperation {
             try {
-                result.get(PERSISTENCE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                result[PERSISTENCE_TIMEOUT_SECONDS, TimeUnit.SECONDS]
             } catch (interrupted: InterruptedException) {
                 Thread.currentThread().interrupt()
                 throw interrupted

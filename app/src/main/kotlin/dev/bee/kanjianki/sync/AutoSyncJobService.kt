@@ -153,6 +153,13 @@ class AutoSyncJobService : JobService {
         fun complete(completion: Runnable): Boolean
     }
 
+    class CompletionActions(
+        internal val settingsReader: SettingsReader,
+        internal val storeCloser: StoreCloser,
+        internal val scheduler: Scheduler,
+        internal val retryScheduler: RetryScheduler,
+    )
+
     class JobRun(@JvmField val params: JobParameters?) : CompletionGate {
         @JvmField
         val jobId: Int? = params?.jobId
@@ -264,21 +271,23 @@ class AutoSyncJobService : JobService {
                     params,
                     result?.retryable == true,
                     completionGate,
-                    SettingsReader { store.autoSyncSettings() },
-                    StoreCloser { store.close() },
-                    Scheduler { appContext, settings, currentJobId ->
-                        appContext ?: return@Scheduler false
-                        AutoSyncScheduler.scheduleNext(appContext, store, settings, currentJobId)
-                    },
-                    object : RetryScheduler {
-                        override fun schedule(context: Context?) {
-                            context?.let(AutoSyncRetryScheduler::scheduleAndAwait)
-                        }
+                    CompletionActions(
+                        SettingsReader { store.autoSyncSettings() },
+                        StoreCloser { store.close() },
+                        Scheduler { appContext, settings, currentJobId ->
+                            appContext ?: return@Scheduler false
+                            AutoSyncScheduler.scheduleNext(appContext, store, settings, currentJobId)
+                        },
+                        object : RetryScheduler {
+                            override fun schedule(context: Context?) {
+                                context?.let(AutoSyncRetryScheduler::scheduleAndAwait)
+                            }
 
-                        override fun cancel(context: Context?) {
-                            context?.let(AutoSyncRetryScheduler::cancelAndAwait)
-                        }
-                    },
+                            override fun cancel(context: Context?) {
+                                context?.let(AutoSyncRetryScheduler::cancelAndAwait)
+                            }
+                        },
+                    ),
                     finisher,
                 )
             }
@@ -307,32 +316,29 @@ class AutoSyncJobService : JobService {
             params: JobParameters?,
             retryable: Boolean,
             completionGate: CompletionGate,
-            settingsReader: SettingsReader,
-            storeCloser: StoreCloser,
-            scheduler: Scheduler,
-            retryScheduler: RetryScheduler,
+            actions: CompletionActions,
             finisher: JobFinisher,
         ) {
             val completed = completionGate.complete {
                 var needsReschedule = false
                 try {
-                    val settings = settingsReader.autoSyncSettings()
+                    val settings = actions.settingsReader.autoSyncSettings()
                     if (settings.enabled) {
                         // Use the alternate ID so persisting tomorrow's job does not
                         // stop the currently executing JobScheduler entry.
-                        needsReschedule = !scheduler.schedule(context, settings, params?.jobId)
+                        needsReschedule = !actions.scheduler.schedule(context, settings, params?.jobId)
                     }
                     if (settings.enabled && retryable) {
-                        retryScheduler.schedule(context)
+                        actions.retryScheduler.schedule(context)
                     } else {
-                        retryScheduler.cancel(context)
+                        actions.retryScheduler.cancel(context)
                     }
                 } catch (error: Exception) {
                     needsReschedule = true
                     warn("Could not persist automatic sync continuation.", error)
                 }
                 try {
-                    storeCloser.close()
+                    actions.storeCloser.close()
                 } catch (error: Exception) {
                     needsReschedule = true
                     warn("Could not close the automatic sync store.", error)
@@ -345,7 +351,7 @@ class AutoSyncJobService : JobService {
             if (!completed) {
                 // onStopJob returning true owns the interrupted-run reschedule and
                 // JobService explicitly forbids a subsequent jobFinished call.
-                storeCloser.close()
+                actions.storeCloser.close()
             }
         }
 
