@@ -12,7 +12,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
+import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
 import dev.bee.kanjianki.core.DailyStudyPlan
@@ -39,10 +41,13 @@ object ReminderScheduler {
     const val REMINDER_CHANNEL_ID = "kani_study_reminders"
     private const val CHANNEL_ID = REMINDER_CHANNEL_ID
     const val ACTION_REMINDER_DISMISSED: String = "dev.bee.kanjianki.action.REMINDER_DISMISSED"
+    const val ACTION_REMINDER_SNOOZED: String = "dev.bee.kanjianki.action.REMINDER_SNOOZED"
     const val EXTRA_REMINDER_FAMILY: String = "dev.bee.kanjianki.extra.REMINDER_FAMILY"
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val DISMISS_REQUEST_CODE = 2703
+    private const val STUDY_ACTION_REQUEST_CODE = 2704
+    private const val SNOOZE_ACTION_REQUEST_CODE = 2705
 
     @JvmStatic
     fun schedule(context: Context?) {
@@ -275,6 +280,24 @@ object ReminderScheduler {
                 open,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            val studyIntent = Intent(context, MainActivity::class.java)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+            val studyPendingIntent = PendingIntent.getActivity(
+                context,
+                STUDY_ACTION_REQUEST_CODE,
+                studyIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val snoozeIntent = Intent(context, ReminderReceiver::class.java)
+                .setAction(ACTION_REMINDER_SNOOZED)
+                .putExtra(EXTRA_REMINDER_FAMILY, plan.family ?: "")
+            val snoozePendingIntent = PendingIntent.getBroadcast(
+                context,
+                SNOOZE_ACTION_REQUEST_CODE,
+                snoozeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             val notification = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(plan.copy.title)
@@ -288,6 +311,8 @@ object ReminderScheduler {
                 .setOnlyAlertOnce(true)
                 .setDeleteIntent(dismissIntent(context, plan.family))
                 .setColor(Color.rgb(255, 76, 118))
+                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
+                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
                 .build()
             manager.notify(NOTIFICATION_ID, notification)
             store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)

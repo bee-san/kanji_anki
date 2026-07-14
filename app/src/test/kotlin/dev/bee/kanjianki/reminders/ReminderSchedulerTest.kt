@@ -615,6 +615,10 @@ class ReminderSchedulerTest {
         override fun handleReminderDismissed(family: String) {
             events.append("dismiss:$family")
         }
+
+        override fun handleReminderSnoozed(family: String) {
+            events.append("snooze:$family")
+        }
     }
 
     private class FakeRescheduleActions : BootReminderReceiver.RescheduleActions {

@@ -521,6 +521,12 @@ object HomeTextCopy {
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
+    fun reminderStudyNowAction(): String = localizedText("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun reminderSnoozeAction(): String = localizedText("Snooze 1h", "1時間後")
+
+    @JvmStatic
     fun browseAllKanjiScopeLabel(): String = localizedText("All kanji", "全漢字")
 
     @JvmStatic
