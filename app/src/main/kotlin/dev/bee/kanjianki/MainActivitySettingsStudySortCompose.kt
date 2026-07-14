@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -163,6 +164,9 @@ private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>, w
                 fontWeight = FontWeight.Bold,
             )
             rows.forEach { row ->
+                // The kanji glyph keeps its intrinsic width; the meaning and score share a
+                // single weighted column so long metadata can never squeeze the meaning
+                // into a sliver that wraps mid-word.
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = row.kanji,
@@ -171,17 +175,20 @@ private fun NewCardSortPreview(rows: List<SettingsNewCardSortPreviewRowModel>, w
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = row.primaryMeaning,
-                        color = StudySortInk,
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = row.scoreLabel,
-                        color = StudySortMuted,
-                        fontSize = 12.sp,
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = row.primaryMeaning,
+                            color = StudySortInk,
+                            fontSize = 14.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = row.scoreLabel,
+                            color = StudySortMuted,
+                            fontSize = 12.sp,
+                        )
+                    }
                 }
             }
             if (!warning.isNullOrBlank()) {
