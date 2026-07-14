@@ -66,6 +66,7 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/HomeScreenCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeSyncConfirmDialogCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/ProgressAnalyticsCompose.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/KaniBottomNavCompose.kt",
     "app/src/main/java/dev/bee/kanjianki/*View.java",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/java/dev/bee/kanjianki/SyncProgressPanel.java",
@@ -79,11 +80,13 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore.kt",
     "app/src/main/java/dev/bee/kanjianki/data/SettingsRepository.java",
     "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/data/DictionaryStore.kt",
     "app/src/main/java/dev/bee/kanjianki/reminders/*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/ReminderReceiverDailyActions.kt",
     "app/src/main/java/dev/bee/kanjianki/sync/*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/sync/*.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/widget/KaniWidget.kt",
 )
 val testSonarCoverageExclusions = listOf(
     "**/src/test/**",
