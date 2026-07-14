@@ -1095,7 +1095,6 @@ follows once the reference surface is stable.
 
 ## Status
 
-> **2026-07-14:** Plan authored. No goal started. Base-state line numbers
-> pinned to `63f40462` (branch `merge-pr-542`); re-verify symbols before
-> each goal. Goals 98–112 remain owned by
+> **2026-07-14:** Plan authored; all 16 goals (113–128) implemented on
+> branch `goals-113-128`. `ciFast` green. Goals 98–112 remain owned by
 > `plans/study-experience-settings-and-hardening-goals-2026-07-13.md`.
