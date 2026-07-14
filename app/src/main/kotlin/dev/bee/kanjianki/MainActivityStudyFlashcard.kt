@@ -284,7 +284,20 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     @Composable
     private fun ComposeFlashcardCard(route: ComposeFlashcardRouteModel) {
         val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
-            Runnable { activity.renderDetail(glyph, false, null, Runnable { renderComposeFlashcardRoute { route } }) }
+            Runnable {
+                if (activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery)) {
+                    activity.renderDetail(
+                        glyph,
+                        false,
+                        null,
+                        Runnable {
+                            if (activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery)) {
+                                renderComposeFlashcardRoute { route }
+                            }
+                        },
+                    )
+                }
+            }
         }
         StudyCardEnterTransition(cardToken = route.sessionToken) {
             FlashcardCard(

@@ -92,6 +92,15 @@ class StudyAnswerFeedbackState private constructor(
         return true
     }
 
+    /** Keep the mounted observable state retryable when the durable Continue transition loses CAS. */
+    fun rollbackContinue(): Boolean {
+        if (phase != StudyAnswerFeedbackPhase.CONTINUED) {
+            return false
+        }
+        phase = StudyAnswerFeedbackPhase.APPLIED
+        return true
+    }
+
     fun snapshot(): StudyAnswerFeedbackSnapshot {
         return StudyAnswerFeedbackSnapshot(sessionToken, phase, outcome, selectedAnswer)
     }

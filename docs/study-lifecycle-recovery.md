@@ -18,7 +18,8 @@ The envelope has two states:
   choice, a digest of its canonical choice set.
 - **Pending answer:** the feedback needed to keep an accepted answer visible until Continue. During
   submission it also retains the previous active state as a fallback if the database transaction is
-  rejected.
+  rejected. After Continue, an exact canonical pending answer becomes a short-lived **continued
+  handoff** until the normal scheduler route publishes the next card or terminal screen.
 
 Identity changes use synchronous `commit()` under one process-wide lock. Keystrokes update the
 in-process preference map with `apply()` to avoid synchronous disk I/O while typing; `onPause`, answer
@@ -73,6 +74,15 @@ answers, which predate family binding, are accepted only when the kanji has exac
 family. Targeted compatibility repairs keep their existing pending-answer path because they have no
 canonical `study_items` row.
 
+Continue does not delete a canonical pending envelope before the next route exists. It atomically
+changes `APPLIED` to `CONTINUED`, removes any submission fallback, and re-arms ordinary Study resume.
+On process restart, the handoff is valid only when `review_log` contains the exact token, kanji, task
+type, and answer signature. It never selects from the answered snapshot: the scheduler recomputes
+from current database rows, items, and settings. The next restorable card replaces that exact raw
+handoff with an active envelope; a nonrestorable card or terminal result conditionally clears it
+immediately before mounting. If another Activity, an explicit exit, or a replacement envelope wins
+the raw-value compare-and-set, the stale route result is discarded and recovery is recomputed.
+
 ## Route and exit behavior
 
 An ordinary launch resumes a valid active or pending Study envelope. Activity recreation also saves
@@ -91,6 +101,15 @@ Continue, and nested difference-screen callbacks validate that identity against 
 route; grading additionally requires the unanswered phase. A callback retained by a destroyed
 Activity therefore cannot grade or replace a newer session.
 
+The continued handoff follows the same exit rule. Home or another explicit destination makes the
+exact marker dormant, which defeats a late next-card publication. An explicit return to Study may
+claim and advance that dormant marker; an ordinary launch remains on Home. The explicit route
+re-arms a dormant marker synchronously before starting scheduler I/O, so a second exit necessarily
+rewrites the raw value and defeats that in-flight route's later compare-and-set.
+Once feedback enters `CONTINUED`, callbacks captured by the old card—including Browse, difference,
+back, rating, and undo actions—no longer match the mounted interactive route. They therefore cannot
+cancel the advancing load and remount a card whose Continue action has already been consumed.
+
 ## Current boundary
 
 This slice restores:
@@ -100,7 +119,8 @@ This slice restores:
 - the ungraded reveal state of plain recognition, font, word-reading, and sentence cards; and
 - an ungraded similar-kanji choice whose current persisted due source reproduces its canonical set,
   with deterministic token-bound display order; and
-- accepted/pending answer feedback that existed before this work.
+- accepted/pending answer feedback that existed before this work; and
+- the between-card crash window after Continue and before the next scheduler route is published.
 
 Other ungraded choice-card presentations, full run history and progress breakdown, task-timer
 position, open dialogs, hint state, and handwriting strokes are intentionally not encoded yet.
@@ -115,4 +135,6 @@ The regression surface is JVM/Robolectric only: envelope CAS/tombstone behavior,
 exact scheduler invalidation, startup precedence, process-style Activity reconstruction, typed draft
 restoration, plain reveal restoration, deterministic similar-choice ordering and digest validation,
 active and submitting-fallback recovery, stale callback rejection, and late completion after
-explicit exit. No device or emulator is required for this UI-lifecycle slice.
+explicit exit, plus continued-handoff process reconstruction, exact review-evidence rejection,
+terminal consumption, and raw-CAS next-card publication. No device or emulator is required for this
+UI-lifecycle slice.

@@ -527,16 +527,63 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun continueAfterStudyAnswer(): Boolean {
         val state = studyAnswerFeedbackState ?: return false
+        var pending = studyRecoveryStore.readPending()
+        val retryCanonicalPending = pending == null ||
+            (pending.snapshot.feedback.sessionToken == state.sessionToken &&
+                pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.SUBMITTING)
+        if (retryCanonicalPending && canCreateContinuedHandoff(state.sessionToken)) {
+            if (!persistPendingStudyAnswer(state)) return false
+            pending = studyRecoveryStore.readPending()
+                ?: return false
+        }
         if (!state.tryContinue()) {
             return false
         }
-        studyRecoveryStore.clearPending(state.sessionToken)
-        studyRecoveryRouteActive = false
+        val continued = when {
+            pending == null -> null
+            canPersistContinuedHandoff(pending) -> studyRecoveryStore.continuePending(pending)
+                ?: return restoreAppliedFeedbackAfterContinueFailure(state)
+            !canClearLegacyPendingAfterContinue(pending, state.sessionToken) ->
+                return restoreAppliedFeedbackAfterContinueFailure(state)
+            !studyRecoveryStore.clearIfUnchanged(pending) ->
+                return restoreAppliedFeedbackAfterContinueFailure(state)
+            else -> null
+        }
+        activeStudyRecovery = null
+        studyRecoveryRouteActive = continued != null
         if (activeSimilarWritingRepair != null) {
             activeSimilarWritingRepair = null
         }
         renderStudy()
         return true
+    }
+
+    private fun canPersistContinuedHandoff(pending: StoredPendingStudyRecovery): Boolean =
+        pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.APPLIED &&
+            pending.snapshot.feedback.sessionToken == studyAnswerFeedbackState?.sessionToken &&
+            pending.snapshot.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
+            pending.snapshot.answerSignature != null &&
+            pending.snapshot.schedulerRevision != null
+
+    private fun canClearLegacyPendingAfterContinue(
+        pending: StoredPendingStudyRecovery,
+        expectedToken: String,
+    ): Boolean = pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.APPLIED &&
+        pending.snapshot.feedback.sessionToken == expectedToken &&
+        (pending.snapshot.taskType == MainActivityBase.TASK_REPAIR_WRITING ||
+            pending.snapshot.answerSignature == null && pending.snapshot.schedulerRevision == null)
+
+    private fun canCreateContinuedHandoff(expectedToken: String): Boolean {
+        val session = activeSession ?: return false
+        val item = session.item ?: return false
+        return session.token == expectedToken &&
+            session.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
+            item.schedulerRevision >= 0L
+    }
+
+    private fun restoreAppliedFeedbackAfterContinueFailure(state: StudyAnswerFeedbackState): Boolean {
+        state.rollbackContinue()
+        return false
     }
 
     internal fun continueAfterStudyAnswer(
@@ -572,6 +619,17 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     internal fun clearStudyRecoveryIfUnchanged(stored: StoredStudyRecovery): Boolean =
         studyRecoveryStore.clearIfUnchanged(stored)
+
+    internal fun armContinuedStudyRecoveryForExplicitRoute(): Boolean {
+        if (preserveStudyRecoveryForHarnessRoute) return true
+        val stored = studyRecoveryStore.readPending() ?: return true
+        if (stored.snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
+            stored.resumeOnOrdinaryLaunch
+        ) {
+            return true
+        }
+        return studyRecoveryStore.claimContinued(stored) != null
+    }
 
     private fun persistPendingStudyAnswer(state: StudyAnswerFeedbackState): Boolean {
         val session = activeSession ?: return false
@@ -653,13 +711,14 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         latestSuccessfulSyncAtMillis: Long,
         supersededRecoveryToken: String? = null,
         similarChoiceSignatureDigest: String? = null,
-    ) {
-        activeSession = session
-        studyRecoveryRouteActive = true
-        recoveredStudyRunNeedsTargetReconciliation = false
+        advancingRecovery: StoredPendingStudyRecovery? = null,
+    ): Boolean {
         if (preserveStudyRecoveryForHarnessRoute) {
+            activeSession = session
+            studyRecoveryRouteActive = true
+            recoveredStudyRunNeedsTargetReconciliation = false
             activeStudyRecovery = null
-            return
+            return true
         }
         val item = session.item
         val destination = StudySessionRoute.destination(session)
@@ -667,24 +726,56 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             destination == StudySessionRoute.Destination.FLASHCARD ||
                 destination == StudySessionRoute.Destination.SIMILAR_KANJI && similarChoiceSignatureDigest != null
             )
-        if (!restorable) {
-            supersededRecoveryToken?.let(studyRecoveryStore::clearSession)
-            activeStudyRecovery = null
-            return
-        }
-        activeStudyRecovery = studyRecoveryStore.replaceWithActive(
+        val snapshot = item?.takeIf { restorable }?.let {
             StudyActiveSessionSnapshot(
                 sessionToken = session.token,
-                kanji = item.kanji,
-                answerSignatureDigest = studyAnswerSignatureDigest(item.answerSignature),
-                schedulerRevision = item.schedulerRevision,
-                routingVersion = item.routingVersion,
+                kanji = it.kanji,
+                answerSignatureDigest = studyAnswerSignatureDigest(it.answerSignature),
+                schedulerRevision = it.schedulerRevision,
+                routingVersion = it.routingVersion,
                 taskType = session.taskType,
                 promptSource = promptSource,
                 sourceSyncFinishedAtMillis = latestSuccessfulSyncAtMillis,
                 similarChoiceSignatureDigest = similarChoiceSignatureDigest,
-            ),
-        )
+            )
+        }
+        val storedActive = when {
+            advancingRecovery != null && snapshot != null ->
+                studyRecoveryStore.replaceContinuedWithActive(advancingRecovery, snapshot) ?: return false
+            advancingRecovery != null -> {
+                if (!studyRecoveryStore.clearIfUnchanged(advancingRecovery)) return false
+                null
+            }
+            snapshot != null -> studyRecoveryStore.replaceWithActive(snapshot)
+            else -> null
+        }
+        activeSession = session
+        studyRecoveryRouteActive = true
+        recoveredStudyRunNeedsTargetReconciliation = false
+        if (!restorable) {
+            supersededRecoveryToken?.let(studyRecoveryStore::clearSession)
+            activeStudyRecovery = null
+            return true
+        }
+        activeStudyRecovery = storedActive
+        return true
+    }
+
+    /** Conditionally consume an advancing marker before mounting a nonrestorable or terminal route. */
+    internal fun clearAdvancingStudyRecovery(
+        expected: StoredPendingStudyRecovery,
+        nextSession: RecordsSchedulerModels.StudySession?,
+    ): Boolean {
+        if (!studyRecoveryStore.clearIfUnchanged(expected)) return false
+        activeStudyRecovery = null
+        activeSession = nextSession
+        studyAnswerFeedbackState = null
+        studyRecoveryRouteActive = nextSession != null
+        recoveredStudyRunNeedsTargetReconciliation = false
+        if (nextSession == null) {
+            activeSimilarWritingRepair = null
+        }
+        return true
     }
 
     internal fun acceptRestoredActiveStudySession(
@@ -707,7 +798,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         snapshot: StudyPendingAnswerSnapshot,
         session: RecordsSchedulerModels.StudySession,
     ): Boolean {
-        val claimed = studyRecoveryStore.claimPending(stored, snapshot) ?: return false
+        val claimed = studyRecoveryStore.claimAppliedPending(stored, snapshot) ?: return false
         activeStudyRecovery = null
         activeSession = session
         restorePendingStudyAnswer(claimed.snapshot)
@@ -756,6 +847,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         expectedRecovery: StoredActiveStudyRecovery?,
     ): Boolean {
         if (activeSession?.token != expectedToken) return false
+        val feedback = studyAnswerFeedbackState
+        if (feedback?.sessionToken == expectedToken &&
+            feedback.snapshot().phase == StudyAnswerFeedbackPhase.CONTINUED
+        ) {
+            return false
+        }
         if (expectedRecovery == null || matchesActiveStudyRecovery(expectedRecovery)) return true
         return studyRecoveryStore.readPending()?.snapshot?.feedback?.sessionToken == expectedToken
     }

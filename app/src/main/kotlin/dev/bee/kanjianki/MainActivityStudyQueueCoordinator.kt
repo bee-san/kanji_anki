@@ -12,6 +12,10 @@ import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
     fun renderStudy(recoveryOnly: Boolean) {
+        if (!recoveryOnly && !study.armContinuedStudyRecoveryForExplicitRoute()) {
+            study.renderStudyRecoveryOnly()
+            return
+        }
         val feedback = study.studyAnswerFeedbackState
         val active = study.activeSession
         val feedbackPhase = feedback?.snapshot()?.phase
@@ -44,7 +48,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
      * renders the resulting screen when invoked on the main thread.
      */
     private fun computeStudyRender(recoveryOnly: Boolean): () -> Unit {
-        computeStoredRecoveryRender(recoveryOnly)?.let { return it }
+        val continued = inspectContinuedRecovery(recoveryOnly)
+        continued.render?.let { return it }
+        val advancingRecovery = continued.marker
+        if (advancingRecovery == null) {
+            computeStoredRecoveryRender(recoveryOnly)?.let { return it }
+        }
         val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
         val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
         val now = System.currentTimeMillis()
@@ -68,9 +77,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         if (rows.isEmpty()) {
             initializeSessionTarget(0)
             refreshSessionBadgeCount(studyNowCount(0, dueRepairs))
-            pendingRepairOrDoneRender(plan, now, ladder, currentItems, dueRepairs)?.let { return it }
+            pendingRepairOrDoneRender(plan, now, ladder, currentItems, dueRepairs, advancingRecovery)
+                ?.let { return it }
             refreshSessionBadgeCount(0)
-            return { study.renderEmptyStudyQueue() }
+            return terminalRender(advancingRecovery) { study.renderEmptyStudyQueue() }
         }
         val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
         val seededPlan = withStudyLoadProbe("studyPlanForMode#2") {
@@ -107,7 +117,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         refreshSessionBadgeCount(studyNowCount(studyItemCount, dueRepairs))
         initializeSessionTarget(studyItemCount)
-        pendingRepairOrDoneRender(seededPlan, now, ladder, seeded, dueRepairs)?.let { return it }
+        pendingRepairOrDoneRender(seededPlan, now, ladder, seeded, dueRepairs, advancingRecovery)
+            ?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         val session = withStudyLoadProbe("plannedStudySession") {
             StudySessionActions.plannedStudySession(
@@ -125,11 +136,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         if (session == null) {
             warmStudyDoneAvailability()
-            return { study.renderNoStudySession(seededPlan) }
+            return terminalRender(advancingRecovery) { study.renderNoStudySession(seededPlan) }
         }
         if (session.item == null) {
             warmStudyDoneAvailability()
-            return { study.renderNoStudySession(seededPlan) }
+            return terminalRender(advancingRecovery) { study.renderNoStudySession(seededPlan) }
         }
         StudySessionActions.activateStudySession(
             session,
@@ -145,13 +156,53 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return { study.renderStudy() }
         }
         return {
-            study.acceptNewActiveStudySession(
-                session,
-                StudyPromptSource.REASON_TEXT,
-                sourceSyncFinishedAt,
-                similarChoiceSignatureDigest = prepared.similarChoiceSignatureDigest,
+            if (study.acceptNewActiveStudySession(
+                    session,
+                    StudyPromptSource.REASON_TEXT,
+                    sourceSyncFinishedAt,
+                    similarChoiceSignatureDigest = prepared.similarChoiceSignatureDigest,
+                    advancingRecovery = advancingRecovery,
+                )
+            ) {
+                prepared()
+            } else {
+                study.renderStudyRecoveryOnly()
+            }
+        }
+    }
+
+    private fun inspectContinuedRecovery(recoveryOnly: Boolean): ContinuedRecoveryInspection {
+        if (study.preserveStudyRecoveryForHarnessRoute) return ContinuedRecoveryInspection()
+        val stored = study.pendingStudyRecovery() ?: return ContinuedRecoveryInspection()
+        val saved = stored.snapshot
+        if (saved.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED) {
+            return ContinuedRecoveryInspection()
+        }
+        if (!stored.resumeOnOrdinaryLaunch) {
+            return ContinuedRecoveryInspection(render = { study.renderHome() })
+        }
+        val signature = saved.answerSignature
+        val valid = stored.fallbackActive == null &&
+            stored.fallbackWriteEpoch == null &&
+            saved.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
+            signature != null &&
+            saved.schedulerRevision != null &&
+            study.store.hasMatchingConsumedReview(
+                saved.feedback.sessionToken,
+                saved.kanji,
+                saved.taskType,
+                signature,
             )
-            prepared()
+        if (valid) {
+            return ContinuedRecoveryInspection(marker = stored)
+        }
+        if (!study.clearStudyRecoveryIfUnchanged(stored)) {
+            return ContinuedRecoveryInspection(render = { study.renderStudyRecoveryOnly() })
+        }
+        return if (recoveryOnly) {
+            ContinuedRecoveryInspection(render = { study.renderHome() })
+        } else {
+            ContinuedRecoveryInspection()
         }
     }
 
@@ -416,6 +467,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         ladder: RecordsBase.StudyLadderSettings,
         items: List<RecordsStudyModels.StudyItem>,
         dueRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
+        advancingRecovery: StoredPendingStudyRecovery?,
     ): (() -> Unit)? {
         for (repair in dueRepairs) {
             study.studySessionTracker.includePendingTask(study.similarRepairProgressKey(repair))
@@ -450,7 +502,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             )
             // Use the same background preparation as every other session so the
             // current local mnemonic is loaded alongside dictionary/stroke assets.
-            return study.prepareSessionRender(session).render
+            val render = study.prepareSessionRender(session).render
+            return nonRestorableSessionRender(advancingRecovery, session, render)
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
             // PS1 learn-ahead: do not declare the run done while this session's own
@@ -466,7 +519,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (pendingRepeats.isEmpty()) {
                 refreshSessionBadgeCount(0)
                 warmStudyDoneAvailability()
-                return { study.doneActions.renderStudyRunDone(plan) }
+                return terminalRender(advancingRecovery) { study.doneActions.renderStudyRunDone(plan) }
             }
         }
         return null
@@ -521,7 +574,35 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.availableStudyMoreNewCards()
         }
     }
+
+    private fun nonRestorableSessionRender(
+        advancingRecovery: StoredPendingStudyRecovery?,
+        session: RecordsSchedulerModels.StudySession,
+        render: () -> Unit,
+    ): () -> Unit = {
+        if (advancingRecovery == null || study.clearAdvancingStudyRecovery(advancingRecovery, session)) {
+            render()
+        } else {
+            study.renderStudyRecoveryOnly()
+        }
+    }
+
+    private fun terminalRender(
+        advancingRecovery: StoredPendingStudyRecovery?,
+        render: () -> Unit,
+    ): () -> Unit = {
+        if (advancingRecovery == null || study.clearAdvancingStudyRecovery(advancingRecovery, null)) {
+            render()
+        } else {
+            study.renderStudyRecoveryOnly()
+        }
+    }
 }
+
+private data class ContinuedRecoveryInspection(
+    val marker: StoredPendingStudyRecovery? = null,
+    val render: (() -> Unit)? = null,
+)
 
 internal fun recoveredStudyRunTarget(currentTarget: Int, completed: Int, selectableRemaining: Int): Int =
     maxOf(currentTarget, completed + selectableRemaining)

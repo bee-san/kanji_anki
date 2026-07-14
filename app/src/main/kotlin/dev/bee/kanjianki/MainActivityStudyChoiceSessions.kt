@@ -184,8 +184,24 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     private fun renderMeaningChoiceRoute(model: MeaningChoiceSessionModel, state: MeaningChoiceSessionState) {
         home.initializeSessionProgressTarget(home.activeStudyPlan)
         val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        val expectedToken = model.feedbackState?.sessionToken
         val browseAction = model.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
-            Runnable { home.renderDetail(glyph, false, null, Runnable { renderMeaningChoiceRoute(model, state) }) }
+            expectedToken?.let { token ->
+                Runnable {
+                    if (home.matchesMountedStudyRoute(token, null)) {
+                        home.renderDetail(
+                            glyph,
+                            false,
+                            null,
+                            Runnable {
+                                if (home.matchesMountedStudyRoute(token, null)) {
+                                    renderMeaningChoiceRoute(model, state)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
         }
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,

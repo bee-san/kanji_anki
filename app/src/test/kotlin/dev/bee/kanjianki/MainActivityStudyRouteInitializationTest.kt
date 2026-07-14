@@ -27,6 +27,7 @@ import dev.bee.kanjianki.data.LocalStoreHistory
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -285,6 +286,64 @@ class MainActivityStudyRouteInitializationTest {
             assertTrue(restored.activity.studyAnswerFeedbackState?.continueEnabled == true)
             assertEquals("divide", restored.activity.typingAnswerState?.text)
             assertTrue(restored.activity.flashcardRevealState?.isRevealed == true)
+            assertTrue(restored.activity.continueAfterStudyAnswer())
+            assertEquals(
+                StudyAnswerFeedbackPhase.CONTINUED,
+                restored.activity.pendingStudyRecovery()?.snapshot?.feedback?.phase,
+            )
+            restored.runQueuedIo()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertNull(restored.activity.pendingStudyRecovery())
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun processRestartAfterContinuePublishesTheNextCurrentCard() {
+        val restored = restoreContinuedHandoffAfterProcessRestart(hasNextCard = true)
+
+        try {
+            val active = requireNotNull(restored.activity.activeSession)
+            assertEquals("次", active.item?.kanji)
+            assertNotEquals("continued-process-token", active.token)
+            assertEquals(active.token, restored.activity.activeStudyRecovery()?.snapshot?.sessionToken)
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertEquals(
+                StudyAnswerFeedbackPhase.UNANSWERED,
+                restored.activity.studyAnswerFeedbackState?.snapshot()?.phase,
+            )
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun processRestartAfterContinueClearsHandoffWhenNoWorkRemains() {
+        val restored = restoreContinuedHandoffAfterProcessRestart(hasNextCard = false)
+
+        try {
+            assertNull(restored.activity.activeSession)
+            assertNull(restored.activity.activeStudyRecovery())
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertFalse(restored.preferences.contains("snapshot"))
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun processRestartRejectsContinuedHandoffWithoutExactReviewEvidence() {
+        val restored = restoreContinuedHandoffAfterProcessRestart(
+            hasNextCard = true,
+            matchingReviewEvidence = false,
+        )
+
+        try {
+            assertNull(restored.activity.activeSession)
+            assertNull(restored.activity.activeStudyRecovery())
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertFalse(restored.preferences.contains("snapshot"))
         } finally {
             restored.close()
         }
@@ -390,6 +449,75 @@ class MainActivityStudyRouteInitializationTest {
 
         assertNull(activity.pendingStudyAnswerSnapshot())
         assertNull(activity.activeStudyRecovery())
+        preferences.edit().clear().commit()
+    }
+
+    @Test
+    fun staleActivityContinueCannotDeleteNewerSameTokenHandoff() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val item = studyItem("継", "shared-token").copyBuilder()
+            .answerSignature("継|継続|けいぞく|continuation")
+            .schedulerRevision(4L)
+            .build()
+        val session = RecordsSchedulerModels.StudySession(
+            item,
+            null,
+            "shared-token",
+            StudyTaskTypes.KANJI_MEANING,
+            writingRequired = false,
+            prompt = "prompt",
+        )
+        val snapshot = StudyPendingAnswerSnapshot(
+            feedback = StudyAnswerFeedbackSnapshot(
+                sessionToken = session.token,
+                phase = StudyAnswerFeedbackPhase.APPLIED,
+                outcome = StudyAnswerOutcome.CORRECT,
+                selectedAnswer = StudyRatings.GOOD,
+            ),
+            kanji = item.kanji,
+            taskType = session.taskType,
+            writingRequired = false,
+            prompt = session.prompt,
+            answerSignature = item.answerSignature,
+            schedulerRevision = item.schedulerRevision,
+        )
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(recoveryStore.replaceWithPending(snapshot))
+        val newerHandoff = requireNotNull(recoveryStore.continuePending(applied))
+        activity.activeSession = session
+        activity.restorePendingStudyAnswer(snapshot)
+        val mountedFeedback = requireNotNull(activity.studyAnswerFeedbackState)
+
+        assertFalse(activity.continueAfterStudyAnswer())
+
+        assertSame(mountedFeedback, activity.studyAnswerFeedbackState)
+        assertTrue(mountedFeedback.continueEnabled)
+        assertEquals(newerHandoff, recoveryStore.readPending())
+        preferences.edit().clear().commit()
+    }
+
+    @Test
+    fun continuedFeedbackRejectsOldCardCallbacksDuringRouteHandoff() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val session = flashcardSession()
+        assertTrue(
+            activity.acceptNewActiveStudySession(
+                session,
+                StudyPromptSource.REASON_TEXT,
+                latestSuccessfulSyncAtMillis = 0L,
+            ),
+        )
+        val recovery = requireNotNull(activity.activeStudyRecovery())
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        assertTrue(feedback.tryContinue())
+
+        assertFalse(activity.matchesMountedStudyRoute(session.token, recovery))
         preferences.edit().clear().commit()
     }
 
@@ -683,7 +811,7 @@ class MainActivityStudyRouteInitializationTest {
         controller.create().start().resume()
         ioTasks.runAll()
         shadowOf(Looper.getMainLooper()).idle()
-        return RestoredActivity(activity, controller, preferences)
+        return RestoredActivity(activity, controller, preferences, ioTasks)
     }
 
     private fun restoreSubmittingCrashWindow(consumed: Boolean): RestoredActivity {
@@ -765,7 +893,93 @@ class MainActivityStudyRouteInitializationTest {
         controller.create().start().resume()
         ioTasks.runAll()
         shadowOf(Looper.getMainLooper()).idle()
-        return RestoredActivity(activity, controller, preferences)
+        return RestoredActivity(activity, controller, preferences, ioTasks)
+    }
+
+    private fun restoreContinuedHandoffAfterProcessRestart(
+        hasNextCard: Boolean,
+        matchingReviewEvidence: Boolean = true,
+    ): RestoredActivity {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val answeredRow = dashboardRow("前")
+        val answeredSignature = StudyQueueSeeder.answerSignature(answeredRow)
+        val token = "continued-process-token"
+        LocalStore(context).use { store ->
+            store.writableDatabase.delete(LocalStoreBase.TABLE_DASHBOARD_ROWS, null, null)
+            store.writableDatabase.delete(LocalStoreBase.TABLE_STUDY_ITEMS, null, null)
+            store.writableDatabase.delete(LocalStoreBase.TABLE_REVIEW_LOG, null, null)
+            store.writableDatabase.delete(LocalStoreBase.TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, null)
+            val rows = if (hasNextCard) listOf(answeredRow, dashboardRow("次")) else emptyList()
+            store.saveRows(store.writableDatabase, rows, 10_000L)
+            if (hasNextCard) {
+                val now = System.currentTimeMillis()
+                store.saveStudyItem(
+                    studyItem(answeredRow.kanji, "").copyBuilder()
+                        .answerSignature(answeredSignature)
+                        .schedulerRevision(5L)
+                        .dueAtMillis(now + TimeUnit.DAYS.toMillis(30L))
+                        .build(),
+                )
+                val nextRow = rows.last()
+                store.saveStudyItem(
+                    studyItem(nextRow.kanji, "").copyBuilder()
+                        .answerSignature(StudyQueueSeeder.answerSignature(nextRow))
+                        .schedulerRevision(2L)
+                        .dueAtMillis(now - 1_000L)
+                        .build(),
+                )
+            }
+            val reviewSignature = if (matchingReviewEvidence) answeredSignature else "different-signature"
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest(
+                    answeredRow.kanji,
+                    token,
+                    StudyRatings.GOOD,
+                    false,
+                    true,
+                    false,
+                    false,
+                    0,
+                    StudyTaskTypes.KANJI_MEANING,
+                    reviewSignature,
+                    answeredRow.reasonText,
+                ),
+                StudyRatings.GOOD,
+                11_000L,
+            )
+        }
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = StudyAnswerFeedbackSnapshot(
+                        sessionToken = token,
+                        phase = StudyAnswerFeedbackPhase.APPLIED,
+                        outcome = StudyAnswerOutcome.CORRECT,
+                        selectedAnswer = StudyRatings.GOOD,
+                    ),
+                    kanji = answeredRow.kanji,
+                    taskType = StudyTaskTypes.KANJI_MEANING,
+                    writingRequired = false,
+                    prompt = answeredRow.reasonText,
+                    answerSignature = answeredSignature,
+                    schedulerRevision = 4L,
+                ),
+            ),
+        )
+        assertNotNull(recoveryStore.continuePending(applied))
+
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val activity = controller.get()
+        val ioTasks = QueueingExecutorService()
+        replaceField(activity, "io", ioTasks)
+        controller.create().start().resume()
+        ioTasks.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+        return RestoredActivity(activity, controller, preferences, ioTasks)
     }
 
     private fun restoreSubmittingSimilarChoiceAfterProcessRestart(
@@ -897,7 +1111,7 @@ class MainActivityStudyRouteInitializationTest {
         controller.create().start().resume()
         ioTasks.runAll()
         shadowOf(Looper.getMainLooper()).idle()
-        return RestoredActivity(activity, controller, preferences)
+        return RestoredActivity(activity, controller, preferences, ioTasks)
     }
 
     private fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
@@ -932,7 +1146,12 @@ class MainActivityStudyRouteInitializationTest {
         val activity: MainActivity,
         private val controller: org.robolectric.android.controller.ActivityController<MainActivity>,
         val preferences: android.content.SharedPreferences,
+        private val ioTasks: QueueingExecutorService,
     ) {
+        fun runQueuedIo() {
+            ioTasks.runAll()
+        }
+
         fun close() {
             preferences.edit().clear().commit()
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)

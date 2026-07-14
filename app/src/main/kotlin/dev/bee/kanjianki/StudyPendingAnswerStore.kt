@@ -87,7 +87,7 @@ internal data class StoredPendingStudyRecovery(
 ) : StoredStudyRecovery()
 
 /**
- * One crash-safe recovery envelope for the active -> submitting -> applied UI lifecycle.
+ * One crash-safe recovery envelope for the active -> submitting -> applied -> continued UI lifecycle.
  *
  * Identity changes are synchronous, lock-serialized SharedPreferences commits. Draft keystrokes
  * update the in-process preference map immediately and are flushed at the Activity pause boundary;
@@ -128,6 +128,27 @@ internal class StudySessionRecoveryStore(
         if (rawLocked() != expected.raw) return@synchronized null
         val epoch = epochFactory().takeIf(::validEpoch) ?: return@synchronized null
         writeActiveLocked(expected.snapshot, epoch, resumeOnOrdinaryLaunch = true, durable = true)
+    }
+
+    /**
+     * Publish the next current card only while the exact consumed-card handoff still owns routing.
+     * The continued envelope never selects the card; it merely prevents a process-death gap while
+     * the normal scheduler recomputes current work.
+     */
+    fun replaceContinuedWithActive(
+        expected: StoredPendingStudyRecovery,
+        snapshot: StudyActiveSessionSnapshot,
+    ): StoredActiveStudyRecovery? = synchronized(LOCK) {
+        if (rawLocked() != expected.raw ||
+            expected.snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
+            !expected.resumeOnOrdinaryLaunch ||
+            expected.fallbackActive != null ||
+            expected.fallbackWriteEpoch != null
+        ) {
+            return@synchronized null
+        }
+        val epoch = epochFactory().takeIf(::validEpoch) ?: return@synchronized null
+        writeActiveLocked(snapshot, epoch, resumeOnOrdinaryLaunch = true, durable = true)
     }
 
     fun updateActive(
@@ -182,6 +203,7 @@ internal class StudySessionRecoveryStore(
         expected: StoredActiveStudyRecovery,
         pending: StudyPendingAnswerSnapshot,
     ): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (pending.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED) return@synchronized null
         if (rawLocked() != expected.raw) return@synchronized null
         if (!pendingMatchesActive(pending, expected.snapshot)) return@synchronized null
         writePendingLocked(
@@ -196,6 +218,7 @@ internal class StudySessionRecoveryStore(
         pending: StudyPendingAnswerSnapshot,
         fallbackActive: StudyActiveSessionSnapshot? = null,
     ): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (pending.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED) return@synchronized null
         val fallbackEpoch = if (fallbackActive == null) {
             null
         } else {
@@ -205,6 +228,7 @@ internal class StudySessionRecoveryStore(
     }
 
     fun createPendingIfEmpty(pending: StudyPendingAnswerSnapshot): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (pending.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED) return@synchronized null
         if (rawLocked() != null) return@synchronized null
         writePendingLocked(
             pending,
@@ -230,6 +254,30 @@ internal class StudySessionRecoveryStore(
         )
     }
 
+    /**
+     * Atomically acknowledge Continue without deleting the only durable route state. Explicit
+     * Continue re-arms ordinary launch; a later Home/Stats/etc. exit can still make this exact raw
+     * envelope dormant and thereby defeat a late route publication.
+     */
+    fun continuePending(expected: StoredPendingStudyRecovery): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (rawLocked() != expected.raw ||
+            expected.snapshot.feedback.phase != StudyAnswerFeedbackPhase.APPLIED ||
+            expected.fallbackActive != null ||
+            expected.fallbackWriteEpoch != null
+        ) {
+            return@synchronized null
+        }
+        val continued = expected.snapshot.copy(
+            feedback = expected.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.CONTINUED),
+        )
+        writePendingLocked(
+            continued,
+            fallbackActive = null,
+            fallbackWriteEpoch = null,
+            resumeOnOrdinaryLaunch = true,
+        )
+    }
+
     fun claimPending(
         expected: StoredPendingStudyRecovery,
         pending: StudyPendingAnswerSnapshot = expected.snapshot,
@@ -240,6 +288,43 @@ internal class StudySessionRecoveryStore(
             pending,
             expected.fallbackActive,
             expected.fallbackWriteEpoch,
+            resumeOnOrdinaryLaunch = true,
+        )
+    }
+
+    /** Claim proven-applied feedback and discard the now-obsolete ungraded submission fallback. */
+    fun claimAppliedPending(
+        expected: StoredPendingStudyRecovery,
+        pending: StudyPendingAnswerSnapshot,
+    ): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (rawLocked() != expected.raw ||
+            pending.feedback.phase != StudyAnswerFeedbackPhase.APPLIED ||
+            !validPendingUpdate(expected.snapshot, pending)
+        ) {
+            return@synchronized null
+        }
+        writePendingLocked(
+            pending,
+            fallbackActive = null,
+            fallbackWriteEpoch = null,
+            resumeOnOrdinaryLaunch = true,
+        )
+    }
+
+    /** Re-arm a dormant continued handoff before an explicit Study route starts asynchronous work. */
+    fun claimContinued(expected: StoredPendingStudyRecovery): StoredPendingStudyRecovery? = synchronized(LOCK) {
+        if (rawLocked() != expected.raw ||
+            expected.snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
+            expected.resumeOnOrdinaryLaunch ||
+            expected.fallbackActive != null ||
+            expected.fallbackWriteEpoch != null
+        ) {
+            return@synchronized null
+        }
+        writePendingLocked(
+            expected.snapshot,
+            fallbackActive = null,
+            fallbackWriteEpoch = null,
             resumeOnOrdinaryLaunch = true,
         )
     }
@@ -380,6 +465,7 @@ internal class StudySessionRecoveryStore(
     ): String? {
         if (!validPending(snapshot) ||
             (fallbackActive == null) != (fallbackWriteEpoch == null) ||
+            (snapshot.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED && fallbackActive != null) ||
             (fallbackActive != null &&
                 (!validActive(fallbackActive) ||
                     !validEpoch(fallbackWriteEpoch.orEmpty()) ||
@@ -436,6 +522,7 @@ internal class StudySessionRecoveryStore(
         val fallbackEpoch = json.optString(KEY_FALLBACK_WRITE_EPOCH)
             .takeIf { json.has(KEY_FALLBACK_WRITE_EPOCH) }
         if ((fallback == null) != (fallbackEpoch == null) ||
+            (snapshot.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED && fallback != null) ||
             (fallbackEpoch != null && !validEpoch(fallbackEpoch))
         ) {
             return null
@@ -567,6 +654,12 @@ internal class StudySessionRecoveryStore(
 
     private fun validPending(snapshot: StudyPendingAnswerSnapshot): Boolean {
         val identityComplete = (snapshot.answerSignature == null) == (snapshot.schedulerRevision == null)
+        val continuedIdentityValid = snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
+            (snapshot.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
+                snapshot.answerSignature?.let {
+                    validText(it, MAX_SIGNATURE_CHARS, allowBlank = true)
+                } == true &&
+                snapshot.schedulerRevision != null)
         return validText(snapshot.feedback.sessionToken, MAX_TOKEN_CHARS, allowBlank = false) &&
             snapshot.feedback.phase in PENDING_PHASES &&
             snapshot.feedback.outcome != null &&
@@ -575,6 +668,7 @@ internal class StudySessionRecoveryStore(
             validText(snapshot.taskType, MAX_TASK_TYPE_CHARS, allowBlank = false) &&
             validText(snapshot.prompt, MAX_PROMPT_CHARS, allowBlank = true) &&
             identityComplete &&
+            continuedIdentityValid &&
             (snapshot.answerSignature == null || validText(snapshot.answerSignature, MAX_SIGNATURE_CHARS, allowBlank = true)) &&
             (snapshot.schedulerRevision == null || snapshot.schedulerRevision >= 0L)
     }
@@ -681,6 +775,7 @@ internal class StudySessionRecoveryStore(
         private val PENDING_PHASES = setOf(
             StudyAnswerFeedbackPhase.SUBMITTING,
             StudyAnswerFeedbackPhase.APPLIED,
+            StudyAnswerFeedbackPhase.CONTINUED,
         )
     }
 }

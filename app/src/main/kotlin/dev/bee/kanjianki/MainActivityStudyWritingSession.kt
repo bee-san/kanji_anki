@@ -94,6 +94,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                 home.studyPadHeight(),
                 resultStatus
             ),
+            session.token,
         )
     }
 
@@ -165,7 +166,20 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     private fun ComposeWritingSessionCard(route: WritingSessionRouteModel) {
         val model = remember(route) { route.cardModel }
         val browseAction = route.cardModel.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
-            Runnable { home.renderDetail(glyph, false, null, Runnable { renderComposeWritingRoute { route } }) }
+            Runnable {
+                if (home.matchesMountedStudyRoute(route.sessionToken, null)) {
+                    home.renderDetail(
+                        glyph,
+                        false,
+                        null,
+                        Runnable {
+                            if (home.matchesMountedStudyRoute(route.sessionToken, null)) {
+                                renderComposeWritingRoute { route }
+                            }
+                        },
+                    )
+                }
+            }
         }
         WritingSessionCard(
             model = model,
@@ -181,7 +195,14 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         val state = route.actionBarState ?: return
         val undoMessage = home.studyUndoState.undoMessageOrNull()
         Column {
-            StudyUndoSlot(undoMessage = undoMessage, onUndo = home::undoLastRating)
+            StudyUndoSlot(
+                undoMessage = undoMessage,
+                onUndo = {
+                    if (home.matchesMountedStudyRoute(route.sessionToken, null)) {
+                        home.undoLastRating()
+                    }
+                },
+            )
             val feedback = home.studyAnswerFeedbackState
             if (feedback?.feedbackVisible == true) {
                 val correct = feedback.outcome == StudyAnswerOutcome.CORRECT
@@ -200,6 +221,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
 
     private data class WritingSessionRouteModel(
         val cardModel: WritingSessionCardModel,
+        val sessionToken: String,
         var actionBarState: WritingActionsBarState? = null,
     )
 }

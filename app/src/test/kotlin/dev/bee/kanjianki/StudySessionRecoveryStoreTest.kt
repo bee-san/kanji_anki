@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.StudyTaskTypes
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -224,7 +225,7 @@ class StudySessionRecoveryStoreTest {
         store.transitionActiveToPending(active, pendingSnapshot(StudyAnswerFeedbackPhase.SUBMITTING))!!
         assertTrue(store.disableOrdinaryResume())
         val dormant = store.readPending()!!
-        assertFalse(dormant.fallbackWriteEpoch == active.writeEpoch)
+        assertNotEquals(active.writeEpoch, dormant.fallbackWriteEpoch)
 
         val updated = store.updatePending(
             active.snapshot.sessionToken,
@@ -236,6 +237,104 @@ class StudySessionRecoveryStoreTest {
         assertFalse(store.shouldResumeOnOrdinaryLaunch())
         assertNull(updated.fallbackActive)
         assertNull(updated.fallbackWriteEpoch)
+    }
+
+    @Test
+    fun continuedHandoffPublishesNextActiveCardOnlyFromExactRawMarker() {
+        val store = store()
+        val applied = store.replaceWithPending(pendingSnapshot(StudyAnswerFeedbackPhase.APPLIED))!!
+
+        val continued = store.continuePending(applied)!!
+
+        assertEquals(StudyAnswerFeedbackPhase.CONTINUED, continued.snapshot.feedback.phase)
+        assertTrue(continued.resumeOnOrdinaryLaunch)
+        assertNull(continued.fallbackActive)
+        assertNull(continued.fallbackWriteEpoch)
+        assertNull(store.claimContinued(continued))
+
+        assertTrue(store.disableOrdinaryResume())
+        val dormant = store.readPending()!!
+        val next = activeSnapshot(
+            token = "next-token",
+            kanji = "新",
+            signature = "新|新人|しんじん|new",
+        )
+        assertNull(store.replaceContinuedWithActive(continued, next))
+        assertEquals(dormant, store.readPending())
+
+        assertNull(store.replaceContinuedWithActive(dormant, next))
+        val armed = store.claimContinued(dormant)!!
+        assertTrue(armed.resumeOnOrdinaryLaunch)
+        assertNotEquals(dormant.raw, armed.raw)
+
+        // Home after the explicit claim rewrites the raw marker, so that route's late publish loses.
+        assertTrue(store.disableOrdinaryResume())
+        val exited = store.readPending()!!
+        assertNull(store.replaceContinuedWithActive(armed, next))
+
+        val reclaimed = store.claimContinued(exited)!!
+        val published = store.replaceContinuedWithActive(reclaimed, next)!!
+        assertTrue(published.resumeOnOrdinaryLaunch)
+        assertEquals(next, published.snapshot)
+        assertNull(store.readPending())
+    }
+
+    @Test
+    fun consumedSubmittingClaimDropsFallbackBeforeContinue() {
+        val store = store()
+        val active = store.replaceWithActive(activeSnapshot(typedDraft = "draft"))!!
+        val submitting = store.transitionActiveToPending(
+            active,
+            pendingSnapshot(StudyAnswerFeedbackPhase.SUBMITTING),
+        )!!
+        val appliedSnapshot = submitting.snapshot.copy(
+            feedback = submitting.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.APPLIED),
+        )
+
+        val applied = store.claimAppliedPending(submitting, appliedSnapshot)!!
+
+        assertNull(applied.fallbackActive)
+        assertNull(applied.fallbackWriteEpoch)
+        assertEquals(StudyAnswerFeedbackPhase.APPLIED, applied.snapshot.feedback.phase)
+        assertNotNull(store.continuePending(applied))
+    }
+
+    @Test
+    fun continuedHandoffRejectsIllegalPhaseAndFallbackTransitions() {
+        val store = store()
+        val submitting = store.replaceWithPending(pendingSnapshot(StudyAnswerFeedbackPhase.SUBMITTING))!!
+        assertNull(store.continuePending(submitting))
+        assertEquals(submitting, store.readPending())
+        assertNull(
+            store.updatePending(
+                submitting.snapshot.feedback.sessionToken,
+                pendingSnapshot(StudyAnswerFeedbackPhase.CONTINUED),
+                retainFallback = false,
+            ),
+        )
+
+        val applied = store.replaceWithPending(pendingSnapshot(StudyAnswerFeedbackPhase.APPLIED))!!
+        assertNull(
+            store.updatePending(
+                applied.snapshot.feedback.sessionToken,
+                pendingSnapshot(StudyAnswerFeedbackPhase.CONTINUED),
+                retainFallback = false,
+            ),
+        )
+        assertNull(store.replaceWithPending(pendingSnapshot(StudyAnswerFeedbackPhase.CONTINUED)))
+
+        val active = activeSnapshot()
+        val appliedWithFallback = store.replaceWithPending(
+            pendingSnapshot(StudyAnswerFeedbackPhase.APPLIED),
+            fallbackActive = active,
+        )!!
+        assertNull(store.continuePending(appliedWithFallback))
+        assertNull(
+            store.replaceWithPending(
+                pendingSnapshot(StudyAnswerFeedbackPhase.CONTINUED),
+                fallbackActive = active,
+            ),
+        )
     }
 
     @Test

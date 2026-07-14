@@ -24,6 +24,30 @@ internal class LocalStoreStudyStatus(
         }
     }
 
+    /** Exact review evidence for a consumed-card route handoff. */
+    fun hasMatchingConsumedReview(
+        token: String,
+        kanji: String,
+        taskType: String,
+        answerSignature: String,
+    ): Boolean {
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_REVIEW_LOG,
+            arrayOf(LocalStoreBase.COLUMN_TOKEN),
+            "${LocalStoreBase.COLUMN_TOKEN}=? AND " +
+                "${LocalStoreBase.COLUMN_KANJI}=? AND " +
+                "${LocalStoreBase.COLUMN_TASK_TYPE}=? AND " +
+                "${LocalStoreBase.COLUMN_ANSWER_SIGNATURE}=?",
+            arrayOf(token, kanji, taskType, answerSignature),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
     fun consumedTokens(): List<String> {
         val tokens = mutableListOf<String>()
         store.readableDatabase.query(

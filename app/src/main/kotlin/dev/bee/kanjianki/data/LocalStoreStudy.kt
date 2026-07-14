@@ -518,6 +518,13 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun hasConsumedToken(token: String): Boolean = studyStatus().hasConsumedToken(token)
 
+    fun hasMatchingConsumedReview(
+        token: String,
+        kanji: String,
+        taskType: String,
+        answerSignature: String,
+    ): Boolean = studyStatus().hasMatchingConsumedReview(token, kanji, taskType, answerSignature)
+
     fun latestSync(): SyncStatus? = studyStatus().latestSync()
 
     fun latestSuccessfulSyncFinishedAt(): Long? = studyStatus().latestSuccessfulSyncFinishedAt()
