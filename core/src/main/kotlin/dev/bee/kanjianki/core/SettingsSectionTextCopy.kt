@@ -39,35 +39,7 @@ object SettingsSectionTextCopy {
     fun settingsReferenceDataBody(): String = localizedText("Manage dictionaries, strokes, fonts, and credits.", "辞書、ストローク、フォント、クレジットを管理。")
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = localizedText("Overview", "概要")
-
-    @JvmStatic
-    fun settingsHeroBody(): String = localizedText("Choose a section.", "下のセクションを選ぶ。")
-
-    @JvmStatic
     fun noteTypeStatusLabel(): String = localizedText("Note type", "ノートタイプ")
-
-    @JvmStatic
-    fun importFiltersStatusLabel(): String = localizedText("Import filters", "インポートフィルター")
-
-    @JvmStatic
-    fun importRanksStatusLabel(): String = localizedText("Suspended card range", "停止カードの範囲")
-
-    @JvmStatic
-    fun reminderStatusLabel(): String = localizedText("Daily reminder", "毎日のリマインダー")
-
-    @JvmStatic
-    fun dailySyncStatusLabel(): String = localizedText("Daily sync", "毎日の同期")
-
-    @JvmStatic
-    fun updatesStatusLabel(): String = localizedText("App updates", "アプリ更新")
-
-    @JvmStatic
-    fun matchingCardsStatusLabel(): String = localizedText("Cards per kanji", "漢字ごとのカード数")
-
-    @JvmStatic
-    fun statusPillDescription(label: String, value: String): String =
-        if (isJapaneseLocale()) "$label：$value" else "$label: $value"
 
     @JvmStatic
     fun categoryToggleDescription(expanded: Boolean, title: String): String {

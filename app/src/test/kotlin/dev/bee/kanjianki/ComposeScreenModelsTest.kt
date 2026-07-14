@@ -713,14 +713,6 @@ class ComposeScreenModelsTest {
         var toggled = false
         val home = Runnable { homeClicked = true }
         val toggle = Runnable { toggled = true }
-        val hero = SettingsAutomationHeroModel(
-            cockpitLabel = "Cockpit",
-            title = "Settings",
-            body = "Configure Kani behavior.",
-            rows = listOf(
-                listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
-            ),
-        )
         val panel = SettingsReferenceDataLinkModel(
             title = "Data licenses",
             body = "Dictionary, stroke, and font attributions.",
@@ -739,13 +731,13 @@ class ComposeScreenModelsTest {
         val screen = SettingsScreenModel(
             homeLabel = "Home",
             onHome = home,
-            hero = hero,
+            title = "Settings",
             cards = listOf(card),
         )
 
         assertEquals("Home", screen.homeLabel)
         assertSame(home, screen.onHome)
-        assertSame(hero, screen.hero)
+        assertEquals("Settings", screen.title)
         assertEquals(listOf(card), screen.cards)
         assertEquals(MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE, card.routeKey)
         assertEquals("Study", card.title)
@@ -1216,76 +1208,6 @@ class ComposeScreenModelsTest {
         assertEquals("28", savedPromotionDays)
         assertEquals("4", savedFailStreak)
         assertEquals(model, model.copy())
-    }
-
-    @Test
-    fun settingsAutomationHeroFactoryKeepsEnabledAndPendingSummaries() {
-        val model = settingsAutomationHeroModel(
-            current = RecordsSyncModels.Settings.kikuDefaults(),
-            reminder = LocalStoreBase.ReminderSettings(true, 8, 5),
-            autoSync = LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L),
-            autoUpdate = LocalStoreBase.AutoUpdateStatus(
-                true,
-                0L,
-                "update_available",
-                "0.5.0",
-                "kani-0.5.0.apk",
-                "Ready to install",
-            ),
-            notificationsAllowed = false,
-        )
-
-        assertEquals("Overview", model.cockpitLabel)
-        assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
-        assertEquals(4, model.rows.size)
-        assertEquals("Note type", model.rows[0][0].label)
-        assertEquals("Kiku", model.rows[0][0].value)
-        assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
-        assertEquals("Import filters", model.rows[0][1].label)
-        assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
-        assertEquals("Daily reminder", model.rows[1][1].label)
-        assertEquals("Notifications blocked", model.rows[1][1].value)
-        assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
-        assertEquals("Daily sync", model.rows[2][0].label)
-        assertEquals("07:30", model.rows[2][0].value)
-        assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
-        assertEquals("App updates", model.rows[2][1].label)
-        assertEquals("Ready to install", model.rows[2][1].value)
-        assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
-        assertEquals("Cards per kanji", model.rows[3][0].label)
-        assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
-    }
-
-    @Test
-    fun settingsAutomationHeroFactoryKeepsDisabledSummaries() {
-        val model = settingsAutomationHeroModel(
-            current = RecordsSyncModels.Settings.kikuDefaults(),
-            reminder = LocalStoreBase.ReminderSettings(false, 8, 5),
-            autoSync = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L),
-            autoUpdate = LocalStoreBase.AutoUpdateStatus(false, 0L, "", "", "", ""),
-            notificationsAllowed = true,
-        )
-
-        assertEquals("Off", model.rows[1][1].value)
-        assertEquals(0xFF6C5674.toInt(), model.rows[1][1].valueColor)
-        assertEquals("Off", model.rows[2][0].value)
-        assertEquals(0xFF6C5674.toInt(), model.rows[2][0].valueColor)
-        assertEquals("Off", model.rows[2][1].value)
-        assertEquals(0xFFDA3A7A.toInt(), model.rows[2][1].valueColor)
-    }
-
-    @Test
-    fun settingsAutomationHeroFactoryKeepsAllowedReminderSummary() {
-        val model = settingsAutomationHeroModel(
-            current = RecordsSyncModels.Settings.kikuDefaults(),
-            reminder = LocalStoreBase.ReminderSettings(true, 8, 5),
-            autoSync = LocalStoreBase.AutoSyncSettings(false, false, 7, 30, 0L, 0L, 0L),
-            autoUpdate = LocalStoreBase.AutoUpdateStatus(false, 0L, "", "", "", ""),
-            notificationsAllowed = true,
-        )
-
-        assertEquals("08:05", model.rows[1][1].value)
-        assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
     }
 
     @Test

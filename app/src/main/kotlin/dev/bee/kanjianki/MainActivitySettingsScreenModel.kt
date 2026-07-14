@@ -5,7 +5,7 @@ sealed interface SettingsPanelModel
 data class SettingsScreenModel(
     val homeLabel: String,
     val onHome: Runnable,
-    val hero: SettingsAutomationHeroModel,
+    val title: String,
     val cards: List<SettingsHubCardModel>,
 )
 

@@ -1,17 +1,12 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.HomeTextCopy
-import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsSectionTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivitySettingsScreenCoordinator(private val activity: MainActivitySettings) {
     fun settingsScreenModel(): SettingsScreenModel {
-        val current = activity.settings()
         return settingsScreenModel(
-            hero = settingsHeroModel(current),
             cards = settingsHubCardModels(),
             onHome = Runnable { activity.renderHome() },
         )
@@ -91,87 +86,6 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
             title = SettingsTextCopy.settingsReferenceDataTitle(),
             body = SettingsTextCopy.settingsReferenceDataBody(),
             panels = panels,
-        )
-    }
-
-    private fun settingsHeroModel(current: RecordsSyncModels.Settings): SettingsAutomationHeroModel {
-        val reminder = activity.store.reminderSettings()
-        val autoSync = activity.store.autoSyncSettings()
-        val autoUpdate = activity.store.autoUpdateStatus()
-        val reminderBlocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(activity)
-        return SettingsAutomationHeroModel(
-            cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
-            title = SettingsTextCopy.settingsTitle(),
-            body = SettingsTextCopy.settingsHeroBody(),
-            rows = listOf(
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.noteTypeStatusLabel(),
-                        StudyTextCopy.compact(current.modelName, 56),
-                        SettingsAutomationHeroColors.studyPlum,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.importFiltersStatusLabel(),
-                        StudyTextCopy.compact(SettingsTextCopy.settingsImportSummary(current), 56),
-                        SettingsAutomationHeroColors.teal,
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.importRanksStatusLabel(),
-                        StudyTextCopy.compact("${current.suspendedRankMin}-${current.suspendedRankMax}", 56),
-                        SettingsAutomationHeroColors.teal,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.reminderStatusLabel(),
-                        StudyTextCopy.compact(
-                            SettingsTextCopy.settingsReminderSummary(
-                                reminder.enabled,
-                                reminderBlocked,
-                                reminder.displayTime(),
-                            ),
-                            56,
-                        ),
-                        if (reminder.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted,
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.dailySyncStatusLabel(),
-                        StudyTextCopy.compact(
-                            SettingsTextCopy.settingsAutoSyncSummary(
-                                autoSync.configured,
-                                autoSync.enabled,
-                                autoSync.displayTime(),
-                            ),
-                            56,
-                        ),
-                        if (autoSync.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.updatesStatusLabel(),
-                        StudyTextCopy.compact(
-                            SettingsTextCopy.settingsUpdateSummary(
-                                autoUpdate.hasPendingUpdate(),
-                                autoUpdate.enabled,
-                            ),
-                            56,
-                        ),
-                        if (autoUpdate.hasPendingUpdate()) {
-                            SettingsAutomationHeroColors.coral
-                        } else {
-                            SettingsAutomationHeroColors.studyPinkDark
-                        },
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.matchingCardsStatusLabel(),
-                        StudyTextCopy.compact(SettingsTextCopy.matchingCardsSummary(current), 56),
-                        SettingsAutomationHeroColors.studyPlum,
-                    ),
-                ),
-            ),
         )
     }
 

@@ -97,14 +97,7 @@ class SettingsTextCopyTest {
                         "Turn off updates",
                         "Turn on updates",
                         "Back to settings",
-                        "Overview",
-                        "Choose a section.",
-                        "Note type",
-                        "Import filters",
-                        "Suspended card range",
-                        "Daily reminder",
-                        "Daily sync",
-                        "App updates"
+                        "Note type"
                 ),
                 listOf(
                         SettingsTextCopy.updatePageTitle(),
@@ -127,20 +120,11 @@ class SettingsTextCopyTest {
                         SettingsTextCopy.automaticUpdatesToggleLabel(true),
                         SettingsTextCopy.automaticUpdatesToggleLabel(false),
                         SettingsTextCopy.backToSettingsLabel(),
-                        SettingsTextCopy.settingsCockpitLabel(),
-                        SettingsTextCopy.settingsHeroBody(),
-                        SettingsTextCopy.noteTypeStatusLabel(),
-                        SettingsTextCopy.importFiltersStatusLabel(),
-                        SettingsTextCopy.importRanksStatusLabel(),
-                        SettingsTextCopy.reminderStatusLabel(),
-                        SettingsTextCopy.dailySyncStatusLabel(),
-                        SettingsTextCopy.updatesStatusLabel()
+                        SettingsTextCopy.noteTypeStatusLabel()
                 )
         )
         assertEquals(
                 listOf(
-                        "Cards per kanji",
-                        "Reminder: Off",
                         "Collapse Study settings",
                         "Expand Automation",
                         "1 card",
@@ -155,8 +139,6 @@ class SettingsTextCopyTest {
                         "Last sync: yesterday. Last attempt: today.",
                 ),
                 listOf(
-                        SettingsTextCopy.matchingCardsStatusLabel(),
-                        SettingsTextCopy.statusPillDescription("Reminder", "Off"),
                         SettingsTextCopy.categoryToggleDescription(true, "Study settings"),
                         SettingsTextCopy.categoryToggleDescription(false, "Automation"),
                         SettingsTextCopy.settingsCategoryPanelCount(1),
@@ -179,7 +161,6 @@ class SettingsTextCopyTest {
                 SettingsTextCopy.settingsAnkiSourceBody(),
                 SettingsTextCopy.settingsStudyBehaviorBody(),
                 SettingsTextCopy.settingsAutomationBody(),
-                SettingsTextCopy.settingsHeroBody(),
                 SettingsTextCopy.importFiltersBody(),
                 SettingsTextCopy.frequencyRangeBody(),
                 SettingsTextCopy.offlineDataLicensesBody(),

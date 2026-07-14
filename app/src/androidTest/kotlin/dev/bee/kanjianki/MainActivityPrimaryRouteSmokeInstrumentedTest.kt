@@ -66,8 +66,8 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderSettings() }
             assertVisible(MainActivityBase.NAV_SETTINGS)
-            assertVisible("Overview")
-            assertVisible("Note type")
+            assertVisible("Import & sync")
+            assertVisible("Study settings")
 
             scenario.onActivity { activity -> activity.renderBrowseKanji("裂") }
             assertVisible("Browse Kanji")
