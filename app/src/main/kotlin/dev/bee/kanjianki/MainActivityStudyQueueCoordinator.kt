@@ -140,13 +140,18 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         )
         // Prepare the session render (choice cards, dictionary, stroke guides) here on
         // the background executor; only the returned render thunk touches the UI.
-        val render = study.prepareSessionRender(session)
+        val prepared = study.prepareSessionRender(session)
         if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
             return { study.renderStudy() }
         }
         return {
-            study.acceptNewActiveStudySession(session, StudyPromptSource.REASON_TEXT, sourceSyncFinishedAt)
-            render()
+            study.acceptNewActiveStudySession(
+                session,
+                StudyPromptSource.REASON_TEXT,
+                sourceSyncFinishedAt,
+                similarChoiceSignatureDigest = prepared.similarChoiceSignatureDigest,
+            )
+            prepared()
         }
     }
 
@@ -205,15 +210,20 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     private fun computePendingFallbackRender(
         stored: StoredPendingStudyRecovery,
     ): (() -> Unit)? {
-        val fallbackSession = stored.fallbackActive?.let(::restoredActiveSession)
+        val fallbackSnapshot = stored.fallbackActive
+        val fallbackSession = fallbackSnapshot?.let(::restoredActiveSession)
         if (fallbackSession == null) {
             study.clearStudyRecoveryIfUnchanged(stored)
             return null
         }
-        val render = study.prepareSessionRender(fallbackSession)
+        val prepared = study.prepareSessionRender(fallbackSession)
+        if (!prepared.matches(fallbackSnapshot)) {
+            study.clearStudyRecoveryIfUnchanged(stored)
+            return null
+        }
         return {
             if (study.acceptPendingFallbackStudySession(stored, fallbackSession)) {
-                render()
+                prepared()
             } else {
                 study.renderStudyRecoveryOnly()
             }
@@ -243,11 +253,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             saved.copy(feedback = saved.feedback.copy(phase = StudyAnswerFeedbackPhase.APPLIED))
         }
         val session = appliedSnapshot.restoreSession(item, row)
-        val render = study.prepareSessionRender(session)
+        val prepared = study.prepareSessionRender(session)
         return {
             if (study.acceptRestoredPendingStudySession(stored, appliedSnapshot, session)) {
                 study.activeSimilarWritingRepair = null
-                render()
+                prepared()
             } else {
                 study.renderStudyRecoveryOnly()
             }
@@ -271,11 +281,15 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.clearStudyRecoveryIfUnchanged(stored)
             return null
         }
-        val render = study.prepareSessionRender(session)
+        val prepared = study.prepareSessionRender(session)
+        if (!prepared.matches(stored.snapshot)) {
+            study.clearStudyRecoveryIfUnchanged(stored)
+            return null
+        }
         return {
             if (study.acceptRestoredActiveStudySession(stored, session)) {
                 study.activeSimilarWritingRepair = null
-                render()
+                prepared()
             } else {
                 study.renderStudyRecoveryOnly()
             }
@@ -375,7 +389,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study::registerStudyTaskShown,
             study::startActiveStudyTask
         )
-        val render = study.prepareSessionRender(session)
+        val prepared = study.prepareSessionRender(session)
         if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
             return { study.renderStudyForKanji(kanji) }
         }
@@ -385,8 +399,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 StudyPromptSource.PRIMARY_MEANING,
                 sourceSyncFinishedAt,
                 supersededRecoveryToken,
+                prepared.similarChoiceSignatureDigest,
             )
-            render()
+            prepared()
         }
     }
 
@@ -435,7 +450,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             )
             // Use the same background preparation as every other session so the
             // current local mnemonic is loaded alongside dictionary/stroke assets.
-            return study.prepareSessionRender(session)
+            return study.prepareSessionRender(session).render
         }
         if (study.studySessionTracker.atHardCap(study.continueAllKanjiSession)) {
             // PS1 learn-ahead: do not declare the run done while this session's own

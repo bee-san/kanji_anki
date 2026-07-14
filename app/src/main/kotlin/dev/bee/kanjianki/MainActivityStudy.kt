@@ -23,6 +23,16 @@ import dev.bee.kanjianki.core.StudySessionRoute
 import dev.bee.kanjianki.study.CapturedWriting
 import dev.bee.kanjianki.study.WritingRecognizer
 
+internal data class PreparedStudySessionRender(
+    val render: () -> Unit,
+    val similarChoiceSignatureDigest: String? = null,
+) {
+    operator fun invoke() = render()
+
+    fun matches(snapshot: StudyActiveSessionSnapshot): Boolean =
+        similarChoiceSignatureDigest == snapshot.similarChoiceSignatureDigest
+}
+
 internal abstract class MainActivityStudy : MainActivityStats() {
     internal class CapturedWritingAttempt(
         @JvmField val captured: CapturedWriting,
@@ -175,23 +185,29 @@ internal abstract class MainActivityStudy : MainActivityStats() {
      * home -> study never scans the kanji inventory or parses the 9.5 MB stroke
      * asset on the UI thread.
      */
-    fun prepareSessionRender(session: RecordsSchedulerModels.StudySession): () -> Unit {
+    fun prepareSessionRender(session: RecordsSchedulerModels.StudySession): PreparedStudySessionRender {
         val mnemonic = prepareStudyAnswerMnemonic(session)
         return when (StudySessionRoute.destination(session)) {
             StudySessionRoute.Destination.WRITING -> {
                 warmStrokeGuides()
                 warmSessionDictionaryEntry(session)
                 val render: () -> Unit = { writingSession.renderComposeWritingSession(session, mnemonic) }
-                render
+                PreparedStudySessionRender(render)
             }
             StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.prepareSimilarKanjiRender(session, mnemonic)
-            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.prepareMeaningKanjiRender(session, mnemonic)
-            StudySessionRoute.Destination.KANJI_READING -> choiceSessions.prepareKanjiReadingRender(session, mnemonic)
-            StudySessionRoute.Destination.READING_KANJI -> choiceSessions.prepareReadingKanjiRender(session, mnemonic)
+            StudySessionRoute.Destination.MEANING_KANJI -> PreparedStudySessionRender(
+                choiceSessions.prepareMeaningKanjiRender(session, mnemonic),
+            )
+            StudySessionRoute.Destination.KANJI_READING -> PreparedStudySessionRender(
+                choiceSessions.prepareKanjiReadingRender(session, mnemonic),
+            )
+            StudySessionRoute.Destination.READING_KANJI -> PreparedStudySessionRender(
+                choiceSessions.prepareReadingKanjiRender(session, mnemonic),
+            )
             StudySessionRoute.Destination.FLASHCARD -> {
                 warmSessionDictionaryEntry(session)
                 val render: () -> Unit = { flashcardUi.renderComposeFlashcardSession(session, mnemonic) }
-                render
+                PreparedStudySessionRender(render)
             }
         }
     }
@@ -393,7 +409,13 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingCheck.checkWriting()
     }
 
-    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String): Boolean {
+    fun submitSimilarKanjiChoice(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+        card: RecordsImportModels.SimilarKanjiChoiceCard,
+        selectedKanji: String,
+    ): Boolean {
+        if (!matchesUngradedStudyRoute(expectedToken, expectedRecovery)) return false
         return submitWithAnswerFeedback(selectedKanji == card.targetKanji, selectedKanji) {
             writingReview.submitSimilarKanjiChoice(card, selectedKanji)
         }
@@ -517,6 +539,14 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return true
     }
 
+    internal fun continueAfterStudyAnswer(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ): Boolean {
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        return continueAfterStudyAnswer()
+    }
+
     fun submitSimilarWritingRepair(rating: String): Boolean {
         return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating) {
             writingReview.submitSimilarWritingRepair(rating)
@@ -622,6 +652,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         promptSource: StudyPromptSource,
         latestSuccessfulSyncAtMillis: Long,
         supersededRecoveryToken: String? = null,
+        similarChoiceSignatureDigest: String? = null,
     ) {
         activeSession = session
         studyRecoveryRouteActive = true
@@ -631,7 +662,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             return
         }
         val item = session.item
-        val restorable = item != null && StudySessionRoute.destination(session) == StudySessionRoute.Destination.FLASHCARD
+        val destination = StudySessionRoute.destination(session)
+        val restorable = item != null && (
+            destination == StudySessionRoute.Destination.FLASHCARD ||
+                destination == StudySessionRoute.Destination.SIMILAR_KANJI && similarChoiceSignatureDigest != null
+            )
         if (!restorable) {
             supersededRecoveryToken?.let(studyRecoveryStore::clearSession)
             activeStudyRecovery = null
@@ -647,6 +682,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
                 taskType = session.taskType,
                 promptSource = promptSource,
                 sourceSyncFinishedAtMillis = latestSuccessfulSyncAtMillis,
+                similarChoiceSignatureDigest = similarChoiceSignatureDigest,
             ),
         )
     }

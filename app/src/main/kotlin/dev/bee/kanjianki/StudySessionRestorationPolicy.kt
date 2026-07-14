@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyQueueSeeder
+import dev.bee.kanjianki.core.StudyTaskTypes
 
 /** Exact validation boundary before private UI state is mounted onto a current study item. */
 internal object StudySessionRestorationPolicy {
@@ -17,6 +18,7 @@ internal object StudySessionRestorationPolicy {
         latestSuccessfulSyncAtMillis: Long,
         tokenConsumed: Boolean,
     ): RecordsSchedulerModels.StudySession? {
+        if (snapshot.taskType !in RESTORABLE_ACTIVE_TASK_TYPES) return null
         if (tokenConsumed || row == null || row.kanji != snapshot.kanji) return null
         if (latestSuccessfulSyncAtMillis != snapshot.sourceSyncFinishedAtMillis) return null
         val item = items.singleOrNull {
@@ -45,6 +47,17 @@ internal object StudySessionRestorationPolicy {
             prompt = prompt,
         )
     }
+
+    private val RESTORABLE_ACTIVE_TASK_TYPES = setOf(
+        StudyTaskTypes.TYPE_MEANING,
+        StudyTaskTypes.TYPING_MEANING,
+        StudyTaskTypes.TYPE_READING,
+        StudyTaskTypes.KANJI_MEANING,
+        StudyTaskTypes.FONT_MEANING,
+        StudyTaskTypes.WORD_READING,
+        StudyTaskTypes.SENTENCE_READING,
+        StudyTaskTypes.SIMILAR_KANJI,
+    )
 
     /**
      * Resolve an answered canonical card without ever falling back to the first same-kanji family.

@@ -60,6 +60,8 @@ internal data class StudyActiveSessionSnapshot(
     val taskType: String,
     val promptSource: StudyPromptSource,
     val sourceSyncFinishedAtMillis: Long,
+    /** Digest of the canonical similar-kanji candidate set; null for flashcard routes. */
+    val similarChoiceSignatureDigest: String? = null,
     val typedDraft: String = "",
     val revealed: Boolean = false,
 )
@@ -456,6 +458,11 @@ internal class StudySessionRecoveryStore(
         .put(KEY_TASK_TYPE, snapshot.taskType)
         .put(KEY_PROMPT_SOURCE, snapshot.promptSource.name)
         .put(KEY_SOURCE_SYNC_FINISHED_AT, snapshot.sourceSyncFinishedAtMillis)
+        .also { json ->
+            snapshot.similarChoiceSignatureDigest?.let {
+                json.put(KEY_SIMILAR_CHOICE_SIGNATURE_DIGEST, it)
+            }
+        }
         .put(KEY_TYPED_DRAFT, snapshot.typedDraft)
         .put(KEY_REVEALED, snapshot.revealed)
 
@@ -469,6 +476,8 @@ internal class StudySessionRecoveryStore(
             taskType = json.getString(KEY_TASK_TYPE),
             promptSource = StudyPromptSource.valueOf(json.getString(KEY_PROMPT_SOURCE)),
             sourceSyncFinishedAtMillis = json.getLong(KEY_SOURCE_SYNC_FINISHED_AT),
+            similarChoiceSignatureDigest = json.optString(KEY_SIMILAR_CHOICE_SIGNATURE_DIGEST)
+                .takeIf { json.has(KEY_SIMILAR_CHOICE_SIGNATURE_DIGEST) },
             typedDraft = json.optString(KEY_TYPED_DRAFT),
             revealed = json.optBoolean(KEY_REVEALED),
         ).takeIf(::validActive)
@@ -536,16 +545,24 @@ internal class StudySessionRecoveryStore(
 
     private fun validActive(snapshot: StudyActiveSessionSnapshot): Boolean {
         val typing = snapshot.taskType in TYPING_TASK_TYPES
+        val similarChoice = snapshot.taskType == StudyTaskTypes.SIMILAR_KANJI
+        val revealable = snapshot.taskType in REVEALABLE_FLASHCARD_TASK_TYPES
+        val validChoiceDigest = if (similarChoice) {
+            snapshot.similarChoiceSignatureDigest?.let(::validSignatureDigest) == true
+        } else {
+            snapshot.similarChoiceSignatureDigest == null
+        }
         return validText(snapshot.sessionToken, MAX_TOKEN_CHARS, allowBlank = false) &&
             validText(snapshot.kanji, MAX_KANJI_CHARS, allowBlank = false) &&
             validSignatureDigest(snapshot.answerSignatureDigest) &&
             snapshot.schedulerRevision >= 0L &&
             snapshot.routingVersion >= 1 &&
-            snapshot.taskType in RESTORABLE_FLASHCARD_TASK_TYPES &&
+            snapshot.taskType in RESTORABLE_ACTIVE_TASK_TYPES &&
             snapshot.sourceSyncFinishedAtMillis >= 0L &&
+            validChoiceDigest &&
             validText(snapshot.typedDraft, MAX_STUDY_TYPED_DRAFT_CHARS, allowBlank = true) &&
             (typing || snapshot.typedDraft.isEmpty()) &&
-            (!typing || !snapshot.revealed)
+            (!snapshot.revealed || revealable)
     }
 
     private fun validPending(snapshot: StudyPendingAnswerSnapshot): Boolean {
@@ -634,6 +651,7 @@ internal class StudySessionRecoveryStore(
         private const val KEY_ROUTING_VERSION = "routing_version"
         private const val KEY_PROMPT_SOURCE = "prompt_source"
         private const val KEY_SOURCE_SYNC_FINISHED_AT = "source_sync_finished_at"
+        private const val KEY_SIMILAR_CHOICE_SIGNATURE_DIGEST = "similar_choice_signature_digest"
         private const val KEY_TYPED_DRAFT = "typed_draft"
         private const val KEY_REVEALED = "revealed"
 
@@ -652,12 +670,14 @@ internal class StudySessionRecoveryStore(
             StudyTaskTypes.TYPING_MEANING,
             StudyTaskTypes.TYPE_READING,
         )
-        private val RESTORABLE_FLASHCARD_TASK_TYPES = TYPING_TASK_TYPES + setOf(
+        private val REVEALABLE_FLASHCARD_TASK_TYPES = setOf(
             StudyTaskTypes.KANJI_MEANING,
             StudyTaskTypes.FONT_MEANING,
             StudyTaskTypes.WORD_READING,
             StudyTaskTypes.SENTENCE_READING,
         )
+        private val RESTORABLE_ACTIVE_TASK_TYPES =
+            TYPING_TASK_TYPES + REVEALABLE_FLASHCARD_TASK_TYPES + StudyTaskTypes.SIMILAR_KANJI
         private val PENDING_PHASES = setOf(
             StudyAnswerFeedbackPhase.SUBMITTING,
             StudyAnswerFeedbackPhase.APPLIED,

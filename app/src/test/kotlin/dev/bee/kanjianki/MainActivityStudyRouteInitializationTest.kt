@@ -1,17 +1,29 @@
 package dev.bee.kanjianki
 
+import android.content.ContentValues
 import android.content.Context
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.AdaptiveRouteState
+import dev.bee.kanjianki.core.AdaptiveRouteStateCodec
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SimilarKanjiIndex
+import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.LocalStoreHistory
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,6 +37,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.io.StringReader
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.Executor
@@ -293,6 +306,53 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun processRestartRestoresDigestBoundSimilarChoiceSubmittingFallback() {
+        val restored = restoreSubmittingSimilarChoiceAfterProcessRestart()
+
+        try {
+            assertEquals("similar-process-token", restored.activity.activeSession?.token)
+            assertEquals(StudyTaskTypes.SIMILAR_KANJI, restored.activity.activeSession?.taskType)
+            assertEquals(
+                StudyAnswerFeedbackPhase.UNANSWERED,
+                restored.activity.studyAnswerFeedbackState?.snapshot()?.phase,
+            )
+            assertNotNull(restored.activity.activeStudyRecovery()?.snapshot?.similarChoiceSignatureDigest)
+            assertNull(restored.activity.pendingStudyRecovery())
+            val raw = restored.preferences.getString("snapshot", "").orEmpty()
+            assertFalse(raw.contains("恨"))
+            assertFalse(raw.contains("恒"))
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun processRestartRejectsSimilarFallbackThatIsNoLongerDue() {
+        val restored = restoreSubmittingSimilarChoiceAfterProcessRestart(invalidateChoice = true)
+
+        try {
+            assertNull(restored.activity.activeStudyRecovery())
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertFalse(restored.preferences.contains("snapshot"))
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun processRestartRejectsSimilarFallbackWhoseDueCandidateSetChanged() {
+        val restored = restoreSubmittingSimilarChoiceAfterProcessRestart(replaceChoiceSet = true)
+
+        try {
+            assertNull(restored.activity.activeStudyRecovery())
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertFalse(restored.preferences.contains("snapshot"))
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
     fun acceptedTargetedChoiceSupersedesDormantPendingAnswer() {
         val activity = createActivity()
         val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
@@ -334,6 +394,56 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun acceptedSimilarChoicePublishesOnlyWithPreparedChoiceIdentity() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val base = flashcardSession()
+        val similar = RecordsSchedulerModels.StudySession(
+            base.item,
+            base.row,
+            base.token,
+            StudyTaskTypes.SIMILAR_KANJI,
+            writingRequired = false,
+            prompt = base.prompt,
+        )
+        val choiceDigest = similarKanjiChoiceRecoveryDigest(listOf("弱", "若"))
+
+        activity.acceptNewActiveStudySession(
+            similar,
+            StudyPromptSource.REASON_TEXT,
+            latestSuccessfulSyncAtMillis = 0L,
+            similarChoiceSignatureDigest = choiceDigest,
+        )
+
+        assertEquals(choiceDigest, activity.activeStudyRecovery()?.snapshot?.similarChoiceSignatureDigest)
+        preferences.edit().clear().commit()
+        activity.acceptNewActiveStudySession(
+            similar,
+            StudyPromptSource.REASON_TEXT,
+            latestSuccessfulSyncAtMillis = 0L,
+        )
+        assertNull(activity.activeStudyRecovery())
+
+        val writing = RecordsSchedulerModels.StudySession(
+            base.item,
+            base.row,
+            base.token,
+            StudyTaskTypes.SIMILAR_KANJI,
+            writingRequired = true,
+            prompt = base.prompt,
+        )
+        activity.acceptNewActiveStudySession(
+            writing,
+            StudyPromptSource.REASON_TEXT,
+            latestSuccessfulSyncAtMillis = 0L,
+            similarChoiceSignatureDigest = choiceDigest,
+        )
+        assertNull(activity.activeStudyRecovery())
+        preferences.edit().clear().commit()
+    }
+
+    @Test
     fun canceledStudyRouteCannotPublishComputedCardRecovery() {
         val activity = createActivity()
         val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
@@ -353,6 +463,7 @@ class MainActivityStudyRouteInitializationTest {
             AsyncHomeRouteLoader(
                 background = Executor { backgroundTasks.addLast(it) },
                 postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
             ),
         )
 
@@ -410,6 +521,64 @@ class MainActivityStudyRouteInitializationTest {
         assertEquals("", stored?.snapshot?.typedDraft)
         assertFalse(requireNotNull(stored).snapshot.revealed)
         assertNull(StudySessionRecoveryStore(preferences).readPending())
+    }
+
+    @Test
+    fun staleSimilarChoiceCallbacksCannotGradeOrAdvanceReplacement() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val oldItem = studyItem("旧", "old-choice-token").copyBuilder()
+            .answerSignature("old-choice-signature")
+            .schedulerRevision(3L)
+            .routingVersion(1)
+            .build()
+        val oldSession = RecordsSchedulerModels.StudySession(
+            oldItem,
+            null,
+            "old-choice-token",
+            StudyTaskTypes.SIMILAR_KANJI,
+            writingRequired = false,
+            prompt = "old prompt",
+        )
+        activity.acceptNewActiveStudySession(
+            oldSession,
+            StudyPromptSource.REASON_TEXT,
+            0L,
+            similarChoiceSignatureDigest = similarKanjiChoiceRecoveryDigest(listOf("旧", "臼")),
+        )
+        activity.prepareStudyAnswerFeedback(oldSession.token)
+        val oldRecovery = requireNotNull(activity.activeStudyUiRecovery(oldSession.token))
+        val oldCard = RecordsImportModels.SimilarKanjiChoiceCard(
+            "旧",
+            "old",
+            listOf("旧", "臼"),
+            "旧\t臼",
+        )
+        val replacementItem = studyItem("新", "new-choice-token").copyBuilder()
+            .answerSignature("new-choice-signature")
+            .schedulerRevision(4L)
+            .routingVersion(1)
+            .build()
+        val replacement = RecordsSchedulerModels.StudySession(
+            replacementItem,
+            null,
+            "new-choice-token",
+            StudyTaskTypes.KANJI_MEANING,
+            writingRequired = false,
+            prompt = "new prompt",
+        )
+        activity.acceptNewActiveStudySession(replacement, StudyPromptSource.REASON_TEXT, 0L)
+        activity.prepareStudyAnswerFeedback(replacement.token)
+        val replacementRaw = preferences.getString("snapshot", null)
+
+        assertFalse(activity.submitSimilarKanjiChoice(oldSession.token, oldRecovery, oldCard, "臼"))
+        assertFalse(activity.continueAfterStudyAnswer(oldSession.token, oldRecovery))
+
+        assertEquals(replacementRaw, preferences.getString("snapshot", null))
+        assertEquals("new-choice-token", activity.activeStudyRecovery()?.snapshot?.sessionToken)
+        assertNull(activity.pendingStudyRecovery())
+        preferences.edit().clear().commit()
     }
 
     @Test
@@ -599,6 +768,138 @@ class MainActivityStudyRouteInitializationTest {
         return RestoredActivity(activity, controller, preferences)
     }
 
+    private fun restoreSubmittingSimilarChoiceAfterProcessRestart(
+        invalidateChoice: Boolean = false,
+        replaceChoiceSet: Boolean = false,
+    ): RestoredActivity {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val target = "恢"
+        val confusedWith = "恨"
+        val rows = listOf(dashboardRow(target), dashboardRow(confusedWith), dashboardRow("恒"))
+        val row = rows.first()
+        val signature = StudyQueueSeeder.answerSignature(row)
+        val token = "similar-process-token"
+        val sourceSyncAt = LocalStore(context).use { store ->
+            val index = SimilarKanjiIndex.parseTsv(
+                StringReader("$target\t$confusedWith\tfixture\n$target\t恒\tfixture\n"),
+            )
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList<RecordsImportModels.SuspendedImport>(),
+                rows,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                LocalStoreBase.SyncTiming(8_000L, 9_000L),
+                null,
+                index,
+            )
+            val item = studyItem(target, token).copyBuilder()
+                .answerSignature(signature)
+                .schedulerRevision(4L)
+                .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+                .hasSimilarKanji(true)
+                .adaptiveRouteStateJson(
+                    AdaptiveRouteStateCodec.encode(
+                        AdaptiveRouteState(
+                            activeCore = CoreSkill.RECOGNITION,
+                            activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI),
+                            answerEvidence = AnswerEvidence(
+                                coreSkill = CoreSkill.RECOGNITION,
+                                failureKind = FailureKind.VISUAL_CONFUSION,
+                                confusedWith = confusedWith,
+                            ),
+                        ),
+                    ),
+                )
+                .build()
+            store.saveStudyItem(item)
+            val card = requireNotNull(
+                store.dueSimilarChoiceForActiveTarget(target, System.currentTimeMillis()),
+            )
+            val recoveryStore = StudySessionRecoveryStore(preferences)
+            val active = requireNotNull(
+                recoveryStore.replaceWithActive(
+                    StudyActiveSessionSnapshot(
+                        sessionToken = token,
+                        kanji = target,
+                        answerSignatureDigest = studyAnswerSignatureDigest(signature),
+                        schedulerRevision = item.schedulerRevision,
+                        routingVersion = item.routingVersion,
+                        taskType = StudyTaskTypes.SIMILAR_KANJI,
+                        promptSource = StudyPromptSource.REASON_TEXT,
+                        sourceSyncFinishedAtMillis = store.latestSuccessfulSyncFinishedAt() ?: 0L,
+                        similarChoiceSignatureDigest = similarKanjiChoiceRecoveryDigest(card.choices),
+                    ),
+                ),
+            )
+            requireNotNull(
+                recoveryStore.transitionActiveToPending(
+                    active,
+                    StudyPendingAnswerSnapshot(
+                        feedback = StudyAnswerFeedbackSnapshot(
+                            sessionToken = token,
+                            phase = StudyAnswerFeedbackPhase.SUBMITTING,
+                            outcome = StudyAnswerOutcome.INCORRECT,
+                            selectedAnswer = confusedWith,
+                        ),
+                        kanji = target,
+                        taskType = StudyTaskTypes.SIMILAR_KANJI,
+                        writingRequired = false,
+                        prompt = row.reasonText,
+                        answerSignature = signature,
+                        schedulerRevision = item.schedulerRevision,
+                    ),
+                ),
+            )
+            if (invalidateChoice) {
+                val values = ContentValues().apply {
+                    put(LocalStoreBase.COLUMN_PASSED_AT, 9_001L)
+                }
+                assertEquals(
+                    1,
+                    store.writableDatabase.update(
+                        LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
+                        values,
+                        "target_kanji=? AND choice_signature=?",
+                        arrayOf(card.targetKanji, card.choiceSignature),
+                    ),
+                )
+            }
+            if (replaceChoiceSet) {
+                val replacementChoices = listOf(target, confusedWith, "悟")
+                val values = ContentValues().apply {
+                    put(
+                        LocalStoreBase.COLUMN_CHOICE_SIGNATURE,
+                        SimilarKanjiChoicePlanner.choiceSignature(replacementChoices),
+                    )
+                    put("choices", LocalStoreHistory.serializeChoices(replacementChoices))
+                }
+                assertEquals(
+                    1,
+                    store.writableDatabase.update(
+                        LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
+                        values,
+                        "target_kanji=? AND choice_signature=?",
+                        arrayOf(card.targetKanji, card.choiceSignature),
+                    ),
+                )
+            }
+            store.latestSuccessfulSyncFinishedAt() ?: 0L
+        }
+        assertEquals(9_000L, sourceSyncAt)
+
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val activity = controller.get()
+        val ioTasks = QueueingExecutorService()
+        replaceField(activity, "io", ioTasks)
+        controller.create().start().resume()
+        ioTasks.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+        return RestoredActivity(activity, controller, preferences)
+    }
+
     private fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
         val example = RecordsImportModels.Example(
             "active",
@@ -630,7 +931,7 @@ class MainActivityStudyRouteInitializationTest {
     private class RestoredActivity(
         val activity: MainActivity,
         private val controller: org.robolectric.android.controller.ActivityController<MainActivity>,
-        private val preferences: android.content.SharedPreferences,
+        val preferences: android.content.SharedPreferences,
     ) {
         fun close() {
             preferences.edit().clear().commit()

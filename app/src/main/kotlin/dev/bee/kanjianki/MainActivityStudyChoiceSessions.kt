@@ -44,6 +44,38 @@ internal fun meaningChoiceSessionStateForFeedback(
     return MeaningChoiceSessionState(selectedChoice)
 }
 
+/** Stable display order derived from persisted identity, independent of query order. */
+@Suppress("kotlin:S2245")
+internal fun tokenOrderedSimilarKanjiChoices(
+    choices: List<String>,
+    sessionToken: String,
+): List<String> {
+    val ordered = choices.asSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinct()
+        .sorted()
+        .toMutableList()
+    val random = Random(sessionToken.hashCode().toLong())
+    for (index in ordered.lastIndex downTo 1) {
+        val swapIndex = random.nextInt(index + 1)
+        val value = ordered[index]
+        ordered[index] = ordered[swapIndex]
+        ordered[swapIndex] = value
+    }
+    return ordered
+}
+
+internal fun similarKanjiChoiceRecoveryDigest(choices: List<String>): String =
+    studyAnswerSignatureDigest(
+        "similar-kanji-choice-recovery-v1\u0000" + SimilarKanjiChoicePlanner.choiceSignature(choices),
+    )
+
+private data class PreparedSimilarChoiceCard(
+    val card: RecordsImportModels.SimilarKanjiChoiceCard,
+    val persistedDueSource: Boolean,
+)
+
 private fun formatSimilarKanjiSourceWord(example: RecordsImportModels.Example): String {
     val expression = example.expression.trim()
     if (expression.isEmpty()) {
@@ -389,17 +421,20 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     fun prepareSimilarKanjiRender(
         session: RecordsSchedulerModels.StudySession,
         mnemonic: StudyAnswerMnemonicModel?,
-    ): () -> Unit {
-        val choiceCard = similarChoiceCardForSession(session)
-        val choices = ArrayList(choiceCard.choices)
-        if (choices.size < 2) {
+    ): PreparedStudySessionRender {
+        val preparedChoice = prepareSimilarChoiceCardForSession(session)
+        val choiceCard = preparedChoice.card
+        val choices = tokenOrderedSimilarKanjiChoices(choiceCard.choices, session.token)
+        if (choices.size < 2 || choiceCard.targetKanji !in choices) {
             home.warmSessionDictionaryEntry(session)
-            return {
-                resetChoiceSession(false)
-                home.renderComposeFlashcardSession(session, mnemonic)
-            }
+            return PreparedStudySessionRender(
+                render = {
+                    resetChoiceSession(false)
+                    home.renderComposeFlashcardSession(session, mnemonic)
+                },
+            )
         }
-        choices.shuffle()
+        val choiceSignatureDigest = similarKanjiChoiceRecoveryDigest(choiceCard.choices)
 
         val meaning = StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)
         val explanation = SimilarKanjiExplanationPolicy.explain(
@@ -411,36 +446,63 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val explanationLines = similarKanjiExplanationLines(explanation)
         val modeLabel = StudyTaskCopy.studyModeLabel(session)
 
-        return {
-            resetChoiceSession(false)
-            val feedback = home.prepareStudyAnswerFeedback(session.token)
-            val model = SimilarChoiceSessionModel(
-                modeLabel,
-                StudyTextCopy.studyChoiceQuestion(meaning),
-                SimilarChoiceGridModel(
+        return PreparedStudySessionRender(
+            render = {
+                resetChoiceSession(false)
+                val feedback = home.prepareStudyAnswerFeedback(session.token)
+                val activeUiRecovery = home.activeStudyUiRecovery(session.token)
+                val model = SimilarChoiceSessionModel(
+                    modeLabel,
+                    StudyTextCopy.studyChoiceQuestion(meaning),
+                    SimilarChoiceGridModel(
+                        choices,
+                        false,
+                        KanjiChoiceHandler { glyph ->
+                            home.submitSimilarKanjiChoice(
+                                session.token,
+                                activeUiRecovery,
+                                choiceCard,
+                                glyph,
+                            )
+                        },
+                        correctChoice = choiceCard.targetKanji,
+                    ),
+                    explanationLines,
+                    mnemonic = mnemonic,
+                    feedbackState = feedback,
+                    onContinue = Runnable {
+                        home.continueAfterStudyAnswer(session.token, activeUiRecovery)
+                    },
+                )
+                lateinit var differenceModel: SimilarKanjiDifferenceModel
+                differenceModel = similarKanjiDifferenceModel(
+                    choiceCard.targetKanji,
                     choices,
-                    false,
-                    KanjiChoiceHandler { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) },
-                    correctChoice = choiceCard.targetKanji,
-                ),
-                explanationLines,
-                mnemonic = mnemonic,
-                feedbackState = feedback,
-                onContinue = Runnable { home.continueAfterStudyAnswer() },
-            )
-            lateinit var differenceModel: SimilarKanjiDifferenceModel
-            differenceModel = similarKanjiDifferenceModel(
-                choiceCard.targetKanji,
-                choices,
-                model.modeLabel,
-                explanationLines,
-                onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
-            )
-            renderSimilarChoiceRoute(model, differenceModel)
-        }
+                    model.modeLabel,
+                    explanationLines,
+                    onBack = Runnable {
+                        if (home.matchesMountedStudyRoute(session.token, activeUiRecovery)) {
+                            renderSimilarChoiceRoute(
+                                model,
+                                differenceModel,
+                                session.token,
+                                activeUiRecovery,
+                            )
+                        }
+                    },
+                )
+                renderSimilarChoiceRoute(model, differenceModel, session.token, activeUiRecovery)
+            },
+            similarChoiceSignatureDigest = choiceSignatureDigest.takeIf { preparedChoice.persistedDueSource },
+        )
     }
 
-    private fun renderSimilarChoiceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
+    private fun renderSimilarChoiceRoute(
+        model: SimilarChoiceSessionModel,
+        differenceModel: SimilarKanjiDifferenceModel,
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ) {
         home.initializeSessionProgressTarget(home.activeStudyPlan)
         val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
         home.composeRoute(
@@ -454,14 +516,28 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
                         showInlineChoices = true,
                         detailsExpandedByDefault = false,
-                        onExploreDifferences = Runnable { renderSimilarDifferenceRoute(model, differenceModel) },
+                        onExploreDifferences = Runnable {
+                            if (home.matchesMountedStudyRoute(expectedToken, expectedRecovery)) {
+                                renderSimilarDifferenceRoute(
+                                    model,
+                                    differenceModel,
+                                    expectedToken,
+                                    expectedRecovery,
+                                )
+                            }
+                        },
                     )
                 }
             },
         )
     }
 
-    private fun renderSimilarDifferenceRoute(model: SimilarChoiceSessionModel, differenceModel: SimilarKanjiDifferenceModel) {
+    private fun renderSimilarDifferenceRoute(
+        model: SimilarChoiceSessionModel,
+        differenceModel: SimilarKanjiDifferenceModel,
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ) {
         home.initializeSessionProgressTarget(home.activeStudyPlan)
         val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
         val withBrowseActions = differenceModel.copy(
@@ -469,17 +545,32 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 choice.copy(
                     onOpenBrowse = choice.kanji.takeIf { it.isNotBlank() }?.let { glyph ->
                         Runnable {
-                            home.renderDetail(
-                                glyph,
-                                false,
-                                null,
-                                Runnable { renderSimilarDifferenceRoute(model, differenceModel) }
-                            )
+                            if (home.matchesMountedStudyRoute(expectedToken, expectedRecovery)) {
+                                home.renderDetail(
+                                    glyph,
+                                    false,
+                                    null,
+                                    Runnable {
+                                        if (home.matchesMountedStudyRoute(expectedToken, expectedRecovery)) {
+                                            renderSimilarDifferenceRoute(
+                                                model,
+                                                differenceModel,
+                                                expectedToken,
+                                                expectedRecovery,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 )
             },
-            onBack = Runnable { renderSimilarChoiceRoute(model, differenceModel) },
+            onBack = Runnable {
+                if (home.matchesMountedStudyRoute(expectedToken, expectedRecovery)) {
+                    renderSimilarChoiceRoute(model, differenceModel, expectedToken, expectedRecovery)
+                }
+            },
         )
         home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
@@ -528,7 +619,12 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         )
     }
 
-    fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard {
+    fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard =
+        prepareSimilarChoiceCardForSession(session).card
+
+    private fun prepareSimilarChoiceCardForSession(
+        session: RecordsSchedulerModels.StudySession,
+    ): PreparedSimilarChoiceCard {
         val now = System.currentTimeMillis()
         val targetKanji = session.item?.kanji ?: ""
         val stored = home.store.dueSimilarChoiceForActiveTarget(targetKanji, now)
@@ -539,12 +635,22 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         } else {
             null
         }
-        return SimilarKanjiChoicePlanner.choiceCardForSession(
+        val card = SimilarKanjiChoicePlanner.choiceCardForSession(
             stored,
             targetKanji,
             meaning,
             home.store.similarPairsForKanji(targetKanji),
             preferredConfusion,
+        )
+        val canonicalStoredSignature = stored?.let {
+            SimilarKanjiChoicePlanner.choiceSignature(it.choices)
+        }
+        return PreparedSimilarChoiceCard(
+            card = card,
+            persistedDueSource = stored != null &&
+                stored.choiceSignature == canonicalStoredSignature &&
+                card.choiceSignature == stored.choiceSignature &&
+                card.choiceSignature == SimilarKanjiChoicePlanner.choiceSignature(card.choices),
         )
     }
 

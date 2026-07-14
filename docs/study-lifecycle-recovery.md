@@ -1,8 +1,9 @@
 # Study lifecycle recovery
 
-Kani restores an interrupted canonical flashcard only when the local database can prove that it is
-still the same scheduler task. Recovery is a convenience layer over persisted scheduler state; it
-is never a second queue and it never makes a review decision.
+Kani restores an interrupted canonical flashcard or eligible similar-kanji choice only when the
+local database can prove that it is still the same scheduler task and presentation. Recovery is a
+convenience layer over persisted scheduler state; it is never a second queue and it never makes a
+review decision.
 
 ## Durable envelope
 
@@ -13,7 +14,8 @@ device-transfer backups exclude all shared preferences through `backup_rules.xml
 The envelope has two states:
 
 - **Active:** the ungraded card identity, its active scheduler token, source sync epoch, prompt
-  source, typed draft, and whether a plain flashcard was revealed.
+  source, typed draft, whether a plain flashcard was revealed, and, for an eligible similar-kanji
+  choice, a digest of its canonical choice set.
 - **Pending answer:** the feedback needed to keep an accepted answer visible until Continue. During
   submission it also retains the previous active state as a fallback if the database transaction is
   rejected.
@@ -27,11 +29,20 @@ write epoch. A superseded Activity, canceled route load, or late text callback t
 overwrite or delete a newer card. Moving from active to pending is one whole-value write, not a clear
 followed by a save.
 
-The active envelope deliberately stores only a SHA-256 digest of the answer signature. It does not
-copy the canonical expression, reading, meaning, examples, mnemonic, or correct answer out of the
-database. The learner's own typed draft is persisted because it is the state being restored. Once an
-answer is submitted, the pending envelope stores the selected answer and exact family signature
-needed to reproduce and validate the answer screen.
+The active envelope deliberately stores only a SHA-256 digest of the answer signature. A restorable
+similar-kanji choice additionally stores a domain-separated SHA-256 digest of the canonical choice
+signature. It does not store the option list, display order, correct answer, canonical expression,
+reading, meaning, examples, or mnemonic outside the database. The learner's own typed draft is
+persisted because it is the state being restored. Once an answer is submitted, the pending envelope
+stores the selected answer and exact family signature needed to reproduce and validate the answer
+screen.
+
+Only choices rebuilt from the current persisted, due similar-choice source qualify for active
+recovery. Its stored signature must canonicalize to the same choice set produced for the scheduler
+session; ad-hoc fallback choices never receive a recovery digest. Display order is rebuilt by
+normalizing and sorting the set, then applying a deterministic shuffle bound to the persisted
+session token. A process restart therefore keeps the same order without making that order durable
+or depending on incidental database query order.
 
 ## Exact validation
 
@@ -43,6 +54,13 @@ Before mounting an active envelope, Kani requires all of the following:
 - the review token has not been consumed;
 - the item is neither retired nor suppressed; and
 - the latest successful sync timestamp is unchanged.
+
+For a similar-kanji choice, preparation must also resolve the current persisted due-choice source
+again and reproduce the envelope's canonical-set digest. The active envelope requires an empty
+typed draft and unrevealed state. The same content check runs both for a directly active envelope
+and for the active fallback retained while an answer is in the submitting phase. An expired or
+changed due source, a fallback-generated set, malformed digest, missing target, or set mismatch
+invalidates the inspected envelope rather than mounting a different choice card.
 
 Any mismatch clears only the envelope that was inspected, using a conditional clear. A concurrent
 replacement survives. This deliberately invalidates an interrupted card after any successful sync,
@@ -68,6 +86,11 @@ recover it, but late review callbacks cannot reactivate ordinary resume. Tempora
 navigation into kanji details is not treated as leaving Study. Screenshot and benchmark routes may
 observe the app but never mutate production recovery state.
 
+Similar-choice actions capture the rendered session token and recovery write epoch. Choice,
+Continue, and nested difference-screen callbacks validate that identity against the still-mounted
+route; grading additionally requires the unanswered phase. A callback retained by a destroyed
+Activity therefore cannot grade or replace a newer session.
+
 ## Current boundary
 
 This slice restores:
@@ -75,18 +98,21 @@ This slice restores:
 - the exact active canonical flashcard and Study route;
 - typed meaning/reading drafts;
 - the ungraded reveal state of plain recognition, font, word-reading, and sentence cards; and
+- an ungraded similar-kanji choice whose current persisted due source reproduces its canonical set,
+  with deterministic token-bound display order; and
 - accepted/pending answer feedback that existed before this work.
 
-Ungraded choice-card presentation, full run history and progress breakdown, task-timer position, open
-dialogs, hint state, and handwriting strokes are intentionally not encoded yet. Accepted choice
-selection is already part of pending-answer feedback. A recovered active card reconciles its target
-against the currently selectable remaining work, so the fresh tracker cannot end a multi-card run at
-one, but prior completed-position detail is not reconstructed. Active writing and ungraded choice
-destinations fail closed instead of being partially restored. Those states need their own
-deterministic content identity and bounded payload contracts before they can safely join this
-envelope.
+Other ungraded choice-card presentations, full run history and progress breakdown, task-timer
+position, open dialogs, hint state, and handwriting strokes are intentionally not encoded yet.
+Accepted choice selection is already part of pending-answer feedback. A recovered active card
+reconciles its target against the currently selectable remaining work, so the fresh tracker cannot
+end a multi-card run at one, but prior completed-position detail is not reconstructed. Active
+writing and the remaining ungraded choice destinations fail closed instead of being partially
+restored. Those states need their own deterministic content identity and bounded payload contracts
+before they can safely join this envelope.
 
 The regression surface is JVM/Robolectric only: envelope CAS/tombstone behavior, malformed payloads,
 exact scheduler invalidation, startup precedence, process-style Activity reconstruction, typed draft
-restoration, plain reveal restoration, and late completion after explicit exit. No device or emulator
-is required for this UI-lifecycle slice.
+restoration, plain reveal restoration, deterministic similar-choice ordering and digest validation,
+active and submitting-fallback recovery, stale callback rejection, and late completion after
+explicit exit. No device or emulator is required for this UI-lifecycle slice.

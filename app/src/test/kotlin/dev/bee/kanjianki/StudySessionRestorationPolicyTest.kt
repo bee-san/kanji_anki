@@ -1,5 +1,11 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.AdaptiveRouteState
+import dev.bee.kanjianki.core.AdaptiveRouteStateCodec
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -68,6 +74,67 @@ class StudySessionRestorationPolicyTest {
         assertNull(restore(candidateItems = listOf(item.copyBuilder().state(MainActivityBase.STATE_RETIRED).build())))
         assertNull(restore(candidateItems = listOf(item.copyBuilder().suppressedByTaskType("type_meaning").build())))
         assertNull(restore(candidateItems = listOf(item, item.copyBuilder().build())))
+    }
+
+    @Test
+    fun exactSimilarChoiceRouteRestoresThroughAdaptiveRepairState() {
+        val row = row("裂", expression = "分裂", meaning = "split")
+        val item = item(row).copyBuilder()
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(
+                AdaptiveRouteStateCodec.encode(
+                    AdaptiveRouteState(
+                        activeCore = CoreSkill.RECOGNITION,
+                        activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI),
+                        answerEvidence = AnswerEvidence(
+                            coreSkill = CoreSkill.RECOGNITION,
+                            failureKind = FailureKind.VISUAL_CONFUSION,
+                            confusedWith = "烈",
+                        ),
+                    ),
+                ),
+            )
+            .build()
+        val snapshot = activeSnapshot(item).copy(
+            taskType = StudyTaskTypes.SIMILAR_KANJI,
+            typedDraft = "",
+            similarChoiceSignatureDigest = similarKanjiChoiceRecoveryDigest(listOf("裂", "烈")),
+        )
+
+        val session = StudySessionRestorationPolicy.restoreActive(
+            snapshot,
+            listOf(item),
+            row,
+            ladder(),
+            latestSuccessfulSyncAtMillis = 9_000L,
+            tokenConsumed = false,
+        )
+
+        assertSame(item, session?.item)
+        assertEquals(StudyTaskTypes.SIMILAR_KANJI, session?.taskType)
+    }
+
+    @Test
+    fun activeRestoreAllowlistRejectsOtherwiseMatchingChoiceDestination() {
+        val row = row("裂", expression = "分裂", meaning = "split")
+        val item = item(row).copyBuilder()
+            .rung(RecordsBase.LadderRung.MEANING_KANJI)
+            .build()
+        val snapshot = activeSnapshot(item).copy(
+            taskType = StudyTaskTypes.MEANING_KANJI,
+            typedDraft = "",
+        )
+
+        assertNull(
+            StudySessionRestorationPolicy.restoreActive(
+                snapshot,
+                listOf(item),
+                row,
+                ladder(),
+                latestSuccessfulSyncAtMillis = 9_000L,
+                tokenConsumed = false,
+            ),
+        )
     }
 
     @Test

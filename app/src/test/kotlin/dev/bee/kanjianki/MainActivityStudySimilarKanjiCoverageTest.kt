@@ -23,7 +23,9 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +46,29 @@ class MainActivityStudySimilarKanjiCoverageTest {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         store?.close()
         store = null
+    }
+
+    @Test
+    fun similarChoiceOrderIsTokenStableAndCanonical() {
+        val source = mutableListOf("謎", "拉", "烈", "提")
+        val original = source.toList()
+
+        val ordered = tokenOrderedSimilarKanjiChoices(source, "session-token")
+
+        assertEquals(listOf("烈", "拉", "提", "謎"), ordered)
+        assertEquals(
+            ordered,
+            tokenOrderedSimilarKanjiChoices(listOf("提", "烈", "謎", "拉"), "session-token"),
+        )
+        assertEquals(original, source)
+        assertEquals(
+            similarKanjiChoiceRecoveryDigest(source),
+            similarKanjiChoiceRecoveryDigest(source.reversed()),
+        )
+        assertEquals(
+            listOf("拉"),
+            tokenOrderedSimilarKanjiChoices(listOf("拉", " 拉 ", ""), "session-token"),
+        )
     }
 
     @Test
@@ -79,10 +104,69 @@ class MainActivityStudySimilarKanjiCoverageTest {
             assertTrue(card.choices.size >= 2)
             assertEquals(listOf("拉", "謎"), card.choices.take(2))
 
-            activity.renderSession(session)
+            val prepared = activity.prepareSessionRender(session)
+            assertEquals(
+                similarKanjiChoiceRecoveryDigest(card.choices),
+                prepared.similarChoiceSignatureDigest,
+            )
+            prepared()
             shadowOf(Looper.getMainLooper()).idle()
             assertNotNull(activity.backAction)
         } finally {
+            controller?.pause()?.stop()?.destroy()
+            store?.close()
+            store = null
+        }
+    }
+
+    @Test
+    fun onTheFlyFallbackChoiceIsNotPublishedAsRecoverable() {
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val index = SimilarKanjiIndex.parseTsv(StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"))
+        val rows = listOf(dashboardRow("拉"), dashboardRow("提"), dashboardRow("謎"))
+        val savedStore = LocalStore(context)
+        savedStore.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            rows,
+            RecordsSyncModels.Settings.kikuDefaults(),
+            LocalStoreBase.SyncTiming(1_000L, 2_000L),
+            null,
+            index,
+        )
+        savedStore.writableDatabase.delete(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
+            "target_kanji=?",
+            arrayOf("拉"),
+        )
+        store = savedStore
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+
+        var controller: org.robolectric.android.controller.ActivityController<TestMainActivity>? = null
+        try {
+            controller = Robolectric.buildActivity(TestMainActivity::class.java, Intent(context, TestMainActivity::class.java))
+            val activity = controller.get()
+            activity.store = savedStore
+            activity.dictionaryLookup = DictionaryLookup.empty()
+            controller.create().start().resume()
+            activity.cancelPendingHomeRouteLoads()
+            shadowOf(Looper.getMainLooper()).idle()
+            val session = similarSession("拉", "謎")
+
+            val prepared = activity.prepareSessionRender(session)
+            activity.acceptNewActiveStudySession(
+                session,
+                StudyPromptSource.REASON_TEXT,
+                savedStore.latestSuccessfulSyncFinishedAt() ?: 0L,
+                similarChoiceSignatureDigest = prepared.similarChoiceSignatureDigest,
+            )
+
+            assertNull(prepared.similarChoiceSignatureDigest)
+            assertNull(activity.activeStudyRecovery())
+            assertFalse(preferences.contains("snapshot"))
+        } finally {
+            preferences.edit().clear().commit()
             controller?.pause()?.stop()?.destroy()
             store?.close()
             store = null

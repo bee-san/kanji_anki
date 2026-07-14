@@ -50,6 +50,106 @@ class StudySessionRecoveryStoreTest {
     }
 
     @Test
+    fun similarChoiceRoundTripsOnlyItsCanonicalDigest() {
+        val store = store()
+        val snapshot = similarSnapshot()
+
+        val stored = store.replaceWithActive(snapshot)
+
+        assertNotNull(stored)
+        assertEquals(snapshot, store.readActive()?.snapshot)
+        val raw = preferences.getString("snapshot", "").orEmpty()
+        assertTrue(raw.contains(snapshot.similarChoiceSignatureDigest.orEmpty()))
+        assertFalse(raw.contains("烈"))
+        assertFalse(raw.contains("例"))
+        assertFalse(raw.contains("裂\\t烈\\t例"))
+    }
+
+    @Test
+    fun similarChoiceRequiresExactUngradedUiContract() {
+        val store = store()
+        val valid = similarSnapshot()
+
+        assertNull(store.replaceWithActive(valid.copy(similarChoiceSignatureDigest = null)))
+        assertNull(store.replaceWithActive(valid.copy(similarChoiceSignatureDigest = "not-a-digest")))
+        assertNull(store.replaceWithActive(valid.copy(typedDraft = "private draft")))
+        assertNull(store.replaceWithActive(valid.copy(revealed = true)))
+        assertNull(
+            store.replaceWithActive(
+                activeSnapshot().copy(similarChoiceSignatureDigest = valid.similarChoiceSignatureDigest),
+            ),
+        )
+    }
+
+    @Test
+    fun similarChoiceSubmittingFallbackPreservesChoiceIdentity() {
+        val store = store()
+        val active = store.replaceWithActive(similarSnapshot())!!
+        val pending = similarPendingSnapshot(StudyAnswerFeedbackPhase.SUBMITTING)
+
+        val stored = store.transitionActiveToPending(active, pending)!!
+        val restored = store.claimPendingFallback(stored)!!
+
+        assertEquals(active.snapshot.similarChoiceSignatureDigest, restored.snapshot.similarChoiceSignatureDigest)
+        assertEquals(active.writeEpoch, restored.writeEpoch)
+    }
+
+    @Test
+    fun preChoiceV2ActiveAndFallbackPayloadsRemainReadable() {
+        val signature = "裂|分裂|ぶんれつ|split"
+        val active = JSONObject()
+            .put("token", "active-token")
+            .put("kanji", "裂")
+            .put("answer_signature_digest", studyAnswerSignatureDigest(signature))
+            .put("scheduler_revision", 7L)
+            .put("routing_version", 2)
+            .put("task_type", StudyTaskTypes.TYPE_MEANING)
+            .put("prompt_source", StudyPromptSource.REASON_TEXT.name)
+            .put("source_sync_finished_at", 9_000L)
+            .put("typed_draft", "legacy draft")
+            .put("revealed", false)
+        val activeEnvelope = JSONObject()
+            .put("version", 2)
+            .put("kind", "active")
+            .put("resume_on_ordinary_launch", true)
+            .put("write_epoch", "legacy-v2-active-epoch")
+            .put("active", active)
+            .toString()
+        preferences.edit().putString("snapshot", activeEnvelope).commit()
+
+        val decodedActive = store().readActive()
+
+        assertEquals("legacy draft", decodedActive?.snapshot?.typedDraft)
+        assertNull(decodedActive?.snapshot?.similarChoiceSignatureDigest)
+
+        val pending = JSONObject()
+            .put("token", "active-token")
+            .put("phase", StudyAnswerFeedbackPhase.SUBMITTING.name)
+            .put("outcome", StudyAnswerOutcome.INCORRECT.name)
+            .put("selected_answer", "draft")
+            .put("kanji", "裂")
+            .put("task_type", StudyTaskTypes.TYPE_MEANING)
+            .put("writing_required", false)
+            .put("prompt", "Why is this weak?")
+            .put("answer_signature", signature)
+            .put("scheduler_revision", 7L)
+        val pendingEnvelope = JSONObject()
+            .put("version", 2)
+            .put("kind", "pending_answer")
+            .put("resume_on_ordinary_launch", true)
+            .put("pending", pending)
+            .put("fallback_active", active)
+            .put("fallback_write_epoch", "legacy-v2-fallback-epoch")
+            .toString()
+        preferences.edit().putString("snapshot", pendingEnvelope).commit()
+
+        val decodedPending = store().readPending()
+
+        assertEquals("legacy draft", decodedPending?.fallbackActive?.typedDraft)
+        assertNull(decodedPending?.fallbackActive?.similarChoiceSignatureDigest)
+    }
+
+    @Test
     fun deferredDraftUpdateIsVisibleImmediatelyAndFlushesAtLifecycleBoundary() {
         val store = store()
         val active = store.replaceWithActive(activeSnapshot())!!
@@ -297,5 +397,17 @@ class StudySessionRecoveryStoreTest {
             prompt = "Why is this weak?",
             answerSignature = "裂|分裂|ぶんれつ|split",
             schedulerRevision = 7L,
+        )
+
+    private fun similarSnapshot(): StudyActiveSessionSnapshot = activeSnapshot().copy(
+        taskType = StudyTaskTypes.SIMILAR_KANJI,
+        typedDraft = "",
+        similarChoiceSignatureDigest = similarKanjiChoiceRecoveryDigest(listOf("裂", "烈", "例")),
+    )
+
+    private fun similarPendingSnapshot(phase: StudyAnswerFeedbackPhase): StudyPendingAnswerSnapshot =
+        pendingSnapshot(phase).copy(
+            feedback = pendingSnapshot(phase).feedback.copy(selectedAnswer = "烈"),
+            taskType = StudyTaskTypes.SIMILAR_KANJI,
         )
 }
