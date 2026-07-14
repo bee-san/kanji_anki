@@ -46,15 +46,21 @@ internal object BackupExportOperations {
         }
         // Process death while the system picker was open can orphan a process-local pending
         // export. A new export is a safe point to clear those private cache files.
-        tempDir.listFiles()?.forEach(::deleteQuietly)
+        if (tempDir.listFiles()?.any { !clearScratch(it) } == true) {
+            return BackupExportPreparation.Failed(BackupExportPolicy.exportPrepareFailed())
+        }
         val suggestedName = BackupExportPolicy.suggestedFileName(nowMillis)
         val raw = File(tempDir, "$suggestedName.raw.tmp")
         val gzip = File(tempDir, "$suggestedName.pending")
-        deleteQuietly(raw)
-        deleteQuietly(gzip)
+        if (!clearScratch(raw) || !clearScratch(gzip)) {
+            return BackupExportPreparation.Failed(BackupExportPolicy.exportPrepareFailed())
+        }
 
         return try {
             snapshotter.snapshot(dbFile, raw)
+            if (!raw.isFile || raw.length() <= 0L) {
+                throw IOException("Snapshot operation produced no database")
+            }
             DatabaseBackupWorker.gzipFile(raw, gzip)
             BackupExportPreparation.Ready(
                 PreparedBackupExport(
@@ -114,6 +120,11 @@ internal object BackupExportOperations {
 
     private fun deleteQuietly(file: File) {
         BackupRestoreStager.deleteBestEffort(file)
+    }
+
+    private fun clearScratch(file: File): Boolean {
+        deleteQuietly(file)
+        return !file.exists()
     }
 }
 

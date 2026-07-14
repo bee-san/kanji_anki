@@ -60,9 +60,11 @@ Suggested batch order:
 The 2026-07-03 pass and #494-#507 landed correctly in these areas; this pass
 re-verified them at `438a3ccf`:
 
-- WAL mode enabled once (`LocalStoreBase.kt:27`); backups via `VACUUM INTO`
-  with checkpoint+copy fallback, gzip+fsync, tiered pruning
-  (`LocalStore.kt:31-77`, `DatabaseBackupWorker.kt:54-58`).
+- WAL mode enabled once (`LocalStoreBase.kt:27`). Correction (2026-07-13):
+  the checkpoint+copy fallback listed in this historical verification was not
+  WAL-safe and has been removed. API 30+ uses `VACUUM INTO`, gzip+fsync, and
+  tiered pruning; API 26–29 cancels/disables snapshot operations and preserves
+  existing data/archives.
 - Historical snapshot pruning fires on every append (`HistoricalSyncStore.kt:103-120`).
 - Sync run committed as `pending`, flipped to `success` only after study items
   commit; `hasSuccessfulSyncSince` filters `status=success`
@@ -108,6 +110,16 @@ re-verified them at `438a3ccf`:
 > change with the live AnkiDroid gate before any release.
 
 ### Goal 39: Stop sync from hard-deleting study items whose kanji left the analyzer rows
+
+> **FIXED (2026-07-13):** Sync now seeds from all durable study items while
+> keeping planning scoped to active rows, so absent kanji rows pass through the
+> seeder's explicit retirement path with FSRS/task memories intact. Atomic sync
+> publication also retains any kanji omitted by a narrowed caller. Foreground
+> Study reseeding preserves kanji rows outside its capped dashboard input rather
+> than treating that UI cap as authoritative deletion/retirement evidence.
+> Focused core, commit-window, full-engine Robolectric, and foreground queue
+> regressions cover empty and subset inputs. `review_log` was never deleted by
+> this path; its survival is now pinned as an invariant.
 
 **Problem:** `ManualSyncEngine.runLocked`
 (`app/src/main/kotlin/dev/bee/kanjianki/sync/ManualSyncEngine.kt:131`) reads

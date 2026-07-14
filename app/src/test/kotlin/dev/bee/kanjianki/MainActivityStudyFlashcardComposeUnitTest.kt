@@ -137,6 +137,34 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
+    fun typingAnswerNotifiesPersistenceAfterUpdatingVisibleState() {
+        val observed = mutableListOf<String>()
+        val state = TypingAnswerState("before").also {
+            it.onTextChanged = { value ->
+                observed.add("$value:${it.text}")
+            }
+        }
+
+        state.updateText("after")
+
+        assertEquals(listOf("after:after"), observed)
+        assertEquals("after", state.text)
+    }
+
+    @Test
+    fun typingAnswerBoundsPastedTextBeforePersistence() {
+        var persisted = ""
+        val state = TypingAnswerState().also { answer ->
+            answer.onTextChanged = { persisted = it }
+        }
+
+        state.updateText("x".repeat(MAX_STUDY_TYPED_DRAFT_CHARS + 1))
+
+        assertEquals(MAX_STUDY_TYPED_DRAFT_CHARS, state.text.length)
+        assertEquals(state.text, persisted)
+    }
+
+    @Test
     fun typingMeaningSubmitKeyHelperMatchesEnterKeysOnKeyUpOnly() {
         assertTrue(isTypingMeaningSubmitKey(AndroidKeyEvent.ACTION_UP, AndroidKeyEvent.KEYCODE_ENTER))
         assertTrue(isTypingMeaningSubmitKey(AndroidKeyEvent.ACTION_UP, AndroidKeyEvent.KEYCODE_NUMPAD_ENTER))

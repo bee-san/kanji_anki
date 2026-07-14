@@ -20,32 +20,62 @@ import dev.bee.kanjianki.core.TypingAnswerMatcher
 import dev.bee.kanjianki.core.TypedReadingPolicy
 
 internal class MainActivityStudyFlashcardInteraction(private val activity: MainActivityStudy) {
+    private var gestureSessionToken: String? = null
+    private var gestureRecovery: StoredActiveStudyRecovery? = null
+
     fun buildFlashcardActionBar(revealed: Boolean) {
+        val activeUiRecovery = activity.activeSession?.token?.let(activity::activeStudyUiRecovery)
+        val sessionToken = activity.activeSession?.token
         val state = activity.flashcardActionBarState ?: FlashcardActionBarState(
             revealed,
-            Runnable { revealFlashcardAnswer() },
-            Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
-            Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
+            Runnable { revealFlashcardAnswer(sessionToken, activeUiRecovery) },
+            Runnable {
+                if (sessionToken != null && activity.matchesUngradedStudyRoute(sessionToken, activeUiRecovery)) {
+                    activity.submitReview(MainActivityBase.RATING_AGAIN, false)
+                }
+            },
+            Runnable {
+                if (sessionToken != null && activity.matchesUngradedStudyRoute(sessionToken, activeUiRecovery)) {
+                    activity.submitReview(MainActivityBase.RATING_GOOD, false)
+                }
+            },
         )
         activity.flashcardActionBarState = state
         state.revealed = revealed
     }
 
-    fun revealFlashcardAnswer() {
-        if (activity.flashcardAnswerRevealed) {
-            return
-        }
+    fun revealFlashcardAnswer(
+        expectedToken: String?,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ) {
+        if (!canRevealFlashcard(expectedToken, expectedRecovery)) return
         activity.flashcardAnswerRevealed = true
         val session = activity.activeSession
-        if (session != null && StudyTaskCopy.isTypingReadingTask(session)) {
-            val typed = activity.typingAnswerState?.text?.toString().orEmpty()
-            val expected = StudyTextCopy.collectionReadingForSession(session)
-            val matched = TypedReadingPolicy.matches(typed, expected)
-            Toast.makeText(
-                activity,
-                if (matched) StudyTextCopy.typingAnswerAcceptedToast() else StudyTextCopy.typingReadingIncorrectToast(),
-                Toast.LENGTH_SHORT,
-            ).show()
+        when {
+            session != null && StudyTaskCopy.isTypingReadingTask(session) -> submitTypingReading(session)
+            session != null && StudyTaskCopy.isTypingMeaningTask(session) -> submitTypingMeaning(session)
+            else -> revealUngradedFlashcard(expectedRecovery)
+        }
+    }
+
+    private fun canRevealFlashcard(
+        expectedToken: String?,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ): Boolean =
+        (expectedToken == null || activity.activeSession?.token == expectedToken) &&
+            (expectedRecovery == null || activity.matchesActiveStudyRecovery(expectedRecovery)) &&
+            !activity.flashcardAnswerRevealed
+
+    private fun submitTypingReading(session: RecordsSchedulerModels.StudySession) {
+        val typed = activity.typingAnswerState?.text?.toString().orEmpty()
+        val expected = StudyTextCopy.collectionReadingForSession(session)
+        val matched = TypedReadingPolicy.matches(typed, expected)
+        Toast.makeText(
+            activity,
+            if (matched) StudyTextCopy.typingAnswerAcceptedToast() else StudyTextCopy.typingReadingIncorrectToast(),
+            Toast.LENGTH_SHORT,
+        ).show()
+        completeTypingSubmission(
             activity.submitReview(
                 if (matched) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
                 false,
@@ -59,25 +89,39 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     renderedExpression = StudyTextCopy.wordPrompt(session),
                     renderedReading = expected,
                 ),
-            )
-            showFlashcardAnswerSurface()
-            return
+            ),
+        )
+    }
+
+    private fun submitTypingMeaning(session: RecordsSchedulerModels.StudySession) {
+        val matched = TypingAnswerMatcher.matches(
+            activity.currentDictionaryLookup(),
+            session.item?.kanji ?: "",
+            activity.typingAnswerState?.text?.toString() ?: "",
+            StudyTextCopy.collectionMeaningForSession(session),
+        )
+        if (matched) {
+            Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show()
         }
-        if (session != null && StudyTaskCopy.isTypingMeaningTask(session)) {
-            val matched = TypingAnswerMatcher.matches(
-                activity.currentDictionaryLookup(),
-                session.item?.kanji ?: "",
-                activity.typingAnswerState?.text?.toString() ?: "",
-                StudyTextCopy.collectionMeaningForSession(session)
-            )
-            if (matched) {
-                Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show()
-            }
+        completeTypingSubmission(
             activity.submitReview(
                 if (matched) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
                 false,
-            )
+            ),
+        )
+    }
+
+    private fun completeTypingSubmission(accepted: Boolean) {
+        if (accepted) {
             showFlashcardAnswerSurface()
+        } else {
+            activity.flashcardAnswerRevealed = false
+        }
+    }
+
+    private fun revealUngradedFlashcard(expectedRecovery: StoredActiveStudyRecovery?) {
+        if (expectedRecovery != null && !activity.persistActiveStudyReveal(expectedRecovery)) {
+            activity.flashcardAnswerRevealed = false
             return
         }
         showFlashcardAnswerSurface()
@@ -109,10 +153,14 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         val session = activity.activeSession
         if (activity.studyAnswerFeedbackState?.feedbackVisible == true) {
             activity.flashcardTouchTracking = false
+            gestureSessionToken = null
+            gestureRecovery = null
             return false
         }
         if (session == null || session.writingRequired || activity.flashcardGestureBounds == null) {
             activity.flashcardTouchTracking = false
+            gestureSessionToken = null
+            gestureRecovery = null
             return false
         }
         return when (event.actionMasked) {
@@ -127,6 +175,8 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
 
             MotionEvent.ACTION_UP -> {
                 if (!activity.flashcardTouchTracking) {
+                    gestureSessionToken = null
+                    gestureRecovery = null
                     return false
                 }
                 activity.flashcardTouchTracking = false
@@ -135,6 +185,8 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
 
             MotionEvent.ACTION_CANCEL -> {
                 activity.flashcardTouchTracking = false
+                gestureSessionToken = null
+                gestureRecovery = null
                 activity.flashcardSwipeFeedback?.settleBack()
                 false
             }
@@ -147,6 +199,8 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         session: RecordsSchedulerModels.StudySession,
         event: MotionEvent,
     ): Boolean {
+        gestureSessionToken = null
+        gestureRecovery = null
         val typingAnswerState = activity.typingAnswerState
         if ((StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)) &&
             typingAnswerState != null &&
@@ -159,13 +213,30 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         activity.flashcardTouchTracking = insideFlashcard &&
             (activity.flashcardSwipeFeedback?.beginDrag() != false)
         if (activity.flashcardTouchTracking) {
+            gestureSessionToken = session.token
+            gestureRecovery = activity.activeStudyUiRecovery(session.token)
             activity.flashcardTouchStartX = event.rawX
             activity.flashcardTouchStartY = event.rawY
+        } else {
+            gestureSessionToken = null
+            gestureRecovery = null
         }
         return false
     }
 
     fun handleFlashcardRelease(event: MotionEvent): Boolean {
+        val expectedToken = gestureSessionToken
+        val expectedRecovery = gestureRecovery
+        gestureSessionToken = null
+        gestureRecovery = null
+        if (expectedToken != null && activity.activeSession?.token != expectedToken) {
+            activity.flashcardSwipeFeedback?.settleBack()
+            return false
+        }
+        if (expectedRecovery != null && !activity.matchesActiveStudyRecovery(expectedRecovery)) {
+            activity.flashcardSwipeFeedback?.settleBack()
+            return false
+        }
         val session = activity.activeSession
         val touchSlop = ViewConfiguration.get(activity).scaledTouchSlop
         val decision = FlashcardGesturePolicy.release(
@@ -180,7 +251,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         return when (decision.action) {
             FlashcardGesturePolicy.Decision.Action.REVEAL -> {
                 activity.flashcardSwipeFeedback?.settleBack()
-                revealFlashcardAnswer()
+                revealFlashcardAnswer(expectedToken, expectedRecovery)
                 true
             }
 

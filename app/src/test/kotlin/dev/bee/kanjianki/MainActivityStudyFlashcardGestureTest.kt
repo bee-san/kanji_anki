@@ -148,6 +148,143 @@ class MainActivityStudyFlashcardGestureTest {
     }
 
     @Test
+    fun typedReadingMatchGradesCorrectAndKeepsAnswerVisible() {
+        val token = "typing-reading-token"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        val example = RecordsImportModels.Example(
+            "active",
+            101L,
+            202L,
+            "分離",
+            "ぶんり",
+            "separation",
+            "",
+            false,
+            0,
+        )
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("分", token, RecordsBase.LadderRung.WORD_READING),
+            row = RecordsImportModels.DashboardRow(
+                "分", null, "part", "ぶん", "分離", 1, "reason", "Needs practice", 1, 0, 0,
+                listOf(example),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.TYPE_READING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        StudySessionActions.activateStudySession(
+            session,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        val revealState = FlashcardRevealState(false)
+        activity.flashcardRevealState = revealState
+        activity.typingAnswerState = TypingAnswerState("ぶんり")
+        activity.prepareStudyAnswerFeedback(token)
+
+        activity.revealFlashcardAnswer()
+
+        assertTrue(revealState.isRevealed)
+        assertEquals(StudyAnswerOutcome.CORRECT, activity.studyAnswerFeedbackState?.outcome)
+        assertEquals(1, reviewIo.pendingCount())
+        reviewIo.runNext()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(StudyRatings.GOOD, reviewRating(activity, token))
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+    }
+
+    @Test
+    fun rejectedTypedSubmissionKeepsDraftHiddenAndAnswerable() {
+        val token = "typing-rejected-token"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService().also { it.shutdown() }
+        replaceField(activity, "io", reviewIo)
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("弱", token, RecordsBase.LadderRung.TYPE_MEANING),
+            row = RecordsImportModels.DashboardRow(
+                "弱", null, "weak", "よわい", "弱", 1, "reason", "Needs practice", 1, 0, 0,
+                emptyList<RecordsImportModels.Example>(),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.TYPING_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.store.saveStudyItem(session.item!!)
+        activity.acceptNewActiveStudySession(session, StudyPromptSource.REASON_TEXT, 0L)
+        activity.flashcardRevealState = FlashcardRevealState(false)
+        activity.typingAnswerState = TypingAnswerState("weak")
+        activity.prepareStudyAnswerFeedback(token)
+        activity.buildFlashcardActionBar(false)
+        val recoveryBefore = requireNotNull(activity.activeStudyRecovery())
+        val revealAction = requireNotNull(activity.flashcardActionBarState).onReveal
+
+        revealAction.run()
+
+        assertFalse(activity.flashcardAnswerRevealed)
+        assertFalse(requireNotNull(activity.flashcardRevealState).isRevealed)
+        assertFalse(requireNotNull(activity.flashcardActionBarState).revealed)
+        assertEquals("weak", activity.typingAnswerState?.text)
+        assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+        assertEquals(0, reviewIo.pendingCount())
+        assertEquals(recoveryBefore.writeEpoch, activity.activeStudyRecovery()?.writeEpoch)
+
+        val retryIo = QueueingExecutorService()
+        replaceField(activity, "io", retryIo)
+        revealAction.run()
+
+        assertTrue(activity.flashcardAnswerRevealed)
+        assertTrue(requireNotNull(activity.flashcardRevealState).isRevealed)
+        assertEquals(1, retryIo.pendingCount())
+    }
+
+    @Test
+    fun gestureWithoutRecoveryCannotRevealAReplacementSession() {
+        val activity = createActivity()
+        val first = RecordsSchedulerModels.StudySession(
+            item = studyItem("旧", "old-gesture-token", RecordsBase.LadderRung.WORD_READING),
+            row = null,
+            token = "old-gesture-token",
+            taskType = StudyTaskTypes.WORD_READING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = first
+        activity.prepareStudyAnswerFeedback(first.token)
+        activity.flashcardRevealState = FlashcardRevealState(false)
+        activity.flashcardAnswerRevealed = false
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+        val downTime = SystemClock.uptimeMillis()
+        activity.handleFlashcardGesture(
+            motionEvent(MotionEvent.ACTION_DOWN, 200f, 300f, downTime, downTime),
+        )
+        val replacement = RecordsSchedulerModels.StudySession(
+            item = studyItem("新", "new-gesture-token", RecordsBase.LadderRung.WORD_READING),
+            row = null,
+            token = "new-gesture-token",
+            taskType = StudyTaskTypes.WORD_READING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = replacement
+        activity.prepareStudyAnswerFeedback(replacement.token)
+
+        val handled = activity.handleFlashcardGesture(
+            motionEvent(MotionEvent.ACTION_UP, 200f, 300f, downTime, downTime + 100L),
+        )
+
+        assertFalse(handled)
+        assertFalse(activity.flashcardAnswerRevealed)
+        assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+    }
+
+    @Test
     fun recognitionFailSwipeAsksForCauseAndDismissDoesNotSubmit() {
         val token = "flashcard-token-recognition-cause"
         val activity = createActivity()

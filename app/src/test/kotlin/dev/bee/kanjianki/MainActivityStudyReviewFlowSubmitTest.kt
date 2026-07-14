@@ -142,6 +142,34 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
+    fun continueRepairsAStillSubmittingDurableEnvelopeAfterReviewCommit() {
+        withReviewActivity("継") { activity, _, reviewIo, _ ->
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+            val submittingRaw = requireNotNull(preferences.getString("snapshot", null))
+            assertEquals(
+                StudyAnswerFeedbackPhase.SUBMITTING,
+                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(
+                StudyAnswerFeedbackPhase.APPLIED,
+                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
+
+            preferences.edit().putString("snapshot", submittingRaw).commit()
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(
+                StudyAnswerFeedbackPhase.CONTINUED,
+                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
+        }
+    }
+
+    @Test
     fun failedReviewProcessingReleasesTokenForRetry() {
         withReviewActivity("衡") { activity, store, reviewIo, session ->
             var widgetRefreshes = 0
@@ -187,7 +215,10 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(session.token, activity.pendingStudyAnswerSnapshot()?.feedback?.sessionToken)
             assertEquals(1, widgetRefreshes)
             assertTrue(activity.continueAfterStudyAnswer())
-            assertEquals(null, activity.pendingStudyAnswerSnapshot())
+            assertEquals(
+                StudyAnswerFeedbackPhase.CONTINUED,
+                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
             assertEquals(1, activity.renderCount())
         }
     }
@@ -355,6 +386,27 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertFalse(accepted)
             assertFalse(swipeFeedback.committed)
             assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
+        }
+    }
+
+    @Test
+    fun undurablePendingAnswerIsRejectedBeforeReviewEnqueue() {
+        withReviewActivity("長") { activity, store, reviewIo, session ->
+            activity.activeSession = RecordsSchedulerModels.StudySession(
+                session.item,
+                session.row,
+                session.token,
+                session.taskType,
+                session.writingRequired,
+                "x".repeat(20_000),
+            )
+
+            assertFalse(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+
+            assertEquals(0, reviewIo.pendingCount())
+            assertFalse(store.hasConsumedToken(session.token))
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertEquals(null, activity.pendingStudyAnswerSnapshot())
         }
     }
 
@@ -679,7 +731,7 @@ class MainActivityStudyReviewFlowSubmitTest {
         private fun refreshActiveSession(kanji: String?) {
             val previous = activeSession ?: return
             val refreshed = retryStore?.studyItems()?.firstOrNull { it.kanji == kanji } ?: return
-            activeSession = RecordsSchedulerModels.StudySession(
+            val session = RecordsSchedulerModels.StudySession(
                 refreshed,
                 previous.row,
                 refreshed.activeToken,
@@ -687,6 +739,20 @@ class MainActivityStudyReviewFlowSubmitTest {
                 previous.writingRequired,
                 previous.prompt,
             )
+            val advancing = pendingStudyRecovery()
+                ?.takeIf { it.snapshot.feedback.phase == StudyAnswerFeedbackPhase.CONTINUED }
+            if (advancing == null) {
+                activeSession = session
+            } else {
+                assertTrue(
+                    acceptNewActiveStudySession(
+                        session,
+                        StudyPromptSource.REASON_TEXT,
+                        latestSuccessfulSyncAtMillis = 0L,
+                        advancingRecovery = advancing,
+                    ),
+                )
+            }
             flashcardAnswerRevealed = false
         }
 

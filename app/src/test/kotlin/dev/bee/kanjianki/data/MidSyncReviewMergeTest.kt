@@ -74,4 +74,29 @@ class MidSyncReviewMergeTest {
         assertEquals(1, persisted.size)
         assertEquals(555L, persisted[0].dueAtMillis)
     }
+
+    @Test
+    fun scopedRefreshRetainsReviewOfOmittedKanjiSavedAfterBaselineRead() {
+        val active = item("痛", totalReviews = 3, lastRealReviewDueAt = 100L, dueAt = 100L)
+        val omitted = item("裂", totalReviews = 2, lastRealReviewDueAt = 90L, dueAt = 90L)
+        store.replaceStudyItems(listOf(active, omitted))
+
+        val reviewedOmitted = item("裂", totalReviews = 3, lastRealReviewDueAt = 9_000L, dueAt = 9_000L)
+        store.saveStudyItem(reviewedOmitted)
+
+        val seededActive = item("痛", totalReviews = 3, lastRealReviewDueAt = 100L, dueAt = 555L)
+        store.replaceStudyItems(
+            listOf(seededActive),
+            syncId = null,
+            occurredAt = 0L,
+            settings = null,
+            baseline = listOf(active),
+        )
+
+        val persisted = store.studyItems().associateBy { it.kanji }
+        assertEquals(555L, persisted.getValue("痛").dueAtMillis)
+        assertEquals(3, persisted.getValue("裂").totalReviews)
+        assertEquals(9_000L, persisted.getValue("裂").dueAtMillis)
+        assertEquals(9_000L, persisted.getValue("裂").lastRealReviewDueAtMillis)
+    }
 }

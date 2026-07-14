@@ -35,6 +35,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderUpdate() {
+        disableStudyOrdinaryResume()
         renderUpdate(false)
     }
 
@@ -43,6 +44,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderSettings() {
+        disableStudyOrdinaryResume()
         renderSettings(false)
     }
 

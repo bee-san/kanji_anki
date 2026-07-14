@@ -5,7 +5,9 @@
 > findings and resolves new-repair side-queue routing by storing repair inline;
 > `similar_kanji_repair_queue` is now drain-only. It also adds revision-CAS
 > review persistence, adaptive settings/stats, successful-run-only sync
-> history, and bounded atomic backup/restore behavior. See
+> history. Later work added bounded backup/restore, and the 2026-07-13 safety
+> audit removed its unsafe API 26–29 checkpoint-copy and non-atomic move
+> fallbacks. See
 > [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
 Six parallel deep reviews were run against the whole repository: ladder state
@@ -28,10 +30,10 @@ Legend: **FIXED** (in this PR) / **DOCUMENTED** (spec reconciled) /
 | 1.5 | major | The projection-fallback `catch (Exception)` conflated transient errors (locked DB, permission revocation, process death) with unsupported-column errors, silently degrading imported data quality to `CARD_COLUMNS_MINIMAL` (fabricated queue/type/due). | **FIXED**: only `IllegalArgumentException`/`UnsupportedOperationException` advance the projection; `SecurityException` is rethrown (classified permanent by the gateway); other exceptions fail as retryable without degrading. |
 | 1.6 | major | Deferred cursor-time errors in `querySuspendedNoteIds` escaped the tolerance guard (only the `query()` call was wrapped), so a window-fill SQLite error failed the whole sync despite the explicit design that suspended-search unavailability is tolerated. | **FIXED**: cursor iteration moved inside the guard. |
 | 1.7 | minor | `tagNoteArchived` read-modify-write can clobber pre-existing note tags when the tags read yields no row, and the archive loop has no per-note error isolation. | **DEFERRED**: low exposure on real AnkiDroid (`NOTES_ID` always returns a cursor); blast radius reduced by 1.3. |
-| 1.8 | minor | No retry/backoff for retryable failures; auto-sync's JobService finishes with `needsReschedule=false`, losing the day's auto-sync on a transient lock. | **DEFERRED**: needs a deliberate retry-policy design. |
+| 1.8 | minor | No retry/backoff for retryable failures; auto-sync's JobService finishes with `needsReschedule=false`, losing the day's auto-sync on a transient lock. | **FIXED**: explicit transient outcomes now reach one unique, three-execution WorkManager chain with approximately 15/30/60-minute delay/backoff. Permanent/configuration and unexpected runtime failures remain terminal; concurrent sync is deferred. The daily JobService persists tomorrow's alternate-ID job before lifecycle-safe completion. |
 | 1.9 | minor | Auto-sync opens a second `SQLiteOpenHelper` connection to the same DB as the activity store (no WAL), allowing cross-connection lock errors. | **DEFERRED**: singleton-store/WAL refactor. |
 | 1.10 | info | Dead authority `com.ichi2.anki.api.provider` checked first in provider resolution. | **DEFERRED** (harmless). |
-| 1.11 | info | `catch (Throwable)` in `readCollection`/`ManualSyncEngine` converts `Error`s (OOM) into retryable failures. | **DEFERRED**. |
+| 1.11 | info | `catch (Throwable)` in `readCollection`/`ManualSyncEngine` converts `Error`s (OOM) into retryable failures. | **FIXED**: both boundaries catch `Exception`; JVM `Error` types propagate and cannot start the automatic retry chain. |
 
 ## 2. FSRS integration (fsrs-java + adapter)
 
@@ -74,7 +76,7 @@ persistence.
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
-| 4.1 | major | Daily backup copies the live DB file with no lock/quiescence and never copies WAL sidecars; a failed checkpoint only warns; torn backups possible, and no restore path exists. | **DEFERRED**: needs SQLite online-backup API or copy-under-read-transaction design. |
+| 4.1 | major | Daily backup copies the live DB file with no lock/quiescence and never copies WAL sidecars; a failed checkpoint only warns; torn backups possible, and no restore path exists. | **FIXED LATER**: API 30+ now uses `VACUUM INTO` only; API 26–29 cancels/disables live backup and restore rather than copying the main file. Restore publication is strict-atomic with no ordinary move fallback. |
 | 4.2 | minor | No `onDowngrade` override: installing an older APK over a newer DB hard-crashes on open. | **DEFERRED**: needs an explicit downgrade policy decision. |
 | 4.3 | minor | `addNullableColumn` idempotence depended on parsing the "duplicate column" error-message substring; long-jump upgrades (<7 → 25) rely on it. | **FIXED**: checks `PRAGMA table_info` first; message parse kept as a secondary guard. |
 | 4.4 | minor | Corrupted/blank `study_ladder_enabled` silently re-enables all rungs. | **DEFERRED**: only reachable via corruption; consider defaults-fallback + logging. |
@@ -93,7 +95,7 @@ dependency graph is acyclic and app-topped; ladder thresholds single-sourced.
 | 5.3 | major | Flashcard rungs labeled buttons "Again"/"Good" while writing/choice rungs use "Pass"/"Fail" — inconsistent within the app and contrary to the spec. | **FIXED**: `StudyReviewButtonCopy` now emits Pass/Fail (EN + JA), matching `StudyTextCopy`; content descriptions and undo toasts follow; tests updated and now assert parity with `StudyTextCopy`. |
 | 5.4 | major | `write_kanji` shows a third "Save hard" action (submits `hard`) for CLOSE writing analyses, contradicting the spec's "only Pass and Fail". | **DOCUMENTED**: this is a deliberate, extensively-tested evaluation outcome (not a user-chosen rating). AGENTS.md now documents the CLOSE → "Save hard" exception. |
 | 5.5 | major | Rating wire strings/strength ordering defined in four places (domain `StudyRatings`, writing-core `StudyRating`, app literals, LocalStore constant); writing-core lacks a `:domain` dependency. | **DEFERRED**: module-dependency refactor. |
-| 5.6 | minor | Pass/Fail copy duplicated between core and writing-core; task-type wire strings duplicated in `MainActivityBase`; stats iterate `LadderRung.values()` order instead of ladder order; `StudyStatsStore` overloads silently substitute default thresholds. | **DEFERRED**: consolidation follow-ups (a copy-parity test now guards the button labels). |
+| 5.6 | minor | Pass/Fail copy duplicated between core and writing-core; task-type wire strings duplicated in `MainActivityBase`; `StudyStatsStore` overloads silently substitute default thresholds. Legacy Stats previously used enum order instead of the configured ladder order. | **PARTIALLY FIXED**: the production legacy Stats fallback now presents rows in normalized `study_ladder_order`; adaptive v31 health remains independent. The remaining consolidation follow-ups are deferred (a copy-parity test guards the button labels). |
 | 5.7 | minor | Legacy `recognition_stage`/`writing_remediation_pending` are still dual-written on every review outside the migration and participate in undo-boundary equality. | **DEFERRED**: schema-rev follow-up. |
 
 ## 6. UI review
@@ -107,7 +109,7 @@ drawing pad; `Locale.ROOT` in core formatting.
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
-| 6.1 | major | All study state is lost on rotation/configuration change (no saved state anywhere; recreation lands on Home; rotation during sync kills the in-flight executor silently). | **DEFERRED**: needs a state-restoration design (route + per-card interaction state). Largest UX gap found. |
+| 6.1 | major | All study state is lost on rotation/configuration change (no saved state anywhere; recreation lands on Home; rotation during sync kills the in-flight executor silently). | **PARTIALLY FIXED**: a versioned CAS/epoch recovery envelope now restores the exact canonical flashcard and Study route, typed drafts, plain ungraded reveal state, and pending answered feedback after recreation/process loss. It fails closed when scheduler identity, token consumption, routing, or successful-sync epoch changes; explicit exits leave recovery dormant. Recovered work is reconciled with the currently selectable remaining count so it cannot prematurely cap the run at one. Ungraded choice presentation, prior run progress/timing, dialogs/hints, handwriting strokes, and in-flight sync continuation remain deferred; accepted choice selection is already covered by pending-answer feedback. See `docs/study-lifecycle-recovery.md`. |
 | 6.2 | major | Flashcard rating buttons violated the Pass/Fail spec. | **FIXED** (see 5.3). |
 | 6.3 | major | The study pipeline does synchronous SQLite work on the main thread on every card and rating (`renderStudyInternal`, `submitNormalReview`, choice-card building, theme read per route render); Home/Stats already use the async loader, study does not. | **DEFERRED**: move behind `AsyncHomeRouteLoader`-style loading; jank/ANR risk at 7k-note scale. |
 | 6.4 | major | Progress analytics screen is English-only (bypasses the `localizedText` convention), uses `Locale.US` formatting, and synthesizes per-category "retention" rows from a single accuracy number (`accuracy30 + 1 / − 2 / − 12`) presented as real data. | **DEFERRED**: localization pass + honest per-task-type retention (or remove rows). |

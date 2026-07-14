@@ -8,6 +8,8 @@ import dev.bee.kanjianki.core.RecordsStudyModels
  * (upsert only the rows that actually changed instead of delete-all + reinsert).
  */
 internal object StudyItemComparators {
+    private data class StudyItemKey(val kanji: String, val answerSignature: String)
+
     @JvmStatic
     fun sameStudyQueue(
         current: List<RecordsStudyModels.StudyItem>,
@@ -22,6 +24,34 @@ internal object StudyItemComparators {
             }
         }
         return true
+    }
+
+    /**
+     * Persistence equivalence for callers whose list order is only an artifact of
+     * a capped query or reconciliation. The database's due-time read order must not
+     * turn an unchanged durable set into a write on every Home refresh.
+     */
+    @JvmStatic
+    fun sameStudyItemsIgnoringOrder(
+        current: List<RecordsStudyModels.StudyItem>,
+        candidate: List<RecordsStudyModels.StudyItem>,
+    ): Boolean {
+        if (current.size != candidate.size) {
+            return false
+        }
+        val remaining = HashMap<StudyItemKey, RecordsStudyModels.StudyItem>(current.size)
+        for (item in current) {
+            if (remaining.put(StudyItemKey(item.kanji, item.answerSignature), item) != null) {
+                return false
+            }
+        }
+        for (item in candidate) {
+            val match = remaining.remove(StudyItemKey(item.kanji, item.answerSignature)) ?: return false
+            if (!sameStudyItem(match, item)) {
+                return false
+            }
+        }
+        return remaining.isEmpty()
     }
 
     @JvmStatic

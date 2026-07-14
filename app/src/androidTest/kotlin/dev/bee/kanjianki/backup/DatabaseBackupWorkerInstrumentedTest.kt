@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
 import androidx.work.Data
 import androidx.work.ForegroundUpdater
 import androidx.work.ListenableWorker
@@ -25,6 +26,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.Executor
+import java.util.zip.GZIPInputStream
 
 private const val DATABASE_NAME = "kanji_anki_simple.db"
 
@@ -44,6 +46,7 @@ class DatabaseBackupWorkerInstrumentedTest {
         deleteDatabaseFiles()
         deleteRecursively(File(context.filesDir, "backups"))
         deleteRecursively(File(context.filesDir, "copy-failure"))
+        deleteRecursively(File(context.cacheDir, "instrumented-backup.db"))
     }
 
     @After
@@ -51,6 +54,7 @@ class DatabaseBackupWorkerInstrumentedTest {
         deleteDatabaseFiles()
         deleteRecursively(File(context.filesDir, "backups"))
         deleteRecursively(File(context.filesDir, "copy-failure"))
+        deleteRecursively(File(context.cacheDir, "instrumented-backup.db"))
     }
 
     @Test
@@ -65,29 +69,39 @@ class DatabaseBackupWorkerInstrumentedTest {
     }
 
     @Test
+    @SdkSuppress(minSdkVersion = 30)
     fun workerProducesIntegralBackupThatIncludesCommittedWalContent() {
-        // Write rows without an explicit checkpoint so the newest data lives in the WAL.
+        // Keep the writer open so the worker must capture committed live-WAL state.
         val db = context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null)
-        db.execSQL("PRAGMA journal_mode=WAL")
+        assertTrue(db.enableWriteAheadLogging())
+        db.rawQuery("PRAGMA wal_autocheckpoint=0", null).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+        }
         db.execSQL("CREATE TABLE IF NOT EXISTS probe(id INTEGER PRIMARY KEY)")
         for (id in 1..25) {
             db.execSQL("INSERT INTO probe(id) VALUES(?)", arrayOf<Any>(id))
         }
-        db.close()
 
-        val worker = DatabaseBackupWorker(context, workerParameters())
-        val result = worker.doWork()
+        val result = try {
+            DatabaseBackupWorker(context, workerParameters()).doWork()
+        } finally {
+            db.close()
+        }
 
         assertTrue(result is ListenableWorker.Result.Success)
         val backupDir = File(context.filesDir, "backups")
         val backups = backupDir.listFiles { _, name ->
-            name.startsWith("kanji_anki_simple_") && name.endsWith(".db")
+            name.startsWith("kanji_anki_simple_") && name.endsWith(".db.gz")
         }
         assertTrue(backups != null && backups.size == 1)
         val backup = backups!![0]
         assertTrue(backup.isFile)
 
-        val restored = SQLiteDatabase.openDatabase(backup.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+        val restoredFile = File(context.cacheDir, "instrumented-backup.db")
+        GZIPInputStream(backup.inputStream()).use { gzip ->
+            FileOutputStream(restoredFile).use { output -> gzip.copyTo(output) }
+        }
+        val restored = SQLiteDatabase.openDatabase(restoredFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
         try {
             restored.rawQuery("PRAGMA integrity_check", null).use { cursor ->
                 assertTrue(cursor.moveToFirst())
@@ -125,7 +139,7 @@ class DatabaseBackupWorkerInstrumentedTest {
 
         assertTrue(result is ListenableWorker.Result.Failure)
         val incomplete = File(filesDir, "backups").listFiles { _, name ->
-            name.startsWith("kanji_anki_simple_") && name.endsWith(".db")
+            name.startsWith("kanji_anki_simple_") && name.endsWith(".db.gz.tmp")
         }
         assertTrue(incomplete != null && incomplete.size == 1)
         assertTrue(incomplete!![0].isDirectory)

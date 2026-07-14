@@ -100,7 +100,7 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
-    fun persistentQueueUsesProvidedCurrentItemsForSeedingButReadsFullQueueBeforeNoopSkip() {
+    fun persistentQueueScopesSeedingAndUsesFullReadForNoOpComparison() {
         val suppliedCurrent = listOf(studyItem())
         val fullPersistedQueue = listOf(studyItem())
         val readerCalled = AtomicBoolean(false)
@@ -139,15 +139,44 @@ class HomeStudyQueueActionsTest {
     }
 
     @Test
-    fun persistentQueuePersistsWhenSuppliedCurrentItemsOmitPersistedRows() {
+    fun persistentQueuePreservesRowsOmittedFromCappedActiveSubset() {
         val activeItem = studyItem()
-        val staleItem = studyItem(kanji = "空")
+        val changedActiveItem = activeItem.copyBuilder().dueAtMillis(999L).build()
+        val omittedItem = studyItem(kanji = "空")
+        val writer = RecordingWriter(listOf(changedActiveItem))
+
+        val result = HomeStudyQueueActions.studyQueue(
+            baseRequest(
+                persist = true,
+                current = listOf(activeItem, omittedItem),
+                providedPlan = null,
+                seeder = { _, currentItems, _, _, _, _, _ ->
+                    assertEquals(listOf("裂"), currentItems.map { it.kanji })
+                    listOf(activeItem)
+                },
+                writer = writer,
+            ),
+            currentItems = listOf(activeItem),
+        )
+
+        assertTrue(writer.replaced)
+        assertEquals(listOf("裂"), writer.replacedInput!!.map { it.kanji })
+        assertEquals(listOf("裂"), writer.replacedBaseline!!.map { it.kanji })
+        assertEquals(listOf("裂"), result.map { it.kanji })
+        assertEquals(999L, result.single().dueAtMillis)
+    }
+
+    @Test
+    fun persistentQueueIgnoresOrderingIntroducedByRetainedEarlierDueRows() {
+        val activeItem = studyItem(dueAtMillis = 2_000L)
+        val earlierOmittedItem = studyItem(kanji = "空", dueAtMillis = 1_000L)
+        val persistedDueOrder = listOf(earlierOmittedItem, activeItem)
         val writer = RecordingWriter(listOf(activeItem))
 
         HomeStudyQueueActions.studyQueue(
             baseRequest(
                 persist = true,
-                current = listOf(activeItem, staleItem),
+                current = persistedDueOrder,
                 providedPlan = null,
                 seeder = { _, _, _, _, _, _, _ -> listOf(activeItem) },
                 writer = writer,
@@ -155,7 +184,50 @@ class HomeStudyQueueActionsTest {
             currentItems = listOf(activeItem),
         )
 
+        assertTrue(writer.annotated)
+        assertFalse(writer.replaced)
+    }
+
+    @Test
+    fun syncAndHomeSeedingProduceTheSameRetireKeepDecisions() {
+        val current = listOf(studyItem(), studyItem(kanji = "空"))
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val providedPlan = plan(true)
+        val scheduler = BridgeScheduler()
+        val syncSeeded = scheduler.seedQueue(
+            emptyList(),
+            current,
+            settings,
+            123L,
+            100L,
+            providedPlan,
+            ladder,
+        )
+        val writer = RecordingWriter(syncSeeded)
+
+        val homeSeeded = HomeStudyQueueActions.studyQueue(
+            HomeStudyQueueActions.StudyQueueRequest(
+                emptyList(),
+                123L,
+                true,
+                providedPlan,
+                { current },
+                { settings },
+                { 100L },
+                { ladder },
+                { _, _, _ -> throw AssertionError("provided plan must be reused") },
+                scheduler::seedQueue,
+                writer,
+            ),
+        )
+
+        assertEquals(
+            syncSeeded.associate { it.kanji to it.state },
+            homeSeeded.associate { it.kanji to it.state },
+        )
         assertTrue(writer.replaced)
+        assertSame(current, writer.replacedBaseline)
     }
 
     @Test
@@ -425,6 +497,7 @@ class HomeStudyQueueActionsTest {
         var replaced = false
         var annotatedInput: List<RecordsStudyModels.StudyItem>? = null
         var replacedInput: List<RecordsStudyModels.StudyItem>? = null
+        var replacedBaseline: List<RecordsStudyModels.StudyItem>? = null
 
         override fun annotateSimilarKanjiAvailability(items: List<RecordsStudyModels.StudyItem>): List<RecordsStudyModels.StudyItem> {
             annotated = true
@@ -432,9 +505,13 @@ class HomeStudyQueueActionsTest {
             return annotatedResult
         }
 
-        override fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
+        override fun replaceStudyItems(
+            items: List<RecordsStudyModels.StudyItem>,
+            baseline: List<RecordsStudyModels.StudyItem>,
+        ) {
             replaced = true
             replacedInput = items
+            replacedBaseline = baseline
         }
     }
 }

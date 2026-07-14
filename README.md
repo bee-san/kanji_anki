@@ -94,13 +94,13 @@ Other product areas:
 
 - Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
 - Jiten kanji frequency ranks are bundled offline for filtering.
-- Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync.
+- Manual sync reads AnkiDroid's exported flashcard provider; daily auto sync starts after the first successful manual sync and gives explicitly transient failures three bounded follow-up attempts.
 - Releases are signed and published with APK and SHA-256 checksum artifacts.
 
 ## Product Contract
 
 - Manual sync reads AnkiDroid's exported flashcard provider.
-- Daily auto sync starts after the first successful manual sync and uses the same provider sync path.
+- Daily auto sync starts after the first successful manual sync, uses the same provider sync path, and follows the documented [bounded retry and JobService lifecycle contract](docs/auto-sync-reliability.md).
 - The expected note type is `Kiku`, with the `Mining` card template.
 - Required fields are `Expression`, `ExpressionReading`, `MainDefinition`, `Sentence`, `Frequency`, and `FreqSort`.
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
@@ -110,9 +110,9 @@ Other product areas:
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
 - Kani keeps its own local FSRS-style queue and never rewrites Anki's deck schedule.
 - `Study now` is the single study entry point.
-- Per-kanji mnemonic notes created in Browse stay local, are not imported from AnkiDroid fields, and are included in Kani's database backups.
+- Per-kanji mnemonic notes created in Browse stay local, are not imported from AnkiDroid fields, and are included in Kani's database backups where safe backups are available.
 - Releases are signed, tagged as `vMAJOR.MINOR.PATCH`, and published with an APK plus SHA-256 checksum.
-- Kani keeps local database backups under the app-private `backups/` directory, retaining the newest 31 snapshots and excluding app files, databases, and preferences from Android cloud backup or device transfer.
+- On Android 11+, Kani keeps WAL-safe local database backups under the app-private `backups/` directory, retaining seven recent daily snapshots plus up to four older weekly snapshots. Android 8–10 leaves the current database and existing archives unchanged because stock SQLite cannot create the required safe live snapshot. App files, databases, and preferences remain excluded from Android cloud backup or device transfer.
 - Backup diagnostics are sanitized: logs name the backup action and exception type only, not database paths, backup paths, note contents, or raw exception messages.
 
 ## Build

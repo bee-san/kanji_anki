@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 internal class MainActivityStudyProgress(private val study: MainActivityStudy) {
     fun resetStudyRunProgress() {
         study.activeSimilarWritingRepair = null
+        study.recoveredStudyRunNeedsTargetReconciliation = false
         study.studySessionTracker.resetProgress()
     }
 

@@ -123,7 +123,7 @@ internal class ManualSyncEngine {
 
     fun run(): SyncResult {
         if (!RUNNING.compareAndSet(false, true)) {
-            return SyncResult.skipped("Sync already running.")
+            return SyncResult.skipped("Sync already running.", retryable = true)
         }
         try {
             return runLocked()
@@ -182,8 +182,14 @@ internal class ManualSyncEngine {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
-            val currentItems = store.studyItemsForKanji(activeRows.map { it.kanji })
-            val plan = adaptivePlan(activeRows, currentItems, finished)
+            // Seeding is a durable reconciliation, so it must see every persisted family.
+            // Restricting this input to the current provider/analyzer rows made an empty,
+            // partial, filtered, or locally-suspended snapshot physically delete omitted
+            // scheduler state at publication. Planning remains scoped to active rows.
+            val currentItems = store.studyItems()
+            val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
+            val activeItems = currentItems.filter { it.kanji in activeKanji }
+            val plan = adaptivePlan(activeRows, activeItems, finished)
             val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows)
             var seeded = scheduler.seedQueue(
                 activeRows,
@@ -197,7 +203,7 @@ internal class ManualSyncEngine {
             )
             seeded = store.annotateSimilarKanjiAvailability(seeded)
             // Pass the pre-seed baseline so the atomic queue commit can preserve any review
-            // the user saved between the studyItemsForKanji read above and this write
+            // the user saved between the studyItems read above and this write
             // (auto-sync can run while the app is foregrounded and studyable).
             store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
             committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)
@@ -321,7 +327,15 @@ internal class ManualSyncEngine {
                 if (error.permanentFailure) "permanent" else "retryable",
                 error,
             )
-            return SyncResult.create(false, false, 0, 0, error.message, "")
+            return SyncResult.create(
+                false,
+                false,
+                0,
+                0,
+                error.message,
+                "",
+                retryable = !error.permanentFailure,
+            )
         } catch (error: Exception) {
             committedState?.let { committed ->
                 return committedFailureResult(committed, committedMessage, error)
@@ -559,6 +573,14 @@ internal class ManualSyncEngine {
         @JvmField
         var adaptiveFocusText: String = ""
 
+        /**
+         * True only when another automatic attempt can reasonably succeed without
+         * user intervention. Unexpected runtime failures stay terminal even though
+         * their historical sync-run row retains the legacy `retryable_error` label.
+         */
+        @JvmField
+        var retryable: Boolean = false
+
         companion object {
             @JvmStatic
             internal fun create(
@@ -570,6 +592,7 @@ internal class ManualSyncEngine {
                 adaptiveSummary: String?,
                 studyReadyCount: Int = 0,
                 adaptiveFocusText: String = "",
+                retryable: Boolean = false,
             ): SyncResult {
                 return SyncResult(
                     success,
@@ -581,12 +604,15 @@ internal class ManualSyncEngine {
                 ).apply {
                     this.studyReadyCount = studyReadyCount
                     this.adaptiveFocusText = adaptiveFocusText
+                    this.retryable = retryable
                 }
             }
 
             @JvmStatic
-            internal fun skipped(message: String): SyncResult {
-                return SyncResult(false, true, 0, 0, message, "")
+            internal fun skipped(message: String, retryable: Boolean = false): SyncResult {
+                return SyncResult(false, true, 0, 0, message, "").apply {
+                    this.retryable = retryable
+                }
             }
         }
     }

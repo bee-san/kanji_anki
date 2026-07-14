@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.AdaptiveCorePolicy
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
@@ -43,10 +44,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
 
     /**
-     * Replace all study items. When [baseline] (the study items the caller read before
-     * computing [items]) is provided, re-read the currently persisted items inside the
-     * write transaction and keep any item whose review evidence advanced since the
-     * baseline read, so a review saved between the read and this write is not lost.
+     * Reconcile study items. Without [baseline], [items] is an authoritative full
+     * replacement. With a possibly scoped [baseline], re-read durable state inside the
+     * transaction, keep review evidence that advanced since that seed input was read,
+     * and retain persisted kanji outside the candidate scope.
      */
     fun replaceStudyItems(
         items: List<RecordsStudyModels.StudyItem>,
@@ -60,24 +61,9 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         writableDatabase.transaction {
             val previous = if (syncId == null) emptyMap() else studySnapshots(this)
             val persisted = readAllStudyItems(this)
-            val merged = if (baseline == null) {
-                items
-            } else {
-                MidSyncReviewMergePolicy.merge(items, baseline, persisted)
-            }
-            val toWrite = versionMaterialStudyChanges(merged, persisted)
-            writes = if (syncId == null && baseline == null) {
-                // Per-review queue refresh: after every answered card the seeder
-                // usually changes exactly one row, so write only the diff instead of
-                // deleting and reinserting the whole table.
-                applyStudyItemsDiff(this, toWrite)
-            } else {
-                delete(TABLE_STUDY_ITEMS, null, null)
-                for (item in toWrite) {
-                    upsertStudyItem(this, item)
-                }
-                toWrite.size
-            }
+            val retained = reconcileStudyItems(items, baseline, persisted)
+            val toWrite = versionMaterialStudyChanges(retained, persisted)
+            writes = persistReconciledStudyItems(this, toWrite, syncId, baseline)
             if (syncId != null) {
                 appendStudyStateTimelineEvents(this, previous, toWrite, syncId, occurredAt, settings)
             }
@@ -88,6 +74,38 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             "replaceStudyItems WROTE count=${items.size} writes=$writes " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
+    }
+
+    private fun reconcileStudyItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        baseline: List<RecordsStudyModels.StudyItem>?,
+        persisted: List<RecordsStudyModels.StudyItem>,
+    ): List<RecordsStudyModels.StudyItem> {
+        if (baseline == null) return items
+        val merged = MidSyncReviewMergePolicy.merge(items, baseline, persisted)
+        // A baseline-aware scoped refresh is not deletion authority. Merge reviews
+        // first, then retain persisted kanji absent from the candidate so
+        // transaction-local additions and out-of-cap rows both survive.
+        return DurableStudyItemRetentionPolicy.retainUnseeded(merged, persisted)
+    }
+
+    private fun persistReconciledStudyItems(
+        db: SQLiteDatabase,
+        toWrite: List<RecordsStudyModels.StudyItem>,
+        syncId: Long?,
+        baseline: List<RecordsStudyModels.StudyItem>?,
+    ): Int {
+        if (syncId == null && baseline == null) {
+            // Per-review queue refresh: after every answered card the seeder usually
+            // changes exactly one row, so write only the diff instead of deleting and
+            // reinserting the whole table.
+            return applyStudyItemsDiff(db, toWrite)
+        }
+        db.delete(TABLE_STUDY_ITEMS, null, null)
+        for (item in toWrite) {
+            upsertStudyItem(db, item)
+        }
+        return toWrite.size
     }
 
     private fun versionMaterialStudyChanges(
@@ -499,6 +517,13 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun consumedTokens(): List<String> = studyStatus().consumedTokens()
 
     fun hasConsumedToken(token: String): Boolean = studyStatus().hasConsumedToken(token)
+
+    fun hasMatchingConsumedReview(
+        token: String,
+        kanji: String,
+        taskType: String,
+        answerSignature: String,
+    ): Boolean = studyStatus().hasMatchingConsumedReview(token, kanji, taskType, answerSignature)
 
     fun latestSync(): SyncStatus? = studyStatus().latestSync()
 

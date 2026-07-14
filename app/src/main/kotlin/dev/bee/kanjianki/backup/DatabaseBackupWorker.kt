@@ -1,11 +1,13 @@
 package dev.bee.kanjianki.backup
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
+import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import dev.bee.kanjianki.data.LocalStore
 import java.io.File
 import java.io.FileInputStream
@@ -13,6 +15,9 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.zip.GZIPOutputStream
 
 class DatabaseBackupWorker(
@@ -20,7 +25,11 @@ class DatabaseBackupWorker(
     workerParams: WorkerParameters,
 ) : Worker(context, workerParams) {
     override fun doWork(): Result {
-        return doWork(AndroidBackupEnvironment(applicationContext), System.currentTimeMillis())
+        return doWork(
+            AndroidBackupEnvironment(applicationContext),
+            System.currentTimeMillis(),
+            Build.VERSION.SDK_INT,
+        )
     }
 
     /**
@@ -60,16 +69,36 @@ class DatabaseBackupWorker(
 
         override fun snapshot(dbFile: File, dest: File) {
             LocalStore(context).use { store ->
-                store.snapshotInto(dbFile, dest)
+                store.snapshotInto(dest)
             }
         }
     }
 
     companion object {
         private const val TAG = "DatabaseBackupWorker"
+        private const val BACKUP_TIMESTAMP_PATTERN = "yyyyMMdd_HHmmss"
+        private val BACKUP_SCRATCH_NAME =
+            Regex("^kanji_anki_simple_(\\d{8}_\\d{6})\\.db\\.gz\\.(?:tmp|partial|pre-restore\\.tmp)$")
 
         @JvmStatic
         fun doWork(environment: BackupEnvironment, nowMillis: Long): Result {
+            return doWork(
+                environment,
+                nowMillis,
+                DatabaseBackupAvailabilityPolicy.MIN_SAFE_ANDROID_API,
+            )
+        }
+
+        internal fun doWork(
+            environment: BackupEnvironment,
+            nowMillis: Long,
+            apiLevel: Int,
+        ): Result {
+            if (!DatabaseBackupAvailabilityPolicy.forAndroidApi(apiLevel).operationsAllowed) {
+                // This is a permanent platform capability decision. A stale periodic
+                // request should finish successfully without touching existing archives.
+                return Result.success()
+            }
             return backupDatabase(
                 environment.databasePath(DatabaseBackupPolicy.DB_NAME),
                 environment.filesDir(),
@@ -98,21 +127,26 @@ class DatabaseBackupWorker(
             }
 
             val backupDir = DatabaseBackupPolicy.backupDir(filesDir)
-            if (!backupDir.exists() && !backupDir.mkdirs()) {
+            if ((!backupDir.exists() && !backupDir.mkdirs()) || !backupDir.isDirectory) {
+                return Result.failure()
+            }
+            if (!deleteStaleScratchFiles(backupDir)) {
                 return Result.failure()
             }
 
             val dest = DatabaseBackupPolicy.backupFile(filesDir, nowMillis)
             // Snapshot to a raw uncompressed temp copy, then gzip it into place. SQLite
-            // databases compress ~4-10x, so 31 daily copies of a growing DB become a
-            // small tiered set of compressed archives.
+            // Databases compress ~4-10x, and retention keeps a small tiered set of
+            // seven recent daily plus up to four older weekly archives.
             val temp = File(backupDir, dest.name + ".tmp")
             val partial = File(backupDir, dest.name + ".partial")
-            deleteIncomplete(temp)
-            deleteIncomplete(partial)
+            if (!deleteIncomplete(temp) || !deleteIncomplete(partial)) {
+                return Result.failure()
+            }
 
             try {
                 snapshotter.snapshot(dbFile, temp)
+                requireSnapshot(temp)
                 gzipFile(temp, partial)
                 publisher.publish(partial, dest)
             } catch (error: IOException) {
@@ -151,12 +185,17 @@ class DatabaseBackupWorker(
             check(partial.parentFile == destination.parentFile) {
                 "Backup partial and destination must share a directory"
             }
+            if (destination.exists()) {
+                throw IOException("Backup destination already exists")
+            }
             Files.move(
                 partial.toPath(),
                 destination.toPath(),
                 StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
             )
+            val destinationDirectory = destination.parentFile
+                ?: throw IOException("Backup destination has no parent directory")
+            SystemDirectorySynchronizer.sync(destinationDirectory)
         }
 
         @JvmStatic
@@ -164,9 +203,45 @@ class DatabaseBackupWorker(
             return AndroidBackupEnvironment(context)
         }
 
-        private fun deleteIncomplete(dest: File) {
+        private fun deleteIncomplete(dest: File): Boolean {
             if (dest.exists() && !dest.delete()) {
                 warn("Failed to delete incomplete backup: ${dest.name}")
+                return false
+            }
+            return true
+        }
+
+        internal fun deleteStaleScratchFiles(backupDir: File): Boolean {
+            val entries = backupDir.listFiles()
+            if (entries == null) {
+                warn("Failed to inspect incomplete backups")
+                return false
+            }
+            for (entry in entries) {
+                if (isRecognizedBackupScratch(entry.name) && !deleteIncomplete(entry)) {
+                    return false
+                }
+            }
+            return true
+        }
+
+        private fun isRecognizedBackupScratch(name: String): Boolean {
+            val match = BACKUP_SCRATCH_NAME.matchEntire(name) ?: return false
+            val parser = SimpleDateFormat(BACKUP_TIMESTAMP_PATTERN, Locale.US).apply {
+                isLenient = false
+            }
+            return try {
+                parser.parse(match.groupValues[1])
+                true
+            } catch (_: ParseException) {
+                false
+            }
+        }
+
+        @Throws(IOException::class)
+        private fun requireSnapshot(snapshot: File) {
+            if (!snapshot.isFile || snapshot.length() <= 0L) {
+                throw IOException("Snapshot operation produced no database")
             }
         }
 

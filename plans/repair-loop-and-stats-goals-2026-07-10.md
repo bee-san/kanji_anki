@@ -26,6 +26,10 @@
 > staged successfully, `Restore and close Kani` ended the process, and a fresh
 > ordinary launch created the safety backup, applied the sentinel-bearing DB,
 > removed the marker/staged files, and migrated it to schema version 29.
+> This verification used API 35. A 2026-07-13 safety audit established that
+> stock API 26–29 cannot run `VACUUM INTO`; current behavior fails closed there
+> and removes both the checkpoint/main-file-copy snapshot fallback and the
+> non-atomic restore replacement fallback.
 >
 > **External-only pending:** this isolated branch has not been pushed or merged
 > to `main`, so the first containing `Android CI` run and the advisory
@@ -45,9 +49,9 @@ this repo — commit messages and AGENTS.md reference bare goal numbers, so
 
 ## Asks
 
-1. User-facing backup export/import: the daily gzip snapshots exist but
-   restore is adb-only; add SAF export/import and a restore picker in
-   Settings.
+1. User-facing backup export/import: delivered through the SAF document picker
+   on Android 11+ alongside WAL-safe automatic snapshots. Android 8–10 fail
+   closed because their stock SQLite cannot produce the required live snapshot.
 2. Glance home-screen widget: due count + streak + one-tap into study.
 3. FSRS per-user parameter fitting (open idea I3 in
    `docs/ladder-and-srs-system.md` §14): train the 21 FSRS weights on the
@@ -120,15 +124,17 @@ this repo — commit messages and AGENTS.md reference bare goal numbers, so
   and rejected: non-deterministic forecasts cannot be golden-tested and the
   optimism bias is easier to explain than a retrievability-sampled model.
 - **D-S5 — Restore is whole-file replacement, staged, applied at next
-  process start.** There is no in-process "close every store" facility
+  process start on Android 11+.** There is no in-process "close every store" facility
   (18 independent `LocalStore(...)` construction sites, no registry), and
   `SQLiteOpenHelper` has no `onDowngrade` override — so a newer-schema backup
   would crash on first open. Restore therefore: validates fail-closed
   (SQLite magic, `PRAGMA user_version <= DB_VERSION`, `quick_check`,
   `settings` table present), stages the file, exits the process, and
-  `KaniApplication.onCreate` applies the swap (overwrite DB, delete
-  `-wal`/`-shm` sidecars, keep a pre-restore safety snapshot) before any
-  helper opens. Row-level merge was evaluated and rejected as unverifiable.
+  `KaniApplication.onCreate` applies the swap with strict atomic renames
+  (replace DB, delete `-wal`/`-shm` sidecars, keep a pre-restore safety
+  snapshot) before any helper opens. There is no non-atomic copy/move fallback.
+  Android 8–10 preserve the live database, staged input, and existing archives
+  unchanged. Row-level merge was evaluated and rejected as unverifiable.
 - **D-S6 — Widget counts use `ReminderEligibilityPolicy`.** The reminder
   subsystem's invariant D2 ("an 'N reviews ready' notification never opens
   onto an empty study queue", `core/.../ReminderEligibilityPolicy.kt:26-39`)
@@ -599,8 +605,9 @@ with the legacy stack (Goal 82).
 
 ### Goal 89: Backup export via SAF + "Backup & restore" settings panel
 
-**Problem:** Daily WAL-safe gzip snapshots exist (`VACUUM INTO` with
-checkpoint-and-copy fallback, `LocalStore.snapshotInto`,
+**Problem (historical; compatibility corrected 2026-07-13):** Daily gzip
+snapshots existed (`VACUUM INTO` with an unsafe checkpoint-and-copy fallback,
+`LocalStore.snapshotInto`,
 `LocalStore.kt:31-77`; tiered 7-daily + 4-weekly retention,
 `core/.../DatabaseBackupPolicy.kt:49-75`) but live in app-private
 `files/backups/` — if the device dies, every copy dies with it
@@ -685,19 +692,23 @@ has no `onDowngrade` override anywhere, so restoring a backup produced by a
   "Restore replaces all current data on this device. Kani will close and
   apply the backup on next launch." Blocked while a sync is running
   (`ManualSyncEngine.RUNNING` gate, `ManualSyncEngine.kt:383`).
-- **Stage:** atomically rename the validated temp to
-  `files/restore/kanji_anki_simple.db.staged`; write a small marker with the
-  source name + timestamp; then `finishAffinity()` + `exitProcess(0)`.
+- **Stage:** strictly atomically rename the validated temp to
+  `files/restore/kanji_anki_simple.db.staged` and fsync its directory; defer the
+  recovery marker until startup after the safety archive is durable; then
+  `finishAffinity()` + `exitProcess(0)`. API 26–29 must not stage a new restore.
 - **Apply at next process start:** in `KaniApplication.onCreate` (runs in
   every process entry — receivers, workers, activity — before any component
   opens the helper; the only manifest provider is FileProvider, which opens
   no DB), a new `StagedRestoreApplier`: if the staged file exists → snapshot
   the current DB into `files/backups/` as a pre-restore safety copy (normal
-  timestamped name so retention manages it) → move staged over
-  `databases/kanji_anki_simple.db` → delete `-wal`/`-shm` → delete marker.
-  All idempotent and crash-safe (re-running after a partial apply completes
-  it; a missing staged file is a no-op costing one `exists()` stat on every
-  app start).
+  timestamped name so retention manages it) → publish and fsync a versioned
+  `SAFETY_READY` marker → move staged over `databases/kanji_anki_simple.db` and
+  fsync both parent directories → delete `-wal`/`-shm` and fsync the database
+  directory → delete the marker and fsync the restore directory. All steps are
+  idempotent and process/power-loss safe through strict atomic rename and
+  durability barriers. Only a versioned ready marker-only state proves that
+  replacement committed; ambiguous legacy markers block for manual recovery.
+  There is no ordinary move/copy fallback.
 - A stray background open between `exitProcess` and relaunch reads the old
   DB once — harmless; the swap applies on the next process start regardless.
 - Update `docs/database-backup-restore.md` (in-app restore is now the

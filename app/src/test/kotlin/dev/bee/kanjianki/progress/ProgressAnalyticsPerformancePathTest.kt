@@ -2,6 +2,7 @@ package dev.bee.kanjianki.progress
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
@@ -24,7 +25,12 @@ class ProgressAnalyticsPerformancePathTest {
         )
         var scheduled = 0
 
-        val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
+        val state = progressAnalyticsSnapshot(
+            source,
+            nowMillis = now,
+            scheduleRefresh = { scheduled += 1 },
+            ladderSettings = DEFAULT_LADDER,
+        )
 
         assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
@@ -44,7 +50,12 @@ class ProgressAnalyticsPerformancePathTest {
         )
         var scheduled = 0
 
-        val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
+        val state = progressAnalyticsSnapshot(
+            source,
+            nowMillis = now,
+            scheduleRefresh = { scheduled += 1 },
+            ladderSettings = DEFAULT_LADDER,
+        )
 
         assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
@@ -63,7 +74,12 @@ class ProgressAnalyticsPerformancePathTest {
         )
         var scheduled = 0
 
-        val state = progressAnalyticsSnapshot(source, nowMillis = now, scheduleRefresh = { scheduled += 1 })
+        val state = progressAnalyticsSnapshot(
+            source,
+            nowMillis = now,
+            scheduleRefresh = { scheduled += 1 },
+            ladderSettings = DEFAULT_LADDER,
+        )
 
         assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
@@ -156,5 +172,9 @@ class ProgressAnalyticsPerformancePathTest {
         override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
             error("unexpected live review-day SQL for $days days")
         }
+    }
+
+    private companion object {
+        val DEFAULT_LADDER: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults()
     }
 }

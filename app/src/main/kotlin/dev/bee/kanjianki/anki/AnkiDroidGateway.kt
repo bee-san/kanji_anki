@@ -118,7 +118,7 @@ class AnkiDroidGateway private constructor(
             throw SyncFailure.retryable("Timed out while reading AnkiDroid.", error)
         } catch (error: SecurityException) {
             throw SyncFailure.permanent("AnkiDroid denied database access.", error)
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
             val kind = SyncValidator.classifyProviderFailure(error)
             if (kind.startsWith("permanent")) {
                 throw SyncFailure.permanent(error.message, error)

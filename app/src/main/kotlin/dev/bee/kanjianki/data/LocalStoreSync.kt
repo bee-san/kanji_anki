@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.StudyItemComparators
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -260,7 +261,13 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
             } else {
                 MidSyncReviewMergePolicy.merge(items, baseline, persisted)
             }
-            val toWrite = versionMaterialSyncChanges(merged, persisted)
+            // Sync publication is never an authority to hard-delete scheduler history.
+            // The normal caller seeds from the complete durable item set and explicitly
+            // retires kanji missing from the provider/analyzer rows. Retain any kanji
+            // an incomplete or future narrowed caller still omits as a final integrity
+            // backstop; a seeded row for the same kanji remains authoritative.
+            val retained = DurableStudyItemRetentionPolicy.retainUnseeded(merged, persisted)
+            val toWrite = versionMaterialSyncChanges(retained, persisted)
 
             delete(TABLE_STUDY_ITEMS, null, null)
             for (item in toWrite) {

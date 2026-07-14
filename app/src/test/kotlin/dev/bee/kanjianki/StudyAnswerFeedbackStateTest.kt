@@ -53,4 +53,19 @@ class StudyAnswerFeedbackStateTest {
         assertTrue(restored.tryContinue())
         assertFalse(restored.tryContinue())
     }
+
+    @Test
+    fun failedDurableContinueCanRollbackTheMountedStateForRetry() {
+        val state = StudyAnswerFeedbackState("token-裂")
+        assertTrue(state.begin(StudyAnswerOutcome.CORRECT))
+        assertTrue(state.markApplied("token-裂"))
+        assertTrue(state.tryContinue())
+
+        assertTrue(state.rollbackContinue())
+
+        assertTrue(state.continueEnabled)
+        assertFalse(state.rollbackContinue())
+        assertTrue(state.tryContinue())
+        assertFalse(state.continueEnabled)
+    }
 }

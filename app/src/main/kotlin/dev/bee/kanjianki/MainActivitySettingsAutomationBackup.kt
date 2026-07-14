@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.net.Uri
+import android.os.Build
 import android.provider.OpenableColumns
 import android.widget.Toast
 import dev.bee.kanjianki.backup.BackupExportOperations
@@ -14,6 +15,7 @@ import dev.bee.kanjianki.backup.ValidatedBackup
 import dev.bee.kanjianki.core.BackupExportPolicy
 import dev.bee.kanjianki.core.BackupRestorePolicy
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
+import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -24,16 +26,28 @@ internal class BackupRestoreSyncGate(
     fun restoreAllowed(): Boolean = BackupRestorePolicy.restoreAllowed(syncRunning())
 }
 
+internal class BackupPlatformGate(
+    private val apiLevel: () -> Int = { Build.VERSION.SDK_INT },
+) {
+    fun currentApiLevel(): Int = apiLevel()
+
+    fun availability(): DatabaseBackupAvailabilityPolicy.Availability {
+        return DatabaseBackupAvailabilityPolicy.forAndroidApi(currentApiLevel())
+    }
+}
+
 /** Owns Settings > Automation backup/export/restore interactions. */
 internal class MainActivitySettingsAutomationBackup(
     private val activity: MainActivitySettings,
     private val syncGate: BackupRestoreSyncGate = BackupRestoreSyncGate(),
+    private val platformGate: BackupPlatformGate = BackupPlatformGate(),
 ) {
     private var pendingValidatedBackup: ValidatedBackup? = null
 
     fun backupSettingsPanelModel(): SettingsBackupPanelModel {
         val archives = backupArchives(DatabaseBackupPolicy.backupDir(activity.filesDir))
         val lastBackup = archives.maxOfOrNull { it.lastModified() }?.takeIf { it > 0L }
+        val availability = platformGate.availability()
         return SettingsBackupPanelModel(
             title = BackupExportPolicy.panelTitle(),
             body = BackupExportPolicy.panelBody(),
@@ -43,11 +57,17 @@ internal class MainActivitySettingsAutomationBackup(
             onExport = Runnable(::prepareExport),
             restoreLabel = BackupExportPolicy.restoreFromBackupLabel(),
             onRestore = Runnable(::pickRestore),
+            availabilityMessage = availability.message,
+            actionsEnabled = availability.operationsAllowed,
         )
     }
 
     fun onExportDocumentSelected(uri: Uri?) {
         val prepared = PendingExportHolder.take() ?: return
+        if (!ensurePlatformAvailable()) {
+            BackupExportOperations.discard(prepared)
+            return
+        }
         if (uri == null) {
             BackupExportOperations.discard(prepared)
             return
@@ -75,6 +95,7 @@ internal class MainActivitySettingsAutomationBackup(
 
     fun onRestoreDocumentSelected(uri: Uri?) {
         if (uri == null) return
+        if (!ensurePlatformAvailable()) return
         if (!ensureRestoreAllowed()) return
         val result = AtomicReference<BackupRestoreValidation>()
         val sourceName = sourceName(uri)
@@ -112,6 +133,7 @@ internal class MainActivitySettingsAutomationBackup(
     }
 
     private fun prepareExport() {
+        if (!ensurePlatformAvailable()) return
         PendingExportHolder.discard()
         val result = AtomicReference<BackupExportPreparation>()
         activity.runSettingsWrite(
@@ -122,8 +144,8 @@ internal class MainActivitySettingsAutomationBackup(
                         tempRoot = activity.cacheDir,
                         dbFile = activity.getDatabasePath(DatabaseBackupPolicy.DB_NAME),
                         nowMillis = System.currentTimeMillis(),
-                        snapshotter = { dbFile, destination ->
-                            activity.store.snapshotInto(dbFile, destination)
+                        snapshotter = { _, destination ->
+                            activity.store.snapshotInto(destination)
                         },
                     ),
                 )
@@ -150,6 +172,7 @@ internal class MainActivitySettingsAutomationBackup(
     }
 
     private fun pickRestore() {
+        if (!ensurePlatformAvailable()) return
         if (!ensureRestoreAllowed()) return
         if (!activity.launchBackupRestoreDocument()) {
             Toast.makeText(activity, BackupRestorePolicy.stagingFailedMessage(), Toast.LENGTH_LONG).show()
@@ -157,6 +180,12 @@ internal class MainActivitySettingsAutomationBackup(
     }
 
     private fun confirmRestore() {
+        if (!ensurePlatformAvailable()) {
+            activity.pendingBackupRestoreDialog = null
+            discardPendingValidatedBackup()
+            activity.renderSettingsAutomation(true)
+            return
+        }
         if (!ensureRestoreAllowed()) return
         val validated = pendingValidatedBackup ?: return
         activity.pendingBackupRestoreDialog = null
@@ -169,7 +198,7 @@ internal class MainActivitySettingsAutomationBackup(
                     BackupRestoreStager.stage(
                         validated,
                         activity.filesDir,
-                        System.currentTimeMillis(),
+                        platformGate.currentApiLevel(),
                     ),
                 )
             },
@@ -193,6 +222,16 @@ internal class MainActivitySettingsAutomationBackup(
     private fun ensureRestoreAllowed(): Boolean {
         if (syncGate.restoreAllowed()) return true
         Toast.makeText(activity, BackupRestorePolicy.panelBlockedBySyncMessage(), Toast.LENGTH_LONG).show()
+        return false
+    }
+
+    private fun ensurePlatformAvailable(): Boolean {
+        if (platformGate.availability().operationsAllowed) return true
+        Toast.makeText(
+            activity,
+            DatabaseBackupAvailabilityPolicy.unavailableActionMessage(),
+            Toast.LENGTH_LONG,
+        ).show()
         return false
     }
 

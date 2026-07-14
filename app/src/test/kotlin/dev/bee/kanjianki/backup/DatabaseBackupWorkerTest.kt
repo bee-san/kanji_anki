@@ -1,7 +1,9 @@
 package dev.bee.kanjianki.backup
 
 import androidx.work.ListenableWorker
+import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -20,6 +22,38 @@ class DatabaseBackupWorkerTest {
     @Rule
     @JvmField
     val temp = TemporaryFolder()
+
+    @Test
+    fun unsupportedStaleWorkerFinishesWithoutTouchingDatabaseOrArchives() {
+        val filesDir = temp.newFolder("unsupported-files")
+        val backupDir = File(filesDir, "backups").apply { assertTrue(mkdirs()) }
+        val archive = File(backupDir, "kanji_anki_simple_20260101_000000.db.gz")
+        val archiveBytes = "existing archive".toByteArray(StandardCharsets.UTF_8)
+        archive.writeBytes(archiveBytes)
+        var environmentTouched = false
+        val environment = object : DatabaseBackupWorker.BackupEnvironment {
+            override fun databasePath(name: String): File {
+                environmentTouched = true
+                throw AssertionError("unsupported worker must not inspect the database")
+            }
+
+            override fun filesDir(): File {
+                environmentTouched = true
+                throw AssertionError("unsupported worker must not inspect backup storage")
+            }
+
+            override fun snapshot(dbFile: File, dest: File) {
+                environmentTouched = true
+                throw AssertionError("unsupported worker must not snapshot")
+            }
+        }
+
+        val result = DatabaseBackupWorker.doWork(environment, 1_778_832_000_000L, apiLevel = 29)
+
+        assertSuccess(result)
+        assertFalse(environmentTouched)
+        assertArrayEquals(archiveBytes, archive.readBytes())
+    }
 
     @Test
     fun backupDatabaseWritesCompressedTimestampedBackupAndPrunesOldFiles() {
@@ -125,7 +159,96 @@ class DatabaseBackupWorkerTest {
         ) { _, _ -> throw IllegalStateException("VACUUM failed") }
 
         assertFailure(result)
-        assertFalse(File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db.gz").exists())
+        val final = File(File(filesDir, "backups"), "kanji_anki_simple_${timestamp(now)}.db.gz")
+        assertFalse(final.exists())
+        assertFalse(File(final.parentFile, final.name + ".partial").exists())
+        assertFalse(File(final.parentFile, final.name + ".tmp").exists())
+    }
+
+    @Test
+    fun backupDatabaseRejectsSnapshotterThatProducesNoFile() {
+        val db = temp.newFile("empty-snapshot-source.db")
+        write(db, "db")
+        val filesDir = temp.newFolder("empty-snapshot-files")
+        val now = 1_778_832_000_000L
+
+        val result = DatabaseBackupWorker.backupDatabase(db, filesDir, now) { _, _ -> }
+
+        assertFailure(result)
+        val final = DatabaseBackupPolicy.backupFile(filesDir, now)
+        assertFalse(final.exists())
+        assertFalse(File(final.parentFile, final.name + ".partial").exists())
+        assertFalse(File(final.parentFile, final.name + ".tmp").exists())
+    }
+
+    @Test
+    fun priorRunScratchIsSweptBeforeSnapshotWithoutTouchingCompletedOrUnknownFiles() {
+        val db = temp.newFile("sweep-source.db")
+        write(db, "new database")
+        val filesDir = temp.newFolder("sweep-files")
+        val backupDir = DatabaseBackupPolicy.backupDir(filesDir).apply { assertTrue(mkdirs()) }
+        val staleTemp = File(backupDir, "kanji_anki_simple_20260102_030405.db.gz.tmp").apply {
+            writeText("abandoned raw snapshot")
+        }
+        val stalePartial = File(backupDir, "kanji_anki_simple_20260102_030406.db.gz.partial").apply {
+            writeText("abandoned compressed snapshot")
+        }
+        val completed = File(backupDir, "kanji_anki_simple_20260102_030407.db.gz").apply {
+            writeText("completed archive")
+        }
+        val invalidTimestamp = File(backupDir, "kanji_anki_simple_20260230_030408.db.gz.tmp").apply {
+            writeText("unknown invalid-date file")
+        }
+        val unknown = File(backupDir, "notes.db.gz.partial").apply { writeText("unrelated") }
+
+        val result = DatabaseBackupWorker.backupDatabase(db, filesDir, 1_778_832_000_000L) { source, destination ->
+            assertFalse(staleTemp.exists())
+            assertFalse(stalePartial.exists())
+            assertTrue(completed.isFile)
+            assertTrue(invalidTimestamp.isFile)
+            assertTrue(unknown.isFile)
+            copyFile(source, destination)
+        }
+
+        assertSuccess(result)
+        assertFalse(staleTemp.exists())
+        assertFalse(stalePartial.exists())
+        assertEquals("completed archive", completed.readText())
+        assertEquals("unknown invalid-date file", invalidTimestamp.readText())
+        assertEquals("unrelated", unknown.readText())
+    }
+
+    @Test
+    fun nonRemovablePriorScratchAbortsBeforeSnapshotAndPreservesCompletedAndUnknownFiles() {
+        val db = temp.newFile("stale-scratch-source.db")
+        write(db, "db")
+        val filesDir = temp.newFolder("stale-scratch-files")
+        val backupDir = DatabaseBackupPolicy.backupDir(filesDir).apply { assertTrue(mkdirs()) }
+        val now = 1_778_832_000_000L
+        val final = DatabaseBackupPolicy.backupFile(filesDir, now)
+        val completed = "completed archive".toByteArray(StandardCharsets.UTF_8)
+        final.writeBytes(completed)
+        val scratchDirectory = File(
+            backupDir,
+            "kanji_anki_simple_20260102_030405.db.gz.partial",
+        ).apply { assertTrue(mkdirs()) }
+        File(scratchDirectory, "stubborn").writeText("keep")
+        val invalidTimestamp = File(backupDir, "kanji_anki_simple_20260230_030405.db.gz.tmp").apply {
+            writeText("preserve invalid date")
+        }
+        val unknown = File(backupDir, "unknown.db.gz.tmp").apply { writeText("preserve unknown") }
+        var snapshotCalled = false
+
+        val result = DatabaseBackupWorker.backupDatabase(db, filesDir, now) { _, _ ->
+            snapshotCalled = true
+        }
+
+        assertFailure(result)
+        assertFalse(snapshotCalled)
+        assertArrayEquals(completed, final.readBytes())
+        assertTrue(scratchDirectory.isDirectory)
+        assertEquals("preserve invalid date", invalidTimestamp.readText())
+        assertEquals("preserve unknown", unknown.readText())
     }
 
     @Test
@@ -156,6 +279,23 @@ class DatabaseBackupWorkerTest {
         assertArrayEquals(oldBytes, final.readBytes())
         assertFalse(File(backupDir, final.name + ".partial").exists())
         assertFalse(File(backupDir, final.name + ".tmp").exists())
+    }
+
+    @Test
+    fun realAtomicPublisherRefusesToReplaceExistingCompletedArchive() {
+        val backupDir = temp.newFolder("publisher-existing-final")
+        val partial = File(backupDir, "backup.db.gz.partial").apply { writeText("new archive") }
+        val destination = File(backupDir, "backup.db.gz").apply { writeText("completed archive") }
+
+        try {
+            DatabaseBackupWorker.publishAtomically(partial, destination)
+            throw AssertionError("existing completed archive must not be replaced")
+        } catch (_: IOException) {
+            // Expected.
+        }
+
+        assertEquals("completed archive", destination.readText())
+        assertEquals("new archive", partial.readText())
     }
 
     @Test

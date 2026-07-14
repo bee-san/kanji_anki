@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -51,6 +52,45 @@ class LocalStoreReviewOutcomeTest {
         assertEquals(2, store.studyItemsForKanji(listOf("痛")).single().totalReviews)
         assertEquals(1L, store.studyItemsForKanji(listOf("痛")).single().schedulerRevision)
         assertEquals(1, reviewRowCount("token-outcome"))
+    }
+
+    @Test
+    fun consumedReviewHandoffRequiresEveryIdentityDimension() {
+        val request = RecordsSchedulerModels.ReviewRequest(
+            "継",
+            "token-handoff",
+            "good",
+            false,
+            true,
+            false,
+            false,
+            0,
+            "kanji_meaning",
+            "継|継続|けいぞく|continuation",
+            "Why is this weak?",
+        )
+        store.saveReview(request, "good", 2_000L)
+
+        assertTrue(
+            store.hasMatchingConsumedReview(
+                "token-handoff",
+                "継",
+                "kanji_meaning",
+                "継|継続|けいぞく|continuation",
+            ),
+        )
+        assertFalse(
+            store.hasMatchingConsumedReview("other-token", "継", "kanji_meaning", request.answerSignature),
+        )
+        assertFalse(
+            store.hasMatchingConsumedReview(request.token, "続", "kanji_meaning", request.answerSignature),
+        )
+        assertFalse(
+            store.hasMatchingConsumedReview(request.token, "継", "word_reading", request.answerSignature),
+        )
+        assertFalse(
+            store.hasMatchingConsumedReview(request.token, "継", "kanji_meaning", "other-signature"),
+        )
     }
 
     @Test

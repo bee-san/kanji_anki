@@ -84,6 +84,52 @@ class DebugLogShareTest {
     }
 
     @Test
+    fun acceptsAllowedFileThroughCanonicalParentAlias() {
+        val source = File(context.filesDir, "kani-debug.log").apply {
+            writeText("diagnostic through alias", Charsets.UTF_8)
+        }
+        val filesAlias = File(context.cacheDir, "debug-log-files-alias")
+        Files.createSymbolicLink(filesAlias.toPath(), context.filesDir.toPath())
+
+        try {
+            val intent = DebugLogShare.buildIntent(
+                context,
+                File(filesAlias, source.name),
+                "Kani debug log",
+            )
+
+            assertNotNull(intent)
+            val uri = intent?.let {
+                IntentCompat.getParcelableExtra(it, Intent.EXTRA_STREAM, Uri::class.java)
+            }
+            assertEquals("diagnostic through alias", uri?.let(::readUri))
+        } finally {
+            Files.deleteIfExists(filesAlias.toPath())
+        }
+    }
+
+    @Test
+    fun rejectsAllowlistedNameThroughParentAliasOutsideFilesRoot() {
+        val outside = File(context.cacheDir, "outside-debug-log-files").apply { mkdirs() }
+        File(outside, "kani-debug.log").writeText("not the live log")
+        val outsideAlias = File(context.cacheDir, "outside-debug-log-files-alias")
+        Files.createSymbolicLink(outsideAlias.toPath(), outside.toPath())
+
+        try {
+            assertNull(
+                DebugLogShare.buildIntent(
+                    context,
+                    File(outsideAlias, "kani-debug.log"),
+                    "Not a log",
+                ),
+            )
+        } finally {
+            Files.deleteIfExists(outsideAlias.toPath())
+            outside.deleteRecursively()
+        }
+    }
+
+    @Test
     fun sequentialSharesUseImmutableDistinctUris() {
         val source = File(context.filesDir, "kani-debug.log")
         source.writeText("first snapshot")

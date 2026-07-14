@@ -171,8 +171,11 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                         return home.store.annotateSimilarKanjiAvailability(items)
                     }
 
-                    override fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
-                        home.store.replaceStudyItems(items)
+                    override fun replaceStudyItems(
+                        items: List<RecordsStudyModels.StudyItem>,
+                        baseline: List<RecordsStudyModels.StudyItem>,
+                    ) {
+                        home.store.replaceStudyItems(items, null, 0L, null, baseline)
                     }
                 },
             ),

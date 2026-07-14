@@ -9,6 +9,8 @@ data class SettingsBackupPanelModel(
     val onExport: Runnable,
     val restoreLabel: String,
     val onRestore: Runnable,
+    val availabilityMessage: String? = null,
+    val actionsEnabled: Boolean = true,
 ) : SettingsPanelModel
 
 data class BackupRestoreConfirmDialogModel(
