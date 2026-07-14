@@ -209,10 +209,6 @@ internal fun StudyAnswerPanel(
                     style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp)
                 )
             }
-            model.mnemonic?.let { mnemonic ->
-                Spacer(modifier = Modifier.height(12.dp))
-                StudyAnswerMnemonic(mnemonic)
-            }
             model.kanjiDetails?.let { details ->
                 Spacer(modifier = Modifier.height(12.dp))
                 StudyAnswerKanjiDetailsStack(
@@ -223,6 +219,12 @@ internal fun StudyAnswerPanel(
                     initialUsedInAnkiShowAll = initialUsedInAnkiShowAll,
                     onBrowseAction = onBrowseAction,
                 )
+            }
+            // The saved mnemonic sits under the "More about" stack and stays visible
+            // without expanding anything, so a written story is never buried.
+            model.mnemonic?.let { mnemonic ->
+                Spacer(modifier = Modifier.height(12.dp))
+                StudyAnswerMnemonic(mnemonic)
             }
         }
     }
@@ -251,15 +253,16 @@ internal fun StudyFlashcardAnswerContent(
                 style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
             )
         }
-        model.mnemonic?.let { mnemonic ->
-            StudyAnswerMnemonic(mnemonic)
-        }
         model.kanjiDetails?.let { details ->
             StudyAnswerKanjiDetailsStack(
                 details = details,
                 panelStateKey = studyAnswerPanelStateKey(model),
                 onBrowseAction = onBrowseAction,
             )
+        }
+        // Keep the saved mnemonic under the "More about" stack, mirroring StudyAnswerPanel.
+        model.mnemonic?.let { mnemonic ->
+            StudyAnswerMnemonic(mnemonic)
         }
     }
 }
@@ -269,13 +272,15 @@ internal fun StudyAnswerMnemonic(
     model: StudyAnswerMnemonicModel,
     modifier: Modifier = Modifier,
 ) {
+    // A saved mnemonic is the learner's own memory hook, so it gets prominent styling:
+    // an accent border and full-strength ink instead of the old muted caption box.
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .testTag(STUDY_ANSWER_MNEMONIC_TEST_TAG),
         shape = KaniUiTokens.StudyShapeSmall,
         color = KaniTheme.colors.panelSoft,
-        border = BorderStroke(1.dp, StudyAnswerBorder),
+        border = BorderStroke(1.5.dp, KaniTheme.colors.primary),
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -283,14 +288,14 @@ internal fun StudyAnswerMnemonic(
         ) {
             Text(
                 text = model.label,
-                color = StudyAnswerPlum,
+                color = KaniTheme.colors.primary,
                 style = studyAnswerTextStyle(KaniUiTokens.StudyCaptionTextSizeSp),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = model.note,
-                color = StudyAnswerMuted,
+                color = KaniTheme.colors.ink,
                 style = studyAnswerTextStyle(KaniUiTokens.StudyBodyTextSizeSp),
             )
         }

@@ -209,6 +209,71 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
+    fun revealedFlashcardRendersMnemonicBelowMoreAboutStack() {
+        val revealState = FlashcardRevealState(true)
+        val mnemonic = StudyAnswerMnemonicModel(
+            label = "My mnemonic",
+            note = "A prison gate locks the meaning in.",
+        )
+
+        composeRule.setContent {
+            FlashcardCard(
+                model = FlashcardCardModel(
+                    promptHeader = FlashcardPromptHeaderModel(
+                        modeLabel = "Type",
+                        question = "What does it mean?",
+                    ),
+                    heroPanel = FlashcardHeroPanelModel(
+                        glyph = "獄",
+                        glyphSizeSp = 64,
+                        typeface = null,
+                    ),
+                    typingAnswer = null,
+                    answerPanel = StudyAnswerPanelModel(
+                        title = "Answer",
+                        glyph = "獄",
+                        glyphSizeSp = 76,
+                        lines = listOf(
+                            StudyAnswerLineModel(
+                                text = "prison",
+                                color = 0xFF2E1035.toInt(),
+                                sizeSp = 17,
+                                bold = true,
+                            )
+                        ),
+                        helperText = null,
+                        kanjiDetails = studyAnswerKanjiDetailsModel(
+                            kanji = "獄",
+                            dictionaryEntry = null,
+                            examples = listOf(
+                                dev.bee.kanjianki.core.RecordsImportModels.Example(
+                                    "word", 11L, 21L, "地獄", "じごく", "hell", "", false, 0,
+                                ),
+                            ),
+                        ),
+                        mnemonic = mnemonic,
+                    ),
+                    revealState = revealState,
+                )
+            )
+        }
+        composeRule.waitForIdle()
+
+        // The saved mnemonic sits under the "More about" disclosure so the answer flow
+        // stays uninterrupted while the learner's own story stays visible (not buried
+        // inside a collapsed section).
+        val disclosure = composeRule.onNodeWithTag(studyAnswerDisclosureHeaderTestTag())
+            .fetchSemanticsNode().boundsInRoot
+        val mnemonicBounds = composeRule.onNodeWithTag(STUDY_ANSWER_MNEMONIC_TEST_TAG)
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "mnemonic ($mnemonicBounds) should render below the More about stack ($disclosure)",
+            mnemonicBounds.top >= disclosure.bottom,
+        )
+        composeRule.onNodeWithText(mnemonic.note).assertExists()
+    }
+
+    @Test
     fun revealedBlankTypingFlashcardHidesPromptCopyAndTypingInput() {
         val revealState = FlashcardRevealState(false)
         val typingAnswer = TypingAnswerState()
