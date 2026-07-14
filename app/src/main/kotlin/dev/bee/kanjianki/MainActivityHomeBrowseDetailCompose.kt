@@ -3,12 +3,17 @@
 package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,8 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +53,9 @@ internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
     ) {
         BrowseDetailHero(model.hero)
         BrowseDetailIdentity(model.identity)
+        model.strokeOrder?.let { strokeOrder ->
+            KaniStrokeOrderDiagram(strokeOrder)
+        }
         Box(modifier = Modifier.padding(top = 10.dp)) {
             BrowseDetailInfoPanel(model.reason)
         }
@@ -316,5 +327,95 @@ private fun BrowseChip(label: String, color: ComposeColor) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+internal object StrokeOrderTestTags {
+    const val SECTION = "stroke-order-section"
+    const val PANEL_PREFIX = "stroke-order-panel-"
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun KaniStrokeOrderDiagram(model: BrowseStrokeOrderModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .testTag(StrokeOrderTestTags.SECTION),
+    ) {
+        Text(
+            text = model.title,
+            color = BrowseInk,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            model.panels.forEach { panel ->
+                StrokeOrderPanelCell(panel)
+            }
+        }
+        model.overflowText?.let { text ->
+            Text(
+                text = text,
+                color = BrowseMuted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun StrokeOrderPanelCell(panel: BrowseStrokeOrderPanelModel) {
+    val accent = KaniTheme.colors.teal
+    val dimmedColor = BrowseInk.copy(alpha = 0.2f)
+    val dotRadius = 4f
+    Surface(
+        modifier = Modifier
+            .width(56.dp)
+            .aspectRatio(1f)
+            .testTag(StrokeOrderTestTags.PANEL_PREFIX + panel.strokeNumber),
+        shape = RoundedCornerShape(6.dp),
+        color = BrowseWhite,
+        border = BorderStroke(0.5.dp, KaniTheme.colors.borderSoft),
+    ) {
+        Box(contentAlignment = Alignment.BottomStart) {
+            Canvas(modifier = Modifier.matchParentSize().padding(4.dp)) {
+                val w = size.width
+                val h = size.height
+                panel.strokes.forEach { stroke ->
+                    val color = if (stroke.highlighted) accent else dimmedColor
+                    val strokeWidth = if (stroke.highlighted) 3f else 1.5f
+                    val points = stroke.points
+                    for (i in 0 until points.size - 1) {
+                        drawLine(
+                            color = color,
+                            start = Offset(points[i].first * w, points[i].second * h),
+                            end = Offset(points[i + 1].first * w, points[i + 1].second * h),
+                            strokeWidth = strokeWidth,
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
+                if (panel.startPointX != null && panel.startPointY != null) {
+                    drawCircle(
+                        color = accent,
+                        radius = dotRadius,
+                        center = Offset(panel.startPointX * w, panel.startPointY * h),
+                    )
+                }
+            }
+            Text(
+                text = panel.strokeNumber.toString(),
+                modifier = Modifier.padding(start = 3.dp, bottom = 1.dp),
+                color = BrowseMuted,
+                fontSize = 9.sp,
+            )
+        }
     }
 }

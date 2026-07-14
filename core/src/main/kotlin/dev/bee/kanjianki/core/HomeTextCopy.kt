@@ -521,6 +521,13 @@ object HomeTextCopy {
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
+    fun strokeOrderTitle(): String = localizedText("Stroke order", "書き順")
+
+    @JvmStatic
+    fun strokeOrderOverflow(omittedCount: Int): String =
+        localizedText("+$omittedCount more strokes", "+${omittedCount}画省略")
+
+    @JvmStatic
     fun examplesTitle(): String = localizedText("Examples", "例文")
 
     @JvmStatic

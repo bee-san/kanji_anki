@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StuckCardPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
+import dev.bee.kanjianki.core.study.StrokeOrderDiagramPolicy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
@@ -129,6 +130,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         return BrowseDetailScreenModel(
             detailHeroModel(displayKanji, fromBrowse, browseQuery ?: "", customBackAction),
             detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
+            strokeOrderModel(displayKanji),
             detailReasonPanelModel(row, inventory),
             inventory?.let(::localInventoryPanelModel),
             mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
@@ -136,6 +138,35 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             recoveryTimelineModel(timeline),
             HomeTextCopy.examplesTitle(),
             row?.examples?.let(::exampleModels).orEmpty()
+        )
+    }
+
+    fun strokeOrderModel(kanji: String): BrowseStrokeOrderModel? {
+        val guide = home.strokeGuide(kanji) ?: return null
+        val diagram = StrokeOrderDiagramPolicy.build(guide)
+        if (diagram.isEmpty()) return null
+        val panels = diagram.panels.map { panel ->
+            BrowseStrokeOrderPanelModel(
+                strokes = panel.strokes.map { stroke ->
+                    BrowseStrokeOrderStrokeModel(
+                        points = stroke.inkStroke.points.map { pt -> Pair(pt.x, pt.y) },
+                        highlighted = stroke.highlighted,
+                    )
+                },
+                startPointX = panel.startPoint?.x,
+                startPointY = panel.startPoint?.y,
+                strokeNumber = panel.strokeNumber,
+            )
+        }
+        val overflowText = if (diagram.omittedStrokeCount > 0) {
+            HomeTextCopy.strokeOrderOverflow(diagram.omittedStrokeCount)
+        } else {
+            null
+        }
+        return BrowseStrokeOrderModel(
+            title = HomeTextCopy.strokeOrderTitle(),
+            panels = panels,
+            overflowText = overflowText,
         )
     }
 
