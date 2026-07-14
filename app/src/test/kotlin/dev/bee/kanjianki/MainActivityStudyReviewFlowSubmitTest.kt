@@ -106,6 +106,105 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
+    fun selfGradedReviewAutoAdvancesExactlyOnceWhenApplied() {
+        withReviewActivity("裂") { activity, store, reviewIo, session ->
+            assertTrue(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    interactionSource = "card",
+                    autoContinue = true,
+                )
+            )
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertTrue(feedback.autoContinueOnApply)
+            assertEquals(0, activity.renderCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(1, activity.renderCount())
+            assertEquals(
+                StudyAnswerFeedbackPhase.CONTINUED,
+                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
+            assertFalse(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun selfGradedContinueFailureRollsBackToAppliedForManualContinue() {
+        withReviewActivity("裂") { activity, store, reviewIo, session ->
+            assertTrue(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    autoContinue = true,
+                )
+            )
+            reviewIo.runNext()
+            // Swap the mounted session before the applied callback runs so the
+            // durable continue handoff loses its CAS and must roll back.
+            val displaced = RecordsSchedulerModels.StudySession(
+                session.item,
+                session.row,
+                "token-displaced",
+                session.taskType,
+                session.writingRequired,
+                session.prompt,
+            )
+            activity.activeSession = displaced
+            shadowOf(Looper.getMainLooper()).idle()
+
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(0, activity.renderCount())
+            assertTrue(feedback.continueEnabled)
+
+            // The manual Continue button remains the working fallback once the
+            // answered session is mounted again.
+            activity.activeSession = session
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun retryableDropResetsAutoContinueWithThePhase() {
+        withReviewActivity("裂") { activity, store, reviewIo, session ->
+            clearStore(activity)
+            assertTrue(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    autoContinue = true,
+                )
+            )
+            assertTrue(activity.studyAnswerFeedbackState!!.autoContinueOnApply)
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            val feedback = activity.studyAnswerFeedbackState!!
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, feedback.snapshot().phase)
+            assertFalse(feedback.autoContinueOnApply)
+            assertEquals(0, activity.renderCount())
+
+            // A retried default submit must not inherit the cleared flag.
+            activity.store = store
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+        }
+    }
+
+    @Test
     fun widgetRefreshFailureDoesNotRollBackCommittedReview() {
         withReviewActivity("守") { activity, store, reviewIo, session ->
             installWidgetRefreshRecorder(activity) {
@@ -447,7 +546,7 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
-    fun successfulRepairCompletionAppliesOnceAndWaitsForContinue() {
+    fun successfulRepairCompletionAppliesOnceAndAutoAdvances() {
         withReviewActivity("修") { activity, store, reviewIo, session ->
             val activeRepair = persistRepair(store, session.token)
             activity.activeSimilarWritingRepair = activeRepair
@@ -463,11 +562,10 @@ class MainActivityStudyReviewFlowSubmitTest {
             shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
 
             assertEquals("complete", repairStatus(store, activeRepair.id))
-            assertEquals(StudyAnswerFeedbackPhase.APPLIED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
             assertFalse(activity.studySessionTracker.hasActiveTask())
-            assertEquals(0, activity.renderCount())
-
-            assertTrue(activity.continueAfterStudyAnswer())
+            // Writing repair is self-graded, so the applied write auto-advances
+            // exactly once; a duplicate manual Continue stays a no-op.
+            assertEquals(1, activity.renderCount())
             assertFalse(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }

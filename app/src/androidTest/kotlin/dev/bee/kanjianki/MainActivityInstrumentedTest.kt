@@ -990,8 +990,6 @@ fun testKanjiDetailCopyAndStudyReviewFlow() {
 
             clickText(scenario, "Fail");
             assertFailedRecognitionReviewStored();
-            waitForText(scenario, "Incorrect.");
-            scenario.onActivity { activity -> assertHasText(activity, "Continue") }
         }
     }
 
@@ -1002,11 +1000,6 @@ fun testKanjiDetailTimelineShowsReviewAfterStudy() {
             clickText(scenario, STUDY_NOW);
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
-            waitForText(scenario, "Correct.");
-            scenario.onActivity { activity ->
-                assertHasTexts(activity, "Correct.", "Continue");
-            }
-            clickText(scenario, "Continue");
             waitForText(scenario, "Today's focus done");
             scenario.onActivity { activity -> assertHasText(activity, "Continue all kanji") }
             clickText(scenario, "Back home");
@@ -1892,8 +1885,6 @@ fun testCorrectWritingCheckSubmitsReview() {
                 assertEquals(1, countText(activity.findViewById<View>(android.R.id.content), CLEAN_MATCH));
             }
             clickText(scenario, PASS_AFTER_WRITING);
-            waitForText(scenario, "Correct.");
-            scenario.onActivity { activity -> assertHasText(activity, "Continue") }
 
             LocalStore(context).use { store ->
                 var stats = store.reviewStatsSince(0L)
@@ -1982,8 +1973,6 @@ fun testWrongRecognitionCanBeLoggedAsFailedAttempt() {
                 assertNoText(activity, PASS_AFTER_WRITING);
             }
             clickText(scenario, "Fail");
-            waitForText(scenario, "Incorrect.");
-            scenario.onActivity { activity -> assertHasText(activity, "Continue") }
 
             LocalStore(context).use { store ->
                 var stats = store.reviewStatsSince(0L)

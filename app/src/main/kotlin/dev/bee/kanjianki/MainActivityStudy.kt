@@ -466,12 +466,13 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         ladder: RecordsBase.StudyLadderSettings? = null,
         interactionSource: String = "review-action",
         answerEvidence: AnswerEvidence? = null,
+        autoContinue: Boolean = false,
     ): Boolean {
         val selectedAnswer = answerEvidence?.selectedAnswer
             ?.takeIf { it.isNotBlank() }
             ?: typingAnswerState?.text?.toString()?.takeIf { it.isNotBlank() }
             ?: rating
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer) {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer, autoContinue) {
             writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
         }
     }
@@ -479,6 +480,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private fun submitWithAnswerFeedback(
         correct: Boolean,
         selectedAnswer: String,
+        autoContinue: Boolean = false,
         submit: () -> Boolean,
     ): Boolean {
         val token = activeSession?.token ?: return false
@@ -486,7 +488,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             ?.takeIf { it.sessionToken == token }
             ?: StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
         val outcome = if (correct) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT
-        if (!state.begin(outcome, selectedAnswer)) {
+        if (!state.begin(outcome, selectedAnswer, autoContinue)) {
             return false
         }
         if (!persistPendingStudyAnswer(state)) {
@@ -515,6 +517,13 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             val state = studyAnswerFeedbackState
             if (state?.markApplied(token) == true) {
                 persistPendingStudyAnswer(state)
+                if (state.autoContinueOnApply) {
+                    // Self-graded submits arm this: the user already saw the
+                    // answer before rating, so skip the manual Continue tap.
+                    // tryContinue() is one-shot and a CAS-failed handoff rolls
+                    // back to APPLIED, leaving the manual button as fallback.
+                    continueAfterStudyAnswer()
+                }
             }
         }
     }
@@ -595,7 +604,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun submitSimilarWritingRepair(rating: String): Boolean {
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating) {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating, autoContinue = true) {
             writingReview.submitSimilarWritingRepair(rating)
         }
     }

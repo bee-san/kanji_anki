@@ -360,11 +360,14 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         answerEvidence: AnswerEvidence? = null,
     ): Boolean {
         if (!activity.matchesUngradedStudyRoute(session.token, expectedRecovery)) return false
+        // Self-graded: the user rated after seeing the flipside, so the
+        // applied write auto-advances instead of waiting for a Continue tap.
         return activity.submitReview(
             rating = rating,
             override = false,
             interactionSource = interactionSource,
             answerEvidence = answerEvidence,
+            autoContinue = true,
         )
     }
 
