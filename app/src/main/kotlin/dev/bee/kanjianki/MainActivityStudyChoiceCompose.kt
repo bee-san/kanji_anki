@@ -23,6 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -364,13 +368,19 @@ private fun SimilarKanjiDetailsButton(
     expanded: Boolean,
     onToggleDetails: () -> Unit,
 ) {
+    val toggleLabel = if (expanded) StudyTextCopy.similarKanjiHideDetailsLabel() else StudyTextCopy.similarKanjiDetailsLabel()
     TextButton(
         onClick = onToggleDetails,
-        modifier = Modifier.testTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG),
+        modifier = Modifier
+            .testTag(SIMILAR_KANJI_DETAILS_TOGGLE_TAG)
+            .semantics {
+                role = Role.Button
+                contentDescription = toggleLabel
+            },
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
-            text = if (expanded) StudyTextCopy.similarKanjiHideDetailsLabel() else StudyTextCopy.similarKanjiDetailsLabel(),
+            text = toggleLabel,
             color = StudyPinkDark,
             fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
             fontWeight = FontWeight.Bold,

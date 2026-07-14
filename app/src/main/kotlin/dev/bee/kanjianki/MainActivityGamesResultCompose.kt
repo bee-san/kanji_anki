@@ -14,6 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +61,9 @@ fun GamesUnavailableCard(model: GamesUnavailableModel) {
 fun GamesResultCard(model: GamesResultModel) {
     val accent = kaniColor(model.titleColor)
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
         shape = GamesPanelShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
@@ -119,7 +125,11 @@ fun GamesResultCard(model: GamesResultModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 58.dp)
-                    .testTag(gamesResultPrimaryButtonTestTag(model.primaryLabel)),
+                    .testTag(gamesResultPrimaryButtonTestTag(model.primaryLabel))
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = model.primaryLabel
+                    },
                 shape = GamesButtonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = kaniColor(model.primaryColor),
@@ -141,7 +151,11 @@ fun GamesResultCard(model: GamesResultModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 54.dp)
-                    .testTag(gamesResultGamesButtonTestTag()),
+                    .testTag(gamesResultGamesButtonTestTag())
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = KanjiGameCopy.gamesLabel()
+                    },
                 shape = GamesButtonShape,
                 border = BorderStroke(1.dp, GamesButtonBorder),
                 colors = ButtonDefaults.outlinedButtonColors(

@@ -209,6 +209,12 @@ object KanjiGameCopy {
     )
 
     @JvmStatic
+    fun scoreStripDescription(correct: Int, total: Int): String = localizedText(
+        "$correct correct of $total",
+        "${total}問中${correct}問正解",
+    )
+
+    @JvmStatic
     fun accuracyText(correct: Int, answered: Int): String {
         val accuracy = KanjiGameRoundState.accuracyPercent(correct, answered)
         return localizedText("Accuracy: $accuracy%", "正答率: $accuracy%")

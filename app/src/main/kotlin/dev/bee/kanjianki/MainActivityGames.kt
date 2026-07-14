@@ -132,7 +132,8 @@ internal abstract class MainActivityGames : MainActivityHome() {
             scoreLabel = KanjiGameCopy.scoreLabel(),
             scoreValue = "${gameRound.correct}/${gameRound.totalQuestions}",
             streakLabel = KanjiGameCopy.streakLabel(),
-            streakValue = gameRound.streak.toString()
+            streakValue = gameRound.streak.toString(),
+            scoreDescription = KanjiGameCopy.scoreStripDescription(gameRound.correct, gameRound.totalQuestions)
         )
     }
 

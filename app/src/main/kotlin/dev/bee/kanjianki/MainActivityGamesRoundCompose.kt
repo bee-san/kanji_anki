@@ -14,6 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -29,10 +33,20 @@ internal fun gamesChoiceButtonTestTag(label: String): String = "games-choice-but
 
 @Composable
 fun GamesScoreStrip(model: GamesScoreStripModel) {
+    val scoreDescription = model.scoreDescription
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 3.dp, bottom = 8.dp),
+            .padding(top = 3.dp, bottom = 8.dp)
+            .then(
+                if (scoreDescription != null) {
+                    Modifier.semantics(mergeDescendants = true) {
+                        contentDescription = scoreDescription
+                    }
+                } else {
+                    Modifier
+                }
+            ),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         GamesScoreCard(
@@ -102,10 +116,14 @@ fun GamesQuestionCard(
 ) {
     val accent = gameModeColor(question.mode)
     val useKanjiTypography = KanjiGameCopy.choiceUsesKanjiTypography(question)
+    val promptDescription = KanjiGameCopy.questionPrompt(question)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 7.dp),
+            .padding(vertical = 7.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = promptDescription
+            },
         shape = GamesScoreShape,
         color = GamesWhite,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
@@ -188,7 +206,11 @@ private fun GameChoiceButton(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (useKanjiTypography) 74.dp else 56.dp)
-            .testTag(gamesChoiceButtonTestTag(label)),
+            .testTag(gamesChoiceButtonTestTag(label))
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            },
         shape = GamesChoiceShape,
         border = BorderStroke(1.dp, GamesButtonBorder),
         colors = ButtonDefaults.outlinedButtonColors(

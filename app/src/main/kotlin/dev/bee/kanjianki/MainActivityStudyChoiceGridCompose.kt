@@ -23,8 +23,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import dev.bee.kanjianki.core.HomeTextCopy
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -72,9 +76,9 @@ internal fun KanjiChoiceGrid(
         choices.chunked(2)
     }
     Column(modifier = Modifier.fillMaxWidth()) {
-        choiceRows.forEach { rowChoices ->
+        choiceRows.forEachIndexed { rowIndex, rowChoices ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                rowChoices.forEach { glyph ->
+                rowChoices.forEachIndexed { columnIndex, glyph ->
                     val cellModifier = if (rowChoices.size == 1 && !balanceLastRow) {
                         Modifier.fillMaxWidth().choiceCellSpacing()
                     } else {
@@ -82,6 +86,10 @@ internal fun KanjiChoiceGrid(
                     }
                     SimilarChoiceButton(
                         glyph = glyph,
+                        positionDescription = HomeTextCopy.choicePositionDescription(
+                            index = rowIndex * 2 + columnIndex,
+                            total = choices.size,
+                        ),
                         enabled = enabled,
                         feedback = feedbackForChoice(glyph),
                         onClick = { onChoice(glyph) },
@@ -112,6 +120,7 @@ private fun Modifier.choiceCellSpacing(): Modifier {
 @Composable
 private fun SimilarChoiceButton(
     glyph: String,
+    positionDescription: String,
     enabled: Boolean,
     feedback: KanjiChoiceFeedback?,
     onClick: () -> Unit,
@@ -139,6 +148,10 @@ private fun SimilarChoiceButton(
         modifier = modifier
             .heightIn(min = SimilarChoiceButtonHeight)
             .testTag(similarChoiceTestTag(glyph))
+            .semantics {
+                role = Role.Button
+                contentDescription = "$glyph, $positionDescription"
+            }
             .choiceFeedbackSemantics(feedback),
         shape = KaniUiTokens.StudyShapeMedium,
         border = BorderStroke(1.dp, borderColor),

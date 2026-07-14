@@ -179,6 +179,12 @@ object HomeTextCopy {
         localizedText("Study card for $kanji, $meaning", "${kanji}の学習カード、$meaning")
 
     @JvmStatic
+    fun choicePositionDescription(index: Int, total: Int): String {
+        val position = index + 1
+        return localizedText("Choice $position of $total", "選択肢 $position / $total")
+    }
+
+    @JvmStatic
     fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic
