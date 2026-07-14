@@ -597,7 +597,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     fun submitSimilarWritingRepair(rating: String): Boolean {
         return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating) {
             writingReview.submitSimilarWritingRepair(rating)
-            true
         }
     }
 
@@ -615,6 +614,23 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun clearPendingStudyAnswer() {
         studyRecoveryStore.clearPending()
+    }
+
+    internal fun clearStudyAnswerAfterUndo(
+        token: String,
+        expectedRecovery: StoredPendingStudyRecovery?,
+    ) {
+        if (expectedRecovery != null &&
+            expectedRecovery.snapshot.feedback.sessionToken == token
+        ) {
+            studyRecoveryStore.clearIfUnchanged(expectedRecovery)
+        } else {
+            studyRecoveryStore.clearPending(token)
+        }
+        if (studyAnswerFeedbackState?.sessionToken == token) {
+            studyAnswerFeedbackState = null
+        }
+        activeStudyRecovery = null
     }
 
     internal fun clearStudyRecoveryIfUnchanged(stored: StoredStudyRecovery): Boolean =
@@ -635,6 +651,13 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         val session = activeSession ?: return false
         val item = session.item ?: return false
         val kanji = item.kanji.takeIf { it.isNotBlank() } ?: return false
+        val repair = if (session.taskType == MainActivityBase.TASK_REPAIR_WRITING) {
+            activeSimilarWritingRepair
+                ?.takeIf { it.id > 0L && it.activeToken == session.token }
+                ?: return false
+        } else {
+            null
+        }
         val pending = StudyPendingAnswerSnapshot(
             feedback = state.snapshot(),
             kanji = kanji,
@@ -643,6 +666,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             prompt = session.prompt,
             answerSignature = item.answerSignature,
             schedulerRevision = item.schedulerRevision,
+            repairId = repair?.id,
+            repairAttempts = repair?.attempts,
         )
         val active = activeStudyRecovery
         val stored = when {

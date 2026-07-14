@@ -238,6 +238,72 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun processRestartPromotesCommittedRepairSubmittingEnvelopeToAppliedFeedback() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val token = "repair-committed-crash-token"
+
+        LocalStore(context).use { store ->
+            val repair = persistRepair(store, token)
+            val item = RecordsStudyModels.StudyItem(
+                "修", "review", 1_000L, 1.0, 2.0, 1, 0, 0, 0, "", 1_000L,
+            ).copyBuilder()
+                .rung(RecordsBase.LadderRung.KANJI_MEANING)
+                .activeToken(token)
+                .build()
+            val session = RecordsSchedulerModels.StudySession(
+                item,
+                null,
+                token,
+                MainActivityBase.TASK_REPAIR_WRITING,
+                true,
+                "Write the similar kanji 修",
+            )
+            val seedActivity = Robolectric.buildActivity(MainActivity::class.java).get().apply {
+                this.store = store
+                activeSession = session
+                activeSimilarWritingRepair = repair
+            }
+            val seedIo = QueueingExecutorService()
+            replaceField(seedActivity, "io", seedIo)
+
+            assertTrue(seedActivity.submitSimilarWritingRepair(StudyRatings.AGAIN))
+            assertEquals(
+                StudyAnswerFeedbackPhase.SUBMITTING,
+                seedActivity.pendingStudyAnswerSnapshot()?.feedback?.phase,
+            )
+            assertTrue(store.finishSimilarWritingRepair(repair.id, token, false, 2_000L))
+        }
+
+        val ioTasks = QueueingExecutorService()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val restoredActivity = controller.get()
+        replaceField(restoredActivity, "io", ioTasks)
+
+        try {
+            controller.create().start().resume()
+            ioTasks.runAll()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals(token, restoredActivity.activeSession?.token)
+            assertEquals(MainActivityBase.TASK_REPAIR_WRITING, restoredActivity.activeSession?.taskType)
+            assertEquals(
+                StudyAnswerFeedbackPhase.APPLIED,
+                restoredActivity.studyAnswerFeedbackState?.snapshot()?.phase,
+            )
+            assertEquals(StudyAnswerOutcome.INCORRECT, restoredActivity.studyAnswerFeedbackState?.outcome)
+            assertTrue(restoredActivity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(restoredActivity.writingAnswerPanelState?.visible == true)
+        } finally {
+            preferences.edit().clear().commit()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
     fun processRestartRestoresExactTypedCardAndDraftWithoutRevealingAnswer() {
         val restored = restoreActiveCardAfterProcessRestart(
             kanji = "裂",
@@ -1188,6 +1254,44 @@ class MainActivityStudyRouteInitializationTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken(token)
             .build()
+    }
+
+    private fun persistRepair(
+        store: LocalStore,
+        token: String,
+    ): RecordsImportModels.SimilarKanjiWritingRepair {
+        fun repair(id: Long) = RecordsImportModels.SimilarKanjiWritingRepair(
+            id,
+            "末",
+            "修",
+            "restart-repair-signature",
+            "未",
+            "repair",
+            "pending",
+            0L,
+            token,
+            0,
+            1_000L,
+            1_000L,
+            0L,
+        )
+        val draft = repair(0L)
+        val values = ContentValues().apply {
+            put("target_kanji", draft.targetKanji)
+            put("repair_kanji", draft.repairKanji)
+            put("choice_signature", draft.choiceSignature)
+            put("wrong_selection", draft.wrongSelection)
+            put("prompt_meaning", draft.promptMeaning)
+            put("status", draft.status)
+            put("due_at", draft.dueAtMillis)
+            put("active_token", draft.activeToken)
+            put("attempts", draft.attempts)
+            put("created_at", draft.createdAtMillis)
+            put("updated_at", draft.updatedAtMillis)
+            put("completed_at", draft.completedAtMillis)
+        }
+        val id = store.writableDatabase.insertOrThrow("similar_kanji_repair_queue", null, values)
+        return repair(id)
     }
 
     private fun fakeAnkiDroidGateway(): AnkiDroidGateway {

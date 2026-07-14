@@ -32,10 +32,18 @@ internal object StudyRepairActions {
         val passed = MainActivityBase.RATING_AGAIN != rating
         val saved = finisher.finishSimilarWritingRepair(repair.id, repair.activeToken, passed, nowMillis)
         if (saved) {
-            recorder.recordRepairOutcome(repair.repairKanji, passed)
+            try {
+                recorder.recordRepairOutcome(repair.repairKanji, passed)
+            } catch (_: RuntimeException) {
+                // The repair row is already durable; auxiliary bookkeeping must not roll it back.
+            }
         }
         if (saved && passed) {
-            marker.markStudyTaskCompleted(StudySessionTracker.similarRepairProgressKey(repair))
+            try {
+                marker.markStudyTaskCompleted(StudySessionTracker.similarRepairProgressKey(repair))
+            } catch (_: RuntimeException) {
+                // Keep attempting independent bookkeeping after the durable repair commit.
+            }
         }
         return RepairCompletion(saved, passed)
     }

@@ -204,8 +204,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
     ): Boolean {
         val session = activity.activeSession ?: return false
         if (activity.activeSimilarWritingRepair != null) {
-            submitSimilarWritingRepair(rating)
-            return true
+            return submitSimilarWritingRepair(rating)
         }
         // Build the request on the main thread: it reads tap-time UI state (writing
         // analysis, hints used) that belongs to the card the user just answered.
@@ -295,28 +294,38 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         )
     }
 
-    fun submitSimilarWritingRepair(rating: String) {
-        val repair = activity.activeSimilarWritingRepair ?: return
+    fun submitSimilarWritingRepair(rating: String): Boolean {
+        val repair = activity.activeSimilarWritingRepair ?: return false
+        val session = activity.activeSession ?: return false
+        if (session.taskType != MainActivityBase.TASK_REPAIR_WRITING ||
+            session.token != repair.activeToken
+        ) {
+            return false
+        }
         val now = System.currentTimeMillis()
-        runReviewWrite {
+        return runTokenReviewWrite(session, "similar-writing-repair") {
             if (activity.activeSimilarWritingRepair !== repair) {
-                return@runReviewWrite
+                return@runTokenReviewWrite ReviewWriteDisposition.RETRYABLE_DROP
             }
-            activity.completeActiveRepairStudyTask(activity.similarRepairStudyTaskKey(repair), rating, now)
             val completion = StudyRepairActions.completeSimilarWritingRepair(
                 repair,
                 rating,
                 now,
                 activity.store::finishSimilarWritingRepair,
                 activity.studySessionTracker::recordRepairOutcome,
-                activity::markStudyTaskCompleted
+                activity::markStudyTaskCompleted,
             )
-            if (completion.saved) {
-                refreshWidgetAfterPersistedReviewMutation()
+            if (!completion.saved) {
+                return@runTokenReviewWrite ReviewWriteDisposition.RETRYABLE_DROP
             }
+            runCatching {
+                activity.completeActiveRepairStudyTask(activity.similarRepairStudyTaskKey(repair), rating, now)
+            }
+            refreshWidgetAfterPersistedReviewMutation()
             showToast(StudyTextCopy.similarWritingRepairSavedToast(completion.passed))
-            activity.markStudyAnswerApplied(activity.studyAnswerFeedbackState?.sessionToken.orEmpty())
+            activity.markStudyAnswerApplied(session.token)
             activity.requestReminderRearm("review")
+            ReviewWriteDisposition.HANDLED
         }
     }
 
@@ -595,6 +604,8 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
 
     fun undoLastRating() {
         val pending = activity.studyUndoState.pending ?: return
+        val answeredRecovery = activity.pendingStudyRecovery()
+            ?.takeIf { it.snapshot.feedback.sessionToken == pending.snapshot.token }
         runReviewWrite {
             if (activity.studyUndoState.pending !== pending) {
                 return@runReviewWrite
@@ -621,6 +632,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             logReviewEvent(
                 "review event=token-released token_id=${reviewTokenId(pending.snapshot.token)} reason=undo",
             )
+            activity.clearStudyAnswerAfterUndo(pending.snapshot.token, answeredRecovery)
             activity.renderStudyForKanji(restoredKanji)
             activity.scheduleStatsPrecomputeIfStaleAsync()
             activity.requestReminderRearm("review")

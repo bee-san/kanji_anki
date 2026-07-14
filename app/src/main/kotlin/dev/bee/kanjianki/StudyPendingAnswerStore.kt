@@ -21,6 +21,10 @@ data class StudyPendingAnswerSnapshot(
     val answerSignature: String? = null,
     /** Pre-review revision; the committed canonical item must be exactly one revision newer. */
     val schedulerRevision: Long? = null,
+    /** Exact legacy writing-repair row, retained so a crash can prove that submission committed. */
+    val repairId: Long? = null,
+    /** Attempt count before the repair submission represented by this snapshot. */
+    val repairAttempts: Int? = null,
 ) {
     fun restoreSession(
         item: RecordsStudyModels.StudyItem,
@@ -582,6 +586,8 @@ internal class StudySessionRecoveryStore(
             .put(KEY_PROMPT, snapshot.prompt)
         snapshot.answerSignature?.let { json.put(KEY_ANSWER_SIGNATURE, it) }
         snapshot.schedulerRevision?.let { json.put(KEY_SCHEDULER_REVISION, it) }
+        snapshot.repairId?.let { json.put(KEY_REPAIR_ID, it) }
+        snapshot.repairAttempts?.let { json.put(KEY_REPAIR_ATTEMPTS, it) }
         return json
     }
 
@@ -600,6 +606,8 @@ internal class StudySessionRecoveryStore(
             prompt = json.optString(KEY_PROMPT),
             answerSignature = json.optString(KEY_ANSWER_SIGNATURE).takeIf { json.has(KEY_ANSWER_SIGNATURE) },
             schedulerRevision = json.optLong(KEY_SCHEDULER_REVISION).takeIf { json.has(KEY_SCHEDULER_REVISION) },
+            repairId = json.optLong(KEY_REPAIR_ID).takeIf { json.has(KEY_REPAIR_ID) },
+            repairAttempts = json.optInt(KEY_REPAIR_ATTEMPTS).takeIf { json.has(KEY_REPAIR_ATTEMPTS) },
         ).takeIf(::validPending)
     }.getOrNull()
 
@@ -654,6 +662,12 @@ internal class StudySessionRecoveryStore(
 
     private fun validPending(snapshot: StudyPendingAnswerSnapshot): Boolean {
         val identityComplete = (snapshot.answerSignature == null) == (snapshot.schedulerRevision == null)
+        val repairIdentityComplete = (snapshot.repairId == null) == (snapshot.repairAttempts == null)
+        val repairIdentityValid = if (snapshot.taskType == MainActivityBase.TASK_REPAIR_WRITING) {
+            snapshot.repairId == null || snapshot.repairId > 0L && snapshot.repairAttempts?.let { it >= 0 } == true
+        } else {
+            snapshot.repairId == null && snapshot.repairAttempts == null
+        }
         val continuedIdentityValid = snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
             (snapshot.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
                 snapshot.answerSignature?.let {
@@ -668,6 +682,8 @@ internal class StudySessionRecoveryStore(
             validText(snapshot.taskType, MAX_TASK_TYPE_CHARS, allowBlank = false) &&
             validText(snapshot.prompt, MAX_PROMPT_CHARS, allowBlank = true) &&
             identityComplete &&
+            repairIdentityComplete &&
+            repairIdentityValid &&
             continuedIdentityValid &&
             (snapshot.answerSignature == null || validText(snapshot.answerSignature, MAX_SIGNATURE_CHARS, allowBlank = true)) &&
             (snapshot.schedulerRevision == null || snapshot.schedulerRevision >= 0L)
@@ -748,6 +764,8 @@ internal class StudySessionRecoveryStore(
         private const val KEY_SIMILAR_CHOICE_SIGNATURE_DIGEST = "similar_choice_signature_digest"
         private const val KEY_TYPED_DRAFT = "typed_draft"
         private const val KEY_REVEALED = "revealed"
+        private const val KEY_REPAIR_ID = "repair_id"
+        private const val KEY_REPAIR_ATTEMPTS = "repair_attempts"
 
         private const val MAX_ENCODED_CHARS = 65_536
         private const val MAX_TOKEN_CHARS = 512
