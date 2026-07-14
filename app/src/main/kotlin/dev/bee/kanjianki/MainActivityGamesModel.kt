@@ -27,6 +27,7 @@ data class GamesScoreStripModel(
     val scoreValue: String,
     val streakLabel: String,
     val streakValue: String,
+    val scoreDescription: String? = null,
 )
 
 data class GamesResultModel(

@@ -96,4 +96,100 @@ class GraduationHistoryExperimentTest {
                 historyGraduationIntervalDays(answers) == historyGraduationIntervalDays(answers),
         )
     }
+
+    /**
+     * Cap-N variant: feed at most N most-recent learning answers into the
+     * same-day chain before the graduating rating.
+     */
+    private fun capNGraduationStability(learningAnswers: List<FsrsRating>, capN: Int): Double {
+        val capped = if (learningAnswers.size <= capN + 1) learningAnswers
+        else learningAnswers.takeLast(capN + 1)
+        var state: FsrsMemoryState = engine.initialState(capped.first())
+        for (i in 1 until capped.size) {
+            state = engine.nextState(state, capped[i], 0)
+        }
+        return state.stability
+    }
+
+    /**
+     * Blend-α variant: stability = α·initialState(graduatingRating).stability +
+     * (1-α)·historyChain.stability; difficulty from the graduating rating alone.
+     */
+    private fun blendAlphaGraduationStability(learningAnswers: List<FsrsRating>, alpha: Double): Double {
+        val graduating = learningAnswers.last()
+        val baselineStability = engine.initialState(graduating).stability
+        var state: FsrsMemoryState = engine.initialState(learningAnswers.first())
+        for (i in 1 until learningAnswers.size) {
+            state = engine.nextState(state, learningAnswers[i], 0)
+        }
+        return alpha * baselineStability + (1.0 - alpha) * state.stability
+    }
+
+    @Test
+    fun temperedCapNVariantsPreserveSaneOrdering() {
+        val breeze = listOf(FsrsRating.GOOD)
+        val struggling1 = listOf(FsrsRating.AGAIN, FsrsRating.GOOD)
+        val struggling5 = listOf(
+            FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.AGAIN,
+            FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.GOOD,
+        )
+
+        for (capN in listOf(1, 2)) {
+            val breezeStab = capNGraduationStability(breeze, capN)
+            val strug1Stab = capNGraduationStability(struggling1, capN)
+            val strug5Stab = capNGraduationStability(struggling5, capN)
+
+            assertTrue("Cap-$capN: struggling1 <= breeze", strug1Stab <= breezeStab)
+            assertTrue("Cap-$capN: struggling5 <= breeze", strug5Stab <= breezeStab)
+            // Cap-N with small N still collapses heavily for many-again sequences
+            // (the last N agains dominate). Record whether this variant qualifies
+            // for the 25% floor — Cap-1 does; Cap-2 may not.
+            assertTrue("Cap-$capN: produces positive stability",
+                strug5Stab > 0)
+        }
+    }
+
+    @Test
+    fun temperedBlendAlphaVariantsPreserveSaneOrdering() {
+        val breeze = listOf(FsrsRating.GOOD)
+        val struggling1 = listOf(FsrsRating.AGAIN, FsrsRating.GOOD)
+        val struggling5 = listOf(
+            FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.AGAIN,
+            FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.GOOD,
+        )
+
+        for (alpha in listOf(0.5, 0.7, 0.9)) {
+            val breezeStab = blendAlphaGraduationStability(breeze, alpha)
+            val strug1Stab = blendAlphaGraduationStability(struggling1, alpha)
+            val strug5Stab = blendAlphaGraduationStability(struggling5, alpha)
+
+            assertTrue("Blend-$alpha: struggling1 <= breeze", strug1Stab <= breezeStab)
+            assertTrue("Blend-$alpha: struggling5 <= breeze", strug5Stab <= breezeStab)
+            assertTrue("Blend-$alpha: struggling5 >= 25% of breeze (floor check)",
+                strug5Stab >= breezeStab * 0.25)
+        }
+    }
+
+    @Test
+    fun temperedVariantsComparisonTableCorpus() {
+        val corpora = mapOf(
+            "[Good]" to listOf(FsrsRating.GOOD),
+            "[Again, Good]" to listOf(FsrsRating.AGAIN, FsrsRating.GOOD),
+            "[Again×5, Good]" to listOf(
+                FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.AGAIN,
+                FsrsRating.AGAIN, FsrsRating.AGAIN, FsrsRating.GOOD,
+            ),
+        )
+        for ((label, answers) in corpora) {
+            val current = engine.initialState(answers.last()).stability
+            val capN1 = capNGraduationStability(answers, 1)
+            val capN2 = capNGraduationStability(answers, 2)
+            val blend05 = blendAlphaGraduationStability(answers, 0.5)
+            val blend07 = blendAlphaGraduationStability(answers, 0.7)
+            val blend09 = blendAlphaGraduationStability(answers, 0.9)
+
+            assertTrue("$label: all variants produce positive stability",
+                current > 0 && capN1 > 0 && capN2 > 0 && blend05 > 0 && blend07 > 0 && blend09 > 0)
+        }
+    }
 }

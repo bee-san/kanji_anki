@@ -86,6 +86,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettingsRoute(MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE, preserveScroll)
     }
 
+    internal fun renderHowItWorks(preserveScroll: Boolean = false) {
+        renderSettingsRoute(MainActivityBase.NAV_SETTINGS_HOW_IT_WORKS_ROUTE, preserveScroll)
+    }
+
     private fun renderSettingsRoute(route: String, preserveScroll: Boolean = false) {
         cancelPendingHomeRouteLoads()
         activeUpdateUiRunToken = 0
@@ -202,6 +206,17 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 load = { MainActivitySettingsReferenceData(this).referenceDataScreenModel() },
                 render = { model ->
                     composeSettingsRoute(route, scrollY, onScrollY) { ReferenceDataScreen(model) }
+                },
+            )
+            MainActivityBase.NAV_SETTINGS_HOW_IT_WORKS_ROUTE -> renderSettingsRouteAsync(
+                route = route,
+                scrollY = scrollY,
+                onScrollY = onScrollY,
+                loadingTitle = dev.bee.kanjianki.core.HowKaniWorksCopy.pageTitle(),
+                back = Runnable { renderSettingsDisplayData(true) },
+                load = { dev.bee.kanjianki.core.HowKaniWorksCopy.sections() },
+                render = { sections ->
+                    composeSettingsRoute(route, scrollY, onScrollY) { HowKaniWorksScreen(sections) }
                 },
             )
             else -> {

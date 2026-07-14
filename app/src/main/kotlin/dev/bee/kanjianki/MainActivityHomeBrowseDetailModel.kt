@@ -48,10 +48,42 @@ data class BrowseMnemonicNoteModel(
     val onSave: (String) -> Unit,
 )
 
+data class BrowseStrokeOrderModel(
+    val title: String,
+    val panels: List<BrowseStrokeOrderPanelModel>,
+    val overflowText: String?,
+)
+
+data class BrowseStrokeOrderPanelModel(
+    val strokes: List<BrowseStrokeOrderStrokeModel>,
+    val startPointX: Float?,
+    val startPointY: Float?,
+    val strokeNumber: Int,
+)
+
+data class BrowseStrokeOrderStrokeModel(
+    val points: List<Pair<Float, Float>>,
+    val highlighted: Boolean,
+)
+
+data class BrowseNeighborPanelModel(
+    val title: String,
+    val rows: List<BrowseNeighborRowModel>,
+)
+
+data class BrowseNeighborRowModel(
+    val kanji: String,
+    val meaning: String,
+    val evidenceLine: String?,
+    val onTap: Runnable,
+)
+
 internal data class BrowseDetailScreenModel(
     val hero: BrowseDetailHeroModel,
     val identity: BrowseDetailIdentityModel,
+    val strokeOrder: BrowseStrokeOrderModel?,
     val reason: BrowseDetailPanelModel,
+    val neighbors: BrowseNeighborPanelModel?,
     val localInventory: BrowseDetailPanelModel?,
     val mnemonicNote: BrowseMnemonicNoteModel,
     val actions: BrowseDetailActionsModel,

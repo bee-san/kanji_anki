@@ -256,16 +256,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
      * The shell host sets a per-route default; sub-screens may override it
      * after rendering.
      */
-    @JvmField
     var backAction: Runnable? = null
+        set(value) {
+            field = value
+            backCallback.isEnabled = value != null
+        }
 
-    private val backCallback = object : androidx.activity.OnBackPressedCallback(true) {
+    private val backCallback = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
-            if (!handleBackNavigation()) {
-                isEnabled = false
-                onBackPressedDispatcher.onBackPressed()
-                isEnabled = true
-            }
+            handleBackNavigation()
         }
     }
 
@@ -684,6 +683,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val NAV_SETTINGS_DISPLAY_DATA_ROUTE = "settings/display-data"
         const val NAV_SETTINGS_UPDATE_ROUTE = "settings/automation/update"
         const val NAV_SETTINGS_LICENSES_ROUTE = "settings/display-data/licenses"
+        const val NAV_SETTINGS_HOW_IT_WORKS_ROUTE = "settings/display-data/how-kani-works"
 
         @JvmStatic
         fun isSettingsRoute(route: String): Boolean {

@@ -132,7 +132,8 @@ internal abstract class MainActivityGames : MainActivityHome() {
             scoreLabel = KanjiGameCopy.scoreLabel(),
             scoreValue = "${gameRound.correct}/${gameRound.totalQuestions}",
             streakLabel = KanjiGameCopy.streakLabel(),
-            streakValue = gameRound.streak.toString()
+            streakValue = gameRound.streak.toString(),
+            scoreDescription = KanjiGameCopy.scoreStripDescription(gameRound.correct, gameRound.totalQuestions)
         )
     }
 
@@ -206,6 +207,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             KanjiGameEngine.GameMode.MEANING_POP -> CORAL
             KanjiGameEngine.GameMode.READING_RUSH -> TEAL
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> BLUE
+            KanjiGameEngine.GameMode.MISS_SWEEP -> CORAL
         }
     }
 

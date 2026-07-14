@@ -1050,16 +1050,20 @@ were resolved by the follow-up change set on this branch; items marked
   `hard` producer. Exposing Hard on flashcard rungs would be cheap if the
   product ever wants finer-grained FSRS signal.
 - **D2 (was G9) — New-learning graduation seeds FSRS from the graduating
-  rating only. (Experiment run — Goal 74; rejected for now.)** A card that
-  needed several `again`s in learning graduates with the same initial memory
-  as one that passed immediately. The Goal 74 experiment
-  (`GraduationHistoryExperimentTest`, write-up in
-  `docs/scheduler-fsrs-correctness-lab-report.md`) confirmed the current path
-  is struggle-blind (every corpus → 2-day first interval) but found the naive
-  FSRS same-day history chain over-corrects (one `Again` collapses graduating
-  stability to ~0.25, five to ~0.01), discarding the graduating rating and
-  blurring the learning/review boundary. Deferred pending a *tempered*
-  variant; production behavior unchanged, harness retained.
+  rating only. (Goal 74 rejected; Goal 122 tempered variants evaluated —
+  re-deferred with evidence.)** A card that needed several `again`s in
+  learning graduates with the same initial memory as one that passed
+  immediately. The Goal 74 experiment confirmed the current path is
+  struggle-blind; the naive history chain over-corrects. Goal 122 evaluated
+  two tempered variants: **Cap-N** (feed at most N most-recent learning
+  answers into the chain) and **Blend-α** (weighted blend of baseline and
+  history stability). The Blend-α (α=0.7) variant preserves sane ordering
+  (struggling cards graduate weaker) and stays above the 25% floor, making
+  it a viable candidate for future adoption. Cap-N with small N still
+  collapses too heavily for many-again sequences. **Production behavior
+  unchanged** — adoption would require regenerated goldens, re-pinned
+  `RelearningGraduationDifficultyTest`, and AGENTS.md update. Harness
+  retained with tempered variants for future reference.
 - **D3 (was part of G5) — Cross-rung memory cloning.** Movement clones the
   reviewed rung's memory into the destination rung (plus the item-level
   fallback for empty memories). This is deliberate scheduling continuity,

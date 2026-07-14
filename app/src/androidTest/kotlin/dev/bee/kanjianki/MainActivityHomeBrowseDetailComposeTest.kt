@@ -334,12 +334,14 @@ class MainActivityHomeBrowseDetailComposeTest {
                             reading = "レツ",
                             stateBadges = emptyList()
                         ),
+                        strokeOrder = null,
                         reason = BrowseDetailPanelModel(
                             title = "",
                             lines = listOf("Active practice evidence."),
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
                         ),
+                        neighbors = null,
                         localInventory = BrowseDetailPanelModel(
                             title = "Local records",
                             lines = listOf("1 source · 1 example"),

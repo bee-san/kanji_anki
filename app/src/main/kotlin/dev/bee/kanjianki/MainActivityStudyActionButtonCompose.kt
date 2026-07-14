@@ -14,6 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +59,11 @@ internal fun StudyPrimaryActionButton(
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))
-            .heightIn(min = minHeight),
+            .heightIn(min = minHeight)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            },
         shape = KaniUiTokens.StudyShapeMedium,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
@@ -96,7 +104,11 @@ internal fun StudySecondaryActionButton(
         enabled = enabled,
         modifier = modifier
             .testTag(studyActionButtonTestTag(label))
-            .heightIn(min = minHeight),
+            .heightIn(min = minHeight)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            },
         shape = KaniUiTokens.StudyShapeMedium,
         border = BorderStroke(1.dp, if (enabled) StudyActionBorderColor else StudyActionDisabledBorder),
         colors = ButtonDefaults.outlinedButtonColors(

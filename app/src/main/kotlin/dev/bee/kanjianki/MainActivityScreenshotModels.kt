@@ -115,5 +115,6 @@ private fun screenshotGameColor(mode: KanjiGameEngine.GameMode): Int {
         KanjiGameEngine.GameMode.MEANING_POP -> Color(0xFFFF4C76).toArgb()
         KanjiGameEngine.GameMode.READING_RUSH -> Color(0xFF00AEB5).toArgb()
         KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> Color(0xFF6E5CE6).toArgb()
+        KanjiGameEngine.GameMode.MISS_SWEEP -> Color(0xFFFF4C76).toArgb()
     }
 }

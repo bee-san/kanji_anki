@@ -242,6 +242,49 @@ class KanjiGameCopyTest {
         }
     }
 
+    @Test
+    fun missSweepCopyAndScoreStripPreserveEnglishDefaults() {
+        val missSweep = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.MISS_SWEEP,
+            "裂",
+            "裂",
+            "Pick the meaning",
+            "split",
+            listOf("split", "present"),
+            "裂 = split",
+        )
+
+        assertEquals("Recent misses", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MISS_SWEEP))
+        assertEquals("Miss Sweep", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.MISS_SWEEP))
+        assertEquals("Drill kanji you missed recently.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MISS_SWEEP, true))
+        assertEquals("Needs more data.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MISS_SWEEP, false))
+        assertEquals("裂", KanjiGameCopy.questionPrompt(missSweep))
+        assertEquals("Pick the meaning", KanjiGameCopy.questionPromptDetail(missSweep))
+        assertEquals("3 correct of 5", KanjiGameCopy.scoreStripDescription(3, 5))
+    }
+
+    @Test
+    fun missSweepCopyTranslatesToJapaneseLocale() {
+        withLocale(Locale.JAPAN) {
+            val missSweep = KanjiGameEngine.GameQuestion(
+                KanjiGameEngine.GameMode.MISS_SWEEP,
+                "裂",
+                "裂",
+                "Pick the meaning",
+                "split",
+                listOf("split", "present"),
+                "裂 = split",
+            )
+
+            assertEquals("最近のミス", KanjiGameCopy.modeLabel(KanjiGameEngine.GameMode.MISS_SWEEP))
+            assertEquals("ミス復習", KanjiGameCopy.modeTitle(KanjiGameEngine.GameMode.MISS_SWEEP))
+            assertEquals("最近間違えた漢字を練習します。", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MISS_SWEEP, true))
+            assertEquals("裂", KanjiGameCopy.questionPrompt(missSweep))
+            assertEquals("意味を選びます。", KanjiGameCopy.questionPromptDetail(missSweep))
+            assertEquals("5問中3問正解", KanjiGameCopy.scoreStripDescription(3, 5))
+        }
+    }
+
     private inline fun <T> withLocale(locale: Locale, block: () -> T): T {
         val original = Locale.getDefault()
         Locale.setDefault(locale)

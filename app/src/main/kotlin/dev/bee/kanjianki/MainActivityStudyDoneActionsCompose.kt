@@ -23,6 +23,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -98,6 +103,7 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
             StudyModePill(model.modeLabel)
             Text(
                 text = model.title,
+                modifier = Modifier.semantics { heading() },
                 color = StudyDoneSecondaryText,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -224,6 +230,7 @@ private fun StudyDoneSummary(lines: List<String>) {
             lines.forEachIndexed { index, line ->
                 Text(
                     text = line,
+                    modifier = if (index == 0) Modifier.semantics { heading() } else Modifier,
                     color = if (index == 0) StudyDoneSecondaryText else StudyDoneMuted,
                     fontSize = if (index == 0) 20.sp else 15.sp,
                     fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal
@@ -243,7 +250,11 @@ private fun StudyPrimaryButton(
         onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 62.dp),
+            .heightIn(min = 62.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = StudyDonePrimary,
@@ -272,7 +283,11 @@ private fun StudySecondaryButton(
         onClick = { withButtonTrace(traceLabel) { onClick() } },
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 62.dp),
+            .heightIn(min = 62.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, StudyDonePrimaryBorder),
         colors = ButtonDefaults.outlinedButtonColors(

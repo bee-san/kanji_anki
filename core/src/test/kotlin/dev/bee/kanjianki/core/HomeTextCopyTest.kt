@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.util.Calendar
@@ -590,6 +591,65 @@ class HomeTextCopyTest {
         assertThrows(NullPointerException::class.java) { HomeTextCopy.exampleSourceLabel(null) }
         assertThrows(NullPointerException::class.java) { HomeTextCopy.exampleExpressionLine(null) }
         assertThrows(NullPointerException::class.java) { HomeTextCopy.exampleMeaningLine(null) }
+    }
+
+    @Test
+    fun referenceSurfaceCopyPreservesNewEnglishStrings() {
+        assertEquals("Choice 1 of 4", HomeTextCopy.choicePositionDescription(0, 4))
+        assertEquals(
+            "Learn how Kani's two-core model, repair tasks, and promotion system work together.",
+            HomeTextCopy.howKaniWorksLinkBody()
+        )
+        assertEquals("Open", HomeTextCopy.howKaniWorksLinkAction())
+        assertEquals("Study now", HomeTextCopy.reminderStudyNowAction())
+        assertEquals("Snooze 1h", HomeTextCopy.reminderSnoozeAction())
+        assertEquals("All kanji", HomeTextCopy.browseAllKanjiScopeLabel())
+        assertEquals("In your deck", HomeTextCopy.browseInYourDeckMarker())
+        assertEquals("This kanji is not in your deck.", HomeTextCopy.browseNotInDeckLine())
+        assertEquals("Dictionary", HomeTextCopy.browseDictionaryPanelTitle())
+        assertEquals("Strokes: 5", HomeTextCopy.localizedStrokeCount(5))
+        assertEquals("Grade: 2", HomeTextCopy.localizedGrade(2))
+        assertEquals("", HomeTextCopy.localizedJitenRank(null))
+        assertEquals("Jiten rank: 10", HomeTextCopy.localizedJitenRank(10))
+        assertEquals("Confused with", HomeTextCopy.confusedWithTitle())
+        assertNull(HomeTextCopy.confusedWithEvidence(0, 0))
+        assertEquals("you picked it ×3", HomeTextCopy.confusedWithEvidence(3, 0))
+        assertEquals("it stole ×2", HomeTextCopy.confusedWithEvidence(0, 2))
+        assertEquals("you picked it ×3 · it stole ×2", HomeTextCopy.confusedWithEvidence(3, 2))
+        assertEquals("Stroke order", HomeTextCopy.strokeOrderTitle())
+        assertEquals("+4 more strokes", HomeTextCopy.strokeOrderOverflow(4))
+    }
+
+    @Test
+    fun referenceSurfaceCopyTranslatesToJapaneseLocale() {
+        withLocale(Locale.JAPANESE) {
+            assertEquals("選択肢 1 / 4", HomeTextCopy.choicePositionDescription(0, 4))
+            assertEquals(
+                "Kaniの2コアモデル、修復タスク、昇格システムがどのように連携するかを学びます。",
+                HomeTextCopy.howKaniWorksLinkBody()
+            )
+            assertEquals("開く", HomeTextCopy.howKaniWorksLinkAction())
+            assertEquals("今すぐ学習", HomeTextCopy.reminderStudyNowAction())
+            assertEquals("1時間後", HomeTextCopy.reminderSnoozeAction())
+            assertEquals("全漢字", HomeTextCopy.browseAllKanjiScopeLabel())
+            assertEquals("デッキに登録済み", HomeTextCopy.browseInYourDeckMarker())
+            assertEquals("この漢字はデッキに登録されていません。", HomeTextCopy.browseNotInDeckLine())
+            assertEquals("辞書", HomeTextCopy.browseDictionaryPanelTitle())
+            assertEquals("画数: 5", HomeTextCopy.localizedStrokeCount(5))
+            assertEquals("学年: 2", HomeTextCopy.localizedGrade(2))
+            assertEquals("", HomeTextCopy.localizedJitenRank(null))
+            assertEquals("字典ランク: 10", HomeTextCopy.localizedJitenRank(10))
+            assertEquals("混同しやすい漢字", HomeTextCopy.confusedWithTitle())
+            assertNull(HomeTextCopy.confusedWithEvidence(0, 0))
+            assertEquals("あなたが選んだ回数: 3回", HomeTextCopy.confusedWithEvidence(3, 0))
+            assertEquals("奪われた回数: 2回", HomeTextCopy.confusedWithEvidence(0, 2))
+            assertEquals(
+                "あなたが選んだ回数: 3回 · 奪われた回数: 2回",
+                HomeTextCopy.confusedWithEvidence(3, 2)
+            )
+            assertEquals("書き順", HomeTextCopy.strokeOrderTitle())
+            assertEquals("+4画省略", HomeTextCopy.strokeOrderOverflow(4))
+        }
     }
 
     private fun inventory(kanji: String, meaning: String, browserSearch: String): RecordsImportModels.KanjiInventoryItem {

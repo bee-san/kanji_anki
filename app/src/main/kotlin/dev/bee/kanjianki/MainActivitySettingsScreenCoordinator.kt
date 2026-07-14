@@ -80,6 +80,12 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
         val referenceData = MainActivitySettingsReferenceData(activity)
         val panels = buildList {
             add(referenceData.dataLicenseSettingsPanelModel())
+            add(SettingsReferenceDataLinkModel(
+                title = dev.bee.kanjianki.core.HowKaniWorksCopy.pageTitle(),
+                body = dev.bee.kanjianki.core.HomeTextCopy.howKaniWorksLinkBody(),
+                actionLabel = dev.bee.kanjianki.core.HomeTextCopy.howKaniWorksLinkAction(),
+                onAction = Runnable { activity.renderHowItWorks() },
+            ))
             referenceData.shareDebugLogPanelModelOrNull()?.let(::add)
         }
         return submenuScreenModel(

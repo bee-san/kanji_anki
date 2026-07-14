@@ -3,17 +3,22 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -159,9 +164,6 @@ private fun MainActivityScrollableRouteColumn(
     }
     key(model.selectedRoute, initialScrollY) {
         val scrollState = rememberScrollState(initial = initialScrollY)
-        // Keep the scroll container/layout node mounted across study cards, but
-        // restore the route's requested position when its body identity changes.
-        // The previous setContent-per-card path implicitly created a fresh state.
         LaunchedEffect(contentKey, scrollState) {
             if (scrollState.value != initialScrollY) {
                 scrollState.scrollTo(initialScrollY)
@@ -172,44 +174,62 @@ private fun MainActivityScrollableRouteColumn(
                 snapshotFlow { scrollState.value }.collect { onScrollY(it) }
             }
         }
-        Column(
+        val activeStudySession = model.selectedRoute == MainActivityBase.NAV_STUDY && model.studySessionActive
+        val showNav = navActions != null && !imeVisible && !model.studyCardKeyboardResident && !activeStudySession
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag(model.routeTestTag)
                 .background(backgroundColor)
                 .systemBarsPadding()
-                .imePadding()
-                .padding(18.dp),
+                .imePadding(),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scrollState),
-            ) {
-                // Route-local remember state (typing input, reveal state, card
-                // animations) must not leak into the next imperative render.
-                key(contentKey) {
-                    content()
+            val isExpanded = maxWidth >= 840.dp
+            if (isExpanded && showNav) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    KaniNavigationRail(
+                        selectedRoute = model.selectedRoute,
+                        actions = navActions!!,
+                        studyBadgeCount = model.studyBadgeCount,
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .widthIn(max = 640.dp)
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .verticalScroll(scrollState),
+                        ) {
+                            key(contentKey) { content() }
+                        }
+                        key(contentKey) { footerContent() }
+                    }
                 }
-            }
-            key(contentKey) {
-                footerContent()
-            }
-            // The bottom nav is unusable while typing and would sit on top of the
-            // keyboard, stealing ~90dp from the already-shrunken content viewport
-            // (the kanji prompt was getting pushed off-screen). Hide it whenever
-            // the IME is open anywhere, AND for the whole unrevealed-typing-card
-            // state so its disappearance never coincides with the keyboard
-            // animation — it is already absent from the card's first frame and
-            // toggles only at card boundaries where the content changes anyway (KB1).
-            val activeStudySession = model.selectedRoute == MainActivityBase.NAV_STUDY && model.studySessionActive
-            if (navActions != null && !imeVisible && !model.studyCardKeyboardResident && !activeStudySession) {
-                KaniBottomNavBar(
-                    selectedRoute = model.selectedRoute,
-                    actions = navActions,
-                    studyBadgeCount = model.studyBadgeCount,
-                )
+            } else {
+                Column(modifier = Modifier.fillMaxSize().padding(18.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .let { if (isExpanded) it.widthIn(max = 640.dp).align(Alignment.CenterHorizontally) else it.fillMaxWidth() }
+                            .weight(1f)
+                            .verticalScroll(scrollState),
+                    ) {
+                        key(contentKey) { content() }
+                    }
+                    key(contentKey) { footerContent() }
+                    if (showNav) {
+                        KaniBottomNavBar(
+                            selectedRoute = model.selectedRoute,
+                            actions = navActions!!,
+                            studyBadgeCount = model.studyBadgeCount,
+                        )
+                    }
+                }
             }
         }
     }

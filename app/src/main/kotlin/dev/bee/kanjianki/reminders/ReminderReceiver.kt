@@ -25,6 +25,8 @@ class ReminderReceiver : BroadcastReceiver() {
         fun handleDailyReminder()
 
         fun handleReminderDismissed(family: String)
+
+        fun handleReminderSnoozed(family: String)
     }
 
     interface DailyReminderActions {
@@ -59,6 +61,13 @@ class ReminderReceiver : BroadcastReceiver() {
             }
             ReminderScheduler.schedule(safeContext)
         }
+
+        override fun handleReminderSnoozed(family: String) {
+            val safeContext = context ?: return
+            val manager = safeContext.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            manager?.cancel(2702)
+            ReminderScheduler.schedule(safeContext)
+        }
     }
 
     companion object {
@@ -74,6 +83,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     action,
                     ReminderScheduler.ACTION_DAILY_REMINDER,
                     ReminderScheduler.ACTION_REMINDER_DISMISSED,
+                    ReminderScheduler.ACTION_REMINDER_SNOOZED,
                 )
             ) {
                 ReminderReceiverPolicy.ReceiverCommand.SCHEDULE_FROM_STORED_SETTINGS -> {
@@ -86,6 +96,10 @@ class ReminderReceiver : BroadcastReceiver() {
 
                 ReminderReceiverPolicy.ReceiverCommand.HANDLE_REMINDER_DISMISSED -> {
                     actions.handleReminderDismissed(family)
+                }
+
+                ReminderReceiverPolicy.ReceiverCommand.HANDLE_REMINDER_SNOOZED -> {
+                    actions.handleReminderSnoozed(family)
                 }
 
                 ReminderReceiverPolicy.ReceiverCommand.NONE -> Unit

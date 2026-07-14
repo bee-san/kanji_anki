@@ -13,6 +13,8 @@ abstract class DictionaryLookup {
 
     open fun jitenRanks(): JitenKanjiRanks = JitenKanjiRanks.empty()
 
+    open fun searchKanji(query: String?, limit: Int): List<KanjiEntry> = emptyList()
+
     fun studyCue(
         kanji: String?,
         ankiMeaning: String?,

@@ -179,6 +179,12 @@ object HomeTextCopy {
         localizedText("Study card for $kanji, $meaning", "${kanji}の学習カード、$meaning")
 
     @JvmStatic
+    fun choicePositionDescription(index: Int, total: Int): String {
+        val position = index + 1
+        return localizedText("Choice $position of $total", "選択肢 $position / $total")
+    }
+
+    @JvmStatic
     fun deckOverviewTitle(): String = localizedText("Deck overview", "デッキ概要")
 
     @JvmStatic
@@ -519,6 +525,64 @@ object HomeTextCopy {
     @JvmStatic
     fun localSuspendToast(wasSuspended: Boolean): String =
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
+
+    @JvmStatic
+    fun howKaniWorksLinkBody(): String = localizedText(
+        "Learn how Kani's two-core model, repair tasks, and promotion system work together.",
+        "Kaniの2コアモデル、修復タスク、昇格システムがどのように連携するかを学びます。"
+    )
+
+    @JvmStatic
+    fun howKaniWorksLinkAction(): String = localizedText("Open", "開く")
+
+    @JvmStatic
+    fun reminderStudyNowAction(): String = localizedText("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun reminderSnoozeAction(): String = localizedText("Snooze 1h", "1時間後")
+
+    @JvmStatic
+    fun browseAllKanjiScopeLabel(): String = localizedText("All kanji", "全漢字")
+
+    @JvmStatic
+    fun browseInYourDeckMarker(): String = localizedText("In your deck", "デッキに登録済み")
+
+    @JvmStatic
+    fun browseNotInDeckLine(): String = localizedText("This kanji is not in your deck.", "この漢字はデッキに登録されていません。")
+
+    @JvmStatic
+    fun browseDictionaryPanelTitle(): String = localizedText("Dictionary", "辞書")
+
+    @JvmStatic
+    fun localizedStrokeCount(count: Int): String = localizedText("Strokes: $count", "画数: $count")
+
+    @JvmStatic
+    fun localizedGrade(grade: Int): String = localizedText("Grade: $grade", "学年: $grade")
+
+    @JvmStatic
+    fun localizedJitenRank(rank: Int?): String {
+        if (rank == null) return ""
+        return localizedText("Jiten rank: $rank", "字典ランク: $rank")
+    }
+
+    @JvmStatic
+    fun confusedWithTitle(): String = localizedText("Confused with", "混同しやすい漢字")
+
+    @JvmStatic
+    fun confusedWithEvidence(youPicked: Int, itStole: Int): String? {
+        if (youPicked <= 0 && itStole <= 0) return null
+        val parts = mutableListOf<String>()
+        if (youPicked > 0) parts.add(localizedText("you picked it ×$youPicked", "あなたが選んだ回数: ${youPicked}回"))
+        if (itStole > 0) parts.add(localizedText("it stole ×$itStole", "奪われた回数: ${itStole}回"))
+        return parts.joinToString(" · ")
+    }
+
+    @JvmStatic
+    fun strokeOrderTitle(): String = localizedText("Stroke order", "書き順")
+
+    @JvmStatic
+    fun strokeOrderOverflow(omittedCount: Int): String =
+        localizedText("+$omittedCount more strokes", "+${omittedCount}画省略")
 
     @JvmStatic
     fun examplesTitle(): String = localizedText("Examples", "例文")

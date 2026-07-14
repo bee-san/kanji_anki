@@ -12,6 +12,9 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StuckCardPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
+import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.KanjiNeighborPanelPolicy
+import dev.bee.kanjianki.core.study.StrokeOrderDiagramPolicy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
@@ -23,24 +26,125 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val missingModel: BrowseDetailMissingModel?,
     )
 
-    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false) {
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, allKanjiScope: Boolean = false) {
         val requestedQuery = query ?: ""
         home.activeBrowseQuery = requestedQuery
         home.activeBrowseSimilarOnly = onlySimilarKanji
+        home.activeBrowseAllKanji = allKanjiScope
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
-                val items = home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)
-                BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji))
+                if (allKanjiScope) {
+                    BrowseRouteData(allKanjiBrowseScreenModel(home, requestedQuery))
+                } else {
+                    val items = home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)
+                    BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, allKanjiScope = false))
+                }
             },
             render = { data ->
                 home.activeBrowseQuery = data.model.initialQuery
                 home.activeBrowseSimilarOnly = data.model.similarFilterActive
+                home.activeBrowseAllKanji = data.model.allKanjiScope
                 home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     BrowseScreen(data.model)
                 }
             },
             traceName = "browse-route",
+        )
+    }
+
+    fun renderReadOnlyDetail(kanji: String, browseQuery: String?) {
+        val requestedQuery = browseQuery ?: ""
+        home.renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.browseActionLabel(),
+            load = {
+                val dictionary = home.warmDictionaryLookup()
+                val entry = dictionary.lookupKanji(kanji)
+                BrowseDetailRouteData(
+                    if (entry != null) readOnlyDetailModel(entry, requestedQuery) else null,
+                    if (entry == null) BrowseDetailMissingModel(
+                        HomeTextCopy.backToBrowseKanjiLabel(),
+                        Runnable { renderBrowseKanji(requestedQuery, allKanjiScope = true) },
+                        HomeTextCopy.kanjiNotFoundTitle(),
+                        HomeTextCopy.kanjiNotFoundBody()
+                    ) else null
+                )
+            },
+            render = { data ->
+                val backAction = Runnable { renderBrowseKanji(requestedQuery, allKanjiScope = true) }
+                if (data.missingModel != null) {
+                    home.renderHomeRoute(backAction = backAction) { BrowseDetailMissing(data.missingModel) }
+                } else {
+                    home.renderHomeRoute(backAction = backAction) { BrowseDetailScreen(data.model!!) }
+                }
+            },
+            traceName = "browse-readonly-detail",
+        )
+    }
+
+    private fun readOnlyDetailModel(
+        entry: DictionaryLookup.KanjiEntry,
+        browseQuery: String,
+    ): BrowseDetailScreenModel {
+        val lines = mutableListOf<String>()
+        if (entry.meanings.isNotEmpty()) lines.add(entry.meanings.joinToString(", "))
+        if (entry.onReadings.isNotEmpty()) lines.add("On: " + entry.onReadings.joinToString("、"))
+        if (entry.kunReadings.isNotEmpty()) lines.add("Kun: " + entry.kunReadings.joinToString("、"))
+        if (entry.strokeCount > 0) lines.add(HomeTextCopy.localizedStrokeCount(entry.strokeCount))
+        if (entry.grade > 0) lines.add(HomeTextCopy.localizedGrade(entry.grade))
+        if (entry.jitenRank != null) lines.add(HomeTextCopy.localizedJitenRank(entry.jitenRank))
+        return BrowseDetailScreenModel(
+            hero = BrowseDetailHeroModel(
+                entry.literal,
+                HomeTextCopy.backToBrowseKanjiLabel(),
+                Runnable { renderBrowseKanji(browseQuery, allKanjiScope = true) }
+            ),
+            identity = BrowseDetailIdentityModel(
+                title = if (entry.meanings.isNotEmpty()) entry.meanings[0] else "",
+                reading = entry.firstReading(),
+                stateBadges = emptyList(),
+            ),
+            strokeOrder = strokeOrderModel(entry.literal),
+            reason = BrowseDetailPanelModel(
+                title = HomeTextCopy.browseDictionaryPanelTitle(),
+                lines = lines,
+                color = MainActivityBase.BLUE,
+                style = BrowseDetailPanelStyle.CARD,
+            ),
+            neighbors = null,
+            localInventory = BrowseDetailPanelModel(
+                title = "",
+                lines = listOf(HomeTextCopy.browseNotInDeckLine()),
+                color = MainActivityBase.CORAL,
+                style = BrowseDetailPanelStyle.BAND,
+            ),
+            mnemonicNote = BrowseMnemonicNoteModel(
+                title = HomeTextCopy.mnemonicNoteTitle(),
+                fieldLabel = HomeTextCopy.mnemonicNoteFieldLabel(),
+                helper = HomeTextCopy.mnemonicNoteHelper(false),
+                initialNote = "",
+                saveLabel = HomeTextCopy.saveMnemonicNoteLabel(),
+                onSave = { note -> saveMnemonicNote(entry.literal, note) },
+            ),
+            actions = BrowseDetailActionsModel(
+                reviewLabel = null,
+                onReview = null,
+                copyLabel = null,
+                copiedLabel = "",
+                onCopy = null,
+                suspendLabel = HomeTextCopy.localSuspendButtonLabel(false),
+                onSuspend = Runnable {},
+            ),
+            timeline = MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel(
+                "",
+                "",
+                MainActivityBase.BLUE,
+                "",
+                emptyList(),
+                null,
+            ),
+            examplesTitle = "",
+            examples = emptyList(),
         )
     }
 
@@ -129,13 +233,65 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         return BrowseDetailScreenModel(
             detailHeroModel(displayKanji, fromBrowse, browseQuery ?: "", customBackAction),
             detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
+            strokeOrderModel(displayKanji),
             detailReasonPanelModel(row, inventory),
+            neighborsModel(displayKanji),
             inventory?.let(::localInventoryPanelModel),
             mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
             detailActionsModel(row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended),
             recoveryTimelineModel(timeline),
             HomeTextCopy.examplesTitle(),
             row?.examples?.let(::exampleModels).orEmpty()
+        )
+    }
+
+    fun strokeOrderModel(kanji: String): BrowseStrokeOrderModel? {
+        val guide = home.strokeGuide(kanji) ?: return null
+        val diagram = StrokeOrderDiagramPolicy.build(guide)
+        if (diagram.isEmpty()) return null
+        val panels = diagram.panels.map { panel ->
+            BrowseStrokeOrderPanelModel(
+                strokes = panel.strokes.map { stroke ->
+                    BrowseStrokeOrderStrokeModel(
+                        points = stroke.inkStroke.points.map { pt -> Pair(pt.x, pt.y) },
+                        highlighted = stroke.highlighted,
+                    )
+                },
+                startPointX = panel.startPoint?.x,
+                startPointY = panel.startPoint?.y,
+                strokeNumber = panel.strokeNumber,
+            )
+        }
+        val overflowText = if (diagram.omittedStrokeCount > 0) {
+            HomeTextCopy.strokeOrderOverflow(diagram.omittedStrokeCount)
+        } else {
+            null
+        }
+        return BrowseStrokeOrderModel(
+            title = HomeTextCopy.strokeOrderTitle(),
+            panels = panels,
+            overflowText = overflowText,
+        )
+    }
+
+    fun neighborsModel(kanji: String): BrowseNeighborPanelModel? {
+        val pairs = home.store.similarPairsForKanji(kanji)
+        if (pairs.isEmpty()) return null
+        val wrongPicks = home.store.choiceWrongPickCounts(System.currentTimeMillis())
+        val inventory = home.store.searchKanjiInventory("", false)
+        val meanings = inventory.associate { it.kanji to it.primaryMeaning }
+        val rows = KanjiNeighborPanelPolicy.build(kanji, pairs, wrongPicks, meanings)
+        if (rows.isEmpty()) return null
+        return BrowseNeighborPanelModel(
+            title = HomeTextCopy.confusedWithTitle(),
+            rows = rows.map { row ->
+                BrowseNeighborRowModel(
+                    kanji = row.kanji,
+                    meaning = row.meaning,
+                    evidenceLine = HomeTextCopy.confusedWithEvidence(row.youPickedCount, row.itStoleCount),
+                    onTap = Runnable { renderDetail(row.kanji, true) },
+                )
+            }
         )
     }
 

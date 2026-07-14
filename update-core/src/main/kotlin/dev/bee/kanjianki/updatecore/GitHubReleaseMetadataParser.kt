@@ -3,6 +3,7 @@ package dev.bee.kanjianki.updatecore
 object GitHubReleaseMetadataParser {
     private const val UNICODE_ESCAPE_HEX_LENGTH = 4
     private const val KEY_ASSETS = "assets"
+    private const val KEY_BODY = "body"
     private const val KEY_BROWSER_DOWNLOAD_URL = "browser_download_url"
     private const val KEY_HTML_URL = "html_url"
     private const val KEY_NAME = "name"
@@ -13,6 +14,7 @@ object GitHubReleaseMetadataParser {
         val safeJson = json.orEmpty()
         val tag = stringValue(safeJson, KEY_TAG_NAME)
         val html = stringValue(safeJson, KEY_HTML_URL)
+        val body = stringValue(safeJson, KEY_BODY).ifEmpty { null }
         val assets = ArrayList<GitHubReleaseMetadata.ReleaseAsset>()
         val assetsJson = arrayValue(safeJson, KEY_ASSETS)
         for (assetJson in objectValues(assetsJson)) {
@@ -22,7 +24,7 @@ object GitHubReleaseMetadataParser {
                 assets.add(GitHubReleaseMetadata.ReleaseAsset(name, url))
             }
         }
-        return GitHubReleaseMetadata(tag, html, assets)
+        return GitHubReleaseMetadata(tag, html, assets, body)
     }
 
     @JvmStatic
