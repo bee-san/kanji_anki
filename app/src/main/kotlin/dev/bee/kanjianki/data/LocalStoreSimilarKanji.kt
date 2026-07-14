@@ -348,6 +348,30 @@ internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreSt
         return out
     }
 
+    /**
+     * Proves that the exact repair submission represented by a SUBMITTING recovery envelope
+     * committed before process death. Later activations/attempts deliberately invalidate it.
+     */
+    fun hasFinishedSimilarWritingRepairAttempt(
+        repairId: Long,
+        token: String,
+        attemptsBefore: Int,
+        passed: Boolean,
+    ): Boolean {
+        if (repairId <= 0L || token.isBlank() || attemptsBefore < 0) return false
+        val current = similarWritingRepair(readableDatabase, repairId) ?: return false
+        if (current.activeToken.isNotEmpty()) return false
+        return if (passed) {
+            current.status == SimilarKanjiRepairPolicy.STATUS_COMPLETE &&
+                current.completedAtMillis > 0L &&
+                current.attempts == attemptsBefore
+        } else {
+            current.status == SimilarKanjiRepairPolicy.STATUS_PENDING &&
+                current.completedAtMillis == 0L &&
+                current.attempts == attemptsBefore + 1
+        }
+    }
+
     fun saveSimilarWritingRepair(repair: RecordsImportModels.SimilarKanjiWritingRepair?) {
         if (repair == null || repair.id <= 0L) {
             return

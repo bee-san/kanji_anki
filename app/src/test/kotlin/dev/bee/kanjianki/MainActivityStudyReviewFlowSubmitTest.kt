@@ -16,6 +16,7 @@ import dev.bee.kanjianki.data.LocalStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -337,13 +338,17 @@ class MainActivityStudyReviewFlowSubmitTest {
             var widgetRefreshes = 0
             val reviewFlow = installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
 
-            activity.activeSimilarWritingRepair = persistRepair(store, "complete-refresh-token")
+            val completeRepair = persistRepair(store, "complete-refresh-token")
+            activity.activeSimilarWritingRepair = completeRepair
+            activity.activeSession = repairSession(requireNotNull(activity.activeSession), completeRepair.activeToken)
             reviewFlow.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD)
             reviewIo.runNext()
 
             assertEquals(1, widgetRefreshes)
 
-            activity.activeSimilarWritingRepair = persistRepair(store, "skip-refresh-token")
+            val skipRepair = persistRepair(store, "skip-refresh-token")
+            activity.activeSimilarWritingRepair = skipRepair
+            activity.activeSession = repairSession(requireNotNull(activity.activeSession), skipRepair.activeToken)
             reviewFlow.skipSimilarWritingRepair()
             reviewIo.runNext()
 
@@ -357,15 +362,114 @@ class MainActivityStudyReviewFlowSubmitTest {
             var widgetRefreshes = 0
             val reviewFlow = installWidgetRefreshRecorder(activity) { widgetRefreshes += 1 }
 
-            activity.activeSimilarWritingRepair = repair(Long.MAX_VALUE - 1L, "missing-complete-token")
+            val missingCompletion = repair(Long.MAX_VALUE - 1L, "missing-complete-token")
+            activity.activeSimilarWritingRepair = missingCompletion
+            activity.activeSession = repairSession(requireNotNull(activity.activeSession), missingCompletion.activeToken)
             reviewFlow.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD)
             reviewIo.runNext()
 
-            activity.activeSimilarWritingRepair = repair(Long.MAX_VALUE, "missing-skip-token")
+            val missingSkip = repair(Long.MAX_VALUE, "missing-skip-token")
+            activity.activeSimilarWritingRepair = missingSkip
+            activity.activeSession = repairSession(requireNotNull(activity.activeSession), missingSkip.activeToken)
             reviewFlow.skipSimilarWritingRepair()
             reviewIo.runNext()
 
             assertEquals(0, widgetRefreshes)
+        }
+    }
+
+    @Test
+    fun rejectedRepairCompletionRestoresAnAnswerableCardWithoutAdvancingProgress() {
+        withReviewActivity("拒") { activity, _, reviewIo, session ->
+            val missingRepair = repair(Long.MAX_VALUE, session.token)
+            activity.activeSimilarWritingRepair = missingRepair
+            activity.activeSession = repairSession(session)
+            startTrackedRepairTask(activity, missingRepair)
+
+            assertTrue(activity.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD))
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertEquals(1, reviewIo.pendingCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertNull(activity.pendingStudyAnswerSnapshot())
+            assertTrue(activity.studySessionTracker.hasActiveTask())
+            assertEquals(1, activity.retryReloadCount())
+            assertEquals(0, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun rejectedRepairEnqueueReturnsFalseAndLeavesTheRepairAnswerable() {
+        withReviewActivity("拒") { activity, _, reviewIo, session ->
+            val activeRepair = repair(Long.MAX_VALUE, session.token)
+            activity.activeSimilarWritingRepair = activeRepair
+            activity.activeSession = repairSession(session)
+            startTrackedRepairTask(activity, activeRepair)
+            reviewIo.shutdown()
+
+            assertFalse(
+                activity.submitReview(
+                    MainActivityBase.RATING_GOOD,
+                    false,
+                    interactionSource = "repair-action-bar",
+                ),
+            )
+
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertNull(activity.pendingStudyAnswerSnapshot())
+            assertTrue(activity.studySessionTracker.hasActiveTask())
+            assertEquals(0, activity.renderCount())
+        }
+    }
+
+    @Test
+    fun repairProcessingExceptionReleasesTheSubmissionForRetry() {
+        withReviewActivity("拒") { activity, _, reviewIo, session ->
+            val activeRepair = repair(Long.MAX_VALUE, session.token)
+            activity.activeSimilarWritingRepair = activeRepair
+            activity.activeSession = repairSession(session)
+            startTrackedRepairTask(activity, activeRepair)
+
+            assertTrue(activity.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD))
+            clearStore(activity)
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertNull(activity.pendingStudyAnswerSnapshot())
+            assertTrue(activity.studySessionTracker.hasActiveTask())
+            assertEquals(1, activity.retryReloadCount())
+        }
+    }
+
+    @Test
+    fun successfulRepairCompletionAppliesOnceAndWaitsForContinue() {
+        withReviewActivity("修") { activity, store, reviewIo, session ->
+            val activeRepair = persistRepair(store, session.token)
+            activity.activeSimilarWritingRepair = activeRepair
+            activity.activeSession = repairSession(session)
+            startTrackedRepairTask(activity, activeRepair)
+
+            assertTrue(activity.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD))
+            assertFalse(activity.submitSimilarWritingRepair(MainActivityBase.RATING_GOOD))
+            assertEquals(1, reviewIo.pendingCount())
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertEquals("complete", repairStatus(store, activeRepair.id))
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertFalse(activity.studySessionTracker.hasActiveTask())
+            assertEquals(0, activity.renderCount())
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertFalse(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
         }
     }
 
@@ -525,6 +629,18 @@ class MainActivityStudyReviewFlowSubmitTest {
         return repair(id, token)
     }
 
+    private fun repairStatus(store: LocalStore, id: Long): String? {
+        return store.readableDatabase.query(
+            "similar_kanji_repair_queue",
+            arrayOf("status"),
+            "id=?",
+            arrayOf(id.toString()),
+            null,
+            null,
+            null,
+        ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+    }
+
     private fun repair(id: Long, token: String): RecordsImportModels.SimilarKanjiWritingRepair {
         return RecordsImportModels.SimilarKanjiWritingRepair(
             id,
@@ -541,6 +657,31 @@ class MainActivityStudyReviewFlowSubmitTest {
             1_000L,
             0L,
         )
+    }
+
+    private fun repairSession(
+        session: RecordsSchedulerModels.StudySession,
+        token: String = session.token,
+    ): RecordsSchedulerModels.StudySession = RecordsSchedulerModels.StudySession(
+        session.item?.copyBuilder()?.activeToken(token)?.build(),
+        session.row,
+        token,
+        MainActivityBase.TASK_REPAIR_WRITING,
+        true,
+        "Write the similar kanji",
+    )
+
+    private fun startTrackedRepairTask(
+        activity: TestMainActivity,
+        repair: RecordsImportModels.SimilarKanjiWritingRepair,
+    ) {
+        activity.startActiveStudyTask(
+            activity.similarRepairStudyTaskKey(repair),
+            repair.repairKanji,
+            MainActivityBase.TASK_REPAIR_WRITING,
+            1_000L,
+        )
+        assertTrue(activity.studySessionTracker.hasActiveTask())
     }
 
     private fun startTrackedTask(

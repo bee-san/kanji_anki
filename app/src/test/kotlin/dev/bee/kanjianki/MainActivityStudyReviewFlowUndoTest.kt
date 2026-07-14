@@ -6,6 +6,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.LocalStoreSchema
@@ -76,7 +77,28 @@ class MainActivityStudyReviewFlowUndoTest {
                 installWidgetRefreshRecorder(activity) { widgetRefreshCalls += 1 }
                 activity.clearRenderedKanji()
                 clearStatsCache(store)
+                val pending = StudyPendingAnswerSnapshot(
+                    feedback = StudyAnswerFeedbackSnapshot(
+                        sessionToken = "undo-token",
+                        phase = StudyAnswerFeedbackPhase.APPLIED,
+                        outcome = StudyAnswerOutcome.CORRECT,
+                        selectedAnswer = MainActivityBase.RATING_GOOD,
+                    ),
+                    kanji = "裂",
+                    taskType = StudyTaskTypes.KANJI_MEANING,
+                    writingRequired = false,
+                    prompt = "",
+                )
+                activity.activeSession = pending.restoreSession(afterReview, null)
+                activity.restorePendingStudyAnswer(pending)
+                requireNotNull(
+                    StudySessionRecoveryStore(
+                        activity.getSharedPreferences("pending_study_answer", android.content.Context.MODE_PRIVATE),
+                    ).replaceWithPending(pending),
+                )
 
+                assertNotNull(activity.pendingStudyAnswerSnapshot())
+                assertEquals(StudyAnswerFeedbackPhase.APPLIED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
                 assertNull(activity.store.cachedStatsSnapshotOrNull())
 
                 activity.undoLastRating()
@@ -93,6 +115,13 @@ class MainActivityStudyReviewFlowUndoTest {
                 // holds exactly the precompute work -- keeping the heavy recompute off the
                 // route-load path.
                 assertEquals("裂", activity.renderedKanji())
+                assertNull(activity.pendingStudyAnswerSnapshot())
+                assertNull(activity.studyAnswerFeedbackState)
+                activity.prepareStudyAnswerFeedback("undo-token")
+                assertEquals(
+                    StudyAnswerFeedbackPhase.UNANSWERED,
+                    activity.studyAnswerFeedbackState?.snapshot()?.phase,
+                )
                 assertEquals(1, widgetRefreshCalls)
                 assertEquals(0, undoIo.pendingCount())
                 assertEquals(1, maintenanceIo.pendingCount())
