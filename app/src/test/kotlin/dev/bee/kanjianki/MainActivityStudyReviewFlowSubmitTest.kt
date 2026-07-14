@@ -359,6 +359,27 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
+    fun undurablePendingAnswerIsRejectedBeforeReviewEnqueue() {
+        withReviewActivity("長") { activity, store, reviewIo, session ->
+            activity.activeSession = RecordsSchedulerModels.StudySession(
+                session.item,
+                session.row,
+                session.token,
+                session.taskType,
+                session.writingRequired,
+                "x".repeat(20_000),
+            )
+
+            assertFalse(activity.submitReview(MainActivityBase.RATING_GOOD, false))
+
+            assertEquals(0, reviewIo.pendingCount())
+            assertFalse(store.hasConsumedToken(session.token))
+            assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertEquals(null, activity.pendingStudyAnswerSnapshot())
+        }
+    }
+
+    @Test
     fun loggedChoiceUsesSameGateSoDuplicateWritesOneChoiceRowAndOneReview() {
         withReviewActivity("拉") { activity, store, reviewIo, session ->
             activity.submitLoggedChoiceReview(

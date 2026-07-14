@@ -75,7 +75,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         if (benchmarkRoute != null) {
             activity.screenshotThemeChoiceOverride = null
             seedBenchmarkFixtureForDebugBuild()
-            renderRoute(benchmarkRoute)
+            renderHarnessRoute(benchmarkRoute)
             return
         }
         val screenshotRoute = intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)?.takeIf { it.isNotBlank() }
@@ -86,10 +86,19 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             screenshotThemeChoice?.let {
                 activity.store.saveAppThemeChoice(it)
             }
-            renderRoute(screenshotRoute)
+            renderHarnessRoute(screenshotRoute)
             return
         }
+        activity.preserveStudyRecoveryForHarnessRoute = false
         activity.screenshotThemeChoiceOverride = null
+        val study = activity as? MainActivityStudy
+        val restoreRecreatedStudy = activity.restoreStudyRouteOnCreate &&
+            study?.shouldResumeStudyOnOrdinaryLaunch() == true
+        activity.restoreStudyRouteOnCreate = false
+        if (restoreRecreatedStudy) {
+            study?.renderStudyRecoveryOnly()
+            return
+        }
         val shortcutDestination = launcherShortcutDestination(intent?.action)
         when {
             intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true -> {
@@ -97,13 +106,14 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             }
 
             intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true -> {
+                activity.disableStudyOrdinaryResume()
                 activity.renderUpdate()
             }
 
             shortcutDestination != null -> renderLauncherShortcut(shortcutDestination)
 
-            (activity as? MainActivityStudy)?.pendingStudyAnswerSnapshot() != null -> {
-                activity.renderStudy()
+            study?.shouldResumeStudyOnOrdinaryLaunch() == true -> {
+                study.renderStudyRecoveryOnly()
             }
 
             else -> activity.renderHome()
@@ -114,6 +124,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         when (destination) {
             LauncherShortcutDestination.STUDY -> activity.renderStudy()
             LauncherShortcutDestination.BROWSE -> {
+                activity.disableStudyOrdinaryResume()
                 if (activity is MainActivityHome) {
                     activity.renderBrowseKanji("")
                 } else {
@@ -121,6 +132,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 }
             }
             LauncherShortcutDestination.GAMES -> {
+                activity.disableStudyOrdinaryResume()
                 if (activity is MainActivityHome) {
                     activity.renderGames()
                 } else {
@@ -128,6 +140,11 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 }
             }
         }
+    }
+
+    private fun renderHarnessRoute(route: String) {
+        activity.preserveStudyRecoveryForHarnessRoute = true
+        renderRoute(route)
     }
 
     internal fun shouldRunBackgroundStartupTasks(intent: Intent?): Boolean {

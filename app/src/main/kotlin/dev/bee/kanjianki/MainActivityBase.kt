@@ -93,6 +93,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var currentRoute: String = NAV_HOME_ROUTE
 
+    /** One-shot recreation marker; unlike [intent], this reflects the route active at teardown. */
+    internal var restoreStudyRouteOnCreate: Boolean = false
+
+    /** Screenshot/benchmark routing must observe, but never mutate, production recovery state. */
+    internal var preserveStudyRecoveryForHarnessRoute: Boolean = false
+
     @JvmField
     var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
@@ -307,6 +313,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun thresholdInput(value: Int): EditText
     abstract fun parseThresholdInput(input: EditText): Int
 
+    /** Subclasses with a durable Study payload opt into route restoration after recreation. */
+    open fun shouldRestoreStudyRouteAfterRecreation(): Boolean = false
+
+    /** Disable ordinary-launch auto-resume for an intentional non-Study destination. */
+    open fun disableStudyOrdinaryResume() = Unit
+
+    /** Persist any coalescible Study UI state before this Activity can be stopped or killed. */
+    open fun flushStudyRecovery() = Unit
+
     fun isScreenshotLaunchRequested(): Boolean {
         return intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank().not()
     }
@@ -325,6 +340,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        restoreStudyRouteOnCreate = savedInstanceState?.getBoolean(STATE_RESTORE_STUDY_ROUTE, false) == true
         pendingReminderSettings = restorePendingReminderSettings(savedInstanceState)
         // Activity-result launchers must be registered once, before the activity reaches STARTED.
         // Keep the established SAF launchers first: ComponentActivity's automatic registry keys
@@ -349,6 +365,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        if (shouldRestoreStudyRouteAfterRecreation()) {
+            outState.putBoolean(STATE_RESTORE_STUDY_ROUTE, true)
+        }
         pendingReminderSettings?.let { pending ->
             outState.putBundle(
                 STATE_PENDING_REMINDER,
@@ -389,11 +408,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // A genuine warm-launch intent is newer than any marker restored by onCreate.
+        restoreStudyRouteOnCreate = false
         setIntent(intent)
         handleLaunchIntent(intent)
     }
 
     override fun onPause() {
+        flushStudyRecovery()
         activityLifecycle.onPause()
         super.onPause()
     }
@@ -645,6 +667,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         private const val STATE_PENDING_REMINDER = "kani.pending-reminder"
+        private const val STATE_RESTORE_STUDY_ROUTE = "kani.restore-study-route"
         private const val STATE_PENDING_REMINDER_ENABLED = "enabled"
         private const val STATE_PENDING_REMINDER_HOUR = "hour"
         private const val STATE_PENDING_REMINDER_MINUTE = "minute"

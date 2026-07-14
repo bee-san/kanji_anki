@@ -44,9 +44,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val writingSession by lazy { MainActivityStudyWritingSession(this) }
     private val dictionaryLookupProvider by lazy { MainActivityDictionaryLookupProvider(this) }
     private val studyQueueCoordinator by lazy { MainActivityStudyQueueCoordinator(this) }
-    private val pendingAnswerStore by lazy {
-        StudyPendingAnswerStore(getSharedPreferences(PENDING_ANSWER_PREFERENCES, Context.MODE_PRIVATE))
+    private val studyRecoveryStore by lazy {
+        StudySessionRecoveryStore(getSharedPreferences(STUDY_RECOVERY_PREFERENCES, Context.MODE_PRIVATE))
     }
+    private var activeStudyRecovery: StoredActiveStudyRecovery? = null
+    private var studyRecoveryRouteActive = false
+    internal var recoveredStudyRunNeedsTargetReconciliation = false
 
     fun learningPanelModel(
         session: RecordsSchedulerModels.StudySession,
@@ -73,7 +76,22 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             doneActions.renderEmptyStudyQueue()
             return
         }
-        studyQueueCoordinator.renderStudy()
+        studyQueueCoordinator.renderStudy(recoveryOnly = false)
+    }
+
+    internal open fun renderStudyRecoveryOnly() {
+        cancelPendingHomeRouteLoads()
+        studyQueueCoordinator.renderStudy(recoveryOnly = true)
+    }
+
+    override fun renderHome() {
+        disableStudyOrdinaryResume()
+        super.renderHome()
+    }
+
+    override fun renderStats() {
+        disableStudyOrdinaryResume()
+        super.renderStats()
     }
 
     fun renderStudyLoading(studySessionActive: Boolean) {
@@ -449,18 +467,21 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         if (!state.begin(outcome, selectedAnswer)) {
             return false
         }
-        persistPendingStudyAnswer(state)
+        if (!persistPendingStudyAnswer(state)) {
+            state.resetForRetry(token)
+            return false
+        }
         val accepted = submit()
         if (!accepted) {
             state.resetForRetry(token)
-            pendingAnswerStore.clear()
+            restoreActiveRecoveryAfterRejectedAnswer(token)
         }
         return accepted
     }
 
     fun prepareStudyAnswerFeedback(token: String): StudyAnswerFeedbackState {
         studyAnswerFeedbackState?.takeIf { it.sessionToken == token }?.let { return it }
-        val restored = pendingAnswerStore.read()
+        val restored = studyRecoveryStore.readPending()?.snapshot
             ?.takeIf { it.feedback.sessionToken == token }
             ?.feedback
             ?.let(StudyAnswerFeedbackState::restore)
@@ -478,7 +499,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun resetStudyAnswerForRetry(token: String) {
         if (studyAnswerFeedbackState?.resetForRetry(token) == true) {
-            pendingAnswerStore.clear()
+            restoreActiveRecoveryAfterRejectedAnswer(token)
         }
     }
 
@@ -487,7 +508,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         if (!state.tryContinue()) {
             return false
         }
-        pendingAnswerStore.clear()
+        studyRecoveryStore.clearPending(state.sessionToken)
+        studyRecoveryRouteActive = false
         if (activeSimilarWritingRepair != null) {
             activeSimilarWritingRepair = null
         }
@@ -502,28 +524,224 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         }
     }
 
-    fun pendingStudyAnswerSnapshot(): StudyPendingAnswerSnapshot? = pendingAnswerStore.read()
+    fun pendingStudyAnswerSnapshot(): StudyPendingAnswerSnapshot? = studyRecoveryStore.readPending()?.snapshot
+
+    internal fun pendingStudyRecovery(): StoredPendingStudyRecovery? = studyRecoveryStore.readPending()
+
+    internal fun activeStudyRecovery(): StoredActiveStudyRecovery? = studyRecoveryStore.readActive()
+
+    internal fun studyRecoverySessionToken(): String? = studyRecoveryStore.currentSessionToken()
 
     fun restorePendingStudyAnswer(snapshot: StudyPendingAnswerSnapshot) {
         studyAnswerFeedbackState = StudyAnswerFeedbackState.restore(snapshot.feedback)
     }
 
     fun clearPendingStudyAnswer() {
-        pendingAnswerStore.clear()
+        studyRecoveryStore.clearPending()
     }
 
-    private fun persistPendingStudyAnswer(state: StudyAnswerFeedbackState) {
-        val session = activeSession ?: return
-        val kanji = session.item?.kanji?.takeIf { it.isNotBlank() } ?: return
-        pendingAnswerStore.save(
-            StudyPendingAnswerSnapshot(
-                feedback = state.snapshot(),
-                kanji = kanji,
+    internal fun clearStudyRecoveryIfUnchanged(stored: StoredStudyRecovery): Boolean =
+        studyRecoveryStore.clearIfUnchanged(stored)
+
+    private fun persistPendingStudyAnswer(state: StudyAnswerFeedbackState): Boolean {
+        val session = activeSession ?: return false
+        val item = session.item ?: return false
+        val kanji = item.kanji.takeIf { it.isNotBlank() } ?: return false
+        val pending = StudyPendingAnswerSnapshot(
+            feedback = state.snapshot(),
+            kanji = kanji,
+            taskType = session.taskType,
+            writingRequired = session.writingRequired,
+            prompt = session.prompt,
+            answerSignature = item.answerSignature,
+            schedulerRevision = item.schedulerRevision,
+        )
+        val active = activeStudyRecovery
+        val stored = when {
+            active != null && active.snapshot.sessionToken == session.token -> {
+                studyRecoveryStore.transitionActiveToPending(active, pending)
+            }
+            studyRecoveryStore.readPending()?.snapshot?.feedback?.sessionToken == session.token -> {
+                studyRecoveryStore.updatePending(
+                    session.token,
+                    pending,
+                    retainFallback = pending.feedback.phase != StudyAnswerFeedbackPhase.APPLIED,
+                )
+            }
+            else -> studyRecoveryStore.createPendingIfEmpty(pending)
+        }
+        if (stored != null) {
+            activeStudyRecovery = null
+        }
+        return stored != null
+    }
+
+    private fun restoreActiveRecoveryAfterRejectedAnswer(token: String) {
+        val retainedActive = activeStudyRecovery?.takeIf { active ->
+            active.snapshot.sessionToken == token && studyRecoveryStore.readActive()?.raw == active.raw
+        }
+        val pending = studyRecoveryStore.readPending()
+        val restored = pending
+            ?.takeIf { it.snapshot.feedback.sessionToken == token }
+            ?.let(studyRecoveryStore::claimPendingFallback)
+        if (restored == null) {
+            studyRecoveryStore.clearPending(token)
+        }
+        activeStudyRecovery = restored ?: retainedActive
+        studyRecoveryRouteActive = activeStudyRecovery != null
+    }
+
+    internal fun hasStudyRecoveryPayload(): Boolean = studyRecoveryStore.read() != null
+
+    internal fun shouldResumeStudyOnOrdinaryLaunch(): Boolean =
+        studyRecoveryStore.shouldResumeOnOrdinaryLaunch()
+
+    override fun shouldRestoreStudyRouteAfterRecreation(): Boolean =
+        studyRecoveryRouteActive && hasStudyRecoveryPayload() &&
+            !isScreenshotLaunchRequested() && !preserveStudyRecoveryForHarnessRoute
+
+    override fun disableStudyOrdinaryResume() {
+        if (preserveStudyRecoveryForHarnessRoute) return
+        studyRecoveryStore.disableOrdinaryResume()
+        activeStudyRecovery = null
+        studyRecoveryRouteActive = false
+        recoveredStudyRunNeedsTargetReconciliation = false
+        activeSession = null
+        studyAnswerFeedbackState = null
+    }
+
+    override fun flushStudyRecovery() {
+        if (activeStudyRecovery != null) {
+            studyRecoveryStore.flush()
+        }
+    }
+
+    /** Publish a newly selected card only after its async route result has been accepted. */
+    internal fun acceptNewActiveStudySession(
+        session: RecordsSchedulerModels.StudySession,
+        promptSource: StudyPromptSource,
+        latestSuccessfulSyncAtMillis: Long,
+        supersededRecoveryToken: String? = null,
+    ) {
+        activeSession = session
+        studyRecoveryRouteActive = true
+        recoveredStudyRunNeedsTargetReconciliation = false
+        if (preserveStudyRecoveryForHarnessRoute) {
+            activeStudyRecovery = null
+            return
+        }
+        val item = session.item
+        val restorable = item != null && StudySessionRoute.destination(session) == StudySessionRoute.Destination.FLASHCARD
+        if (!restorable) {
+            supersededRecoveryToken?.let(studyRecoveryStore::clearSession)
+            activeStudyRecovery = null
+            return
+        }
+        activeStudyRecovery = studyRecoveryStore.replaceWithActive(
+            StudyActiveSessionSnapshot(
+                sessionToken = session.token,
+                kanji = item.kanji,
+                answerSignatureDigest = studyAnswerSignatureDigest(item.answerSignature),
+                schedulerRevision = item.schedulerRevision,
+                routingVersion = item.routingVersion,
                 taskType = session.taskType,
-                writingRequired = session.writingRequired,
-                prompt = session.prompt,
+                promptSource = promptSource,
+                sourceSyncFinishedAtMillis = latestSuccessfulSyncAtMillis,
             ),
         )
+    }
+
+    internal fun acceptRestoredActiveStudySession(
+        stored: StoredActiveStudyRecovery,
+        session: RecordsSchedulerModels.StudySession,
+    ): Boolean {
+        val claimed = studyRecoveryStore.claimActive(stored) ?: return false
+        activeStudyRecovery = claimed
+        activeSession = session
+        studyAnswerFeedbackState = null
+        studyRecoveryRouteActive = true
+        recoveredStudyRunNeedsTargetReconciliation = true
+        registerStudyTaskShown(sessionTaskKey(session))
+        startActiveStudyTask(sessionTaskKey(session), session.item?.kanji, session.taskType, System.currentTimeMillis())
+        return true
+    }
+
+    internal fun acceptRestoredPendingStudySession(
+        stored: StoredPendingStudyRecovery,
+        snapshot: StudyPendingAnswerSnapshot,
+        session: RecordsSchedulerModels.StudySession,
+    ): Boolean {
+        val claimed = studyRecoveryStore.claimPending(stored, snapshot) ?: return false
+        activeStudyRecovery = null
+        activeSession = session
+        restorePendingStudyAnswer(claimed.snapshot)
+        studyRecoveryRouteActive = true
+        recoveredStudyRunNeedsTargetReconciliation = false
+        return true
+    }
+
+    internal fun acceptPendingFallbackStudySession(
+        stored: StoredPendingStudyRecovery,
+        session: RecordsSchedulerModels.StudySession,
+    ): Boolean {
+        val claimed = studyRecoveryStore.claimPendingFallback(stored) ?: return false
+        activeStudyRecovery = claimed
+        activeSession = session
+        studyAnswerFeedbackState = null
+        studyRecoveryRouteActive = true
+        recoveredStudyRunNeedsTargetReconciliation = true
+        registerStudyTaskShown(sessionTaskKey(session))
+        startActiveStudyTask(sessionTaskKey(session), session.item?.kanji, session.taskType, System.currentTimeMillis())
+        return true
+    }
+
+    internal fun activeStudyUiRecovery(token: String): StoredActiveStudyRecovery? =
+        activeStudyRecovery?.takeIf { it.snapshot.sessionToken == token }
+
+    internal fun matchesActiveStudyRecovery(expected: StoredActiveStudyRecovery): Boolean {
+        val active = activeStudyRecovery ?: return false
+        return active.snapshot.sessionToken == expected.snapshot.sessionToken &&
+            active.writeEpoch == expected.writeEpoch
+    }
+
+    internal fun matchesUngradedStudyRoute(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ): Boolean {
+        if (activeSession?.token != expectedToken) return false
+        if (expectedRecovery != null && !matchesActiveStudyRecovery(expectedRecovery)) return false
+        val feedback = studyAnswerFeedbackState ?: return false
+        return feedback.sessionToken == expectedToken &&
+            feedback.snapshot().phase == StudyAnswerFeedbackPhase.UNANSWERED
+    }
+
+    internal fun matchesMountedStudyRoute(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ): Boolean {
+        if (activeSession?.token != expectedToken) return false
+        if (expectedRecovery == null || matchesActiveStudyRecovery(expectedRecovery)) return true
+        return studyRecoveryStore.readPending()?.snapshot?.feedback?.sessionToken == expectedToken
+    }
+
+    internal fun persistActiveStudyTypedDraft(expected: StoredActiveStudyRecovery, value: String) {
+        if (!matchesActiveStudyRecovery(expected)) return
+        val updated = studyRecoveryStore.updateActiveDeferred(
+            expected.snapshot.sessionToken,
+            expected.writeEpoch,
+        ) { it.copy(typedDraft = value, revealed = false) }
+        if (updated != null && matchesActiveStudyRecovery(expected)) activeStudyRecovery = updated
+    }
+
+    internal fun persistActiveStudyReveal(expected: StoredActiveStudyRecovery): Boolean {
+        if (!matchesActiveStudyRecovery(expected)) return false
+        val updated = studyRecoveryStore.updateActive(
+            expected.snapshot.sessionToken,
+            expected.writeEpoch,
+        ) { it.copy(revealed = true) }
+        if (updated == null || !matchesActiveStudyRecovery(expected)) return false
+        activeStudyRecovery = updated
+        return true
     }
 
     fun skipSimilarWritingRepair() {
@@ -595,7 +813,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     private companion object {
-        const val PENDING_ANSWER_PREFERENCES = "pending_study_answer"
+        const val STUDY_RECOVERY_PREFERENCES = "pending_study_answer"
     }
 
     fun setResultStatus(value: String, color: Int) {

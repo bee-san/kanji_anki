@@ -72,8 +72,12 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val feedback = activity.prepareStudyAnswerFeedback(session.token)
         val answered = feedback.snapshot().phase == StudyAnswerFeedbackPhase.SUBMITTING ||
             feedback.snapshot().phase == StudyAnswerFeedbackPhase.APPLIED
-        activity.flashcardAnswerRevealed = answered
-        val revealState = FlashcardRevealState(answered)
+        val typingTask = StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
+        val activeUiRecovery = activity.activeStudyUiRecovery(session.token)
+        val restoredUi = activeUiRecovery?.snapshot
+        val revealed = answered || (!typingTask && restoredUi?.revealed == true)
+        activity.flashcardAnswerRevealed = revealed
+        val revealState = FlashcardRevealState(revealed)
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
@@ -111,10 +115,11 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 },
             )
         }
-        val typingAnswer = if (
-            StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
-        ) {
-            TypingAnswerState(if (answered) feedback.selectedAnswer else "").also {
+        val typingAnswer = if (typingTask) {
+            TypingAnswerState(if (answered) feedback.selectedAnswer else restoredUi?.typedDraft.orEmpty()).also {
+                activeUiRecovery?.let { expected ->
+                    it.onTextChanged = { value -> activity.persistActiveStudyTypedDraft(expected, value) }
+                }
                 activity.typingAnswerState = it
             }
         } else {
@@ -133,16 +138,18 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             typingReading = StudyTaskCopy.isTypingReadingTask(session),
         )
         val actionBarState = FlashcardActionBarState(
-            answered,
-            Runnable { revealFlashcardAnswer() },
+            revealed,
+            Runnable { interaction.revealFlashcardAnswer(session.token, activeUiRecovery) },
             Runnable {
-                if (requiresRecognitionFailureCause(session)) {
+                if (!activity.matchesUngradedStudyRoute(session.token, activeUiRecovery)) {
+                    return@Runnable
+                } else if (requiresRecognitionFailureCause(session)) {
                     failureCauseState.show("button")
                 } else {
-                    activity.submitReview(MainActivityBase.RATING_AGAIN, false)
+                    submitReviewForRoute(session, activeUiRecovery, MainActivityBase.RATING_AGAIN)
                 }
             },
-            Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
+            Runnable { submitReviewForRoute(session, activeUiRecovery, MainActivityBase.RATING_GOOD) },
         )
         activity.flashcardActionBarState = actionBarState
         return ComposeFlashcardRouteModel(
@@ -150,12 +157,25 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             actionBarState = actionBarState,
             swipeFeedback = swipeFeedback,
             sessionToken = session.token,
+            activeRecovery = activeUiRecovery,
             failureCauseState = failureCauseState,
-            askRecognitionFailureCause = requiresRecognitionFailureCause(session),
+            onReview = { source, rating ->
+                if (rating == MainActivityBase.RATING_AGAIN && requiresRecognitionFailureCause(session)) {
+                    if (!activity.matchesUngradedStudyRoute(session.token, activeUiRecovery)) {
+                        false
+                    } else {
+                        failureCauseState.show(source)
+                        false
+                    }
+                } else {
+                    submitReviewForRoute(session, activeUiRecovery, rating, interactionSource = source)
+                }
+            },
             onFailureCause = { cause, source ->
-                activity.submitReview(
+                submitReviewForRoute(
+                    session = session,
+                    expectedRecovery = activeUiRecovery,
                     rating = MainActivityBase.RATING_AGAIN,
-                    override = false,
                     interactionSource = source,
                     answerEvidence = recognitionFailureEvidence(session, cause),
                 )
@@ -178,7 +198,12 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun typingAnswerField(): TypingAnswerState {
-        val state = TypingAnswerState()
+        val activeUiRecovery = activity.activeSession?.token?.let(activity::activeStudyUiRecovery)
+        val state = TypingAnswerState().also {
+            activeUiRecovery?.let { expected ->
+                it.onTextChanged = { value -> activity.persistActiveStudyTypedDraft(expected, value) }
+            }
+        }
         activity.typingAnswerState = state
         return state
     }
@@ -196,7 +221,9 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun revealFlashcardAnswer() {
-        interaction.revealFlashcardAnswer()
+        val sessionToken = activity.activeSession?.token
+        val activeUiRecovery = sessionToken?.let(activity::activeStudyUiRecovery)
+        interaction.revealFlashcardAnswer(sessionToken, activeUiRecovery)
     }
 
     fun expandFlashcardForAnswer() {
@@ -236,7 +263,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                             position.y + size.height,
                         )
                     },
-                onTypingDone = Runnable { revealFlashcardAnswer() },
+                onTypingDone = route.actionBarState.onReveal,
                 onBrowseAction = browseAction,
                 swipeFeedback = route.swipeFeedback,
             )
@@ -252,22 +279,18 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             onFail = { route.actionBarState.onFail.run() },
             onPass = { route.actionBarState.onPass.run() },
             undoMessage = undoMessage,
-            onUndo = { activity.undoLastRating() },
-            swipeFeedback = route.swipeFeedback,
-            onReview = { source, rating ->
-                if (rating == MainActivityBase.RATING_AGAIN && route.askRecognitionFailureCause) {
-                    route.failureCauseState.show(source)
-                    false
-                } else {
-                    activity.submitReview(
-                        rating = rating,
-                        override = false,
-                        interactionSource = source,
-                    )
+            onUndo = {
+                if (activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery)) {
+                    activity.undoLastRating()
                 }
             },
+            swipeFeedback = route.swipeFeedback,
+            onReview = route.onReview,
             feedbackState = activity.studyAnswerFeedbackState,
-            onContinue = { activity.continueAfterStudyAnswer() },
+            onContinue = {
+                activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery) &&
+                    activity.continueAfterStudyAnswer()
+            },
         )
     }
 
@@ -275,6 +298,22 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         return session.item?.phase == RecordsBase.SchedulerPhase.REVIEW &&
             (session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.KANJI_MEANING ||
                 session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.FONT_MEANING)
+    }
+
+    private fun submitReviewForRoute(
+        session: RecordsSchedulerModels.StudySession,
+        expectedRecovery: StoredActiveStudyRecovery?,
+        rating: String,
+        interactionSource: String = "review-action",
+        answerEvidence: AnswerEvidence? = null,
+    ): Boolean {
+        if (!activity.matchesUngradedStudyRoute(session.token, expectedRecovery)) return false
+        return activity.submitReview(
+            rating = rating,
+            override = false,
+            interactionSource = interactionSource,
+            answerEvidence = answerEvidence,
+        )
     }
 
     private fun recognitionFailureEvidence(
@@ -297,8 +336,9 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val actionBarState: FlashcardActionBarState,
         val swipeFeedback: StudySwipeFeedbackState,
         val sessionToken: String,
+        val activeRecovery: StoredActiveStudyRecovery?,
         val failureCauseState: RecognitionFailureCauseState,
-        val askRecognitionFailureCause: Boolean,
+        val onReview: (String, String) -> Boolean,
         val onFailureCause: (FailureKind, String) -> Unit,
     )
 }

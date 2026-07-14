@@ -2,12 +2,18 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.content.pm.PackageManager
 import android.content.pm.ProviderInfo
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -125,6 +131,138 @@ class MainActivityStartupTest {
             assertEquals(0, activity.renderHomeCalls)
         } finally {
             preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
+    fun activeDraftDoesNotOverrideExplicitUpdateAndIsKeptForManualStudy() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val store = StudySessionRecoveryStore(preferences)
+        assertNotNull(store.replaceWithActive(activeSnapshot("explicit-update-token")))
+        val intent = Intent(context, PendingAnswerStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
+        }
+
+        val controller = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+        val activity = controller.get()
+        try {
+            controller.create().start().resume()
+
+            assertEquals(0, activity.renderStudyCalls)
+            val dormant = store.readActive()
+            assertNotNull(dormant)
+            assertFalse(requireNotNull(dormant).resumeOnOrdinaryLaunch)
+        } finally {
+            preferences.edit().clear().commit()
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
+    fun recreationMarkerRestoresStudyAheadOfStaleOriginalUpdateIntent() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val intent = Intent(context, PendingAnswerStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
+        }
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val first = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+        val state = Bundle()
+        var second: org.robolectric.android.controller.ActivityController<PendingAnswerStartupActivity>? = null
+        try {
+            val firstActivity = first.create().start().resume().get()
+            val item = startupStudyItem("recreation-token")
+            firstActivity.acceptNewActiveStudySession(
+                RecordsSchedulerModels.StudySession(
+                    item,
+                    null,
+                    "recreation-token",
+                    StudyTaskTypes.KANJI_MEANING,
+                    false,
+                    "prompt",
+                ),
+                StudyPromptSource.REASON_TEXT,
+                latestSuccessfulSyncAtMillis = 0L,
+            )
+            first.pause().saveInstanceState(state).stop().destroy()
+
+            second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+            val recreated = second.create(state).start().resume().get()
+
+            assertEquals(1, recreated.renderStudyCalls)
+            assertEquals(0, recreated.renderHomeCalls)
+        } finally {
+            preferences.edit().clear().commit()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            second?.pause()?.stop()?.destroy()
+        }
+    }
+
+    @Test
+    fun newerExplicitExitOverridesOlderSavedStudyMarker() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val intent = Intent(context, PendingAnswerStartupActivity::class.java)
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val first = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+        val state = Bundle()
+        var second: org.robolectric.android.controller.ActivityController<PendingAnswerStartupActivity>? = null
+        try {
+            val firstActivity = first.create().start().resume().get()
+            val item = startupStudyItem("dormant-recreation-token")
+            firstActivity.acceptNewActiveStudySession(
+                RecordsSchedulerModels.StudySession(
+                    item,
+                    null,
+                    "dormant-recreation-token",
+                    StudyTaskTypes.KANJI_MEANING,
+                    false,
+                    "prompt",
+                ),
+                StudyPromptSource.REASON_TEXT,
+                latestSuccessfulSyncAtMillis = 0L,
+            )
+            first.pause().saveInstanceState(state)
+            firstActivity.disableStudyOrdinaryResume()
+            first.stop().destroy()
+
+            second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+            val recreated = second.create(state).start().resume().get()
+
+            assertEquals(0, recreated.renderStudyCalls)
+            assertEquals(1, recreated.renderHomeCalls)
+            assertFalse(StudySessionRecoveryStore(preferences).shouldResumeOnOrdinaryLaunch())
+        } finally {
+            preferences.edit().clear().commit()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            second?.pause()?.stop()?.destroy()
+        }
+    }
+
+    @Test
+    fun screenshotHarnessDoesNotMutateProductionStudyRecovery() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val store = StudySessionRecoveryStore(preferences)
+        assertNotNull(store.replaceWithActive(activeSnapshot("harness-token")))
+        val rawBefore = preferences.getString("snapshot", null)
+        val intent = Intent(context, RecoveryAwareStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+        }
+        val controller = Robolectric.buildActivity(RecoveryAwareStartupActivity::class.java, intent)
+        try {
+            controller.create().start().resume()
+
+            assertEquals(rawBefore, preferences.getString("snapshot", null))
+            assertTrue(store.shouldResumeOnOrdinaryLaunch())
+        } finally {
+            preferences.edit().clear().commit()
+            controller.pause().stop().destroy()
         }
     }
 
@@ -254,6 +392,16 @@ class MainActivityStartupTest {
         override fun renderStudy() {
             renderStudyCalls += 1
         }
+
+        override fun renderStudyRecoveryOnly() {
+            renderStudyCalls += 1
+        }
+    }
+
+    private class RecoveryAwareStartupActivity : MainActivity() {
+        override fun renderHome() {
+            disableStudyOrdinaryResume()
+        }
     }
 
     private fun registerAnkiDroidProvider(context: Context) {
@@ -294,6 +442,28 @@ class MainActivityStartupTest {
             emptyList<Any>(),
         ) as AnkiDroidGateway
     }
+
+    private fun activeSnapshot(token: String): StudyActiveSessionSnapshot = StudyActiveSessionSnapshot(
+        sessionToken = token,
+        kanji = "復",
+        answerSignatureDigest = studyAnswerSignatureDigest("復|復習|ふくしゅう|review"),
+        schedulerRevision = 1L,
+        routingVersion = 1,
+        taskType = StudyTaskTypes.KANJI_MEANING,
+        promptSource = StudyPromptSource.REASON_TEXT,
+        sourceSyncFinishedAtMillis = 0L,
+    )
+
+    private fun startupStudyItem(token: String): RecordsStudyModels.StudyItem =
+        RecordsStudyModels.StudyItem("復", "review", 1_000L, 1.0, 2.0, 1, 0, 0, 0, "", 1_000L)
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.KANJI_MEANING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .answerSignature("復|復習|ふくしゅう|review")
+            .activeToken(token)
+            .schedulerRevision(1L)
+            .routingVersion(1)
+            .build()
 
     private class QueueingExecutorService : AbstractExecutorService() {
         private val tasks = ArrayDeque<Runnable>()
