@@ -11,10 +11,12 @@ class KanjiGameEngine {
         @JvmField val title: String,
         @JvmField val label: String,
         @JvmField val prompt: String,
+        @JvmField val lockedLabel: String = "",
     ) {
         MEANING_POP("meaning_pop", "Meaning Pop", "Kanji -> meaning", "Choose the meaning."),
         READING_RUSH("reading_rush", "Reading Rush", "Word -> reading", "Choose the reading."),
         CONFUSABLE_CLASH("confusable_clash", "Confusable Clash", "Meaning -> kanji", "Choose the kanji."),
+        MISS_SWEEP("miss_sweep", "Miss Sweep", "Recent misses", "Choose the meaning.", "Need 2+ recent misses"),
     }
 
     class GameQuestion(
@@ -42,10 +44,11 @@ class KanjiGameEngine {
         rows: List<RecordsImportModels.DashboardRow?>?,
         inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
         pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
+        recentMissKanji: List<String?>? = null,
     ): List<GameMode> {
         val out = ArrayList<GameMode>()
         for (mode in GameMode.values()) {
-            if (nextQuestion(mode, rows, inventory, pairs, SecureRandom()) != null) {
+            if (nextQuestion(mode, rows, inventory, pairs, SecureRandom(), recentMissKanji) != null) {
                 out.add(mode)
             }
         }
@@ -58,6 +61,7 @@ class KanjiGameEngine {
         inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
         pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
         random: Random?,
+        recentMissKanji: List<String?>? = null,
     ): GameQuestion? {
         val safeMode = mode ?: GameMode.MEANING_POP
         val safeRandom = random ?: SecureRandom()
@@ -66,6 +70,7 @@ class KanjiGameEngine {
             GameMode.MEANING_POP -> meaningQuestion(candidates, safeRandom)
             GameMode.READING_RUSH -> readingQuestion(candidates, safeRandom)
             GameMode.CONFUSABLE_CLASH -> confusableQuestion(candidates, pairs, safeRandom)
+            GameMode.MISS_SWEEP -> missSweepQuestion(candidates, recentMissKanji, safeRandom)
         }
     }
 
@@ -221,6 +226,32 @@ class KanjiGameEngine {
                 "Watch the shape",
                 target.kanji,
                 shuffled,
+                "${target.kanji} = ${target.meaning}",
+            )
+        }
+
+        private fun missSweepQuestion(
+            candidates: List<GameCandidate>,
+            recentMissKanji: List<String?>?,
+            random: Random,
+        ): GameQuestion? {
+            val missSet = HashSet<String>()
+            recentMissKanji.orEmpty().forEach { k ->
+                val cleaned = clean(k)
+                if (cleaned.isNotEmpty()) missSet.add(cleaned)
+            }
+            val missTargets = candidates.filter { it.hasMeaning() && missSet.contains(it.kanji) }
+            if (missTargets.size < 2) return null
+            val target = randomCandidate(missTargets, random)
+            val choices = answerChoices(candidates, target.meaning, { it.meaning }, random)
+            if (choices.size < 2) return null
+            return GameQuestion(
+                GameMode.MISS_SWEEP,
+                target.kanji,
+                target.kanji,
+                "Pick the meaning",
+                target.meaning,
+                choices,
                 "${target.kanji} = ${target.meaning}",
             )
         }

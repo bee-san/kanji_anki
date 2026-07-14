@@ -206,6 +206,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             KanjiGameEngine.GameMode.MEANING_POP -> CORAL
             KanjiGameEngine.GameMode.READING_RUSH -> TEAL
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> BLUE
+            KanjiGameEngine.GameMode.MISS_SWEEP -> CORAL
         }
     }
 

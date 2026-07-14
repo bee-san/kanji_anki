@@ -72,6 +72,7 @@ object KanjiGameCopy {
             KanjiGameEngine.GameMode.MEANING_POP -> localizedText(mode.label, "漢字→意味")
             KanjiGameEngine.GameMode.READING_RUSH -> localizedText(mode.label, "単語→読み")
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(mode.label, "意味→漢字")
+            KanjiGameEngine.GameMode.MISS_SWEEP -> localizedText(mode.label, "最近のミス")
         }
     }
 
@@ -81,6 +82,7 @@ object KanjiGameCopy {
             KanjiGameEngine.GameMode.MEANING_POP -> localizedText(mode.title, "意味ポップ")
             KanjiGameEngine.GameMode.READING_RUSH -> localizedText(mode.title, "読みラッシュ")
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(mode.title, "似た漢字バトル")
+            KanjiGameEngine.GameMode.MISS_SWEEP -> localizedText(mode.title, "ミス復習")
         }
     }
 
@@ -95,7 +97,8 @@ object KanjiGameCopy {
         }
         return when (safeQuestion.mode) {
             KanjiGameEngine.GameMode.MEANING_POP,
-            KanjiGameEngine.GameMode.READING_RUSH -> safeQuestion.prompt
+            KanjiGameEngine.GameMode.READING_RUSH,
+            KanjiGameEngine.GameMode.MISS_SWEEP -> safeQuestion.prompt
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "「${confusablePromptMeaning(safeQuestion.prompt)}」を表す漢字は？"
         }
     }
@@ -107,7 +110,8 @@ object KanjiGameCopy {
             return safeQuestion.promptDetail
         }
         return when (safeQuestion.mode) {
-            KanjiGameEngine.GameMode.MEANING_POP -> "意味を選びます。"
+            KanjiGameEngine.GameMode.MEANING_POP,
+            KanjiGameEngine.GameMode.MISS_SWEEP -> "意味を選びます。"
             KanjiGameEngine.GameMode.READING_RUSH -> readingPromptDetail(safeQuestion.targetKanji)
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> "形を見比べます。"
         }
@@ -144,6 +148,10 @@ object KanjiGameCopy {
             KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> localizedText(
                 "Choose among similar kanji.",
                 "似ている漢字から選びます。",
+            )
+            KanjiGameEngine.GameMode.MISS_SWEEP -> localizedText(
+                "Drill kanji you missed recently.",
+                "最近間違えた漢字を練習します。",
             )
         }
     }

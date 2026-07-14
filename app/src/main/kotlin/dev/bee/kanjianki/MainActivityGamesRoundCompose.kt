@@ -221,5 +221,6 @@ internal fun gameModeColor(colors: KaniColors, mode: KanjiGameEngine.GameMode): 
         KanjiGameEngine.GameMode.MEANING_POP -> colors.coral
         KanjiGameEngine.GameMode.READING_RUSH -> colors.teal
         KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> colors.blue
+        KanjiGameEngine.GameMode.MISS_SWEEP -> colors.coral
     }
 }
