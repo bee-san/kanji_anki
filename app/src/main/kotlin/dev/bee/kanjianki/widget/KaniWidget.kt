@@ -4,23 +4,30 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.unit.ColorProvider
@@ -34,6 +41,13 @@ import kotlinx.coroutines.withContext
 internal class KaniWidget(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : GlanceAppWidget() {
+    companion object {
+        private val COMPACT_SIZE = DpSize(250.dp, 72.dp)
+        private val EXPANDED_SIZE = DpSize(250.dp, 130.dp)
+    }
+
+    override val sizeMode = SizeMode.Responsive(setOf(COMPACT_SIZE, EXPANDED_SIZE))
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = withContext(ioDispatcher) {
             KaniWidgetSnapshotLoader.load(context)
@@ -48,6 +62,7 @@ internal class KaniWidget(
 private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
     val copy = widgetCopy(snapshot)
     val launchAction = actionStartActivity(kaniWidgetLaunchIntent(LocalContext.current, snapshot))
+    val isExpanded = LocalSize.current.height >= 120.dp
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -81,6 +96,10 @@ private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
                 fontSize = 13.sp,
             ),
         )
+        if (isExpanded && snapshot.last7DayCounts.isNotEmpty()) {
+            Spacer(GlanceModifier.height(8.dp))
+            ActivityStrip(snapshot.last7DayCounts)
+        }
         Spacer(GlanceModifier.height(6.dp))
         Text(
             text = copy.action,
@@ -90,6 +109,26 @@ private fun KaniWidgetContent(snapshot: KaniWidgetSnapshot) {
                 fontWeight = FontWeight.Bold,
             ),
         )
+    }
+}
+
+@Composable
+private fun ActivityStrip(dayCounts: List<Int>) {
+    val maxCount = dayCounts.maxOrNull() ?: 1
+    Row(
+        modifier = GlanceModifier.padding(vertical = 2.dp),
+    ) {
+        dayCounts.forEachIndexed { index, count ->
+            if (index > 0) Spacer(GlanceModifier.width(4.dp))
+            val alpha = if (maxCount > 0) (count.toFloat() / maxCount).coerceIn(0.15f, 1.0f) else 0.15f
+            val cellColor = if (count == 0) Color(0xFFEDE8E4) else Color(0xFFB94962).copy(alpha = alpha)
+            Box(
+                modifier = GlanceModifier
+                    .size(16.dp)
+                    .background(ColorProvider(cellColor)),
+                contentAlignment = Alignment.Center,
+            ) {}
+        }
     }
 }
 

@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
+import dev.bee.kanjianki.data.StudyStatsQueries
 
 internal enum class KaniWidgetState {
     NOT_SET_UP,
@@ -19,6 +20,7 @@ internal data class KaniWidgetSnapshot(
     val dueCount: Int = 0,
     val streakDays: Int = 0,
     val nextUsefulAtMillis: Long = 0L,
+    val last7DayCounts: List<Int> = emptyList(),
 )
 
 /**
@@ -58,11 +60,16 @@ internal object KaniWidgetSnapshotLoader {
                         lastSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
                     ),
                 )
+                val last7Days: List<Int> = runCatching {
+                    val summaries = StudyStatsQueries(store).reviewDaySummaries(nowMillis, 7)
+                    summaries.map { it.total }
+                }.getOrElse { emptyList() }
                 KaniWidgetSnapshot(
                     state = if (dueCount > 0) KaniWidgetState.DUE_NOW else KaniWidgetState.NOTHING_DUE,
                     dueCount = dueCount,
                     streakDays = streak.currentDays,
                     nextUsefulAtMillis = plan.nextUsefulReminderAtMillis,
+                    last7DayCounts = last7Days,
                 )
             }
         }.getOrElse {
