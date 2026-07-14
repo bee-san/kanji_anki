@@ -13,7 +13,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
-import dev.bee.kanjianki.charts.KaniBarChartTag
 import dev.bee.kanjianki.charts.KaniDonutChartTag
 import dev.bee.kanjianki.charts.KaniHeatmapChartTag
 import dev.bee.kanjianki.charts.KaniHeatmapWeekTag
@@ -55,8 +54,11 @@ class StatsRedesignComposeTest {
         composeRule.onNodeWithText("Sun", substring = true).assertExists()
         assertTrue(composeRule.onAllNodesWithText("Jul").fetchSemanticsNodes().isNotEmpty())
         composeRule.onNodeWithContentDescription(state.reviewsAnalytics.heatmap!!.accessibilitySummary).assertExists()
-        composeRule.onNodeWithTag(KaniBarChartTag).assertExists()
-        composeRule.onNodeWithContentDescription(state.reviewsAnalytics.accessibilitySummary).assertExists()
+        // The per-day bar chart is gone (Review calendar heatmap replaces it) but the
+        // range summary metrics still render for the selected range.
+        composeRule.onAllNodesWithTag("kani-bar-chart").assertCountEquals(0)
+        assertTrue(composeRule.onAllNodesWithText("Total reviews", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithText("Best day", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test fun emptyDataUsesHomeEmptyStatesAndRendersNoCharts() {
@@ -101,7 +103,6 @@ class StatsRedesignComposeTest {
             progressAnalyticsStreakSummaryText(state.reviewsAnalytics.currentStreak, state.reviewsAnalytics.tip),
         ).assertExists()
         composeRule.onAllNodesWithTag(KaniLineChartTag).assertCountEquals(0)
-        composeRule.onAllNodesWithTag(KaniBarChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniDonutChartTag).assertCountEquals(0)
         composeRule.onAllNodesWithTag(KaniHeatmapChartTag).assertCountEquals(0)
     }

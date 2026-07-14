@@ -107,34 +107,7 @@ object SettingsTextCopy {
     fun sectionOpenDescription(title: String): String = SettingsSectionTextCopy.sectionOpenDescription(title)
 
     @JvmStatic
-    fun settingsCockpitLabel(): String = SettingsSectionTextCopy.settingsCockpitLabel()
-
-    @JvmStatic
-    fun settingsHeroBody(): String = SettingsSectionTextCopy.settingsHeroBody()
-
-    @JvmStatic
     fun noteTypeStatusLabel(): String = SettingsSectionTextCopy.noteTypeStatusLabel()
-
-    @JvmStatic
-    fun importFiltersStatusLabel(): String = SettingsSectionTextCopy.importFiltersStatusLabel()
-
-    @JvmStatic
-    fun importRanksStatusLabel(): String = SettingsSectionTextCopy.importRanksStatusLabel()
-
-    @JvmStatic
-    fun reminderStatusLabel(): String = SettingsSectionTextCopy.reminderStatusLabel()
-
-    @JvmStatic
-    fun dailySyncStatusLabel(): String = SettingsSectionTextCopy.dailySyncStatusLabel()
-
-    @JvmStatic
-    fun updatesStatusLabel(): String = SettingsSectionTextCopy.updatesStatusLabel()
-
-    @JvmStatic
-    fun matchingCardsStatusLabel(): String = SettingsSectionTextCopy.matchingCardsStatusLabel()
-
-    @JvmStatic
-    fun statusPillDescription(label: String, value: String): String = SettingsSectionTextCopy.statusPillDescription(label, value)
 
     @JvmStatic
     fun categoryToggleDescription(expanded: Boolean, title: String): String = SettingsSectionTextCopy.categoryToggleDescription(expanded, title)

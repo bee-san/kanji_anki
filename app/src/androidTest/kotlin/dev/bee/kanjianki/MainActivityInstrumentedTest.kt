@@ -2889,7 +2889,7 @@ private fun assertCollapsedSettingsScreen(activity: MainActivity) {
                 SettingsTextCopy.taggedCardsLabel(),
                 SettingsTextCopy.weakCardsLabel(),
                 SettingsTextCopy.minimumMatchingCardsLabel(),
-                SettingsTextCopy.importRanksStatusLabel(),
+                SettingsTextCopy.frequencyRangeTitle(),
                 "Default: 100-3000",
                 SettingsTextCopy.minRankLabel(),
                 SettingsTextCopy.maxRankLabel()

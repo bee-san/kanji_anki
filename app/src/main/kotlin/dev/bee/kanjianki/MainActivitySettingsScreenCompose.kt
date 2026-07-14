@@ -41,7 +41,15 @@ fun SettingsScreen(model: SettingsScreenModel) {
                 onClick = { model.onHome.run() }
             )
         }
-        SettingsAutomationHero(model.hero)
+        // The hub is a plain title over section cards; the old "Overview" hero and its
+        // status pills were removed because the cards already summarize each section.
+        Text(
+            text = model.title,
+            color = SettingsUpdateInk,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(modifier = Modifier.height(18.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -230,14 +238,13 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
 }
 
 internal fun settingsScreenModel(
-    hero: SettingsAutomationHeroModel,
     cards: List<SettingsHubCardModel>,
     onHome: Runnable,
 ): SettingsScreenModel {
     return SettingsScreenModel(
         homeLabel = HomeTextCopy.homeLabel(),
         onHome = onHome,
-        hero = hero,
+        title = SettingsTextCopy.settingsTitle(),
         cards = cards,
     )
 }

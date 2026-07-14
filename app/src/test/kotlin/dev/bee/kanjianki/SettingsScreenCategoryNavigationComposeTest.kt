@@ -43,12 +43,7 @@ class SettingsScreenCategoryNavigationComposeTest {
         val screen = SettingsScreenModel(
             homeLabel = "Home",
             onHome = Runnable {},
-            hero = SettingsAutomationHeroModel(
-                cockpitLabel = "Overview",
-                title = "Settings",
-                body = "Configure Kani behavior.",
-                rows = emptyList(),
-            ),
+            title = "Settings",
             cards = listOf(
                 SettingsHubCardModel(
                     routeKey = MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,

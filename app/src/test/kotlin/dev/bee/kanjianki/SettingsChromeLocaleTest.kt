@@ -11,8 +11,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,18 +42,13 @@ class SettingsChromeLocaleTest {
     }
 
     @Test
-    fun settingsHeroFactoryUsesJapaneseTitle() {
+    fun settingsHubUsesJapaneseTitle() {
         withLocale(Locale.JAPAN) {
-            val model = settingsAutomationHeroModel(
-                current = RecordsSyncModels.Settings.kikuDefaults(),
-                reminder = LocalStoreBase.ReminderSettings(false, 8, 5),
-                autoSync = LocalStoreBase.AutoSyncSettings(false, false, 7, 30, 0L, 0L, 0L),
-                autoUpdate = LocalStoreBase.AutoUpdateStatus(false, 0L, "", "", "", ""),
-                notificationsAllowed = true,
-            )
+            withMainActivity { activity ->
+                val screen = MainActivitySettingsScreenCoordinator(activity).settingsScreenModel()
 
-            assertEquals("概要", model.cockpitLabel)
-            assertEquals("設定", model.title)
+                assertEquals("設定", screen.title)
+            }
         }
     }
 

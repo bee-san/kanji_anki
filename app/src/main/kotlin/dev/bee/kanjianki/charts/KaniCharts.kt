@@ -31,13 +31,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.ReviewHeatmapPolicy
-import dev.bee.kanjianki.progress.ProgressBarChartState
 import dev.bee.kanjianki.progress.ProgressDistributionChartState
 import dev.bee.kanjianki.progress.ProgressLineChartState
 import dev.bee.kanjianki.progress.ProgressSeriesStyle
 
 internal const val KaniLineChartTag = "kani-line-chart"
-internal const val KaniBarChartTag = "kani-bar-chart"
 internal const val KaniDonutChartTag = "kani-donut-chart"
 internal const val KaniHeatmapChartTag = "kani-heatmap-chart"
 internal const val KaniHeatmapGridTag = "kani-heatmap-grid"
@@ -111,31 +109,6 @@ private fun DrawScope.lineStroke(style: ProgressSeriesStyle): Stroke = Stroke(
         null
     },
 )
-
-@Composable
-internal fun KaniBarChart(
-    chart: ProgressBarChartState,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.semantics { contentDescription = chart.accessibilitySummary }) {
-        PlotWithYAxis(chart.axis, KaniBarChartTag) {
-            if (chart.values.isEmpty()) return@PlotWithYAxis
-            val slot = size.width / chart.values.size
-            val barWidth = slot * 0.56f
-            chart.values.forEachIndexed { index, value ->
-                val barHeight = size.height * KaniChartGeometry.normalized(value, chart.axis)
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(index * slot + (slot - barWidth) / 2f, size.height - barHeight),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
-                )
-            }
-        }
-        PlotXAxisLabels(chart.labels)
-    }
-}
 
 @Composable
 internal fun KaniDonutChart(

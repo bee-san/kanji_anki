@@ -38,6 +38,10 @@ internal object DebugLogShare {
         val prefix = allowedLogPrefixes[sourceFile.name] ?: return null
         val filesDirectory = runCatching { appContext.filesDir.canonicalFile }.getOrNull() ?: return null
         val expectedSource = File(filesDirectory, sourceFile.name)
+        // Compare canonical paths on both sides: filesDir itself can sit behind a
+        // symlinked path segment (macOS /var -> /private/var in tests, and some
+        // /data layouts on device), which must not defeat the allow-list. The file
+        // itself is still rejected if it is a symlink.
         val canonicalSource = runCatching { sourceFile.canonicalFile }.getOrNull() ?: return null
         if (
             canonicalSource != expectedSource ||

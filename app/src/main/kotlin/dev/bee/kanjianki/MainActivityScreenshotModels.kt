@@ -30,56 +30,6 @@ internal fun screenshotGamesScreenModel(): GamesScreenModel {
 
 internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): SettingsScreenModel {
     return settingsScreenModel(
-        hero = SettingsAutomationHeroModel(
-            cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
-            title = MainActivityBase.NAV_SETTINGS,
-            body = SettingsTextCopy.settingsHeroBody(),
-            rows = listOf(
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.noteTypeStatusLabel(),
-                        "Sample note type",
-                        SettingsAutomationHeroColors.studyPlum,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.importFiltersStatusLabel(),
-                        "All cards",
-                        SettingsAutomationHeroColors.teal,
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.importRanksStatusLabel(),
-                        "10-25",
-                        SettingsAutomationHeroColors.teal,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.reminderStatusLabel(),
-                        "Off",
-                        SettingsAutomationHeroColors.muted,
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.dailySyncStatusLabel(),
-                        "Manual only",
-                        SettingsAutomationHeroColors.studyPinkDark,
-                    ),
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.updatesStatusLabel(),
-                        "Ready",
-                        SettingsAutomationHeroColors.coral,
-                    ),
-                ),
-                listOf(
-                    SettingsAutomationHeroPillModel(
-                        SettingsTextCopy.matchingCardsStatusLabel(),
-                        "2,048 items",
-                        SettingsAutomationHeroColors.studyPlum,
-                    ),
-                ),
-            ),
-        ),
         cards = listOf(
             SettingsHubCardModel(
                 routeKey = MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE,

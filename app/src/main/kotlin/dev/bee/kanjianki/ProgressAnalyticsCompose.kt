@@ -33,7 +33,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.bee.kanjianki.charts.KaniBarChart
 import dev.bee.kanjianki.charts.KaniDonutChart
 import dev.bee.kanjianki.charts.KaniHeatmapChart
 import dev.bee.kanjianki.charts.KaniLineChart
@@ -241,8 +240,10 @@ private fun ReviewsSection(state: ProgressReviewsAnalyticsState, compact: Boolea
         ProgressRangeChips(state.availableRanges, selected, onSelect = { selected = it }, compact = compact, scope = "reviews")
         val heatmap = state.heatmap
         val hasHeatmapData = heatmap != null && heatmap.weeks.any { week -> week.cells.any { it.reviews > 0 } }
-        val hasReviewBars = selectedData.reviewsPerDay.values.any { it > 0 }
-        if (!hasHeatmapData && !hasReviewBars) {
+        // The per-day bar chart was removed in favor of the review calendar heatmap;
+        // reviewsPerDay now only gates whether the selected range has data to summarize.
+        val hasReviewData = selectedData.reviewsPerDay.values.any { it > 0 }
+        if (!hasHeatmapData && !hasReviewData) {
             EmptyCharts()
         }
         heatmap?.let { populatedHeatmap ->
@@ -253,8 +254,7 @@ private fun ReviewsSection(state: ProgressReviewsAnalyticsState, compact: Boolea
                 }
             }
         }
-        if (hasReviewBars) {
-            ChartLeaf { KaniBarChart(selectedData.reviewsPerDay, KaniTheme.colors.teal) }
+        if (hasReviewData) {
             MiniMetrics(
                 listOf(
                     ProgressAnalyticsCopy.totalReviewsLabel() to selectedData.totalReviews.valueLabel,

@@ -25,14 +25,7 @@ class MainActivitySettingsScreenComposeTest {
                 model = SettingsScreenModel(
                     homeLabel = "Home",
                     onHome = Runnable {},
-                    hero = SettingsAutomationHeroModel(
-                        cockpitLabel = "Overview",
-                        title = "Settings",
-                        body = "Configure Kani behavior.",
-                        rows = listOf(
-                            listOf(SettingsAutomationHeroPillModel("Note type", "Kiku", 0xFF7A245D.toInt())),
-                        ),
-                    ),
+                    title = "Settings",
                     cards = listOf(
                         SettingsHubCardModel(
                             routeKey = MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE,
