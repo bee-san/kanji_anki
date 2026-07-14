@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
+import dev.bee.kanjianki.core.TextUtil
 import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -340,15 +341,53 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 out.add(readInventoryItem(db, cursor))
             }
         }
+        val ranked = rankKanjiSearchResults(db, out, terms, onlySimilarKanji)
         if (!onlySimilarKanji && terms.isEmpty()) {
-            cachedKanjiInventoryAll = out
+            cachedKanjiInventoryAll = ranked
         } else if (!onlySimilarKanji) {
             val searches = cachedKanjiInventorySearches ?: ConcurrentHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
                 cachedKanjiInventorySearches = it
             }
-            searches[cacheKey!!] = out
+            searches[cacheKey!!] = ranked
         }
-        return out
+        return ranked
+    }
+
+    /**
+     * Searching a kanji glyph must surface that kanji itself, not bury it. `search_text`
+     * embeds the full expressions and sentences of every note a kanji appears in, so a
+     * single-glyph query also matches every co-occurring kanji, and plain code-point
+     * ordering hides the exact match mid-list (or the 300-row cap drops it entirely).
+     * Rank rows whose glyph appears in the query first (stable, keeping kanji order
+     * within each group), and restore the exact row for a single-glyph query when the
+     * cap cut it.
+     */
+    private fun rankKanjiSearchResults(
+        db: SQLiteDatabase,
+        matches: List<RecordsImportModels.KanjiInventoryItem>,
+        terms: List<String>,
+        onlySimilarKanji: Boolean,
+    ): List<RecordsImportModels.KanjiInventoryItem> {
+        if (terms.isEmpty()) {
+            return matches
+        }
+        val queryGlyphs = LinkedHashSet<String>()
+        for (term in terms) {
+            queryGlyphs.addAll(TextUtil.extractKanji(term))
+        }
+        if (queryGlyphs.isEmpty()) {
+            return matches
+        }
+        val withExact = ArrayList<RecordsImportModels.KanjiInventoryItem>(matches.size + 1)
+        withExact.addAll(matches)
+        // A one-glyph query always LIKE-matches its own row (each row indexes its glyph),
+        // so a missing exact row can only mean the row cap cut it; restore it. The
+        // similar-kanji-only filter is not re-checked here, so skip the restore there.
+        val exactGlyph = if (terms.size == 1) TextUtil.normalizeSingleKanji(terms[0]) else ""
+        if (!onlySimilarKanji && exactGlyph.isNotEmpty() && withExact.none { it.kanji == exactGlyph }) {
+            readInventoryItem(db, exactGlyph)?.let(withExact::add)
+        }
+        return withExact.sortedBy { item -> if (queryGlyphs.contains(item.kanji)) 0 else 1 }
     }
 
     fun locallySuspendedKanji(): Set<String> {
