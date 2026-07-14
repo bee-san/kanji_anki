@@ -521,6 +521,18 @@ object HomeTextCopy {
         if (wasSuspended) localizedText("Unsuspended.", "停止を解除しました。") else localizedText("Suspended locally.", "ローカルで停止しました。")
 
     @JvmStatic
+    fun confusedWithTitle(): String = localizedText("Confused with", "混同しやすい漢字")
+
+    @JvmStatic
+    fun confusedWithEvidence(youPicked: Int, itStole: Int): String? {
+        if (youPicked <= 0 && itStole <= 0) return null
+        val parts = mutableListOf<String>()
+        if (youPicked > 0) parts.add(localizedText("you picked it ×$youPicked", "あなたが選んだ回数: ${youPicked}回"))
+        if (itStole > 0) parts.add(localizedText("it stole ×$itStole", "奪われた回数: ${itStole}回"))
+        return parts.joinToString(" · ")
+    }
+
+    @JvmStatic
     fun strokeOrderTitle(): String = localizedText("Stroke order", "書き順")
 
     @JvmStatic

@@ -341,6 +341,7 @@ class MainActivityHomeBrowseDetailComposeTest {
                             color = 0xFF6E5CE6.toInt(),
                             style = BrowseDetailPanelStyle.BAND
                         ),
+                        neighbors = null,
                         localInventory = BrowseDetailPanelModel(
                             title = "Local records",
                             lines = listOf("1 source · 1 example"),

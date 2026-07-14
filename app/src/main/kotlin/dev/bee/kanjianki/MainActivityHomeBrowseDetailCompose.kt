@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
 
 internal object BrowseMnemonicNoteTestTags {
     const val INPUT = "browse-mnemonic-note-input"
@@ -58,6 +59,9 @@ internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
         }
         Box(modifier = Modifier.padding(top = 10.dp)) {
             BrowseDetailInfoPanel(model.reason)
+        }
+        model.neighbors?.let { neighbors ->
+            BrowseNeighborPanel(neighbors)
         }
         model.localInventory?.let { localInventory ->
             BrowseDetailInfoPanel(localInventory)
@@ -327,6 +331,76 @@ private fun BrowseChip(label: String, color: ComposeColor) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+internal object NeighborPanelTestTags {
+    const val SECTION = "neighbor-panel-section"
+    const val ROW_PREFIX = "neighbor-row-"
+}
+
+@Composable
+internal fun BrowseNeighborPanel(model: BrowseNeighborPanelModel) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 7.dp)
+            .testTag(NeighborPanelTestTags.SECTION),
+        shape = BrowseCardShape,
+        color = BrowseWhite,
+        border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = model.title,
+                color = BrowseInk,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            model.rows.forEach { row ->
+                BrowseNeighborRow(row)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseNeighborRow(row: BrowseNeighborRowModel) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { row.onTap.run() }
+            .testTag(NeighborPanelTestTags.ROW_PREFIX + row.kanji),
+        shape = RoundedCornerShape(8.dp),
+        color = KaniTheme.colors.panelSoft,
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = row.kanji,
+                color = BrowseInk,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = GamesKanjiFontFamily,
+            )
+            if (row.meaning.isNotEmpty()) {
+                Text(
+                    text = row.meaning,
+                    color = BrowseMuted,
+                    fontSize = 14.sp,
+                )
+            }
+            row.evidenceLine?.let { line ->
+                Text(
+                    text = line,
+                    color = BrowseCoral,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
     }
 }
 

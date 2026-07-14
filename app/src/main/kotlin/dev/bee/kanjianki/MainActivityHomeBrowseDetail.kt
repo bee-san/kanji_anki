@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StuckCardPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
+import dev.bee.kanjianki.core.KanjiNeighborPanelPolicy
 import dev.bee.kanjianki.core.study.StrokeOrderDiagramPolicy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
@@ -132,6 +133,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
             strokeOrderModel(displayKanji),
             detailReasonPanelModel(row, inventory),
+            neighborsModel(displayKanji),
             inventory?.let(::localInventoryPanelModel),
             mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
             detailActionsModel(row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended),
@@ -167,6 +169,27 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             title = HomeTextCopy.strokeOrderTitle(),
             panels = panels,
             overflowText = overflowText,
+        )
+    }
+
+    fun neighborsModel(kanji: String): BrowseNeighborPanelModel? {
+        val pairs = home.store.similarPairsForKanji(kanji)
+        if (pairs.isEmpty()) return null
+        val wrongPicks = home.store.choiceWrongPickCounts(System.currentTimeMillis())
+        val inventory = home.store.searchKanjiInventory("", false)
+        val meanings = inventory.associate { it.kanji to it.primaryMeaning }
+        val rows = KanjiNeighborPanelPolicy.build(kanji, pairs, wrongPicks, meanings)
+        if (rows.isEmpty()) return null
+        return BrowseNeighborPanelModel(
+            title = HomeTextCopy.confusedWithTitle(),
+            rows = rows.map { row ->
+                BrowseNeighborRowModel(
+                    kanji = row.kanji,
+                    meaning = row.meaning,
+                    evidenceLine = HomeTextCopy.confusedWithEvidence(row.youPickedCount, row.itStoleCount),
+                    onTap = Runnable { renderDetail(row.kanji, true) },
+                )
+            }
         )
     }
 
