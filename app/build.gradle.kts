@@ -191,6 +191,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material3.wsc)
     implementation(libs.compose.ui)
     implementation(project(":update-core"))
     implementation(project(":writing-core"))
