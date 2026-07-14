@@ -68,9 +68,7 @@ internal object StudySessionRestorationPolicy {
                 ?.takeIf { it.schedulerRevision == revision + 1L }
         } ?: return null
         if (item.state == MainActivityBase.STATE_RETIRED) return null
-        if (signature != null) {
-            if (row == null || StudyQueueSeeder.answerSignature(row) != signature) return null
-        }
+        if (signature != null && (row == null || StudyQueueSeeder.answerSignature(row) != signature)) return null
         return item
     }
 }

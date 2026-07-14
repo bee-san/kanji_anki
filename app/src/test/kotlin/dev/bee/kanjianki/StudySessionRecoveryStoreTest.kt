@@ -139,6 +139,24 @@ class StudySessionRecoveryStoreTest {
     }
 
     @Test
+    fun invalidDormantFallbackEpochLeavesPendingEnvelopeUnchanged() {
+        val store = StudySessionRecoveryStore(preferences) {
+            nextEpoch += 1
+            if (nextEpoch == 1) "active-epoch" else ""
+        }
+        val active = store.replaceWithActive(activeSnapshot(typedDraft = "draft"))!!
+        val pending = store.transitionActiveToPending(
+            active,
+            pendingSnapshot(StudyAnswerFeedbackPhase.SUBMITTING),
+        )!!
+
+        assertFalse(store.disableOrdinaryResume())
+
+        assertEquals(pending, store.readPending())
+        assertTrue(store.shouldResumeOnOrdinaryLaunch())
+    }
+
+    @Test
     fun activeToPendingAndPendingUpdatesRejectDifferentRecoveryFamilies() {
         val store = store()
         val active = store.replaceWithActive(activeSnapshot(typedDraft = "draft"))!!

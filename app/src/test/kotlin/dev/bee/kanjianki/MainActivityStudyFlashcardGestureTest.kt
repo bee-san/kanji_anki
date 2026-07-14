@@ -148,6 +148,58 @@ class MainActivityStudyFlashcardGestureTest {
     }
 
     @Test
+    fun typedReadingMatchGradesCorrectAndKeepsAnswerVisible() {
+        val token = "typing-reading-token"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        val example = RecordsImportModels.Example(
+            "active",
+            101L,
+            202L,
+            "分離",
+            "ぶんり",
+            "separation",
+            "",
+            false,
+            0,
+        )
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("分", token, RecordsBase.LadderRung.WORD_READING),
+            row = RecordsImportModels.DashboardRow(
+                "分", null, "part", "ぶん", "分離", 1, "reason", "Needs practice", 1, 0, 0,
+                listOf(example),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.TYPE_READING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        StudySessionActions.activateStudySession(
+            session,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        val revealState = FlashcardRevealState(false)
+        activity.flashcardRevealState = revealState
+        activity.typingAnswerState = TypingAnswerState("ぶんり")
+        activity.prepareStudyAnswerFeedback(token)
+
+        activity.revealFlashcardAnswer()
+
+        assertTrue(revealState.isRevealed)
+        assertEquals(StudyAnswerOutcome.CORRECT, activity.studyAnswerFeedbackState?.outcome)
+        assertEquals(1, reviewIo.pendingCount())
+        reviewIo.runNext()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(StudyRatings.GOOD, reviewRating(activity, token))
+        assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+    }
+
+    @Test
     fun rejectedTypedSubmissionKeepsDraftHiddenAndAnswerable() {
         val token = "typing-rejected-token"
         val activity = createActivity()

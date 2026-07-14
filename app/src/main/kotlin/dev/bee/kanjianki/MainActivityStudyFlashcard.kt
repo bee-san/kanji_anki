@@ -70,9 +70,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     ): ComposeFlashcardRouteModel {
         resetFlashcardInteractionState()
         val feedback = activity.prepareStudyAnswerFeedback(session.token)
-        val answered = feedback.snapshot().phase == StudyAnswerFeedbackPhase.SUBMITTING ||
-            feedback.snapshot().phase == StudyAnswerFeedbackPhase.APPLIED
-        val typingTask = StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
+        val answered = isAnswered(feedback.snapshot().phase)
+        val typingTask = isTypingTask(session)
         val activeUiRecovery = activity.activeStudyUiRecovery(session.token)
         val restoredUi = activeUiRecovery?.snapshot
         val revealed = answered || (!typingTask && restoredUi?.revealed == true)
@@ -85,46 +84,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.flashcardSwipeFeedback = swipeFeedback
         val failureCauseState = RecognitionFailureCauseState()
         activity.recognitionFailureCauseState = failureCauseState
-        val heroPanel = when {
-            // sentence_reading (Goal 80): the front is the mined sentence. It is
-            // longer than a word, so it renders well below the 116sp kanji hero
-            // and the 44sp word_reading hero — 28sp keeps a typical sentence on
-            // screen. When no sentence example exists sentencePrompt falls back
-            // to the plain word.
-            StudyTaskCopy.isSentenceReadingTask(session) -> FlashcardHeroPanelModel(
-                StudyTextCopy.sentencePrompt(session),
-                KaniUiTokens.StudyQuestionTextSizeSp,
-                Typeface.DEFAULT,
-            )
-            StudyTaskCopy.isWordReadingTask(session) -> FlashcardHeroPanelModel(
-                StudyTextCopy.wordPrompt(session),
-                KaniUiTokens.StudyWordHeroTextSizeSp,
-                Typeface.DEFAULT,
-            )
-            else -> FlashcardHeroPanelModel(
-                session.item?.kanji ?: "",
-                KaniUiTokens.StudyFrontHeroTextSizeSp,
-                if (StudyTaskCopy.isFontRecognitionTask(session)) {
-                    StudyFontVariants.deterministic(
-                        activity,
-                        session.item?.kanji,
-                        session.item?.kanjiMeaningMemory?.totalReviews ?: 0,
-                    )
-                } else {
-                    Typeface.DEFAULT
-                },
-            )
-        }
-        val typingAnswer = if (typingTask) {
-            TypingAnswerState(if (answered) feedback.selectedAnswer else restoredUi?.typedDraft.orEmpty()).also {
-                activeUiRecovery?.let { expected ->
-                    it.onTextChanged = { value -> activity.persistActiveStudyTypedDraft(expected, value) }
-                }
-                activity.typingAnswerState = it
-            }
-        } else {
-            null
-        }
+        val heroPanel = flashcardHeroPanelModel(session)
+        val typingAnswer = buildTypingAnswerState(typingTask, answered, feedback, activeUiRecovery)
         val answerPanel = flashcardAnswerPanelModel(session, mnemonic)
         val cardModel = FlashcardCardModel(
             FlashcardPromptHeaderModel(
@@ -137,19 +98,11 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             revealState,
             typingReading = StudyTaskCopy.isTypingReadingTask(session),
         )
-        val actionBarState = FlashcardActionBarState(
+        val actionBarState = buildFlashcardActionBarState(
+            session,
+            activeUiRecovery,
+            failureCauseState,
             revealed,
-            Runnable { interaction.revealFlashcardAnswer(session.token, activeUiRecovery) },
-            Runnable {
-                if (!activity.matchesUngradedStudyRoute(session.token, activeUiRecovery)) {
-                    return@Runnable
-                } else if (requiresRecognitionFailureCause(session)) {
-                    failureCauseState.show("button")
-                } else {
-                    submitReviewForRoute(session, activeUiRecovery, MainActivityBase.RATING_AGAIN)
-                }
-            },
-            Runnable { submitReviewForRoute(session, activeUiRecovery, MainActivityBase.RATING_GOOD) },
         )
         activity.flashcardActionBarState = actionBarState
         return ComposeFlashcardRouteModel(
@@ -160,16 +113,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             activeRecovery = activeUiRecovery,
             failureCauseState = failureCauseState,
             onReview = { source, rating ->
-                if (rating == MainActivityBase.RATING_AGAIN && requiresRecognitionFailureCause(session)) {
-                    if (!activity.matchesUngradedStudyRoute(session.token, activeUiRecovery)) {
-                        false
-                    } else {
-                        failureCauseState.show(source)
-                        false
-                    }
-                } else {
-                    submitReviewForRoute(session, activeUiRecovery, rating, interactionSource = source)
-                }
+                handleReviewAction(session, activeUiRecovery, failureCauseState, source, rating)
             },
             onFailureCause = { cause, source ->
                 submitReviewForRoute(
@@ -181,6 +125,101 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 )
             },
         )
+    }
+
+    private fun isAnswered(phase: StudyAnswerFeedbackPhase): Boolean =
+        phase == StudyAnswerFeedbackPhase.SUBMITTING || phase == StudyAnswerFeedbackPhase.APPLIED
+
+    private fun isTypingTask(session: RecordsSchedulerModels.StudySession): Boolean =
+        StudyTaskCopy.isTypingMeaningTask(session) || StudyTaskCopy.isTypingReadingTask(session)
+
+    private fun flashcardHeroPanelModel(
+        session: RecordsSchedulerModels.StudySession,
+    ): FlashcardHeroPanelModel = when {
+        // sentence_reading (Goal 80): the front is the mined sentence. It is
+        // longer than a word, so it renders well below the 116sp kanji hero
+        // and the 44sp word_reading hero — 28sp keeps a typical sentence on
+        // screen. When no sentence example exists sentencePrompt falls back
+        // to the plain word.
+        StudyTaskCopy.isSentenceReadingTask(session) -> FlashcardHeroPanelModel(
+            StudyTextCopy.sentencePrompt(session),
+            KaniUiTokens.StudyQuestionTextSizeSp,
+            Typeface.DEFAULT,
+        )
+        StudyTaskCopy.isWordReadingTask(session) -> FlashcardHeroPanelModel(
+            StudyTextCopy.wordPrompt(session),
+            KaniUiTokens.StudyWordHeroTextSizeSp,
+            Typeface.DEFAULT,
+        )
+        else -> FlashcardHeroPanelModel(
+            session.item?.kanji ?: "",
+            KaniUiTokens.StudyFrontHeroTextSizeSp,
+            if (StudyTaskCopy.isFontRecognitionTask(session)) {
+                StudyFontVariants.deterministic(
+                    activity,
+                    session.item?.kanji,
+                    session.item?.kanjiMeaningMemory?.totalReviews ?: 0,
+                )
+            } else {
+                Typeface.DEFAULT
+            },
+        )
+    }
+
+    private fun buildTypingAnswerState(
+        typingTask: Boolean,
+        answered: Boolean,
+        feedback: StudyAnswerFeedbackState,
+        activeRecovery: StoredActiveStudyRecovery?,
+    ): TypingAnswerState? {
+        if (!typingTask) return null
+        val initialText = if (answered) feedback.selectedAnswer else activeRecovery?.snapshot?.typedDraft.orEmpty()
+        return TypingAnswerState(initialText).also { state ->
+            activeRecovery?.let { expected ->
+                state.onTextChanged = { value -> activity.persistActiveStudyTypedDraft(expected, value) }
+            }
+            activity.typingAnswerState = state
+        }
+    }
+
+    private fun buildFlashcardActionBarState(
+        session: RecordsSchedulerModels.StudySession,
+        activeRecovery: StoredActiveStudyRecovery?,
+        failureCauseState: RecognitionFailureCauseState,
+        revealed: Boolean,
+    ): FlashcardActionBarState = FlashcardActionBarState(
+        revealed,
+        Runnable { interaction.revealFlashcardAnswer(session.token, activeRecovery) },
+        Runnable { handleFailAction(session, activeRecovery, failureCauseState) },
+        Runnable { submitReviewForRoute(session, activeRecovery, MainActivityBase.RATING_GOOD) },
+    )
+
+    private fun handleFailAction(
+        session: RecordsSchedulerModels.StudySession,
+        activeRecovery: StoredActiveStudyRecovery?,
+        failureCauseState: RecognitionFailureCauseState,
+    ) {
+        if (!activity.matchesUngradedStudyRoute(session.token, activeRecovery)) return
+        if (requiresRecognitionFailureCause(session)) {
+            failureCauseState.show("button")
+        } else {
+            submitReviewForRoute(session, activeRecovery, MainActivityBase.RATING_AGAIN)
+        }
+    }
+
+    private fun handleReviewAction(
+        session: RecordsSchedulerModels.StudySession,
+        activeRecovery: StoredActiveStudyRecovery?,
+        failureCauseState: RecognitionFailureCauseState,
+        source: String,
+        rating: String,
+    ): Boolean {
+        if (rating != MainActivityBase.RATING_AGAIN || !requiresRecognitionFailureCause(session)) {
+            return submitReviewForRoute(session, activeRecovery, rating, interactionSource = source)
+        }
+        if (!activity.matchesUngradedStudyRoute(session.token, activeRecovery)) return false
+        failureCauseState.show(source)
+        return false
     }
 
     fun flashcardAnswerPanelModel(

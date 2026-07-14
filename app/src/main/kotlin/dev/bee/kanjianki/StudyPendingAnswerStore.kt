@@ -253,36 +253,34 @@ internal class StudySessionRecoveryStore(
     fun disableOrdinaryResume(): Boolean = synchronized(LOCK) {
         when (val current = readLocked(clearMalformed = true)) {
             null -> true
-            is StoredActiveStudyRecovery -> {
-                if (!current.resumeOnOrdinaryLaunch && current.writeEpoch.isEmpty()) {
-                    true
-                } else {
-                    writeActiveLocked(
-                        current.snapshot,
-                        writeEpoch = "",
-                        resumeOnOrdinaryLaunch = false,
-                        durable = true,
-                    ) != null
-                }
-            }
-            is StoredPendingStudyRecovery -> {
-                if (!current.resumeOnOrdinaryLaunch) {
-                    true
-                } else {
-                    val dormantFallbackEpoch = if (current.fallbackActive == null) {
-                        null
-                    } else {
-                        epochFactory().takeIf(::validEpoch) ?: return@synchronized false
-                    }
-                    writePendingLocked(
-                        current.snapshot,
-                        current.fallbackActive,
-                        dormantFallbackEpoch,
-                        resumeOnOrdinaryLaunch = false,
-                    ) != null
-                }
-            }
+            is StoredActiveStudyRecovery -> disableActiveOrdinaryResumeLocked(current)
+            is StoredPendingStudyRecovery -> disablePendingOrdinaryResumeLocked(current)
         }
+    }
+
+    private fun disableActiveOrdinaryResumeLocked(current: StoredActiveStudyRecovery): Boolean {
+        if (!current.resumeOnOrdinaryLaunch && current.writeEpoch.isEmpty()) return true
+        return writeActiveLocked(
+            current.snapshot,
+            writeEpoch = "",
+            resumeOnOrdinaryLaunch = false,
+            durable = true,
+        ) != null
+    }
+
+    private fun disablePendingOrdinaryResumeLocked(current: StoredPendingStudyRecovery): Boolean {
+        if (!current.resumeOnOrdinaryLaunch) return true
+        val dormantFallbackEpoch = if (current.fallbackActive == null) {
+            null
+        } else {
+            epochFactory().takeIf(::validEpoch) ?: return false
+        }
+        return writePendingLocked(
+            current.snapshot,
+            current.fallbackActive,
+            dormantFallbackEpoch,
+            resumeOnOrdinaryLaunch = false,
+        ) != null
     }
 
     fun clearIfUnchanged(expected: StoredStudyRecovery): Boolean = synchronized(LOCK) {
@@ -403,40 +401,50 @@ internal class StudySessionRecoveryStore(
         if (raw.length > MAX_ENCODED_CHARS) return null
         return runCatching {
             val json = JSONObject(raw)
-            when (json.getInt(KEY_VERSION)) {
-                LEGACY_FORMAT_VERSION -> decodeLegacyPending(json, raw)
-                FORMAT_VERSION -> when (json.getString(KEY_KIND)) {
-                    KIND_ACTIVE -> {
-                        val snapshot = decodeActivePayload(json.getJSONObject(KEY_ACTIVE)) ?: return null
-                        val resume = json.getBoolean(KEY_RESUME)
-                        val epoch = json.optString(KEY_WRITE_EPOCH)
-                        if (resume && !validEpoch(epoch)) return null
-                        StoredActiveStudyRecovery(snapshot, epoch, resume, raw)
-                    }
-                    KIND_PENDING -> {
-                        val snapshot = decodePendingPayload(json.getJSONObject(KEY_PENDING)) ?: return null
-                        val fallback = json.optJSONObject(KEY_FALLBACK_ACTIVE)?.let(::decodeActivePayload)
-                        if (json.has(KEY_FALLBACK_ACTIVE) && fallback == null) return null
-                        val fallbackEpoch = json.optString(KEY_FALLBACK_WRITE_EPOCH)
-                            .takeIf { json.has(KEY_FALLBACK_WRITE_EPOCH) }
-                        if ((fallback == null) != (fallbackEpoch == null) ||
-                            (fallbackEpoch != null && !validEpoch(fallbackEpoch))
-                        ) {
-                            return null
-                        }
-                        StoredPendingStudyRecovery(
-                            snapshot,
-                            fallback,
-                            fallbackEpoch,
-                            json.getBoolean(KEY_RESUME),
-                            raw,
-                        )
-                    }
-                    else -> null
-                }
-                else -> null
-            }
+            decodeVersioned(json, raw)
         }.getOrNull()
+    }
+
+    private fun decodeVersioned(json: JSONObject, raw: String): StoredStudyRecovery? =
+        when (json.getInt(KEY_VERSION)) {
+            LEGACY_FORMAT_VERSION -> decodeLegacyPending(json, raw)
+            FORMAT_VERSION -> decodeCurrent(json, raw)
+            else -> null
+        }
+
+    private fun decodeCurrent(json: JSONObject, raw: String): StoredStudyRecovery? =
+        when (json.getString(KEY_KIND)) {
+            KIND_ACTIVE -> decodeStoredActive(json, raw)
+            KIND_PENDING -> decodeStoredPending(json, raw)
+            else -> null
+        }
+
+    private fun decodeStoredActive(json: JSONObject, raw: String): StoredActiveStudyRecovery? {
+        val snapshot = decodeActivePayload(json.getJSONObject(KEY_ACTIVE)) ?: return null
+        val resume = json.getBoolean(KEY_RESUME)
+        val epoch = json.optString(KEY_WRITE_EPOCH)
+        if (resume && !validEpoch(epoch)) return null
+        return StoredActiveStudyRecovery(snapshot, epoch, resume, raw)
+    }
+
+    private fun decodeStoredPending(json: JSONObject, raw: String): StoredPendingStudyRecovery? {
+        val snapshot = decodePendingPayload(json.getJSONObject(KEY_PENDING)) ?: return null
+        val fallback = json.optJSONObject(KEY_FALLBACK_ACTIVE)?.let(::decodeActivePayload)
+        if (json.has(KEY_FALLBACK_ACTIVE) && fallback == null) return null
+        val fallbackEpoch = json.optString(KEY_FALLBACK_WRITE_EPOCH)
+            .takeIf { json.has(KEY_FALLBACK_WRITE_EPOCH) }
+        if ((fallback == null) != (fallbackEpoch == null) ||
+            (fallbackEpoch != null && !validEpoch(fallbackEpoch))
+        ) {
+            return null
+        }
+        return StoredPendingStudyRecovery(
+            snapshot,
+            fallback,
+            fallbackEpoch,
+            json.getBoolean(KEY_RESUME),
+            raw,
+        )
     }
 
     private fun encodeActivePayload(snapshot: StudyActiveSessionSnapshot): JSONObject = JSONObject()

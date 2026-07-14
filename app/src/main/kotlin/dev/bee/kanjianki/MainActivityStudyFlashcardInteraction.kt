@@ -48,27 +48,35 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         expectedToken: String?,
         expectedRecovery: StoredActiveStudyRecovery?,
     ) {
-        if (expectedToken != null && activity.activeSession?.token != expectedToken) {
-            return
-        }
-        if (expectedRecovery != null && !activity.matchesActiveStudyRecovery(expectedRecovery)) {
-            return
-        }
-        if (activity.flashcardAnswerRevealed) {
-            return
-        }
+        if (!canRevealFlashcard(expectedToken, expectedRecovery)) return
         activity.flashcardAnswerRevealed = true
         val session = activity.activeSession
-        if (session != null && StudyTaskCopy.isTypingReadingTask(session)) {
-            val typed = activity.typingAnswerState?.text?.toString().orEmpty()
-            val expected = StudyTextCopy.collectionReadingForSession(session)
-            val matched = TypedReadingPolicy.matches(typed, expected)
-            Toast.makeText(
-                activity,
-                if (matched) StudyTextCopy.typingAnswerAcceptedToast() else StudyTextCopy.typingReadingIncorrectToast(),
-                Toast.LENGTH_SHORT,
-            ).show()
-            val accepted = activity.submitReview(
+        when {
+            session != null && StudyTaskCopy.isTypingReadingTask(session) -> submitTypingReading(session)
+            session != null && StudyTaskCopy.isTypingMeaningTask(session) -> submitTypingMeaning(session)
+            else -> revealUngradedFlashcard(expectedRecovery)
+        }
+    }
+
+    private fun canRevealFlashcard(
+        expectedToken: String?,
+        expectedRecovery: StoredActiveStudyRecovery?,
+    ): Boolean =
+        (expectedToken == null || activity.activeSession?.token == expectedToken) &&
+            (expectedRecovery == null || activity.matchesActiveStudyRecovery(expectedRecovery)) &&
+            !activity.flashcardAnswerRevealed
+
+    private fun submitTypingReading(session: RecordsSchedulerModels.StudySession) {
+        val typed = activity.typingAnswerState?.text?.toString().orEmpty()
+        val expected = StudyTextCopy.collectionReadingForSession(session)
+        val matched = TypedReadingPolicy.matches(typed, expected)
+        Toast.makeText(
+            activity,
+            if (matched) StudyTextCopy.typingAnswerAcceptedToast() else StudyTextCopy.typingReadingIncorrectToast(),
+            Toast.LENGTH_SHORT,
+        ).show()
+        completeTypingSubmission(
+            activity.submitReview(
                 if (matched) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
                 false,
                 answerEvidence = AnswerEvidence(
@@ -81,35 +89,37 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                     renderedExpression = StudyTextCopy.wordPrompt(session),
                     renderedReading = expected,
                 ),
-            )
-            if (accepted) {
-                showFlashcardAnswerSurface()
-            } else {
-                activity.flashcardAnswerRevealed = false
-            }
-            return
+            ),
+        )
+    }
+
+    private fun submitTypingMeaning(session: RecordsSchedulerModels.StudySession) {
+        val matched = TypingAnswerMatcher.matches(
+            activity.currentDictionaryLookup(),
+            session.item?.kanji ?: "",
+            activity.typingAnswerState?.text?.toString() ?: "",
+            StudyTextCopy.collectionMeaningForSession(session),
+        )
+        if (matched) {
+            Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show()
         }
-        if (session != null && StudyTaskCopy.isTypingMeaningTask(session)) {
-            val matched = TypingAnswerMatcher.matches(
-                activity.currentDictionaryLookup(),
-                session.item?.kanji ?: "",
-                activity.typingAnswerState?.text?.toString() ?: "",
-                StudyTextCopy.collectionMeaningForSession(session)
-            )
-            if (matched) {
-                Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show()
-            }
-            val accepted = activity.submitReview(
+        completeTypingSubmission(
+            activity.submitReview(
                 if (matched) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
                 false,
-            )
-            if (accepted) {
-                showFlashcardAnswerSurface()
-            } else {
-                activity.flashcardAnswerRevealed = false
-            }
-            return
+            ),
+        )
+    }
+
+    private fun completeTypingSubmission(accepted: Boolean) {
+        if (accepted) {
+            showFlashcardAnswerSurface()
+        } else {
+            activity.flashcardAnswerRevealed = false
         }
+    }
+
+    private fun revealUngradedFlashcard(expectedRecovery: StoredActiveStudyRecovery?) {
         if (expectedRecovery != null && !activity.persistActiveStudyReveal(expectedRecovery)) {
             activity.flashcardAnswerRevealed = false
             return

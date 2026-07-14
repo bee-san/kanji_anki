@@ -92,11 +92,12 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.preserveStudyRecoveryForHarnessRoute = false
         activity.screenshotThemeChoiceOverride = null
         val study = activity as? MainActivityStudy
-        val restoreRecreatedStudy = activity.restoreStudyRouteOnCreate &&
-            study?.shouldResumeStudyOnOrdinaryLaunch() == true
+        val recreatedStudy = study?.takeIf {
+            activity.restoreStudyRouteOnCreate && it.shouldResumeStudyOnOrdinaryLaunch()
+        }
         activity.restoreStudyRouteOnCreate = false
-        if (restoreRecreatedStudy) {
-            study?.renderStudyRecoveryOnly()
+        if (recreatedStudy != null) {
+            recreatedStudy.renderStudyRecoveryOnly()
             return
         }
         val shortcutDestination = launcherShortcutDestination(intent?.action)

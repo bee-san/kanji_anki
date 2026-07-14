@@ -44,17 +44,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
      * renders the resulting screen when invoked on the main thread.
      */
     private fun computeStudyRender(recoveryOnly: Boolean): () -> Unit {
-        if (!study.preserveStudyRecoveryForHarnessRoute) {
-            val allowDormantRecovery = !recoveryOnly
-            computePendingAnswerRender(allowDormantRecovery)?.let { return it }
-            computeActiveSessionRender(allowDormantRecovery)?.let { return it }
-            if (recoveryOnly) {
-                if (study.shouldResumeStudyOnOrdinaryLaunch()) {
-                    return { study.renderStudyRecoveryOnly() }
-                }
-                return { study.renderHome() }
-            }
-        }
+        computeStoredRecoveryRender(recoveryOnly)?.let { return it }
         val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
         val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
         val now = System.currentTimeMillis()
@@ -160,6 +150,19 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
     }
 
+    private fun computeStoredRecoveryRender(recoveryOnly: Boolean): (() -> Unit)? {
+        if (study.preserveStudyRecoveryForHarnessRoute) return null
+        val allowDormantRecovery = !recoveryOnly
+        computePendingAnswerRender(allowDormantRecovery)?.let { return it }
+        computeActiveSessionRender(allowDormantRecovery)?.let { return it }
+        if (!recoveryOnly) return null
+        return if (study.shouldResumeStudyOnOrdinaryLaunch()) {
+            { study.renderStudyRecoveryOnly() }
+        } else {
+            { study.renderHome() }
+        }
+    }
+
     private fun computePendingAnswerRender(allowDormantRecovery: Boolean): (() -> Unit)? {
         val stored = study.pendingStudyRecovery() ?: return null
         if (!allowDormantRecovery && !stored.resumeOnOrdinaryLaunch) return null
@@ -170,29 +173,61 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val canonicalItems = study.store.studyItemsForKanji(listOf(saved.kanji))
         val repair = saved.taskType == MainActivityBase.TASK_REPAIR_WRITING
         val consumed = !repair && study.store.hasConsumedToken(saved.feedback.sessionToken)
-        val trustedLegacyApplied = saved.answerSignature == null && saved.schedulerRevision == null &&
-            savedPhase == StudyAnswerFeedbackPhase.APPLIED
-        if (!repair && !consumed && !trustedLegacyApplied) {
-            val fallback = stored.fallbackActive
-            val fallbackSession = fallback?.let(::restoredActiveSession)
-            if (fallbackSession != null) {
-                val render = study.prepareSessionRender(fallbackSession)
-                return {
-                    if (study.acceptPendingFallbackStudySession(stored, fallbackSession)) {
-                        render()
-                    } else {
-                        study.renderStudyRecoveryOnly()
-                    }
-                }
+        val trustedLegacyApplied = isTrustedLegacyApplied(saved)
+        if (needsPendingFallback(repair, consumed, trustedLegacyApplied)) {
+            return computePendingFallbackRender(stored)
+        }
+        if (!isAppliedPendingAnswer(repair, savedPhase, consumed, trustedLegacyApplied)) {
+            study.clearStudyRecoveryIfUnchanged(stored)
+            return null
+        }
+        return computeAppliedPendingAnswerRender(stored, repair, row, canonicalItems)
+    }
+
+    private fun isTrustedLegacyApplied(saved: StudyPendingAnswerSnapshot): Boolean =
+        saved.answerSignature == null &&
+            saved.schedulerRevision == null &&
+            saved.feedback.phase == StudyAnswerFeedbackPhase.APPLIED
+
+    private fun needsPendingFallback(
+        repair: Boolean,
+        consumed: Boolean,
+        trustedLegacyApplied: Boolean,
+    ): Boolean = !repair && !consumed && !trustedLegacyApplied
+
+    private fun isAppliedPendingAnswer(
+        repair: Boolean,
+        phase: StudyAnswerFeedbackPhase,
+        consumed: Boolean,
+        trustedLegacyApplied: Boolean,
+    ): Boolean = (repair && phase == StudyAnswerFeedbackPhase.APPLIED) || consumed || trustedLegacyApplied
+
+    private fun computePendingFallbackRender(
+        stored: StoredPendingStudyRecovery,
+    ): (() -> Unit)? {
+        val fallbackSession = stored.fallbackActive?.let(::restoredActiveSession)
+        if (fallbackSession == null) {
+            study.clearStudyRecoveryIfUnchanged(stored)
+            return null
+        }
+        val render = study.prepareSessionRender(fallbackSession)
+        return {
+            if (study.acceptPendingFallbackStudySession(stored, fallbackSession)) {
+                render()
+            } else {
+                study.renderStudyRecoveryOnly()
             }
-            study.clearStudyRecoveryIfUnchanged(stored)
-            return null
         }
-        val applied = (repair && savedPhase == StudyAnswerFeedbackPhase.APPLIED) || consumed || trustedLegacyApplied
-        if (!applied) {
-            study.clearStudyRecoveryIfUnchanged(stored)
-            return null
-        }
+    }
+
+    private fun computeAppliedPendingAnswerRender(
+        stored: StoredPendingStudyRecovery,
+        repair: Boolean,
+        row: RecordsImportModels.DashboardRow?,
+        canonicalItems: List<RecordsStudyModels.StudyItem>,
+    ): (() -> Unit)? {
+        val saved = stored.snapshot
+        val savedPhase = saved.feedback.phase
         val item = if (repair) {
             pendingRepairItem(saved)
         } else {
