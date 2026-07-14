@@ -256,16 +256,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
      * The shell host sets a per-route default; sub-screens may override it
      * after rendering.
      */
-    @JvmField
     var backAction: Runnable? = null
+        set(value) {
+            field = value
+            backCallback.isEnabled = value != null
+        }
 
-    private val backCallback = object : androidx.activity.OnBackPressedCallback(true) {
+    private val backCallback = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
-            if (!handleBackNavigation()) {
-                isEnabled = false
-                onBackPressedDispatcher.onBackPressed()
-                isEnabled = true
-            }
+            handleBackNavigation()
         }
     }
 
