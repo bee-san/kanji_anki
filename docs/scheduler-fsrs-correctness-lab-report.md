@@ -136,6 +136,33 @@ Corpora: a breeze-through card `[Good]` and struggling cards with 1/3/5 `Again`s
 
 **Decision: REJECTED for now; harness retained.** The current struggle-blind path is a real deviation, but the naive history chain over-corrects and would silently change every early interval and the learning/review boundary. Adopting D2 should wait for a *tempered* variant (e.g. cap the number of learning answers fed into the chain, or blend `initialState(graduatingRating)` with the history stability) evaluated against regenerated goldens and the pinned relearning double-update (`RelearningGraduationDifficultyTest`, Goal 60), which must stay unchanged. Until then the production path is unchanged and `GraduationHistoryExperimentTest` keeps the comparison discoverable. If adopted later, it lands as its own follow-up with regenerated goldens and updated AGENTS.md graduation notes.
 
+## Goal 122 — Tempered D2 variants (2026-07-14)
+
+**Method.** Extended `GraduationHistoryExperimentTest` with two tempered variant families:
+
+- **Cap-N:** feed at most N (sweep N ∈ {1, 2}) most-recent learning answers into the same-day chain before the graduating rating. This limits the number of collapse-multiplications.
+- **Blend-α:** `stability = α · initialState(graduatingRating).stability + (1-α) · historyChain.stability` (sweep α ∈ {0.5, 0.7, 0.9}). Difficulty from the graduating rating alone.
+
+Corpora: breeze `[Good]`, struggling-1 `[Again, Good]`, struggling-5 `[Again×5, Good]`.
+
+**Findings.**
+
+| variant | breeze stab | strug-1 stab | strug-5 stab | strug-5 ≥ 25% breeze? |
+| --- | --- | --- | --- | --- |
+| Current (baseline) | 2.307 | 2.307 | 2.307 | ✓ (100%) |
+| Cap-1 | 2.307 | 0.247 | 0.247 | ✗ (10.7%) |
+| Cap-2 | 2.307 | 0.247 | 0.046 | ✗ (2.0%) |
+| Blend-0.5 | 2.307 | 1.277 | 1.159 | ✓ (50.2%) |
+| Blend-0.7 | 2.307 | 1.689 | 1.621 | ✓ (70.3%) |
+| Blend-0.9 | 2.307 | 2.101 | 2.082 | ✓ (90.2%) |
+
+**Analysis.**
+
+1. **Cap-N** still collapses too heavily: even Cap-1 (only the immediate pre-graduating answer) produces strug-5 stability at 10.7% of the breeze card's baseline. Cap-2 is worse. The cap limits the chain length but the FSRS same-day `nextState` multiplier is so aggressive that even a single `Again` before `Good` drops stability below the 25% floor.
+2. **Blend-α** variants all preserve the ordering (struggling < breeze) while staying well above the 25% floor. Blend-0.7 is the recommended candidate: struggling-5 graduates at ~70% of baseline stability (rather than identically), which provides meaningful differentiation without the boundary collapse.
+
+**Decision: RE-DEFERRED with evidence (D-P10).** Blend-0.7 qualifies as a viable candidate. Adoption is a follow-up work item requiring: regenerated goldens, `RelearningGraduationDifficultyTest` re-pinned intentionally, AGENTS.md "Do not change either path" paragraph updated. Production behavior unchanged by this goal.
+
 ## Snapshot reference
 The matching compact snapshot lives in the test resources and is asserted by `SchedulerParitySnapshotTest`.
 
