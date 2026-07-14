@@ -131,6 +131,30 @@ class StudyRepairActionsTest {
     }
 
     @Test
+    fun committedRepairCompletionSurvivesFailingBookkeepingCallbacks() {
+        val repair = repair("active-token")
+        var markerCalled = false
+
+        val completion = StudyRepairActions.completeSimilarWritingRepair(
+            repair,
+            MainActivityBase.RATING_GOOD,
+            2222L,
+            StudyRepairActions.SimilarWritingRepairFinisher { _, _, _, _ -> true },
+            StudyRepairActions.RepairOutcomeRecorder { _, _ ->
+                throw IllegalStateException("outcome tracker unavailable")
+            },
+            StudyRepairActions.RepairTaskMarker {
+                markerCalled = true
+                throw IllegalStateException("task marker unavailable")
+            },
+        )
+
+        assertTrue(completion.saved)
+        assertTrue(completion.passed)
+        assertTrue(markerCalled)
+    }
+
+    @Test
     fun skipSimilarWritingRepairRecordsOutcomeAndMarksTaskComplete() {
         val repair = repair("active-token")
         val events = mutableListOf<String>()

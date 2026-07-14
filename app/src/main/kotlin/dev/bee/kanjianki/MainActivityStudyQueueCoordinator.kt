@@ -222,7 +222,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     private fun computePendingAnswerRender(allowDormantRecovery: Boolean): (() -> Unit)? {
         val stored = study.pendingStudyRecovery() ?: return null
         if (!allowDormantRecovery && !stored.resumeOnOrdinaryLaunch) return null
-        val saved = stored.snapshot
+        val saved = reconcileRepairSubmitting(stored.snapshot)
+        if (saved == null) {
+            study.clearStudyRecoveryIfUnchanged(stored)
+            return null
+        }
         val savedPhase = saved.feedback.phase
         val rows = study.store.activeDashboardRows()
         val row = rows.firstOrNull { it.kanji == saved.kanji }
@@ -238,6 +242,31 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return null
         }
         return computeAppliedPendingAnswerRender(stored, repair, row, canonicalItems)
+    }
+
+    private fun reconcileRepairSubmitting(
+        saved: StudyPendingAnswerSnapshot,
+    ): StudyPendingAnswerSnapshot? {
+        if (saved.taskType != MainActivityBase.TASK_REPAIR_WRITING ||
+            saved.feedback.phase != StudyAnswerFeedbackPhase.SUBMITTING
+        ) {
+            return saved
+        }
+        val repairId = saved.repairId ?: return null
+        val attemptsBefore = saved.repairAttempts ?: return null
+        val passed = saved.feedback.outcome == StudyAnswerOutcome.CORRECT
+        if (!study.store.hasFinishedSimilarWritingRepairAttempt(
+                repairId,
+                saved.feedback.sessionToken,
+                attemptsBefore,
+                passed,
+            )
+        ) {
+            return null
+        }
+        return saved.copy(
+            feedback = saved.feedback.copy(phase = StudyAnswerFeedbackPhase.APPLIED),
+        )
     }
 
     private fun isTrustedLegacyApplied(saved: StudyPendingAnswerSnapshot): Boolean =
