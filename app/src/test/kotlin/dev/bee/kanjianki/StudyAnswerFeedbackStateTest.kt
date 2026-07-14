@@ -55,6 +55,33 @@ class StudyAnswerFeedbackStateTest {
     }
 
     @Test
+    fun autoContinueFlagIsSetByBeginAndClearedByRetry() {
+        val state = StudyAnswerFeedbackState("token-裂")
+        assertFalse(state.autoContinueOnApply)
+
+        assertTrue(state.begin(StudyAnswerOutcome.CORRECT, autoContinue = true))
+        assertTrue(state.autoContinueOnApply)
+
+        assertTrue(state.resetForRetry("token-裂"))
+        assertFalse(state.autoContinueOnApply)
+
+        assertTrue(state.begin(StudyAnswerOutcome.CORRECT))
+        assertFalse(state.autoContinueOnApply)
+    }
+
+    @Test
+    fun autoContinueFlagIsTransientAcrossSnapshotRestore() {
+        val state = StudyAnswerFeedbackState("token-裂")
+        assertTrue(state.begin(StudyAnswerOutcome.CORRECT, autoContinue = true))
+        assertTrue(state.markApplied("token-裂"))
+
+        val restored = StudyAnswerFeedbackState.restore(state.snapshot())
+
+        assertFalse(restored.autoContinueOnApply)
+        assertTrue(restored.continueEnabled)
+    }
+
+    @Test
     fun failedDurableContinueCanRollbackTheMountedStateForRetry() {
         val state = StudyAnswerFeedbackState("token-裂")
         assertTrue(state.begin(StudyAnswerOutcome.CORRECT))
