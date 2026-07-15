@@ -225,16 +225,26 @@ private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
     ) {
         dayCounts.forEachIndexed { index, count ->
             if (index > 0) Spacer(GlanceModifier.width(4.dp))
-            val alpha = if (maxCount > 0) (count.toFloat() / maxCount).coerceIn(0.15f, 1.0f) else 0.15f
-            val cellRole = if (count == 0) palette.track else palette.primary.withAlpha(alpha)
             Box(
                 modifier = GlanceModifier
                     .size(16.dp)
-                    .background(cellRole.toProvider()),
+                    .background(heatCellRole(count, maxCount, palette).toProvider()),
                 contentAlignment = Alignment.Center,
             ) {}
         }
     }
+}
+
+/**
+ * Shared activity-cell color: empty days use the track color, active days use
+ * the primary color scaled by relative intensity.
+ */
+internal fun heatCellRole(count: Int, maxCount: Int, palette: KaniWidgetPalette): KaniWidgetColorRole {
+    if (count == 0) {
+        return palette.track
+    }
+    val alpha = if (maxCount > 0) (count.toFloat() / maxCount).coerceIn(0.15f, 1.0f) else 0.15f
+    return palette.primary.withAlpha(alpha)
 }
 
 @Composable
@@ -277,19 +287,22 @@ private fun HeatmapGrid(dayCounts: List<Int>, palette: KaniWidgetPalette) {
     Column {
         cells.chunked(KaniWidgetSnapshotLoader.STRIP_DAYS).forEachIndexed { rowIndex, week ->
             if (rowIndex > 0) Spacer(GlanceModifier.height(2.dp))
-            Row {
-                week.forEachIndexed { index, count ->
-                    if (index > 0) Spacer(GlanceModifier.width(2.dp))
-                    val alpha = if (maxCount > 0) (count.toFloat() / maxCount).coerceIn(0.15f, 1.0f) else 0.15f
-                    val cellRole = if (count == 0) palette.track else palette.primary.withAlpha(alpha)
-                    Box(
-                        modifier = GlanceModifier
-                            .size(13.dp)
-                            .background(cellRole.toProvider()),
-                        contentAlignment = Alignment.Center,
-                    ) {}
-                }
-            }
+            HeatmapWeekRow(week, maxCount, palette)
+        }
+    }
+}
+
+@Composable
+private fun HeatmapWeekRow(week: List<Int>, maxCount: Int, palette: KaniWidgetPalette) {
+    Row {
+        week.forEachIndexed { index, count ->
+            if (index > 0) Spacer(GlanceModifier.width(2.dp))
+            Box(
+                modifier = GlanceModifier
+                    .size(13.dp)
+                    .background(heatCellRole(count, maxCount, palette).toProvider()),
+                contentAlignment = Alignment.Center,
+            ) {}
         }
     }
 }

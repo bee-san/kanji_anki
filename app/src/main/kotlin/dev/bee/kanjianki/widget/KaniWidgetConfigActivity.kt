@@ -91,7 +91,7 @@ class KaniWidgetConfigActivity : ComponentActivity() {
 }
 
 @Composable
-private fun KaniWidgetConfigScreen(onSave: (KaniWidgetInstanceOptions) -> Unit) {
+internal fun KaniWidgetConfigScreen(onSave: (KaniWidgetInstanceOptions) -> Unit) {
     var style by remember { mutableStateOf(KaniWidgetStyle.DUE_CARD) }
     var themeOverride by remember { mutableStateOf<KaniThemeChoice?>(null) }
     Surface(modifier = Modifier.fillMaxSize()) {
