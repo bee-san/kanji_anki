@@ -15,6 +15,7 @@ class StudyCueFormatter private constructor() {
         private val TRAILING_JAPANESE_EXAMPLE_PATTERN: Pattern = Pattern.compile(
             "(?i)([a-z][\\p{Punct}]*)\\s+[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}].*$",
         )
+        private val TRAILING_SEE_ALSO_PATTERN: Pattern = Pattern.compile("(?i)[\\s\\p{Punct}]*\\bsee also\\b[\\s\\p{Punct}]*$")
         private val LEADING_METADATA_SEPARATOR_PATTERN: Pattern = Pattern.compile("\\s+")
         private val NON_ALPHA_NUMERIC_PATTERN: Pattern = Pattern.compile("[^a-z0-9-]")
         private val MULTI_WHITESPACE_PATTERN: Pattern = Pattern.compile("\\s+")
@@ -49,6 +50,7 @@ class StudyCueFormatter private constructor() {
             "pronoun",
             "conjunction",
             "particle",
+            "yoji",
         )
 
         @JvmStatic
@@ -162,6 +164,7 @@ class StudyCueFormatter private constructor() {
             value = ADJECTIVE_VERB_PATTERN.matcher(value).replaceAll("")
             value = stripLeadingMetadataWords(value)
             value = TRAILING_JAPANESE_EXAMPLE_PATTERN.matcher(value).replaceAll("\$1")
+            value = TRAILING_SEE_ALSO_PATTERN.matcher(value).replaceAll("")
             return cleanInline(value)
         }
 
@@ -230,6 +233,9 @@ class StudyCueFormatter private constructor() {
                 normalized == "na-adjective" ||
                 normalized == "i-adjective" ||
                 normalized == "no-adjective" ||
+                normalized == "na-adj" ||
+                normalized == "i-adj" ||
+                normalized == "no-adj" ||
                 LEADING_METADATA.contains(normalized)
         }
 

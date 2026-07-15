@@ -100,18 +100,22 @@ android {
             enableAndroidTestCoverage = true
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            ndk {
+                abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+            }
         }
     }
 
     lint {
         abortOnError = true
         warningsAsErrors = true
-        disable += setOf("GradleDependency", "OldTargetApi")
+        disable += setOf("GradleDependency", "OldTargetApi", "ChromeOsAbiSupport")
     }
 }
 
@@ -189,6 +193,9 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":dictionary-core"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.material3.wsc)
@@ -206,6 +213,7 @@ dependencies {
     testImplementation(libs.androidx.test.runner)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.robolectric)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.core)

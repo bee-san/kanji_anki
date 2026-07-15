@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Kani pre-commit hook — fast lint checks on staged Kotlin files.
+#
+# Catches critical lint violations (hardcoded text, missing content descriptions,
+# unused imports) before they reach CI. Runs only when Kotlin source files are
+# staged, so non-code commits (docs, CI config) skip instantly.
+#
+# Skip with: git commit --no-verify
+# Install with: git config core.hooksPath .githooks
+#
+
+STAGED_KT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.kt$')
+
+if [ -z "$STAGED_KT" ]; then
+    exit 0
+fi
+
+echo "pre-commit: checking staged Kotlin files..."
+
+# Run targeted Android lint on the app module for high-value rules only.
+# The --quiet flag suppresses the full report path; we only care about errors.
+if ! ./gradlew :app:lintDebug \
+    -Dlint.baselines.continue=true \
+    --quiet \
+    > /dev/null 2>&1; then
+
+    echo ""
+    echo "╭──────────────────────────────────────────────────────╮"
+    echo "│  Lint found errors. Run ./gradlew :app:lintDebug     │"
+    echo "│  to see the full report, then fix and re-stage.      │"
+    echo "│                                                      │"
+    echo "│  Skip this check with: git commit --no-verify        │"
+    echo "╰──────────────────────────────────────────────────────╯"
+    echo ""
+    exit 1
+fi
+
+echo "pre-commit: lint passed."

@@ -377,6 +377,18 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    fun recordUpdateCheckFailed(atMillis: Long) {
+        putLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, atMillis)
+    }
+
+    fun clearUpdateCheckFailed() {
+        putLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, 0L)
+    }
+
+    fun updateCheckFailedAt(): Long {
+        return getLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, 0L)
+    }
+
     fun installPermissionPromptShown(): Boolean {
         return getIntSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_SHOWN, 0) == 1
     }

@@ -690,6 +690,18 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         studySettings().recordAutoUpdateResult(checkedAt, result, version, pendingApkName, pendingMessage)
     }
 
+    fun recordUpdateCheckFailed(atMillis: Long) {
+        studySettings().recordUpdateCheckFailed(atMillis)
+    }
+
+    fun clearUpdateCheckFailed() {
+        studySettings().clearUpdateCheckFailed()
+    }
+
+    fun updateCheckFailedAt(): Long {
+        return studySettings().updateCheckFailedAt()
+    }
+
     fun clearPendingAutoUpdate(result: String?) {
         studySettings().clearPendingAutoUpdate(result)
     }
