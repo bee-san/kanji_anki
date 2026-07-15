@@ -3,6 +3,8 @@
     <string name="copied_anki_search">Copied</string>
     <string name="kani_widget_description">Due reviews and study streak</string>
     <string name="kani_widget_loading">Loading Kani…</string>
+    <string name="kani_widget_preview_count">12 reviews ready</string>
+    <string name="kani_widget_preview_streak">5-day streak</string>
     <string name="shortcut_study_short_label">Study</string>
     <string name="shortcut_study_long_label">Study now</string>
     <string name="shortcut_browse_short_label">Browse</string>

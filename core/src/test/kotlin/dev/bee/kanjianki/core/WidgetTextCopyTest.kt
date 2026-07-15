@@ -33,6 +33,27 @@ class WidgetTextCopyTest {
                 "Kani widget. All caught up. $body",
                 WidgetTextCopy.widgetDescription("All caught up", body),
             )
+
+            assertEquals("12 reviews · 3 new", WidgetTextCopy.dueSplitLabel(12, 3))
+            assertEquals("1 review · 2 new", WidgetTextCopy.dueSplitLabel(1, 2))
+            assertEquals("0 reviews · 0 new", WidgetTextCopy.dueSplitLabel(-1, -2))
+            val later = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 18)
+                set(Calendar.MINUTE, 0)
+            }.timeInMillis
+            assertEquals("5 more by 18:00", WidgetTextCopy.dueLaterLabel(5, later))
+            assertEquals("", WidgetTextCopy.dueLaterLabel(0, later))
+            assertEquals("", WidgetTextCopy.dueLaterLabel(5, 0L))
+            assertEquals("Best: 21 days", WidgetTextCopy.bestStreakLabel(21))
+            assertEquals("Best: 1 day", WidgetTextCopy.bestStreakLabel(1))
+            assertEquals("", WidgetTextCopy.bestStreakLabel(0))
+            assertEquals("Widget options", WidgetTextCopy.widgetConfigTitle())
+            assertEquals("Style", WidgetTextCopy.widgetStyleSectionTitle())
+            assertEquals("Due card", WidgetTextCopy.widgetStyleDueCardLabel())
+            assertEquals("Heatmap", WidgetTextCopy.widgetStyleHeatmapLabel())
+            assertEquals("Theme", WidgetTextCopy.widgetThemeSectionTitle())
+            assertEquals("Follow app", WidgetTextCopy.widgetThemeFollowAppLabel())
+            assertEquals("Save", WidgetTextCopy.widgetSaveLabel())
         }
     }
 
@@ -52,6 +73,23 @@ class WidgetTextCopyTest {
                 "Kaniウィジェット。復習完了。3日連続 · 復習なし",
                 WidgetTextCopy.widgetDescription("復習完了", "3日連続 · 復習なし"),
             )
+
+            assertEquals("復習12件 · 新規3件", WidgetTextCopy.dueSplitLabel(12, 3))
+            val later = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 18)
+                set(Calendar.MINUTE, 0)
+            }.timeInMillis
+            assertEquals("18:00までにあと5件", WidgetTextCopy.dueLaterLabel(5, later))
+            assertEquals("", WidgetTextCopy.dueLaterLabel(0, later))
+            assertEquals("最長21日", WidgetTextCopy.bestStreakLabel(21))
+            assertEquals("", WidgetTextCopy.bestStreakLabel(0))
+            assertEquals("ウィジェット設定", WidgetTextCopy.widgetConfigTitle())
+            assertEquals("スタイル", WidgetTextCopy.widgetStyleSectionTitle())
+            assertEquals("復習カード", WidgetTextCopy.widgetStyleDueCardLabel())
+            assertEquals("ヒートマップ", WidgetTextCopy.widgetStyleHeatmapLabel())
+            assertEquals("テーマ", WidgetTextCopy.widgetThemeSectionTitle())
+            assertEquals("アプリに合わせる", WidgetTextCopy.widgetThemeFollowAppLabel())
+            assertEquals("保存", WidgetTextCopy.widgetSaveLabel())
         }
     }
 

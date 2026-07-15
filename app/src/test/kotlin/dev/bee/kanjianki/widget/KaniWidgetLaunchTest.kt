@@ -43,4 +43,38 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
     }
+
+    @Test
+    fun bodyTapOpensHomeWithTaskReuseFlagsAndNeverForcesStudy() {
+        val intent = kaniWidgetHomeIntent(context)
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+    }
+
+    @Test
+    fun bothTapTargetsShareTheDuplicateActivityFixFlags() {
+        val homeFlags = kaniWidgetHomeIntent(context).flags
+        val studyFlags = kaniWidgetLaunchIntent(
+            context,
+            KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 1),
+        ).flags
+
+        assertEquals(homeFlags, studyFlags)
+        assertTrue(homeFlags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(homeFlags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+    }
+
+    @Test
+    fun heatmapTapOpensStatsWithTaskReuseFlags() {
+        val intent = kaniWidgetStatsIntent(context)
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+    }
 }

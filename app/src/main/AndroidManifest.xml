@@ -73,11 +73,36 @@
         <receiver
             android:name=".reminders.ReminderReceiver"
             android:exported="false" />
+        <!--
+            Exported because pre-Android-12 launcher hosts start the configure
+            activity directly with startActivityForResult instead of the
+            system IntentSender grant. The activity validates the appWidgetId
+            extra and finishes immediately when it is missing.
+        -->
+        <activity
+            android:name=".widget.KaniWidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <receiver
             android:name=".widget.KaniWidgetReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!--
+                    Day-boundary freshness (event-driven, no periodic worker):
+                    TIME_SET and TIMEZONE_CHANGED are exempt implicit
+                    broadcasts; DATE_CHANGED is declared for completeness but
+                    not deliverable to manifest receivers on API 26+, so
+                    midnight rollover is covered by the one-shot boundary
+                    alarm (REFRESH) plus the hourly fallback.
+                -->
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="dev.bee.kanjianki.widget.action.REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

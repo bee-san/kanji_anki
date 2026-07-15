@@ -24,6 +24,13 @@ data class DueLookaheadWindow(
     val nextClusterAtMillis: Long,
     val clusterSize: Int,
     val recommendedReminderAtMillis: Long,
+    /**
+     * When the next due-later cluster finishes arriving ("N more by HH:MM").
+     * Unlike [recommendedReminderAtMillis] this is populated independently of
+     * the recommended action, so surfaces showing due-now work can still
+     * describe what arrives later today.
+     */
+    val clusterEndAtMillis: Long = 0L,
 )
 
 enum class StreakStatus {
@@ -123,6 +130,7 @@ object DailyStudyPlanPolicy {
                 nextClusterAtMillis = dueLaterCluster.nextClusterAtMillis,
                 clusterSize = dueLaterCluster.clusterSize,
                 recommendedReminderAtMillis = nextUsefulReminderAtMillis,
+                clusterEndAtMillis = dueLaterCluster.recommendedReminderAtMillis,
             ),
             syncStatus = syncStatus,
             reasons = reasons,
