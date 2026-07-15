@@ -158,10 +158,9 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn("script: bash ci/scripts/run_device_risk_suite.sh", self.workflow)
         self.assertIn(":app:assembleMinifiedSmoke", self.risk_script)
         self.assertIn("adb install -r", self.risk_script)
-        self.assertIn(
-            "dev.bee.kanjianki.smoke/dev.bee.kanjianki.MainActivity",
-            self.risk_script,
-        )
+        self.assertIn("smoke_package='dev.bee.kanjianki.smoke'", self.risk_script)
+        self.assertIn("smoke_activity='dev.bee.kanjianki.MainActivity'", self.risk_script)
+        self.assertIn('-n "${smoke_package}/${smoke_activity}"', self.risk_script)
 
         smoke_build = self.app_build.split('create("minifiedSmoke")', maxsplit=1)[1]
         smoke_build = smoke_build.split("\n    sourceSets", maxsplit=1)[0]

@@ -193,6 +193,11 @@ class AndroidDeviceSmokeWorkflowTest(unittest.TestCase):
         self.assertIn("set -euo pipefail", risk_script)
         self.assertIn(":app:connectedDebugAndroidTest", risk_script)
         self.assertIn(":app:assembleMinifiedSmoke", risk_script)
+        self.assertIn("adb logcat -b all -c", risk_script)
+        self.assertIn("adb logcat -b all -d -v threadtime", risk_script)
+        self.assertIn('dumpsys activity exit-info "${smoke_package}"', risk_script)
+        self.assertIn("minified_smoke_activity_is_resumed", risk_script)
+        self.assertIn("app/build/reports/minifiedSmoke/**", risk_job)
 
 
 class WorkflowAnalysisIntegrityTest(unittest.TestCase):
