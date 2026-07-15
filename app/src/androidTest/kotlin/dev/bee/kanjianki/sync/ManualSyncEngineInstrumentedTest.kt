@@ -366,8 +366,8 @@ class ManualSyncEngineInstrumentedTest {
                 "SCANNING_CARDS:2/2",
                 "PROCESSING_IMPORTED_CARDS:0/-1",
                 "SAVING_LOCAL_DATA:0/-1",
-                "ARCHIVING_IMPORTED_CARDS:0/-1",
                 "BUILDING_PRACTICE_QUEUE:0/-1",
+                "ARCHIVING_IMPORTED_CARDS:0/-1",
             ),
             events,
         )

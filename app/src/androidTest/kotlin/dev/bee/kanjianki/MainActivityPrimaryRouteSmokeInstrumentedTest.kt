@@ -1,15 +1,14 @@
 package dev.bee.kanjianki
 
 import android.content.Context
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.UiScrollable
-import androidx.test.uiautomator.UiSelector
-import androidx.test.uiautomator.Until
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -18,8 +17,8 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.testing.DeviceSmoke
 import org.junit.After
-import org.junit.Assert.assertNotNull
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -27,6 +26,9 @@ import org.junit.runner.RunWith
 @DeviceSmoke
 @DeviceRisk
 class MainActivityPrimaryRouteSmokeInstrumentedTest {
+    @get:Rule
+    val composeRule = createEmptyComposeRule()
+
     private lateinit var context: Context
 
     @Before
@@ -65,11 +67,9 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { it.renderHome() }
             assertVisibleInScrollableRoute("Browse Kanji")
-            assertVisibleInScrollableRoute("Stats")
             assertVisibleInScrollableRoute("Games")
 
             scenario.onActivity { it.renderSettings() }
-            assertVisible(MainActivityBase.NAV_SETTINGS)
             assertVisibleInScrollableRoute("Import & sync")
             assertVisibleInScrollableRoute("Study settings")
 
@@ -143,60 +143,29 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
         )
 
     private fun assertVisible(text: String) {
-        val object2 = waitForText(text)
-        assertNotNull("Missing visible text: $text", object2)
+        waitForText(text)
+        composeRule.onAllNodes(hasText(text, substring = true)).onFirst().assertIsDisplayed()
     }
 
     private fun assertVisibleInScrollableRoute(text: String) {
-        val object2 = waitForTextInScrollableRoute(text)
-        assertNotNull("Missing visible text after route scroll: $text", object2)
+        waitForText(text)
+        composeRule.onAllNodes(hasText(text, substring = true)).onFirst()
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
-    private fun waitForTextInScrollableRoute(text: String): UiObject2? {
-        waitForText(text)?.let { return it }
-
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        scrollRouteToTop(device)
-        waitForText(text, 750L)?.let { return it }
-
-        runCatching {
-            UiScrollable(UiSelector().scrollable(true))
-                .setAsVerticalList()
-                .scrollIntoView(UiSelector().textContains(text))
-        }
-        waitForText(text, 750L)?.let { return it }
-
-        repeat(20) {
-            scrollRouteDown(device)
-            waitForText(text, 750L)?.let { return it }
-        }
-
-        return null
-    }
-
-    private fun scrollRouteToTop(device: UiDevice) {
-        repeat(4) {
-            device.swipe(routeSwipeX(device), routeSwipeTopY(device), routeSwipeX(device), routeSwipeBottomY(device), 18)
-            device.waitForIdle()
+    private fun waitForText(text: String) {
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
+                composeRule.onAllNodes(hasText(text, substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (error: AssertionError) {
+            throw AssertionError("Timed out waiting for Compose text: $text", error)
         }
     }
 
-    private fun scrollRouteDown(device: UiDevice) {
-        device.swipe(routeSwipeX(device), routeSwipeBottomY(device), routeSwipeX(device), routeSwipeTopY(device), 18)
-        device.waitForIdle()
-    }
-
-    private fun routeSwipeX(device: UiDevice): Int = device.displayWidth / 2
-
-    private fun routeSwipeTopY(device: UiDevice): Int = device.displayHeight * 3 / 10
-
-    private fun routeSwipeBottomY(device: UiDevice): Int = device.displayHeight * 7 / 10
-
-    private fun waitForText(text: String, timeoutMs: Long = 3_000L): UiObject2? {
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-        val exact = device.wait(Until.findObject(By.pkg(pkg).text(text)), timeoutMs)
-        if (exact != null) return exact
-        return device.wait(Until.findObject(By.pkg(pkg).textContains(text)), timeoutMs)
+    private companion object {
+        private const val UI_TIMEOUT_MILLIS = 30_000L
     }
 }

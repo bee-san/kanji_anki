@@ -1,14 +1,16 @@
 package dev.bee.kanjianki
 
 import android.content.Context
-import android.os.SystemClock
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.Until
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -29,6 +31,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -36,6 +39,9 @@ import org.junit.runner.RunWith
 @DeviceSmoke
 @DeviceRisk
 class MainActivityStudyRouteSmokeInstrumentedTest {
+    @get:Rule
+    val composeRule = createEmptyComposeRule()
+
     private lateinit var context: Context
 
     @Before
@@ -363,68 +369,53 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
     }
 
     private fun assertVisible(text: String) {
-        val object2 = waitForText(text)
-        assertNotNull("Missing visible text: $text", object2)
+        waitForText(text)
+        composeRule.onAllNodes(hasText(text, substring = true)).onFirst().assertIsDisplayed()
     }
 
     private fun assertDescriptionVisible(description: String) {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val device = UiDevice.getInstance(instrumentation)
-        val pkg = instrumentation.targetContext.packageName
-        instrumentation.waitForIdleSync()
-        device.waitForIdle(500L)
-        assertNotNull(
-            "Missing visible description: $description",
-            device.findObject(By.pkg(pkg).desc(description)),
-        )
+        waitForDescription(description)
+        composeRule.onAllNodes(hasContentDescription(description)).onFirst().assertIsDisplayed()
     }
 
     private fun assertBottomNavHidden() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val device = UiDevice.getInstance(instrumentation)
-        val pkg = instrumentation.targetContext.packageName
-        instrumentation.waitForIdleSync()
-        device.waitForIdle(500L)
-        assertFalse(device.hasObject(By.pkg(pkg).text("Home")))
-        assertFalse(device.hasObject(By.pkg(pkg).text("Stats")))
+        composeRule.onAllNodes(hasText("Home")).assertCountEquals(0)
+        composeRule.onAllNodes(hasText("Stats")).assertCountEquals(0)
     }
 
     private fun assertVisibleAfterScroll(text: String) {
-        waitForText(text)?.let { return }
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        repeat(3) {
-            val centerX = device.displayWidth / 2
-            val startY = (device.displayHeight * 0.62f).toInt()
-            val endY = (device.displayHeight * 0.28f).toInt()
-            device.swipe(centerX, startY, centerX, endY, 12)
-            device.waitForIdle(500L)
-            waitForText(text)?.let { return }
-        }
-        assertNotNull("Missing visible text after scroll: $text", waitForText(text))
+        waitForText(text)
+        composeRule.onAllNodes(hasText(text, substring = true)).onFirst()
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
-    private fun waitForText(text: String): UiObject2? {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val device = UiDevice.getInstance(instrumentation)
-        val pkg = instrumentation.targetContext.packageName
-        val deadline = SystemClock.uptimeMillis() + TEXT_WAIT_TIMEOUT_MS
-
-        instrumentation.waitForIdleSync()
-        device.wait(Until.hasObject(By.pkg(pkg)), 2_000L)
-
-        while (SystemClock.uptimeMillis() < deadline) {
-            device.waitForIdle(500L)
-            device.findObject(By.pkg(pkg).text(text))?.let { return it }
-            device.findObject(By.pkg(pkg).textContains(text))?.let { return it }
-            Thread.sleep(100L)
+    private fun waitForText(text: String) {
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
+                composeRule.onAllNodes(hasText(text, substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (error: AssertionError) {
+            throw AssertionError("Timed out waiting for Compose text: $text", error)
         }
-        return null
+    }
+
+    private fun waitForDescription(description: String) {
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
+                composeRule.onAllNodes(hasContentDescription(description))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (error: AssertionError) {
+            throw AssertionError("Timed out waiting for Compose description: $description", error)
+        }
     }
 
     private fun pendingAnswerPreferences() =
         context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
 
     private companion object {
-        private const val TEXT_WAIT_TIMEOUT_MS = 8_000L
+        private const val UI_TIMEOUT_MILLIS = 30_000L
     }
 }

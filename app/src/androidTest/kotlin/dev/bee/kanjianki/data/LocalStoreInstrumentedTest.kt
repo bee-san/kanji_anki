@@ -52,7 +52,6 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 
 @RunWith(AndroidJUnit4::class)
-@DeviceRisk
 class LocalStoreInstrumentedTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore
@@ -130,6 +129,7 @@ class LocalStoreInstrumentedTest {
         assertImportAuditStored();
     }
 
+    @DeviceRisk
     @Test
     fun testInventoryMaintenanceSaveRowsPersistsDashboardRowsAndExamples() {
         val example = RecordsImportModels.Example(
@@ -182,6 +182,7 @@ class LocalStoreInstrumentedTest {
         assertScalarString("kanji_examples", "meaning", "kanji=?", arrayOf("拉"), "ramen");
     }
 
+    @DeviceRisk
     @Test
     fun testSyncPersistsNormalizedNoteArchiveAndHistoricalText() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
@@ -535,6 +536,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(1, count("similar_kanji_review_log"));
     }
 
+    @DeviceRisk
     @Test
     fun testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
         val row = row("拉", 0)
@@ -551,6 +553,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(1, countTimelineType("拉", "weak_support_seen"));
     }
 
+    @DeviceRisk
     @Test
     fun testTimelineRecordsSupportRetirementAndReopen() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
@@ -1244,6 +1247,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(1, store.studiedKanjiSince(0L).size);
     }
 
+    @DeviceRisk
     @Test
     fun testRichReviewHistoryStoresTaskContextAndSchedulerState() {
         val before = RecordsStudyModels.StudyItem(
@@ -1579,6 +1583,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(0, impact.reviewCount);
     }
 
+    @DeviceRisk
     @Test
     fun testStudyItemsPersistSeparateAnswerSignaturesForSameKanji() {
         val oldWord = RecordsStudyModels.StudyItem("拉", "review", 1000L, 2.0, 4.0, 2, 0, 2, 1, null, 1000L)
@@ -1600,6 +1605,7 @@ class LocalStoreInstrumentedTest {
         assertEquals("", items.get(1).suppressedByTaskType);
     }
 
+    @DeviceRisk
     @Test
     fun testReviewStatsAndSchedulerParametersPersist() {
         val firstReviewAt = 86_400_000L
@@ -1668,6 +1674,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(5, store.adaptiveLoadMaxItems());
     }
 
+    @DeviceRisk
     @Test
     fun testStudyTaskAnsweredLogSuppressesDuplicateTaskKeys() {
         assertFalse(store.recordStudyTaskAnswered("", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
@@ -1785,6 +1792,7 @@ class LocalStoreInstrumentedTest {
         assertEquals("", store.installPermissionPromptLastVersion());
     }
 
+    @DeviceRisk
     @Test
     fun testGuardInputsDoNotMutateDurableState() {
         assertEquals(0, count("similar_kanji_pairs"));
@@ -1857,6 +1865,7 @@ class LocalStoreInstrumentedTest {
         assertEquals(1, imports.get(0).sources.size);
     }
 
+    @DeviceRisk
     @Test
     fun testSimilarChoiceFallbackAndRepairEdgeStates() {
         val submittedOnly = RecordsImportModels.SimilarKanjiChoiceCard(
@@ -2171,6 +2180,7 @@ class LocalStoreInstrumentedTest {
         assertFalse(afterMiss.studiedToday);
     }
 
+    @DeviceRisk
     @Test
     fun testUnselectedSuspendedCardsStayOutOfArchiveButRemainInHistory() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
@@ -2209,6 +2219,7 @@ class LocalStoreInstrumentedTest {
         );
     }
 
+    @DeviceRisk
     @Test
     fun testCursorReadersHandleOldSchemaNullsAndValues() {
         val cursor = MatrixCursor(arrayOf(

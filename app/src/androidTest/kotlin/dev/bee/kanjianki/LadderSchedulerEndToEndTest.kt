@@ -37,9 +37,13 @@ private const val DATABASE_NAME = "kanji_anki_simple.db"
  * Unlike the pure-JVM LadderSchedulerTest, these verify that ladder state
  * (rung, phase, realPassStreak, realAgainStreak, lastRealReviewDueAtMillis,
  * hasSimilarKanji) survives SQLite round-trips correctly.
+ *
+ * Most rung-transition cases below preserve the legacy v30 compatibility
+ * model. The device-risk lane marks only contracts that remain canonical in
+ * v31; exhaustive adaptive routing coverage runs in the deterministic JVM
+ * gate.
  */
 @RunWith(AndroidJUnit4::class)
-@DeviceRisk
 class LadderSchedulerEndToEndTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore
@@ -67,6 +71,7 @@ class LadderSchedulerEndToEndTest {
 
     // ---- Learning graduation persists ladder state ----
 
+    @DeviceRisk
     @Test
     fun newCardLearningGraduationPersistsRungAndPhaseToDb() {
         seedSyncWithKanji("裂")
@@ -488,6 +493,7 @@ class LadderSchedulerEndToEndTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, store.studyItems()[0].rung)
     }
 
+    @DeviceRisk
     @Test
     fun seedQueueAdmitsNewItemWithCorrectLadderDefaults() {
         val row = dashboardRow("裂", "split")
@@ -515,6 +521,7 @@ class LadderSchedulerEndToEndTest {
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, reloaded.phase)
     }
 
+    @DeviceRisk
     @Test
     fun hasSimilarKanjiAnnotatedFromSimilarPairsOnRead() {
         seedSyncWithSimilarPairs("裂", "烈")
@@ -538,6 +545,7 @@ class LadderSchedulerEndToEndTest {
         assertTrue("hasSimilarKanji should be true when pairs exist", reloaded.hasSimilarKanji)
     }
 
+    @DeviceRisk
     @Test
     fun hasSimilarKanjiFalseWhenNoPairsExist() {
         seedSyncWithKanji("裂")
@@ -545,6 +553,7 @@ class LadderSchedulerEndToEndTest {
         assertFalse("hasSimilarKanji should be false when no pairs exist", reloaded.hasSimilarKanji)
     }
 
+    @DeviceRisk
     @Test
     fun annotateSimilarKanjiAvailabilityWorksAfterSeedQueue() {
         seedSyncWithSimilarPairs("裂", "烈")
