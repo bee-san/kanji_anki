@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Widget-picker preview image (previewImage, all API levels). A stylized
+    sketch of the due card: brand line, count line, streak line, activity
+    strip, and action line on the girlypop background.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="104dp"
+    android:viewportWidth="250"
+    android:viewportHeight="130">
+
+    <!-- Card background -->
+    <path
+        android:fillColor="#FFF7FB"
+        android:pathData="M16,0 L234,0 A16,16 0 0 1 250,16 L250,114 A16,16 0 0 1 234,130 L16,130 A16,16 0 0 1 0,114 L0,16 A16,16 0 0 1 16,0 Z" />
+
+    <!-- Brand line -->
+    <path
+        android:fillColor="#D32F73"
+        android:pathData="M16,16 L46,16 A4,4 0 0 1 50,20 L50,22 A4,4 0 0 1 46,26 L16,26 A4,4 0 0 1 12,22 L12,20 A4,4 0 0 1 16,16 Z" />
+
+    <!-- Count line -->
+    <path
+        android:fillColor="#2D1635"
+        android:pathData="M16,34 L130,34 A6,6 0 0 1 136,40 L136,44 A6,6 0 0 1 130,50 L16,50 A6,6 0 0 1 10,44 L10,40 A6,6 0 0 1 16,34 Z" />
+
+    <!-- Streak line -->
+    <path
+        android:fillColor="#6C5674"
+        android:pathData="M16,58 L96,58 A4,4 0 0 1 100,62 L100,64 A4,4 0 0 1 96,68 L16,68 A4,4 0 0 1 12,64 L12,62 A4,4 0 0 1 16,58 Z" />
+
+    <!-- Activity strip -->
+    <path android:fillColor="#FBDDEC" android:pathData="M12,78 L28,78 L28,94 L12,94 Z" />
+    <path android:fillColor="#F2A9C8" android:pathData="M32,78 L48,78 L48,94 L32,94 Z" />
+    <path android:fillColor="#E97AA9" android:pathData="M52,78 L68,78 L68,94 L52,94 Z" />
+    <path android:fillColor="#FBDDEC" android:pathData="M72,78 L88,78 L88,94 L72,94 Z" />
+    <path android:fillColor="#DD4F88" android:pathData="M92,78 L108,78 L108,94 L92,94 Z" />
+    <path android:fillColor="#D32F73" android:pathData="M112,78 L128,78 L128,94 L112,94 Z" />
+    <path android:fillColor="#E97AA9" android:pathData="M132,78 L148,78 L148,94 L132,94 Z" />
+
+    <!-- Action line -->
+    <path
+        android:fillColor="#D32F73"
+        android:pathData="M16,104 L76,104 A4,4 0 0 1 80,108 L80,110 A4,4 0 0 1 76,114 L16,114 A4,4 0 0 1 12,110 L12,108 A4,4 0 0 1 16,104 Z" />
+</vector>

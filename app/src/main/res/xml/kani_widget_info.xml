@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:configure="dev.bee.kanjianki.widget.KaniWidgetConfigActivity"
     android:description="@string/kani_widget_description"
     android:initialLayout="@layout/kani_widget_loading"
     android:minWidth="250dp"
     android:minHeight="72dp"
+    android:minResizeWidth="180dp"
     android:minResizeHeight="72dp"
+    android:previewImage="@drawable/kani_widget_preview_image"
+    android:previewLayout="@layout/kani_widget_preview"
     android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
     android:updatePeriodMillis="3600000"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    tools:targetApi="s" />

@@ -40,6 +40,48 @@ object WidgetTextCopy {
         )
     }
 
+    /**
+     * Splits the due count into review vs new work ("12 reviews · 3 new").
+     * Callers should only use this when both counts are non-zero; otherwise
+     * [dueCountLabel] keeps the single number.
+     */
+    @JvmStatic
+    fun dueSplitLabel(reviewCount: Int, newCount: Int): String {
+        val safeReviews = reviewCount.coerceAtLeast(0)
+        val safeNew = newCount.coerceAtLeast(0)
+        return localizedText(
+            (if (safeReviews == 1) "1 review" else "$safeReviews reviews") +
+                " · $safeNew new",
+            "復習${safeReviews}件 · 新規${safeNew}件",
+        )
+    }
+
+    /** Due-later lookahead line for the expanded tier ("5 more by 18:00"). */
+    @JvmStatic
+    fun dueLaterLabel(count: Int, byMillis: Long): String {
+        if (count <= 0 || byMillis <= 0L) {
+            return ""
+        }
+        val calendar = Calendar.getInstance().apply { timeInMillis = byMillis }
+        val time = TimeOfDaySettingsPolicy.displayTime(
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+        )
+        return localizedText("$count more by $time", "${time}までにあと${count}件")
+    }
+
+    /** Best-streak line for the caught-up expanded tier ("Best: 21 days"). */
+    @JvmStatic
+    fun bestStreakLabel(bestDays: Int): String {
+        if (bestDays <= 0) {
+            return ""
+        }
+        return localizedText(
+            if (bestDays == 1) "Best: 1 day" else "Best: $bestDays days",
+            "最長${bestDays}日",
+        )
+    }
+
     @JvmStatic
     fun studyNowLabel(): String = localizedText("Study now", "今すぐ学習")
 
@@ -66,6 +108,27 @@ object WidgetTextCopy {
     @JvmStatic
     fun widgetDescription(title: String, body: String): String =
         localizedText("Kani widget. $title. $body", "Kaniウィジェット。$title。$body")
+
+    @JvmStatic
+    fun widgetConfigTitle(): String = localizedText("Widget options", "ウィジェット設定")
+
+    @JvmStatic
+    fun widgetStyleSectionTitle(): String = localizedText("Style", "スタイル")
+
+    @JvmStatic
+    fun widgetStyleDueCardLabel(): String = localizedText("Due card", "復習カード")
+
+    @JvmStatic
+    fun widgetStyleHeatmapLabel(): String = localizedText("Heatmap", "ヒートマップ")
+
+    @JvmStatic
+    fun widgetThemeSectionTitle(): String = localizedText("Theme", "テーマ")
+
+    @JvmStatic
+    fun widgetThemeFollowAppLabel(): String = localizedText("Follow app", "アプリに合わせる")
+
+    @JvmStatic
+    fun widgetSaveLabel(): String = localizedText("Save", "保存")
 
     private fun localizedText(english: String, japanese: String): String =
         if (Locale.getDefault().language == JAPANESE_LANGUAGE) japanese else english

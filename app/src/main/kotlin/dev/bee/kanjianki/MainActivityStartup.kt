@@ -111,6 +111,11 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 activity.renderUpdate()
             }
 
+            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false) == true -> {
+                activity.disableStudyOrdinaryResume()
+                if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
+            }
+
             shortcutDestination != null -> renderLauncherShortcut(shortcutDestination)
 
             study?.shouldResumeStudyOnOrdinaryLaunch() == true -> {
