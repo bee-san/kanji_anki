@@ -20,21 +20,6 @@
 
 Kani cures your Kanji blindness by analysing your Anki, locating your hard kanji, working out why it's hard for you, and creating specialised learning loops to teach you the Kanji in the least amount of time possible.
 
-1. Find kanji that keep causing trouble in your AnkiDroid reviews.
-2. Focus on why they are hard, such as unfamiliar characters, visually similar kanji, unuusal readings
-3. Study them through a small, structured queue instead of another full SRS backlog.
-4. Compare later AnkiDroid evidence so repaired kanji can retire from the queue.
-
-Features:
-* FSRS 5
-* Specially designed to make you spend the least amount of time in app as possible
-* Customised study ladders for each kanji, based on why you fail that kanji
-* Can use your GSM + Subminer data to optimise the algorithm
-
-Think of it as a mix between Full on Wanikani / RTK and vocab with no Kanji study.
-
-If you study vocab with no individual Kanji study but find some Kanji are hard, this app is for you.
-
 Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji — the painful "kanji blindness" loop where similar-looking characters keep tripping you up.
 
 Kani borrows the parts of Anki that make recall durable: saved evidence from your own cards, FSRS-style review timing, and a repeatable review habit. It intentionally differs from Anki by narrowing the surface area to kanji repair. Kani reads AnkiDroid, builds a small local focus queue, and asks you to practice the characters that are causing real misses instead of managing another general-purpose deck.
@@ -42,9 +27,22 @@ Kani borrows the parts of Anki that make recall durable: saved evidence from you
 Kani helps you:
 
 1. Find kanji that keep causing trouble in your AnkiDroid reviews.
-2. Focus on why they are hard, such as unfamiliar characters or visually similar kanji.
+2. Focus on why they are hard, such as unfamiliar characters, visually similar kanji, or unusual readings.
 3. Study them through a small, structured queue instead of another full SRS backlog.
 4. Compare later AnkiDroid evidence so repaired kanji can retire from the queue.
+
+Highlights:
+
+* FSRS-6 scheduling (21-parameter), with opt-in on-device personalization of the weights from your own review history.
+* Specially designed to make you spend the least amount of time in app as possible.
+* Customised study ladders for each kanji, based on why you fail that kanji.
+* Kanji browser with per-kanji details, stroke-order diagrams, memory charts, and local mnemonic notes.
+* Quick practice games, study stats, streak-aware reminders, and a home-screen widget for due counts.
+* English and Japanese UI.
+
+Think of it as a mix between full-on WaniKani / RTK and vocab study with no kanji study.
+
+If you study vocab with no individual kanji study but find some kanji are hard, this app is for you.
 
 # Features
 
@@ -68,9 +66,11 @@ The study ladder can surface these prompt styles:
 
 - Handwriting practice with stroke guidance.
 - Typed meaning prompts.
-- Recognition cards for kanji meanings.
+- Recognition cards for kanji meanings, including meaning-to-kanji choices.
 - Font variation to help recognition across different typefaces.
 - Word-to-reading prompts based on words imported from AnkiDroid.
+- Reading-discrimination choices (kanji-in-word readings and same-reading kanji) when Kani can build enough choices.
+- Sentence reading practice using your own mined sentences when available.
 - Similar-kanji practice when Kani has comparison data for a card.
 
 You can enable, disable, and reorder ladder rungs in Settings. Study items move through the ladder according to review results, and `Study now` is the single entry point for practice.

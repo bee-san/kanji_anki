@@ -218,12 +218,12 @@ class StudySessionProgressTracker {
 
         private fun isWritingTaskType(taskType: String): Boolean {
             return taskType == StudyTaskTypes.WRITE_KANJI ||
-                taskType == "targeted_writing" ||
-                taskType == "context_writing" ||
-                taskType == "guided_writing" ||
-                taskType == "blind_writing" ||
-                taskType == "sampled_handwriting" ||
-                taskType == "repair_writing"
+                taskType == StudyTaskTypes.TARGETED_WRITING ||
+                taskType == StudyTaskTypes.CONTEXT_WRITING ||
+                taskType == StudyTaskTypes.GUIDED_WRITING ||
+                taskType == StudyTaskTypes.BLIND_WRITING ||
+                taskType == StudyTaskTypes.SAMPLED_HANDWRITING ||
+                taskType == StudyTaskTypes.REPAIR_WRITING
         }
 
         private fun safeKanji(kanji: String?): String {

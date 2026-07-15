@@ -27,17 +27,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
-import java.util.Locale
 
 private val INK = 0xFF2D1635.toInt()
 private val MUTED = 0xFF6C5674.toInt()
 private val SyncProgressTrack: Color @Composable get() = KaniTheme.colors.track
 private val SyncProgressFill: Color @Composable get() = KaniTheme.colors.primary
-private const val JAPANESE_LANGUAGE = "ja"
 
 internal data class SyncProgressPanelState(
     val stage: String = SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE),
-    val count: String = initialCountText(),
+    val count: String = SyncProgressCopy.initialCountBody(),
     val rate: String = "",
     val progressIndeterminate: Boolean = true,
     val progressMax: Int = 1000,
@@ -111,21 +109,11 @@ private fun shouldShowSpinner(currentStage: SyncProgressCopy.Stage?): Boolean {
     }
 }
 
-private fun initialCountText(): String {
-    return if (isJapaneseLocale()) {
-        "コレクションの詳細を読み込み中です。"
-    } else {
-        "Reading collection details."
-    }
-}
-
 private fun initialProgressDescription(): String {
     // Both locales derive the initial description from the first sync stage
     // so the copy stays in sync with SyncProgressCopy.
     return SyncProgressCopy.progressDescription(SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.FINDING_NOTE_TYPE))
 }
-
-private fun isJapaneseLocale(): Boolean = Locale.getDefault().language == JAPANESE_LANGUAGE
 
 @Composable
 internal fun SyncProgressScreen(title: String, progressPanel: SyncProgressPanel) {

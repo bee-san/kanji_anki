@@ -25,7 +25,9 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
+import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudySessionProgressTracker
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.study.HintProgression
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.RecognitionCandidate
@@ -717,18 +719,18 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val LABEL_STUDY = "Study"
         const val LABEL_NEW_CARDS = "New cards"
         const val LABEL_CONTINUE_ALL_KANJI = "Continue all kanji"
-        const val RATING_AGAIN = "again"
-        const val RATING_HARD = "hard"
-        const val RATING_GOOD = "good"
+        const val RATING_AGAIN = StudyRatings.AGAIN
+        const val RATING_HARD = StudyRatings.HARD
+        const val RATING_GOOD = StudyRatings.GOOD
         const val STATE_LEARNING = "learning"
         const val STATE_RETIRED = "retired"
         const val SOURCE_ACTIVE = "active"
         const val SOURCE_SUSPENDED = "suspended"
-        const val TASK_FONT_MEANING = "font_meaning"
-        const val TASK_TARGETED_WRITING = "targeted_writing"
-        const val TASK_TYPING_MEANING = "typing_meaning"
-        const val TASK_WORD_READING = "word_reading"
-        const val TASK_REPAIR_WRITING = "repair_writing"
+        const val TASK_FONT_MEANING = StudyTaskTypes.FONT_MEANING
+        const val TASK_TARGETED_WRITING = StudyTaskTypes.TARGETED_WRITING
+        const val TASK_TYPING_MEANING = StudyTaskTypes.TYPING_MEANING
+        const val TASK_WORD_READING = StudyTaskTypes.WORD_READING
+        const val TASK_REPAIR_WRITING = StudyTaskTypes.REPAIR_WRITING
         const val EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet"
         const val EMPTY_ACTIVE_PRACTICE_BODY =
             "Study now adds the next kanji."
