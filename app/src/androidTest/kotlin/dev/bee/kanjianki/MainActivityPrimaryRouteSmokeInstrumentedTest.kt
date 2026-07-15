@@ -64,19 +64,19 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { it.renderHome() }
-            assertVisible("Browse Kanji")
-            assertVisible("Stats")
+            assertVisibleInScrollableRoute("Browse Kanji")
+            assertVisibleInScrollableRoute("Stats")
             assertVisibleInScrollableRoute("Games")
 
             scenario.onActivity { it.renderSettings() }
             assertVisible(MainActivityBase.NAV_SETTINGS)
-            assertVisible("Import & sync")
-            assertVisible("Study settings")
+            assertVisibleInScrollableRoute("Import & sync")
+            assertVisibleInScrollableRoute("Study settings")
 
             scenario.onActivity { activity -> activity.renderBrowseKanji("裂") }
             assertVisible("Browse Kanji")
-            assertVisible("split")
-            assertVisible("local source")
+            assertVisibleInScrollableRoute("split")
+            assertVisibleInScrollableRoute("local source")
 
             scenario.onActivity { activity -> activity.renderDetail("裂", true, "裂") }
             assertVisible("Back to Browse")
@@ -89,11 +89,11 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
 
             scenario.onActivity { it.renderGames() }
             assertVisible("Games")
-            assertVisible("Meaning Pop")
+            assertVisibleInScrollableRoute("Meaning Pop")
 
             scenario.onActivity { it.renderUpdate() }
             assertVisible("App updates")
-            assertVisible("Check for updates")
+            assertVisibleInScrollableRoute("Check for updates")
         }
     }
 
