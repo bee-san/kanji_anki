@@ -100,7 +100,30 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ needs.metadata.outputs.build_sha }}
+          # workflow_run is privileged. Start from the repository's trusted
+          # default ref instead of feeding event data into checkout.
+          fetch-depth: 0
+
+      - name: Select trusted release commit
+        env:
+          BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${BUILD_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Release build SHA is not a canonical commit id."
+            exit 1
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+            if ! git merge-base --is-ancestor "${BUILD_SHA}" refs/remotes/origin/main; then
+              echo "::error::Android CI build ${BUILD_SHA} is not on trusted main history."
+              exit 1
+            fi
+          fi
+
+          git checkout --detach "${BUILD_SHA}"
+          test "$(git rev-parse HEAD)" = "${BUILD_SHA}"
 
       # This job runs ./gradlew with signing secrets in the environment, so
       # validate the wrapper jar before executing it (PR-only validation in

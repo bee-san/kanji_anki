@@ -316,6 +316,21 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
             with self.subTest(task=task):
                 self.assertIn(task, tests_step)
 
+    def test_privileged_release_checkout_selects_only_trusted_main_commits(self) -> None:
+        validate_job = _yaml_mapping_block(self.workflow, "validate", 2)
+
+        self.assertNotIn("ref: ${{ needs.metadata.outputs.build_sha }}", validate_job)
+        self.assertIn("fetch-depth: 0", validate_job)
+        self.assertIn("Select trusted release commit", validate_job)
+        self.assertIn("^[0-9a-f]{40}$", validate_job)
+        self.assertIn("git merge-base --is-ancestor", validate_job)
+        self.assertIn("refs/remotes/origin/main", validate_job)
+        self.assertIn('git checkout --detach "${BUILD_SHA}"', validate_job)
+        self.assertLess(
+            validate_job.index("Select trusted release commit"),
+            validate_job.index("Validate Gradle wrapper"),
+        )
+
     def test_publish_requires_metadata_and_validate_jobs(self) -> None:
         publish_job = self.workflow.split("  publish-release:", maxsplit=1)[1]
         needs = publish_job.split("needs:", maxsplit=1)[1].split("steps:", maxsplit=1)[0]

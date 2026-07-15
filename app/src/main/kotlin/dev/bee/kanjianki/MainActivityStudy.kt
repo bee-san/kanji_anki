@@ -511,7 +511,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             ?.takeIf { it.feedback.sessionToken == token }
             ?.feedback
             ?.let(StudyAnswerFeedbackState::restore)
-        return requireNotNull(studySessionViewModel.feedbackFor(token, restored))
+        return studySessionViewModel.feedbackFor(token, restored)
     }
 
     fun markStudyAnswerApplied(token: String) {
