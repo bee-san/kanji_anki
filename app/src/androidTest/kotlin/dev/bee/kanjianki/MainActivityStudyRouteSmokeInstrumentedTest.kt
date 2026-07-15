@@ -394,7 +394,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         try {
             composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
                 composeRule.onAllNodes(hasText(text, substring = true))
-                    .fetchSemanticsNodes().isNotEmpty()
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
             }
         } catch (error: AssertionError) {
             throw AssertionError("Timed out waiting for Compose text: $text", error)
@@ -405,7 +405,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
         try {
             composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
                 composeRule.onAllNodes(hasContentDescription(description))
-                    .fetchSemanticsNodes().isNotEmpty()
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
             }
         } catch (error: AssertionError) {
             throw AssertionError("Timed out waiting for Compose description: $description", error)

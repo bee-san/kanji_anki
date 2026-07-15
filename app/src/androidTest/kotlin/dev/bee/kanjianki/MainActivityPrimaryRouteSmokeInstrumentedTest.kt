@@ -78,7 +78,12 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             assertVisibleInScrollableRoute("split")
             assertVisibleInScrollableRoute("local source")
 
-            scenario.onActivity { activity -> activity.renderDetail("裂", true, "裂") }
+            scenario.onActivity { activity ->
+                // Stroke-order content is outside this route smoke's contract.
+                // Avoid contending with the cold-start asset parser on API 26.
+                activity.strokeGuides = emptyMap()
+                activity.renderDetail("裂", true, "裂")
+            }
             assertVisible("Back to Browse")
             assertVisible("裂")
 
@@ -158,7 +163,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
         try {
             composeRule.waitUntil(UI_TIMEOUT_MILLIS) {
                 composeRule.onAllNodes(hasText(text, substring = true))
-                    .fetchSemanticsNodes().isNotEmpty()
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
             }
         } catch (error: AssertionError) {
             throw AssertionError("Timed out waiting for Compose text: $text", error)

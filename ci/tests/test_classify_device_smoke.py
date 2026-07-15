@@ -128,6 +128,20 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn("DeviceSmoke", self.workflow)
         self.assertIn("DeviceRisk", self.risk_script)
 
+    def test_every_emulator_lane_fails_closed_without_kvm_access(self) -> None:
+        emulator_lane_count = self.workflow.count("reactivecircus/android-emulator-runner@")
+        self.assertEqual(2, emulator_lane_count)
+        self.assertEqual(emulator_lane_count, self.workflow.count("sudo chmod 0666 /dev/kvm"))
+        self.assertEqual(
+            emulator_lane_count,
+            self.workflow.count("test -r /dev/kvm && test -w /dev/kvm"),
+        )
+        self.assertEqual(emulator_lane_count, self.workflow.count("/dev/kvm is unavailable"))
+        self.assertEqual(
+            emulator_lane_count,
+            self.workflow.count("disable-linux-hw-accel: false"),
+        )
+
     def test_deleted_runtime_paths_are_included_in_classification(self) -> None:
         self.assertIn("--diff-filter=ACDMRT", self.workflow)
 
