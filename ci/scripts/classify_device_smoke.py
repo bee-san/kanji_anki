@@ -40,6 +40,7 @@ FULL_RELEASE_FILES = frozenset(
         "app/build.gradle.kts",
         "app/proguard-rules.pro",
         "ci/scripts/classify_device_smoke.py",
+        "ci/scripts/run_device_risk_suite.sh",
         "gradle/libs.versions.toml",
     },
 )

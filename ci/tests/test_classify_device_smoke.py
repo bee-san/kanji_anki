@@ -11,6 +11,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "ci/scripts/classify_device_smoke.py"
 WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
+RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
 
 SPEC = importlib.util.spec_from_file_location("classify_device_smoke", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
@@ -76,6 +77,7 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
             "gradle/libs.versions.toml",
             ".github/workflows/android-device-smoke.yml",
             "ci/scripts/classify_device_smoke.py",
+            "ci/scripts/run_device_risk_suite.sh",
         )
         for path in full_paths:
             with self.subTest(path=path):
@@ -110,6 +112,7 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
 class DeviceSmokeWorkflowContractTest(unittest.TestCase):
     def setUp(self) -> None:
         self.workflow = WORKFLOW.read_text(encoding="utf-8")
+        self.risk_script = RISK_SCRIPT.read_text(encoding="utf-8")
         self.app_build = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
 
     def test_workflow_is_pr_or_manual_only_and_not_a_release_dependency(self) -> None:
@@ -123,7 +126,7 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn("api-level: 26", self.workflow)
         self.assertGreaterEqual(self.workflow.count("api-level: 35"), 2)
         self.assertIn("DeviceSmoke", self.workflow)
-        self.assertIn("DeviceRisk", self.workflow)
+        self.assertIn("DeviceRisk", self.risk_script)
 
     def test_deleted_runtime_paths_are_included_in_classification(self) -> None:
         self.assertIn("--diff-filter=ACDMRT", self.workflow)
@@ -138,9 +141,13 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn("gradle/actions/wrapper-validation@", self.workflow)
 
     def test_full_lane_builds_and_launches_a_real_minified_x86_64_apk(self) -> None:
-        self.assertIn(":app:assembleMinifiedSmoke", self.workflow)
-        self.assertIn("adb install -r", self.workflow)
-        self.assertIn("dev.bee.kanjianki.smoke/dev.bee.kanjianki.MainActivity", self.workflow)
+        self.assertIn("script: bash ci/scripts/run_device_risk_suite.sh", self.workflow)
+        self.assertIn(":app:assembleMinifiedSmoke", self.risk_script)
+        self.assertIn("adb install -r", self.risk_script)
+        self.assertIn(
+            "dev.bee.kanjianki.smoke/dev.bee.kanjianki.MainActivity",
+            self.risk_script,
+        )
 
         smoke_build = self.app_build.split('create("minifiedSmoke")', maxsplit=1)[1]
         smoke_build = smoke_build.split("\n    sourceSets", maxsplit=1)[0]

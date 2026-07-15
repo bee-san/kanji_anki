@@ -16,6 +16,7 @@ GRADLE_WRAPPER_PROPERTIES = ROOT / "gradle/wrapper/gradle-wrapper.properties"
 ANDROID_RELEASE_WORKFLOW = ROOT / ".github/workflows/android-release.yml"
 ANDROID_INSTRUMENTED_WORKFLOW = ROOT / ".github/workflows/android-instrumented.yml"
 ANDROID_DEVICE_SMOKE_WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
+DEVICE_RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
 SONAR_WORKFLOW = ROOT / ".github/workflows/sonarqube.yml"
 CODEQL_WORKFLOW = ROOT / ".github/workflows/codeql.yml"
 DEBUG_MANIFEST = ROOT / "app/src/debug/AndroidManifest.xml"
@@ -179,14 +180,19 @@ class WorkflowSupplyChainTest(unittest.TestCase):
 
 
 class AndroidDeviceSmokeWorkflowTest(unittest.TestCase):
-    def test_emulator_runner_script_is_posix_sh_compatible(self) -> None:
+    def test_emulator_runner_invokes_one_checked_in_bash_script(self) -> None:
         workflow = ANDROID_DEVICE_SMOKE_WORKFLOW.read_text(encoding="utf-8")
         risk_job = _yaml_mapping_block(workflow, "full-risk-suite", 2)
+        risk_script = DEVICE_RISK_SCRIPT.read_text(encoding="utf-8")
 
-        # android-emulator-runner executes `script` with /usr/bin/sh, even on
-        # Ubuntu. Dash rejects Bash's `set -o pipefail` before tests can run.
-        self.assertIn("set -eu", risk_job)
-        self.assertNotIn("set -euo pipefail", risk_job)
+        # android-emulator-runner executes each YAML script line in a separate
+        # /usr/bin/sh process. A single Bash entrypoint preserves strict mode,
+        # continuations, and variables for the whole risk lane.
+        self.assertIn("script: bash ci/scripts/run_device_risk_suite.sh", risk_job)
+        self.assertNotIn("script: |", risk_job)
+        self.assertIn("set -euo pipefail", risk_script)
+        self.assertIn(":app:connectedDebugAndroidTest", risk_script)
+        self.assertIn(":app:assembleMinifiedSmoke", risk_script)
 
 
 class WorkflowAnalysisIntegrityTest(unittest.TestCase):

@@ -166,21 +166,9 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            # android-emulator-runner invokes this block with POSIX sh.
-            set -eu
-            ./gradlew :app:connectedDebugAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceRisk \
-              --no-daemon
-
-            ./gradlew :app:assembleMinifiedSmoke --no-daemon
-            smoke_apk='app/build/outputs/apk/minifiedSmoke/app-minifiedSmoke.apk'
-            test -s "${smoke_apk}"
-            adb install -r "${smoke_apk}"
-            adb shell am start -W \
-              -n dev.bee.kanjianki.smoke/dev.bee.kanjianki.MainActivity
-            sleep 2
-            adb shell pidof dev.bee.kanjianki.smoke >/dev/null
+          # The runner executes each YAML script line in a separate sh. Keep
+          # stateful/multiline logic in one checked-in Bash process.
+          script: bash ci/scripts/run_device_risk_suite.sh
 
       - name: Upload risk-suite diagnostics
         if: failure()
