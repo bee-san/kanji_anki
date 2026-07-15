@@ -125,6 +125,7 @@ class StudyCueFormatterTest {
         assertEquals("level 2 日本語", StudyCueFormatter.cleanCollectionMeaning("level 2 日本語", 96))
         assertEquals("café 日本語", StudyCueFormatter.cleanCollectionMeaning("café 日本語", 96))
         assertEquals("word日本語", StudyCueFormatter.cleanCollectionMeaning("word日本語", 96))
+        assertEquals("word 日本語\u2028keep", StudyCueFormatter.cleanCollectionMeaning("word 日本語\u2028keep", 96))
     }
 
     @Test

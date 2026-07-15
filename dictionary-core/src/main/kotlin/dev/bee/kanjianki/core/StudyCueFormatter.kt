@@ -246,35 +246,51 @@ class StudyCueFormatter private constructor() {
          * also retains supplementary-plane Han characters.
          */
         private fun stripTrailingJapaneseExample(value: String): String {
-            var japaneseIndex = 0
+            var japaneseIndex = lastUnnormalizedLineSeparator(value) + 1
             while (japaneseIndex < value.length) {
                 val codePoint = value.codePointAt(japaneseIndex)
                 if (isJapaneseScript(codePoint)) {
-                    var whitespaceStart = japaneseIndex
-                    while (whitespaceStart > 0) {
-                        val previous = value.codePointBefore(whitespaceStart)
-                        if (!isAsciiRegexWhitespace(previous)) {
-                            break
-                        }
-                        whitespaceStart -= Character.charCount(previous)
-                    }
-                    if (whitespaceStart < japaneseIndex) {
-                        var englishEnd = whitespaceStart
-                        while (englishEnd > 0) {
-                            val previous = value.codePointBefore(englishEnd)
-                            if (!isAsciiPunctuation(previous)) {
-                                break
-                            }
-                            englishEnd -= Character.charCount(previous)
-                        }
-                        if (englishEnd > 0 && isAsciiLetter(value.codePointBefore(englishEnd))) {
-                            return value.substring(0, whitespaceStart)
-                        }
+                    val exampleStart = japaneseExampleStart(value, japaneseIndex)
+                    if (exampleStart != null) {
+                        return value.substring(0, exampleStart)
                     }
                 }
                 japaneseIndex += Character.charCount(codePoint)
             }
             return value
+        }
+
+        private fun japaneseExampleStart(value: String, japaneseIndex: Int): Int? {
+            val whitespaceStart = rewindCodePoints(value, japaneseIndex, ::isAsciiRegexWhitespace)
+            if (whitespaceStart == japaneseIndex) {
+                return null
+            }
+            val englishEnd = rewindCodePoints(value, whitespaceStart, ::isAsciiPunctuation)
+            if (englishEnd == 0 || !isAsciiLetter(value.codePointBefore(englishEnd))) {
+                return null
+            }
+            return whitespaceStart
+        }
+
+        private fun rewindCodePoints(value: String, start: Int, predicate: (Int) -> Boolean): Int {
+            var index = start
+            while (index > 0) {
+                val previous = value.codePointBefore(index)
+                if (!predicate(previous)) {
+                    return index
+                }
+                index -= Character.charCount(previous)
+            }
+            return index
+        }
+
+        private fun lastUnnormalizedLineSeparator(value: String): Int {
+            for (index in value.lastIndex downTo 0) {
+                if (value[index] == '\u0085' || value[index] == '\u2028' || value[index] == '\u2029') {
+                    return index
+                }
+            }
+            return -1
         }
 
         private fun isJapaneseScript(codePoint: Int): Boolean = when (Character.UnicodeScript.of(codePoint)) {
