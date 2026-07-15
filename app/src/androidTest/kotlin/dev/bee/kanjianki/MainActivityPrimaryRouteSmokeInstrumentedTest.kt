@@ -66,7 +66,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
             scenario.onActivity { it.renderHome() }
             assertVisible("Browse Kanji")
             assertVisible("Stats")
-            assertVisible("Games")
+            assertVisibleInScrollableRoute("Games")
 
             scenario.onActivity { it.renderSettings() }
             assertVisible(MainActivityBase.NAV_SETTINGS)
