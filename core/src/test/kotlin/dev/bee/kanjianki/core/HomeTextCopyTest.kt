@@ -42,6 +42,30 @@ class HomeTextCopyTest {
     }
 
     @Test
+    fun resilienceCopyProvidesEnglishAndJapanese() {
+        withLocale(Locale.ENGLISH) {
+            assertEquals(
+                "Database is from a newer version of Kani; some features may be unavailable until you update.",
+                HomeTextCopy.databaseDowngradeNotice(),
+            )
+            assertEquals(
+                "Last update check failed — check your connection.",
+                HomeTextCopy.updateCheckFailedLine(),
+            )
+        }
+        withLocale(Locale.JAPANESE) {
+            assertEquals(
+                "データベースはより新しいバージョンのKaniのものです。アップデートするまで一部の機能が使えない場合があります。",
+                HomeTextCopy.databaseDowngradeNotice(),
+            )
+            assertEquals(
+                "最後のアップデート確認に失敗しました。接続を確認してください。",
+                HomeTextCopy.updateCheckFailedLine(),
+            )
+        }
+    }
+
+    @Test
     fun studyRemainingCountLabelDescribesSessionRemainingCards() {
         assertEquals("1 to study", HomeTextCopy.studyRemainingCountLabel(1))
         assertEquals("5 to study", HomeTextCopy.studyRemainingCountLabel(5))
